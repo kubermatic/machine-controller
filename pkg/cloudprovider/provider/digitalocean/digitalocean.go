@@ -31,20 +31,10 @@ type config struct {
 	Token             string   `json:"token"`
 	Region            string   `json:"region"`
 	Size              string   `json:"size"`
-	SSHKeys           []sshKey `json:"ssh_keys"`
 	Backups           bool     `json:"backups"`
 	IPv6              bool     `json:"ipv6"`
 	PrivateNetworking bool     `json:"private_networking"`
 	Tags              []string `json:"tags"`
-}
-
-type sshKey struct {
-	//Either specify ID or Fingerprint to use an existing key
-	ID          int    `json:"id"`
-	Fingerprint string `json:"fingerprint"`
-	// Or specify Name & PublicKey so the key will be created
-	Name      string `json:"name"`
-	PublicKey string `json:"public_key"`
 }
 
 const (
