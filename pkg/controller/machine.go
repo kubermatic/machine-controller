@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"time"
 
@@ -29,7 +30,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/ssh"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
 	corev1 "k8s.io/api/core/v1"
@@ -66,7 +66,7 @@ type Controller struct {
 
 	workqueue workqueue.RateLimitingInterface
 
-	sshKeypair         *ssh.KeyPair
+	sshPrivateKey *rsa.PrivateKey
 }
 
 // NewMachineController returns a new machine controller
@@ -75,7 +75,7 @@ func NewMachineController(
 	machineClient machineclientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	machineInformerFactory externalversions.SharedInformerFactory,
-	sshKeypair *ssh.KeyPair) *Controller {
+	sshKeypair *rsa.PrivateKey) *Controller {
 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
@@ -89,9 +89,9 @@ func NewMachineController(
 		machinesLister: machineInformer.Lister(),
 		machinesSynced: machineInformer.Informer().HasSynced,
 
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Machines"),
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
 
-		sshKeypair:         sshKeypair,
+		sshPrivateKey: sshKeypair,
 	}
 
 	machineInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -378,7 +378,7 @@ func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, pr
 	glog.Info("=================== END USERDATA ===================")
 
 	glog.Infof("creating instance...")
-	return prov.Create(machine, data, c.sshKeypair.PublicKey)
+	return prov.Create(machine, data, c.sshPrivateKey.PublicKey)
 }
 
 func (c *Controller) enqueueMachine(obj interface{}) {

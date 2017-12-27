@@ -43,6 +43,12 @@
   version = "v1.0.1"
 
 [[projects]]
+  name = "github.com/aws/aws-sdk-go"
+  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/ec2query","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/xml/xmlutil","service/ec2","service/sts"]
+  revision = "82ad808f2307df0776c038bfd7ea85440a35c02e"
+  version = "v1.12.53"
+
+[[projects]]
   name = "github.com/coreos/container-linux-config-transpiler"
   packages = ["config","config/astyaml","config/platform","config/templating","config/types","config/types/util"]
   revision = "be4cb16b0aaf0f6b4fdf63b8b2a081397276bf0f"
@@ -95,6 +101,12 @@
   packages = ["."]
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
   version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/go-ini/ini"
+  packages = ["."]
+  revision = "32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a"
+  version = "v1.32.0"
 
 [[projects]]
   branch = "master"
@@ -191,6 +203,11 @@
   packages = ["."]
   revision = "7fe0c75c13abdee74b09fcacef5ea1c6bba6a874"
   version = "0.2.4"
+
+[[projects]]
+  name = "github.com/jmespath/go-jmespath"
+  packages = ["."]
+  revision = "0b12d6b5"
 
 [[projects]]
   name = "github.com/json-iterator/go"
@@ -338,6 +355,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "07eb8ef40f6b4f6e7ff6af025618e1c6227fcf33db3cab9f91b38ba29585ef70"
+  inputs-digest = "0ced2efa066fdb5360154451c955918437a5c542cb131baafa321083f161249b"
   solver-name = "gps-cdcl"
   solver-version = 1

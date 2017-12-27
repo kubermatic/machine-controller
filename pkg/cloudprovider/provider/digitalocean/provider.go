@@ -2,6 +2,7 @@ package digitalocean
 
 import (
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -142,18 +143,18 @@ func (do *digitalocean) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, authorizedkey []byte) (string, error) {
-	key, _, _, _, err := ssh.ParseAuthorizedKey(authorizedkey)
+func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, rsa rsa.PublicKey) (string, error) {
+	pk, err := ssh.NewPublicKey(&rsa)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse authorizedkey: %v", err)
+		return "", fmt.Errorf("failed to parse publickey: %v", err)
 	}
-	fingerprint := ssh.FingerprintLegacyMD5(key)
 
+	fingerprint := ssh.FingerprintLegacyMD5(pk)
 	dokey, res, err := service.GetByFingerprint(ctx, fingerprint)
 	if err != nil {
 		if res != nil && res.StatusCode == http.StatusNotFound {
 			dokey, _, err = service.Create(ctx, &godo.KeyCreateRequest{
-				PublicKey: string(authorizedkey),
+				PublicKey: string(ssh.MarshalAuthorizedKey(pk)),
 				Name:      "machine-controller",
 			})
 			return dokey.Fingerprint, nil
@@ -164,7 +165,7 @@ func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, authorize
 	return dokey.Fingerprint, nil
 }
 
-func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, authorizedkey []byte) (instance.Instance, error) {
+func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, publicKey rsa.PublicKey) (instance.Instance, error) {
 	c, _, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
@@ -173,7 +174,7 @@ func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, autho
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	fingerprint, err := ensureSSHKeysExist(client.Keys, ctx, authorizedkey)
+	fingerprint, err := ensureSSHKeysExist(client.Keys, ctx, publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ensure ssh keys exist: %v", err)
 	}

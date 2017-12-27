@@ -39,3 +39,7 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 [[constraint]]
   name = "k8s.io/apiextensions-apiserver"
   branch = "release-1.9"
+
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "1.12.53"
