@@ -12,7 +12,8 @@ type Config struct {
 	CloudProvider     string               `json:"cloudProvider,omitempty"`
 	CloudProviderSpec runtime.RawExtension `json:"cloudProviderSpec,omitempty"`
 
-	OperatingSystemConfig runtime.RawExtension `json:"operatingSystemConfig"`
+	OperatingSystem     string               `json:"operatingSystem"`
+	OperatingSystemSpec runtime.RawExtension `json:"operatingSystemSpec"`
 }
 
 func GetConfig(r runtime.RawExtension) (*Config, error) {

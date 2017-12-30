@@ -44,7 +44,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to get provider config: %v", err)
 	}
 
-	coreosConfig, err := getConfig(pconfig.OperatingSystemConfig)
+	coreosConfig, err := getConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get coreos config from provider config: %v", err)
 	}

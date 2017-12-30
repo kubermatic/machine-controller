@@ -19,7 +19,8 @@ spec:
       instanceType: "t2.micro"
       diskSize: 50
       diskType: "gp2"
-    operatingSystemConfig:
+    operatingSystem: "coreos"
+    operatingSystemSpec:
       disableAutoUpdate: true
   roles:
   - "Node"

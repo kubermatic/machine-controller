@@ -169,13 +169,13 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	machine := listerMachine.DeepCopy()
 
-	cloudProviderConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
+	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}
-	prov, err := cloudprovider.ForProvider(cloudProviderConfig.CloudProvider)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider)
 	if err != nil {
-		return fmt.Errorf("failed to get cloud provider %q: %v", cloudProviderConfig.CloudProvider, err)
+		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}
 
 	// Delete machine
@@ -236,7 +236,7 @@ func (c *Controller) syncHandler(key string) error {
 			}
 			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
-			providerInstance, err = c.createProviderInstance(machine, prov)
+			providerInstance, err = c.createProviderInstance(machine, prov, providerConfig)
 			if err != nil {
 				oldMachine := machine.DeepCopy()
 				machine.Status.ErrorMessage = err.Error()
@@ -358,8 +358,8 @@ func (c *Controller) patchMachine(newMachine, oldMachine *machinev1alpha1.Machin
 	return err
 }
 
-func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloudprovider.CloudProvider) (instance.Instance, error) {
-	userdataProvider, err := userdata.ForOS("coreos")
+func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloudprovider.CloudProvider, providerConfig *providerconfig.Config) (instance.Instance, error) {
+	userdataProvider, err := userdata.ForOS(providerConfig.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to userdata provider for coreos: %v", err)
 	}

@@ -19,7 +19,8 @@ spec:
       monitoring: true
       tags:
         - "machine-controller"
-    operatingSystemConfig:
+    operatingSystem: "coreos"
+    operatingSystemSpec:
       disableAutoUpdate: true
   roles:
   - "Node"
