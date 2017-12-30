@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/container-linux-config-transpiler/config"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -27,20 +28,25 @@ func getConfig(r runtime.RawExtension) (*Config, error) {
 	return &p, nil
 }
 
-func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string) (string, error) {
+func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(sprig.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+	}
+
+	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
+	if err != nil {
+		return "", fmt.Errorf("failed to get cloud config: %v", err)
 	}
 
 	pconfig, err := providerconfig.GetConfig(spec.ProviderConfig)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get provider config: %v", err)
 	}
 
 	coreosConfig, err := getConfig(pconfig.OperatingSystemConfig)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get coreos config from provider config: %v", err)
 	}
 
 	data := struct {
@@ -48,16 +54,20 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string)
 		ProviderConfig *providerconfig.Config
 		CoreOSConfig   *Config
 		Kubeconfig     string
+		CloudProvider  string
+		CloudConfig    string
 	}{
 		MachineSpec:    spec,
 		ProviderConfig: pconfig,
 		CoreOSConfig:   coreosConfig,
 		Kubeconfig:     kubeconfig,
+		CloudProvider:  cpName,
+		CloudConfig:    cpConfig,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
 
 	// Convert to ignition
@@ -68,12 +78,12 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string)
 
 	ignCfg, report := config.ConvertAs2_0(cfg, "", ast)
 	if len(report.Entries) > 0 {
-		return "", fmt.Errorf("failed to validate coreos cloud config: %s", report.String())
+		return "", fmt.Errorf("failed to convert container linux config to ingition: %s", report.String())
 	}
 
 	out, err := json.Marshal(ignCfg)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to marshal ignition config: %v", err)
 	}
 
 	return string(out), nil
@@ -134,6 +144,10 @@ systemd:
           --cluster-dns=10.10.10.10 \
           --cluster-domain=cluster.local \
           --network-plugin=cni \
+          {{- if .CloudProvider }}
+          --cloud-provider={{ .CloudProvider }} \
+          --cloud-config=/etc/kubernetes/cloud-config \
+          {{- end }}
           --cert-dir=/etc/kubernetes/ \
           --pod-manifest-path=/etc/kubernetes/manifests \
           --resolv-conf=/etc/resolv.conf \
@@ -155,4 +169,10 @@ storage:
       contents:
         inline: |
 {{ .Kubeconfig | indent 10 }}
+
+    - path: /etc/kubernetes/cloud-config
+      filesystem: root
+      contents:
+        inline: |
+{{ .CloudConfig | indent 10 }}
 `

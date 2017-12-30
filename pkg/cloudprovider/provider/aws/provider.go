@@ -498,6 +498,10 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	}, nil
 }
 
+func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+	return "", "aws", nil
+}
+
 type awsInstance struct {
 	instance *ec2.Instance
 }

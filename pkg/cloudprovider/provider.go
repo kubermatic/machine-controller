@@ -29,6 +29,7 @@ func ForProvider(p string) (CloudProvider, error) {
 type CloudProvider interface {
 	Validate(machinespec v1alpha1.MachineSpec) error
 	Get(machine *v1alpha1.Machine) (instance.Instance, error)
+	GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error)
 	Create(machine *v1alpha1.Machine, userdata string, key rsa.PublicKey) (instance.Instance, error)
 	Delete(machine *v1alpha1.Machine) error
 }

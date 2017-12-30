@@ -369,7 +369,7 @@ func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, pr
 		return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 	}
 
-	data, err := userdataProvider.UserData(machine.Spec, kubeconfig)
+	data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov)
 	if err != nil {
 		return nil, fmt.Errorf("failed get userdata: %v", err)
 	}

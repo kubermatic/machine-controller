@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
 )
 
@@ -23,5 +24,5 @@ func ForOS(os string) (Provider, error) {
 }
 
 type Provider interface {
-	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string) (string, error)
+	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider) (string, error)
 }

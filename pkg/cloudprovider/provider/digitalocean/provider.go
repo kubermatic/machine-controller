@@ -246,6 +246,10 @@ func (do *digitalocean) Get(machine *v1alpha1.Machine) (instance.Instance, error
 	return &doInstance{droplet: d}, nil
 }
 
+func (do *digitalocean) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+	return "", "", nil
+}
+
 type doInstance struct {
 	droplet *godo.Droplet
 }
