@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/coreos/container-linux-config-transpiler/config"
+	"github.com/golang/glog"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -69,6 +70,10 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	if err != nil {
 		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
+
+	glog.V(6).Info("=================== BEGIN COREOS CLOUD-INIT ===================")
+	glog.V(6).Info(b.String())
+	glog.V(6).Info("=================== END COREOS CLOUD-INIT ===================")
 
 	// Convert to ignition
 	cfg, ast, report := config.Parse(b.Bytes())
