@@ -10,6 +10,17 @@ go build -i github.com/kubermatic/machine-controller/cmd/controller
 ./controller -logtostderr -v=8 -kubeconfig=/path/to/kubeconfig
 ```
 
+# What works (tested under kubernetes v1.8.5)
+- Creation of worker nodes on AWS & Digitalocean
+  - AWS
+    - Creation of a security group
+    - Creation of a instance profile
+- Using Ubuntu & Coreos as operating system
+
+# What does not work
+- Master creation
+- Installation of a container runtime based on `machine.spec.versions.containerRuntime`. Currently only latest docker will be used.
+
 # Requirements
 The controller expects a cluster-info configmap to exist within the kube-public namespace.
 This configmap needs to contain a kubeconfig without credentials.
@@ -46,7 +57,7 @@ kubectl create -f examples/machine.yaml
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
-# Your Digitalocean token
+# your digitalocean token
 token: "<< YOUR_DO_TOKEN >>"
 # droplet region
 region: "fra1"
@@ -65,10 +76,26 @@ tags:
 - "machine-controller"
 ```
 
-# TODO
-- Make operating system configurable. `machine.spec.providerConfig.operatingSystem`
-Currently we only support coreos but we need to support ubuntu as well. 
-Based on this field we know how to generate the userdata / cloud-init.
-- Support Ubuntu as OS. (Should support `machine.spec.versions.containerRuntime`) - i want CRI-O!
-- Add AWS provider
-- Add Openstack provider
+## AWS
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+# your aws access key id
+accessKeyId: "<< YOUR_ACCESS_KEY_ID >>"
+# your aws secret access key id
+secretAccessKey: "<< YOUR_SECRET_ACCESS_KEY_ID >>"
+# region for the instance
+region: "eu-central-1"
+# avaiability zone for the instance
+availabilityZone: "eu-central-1a"
+# vpc id for the instance
+vpcId: "vpc-819f62e9"
+# subnet id for the instance
+subnetId: "subnet-2bff4f43"
+# instance type
+instanceType: "t2.micro"
+# size of the root disk in gb
+diskSize: 50
+# root disk type (gp2, io1, st1, sc1, or standard)
+diskType: "gp2"
+```
