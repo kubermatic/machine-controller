@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/digitalocean/godo"
 	"github.com/golang/glog"
@@ -15,6 +16,8 @@ import (
 	"golang.org/x/oauth2"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -39,7 +42,9 @@ type config struct {
 }
 
 const (
-	image = "coreos-stable"
+	createCheckPeriod           = 10 * time.Second
+	createCheckTimeout          = 5 * time.Minute
+	createCheckFailedWaitPeriod = 10 * time.Second
 )
 
 type TokenSource struct {
@@ -51,6 +56,16 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 		AccessToken: t.AccessToken,
 	}
 	return token, nil
+}
+
+func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
+	switch os {
+	case providerconfig.OperatingSystemUbuntu:
+		return "ubuntu-16-04-x64", nil
+	case providerconfig.OperatingSystemCoreos:
+		return "coreos-stable", nil
+	}
+	return "", providerconfig.ErrOSNotSupported
 }
 
 func getClient(token string) *godo.Client {
@@ -74,7 +89,7 @@ func getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) 
 }
 
 func (do *digitalocean) Validate(spec v1alpha1.MachineSpec) error {
-	c, _, err := getConfig(spec.ProviderConfig)
+	c, pc, err := getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -89,6 +104,11 @@ func (do *digitalocean) Validate(spec v1alpha1.MachineSpec) error {
 
 	if c.Size == "" {
 		return errors.New("size is missing")
+	}
+
+	_, err = getSlugForOS(pc.OperatingSystem)
+	if err != nil {
+		return fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
 	}
 
 	ctx := context.TODO()
@@ -166,7 +186,7 @@ func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, rsa rsa.P
 }
 
 func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, publicKey rsa.PublicKey) (instance.Instance, error) {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, pc, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -179,8 +199,12 @@ func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, publi
 		return nil, fmt.Errorf("failed to ensure ssh keys exist: %v", err)
 	}
 
+	slug, err := getSlugForOS(pc.OperatingSystem)
+	if err != nil {
+		return nil, fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
+	}
 	createRequest := &godo.DropletCreateRequest{
-		Image:             godo.DropletCreateImage{Slug: image},
+		Image:             godo.DropletCreateImage{Slug: slug},
 		Name:              machine.Spec.Name,
 		Region:            c.Region,
 		Size:              c.Size,
@@ -189,13 +213,31 @@ func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, publi
 		Backups:           c.Backups,
 		UserData:          userdata,
 		SSHKeys:           []godo.DropletCreateSSHKey{{Fingerprint: fingerprint}},
-		Tags:              c.Tags,
+		Tags:              append(c.Tags, string(machine.UID)),
 	}
 
 	droplet, _, err := client.Droplets.Create(ctx, createRequest)
 	if err != nil {
 		return nil, err
 	}
+
+	//We need to wait until the droplet really got created as tags will be only applied when the droplet is running
+	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
+		newDroplet, _, err := client.Droplets.Get(ctx, droplet.ID)
+		if err != nil {
+			//Well just wait 10 sec and hope the droplet got started by then...
+			time.Sleep(createCheckFailedWaitPeriod)
+			return false, fmt.Errorf("droplet (id='%d') got created but we failed to fetch its status", droplet.ID)
+		}
+		if sets.NewString(newDroplet.Tags...).Has(string(machine.UID)) {
+			glog.V(6).Infof("droplet (id='%d') got fully created", droplet.ID)
+			return true, nil
+		} else {
+			glog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
+			return false, nil
+		}
+	})
+
 	return &doInstance{droplet: droplet}, nil
 }
 
@@ -235,7 +277,7 @@ func (do *digitalocean) Get(machine *v1alpha1.Machine) (instance.Instance, error
 
 	var d *godo.Droplet
 	for _, droplet := range droplets {
-		if droplet.Name == machine.Spec.Name {
+		if droplet.Name == machine.Spec.Name && sets.NewString(droplet.Tags...).Has(string(machine.UID)) {
 			d = &droplet
 		}
 	}

@@ -8,18 +8,19 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
 var (
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
-	providers = map[string]CloudProvider{
-		"digitalocean": digitalocean.New(),
-		"aws":          aws.New(),
+	providers = map[providerconfig.CloudProvider]CloudProvider{
+		providerconfig.CloudProviderDigitalocean: digitalocean.New(),
+		providerconfig.CloudProviderAWS:          aws.New(),
 	}
 )
 
-func ForProvider(p string) (CloudProvider, error) {
+func ForProvider(p providerconfig.CloudProvider) (CloudProvider, error) {
 	if p, found := providers[p]; found {
 		return p, nil
 	}

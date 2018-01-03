@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 
+	"time"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -33,12 +35,11 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 	secret := v1.Secret{}
 	secret.Name = fmt.Sprintf("bootstrap-token-%s", tokenID)
 	secret.Type = SecretTypeBootstrapToken
-
 	secret.StringData = map[string]string{
 		"description":                    "bootstrap token for " + name,
 		"token-id":                       tokenID,
 		"token-secret":                   tokenSecret,
-		"expiration":                     "2017-12-31T00:00:00Z",
+		"expiration":                     metav1.Now().Add(24 * time.Hour).Format(time.RFC3339),
 		"usage-bootstrap-authentication": "true",
 		"usage-bootstrap-signing":        "true",
 	}

@@ -59,21 +59,45 @@ var (
   ]
 }`
 
-	images = map[string]string{
-		"us-east-1":      "ami-0e2d8b74",
-		"us-east-2":      "ami-7794b812",
-		"us-west-1":      "ami-40340820",
-		"us-west-2":      "ami-18b97760",
-		"ca-central-1":   "ami-3971c95d",
-		"eu-central-1":   "ami-eb11aa84",
-		"eu-west-1":      "ami-ed2b8e94",
-		"eu-west-2":      "ami-8d869be9",
-		"ap-southeast-1": "ami-25632346",
-		"ap-southeast-2": "ami-73e00f11",
-		"ap-northeast-2": "ami-0516b36b",
-		"ap-northeast-1": "ami-09d2726f",
-		"ap-south-1":     "ami-5af0b235",
-		"sa-east-1":      "ami-7c047c10",
+	amis = map[providerconfig.OperatingSystem]map[string]string{
+		providerconfig.OperatingSystemCoreos: {
+			"ap-northeast-1": "ami-6a6bec0c",
+			"ap-northeast-2": "ami-7fb41211",
+			"ap-south-1":     "ami-02b4fd6d",
+			"ap-southeast-1": "ami-cb096db7",
+			"ap-southeast-2": "ami-7957a31b",
+			"ca-central-1":   "ami-9c16adf8",
+			"cn-north-1":     "ami-e803d185",
+			"eu-central-1":   "ami-31c74e5e",
+			"eu-west-1":      "ami-c8a811b1",
+			"eu-west-2":      "ami-8ccdd3e8",
+			"sa-east-1":      "ami-af84c3c3",
+			"us-east-1":      "ami-6dfb9a17",
+			"us-east-2":      "ami-01e2cb64",
+			"us-gov-west-1":  "ami-6bad220a",
+			"us-west-1":      "ami-7d81bb1d",
+			"us-west-2":      "ami-c167bdb9",
+		},
+		providerconfig.OperatingSystemUbuntu: {
+			"ap-northeast-1": "ami-42ca4724",
+			"ap-south-1":     "ami-84dc94eb",
+			"ap-southeast-1": "ami-29aece55",
+			"ca-central-1":   "ami-b0c67cd4",
+			"eu-central-1":   "ami-13b8337c",
+			"eu-west-1":      "ami-63b0341a",
+			"sa-east-1":      "ami-8181c7ed",
+			"us-east-1":      "ami-3dec9947",
+			"us-west-1":      "ami-1a17137a",
+			"cn-north-1":     "ami-fc25f791",
+			"cn-northwest-1": "ami-e5b0a587",
+			"us-gov-west-1":  "ami-6261ee03",
+			"ap-northeast-2": "ami-5027813e",
+			"ap-southeast-2": "ami-9b8076f9",
+			"eu-west-2":      "ami-22415846",
+			"us-east-2":      "ami-597d553c",
+			"us-west-2":      "ami-a2e544da",
+			"eu-west-3":      "ami-794bfc04",
+		},
 	}
 )
 
@@ -90,6 +114,20 @@ type config struct {
 	InstanceType string `json:"instanceType"`
 	DiskSize     int64  `json:"diskSize"`
 	DiskType     string `json:"diskType"`
+}
+
+func getAMIID(os providerconfig.OperatingSystem, region string) (string, error) {
+	amis, osSupported := amis[os]
+	if !osSupported {
+		return "", fmt.Errorf("operating system %q not supported", os)
+	}
+
+	id, regionFound := amis[region]
+	if !regionFound {
+		return "", fmt.Errorf("specified region %q not supported with this operating system %q", region, os)
+	}
+
+	return id, nil
 }
 
 func getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) {
@@ -125,6 +163,20 @@ func getEC2client(id, secret, region string) (*ec2.EC2, error) {
 		return nil, fmt.Errorf("failed to get aws session: %v", err)
 	}
 	return ec2.New(sess), nil
+}
+
+func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+	config, pc, err := getConfig(spec.ProviderConfig)
+	if err != nil {
+		return fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	_, err = getAMIID(pc.OperatingSystem, config.Region)
+	if err != nil {
+		return fmt.Errorf("invalid region+os configuration: %v", err)
+	}
+
+	return nil
 }
 
 func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
@@ -205,10 +257,6 @@ func ensureSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
 
 	glog.V(6).Infof("security group %s already exists", securityGroupName)
 	return aws.StringValue(sgOut.SecurityGroups[0].GroupId), nil
-}
-
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	return nil
 }
 
 func ensureSSHKeysExist(client *ec2.EC2, key rsa.PublicKey) (string, error) {
@@ -335,7 +383,7 @@ func ensureInstanceProfileExists(client *iam.IAM) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey rsa.PublicKey) (instance.Instance, error) {
-	config, _, err := getConfig(machine.Spec.ProviderConfig)
+	config, pc, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -370,8 +418,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		return nil, fmt.Errorf("failed ensure that the ssh key exists: %v", err)
 	}
 
+	amiID, err := getAMIID(pc.OperatingSystem, config.Region)
+	if err != nil {
+		return nil, fmt.Errorf("invalid region+os configuration: %v", err)
+	}
+
 	instanceRequest := &ec2.RunInstancesInput{
-		ImageId: aws.String(images[config.Region]),
+		ImageId: aws.String(amiID),
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
 			{
 				DeviceName: aws.String("/dev/xvda"),
