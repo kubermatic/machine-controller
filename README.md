@@ -10,16 +10,18 @@ go build -i github.com/kubermatic/machine-controller/cmd/controller
 ./controller -logtostderr -v=8 -kubeconfig=/path/to/kubeconfig
 ```
 
-# What works (tested under kubernetes v1.8.5)
+# Features
+## What works (tested under kubernetes v1.8.5)
 - Creation of worker nodes on AWS & Digitalocean
   - AWS
     - Creation of a security group
     - Creation of a instance profile
 - Using Ubuntu & Coreos as operating system
 
-# What does not work
+## What does not work
 - Master creation
 - Installation of a container runtime based on `machine.spec.versions.containerRuntime`. Currently only latest docker will be used.
+- Probably a lot, this is a very simple implementation.
 
 # Requirements
 The controller expects a cluster-info configmap to exist within the kube-public namespace.
