@@ -13,6 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package v1alpha1 contains types to represent Kubernetes cluster and
+// machine configuration.
 package v1alpha1
 
 import (
@@ -20,6 +23,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+const MachineResourcePlural = "machines"
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Machine represents a single Node that should exist (whether it does or
 // not yet). In this model, there is no grouping of nodes to scale with a
@@ -42,25 +51,26 @@ import (
 // It is recommended, but not required, that provider-specific controllers add
 // finalizers to Machine objects so that they can be triggered on deletion to
 // release the necessary external resources, reporting any errors encountered.
-
-// +genclient
-// +genclient:nonNamespaced
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Machine struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
 	Spec   MachineSpec   `json:"spec"`
-	Status MachineStatus `json:"status"`
+	Status MachineStatus `json:"status,omitempty"`
 }
 
 type MachineSpec struct {
 	// This ObjectMeta will autopopulate the Node created. Use this to
-	// indicate what labels, annotations, name prefix, etc., should be used
-	// when creating the Node.
+	// indicate what labels, annotations, etc., should be used when
+	// creating the Node.
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// The full, authoritative list of taints to apply to the corresponding
+	// Node. This list will overwrite any modifications made to the Node on
+	// an ongoing basis.
+	// +optional
+	Taints []corev1.Taint `json:"taints,omitempty"`
 
 	// Provider-specific serialized configuration to use during node
 	// creation. It is recommended that providers maintain their own
@@ -69,22 +79,17 @@ type MachineSpec struct {
 	// +optional
 	ProviderConfig runtime.RawExtension `json:"providerConfig"`
 
-	// A list consisting of "Master" and/or "Node".
-	//
-	//                 +-----------------------+------------------------+
-	//                 | Master present        | Master absent          |
-	// +---------------+-----------------------+------------------------|
-	// | Node present: | Install control plane | Join the cluster as    |
-	// |               | and be schedulable    | just a node            |
-	// |---------------+-----------------------+------------------------|
-	// | Node absent:  | Install control plane | Invalid configuration  |
-	// |               | and be unscheduleable |                        |
-	// +---------------+-----------------------+------------------------+
-	Roles []string `json:"roles"`
+	// A list of roles for this Machine to use.
+	Roles []MachineRole `json:"roles,omitempty"`
 
-	// Versions of key software to use.
+	// Versions of key software to use. This field is optional at cluster
+	// creation time, and omitting the field indicates that the cluster
+	// installation tool should select defaults for the user. These
+	// defaults may differ based on the cluster installer, but the tool
+	// should populate the values it uses when persisting Machine objects.
+	// A Machine spec missing this field at runtime is invalid.
 	// +optional
-	Versions MachineVersionInfo `json:"versions"`
+	Versions MachineVersionInfo `json:"versions,omitempty"`
 
 	// To populate in the associated Node for dynamic kubelet config. This
 	// field already exists in Node, so any updates to it in the Machine
@@ -92,33 +97,82 @@ type MachineSpec struct {
 	// status. The rest of dynamic kubelet config support should then work
 	// as-is.
 	// +optional
-	ConfigSource *corev1.NodeConfigSource `json:"configSource"`
+	ConfigSource *corev1.NodeConfigSource `json:"configSource,omitempty"`
 }
+
+// The MachineRole indicates the purpose of the Machine, and will determine
+// what software and configuration will be used when provisioning and managing
+// the Machine. A single Machine may have more than one role, and the list and
+// definitions of supported roles is expected to evolve over time.
+//
+// Currently, only two roles are supported: Master and Node. In the future, we
+// expect user needs to drive the evolution and granularity of these roles,
+// with new additions accommodating common cluster patterns, like dedicated
+// etcd Machines.
+//
+//                 +-----------------------+------------------------+
+//                 | Master present        | Master absent          |
+// +---------------+-----------------------+------------------------|
+// | Node present: | Install control plane | Join the cluster as    |
+// |               | and be schedulable    | just a node            |
+// |---------------+-----------------------+------------------------|
+// | Node absent:  | Install control plane | Invalid configuration  |
+// |               | and be unscheduleable |                        |
+// +---------------+-----------------------+------------------------+
+type MachineRole string
+
+const (
+	MasterRole = "Master"
+	NodeRole   = "Node"
+)
 
 type MachineStatus struct {
 	// If the corresponding Node exists, this will point to its object.
 	// +optional
-	NodeRef *corev1.ObjectReference `json:"nodeRef"`
+	NodeRef *corev1.ObjectReference `json:"nodeRef,omitempty"`
 
 	// When was this status last observed
 	// +optional
-	LastUpdated metav1.Time `json:"lastUpdated"`
+	LastUpdated metav1.Time `json:"lastUpdated,omitempty"`
 
-	// Indicates whether or not the Machine is fully reconciled. When a
-	// controller observes that the spec has changed and no longer matches
-	// reality, it should update Ready to false before reconciling the
-	// state, and then set back to true when the state matches the spec.
-	Ready bool `json:"ready"`
-
-	// If set, indicates that there is a problem reconciling state, and
-	// will be set to a token value suitable for machine interpretation.
+	// The current versions of software on the corresponding Node (if it
+	// exists). This is provided for a few reasons:
+	//
+	// 1) It is more convenient than checking the NodeRef, traversing it to
+	//    the Node, and finding the appropriate field in Node.Status.NodeInfo
+	//    (which uses different field names and formatting).
+	// 2) It removes some of the dependency on the structure of the Node,
+	//    so that if the structure of Node.Status.NodeInfo changes, only
+	//    machine controllers need to be updated, rather than every client
+	//    of the Machines API.
+	// 3) There is no other way simple way to check the ControlPlane
+	//    version. A client would have to connect directly to the apiserver
+	//    running on the target node in order to find out its version.
 	// +optional
-	ErrorReason MachineStatusError `json:"errorReason"`
+	Versions *MachineVersionInfo `json:"versions,omitempty"`
 
+	// In the event that there is a terminal problem reconciling the
+	// Machine, both ErrorReason and ErrorMessage will be set. ErrorReason
+	// will be populated with a succinct value suitable for machine
+	// interpretation, while ErrorMessage will contain a more verbose
+	// string suitable for logging and human consumption.
+	//
+	// These fields should not be set for transitive errors that a
+	// controller faces that are expected to be fixed automatically over
+	// time (like service outages), but instead indicate that something is
+	// fundamentally wrong with the Machine's spec or the configuration of
+	// the controller, and that manual intervention is required. Examples
+	// of terminal errors would be invalid combinations of settings in the
+	// spec, values that are unsupported by the controller, or the
+	// responsible controller itself being critically misconfigured.
+	//
+	// Any transient errors that occur during the reconcilation of Machines
+	// can be added as events to the Machine object and/or logged in the
+	// controller's output.
 	// +optional
-	// If set, indicates that there is a problem reconciling state, and
-	// will be set to a human readable string to indicate the problem.
-	ErrorMessage string `json:"errorMessage"`
+	ErrorReason *MachineStatusError `json:"errorReason,omitempty"`
+	// +optional
+	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 
 type MachineStatusError string
@@ -167,6 +221,12 @@ type MachineVersionInfo struct {
 	// Semantic version of kubelet to run
 	Kubelet string `json:"kubelet"`
 
+	// Semantic version of the Kubernetes control plane to
+	// run. This should only be populated when the machine is a
+	// master.
+	// +optional
+	ControlPlane string `json:"controlPlane,omitempty"`
+
 	// Name/version of container runtime
 	ContainerRuntime ContainerRuntimeInfo `json:"containerRuntime"`
 }
@@ -179,15 +239,9 @@ type ContainerRuntimeInfo struct {
 	Version string `json:"version"`
 }
 
-// MachineList is a collection of machines.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type MachineList struct {
 	metav1.TypeMeta `json:",inline"`
-	// Standard list metadata
-	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
-	// +optional
-	metav1.ListMeta `json:"metadata,omitempty"`
-
-	// Items is the list of NodeClasses
-	Items []Machine `json:"items"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Machine `json:"items"`
 }

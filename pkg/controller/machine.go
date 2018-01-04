@@ -158,6 +158,24 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
+func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError) error {
+	if machine.Status.ErrorReason != nil && *machine.Status.ErrorReason == reason {
+		oldMachine := machine.DeepCopy()
+		machine.Status.ErrorMessage = nil
+		machine.Status.ErrorReason = nil
+		return c.patchMachine(machine, oldMachine)
+	}
+	return nil
+}
+
+func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError, message string) error {
+	oldMachine := machine.DeepCopy()
+	machine.Status.ErrorMessage = &message
+	machine.Status.ErrorReason = &reason
+
+	return c.patchMachine(machine, oldMachine)
+}
+
 func (c *Controller) syncHandler(key string) error {
 	listerMachine, err := c.machinesLister.Get(key)
 	if err != nil {
@@ -181,11 +199,8 @@ func (c *Controller) syncHandler(key string) error {
 	// Delete machine
 	if machine.DeletionTimestamp != nil && sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
 		if err := prov.Delete(machine); err != nil {
-			oldMachine := machine.DeepCopy()
-			machine.Status.ErrorMessage = err.Error()
-			machine.Status.ErrorReason = machinev1alpha1.DeleteMachineError
-			if err := c.patchMachine(machine, oldMachine); err != nil {
-				return fmt.Errorf("failed to patch machine %s after setting the delete error: %v", machine.Name, err)
+			if err := c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, err.Error()); err != nil {
+				return fmt.Errorf("failed to update machine error after failed delete: %v", err)
 			}
 			return fmt.Errorf("failed to delete machine at cloudprovider: %v", err)
 		}
@@ -197,61 +212,43 @@ func (c *Controller) syncHandler(key string) error {
 		finalizers.Delete(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
 		if err := c.patchMachine(machine, oldMachine); err != nil {
-			return fmt.Errorf("failed to patch machine %s after removing the delete instance finalizer: %v", machine.Name, err)
+			return fmt.Errorf("failed to patch machine after removing the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
 
 		// Remove error message in case it was set
-		if machine.Status.ErrorReason == machinev1alpha1.DeleteMachineError {
-			oldMachine := machine.DeepCopy()
-			machine.Status.ErrorReason = ""
-			machine.Status.ErrorMessage = ""
-			if err := c.patchMachine(machine, oldMachine); err != nil {
-				return fmt.Errorf("failed to patch machine %s after removing the delete error: %v", machine.Name, err)
-			}
-			glog.V(4).Infof("Removed error from machine %s", machine.Name)
+		if err := c.clearMachineErrorIfSet(machine, machinev1alpha1.DeleteMachineError); err != nil {
+			return fmt.Errorf("failed to patch machine after removing the delete error: %v", err)
 		}
+
 		return nil
 	}
 
 	providerInstance, err := prov.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.InstanceNotFoundErr {
-
 			if err := prov.Validate(machine.Spec); err != nil {
-				oldMachine := machine.DeepCopy()
-				machine.Status.ErrorMessage = err.Error()
-				machine.Status.ErrorReason = machinev1alpha1.InvalidConfigurationMachineError
-				if err := c.patchMachine(machine, oldMachine); err != nil {
-					return fmt.Errorf("failed to patch machine %s after setting the invalid configuration error: %v", machine.Name, err)
+				if err := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
+					return fmt.Errorf("failed to update machine error after failed validation: %v", err)
 				}
 				return fmt.Errorf("invalid provider config: %v", err)
-			} else if machine.Status.ErrorReason == machinev1alpha1.InvalidConfigurationMachineError {
-				oldMachine := machine.DeepCopy()
-				machine.Status.ErrorReason = ""
-				machine.Status.ErrorMessage = ""
-				if err := c.patchMachine(machine, oldMachine); err != nil {
-					return fmt.Errorf("failed to patch machine %s after removing the invalid configuration error: %v", machine.Name, err)
-				}
+			}
+			// Remove error message in case it was set
+			if err := c.clearMachineErrorIfSet(machine, machinev1alpha1.InvalidConfigurationMachineError); err != nil {
+				return fmt.Errorf("failed to patch machine after removing the failed validation error: %v", err)
 			}
 			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
 			providerInstance, err = c.createProviderInstance(machine, prov, providerConfig)
 			if err != nil {
-				oldMachine := machine.DeepCopy()
-				machine.Status.ErrorMessage = err.Error()
-				machine.Status.ErrorReason = machinev1alpha1.CreateMachineError
-				if err := c.patchMachine(machine, oldMachine); err != nil {
-					return fmt.Errorf("failed to patch machine %s after setting the create machine error: %v", machine.Name, err)
+				if err := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); err != nil {
+					return fmt.Errorf("failed to update machine error after failed machine creation: %v", err)
 				}
 				return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
-			} else if machine.Status.ErrorReason == machinev1alpha1.CreateMachineError {
-				oldMachine := machine.DeepCopy()
-				machine.Status.ErrorReason = ""
-				machine.Status.ErrorMessage = ""
-				if err := c.patchMachine(machine, oldMachine); err != nil {
-					return fmt.Errorf("failed to patch machine %s after removing the create machine error: %v", machine.Name, err)
-				}
+			}
+			// Remove error message in case it was set
+			if err := c.clearMachineErrorIfSet(machine, machinev1alpha1.CreateMachineError); err != nil {
+				return fmt.Errorf("failed to patch machine after removing the create machine error: %v", err)
 			}
 			glog.V(4).Infof("Created machine %s at cloud provider", machine.Name)
 
@@ -266,7 +263,7 @@ func (c *Controller) syncHandler(key string) error {
 		finalizers.Insert(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
 		if err := c.patchMachine(machine, oldMachine); err != nil {
-			return fmt.Errorf("failed to patch machine %s after adding the delete instance finalizer: %v", machine.Name, err)
+			return fmt.Errorf("failed to patch machine after adding the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
