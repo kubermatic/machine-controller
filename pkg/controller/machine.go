@@ -146,6 +146,7 @@ func (c *Controller) processNextWorkItem() bool {
 
 	defer c.workqueue.Done(key)
 
+	glog.V(6).Infof("Processing machine: %s", key)
 	err := c.syncHandler(key.(string))
 	if err == nil {
 		c.workqueue.Forget(key)
@@ -322,6 +323,30 @@ func (c *Controller) syncHandler(key string) error {
 			}
 			glog.V(4).Infof("Added annotations to node %s (machine %s)", node.Name, machine.Name)
 		}
+
+		taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
+			for _, t := range node.Spec.Taints {
+				if t.MatchTaint(&taint) {
+					return true
+				}
+			}
+			return false
+		}
+		var taintsUpdated bool
+		for _, t := range machine.Spec.Taints {
+			if !taintExists(node, t) {
+				node.Spec.Taints = append(node.Spec.Taints, t)
+				taintsUpdated = true
+			}
+		}
+		if taintsUpdated {
+			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
+			if err != nil {
+				return fmt.Errorf("failed to update node %s after setting the taints: %v", node.Name, err)
+			}
+			glog.V(4).Infof("Added taints to node %s (machine %s)", node.Name, machine.Name)
+		}
+
 	}
 
 	return nil
@@ -404,7 +429,7 @@ func (c *Controller) handleObject(obj interface{}) {
 		}
 		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
-	glog.V(4).Infof("Processing object: %s", object.GetName())
+	glog.V(6).Infof("Processing object: %s", object.GetName())
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		if ownerRef.Kind != "Machine" {
 			return
