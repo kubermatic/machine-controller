@@ -7,6 +7,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
@@ -17,6 +18,7 @@ var (
 	providers = map[providerconfig.CloudProvider]CloudProvider{
 		providerconfig.CloudProviderDigitalocean: digitalocean.New(),
 		providerconfig.CloudProviderAWS:          aws.New(),
+		providerconfig.CloudProviderOpenstack:    openstack.New(),
 	}
 )
 
