@@ -89,7 +89,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	return string(out), nil
 }
 
-var ctTemplate = `
+const ctTemplate = `
 passwd:
   users:
     - name: core
