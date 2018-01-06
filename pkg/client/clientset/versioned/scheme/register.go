@@ -26,8 +26,8 @@ import (
 
 var (
 	scheme         = runtime.NewScheme()
-	codecs         = serializer.NewCodecFactory(scheme)
-	parameterCodec = runtime.NewParameterCodec(scheme)
+	Codecs         = serializer.NewCodecFactory(scheme)
+	ParameterCodec = runtime.NewParameterCodec(scheme)
 )
 
 func init() {
