@@ -20,41 +20,46 @@ const (
 	secretName = "machine-controller-ssh-key"
 )
 
+// EnsureSSHKeypairSecret
 func EnsureSSHKeypairSecret(client kubernetes.Interface) (*rsa.PrivateKey, error) {
 	secret, err := client.CoreV1().Secrets(metav1.NamespaceSystem).Get(secretName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			glog.V(4).Info("generating master ssh keypair")
-			pk, err := NewPrivateKey()
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate ssh keypair: %v", err)
-			}
+	if err == nil {
+		return keyFromSecret(secret)
+	}
 
-			privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pk)}
-			privBuf := bytes.Buffer{}
-			err = pem.Encode(&privBuf, privateKeyPEM)
-			if err != nil {
-				return nil, err
-			}
-
-			secret := v1.Secret{}
-			secret.Name = secretName
-			secret.Type = v1.SecretTypeOpaque
-
-			secret.Data = map[string][]byte{
-				privateKeyDataIndex: privBuf.Bytes(),
-			}
-
-			_, err = client.CoreV1().Secrets(metav1.NamespaceSystem).Create(&secret)
-			if err != nil {
-				return nil, err
-			}
-			return pk, nil
-		}
+	if !errors.IsNotFound(err) {
 		return nil, err
 	}
 
-	return keyFromSecret(secret)
+	glog.V(4).Info("generating master ssh keypair")
+	pk, err := NewPrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ssh keypair: %v", err)
+	}
+
+	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pk)}
+	privBuf := bytes.Buffer{}
+	err = pem.Encode(&privBuf, privateKeyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	secret = &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: secretName,
+		},
+		Type: v1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			privateKeyDataIndex: privBuf.Bytes(),
+		},
+	}
+
+	_, err = client.CoreV1().Secrets(metav1.NamespaceSystem).Create(secret)
+	if err != nil {
+		return nil, err
+	}
+	return pk, nil
+
 }
 
 func keyFromSecret(secret *v1.Secret) (*rsa.PrivateKey, error) {
