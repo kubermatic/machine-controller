@@ -80,7 +80,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	return string(b.String()), nil
 }
 
-var ctTemplate = `#cloud-config
+var ctTemplate string = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 
 package_update: false
@@ -221,7 +221,12 @@ apt:
         =0YYh
         -----END PGP PUBLIC KEY BLOCK-----
 
+# install dependencies for cloud-init via bootcmd...
+bootcmd:
+- "sudo apt-get update && sudo apt-get install -y software-properties-common gdisk eatmydata"
+
 packages:
+- "curl"
 - "ca-certificates"
 - "ceph-common"
 - "cifs-utils"

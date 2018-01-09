@@ -153,7 +153,7 @@ func (c *Controller) processNextWorkItem() bool {
 		return true
 	}
 
-	utilruntime.HandleError(fmt.Errorf("%v failed with : %v", key, err))
+	utilruntime.HandleError(fmt.Errorf("%v failed with: %v", key, err))
 	c.workqueue.AddRateLimited(key)
 
 	return true

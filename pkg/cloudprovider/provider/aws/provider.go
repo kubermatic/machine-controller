@@ -16,6 +16,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -46,6 +47,14 @@ const (
 )
 
 var (
+	volumeTypes = sets.NewString(
+		ec2.VolumeTypeStandard,
+		ec2.VolumeTypeIo1,
+		ec2.VolumeTypeGp2,
+		ec2.VolumeTypeSc1,
+		ec2.VolumeTypeSt1,
+	)
+
 	roleARNS = []string{policyRoute53FullAccess, policyEC2FullAccess}
 
 	instanceProfileRole = `{
@@ -174,6 +183,29 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	_, err = getAMIID(pc.OperatingSystem, config.Region)
 	if err != nil {
 		return fmt.Errorf("invalid region+os configuration: %v", err)
+	}
+
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	if err != nil {
+		return fmt.Errorf("failed to create ec2 client: %v", err)
+	}
+
+	if _, err := getVpc(ec2Client, config.VpcID); err != nil {
+		return fmt.Errorf("invalid vpc %q specified: %v", config.VpcID, err)
+	}
+
+	_, err = ec2Client.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{ZoneNames: aws.StringSlice([]string{config.AvailabilityZone})})
+	if err != nil {
+		return fmt.Errorf("invalid zone %q specified: %v", config.AvailabilityZone, err)
+	}
+
+	_, err = ec2Client.DescribeRegions(&ec2.DescribeRegionsInput{RegionNames: aws.StringSlice([]string{config.Region})})
+	if err != nil {
+		return fmt.Errorf("invalid region %q specified: %v", config.Region, err)
+	}
+
+	if !volumeTypes.Has(config.DiskType) {
+		return fmt.Errorf("invalid volume type %s specified. Supported: %s", config.DiskType, volumeTypes)
 	}
 
 	return nil
