@@ -395,9 +395,6 @@ func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, pr
 	if err != nil {
 		return nil, fmt.Errorf("failed get userdata: %v", err)
 	}
-	glog.Info("=================== BEGIN USERDATA ===================")
-	glog.Info(data)
-	glog.Info("=================== END USERDATA ===================")
 
 	glog.Infof("creating instance...")
 	return prov.Create(machine, data, c.sshPrivateKey.PublicKey)
