@@ -22,6 +22,9 @@ const (
 
 // EnsureSSHKeypairSecret
 func EnsureSSHKeypairSecret(client kubernetes.Interface) (*rsa.PrivateKey, error) {
+	if client == nil {
+		return nil, fmt.Errorf("got an nil k8s client")
+	}
 	secret, err := client.CoreV1().Secrets(metav1.NamespaceSystem).Get(secretName, metav1.GetOptions{})
 	if err == nil {
 		return keyFromSecret(secret)
@@ -65,6 +68,9 @@ func EnsureSSHKeypairSecret(client kubernetes.Interface) (*rsa.PrivateKey, error
 func keyFromSecret(secret *v1.Secret) (*rsa.PrivateKey, error) {
 	b, exists := secret.Data[privateKeyDataIndex]
 	if !exists {
+		return nil, fmt.Errorf("key data not found in secret '%s/%s' (secret.data['%s']). remove it and a new one will be created", secret.Namespace, secret.Name, privateKeyDataIndex)
+	}
+	if len(b) == 0 {
 		return nil, fmt.Errorf("key data not found in secret '%s/%s' (secret.data['%s']). remove it and a new one will be created", secret.Namespace, secret.Name, privateKeyDataIndex)
 	}
 	decoded, _ := pem.Decode(b)
