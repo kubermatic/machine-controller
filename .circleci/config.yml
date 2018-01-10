@@ -1,0 +1,74 @@
+version: 2
+jobs:
+  checkout_code:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/kubermatic/machine-controller
+    steps:
+      - checkout
+      - save_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - /go/src/github.com/kubermatic/machine-controller
+
+  install-dependencies:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/kubermatic/machine-controller
+    steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - run: go get -u github.com/golang/dep/cmd/dep
+      - run: dep ensure -vendor-only
+      - save_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
+          paths:
+            - /go/src/github.com/kubermatic/machine-controller/vendor
+  test:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/kubermatic/machine-controller
+    steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
+      - run: go test ./...
+
+  build:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: /go/src/github.com/kubermatic/machine-controller
+    steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
+      - run: go build -o machine-controller cmd/controller/main.go
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - checkout_code:
+          filters:
+            tags:
+              only: /v.*/
+      - install-dependencies:
+          requires:
+            - checkout_code
+          filters:
+            tags:
+              only: /v.*/
+      - test:
+          requires:
+            - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
+      - build:
+          requires:
+            - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
