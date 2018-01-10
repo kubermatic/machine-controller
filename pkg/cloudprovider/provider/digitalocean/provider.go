@@ -25,10 +25,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
-type digitalocean struct{}
+type provider struct{}
 
-func New() *digitalocean {
-	return &digitalocean{}
+func New() *provider {
+	return &provider{}
 }
 
 type config struct {
@@ -88,7 +88,7 @@ func getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) 
 	return &c, &pconfig, err
 }
 
-func (do *digitalocean) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	c, pc, err := getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -185,7 +185,7 @@ func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, rsa rsa.P
 	return dokey.Fingerprint, nil
 }
 
-func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, publicKey rsa.PublicKey) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey rsa.PublicKey) (instance.Instance, error) {
 	c, pc, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
@@ -241,7 +241,7 @@ func (do *digitalocean) Create(machine *v1alpha1.Machine, userdata string, publi
 	return &doInstance{droplet: droplet}, nil
 }
 
-func (do *digitalocean) Delete(machine *v1alpha1.Machine) error {
+func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	c, _, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -249,7 +249,7 @@ func (do *digitalocean) Delete(machine *v1alpha1.Machine) error {
 
 	ctx := context.TODO()
 	client := getClient(c.Token)
-	i, err := do.Get(machine)
+	i, err := p.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.InstanceNotFoundErr {
 			glog.V(4).Info("instance already deleted")
@@ -262,7 +262,7 @@ func (do *digitalocean) Delete(machine *v1alpha1.Machine) error {
 	return err
 }
 
-func (do *digitalocean) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	c, _, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
@@ -288,7 +288,7 @@ func (do *digitalocean) Get(machine *v1alpha1.Machine) (instance.Instance, error
 	return &doInstance{droplet: d}, nil
 }
 
-func (do *digitalocean) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
