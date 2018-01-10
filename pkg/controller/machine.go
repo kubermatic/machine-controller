@@ -19,6 +19,7 @@ package controller
 import (
 	"crypto/rsa"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/golang/glog"
@@ -45,8 +46,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -164,6 +167,7 @@ func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine, re
 		oldMachine := machine.DeepCopy()
 		machine.Status.ErrorMessage = nil
 		machine.Status.ErrorReason = nil
+		machine.Status.LastUpdated = metav1.Now()
 		return c.patchMachine(machine, oldMachine)
 	}
 	return nil
@@ -173,6 +177,7 @@ func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason
 	oldMachine := machine.DeepCopy()
 	machine.Status.ErrorMessage = &message
 	machine.Status.ErrorReason = &reason
+	machine.Status.LastUpdated = metav1.Now()
 
 	return c.patchMachine(machine, oldMachine)
 }
@@ -206,7 +211,6 @@ func (c *Controller) syncHandler(key string) error {
 			return fmt.Errorf("failed to delete machine at cloudprovider: %v", err)
 		}
 		glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
-
 		// Delete delete instance finalizer
 		oldMachine := machine.DeepCopy()
 		finalizers := sets.NewString(machine.Finalizers...)
@@ -269,7 +273,7 @@ func (c *Controller) syncHandler(key string) error {
 		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
 
-	node, exists, err := c.getNode(providerInstance)
+	node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
 	if err != nil {
 		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
 	}
@@ -346,21 +350,89 @@ func (c *Controller) syncHandler(key string) error {
 			}
 			glog.V(4).Infof("Added taints to node %s (machine %s)", node.Name, machine.Name)
 		}
-
 	}
 
+	err = c.updateMachineStatus(machine, node)
+	if err != nil {
+		return fmt.Errorf("failed to update machine status: %v", err)
+	}
 	return nil
 }
 
-func (c *Controller) getNode(instance instance.Instance) (node *corev1.Node, exists bool, err error) {
+func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node *corev1.Node) error {
+	if node == nil {
+		return nil
+	}
+	oldMachine := machine.DeepCopy()
+
+	var (
+		updated                     bool
+		runtimeName, runtimeVersion string
+		err                         error
+	)
+	if machine.Status.NodeRef == nil {
+		ref, err := reference.GetReference(scheme.Scheme, node)
+		if err != nil {
+			return fmt.Errorf("failed to get node reference for %s : %v", node.Name, err)
+		}
+		machine.Status.NodeRef = ref
+		updated = true
+	}
+
+	if machine.Status.Versions == nil {
+		machine.Status.Versions = &machinev1alpha1.MachineVersionInfo{}
+	}
+
+	if node.Status.NodeInfo.ContainerRuntimeVersion != "" {
+		runtimeName, runtimeVersion, err = parseContainerRuntime(node.Status.NodeInfo.ContainerRuntimeVersion)
+		if err != nil {
+			glog.V(2).Infof("failed to parse container runtime from node %s: %v", node.Name, err)
+			runtimeName = "unknown"
+			runtimeVersion = "unknown"
+		}
+		if machine.Status.Versions.ContainerRuntime.Name != runtimeName || machine.Status.Versions.ContainerRuntime.Version != runtimeVersion {
+			machine.Status.Versions.ContainerRuntime.Name = runtimeName
+			machine.Status.Versions.ContainerRuntime.Version = runtimeVersion
+			updated = true
+		}
+	}
+
+	if machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
+		machine.Status.Versions.Kubelet = node.Status.NodeInfo.KubeletVersion
+		updated = true
+	}
+
+	if updated {
+		machine.Status.LastUpdated = metav1.Now()
+		if err := c.patchMachine(machine, oldMachine); err != nil {
+			return fmt.Errorf("failed to patch machine: %v", err)
+		}
+	}
+	return nil
+}
+
+func parseContainerRuntime(s string) (runtime, version string, err error) {
+	re, _ := regexp.Compile(`(\w*)://(.*)`)
+	res := re.FindStringSubmatch(s)
+	if len(res) == 3 {
+		return res[1], res[2], nil
+	}
+	return "", "", fmt.Errorf("invalid format. Expected 'runtime://version'")
+}
+
+func (c *Controller) getNode(instance instance.Instance, provider string) (node *corev1.Node, exists bool, err error) {
 	nodes, err := c.nodesLister.List(labels.Everything())
 	if err != nil {
 		return nil, false, err
 	}
 
-	for _, instanceAddress := range instance.Addresses() {
-		for _, node := range nodes {
-			for _, nodeAddress := range node.Status.Addresses {
+	providerID := fmt.Sprintf("%s:///%s", provider, instance.ID())
+	for _, node := range nodes {
+		if node.Spec.ProviderID == providerID {
+			return node.DeepCopy(), true, nil
+		}
+		for _, nodeAddress := range node.Status.Addresses {
+			for _, instanceAddress := range instance.Addresses() {
 				if nodeAddress.Address == instanceAddress {
 					return node.DeepCopy(), true, nil
 				}
