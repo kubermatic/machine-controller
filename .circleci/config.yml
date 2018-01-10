@@ -51,24 +51,13 @@ workflows:
   build_and_test:
     jobs:
       - checkout_code:
-          filters:
-            tags:
-              only: /v.*/
       - install-dependencies:
           requires:
             - checkout_code
-          filters:
-            tags:
-              only: /v.*/
       - test:
           requires:
             - install-dependencies
-          filters:
-            tags:
-              only: /v.*/
       - build:
           requires:
             - install-dependencies
-          filters:
-            tags:
-              only: /v.*/
+
