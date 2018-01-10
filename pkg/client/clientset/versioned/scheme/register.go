@@ -24,15 +24,13 @@ import (
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
-var (
-	scheme         = runtime.NewScheme()
-	Codecs         = serializer.NewCodecFactory(scheme)
-	ParameterCodec = runtime.NewParameterCodec(scheme)
-)
+var Scheme = runtime.NewScheme()
+var Codecs = serializer.NewCodecFactory(Scheme)
+var ParameterCodec = runtime.NewParameterCodec(Scheme)
 
 func init() {
-	v1.AddToGroupVersion(scheme, schema.GroupVersion{Version: "v1"})
-	AddToScheme(scheme)
+	v1.AddToGroupVersion(Scheme, schema.GroupVersion{Version: "v1"})
+	AddToScheme(Scheme)
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition
