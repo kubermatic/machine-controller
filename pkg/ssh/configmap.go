@@ -18,6 +18,8 @@ const (
 	privateKeyDataIndex = "id_rsa"
 
 	secretName = "machine-controller-ssh-key"
+
+	rsaPrivateKey = "RSA PRIVATE KEY"
 )
 
 // EnsureSSHKeypairSecret
@@ -40,7 +42,7 @@ func EnsureSSHKeypairSecret(client kubernetes.Interface) (*rsa.PrivateKey, error
 		return nil, fmt.Errorf("failed to generate ssh keypair: %v", err)
 	}
 
-	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pk)}
+	privateKeyPEM := &pem.Block{Type: rsaPrivateKey, Bytes: x509.MarshalPKCS1PrivateKey(pk)}
 	privBuf := bytes.Buffer{}
 	err = pem.Encode(&privBuf, privateKeyPEM)
 	if err != nil {
@@ -74,6 +76,11 @@ func keyFromSecret(secret *v1.Secret) (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("key data not found in secret '%s/%s' (secret.data['%s']). remove it and a new one will be created", secret.Namespace, secret.Name, privateKeyDataIndex)
 	}
 	decoded, _ := pem.Decode(b)
+
+	if decoded == nil {
+		return nil, fmt.Errorf("invalid PEM in secret '%s/%s'. remove it and a new one will be created", secret.Namespace, secret.Name)
+	}
+
 	pk, err := x509.ParsePKCS1PrivateKey(decoded.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %v", err)
