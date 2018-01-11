@@ -12,9 +12,11 @@ import (
 	osflavors "github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	osimages "github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	osregions "github.com/gophercloud/gophercloud/openstack/identity/v3/regions"
+	osfloatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	ossecuritygroups "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	osecruritygrouprules "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
 	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
+	osports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	ossubnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
 	"golang.org/x/crypto/ssh"
@@ -273,4 +275,81 @@ func ensureKubernetesSecurityGroupExist(client *gophercloud.ProviderClient, regi
 	}
 
 	return nil
+}
+
+func getFreeFloatingIPs(client *gophercloud.ProviderClient, region string, floatingIPPool *osnetworks.Network) ([]osfloatingips.FloatingIP, error) {
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
+	if err != nil {
+		return nil, err
+	}
+
+	allPages, err := osfloatingips.List(netClient, osfloatingips.ListOpts{FloatingNetworkID: floatingIPPool.ID}).AllPages()
+	if err != nil {
+		return nil, err
+	}
+
+	allFIPs, err := osfloatingips.ExtractFloatingIPs(allPages)
+	if err != nil {
+		return nil, err
+	}
+
+	var freeFIPs []osfloatingips.FloatingIP
+	for _, f := range allFIPs {
+		if f.Status == "ACTIVE" && f.PortID == "" {
+			freeFIPs = append(freeFIPs, f)
+		}
+	}
+
+	return freeFIPs, nil
+}
+
+func assignFloatingIP(client *gophercloud.ProviderClient, region, ipID, instanceID, networkID string) error {
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
+	if err != nil {
+		return err
+	}
+
+	port, err := getInstancePort(client, region, instanceID, networkID)
+	if err != nil {
+		return fmt.Errorf("failed to get instance port: %v", err)
+	}
+	_, err = osfloatingips.Update(netClient, ipID, osfloatingips.UpdateOpts{
+		PortID: &port.ID,
+	}).Extract()
+
+	return err
+}
+
+func createFloatingIP(client *gophercloud.ProviderClient, region string, floatingIPPool *osnetworks.Network) (*osfloatingips.FloatingIP, error) {
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
+	if err != nil {
+		return nil, err
+	}
+
+	return osfloatingips.Create(netClient, osfloatingips.CreateOpts{FloatingNetworkID: floatingIPPool.ID}).Extract()
+}
+
+func getInstancePort(client *gophercloud.ProviderClient, region, instanceID, networkID string) (*osports.Port, error) {
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
+	if err != nil {
+		return nil, err
+	}
+
+	allPages, err := osports.List(netClient, osports.ListOpts{}).AllPages()
+	if err != nil {
+		return nil, err
+	}
+
+	allPorts, err := osports.ExtractPorts(allPages)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range allPorts {
+		if p.NetworkID == networkID && p.DeviceID == instanceID {
+			return &p, nil
+		}
+	}
+
+	return nil, errNotFound
 }
