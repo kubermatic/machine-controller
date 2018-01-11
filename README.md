@@ -19,13 +19,12 @@
     - Creation of a kubernetes instance profile
   - Openstack
     - Creation of a kubernetes security group
-  Digitalocean
+  - Digitalocean
 - Using Ubuntu & Coreos as operating system
 
 ## What does not work
 - Master creation (Not planned at the moment)
 - Installation of a container runtime based on `machine.spec.versions.containerRuntime`. Currently only latest docker will be used.
-- Probably a lot, this is a very simple implementation.
 
 # Running
 
