@@ -19,13 +19,15 @@ spec:
       instanceType: "t2.micro"
       diskSize: 50
       diskType: "gp2"
+      tags:
+        "KubernetesCluster": "6qsm86c2d"
     operatingSystem: "coreos"
     operatingSystemSpec:
       disableAutoUpdate: true
   roles:
   - "Node"
   versions:
-    kubelet: "v1.8.5_coreos.0" # Kubelet wrapper image tag
+    kubelet: "v1.8.5"
     containerRuntime:
       name: "docker" # Not implemented atm - currently: coreos default docker
       version: "1.13" # Not implemented atm - currently: coreos default docker

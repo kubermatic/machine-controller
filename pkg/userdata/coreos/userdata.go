@@ -120,7 +120,7 @@ systemd:
         [Unit]
         Description=Kubernetes Kubelet
         [Service]
-        Environment=KUBELET_IMAGE_TAG={{ .MachineSpec.Versions.Kubelet }}
+        Environment=KUBELET_IMAGE_TAG={{ .MachineSpec.Versions.Kubelet }}_coreos.0
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
           --mount volume=resolv,target=/etc/resolv.conf \
