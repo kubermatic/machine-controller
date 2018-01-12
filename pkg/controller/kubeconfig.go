@@ -32,16 +32,19 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 	tokenID := rand.String(6)
 	tokenSecret := rand.String(16)
 
-	secret := v1.Secret{}
-	secret.Name = fmt.Sprintf("bootstrap-token-%s", tokenID)
-	secret.Type = SecretTypeBootstrapToken
-	secret.StringData = map[string]string{
-		"description":                    "bootstrap token for " + name,
-		"token-id":                       tokenID,
-		"token-secret":                   tokenSecret,
-		"expiration":                     metav1.Now().Add(24 * time.Hour).Format(time.RFC3339),
-		"usage-bootstrap-authentication": "true",
-		"usage-bootstrap-signing":        "true",
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("bootstrap-token-%s", tokenID),
+		},
+		Type: SecretTypeBootstrapToken,
+		StringData: map[string]string{
+			"description":                    "bootstrap token for " + name,
+			"token-id":                       tokenID,
+			"token-secret":                   tokenSecret,
+			"expiration":                     metav1.Now().Add(24 * time.Hour).Format(time.RFC3339),
+			"usage-bootstrap-authentication": "true",
+			"usage-bootstrap-signing":        "true",
+		},
 	}
 
 	_, err := c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Create(&secret)
