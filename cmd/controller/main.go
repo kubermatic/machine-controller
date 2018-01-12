@@ -34,13 +34,15 @@ import (
 )
 
 var (
-	masterURL  string
-	kubeconfig string
+	masterURL   string
+	kubeconfig  string
+	workerCount int
 )
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number wih a lot of machines might cause getting rate-limited from your cloud provider.")
 
 	flag.Parse()
 
@@ -81,7 +83,7 @@ func main() {
 	go kubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
 
-	if err = c.Run(1, stopCh); err != nil {
+	if err = c.Run(workerCount, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %v", err)
 	}
 }
