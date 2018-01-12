@@ -120,9 +120,6 @@ func TestEnsureSSHKeypairSecret(t *testing.T) {
 				t.Errorf("EnsureSSHKeypairSecret() error = %+v, wantErr %+v", err, tt.wantErr)
 				return
 			}
-			// if !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("EnsureSSHKeypairSecret() = %+v, want %+v", got, tt.want)
-			// }
 		})
 	}
 }
