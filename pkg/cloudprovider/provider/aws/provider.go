@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -108,6 +109,8 @@ var (
 			"eu-west-3":      "ami-794bfc04",
 		},
 	}
+
+	publicKeyCreationLock = &sync.Mutex{}
 )
 
 type config struct {
@@ -231,6 +234,9 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 }
 
 func ensureSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
+	publicKeyCreationLock.Lock()
+	defer publicKeyCreationLock.Unlock()
+
 	sgOut, err := client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
 		GroupNames: aws.StringSlice([]string{securityGroupName}),
 	})
@@ -585,9 +591,11 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list instances from aws: %v", err)
 	}
+
 	if len(inOut.Reservations) == 0 || len(inOut.Reservations[0].Instances) == 0 {
 		return nil, cloudprovidererrors.InstanceNotFoundErr
 	}
+
 	return &awsInstance{
 		instance: inOut.Reservations[0].Instances[0],
 	}, nil
