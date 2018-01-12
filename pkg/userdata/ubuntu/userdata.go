@@ -7,7 +7,6 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/golang/glog"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -72,10 +71,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	if err != nil {
 		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
-
-	glog.V(6).Info("=================== BEGIN UBUNTU CLOUD-INIT ===================")
-	glog.V(6).Info(b.String())
-	glog.V(6).Info("=================== END UBUNTU CLOUD-INIT ===================")
 
 	return string(b.String()), nil
 }
