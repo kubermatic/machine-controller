@@ -45,6 +45,10 @@ instanceType: "t2.micro"
 diskSize: 50
 # root disk type (gp2, io1, st1, sc1, or standard)
 diskType: "gp2"
+# instance tags ("KubernetesCluster": "my-cluster" is a required tag. 
+# If not set, the kubernetes controller-manager will delete the nodes)
+tags:
+  "KubernetesCluster": "my-cluster"
 ```
 
 ## Openstack

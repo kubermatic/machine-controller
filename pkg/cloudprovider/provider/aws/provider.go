@@ -120,9 +120,10 @@ type config struct {
 	VpcID    string `json:"vpcId"`
 	SubnetID string `json:"subnetId"`
 
-	InstanceType string `json:"instanceType"`
-	DiskSize     int64  `json:"diskSize"`
-	DiskType     string `json:"diskType"`
+	InstanceType string            `json:"instanceType"`
+	DiskSize     int64             `json:"diskSize"`
+	DiskType     string            `json:"diskType"`
+	Tags         map[string]string `json:"tags"`
 }
 
 func getAMIID(os providerconfig.OperatingSystem, region string) (string, error) {
@@ -455,6 +456,24 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		return nil, fmt.Errorf("invalid region+os configuration: %v", err)
 	}
 
+	tags := []*ec2.Tag{
+		{
+			Key:   aws.String(NameTag),
+			Value: aws.String(machine.Spec.Name),
+		},
+		{
+			Key:   aws.String(MachineUIDTag),
+			Value: aws.String(string(machine.UID)),
+		},
+	}
+
+	for k, v := range config.Tags {
+		tags = append(tags, &ec2.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		})
+	}
+
 	instanceRequest := &ec2.RunInstancesInput{
 		ImageId: aws.String(amiID),
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
@@ -489,16 +508,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		TagSpecifications: []*ec2.TagSpecification{
 			{
 				ResourceType: aws.String(ec2.ResourceTypeInstance),
-				Tags: []*ec2.Tag{
-					{
-						Key:   aws.String(NameTag),
-						Value: aws.String(machine.Spec.Name),
-					},
-					{
-						Key:   aws.String(MachineUIDTag),
-						Value: aws.String(string(machine.UID)),
-					},
-				},
+				Tags:         tags,
 			},
 		},
 	}
