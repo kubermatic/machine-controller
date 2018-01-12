@@ -6,8 +6,11 @@ import (
 	"fmt"
 )
 
+const privateKeyBitSize = 2048
+
+// NewPrivateKey generates a new private key
 func NewPrivateKey() (key *rsa.PrivateKey, err error) {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	priv, err := rsa.GenerateKey(rand.Reader, privateKeyBitSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create private key: %v", err)
 	}

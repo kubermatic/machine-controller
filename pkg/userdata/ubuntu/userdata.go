@@ -75,7 +75,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	return string(b.String()), nil
 }
 
-var ctTemplate string = `#cloud-config
+const ctTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 
 package_update: false
