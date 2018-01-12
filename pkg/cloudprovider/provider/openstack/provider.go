@@ -4,20 +4,25 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/golang/glog"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/pagination"
 	cloudproviererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type provider struct{}
@@ -49,7 +54,13 @@ type config struct {
 const (
 	machineUIDMetaKey = "machine-uid"
 	securityGroupName = "kubernetes-v1"
+
+	instanceReadyCheckPeriod  = 2 * time.Second
+	instanceReadyCheckTimeout = 2 * time.Minute
 )
+
+// Protects floating ip assignment
+var floatingIPAssignLock = &sync.Mutex{}
 
 func getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
@@ -107,8 +118,10 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet %q: %v", c.Subnet, err)
 	}
 
-	if _, err := getNetwork(client, c.Region, c.FloatingIPPool); err != nil {
-		return fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
+	if c.FloatingIPPool != "" {
+		if _, err := getNetwork(client, c.Region, c.FloatingIPPool); err != nil {
+			return fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
+		}
 	}
 
 	if _, err := getAvailabilityZone(client, c.Region, c.AvailabilityZone); err != nil {
@@ -158,6 +171,30 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		return nil, fmt.Errorf("failed to get network %s: %v", c.Network, err)
 	}
 
+	var ip *floatingips.FloatingIP
+	if c.FloatingIPPool != "" {
+		floatingIPAssignLock.Lock()
+		defer floatingIPAssignLock.Unlock()
+		floatingIPPool, err := getNetwork(client, c.Region, c.FloatingIPPool)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
+		}
+
+		freeFloatingIps, err := getFreeFloatingIPs(client, c.Region, floatingIPPool)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get free floating ips: %v", err)
+		}
+
+		if len(freeFloatingIps) < 1 {
+			ip, err = createFloatingIP(client, c.Region, floatingIPPool)
+			if err != nil {
+				return nil, fmt.Errorf("failed to allocate a floating ip: %v", err)
+			}
+		} else {
+			ip = &freeFloatingIps[0]
+		}
+	}
+
 	err = ensureKubernetesSecurityGroupExist(client, c.Region, securityGroupName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ensure that the kubernetes security group %q exists: %v", securityGroupName, err)
@@ -188,6 +225,32 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create server: %v", err)
 	}
+
+	if ip != nil {
+		// if we want to assign a floating ip to the instance, we have to wait until it is running
+		// otherwise the instance has no port in the desired network
+		instanceIsReady := func() (bool, error) {
+			currentServer, err := osservers.Get(computeClient, server.ID).Extract()
+			if err != nil {
+				// Only log the error but don't exit. in case of a network failure we want to retry
+				glog.V(2).Infof("failed to get current instance %s: %v", server.ID, err)
+				return false, nil
+			}
+			if currentServer.Status == "ACTIVE" {
+				return true, nil
+			}
+			return false, nil
+		}
+
+		if err := wait.Poll(instanceReadyCheckPeriod, instanceReadyCheckTimeout, instanceIsReady); err != nil {
+			return nil, fmt.Errorf("failed to wait for instance to be running. unable to proceed. %v", err)
+		}
+
+		if err := assignFloatingIP(client, c.Region, ip.ID, server.ID, network.ID); err != nil {
+			return nil, fmt.Errorf("failed to assign a floating ip: %v", err)
+		}
+	}
+
 	return &osInstance{server: &server}, nil
 }
 
@@ -297,5 +360,13 @@ func (d *osInstance) Status() instance.State {
 }
 
 func (d *osInstance) Addresses() []string {
-	return []string{d.server.AccessIPv4, d.server.AccessIPv6}
+	var addresses []string
+	for _, networkAddresses := range d.server.Addresses {
+		for _, element := range networkAddresses.([]interface{}) {
+			address := element.(map[string]interface{})
+			addresses = append(addresses, address["addr"].(string))
+		}
+	}
+
+	return addresses
 }
