@@ -48,9 +48,9 @@ jobs:
 
 workflows:
   version: 2
-  build_and_test:
+  build:
     jobs:
-      - checkout_code:
+      - checkout_code
       - install-dependencies:
           requires:
             - checkout_code
