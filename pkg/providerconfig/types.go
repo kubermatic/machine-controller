@@ -37,12 +37,12 @@ type Config struct {
 }
 
 func GetConfig(r runtime.RawExtension) (*Config, error) {
-	p := Config{}
+	p := new(Config)
 	if len(r.Raw) == 0 {
-		return &p, nil
+		return p, nil
 	}
-	if err := json.Unmarshal(r.Raw, &p); err != nil {
+	if err := json.Unmarshal(r.Raw, p); err != nil {
 		return nil, err
 	}
-	return &p, nil
+	return p, nil
 }
