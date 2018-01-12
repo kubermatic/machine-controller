@@ -229,6 +229,20 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
+	// Create the delete finalizer before actually creating the instance.
+	// otherwise the machine gets created at the cloud provider and the machine resource gets deleted meanwhile
+	// which causes a orphaned instance
+	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+		oldMachine := machine.DeepCopy()
+		finalizers := sets.NewString(machine.Finalizers...)
+		finalizers.Insert(finalizerDeleteInstance)
+		machine.Finalizers = finalizers.List()
+		if err := c.patchMachine(machine, oldMachine); err != nil {
+			return fmt.Errorf("failed to patch machine after adding the delete instance finalizer: %v", err)
+		}
+		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
+	}
+
 	providerInstance, err := prov.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.InstanceNotFoundErr {
@@ -260,17 +274,6 @@ func (c *Controller) syncHandler(key string) error {
 		} else {
 			return fmt.Errorf("failed to get instance from provider: %v", err)
 		}
-	}
-
-	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
-		oldMachine := machine.DeepCopy()
-		finalizers := sets.NewString(machine.Finalizers...)
-		finalizers.Insert(finalizerDeleteInstance)
-		machine.Finalizers = finalizers.List()
-		if err := c.patchMachine(machine, oldMachine); err != nil {
-			return fmt.Errorf("failed to patch machine after adding the delete instance finalizer: %v", err)
-		}
-		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
 
 	node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
