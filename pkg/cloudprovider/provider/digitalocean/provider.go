@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/digitalocean/godo"
@@ -46,6 +47,9 @@ const (
 	createCheckTimeout          = 5 * time.Minute
 	createCheckFailedWaitPeriod = 10 * time.Second
 )
+
+// Protects creation of public key
+var publicKeyCreationLock = &sync.Mutex{}
 
 type TokenSource struct {
 	AccessToken string
@@ -164,6 +168,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, rsa rsa.PublicKey) (string, error) {
+	publicKeyCreationLock.Lock()
+	defer publicKeyCreationLock.Unlock()
+
 	pk, err := ssh.NewPublicKey(&rsa)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse publickey: %v", err)
@@ -177,6 +184,9 @@ func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, rsa rsa.P
 				PublicKey: string(ssh.MarshalAuthorizedKey(pk)),
 				Name:      "machine-controller",
 			})
+			if err != nil {
+				return "", fmt.Errorf("failed to create ssh public key on digitalocean: %v", err)
+			}
 			return dokey.Fingerprint, nil
 		}
 		return "", fmt.Errorf("failed to get key from digitalocean: %v", err)

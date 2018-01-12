@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
@@ -25,6 +26,9 @@ import (
 var (
 	errNotFound = errors.New("not found")
 )
+
+// Protects creation of public key
+var publicKeyCreationLock = &sync.Mutex{}
 
 func getRegion(client *gophercloud.ProviderClient, id string) (*osregions.Region, error) {
 	idClient, err := goopenstack.NewIdentityV3(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic})
@@ -206,6 +210,9 @@ func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubn
 }
 
 func ensureSSHKeysExist(client *gophercloud.ProviderClient, region, name string, rsa rsa.PublicKey) (string, error) {
+	publicKeyCreationLock.Lock()
+	defer publicKeyCreationLock.Unlock()
+
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {
 		return "", err
