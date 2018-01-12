@@ -16,10 +16,8 @@ import (
 
 const (
 	privateKeyDataIndex = "id_rsa"
-
-	secretName = "machine-controller-ssh-key"
-
-	rsaPrivateKey = "RSA PRIVATE KEY"
+	secretName          = "machine-controller-ssh-key"
+	rsaPrivateKey       = "RSA PRIVATE KEY"
 )
 
 // EnsureSSHKeypairSecret
