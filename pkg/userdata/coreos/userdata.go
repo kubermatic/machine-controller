@@ -7,7 +7,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/coreos/container-linux-config-transpiler/config"
+	ctconfig "github.com/coreos/container-linux-config-transpiler/config"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -16,12 +16,16 @@ import (
 
 type Provider struct{}
 
-type Config struct {
+type config struct {
 	DisableAutoUpdate bool `json:"disableAutoUpdate"`
 }
 
-func getConfig(r runtime.RawExtension) (*Config, error) {
-	p := Config{}
+func getConfig(r runtime.RawExtension) (*config, error) {
+	p := config{}
+	if len(r.Raw) == 0 {
+		return &p, nil
+	}
+
 	if err := json.Unmarshal(r.Raw, &p); err != nil {
 		return nil, err
 	}
@@ -52,7 +56,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	data := struct {
 		MachineSpec    machinesv1alpha1.MachineSpec
 		ProviderConfig *providerconfig.Config
-		CoreOSConfig   *Config
+		CoreOSConfig   *config
 		Kubeconfig     string
 		CloudProvider  string
 		CloudConfig    string
@@ -71,12 +75,12 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}
 
 	// Convert to ignition
-	cfg, ast, report := config.Parse(b.Bytes())
+	cfg, ast, report := ctconfig.Parse(b.Bytes())
 	if len(report.Entries) > 0 {
 		return "", fmt.Errorf("failed to validate coreos cloud config: %s", report.String())
 	}
 
-	ignCfg, report := config.ConvertAs2_0(cfg, "", ast)
+	ignCfg, report := ctconfig.ConvertAs2_0(cfg, "", ast)
 	if len(report.Entries) > 0 {
 		return "", fmt.Errorf("failed to convert container linux config to ingition: %s", report.String())
 	}

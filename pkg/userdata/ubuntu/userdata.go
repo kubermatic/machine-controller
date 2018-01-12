@@ -15,12 +15,12 @@ import (
 
 type Provider struct{}
 
-type Config struct {
+type config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
 
-func getConfig(r runtime.RawExtension) (*Config, error) {
-	p := Config{}
+func getConfig(r runtime.RawExtension) (*config, error) {
+	p := config{}
 	if len(r.Raw) == 0 {
 		return &p, nil
 	}
@@ -54,7 +54,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	data := struct {
 		MachineSpec    machinesv1alpha1.MachineSpec
 		ProviderConfig *providerconfig.Config
-		OSConfig       *Config
+		OSConfig       *config
 		Kubeconfig     string
 		CloudProvider  string
 		CloudConfig    string
