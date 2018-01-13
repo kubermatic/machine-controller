@@ -1,4 +1,4 @@
-# Machine Controller
+# Generic machine controller
 
 # Table of Contents
 
