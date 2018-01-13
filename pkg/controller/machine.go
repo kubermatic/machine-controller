@@ -210,6 +210,15 @@ func (c *Controller) syncHandler(key string) error {
 			}
 			return fmt.Errorf("failed to delete machine at cloudprovider: %v", err)
 		}
+
+		//Check that the instance has really gone
+		i, err := prov.Get(machine)
+		if err == nil {
+			return fmt.Errorf("instance %s is not deleted yet", i.ID())
+		} else if err != cloudprovidererrors.InstanceNotFoundErr {
+			return fmt.Errorf("failed to check instance %s after the delete got triggered", i.ID())
+		}
+
 		glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
 		// Delete delete instance finalizer
 		oldMachine := machine.DeepCopy()
