@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
@@ -31,13 +32,14 @@ import (
 
 type provider struct{}
 
-func New() *provider {
+// New returns a aws provider
+func New() cloud.Provider {
 	return &provider{}
 }
 
 const (
-	NameTag       = "Name"
-	MachineUIDTag = "Machine-UID"
+	nameTag       = "Name"
+	machineUIDTag = "Machine-UID"
 
 	policyRoute53FullAccess = "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
 	policyEC2FullAccess     = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
@@ -464,11 +466,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 
 	tags := []*ec2.Tag{
 		{
-			Key:   aws.String(NameTag),
+			Key:   aws.String(nameTag),
 			Value: aws.String(machine.Spec.Name),
 		},
 		{
-			Key:   aws.String(MachineUIDTag),
+			Key:   aws.String(machineUIDTag),
 			Value: aws.String(string(machine.UID)),
 		},
 	}
@@ -583,7 +585,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
 			{
-				Name:   aws.String("tag:" + MachineUIDTag),
+				Name:   aws.String("tag:" + machineUIDTag),
 				Values: aws.StringSlice([]string{string(machine.UID)}),
 			},
 		},
@@ -593,7 +595,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	}
 
 	if len(inOut.Reservations) == 0 || len(inOut.Reservations[0].Instances) == 0 {
-		return nil, cloudprovidererrors.InstanceNotFoundErr
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
 	return &awsInstance{
@@ -610,26 +612,11 @@ type awsInstance struct {
 }
 
 func (d *awsInstance) Name() string {
-	return GetTagValue(NameTag, d.instance.Tags)
+	return getTagValue(nameTag, d.instance.Tags)
 }
 
 func (d *awsInstance) ID() string {
 	return aws.StringValue(d.instance.InstanceId)
-}
-
-func (d *awsInstance) Status() instance.State {
-	switch aws.StringValue(d.instance.State.Name) {
-	case ec2.InstanceStateNamePending:
-		return instance.InstanceStarting
-	case ec2.InstanceStateNameRunning:
-		return instance.InstanceRunning
-	case ec2.InstanceStateNameStopped:
-		return instance.InstancePaused
-	case ec2.InstanceStateNameStopping:
-		return instance.InstancePaused
-	default:
-		return instance.InstanceStopped
-	}
 }
 
 func (d *awsInstance) Addresses() []string {
@@ -641,7 +628,7 @@ func (d *awsInstance) Addresses() []string {
 	}
 }
 
-func GetTagValue(name string, tags []*ec2.Tag) string {
+func getTagValue(name string, tags []*ec2.Tag) string {
 	for _, t := range tags {
 		if *t.Key == name {
 			return *t.Value

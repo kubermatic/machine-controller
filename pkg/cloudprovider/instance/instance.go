@@ -1,8 +1,8 @@
 package instance
 
+// Instance represents a instance on the cloud provider
 type Instance interface {
 	Name() string
-	Status() State
 	ID() string
 	Addresses() []string
 }

@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
@@ -28,7 +29,8 @@ import (
 
 type provider struct{}
 
-func New() *provider {
+// New returns a digitalocean provider
+func New() cloud.Provider {
 	return &provider{}
 }
 
@@ -167,7 +169,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func ensureSSHKeysExist(service godo.KeysService, ctx context.Context, rsa rsa.PublicKey) (string, error) {
+func ensureSSHKeysExist(ctx context.Context, service godo.KeysService, rsa rsa.PublicKey) (string, error) {
 	publicKeyCreationLock.Lock()
 	defer publicKeyCreationLock.Unlock()
 
@@ -204,7 +206,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	fingerprint, err := ensureSSHKeysExist(client.Keys, ctx, publicKey)
+	fingerprint, err := ensureSSHKeysExist(ctx, client.Keys, publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ensure ssh keys exist: %v", err)
 	}
@@ -242,10 +244,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		if sets.NewString(newDroplet.Tags...).Has(string(machine.UID)) {
 			glog.V(6).Infof("droplet (id='%d') got fully created", droplet.ID)
 			return true, nil
-		} else {
-			glog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
-			return false, nil
 		}
+		glog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
+		return false, nil
 	})
 
 	return &doInstance{droplet: droplet}, nil
@@ -261,13 +262,16 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	client := getClient(c.Token)
 	i, err := p.Get(machine)
 	if err != nil {
-		if err == cloudprovidererrors.InstanceNotFoundErr {
+		if err == cloudprovidererrors.ErrInstanceNotFound {
 			glog.V(4).Info("instance already deleted")
 			return nil
 		}
 		return err
 	}
-	doID, _ := strconv.Atoi(i.ID())
+	doID, err := strconv.Atoi(i.ID())
+	if err != nil {
+		return fmt.Errorf("failed to convert instance id %s to int: %v", i.ID(), err)
+	}
 	_, err = client.Droplets.Delete(ctx, doID)
 	return err
 }
@@ -292,7 +296,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		}
 	}
 	if d == nil {
-		return nil, cloudprovidererrors.InstanceNotFoundErr
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
 	return &doInstance{droplet: d}, nil
@@ -312,17 +316,6 @@ func (d *doInstance) Name() string {
 
 func (d *doInstance) ID() string {
 	return strconv.Itoa(d.droplet.ID)
-}
-
-func (d *doInstance) Status() instance.State {
-	switch d.droplet.Status {
-	case "new":
-		return instance.InstanceStarting
-	case "active":
-		return instance.InstanceRunning
-	default:
-		return instance.InstanceStopped
-	}
 }
 
 func (d *doInstance) Addresses() []string {

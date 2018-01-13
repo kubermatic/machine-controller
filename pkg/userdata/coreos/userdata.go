@@ -82,7 +82,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 
 	ignCfg, report := ctconfig.ConvertAs2_0(cfg, "", ast)
 	if len(report.Entries) > 0 {
-		return "", fmt.Errorf("failed to convert container linux config to ingition: %s", report.String())
+		return "", fmt.Errorf("failed to convert container linux config to ignition: %s", report.String())
 	}
 
 	out, err := json.Marshal(ignCfg)

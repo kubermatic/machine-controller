@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/golang/glog"
 	"github.com/gophercloud/gophercloud"
@@ -18,16 +19,17 @@ import (
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudproviererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type provider struct{}
 
-func New() *provider {
+// New returns a openstack provider
+func New() cloud.Provider {
 	return &provider{}
 }
 
@@ -217,7 +219,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		return nil, err
 	}
 
-	var server ServerWithExt
+	var server serverWithExt
 	err = osservers.Create(computeClient, keypairs.CreateOptsExt{
 		serverOpts,
 		name,
@@ -272,7 +274,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 
 	s, err := p.Get(machine)
 	if err != nil {
-		if err == cloudproviererrors.InstanceNotFoundErr {
+		if err == cloudproviererrors.ErrInstanceNotFound {
 			return nil
 		}
 		return err
@@ -297,10 +299,10 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, err
 	}
 
-	var allServers []ServerWithExt
+	var allServers []serverWithExt
 	pager := osservers.List(computeClient, osservers.ListOpts{Name: machine.Spec.Name})
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
-		var servers []ServerWithExt
+		var servers []serverWithExt
 		err = osservers.ExtractServersInto(page, &servers)
 		if err != nil {
 			return false, err
@@ -318,7 +320,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		}
 	}
 
-	return nil, cloudproviererrors.InstanceNotFoundErr
+	return nil, cloudproviererrors.ErrInstanceNotFound
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
@@ -338,13 +340,13 @@ tenant-name = "%s"
 	return config, "openstack", nil
 }
 
-type ServerWithExt struct {
+type serverWithExt struct {
 	osservers.Server
 	osextendedstatus.ServerExtendedStatusExt
 }
 
 type osInstance struct {
-	server *ServerWithExt
+	server *serverWithExt
 }
 
 func (d *osInstance) Name() string {
@@ -353,10 +355,6 @@ func (d *osInstance) Name() string {
 
 func (d *osInstance) ID() string {
 	return d.server.ID
-}
-
-func (d *osInstance) Status() instance.State {
-	return instance.InstanceRunning
 }
 
 func (d *osInstance) Addresses() []string {

@@ -42,7 +42,7 @@ var (
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number wih a lot of machines might cause getting rate-limited from your cloud provider.")
+	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 
 	flag.Parse()
 
