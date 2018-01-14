@@ -20,14 +20,14 @@ type config struct {
 }
 
 func getConfig(r runtime.RawExtension) (*config, error) {
-	p := config{}
+	p := new(config)
 	if len(r.Raw) == 0 {
-		return &p, nil
+		return p, nil
 	}
-	if err := json.Unmarshal(r.Raw, &p); err != nil {
+	if err := json.Unmarshal(r.Raw, p); err != nil {
 		return nil, err
 	}
-	return &p, nil
+	return p, nil
 }
 
 func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider) (string, error) {
