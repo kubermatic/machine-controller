@@ -56,6 +56,7 @@ import (
 
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
+	emptyJSON               = "{}"
 )
 
 // Controller is the controller implementation for Foo resources
@@ -425,13 +426,12 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 	return nil
 }
 
+var (
+	containerRuntime = regexp.MustCompile(`(\w*)://(.*)`)
+)
+
 func parseContainerRuntime(s string) (runtime, version string, err error) {
-	regex := `(\w*)://(.*)`
-	re, err := regexp.Compile(regex)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to compile regex %s: %v", regex, err)
-	}
-	res := re.FindStringSubmatch(s)
+	res := containerRuntime.FindStringSubmatch(s)
 	if len(res) == 3 {
 		return res[1], res[2], nil
 	}
@@ -481,7 +481,7 @@ func (c *Controller) patchMachine(newMachine, oldMachine *machinev1alpha1.Machin
 	if err != nil {
 		return fmt.Errorf("failed to create three-way-json-merge-patch: %v", err)
 	}
-	if string(patch) == "{}" {
+	if string(patch) == emptyJSON {
 		//nothing to do
 		return nil
 	}
