@@ -33,6 +33,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +56,7 @@ import (
 
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
+	emptyJSON               = "{}"
 )
 
 // Controller is the controller implementation for Foo resources
@@ -120,6 +122,7 @@ func NewMachineController(
 	return controller
 }
 
+// Run starts the control loop
 func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 	defer c.workqueue.ShutDown()
@@ -215,7 +218,7 @@ func (c *Controller) syncHandler(key string) error {
 		i, err := prov.Get(machine)
 		if err == nil {
 			return fmt.Errorf("instance %s is not deleted yet", i.ID())
-		} else if err != cloudprovidererrors.InstanceNotFoundErr {
+		} else if err != cloudprovidererrors.ErrInstanceNotFound {
 			return fmt.Errorf("failed to check instance %s after the delete got triggered", i.ID())
 		}
 
@@ -254,7 +257,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	providerInstance, err := prov.Get(machine)
 	if err != nil {
-		if err == cloudprovidererrors.InstanceNotFoundErr {
+		if err == cloudprovidererrors.ErrInstanceNotFound {
 			if err := prov.Validate(machine.Spec); err != nil {
 				if err := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
 					return fmt.Errorf("failed to update machine error after failed validation: %v", err)
@@ -423,9 +426,12 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 	return nil
 }
 
+var (
+	containerRuntime = regexp.MustCompile(`(\w*)://(.*)`)
+)
+
 func parseContainerRuntime(s string) (runtime, version string, err error) {
-	re, _ := regexp.Compile(`(\w*)://(.*)`)
-	res := re.FindStringSubmatch(s)
+	res := containerRuntime.FindStringSubmatch(s)
 	if len(res) == 3 {
 		return res[1], res[2], nil
 	}
@@ -455,16 +461,35 @@ func (c *Controller) getNode(instance instance.Instance, provider string) (node 
 }
 
 func (c *Controller) patchMachine(newMachine, oldMachine *machinev1alpha1.Machine) error {
-	currentMachine, _ := c.machineClient.MachineV1alpha1().Machines().Get(newMachine.Name, metav1.GetOptions{})
-	currentJson, _ := json.Marshal(currentMachine)
-	oldJson, _ := json.Marshal(oldMachine)
-	newJson, _ := json.Marshal(newMachine)
-	patch, _ := jsonmergepatch.CreateThreeWayJSONMergePatch(oldJson, newJson, currentJson)
-	_, err := c.machineClient.MachineV1alpha1().Machines().Patch(newMachine.Name, types.MergePatchType, patch)
+	currentMachine, err := c.machineClient.MachineV1alpha1().Machines().Get(newMachine.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get current machine from lister: %v", err)
+	}
+	currentJSON, err := json.Marshal(currentMachine)
+	if err != nil {
+		return fmt.Errorf("failed to marshal current machine to json: %v", err)
+	}
+	oldJSON, err := json.Marshal(oldMachine)
+	if err != nil {
+		return fmt.Errorf("failed to marshal old machine to json: %v", err)
+	}
+	newJSON, err := json.Marshal(newMachine)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated machine to json: %v", err)
+	}
+	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldJSON, newJSON, currentJSON)
+	if err != nil {
+		return fmt.Errorf("failed to create three-way-json-merge-patch: %v", err)
+	}
+	if string(patch) == emptyJSON {
+		//nothing to do
+		return nil
+	}
+	_, err = c.machineClient.MachineV1alpha1().Machines().Patch(newMachine.Name, types.MergePatchType, patch)
 	return err
 }
 
-func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloudprovider.CloudProvider, providerConfig *providerconfig.Config) (instance.Instance, error) {
+func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloud.Provider, providerConfig *providerconfig.Config) (instance.Instance, error) {
 	userdataProvider, err := userdata.ForOS(providerConfig.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to userdata provider for coreos: %v", err)

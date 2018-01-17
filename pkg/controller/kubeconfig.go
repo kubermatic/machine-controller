@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SecretTypeBootstrapToken v1.SecretType = "bootstrap.kubernetes.io/token"
+	secretTypeBootstrapToken v1.SecretType = "bootstrap.kubernetes.io/token"
 )
 
 func (c *Controller) getClusterInfoKubeconfig() (*clientcmdapi.Config, error) {
@@ -36,7 +36,7 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("bootstrap-token-%s", tokenID),
 		},
-		Type: SecretTypeBootstrapToken,
+		Type: secretTypeBootstrapToken,
 		StringData: map[string]string{
 			"description":                    "bootstrap token for " + name,
 			"token-id":                       tokenID,
