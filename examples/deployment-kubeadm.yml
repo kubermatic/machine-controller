@@ -50,10 +50,39 @@ rules:
   - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: machine-controller
+  namespace: kube-public
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - "cluster-info"
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
   name: machine-controller
   namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: machine-controller
+subjects:
+- kind: ServiceAccount
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller
+  namespace: kube-public
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
