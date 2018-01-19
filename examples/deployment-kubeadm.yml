@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: machinecontroller
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: machine-controller
+  template:
+    metadata:
+      labels:
+        app: machine-controller
+    spec:
+      containers:
+        - image: alvaroaleman/machine-controller:509d10108b5b5608f47573c41bed4c607ff20b06-dirty
+          name: machine-controller
+          command:
+            - /usr/local/bin/machine-controller
+            - -logtostderr
+            - -v=8
