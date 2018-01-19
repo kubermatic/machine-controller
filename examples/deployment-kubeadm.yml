@@ -15,7 +15,7 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
-        - image: alvaroaleman/machine-controller:509d10108b5b5608f47573c41bed4c607ff20b06-dirty
+        - image: alvaroaleman/machine-controller:f7e0a7e9ab795d14ba2337110283bdc6c6bd9172
           name: machine-controller
           command:
             - /usr/local/bin/machine-controller
