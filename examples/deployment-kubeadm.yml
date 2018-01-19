@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: machinecontroller
+  name: machine-controller
   namespace: kube-system
 spec:
   replicas: 1
@@ -13,6 +13,7 @@ spec:
       labels:
         app: machine-controller
     spec:
+      serviceAccountName: machine-controller
       containers:
         - image: alvaroaleman/machine-controller:509d10108b5b5608f47573c41bed4c607ff20b06-dirty
           name: machine-controller
@@ -20,3 +21,69 @@ spec:
             - /usr/local/bin/machine-controller
             - -logtostderr
             - -v=8
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: machine-controller
+  namespace: kube-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - machine-controller-ssh-key
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: machine-controller
+subjects:
+- kind: ServiceAccount
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: machine-controller
+rules:
+  - apiGroups:
+      - "apiextensions.k8s.io"
+    resources:
+      - "customresourcedefinitions"
+    verbs:
+      - "create"
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: machine-controller
+subjects:
+  - kind: ServiceAccount
+    name: machine-controller
+    namespace: kube-system
