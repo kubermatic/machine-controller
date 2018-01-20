@@ -41,7 +41,7 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
-        - image: alvaroaleman/machine-controller:febb976f65f7cb3e874e736936b48005ba9e2fc4
+        - image: kubermatic/machine-controller:febb976f65f7cb3e874e736936b48005ba9e2fc4
           name: machine-controller
           command:
             - /usr/local/bin/machine-controller

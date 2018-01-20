@@ -1,5 +1,5 @@
 REGISTRY ?= registry.hub.docker.com
-REGISTRY_NAMESPACE ?= alvaroaleman
+REGISTRY_NAMESPACE ?= kubermatic
 
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
