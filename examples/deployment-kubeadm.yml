@@ -11,6 +11,19 @@ subjects:
   kind: Group
   name: system:bootstrappers:machine-controller:default-node-token
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller:node-autoapprove-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:certificates.k8s.io:certificatesigningrequests:nodeclient
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:bootstrappers:machine-controller:default-node-token
+---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -28,7 +41,7 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
-        - image: alvaroaleman/machine-controller:f7e0a7e9ab795d14ba2337110283bdc6c6bd9172
+        - image: alvaroaleman/machine-controller:febb976f65f7cb3e874e736936b48005ba9e2fc4
           name: machine-controller
           command:
             - /usr/local/bin/machine-controller
