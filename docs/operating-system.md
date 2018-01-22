@@ -7,7 +7,7 @@
 |   | Ubuntu | Container Linux |
 |---|---|---|
 | AWS | ✓ | ✓ |
-| Openstack | ✓ | untested |
+| Openstack | ✓ | ✓  |
 | Digitalocean  | ✓ | ✓ |
 
 ### Features
@@ -46,7 +46,7 @@ spec:
     ...
     operatingSystem: "ubuntu"
     operatingSystemSpec:
-      # do a apt-get dist-upgrade on start and reboot if required      
+      # do a apt-get dist-upgrade on start and reboot if required
       distUpgradeOnBoot: true
 ```
 

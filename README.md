@@ -12,7 +12,7 @@
 
 # Features
 ## What works
-- Kubernetes v1.8.5 (Nothing else tested)
+- Kubernetes v1.8.5 and v1.9.0
 - Creation of worker nodes
   - AWS
     - Creation of a kubernetes security group
@@ -30,7 +30,8 @@
 
 ## Requirements
 The controller expects a cluster-info configmap to exist within the kube-public namespace.
-This configmap needs to contain a kubeconfig without credentials.
+This configmap needs to contain a kubeconfig without credentials. It is already present in all kubeadm-generated
+clusters.
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -52,9 +53,13 @@ data:
     users: []
 ```
 
+## Deploy the machine-controller
+
+`kubectl apply -f examples/machine-controller.yaml`
+
 ## Creating a machine
 ```bash
-# edit examples/machine.yaml & create the machine 
+# edit examples/machine.yaml & create the machine
 kubectl create -f examples/machine.yaml
 ```
 

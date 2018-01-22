@@ -44,6 +44,7 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 			"expiration":                     metav1.Now().Add(24 * time.Hour).Format(time.RFC3339),
 			"usage-bootstrap-authentication": "true",
 			"usage-bootstrap-signing":        "true",
+			"auth-extra-groups":              "system:bootstrappers:machine-controller:default-node-token",
 		},
 	}
 

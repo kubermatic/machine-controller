@@ -1,0 +1,156 @@
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller:kubelet-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:node-bootstrapper
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:bootstrappers:machine-controller:default-node-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller:node-autoapprove-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:certificates.k8s.io:certificatesigningrequests:nodeclient
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:bootstrappers:machine-controller:default-node-token
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: machine-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: machine-controller
+  template:
+    metadata:
+      labels:
+        app: machine-controller
+    spec:
+      serviceAccountName: machine-controller
+      containers:
+        - image: kubermatic/machine-controller:febb976f65f7cb3e874e736936b48005ba9e2fc4
+          name: machine-controller
+          command:
+            - /usr/local/bin/machine-controller
+            - -logtostderr
+            - -v=8
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: machine-controller
+  namespace: kube-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - machine-controller-ssh-key
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: machine-controller
+  namespace: kube-public
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - "cluster-info"
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: machine-controller
+subjects:
+- kind: ServiceAccount
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller
+  namespace: kube-public
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: machine-controller
+subjects:
+- kind: ServiceAccount
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: machine-controller
+rules:
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - "customresourcedefinitions"
+  verbs:
+  - "create"
+- apiGroups:
+  - "machine.k8s.io"
+  resources:
+  - "machines"
+  verbs:
+  - "*"
+- apiGroups:
+  - ""
+  resources:
+  - "nodes"
+  verbs:
+  - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: machine-controller
+subjects:
+  - kind: ServiceAccount
+    name: machine-controller
+    namespace: kube-system
