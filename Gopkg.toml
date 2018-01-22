@@ -47,3 +47,7 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 [[constraint]]
   name = "github.com/gophercloud/gophercloud"
   branch = "master"
+
+[[constraint]]
+  name = "github.com/go-test/deep"
+  version = "1.0.0"
