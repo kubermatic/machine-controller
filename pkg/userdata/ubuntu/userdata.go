@@ -238,5 +238,5 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
-- "docker-ce"
+- ["docker-ce", "17.03.2~ce-0~ubuntu-xenial"]
 `
