@@ -499,6 +499,21 @@ func (c *Controller) patchMachine(newMachine, oldMachine *machinev1alpha1.Machin
 		//nothing to do
 		return nil
 	}
+
+	// Kubernetes refuses requests with patch method if the payload contains a metadata field,
+	// shouldn't this get handled in jsonmergepatch?
+	var patchMap map[string]interface{}
+	err = json.Unmarshal(patch, &patchMap)
+	if err != nil {
+		fmt.Errorf("Failed to create a map from mergepatch: '%v'", err)
+	}
+	if _, ok := patchMap["metadata"]; ok {
+		delete(patchMap, "metadata")
+		patch, err = json.Marshal(patchMap)
+		if err != nil {
+			return fmt.Errorf("failed to marshal patch with removed metadata: '%v'", err)
+		}
+	}
 	_, err = c.machineClient.MachineV1alpha1().Machines().Patch(newMachine.Name, types.MergePatchType, patch)
 	return err
 }
