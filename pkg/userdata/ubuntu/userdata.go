@@ -51,6 +51,11 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
 	}
 
+	dockerPkg, dockerVersion, err := getDockerInstallCandidate(spec.Versions.ContainerRuntime.Version)
+	if err != nil {
+		return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
+	}
+
 	data := struct {
 		MachineSpec    machinesv1alpha1.MachineSpec
 		ProviderConfig *providerconfig.Config
@@ -58,6 +63,8 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		Kubeconfig     string
 		CloudProvider  string
 		CloudConfig    string
+		DockerPackage  string
+		DockerVersion  string
 	}{
 		MachineSpec:    spec,
 		ProviderConfig: pconfig,
@@ -65,6 +72,8 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		Kubeconfig:     kubeconfig,
 		CloudProvider:  cpName,
 		CloudConfig:    cpConfig,
+		DockerPackage:  dockerPkg,
+		DockerVersion:  dockerVersion,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -72,15 +81,18 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
 
+	fmt.Println(b.String())
 	return string(b.String()), nil
 }
 
 const ctTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 
-package_update: false
+package_update: true
+{{ if .OSConfig.DistUpgradeOnBoot }}
 package_upgrade: true
 package_reboot_if_required: true
+{{ end }}
 
 ssh_authorized_keys:
   {{ range .ProviderConfig.SSHPublicKeys }}- "{{ . }}"
@@ -238,5 +250,5 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
-- ["docker-ce", "17.03.2~ce-0~ubuntu-xenial"]
+- ["{{ .DockerPackage }}", "{{ .DockerVersion }}"]
 `
