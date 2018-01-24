@@ -619,6 +619,11 @@ func (d *awsInstance) ID() string {
 	return aws.StringValue(d.instance.InstanceId)
 }
 
+func (d *awsInstance) PublicAddress() string {
+	//TODO: implement this
+	return "Not implemented"
+}
+
 func (d *awsInstance) Addresses() []string {
 	return []string{
 		aws.StringValue(d.instance.PublicIpAddress),

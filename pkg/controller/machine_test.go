@@ -18,13 +18,18 @@ import (
 )
 
 type fakeInstance struct {
-	name      string
-	id        string
-	addresses []string
+	name          string
+	id            string
+	addresses     []string
+	publicAddress string
 }
 
 func (i *fakeInstance) Name() string {
 	return i.name
+}
+
+func (i *fakeInstance) PublicAddress() string {
+	return i.publicAddress
 }
 
 func (i *fakeInstance) ID() string {

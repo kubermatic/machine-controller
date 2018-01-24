@@ -173,6 +173,8 @@ type MachineStatus struct {
 	ErrorReason *MachineStatusError `json:"errorReason,omitempty"`
 	// +optional
 	ErrorMessage *string `json:"errorMessage,omitempty"`
+
+	PublicAddress string `json:"publicAddress,omitempty"`
 }
 
 type MachineStatusError string
