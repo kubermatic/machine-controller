@@ -19,6 +19,11 @@ type config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
 
+const (
+	Docker = "docker"
+	CRIO   = "cri-o"
+)
+
 func getConfig(r runtime.RawExtension) (*config, error) {
 	p := config{}
 	if len(r.Raw) == 0 {
@@ -52,16 +57,18 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}
 
 	var crPkg, crPkgVersion string
-	if spec.Versions.ContainerRuntime.Name == "docker" {
+	if spec.Versions.ContainerRuntime.Name == Docker {
 		crPkg, crPkgVersion, err = getDockerInstallCandidate(spec.Versions.ContainerRuntime.Version)
 		if err != nil {
 			return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
 		}
-	} else if spec.Versions.ContainerRuntime.Name == "cri-o" {
+	} else if spec.Versions.ContainerRuntime.Name == CRIO {
 		crPkg, crPkgVersion, err = getCRIOInstallCandidate(spec.Versions.ContainerRuntime.Version)
 		if err != nil {
 			return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
 		}
+	} else {
+		return "", fmt.Errorf("unknown container runtime selected '%s'", spec.Versions.ContainerRuntime.Name)
 	}
 
 	data := struct {
