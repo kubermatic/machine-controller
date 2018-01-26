@@ -19,6 +19,11 @@ type config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
 
+const (
+	Docker = "docker"
+	CRIO   = "cri-o"
+)
+
 func getConfig(r runtime.RawExtension) (*config, error) {
 	p := config{}
 	if len(r.Raw) == 0 {
@@ -51,29 +56,39 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
 	}
 
-	dockerPkg, dockerVersion, err := getDockerInstallCandidate(spec.Versions.ContainerRuntime.Version)
-	if err != nil {
-		return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
+	var crPkg, crPkgVersion string
+	if spec.Versions.ContainerRuntime.Name == Docker {
+		crPkg, crPkgVersion, err = getDockerInstallCandidate(spec.Versions.ContainerRuntime.Version)
+		if err != nil {
+			return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
+		}
+	} else if spec.Versions.ContainerRuntime.Name == CRIO {
+		crPkg, crPkgVersion, err = getCRIOInstallCandidate(spec.Versions.ContainerRuntime.Version)
+		if err != nil {
+			return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
+		}
+	} else {
+		return "", fmt.Errorf("unknown container runtime selected '%s'", spec.Versions.ContainerRuntime.Name)
 	}
 
 	data := struct {
-		MachineSpec    machinesv1alpha1.MachineSpec
-		ProviderConfig *providerconfig.Config
-		OSConfig       *config
-		Kubeconfig     string
-		CloudProvider  string
-		CloudConfig    string
-		DockerPackage  string
-		DockerVersion  string
+		MachineSpec         machinesv1alpha1.MachineSpec
+		ProviderConfig      *providerconfig.Config
+		OSConfig            *config
+		Kubeconfig          string
+		CloudProvider       string
+		CloudConfig         string
+		CRAptPackage        string
+		CRAptPackageVersion string
 	}{
-		MachineSpec:    spec,
-		ProviderConfig: pconfig,
-		OSConfig:       osConfig,
-		Kubeconfig:     kubeconfig,
-		CloudProvider:  cpName,
-		CloudConfig:    cpConfig,
-		DockerPackage:  dockerPkg,
-		DockerVersion:  dockerVersion,
+		MachineSpec:         spec,
+		ProviderConfig:      pconfig,
+		OSConfig:            osConfig,
+		Kubeconfig:          kubeconfig,
+		CloudProvider:       cpName,
+		CloudConfig:         cpConfig,
+		CRAptPackage:        crPkg,
+		CRAptPackageVersion: crPkgVersion,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -81,7 +96,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
 
-	fmt.Println(b.String())
 	return string(b.String()), nil
 }
 
@@ -89,22 +103,25 @@ const ctTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 
 package_update: true
-{{ if .OSConfig.DistUpgradeOnBoot }}
+{{- if .OSConfig.DistUpgradeOnBoot }}
 package_upgrade: true
 package_reboot_if_required: true
-{{ end }}
+{{- end }}
 
 ssh_authorized_keys:
-  {{ range .ProviderConfig.SSHPublicKeys }}- "{{ . }}"
-  {{- end}}
+{{- range .ProviderConfig.SSHPublicKeys }}
+- "{{ . }}"
+{{- end }}
 
 write_files:
 - path: "/etc/kubernetes/cloud-config"
   content: |
 {{ .CloudConfig | indent 4 }}
+
 - path: "/etc/kubernetes/bootstrap.kubeconfig"
   content: |
 {{ .Kubeconfig | indent 4 }}
+
 - path: "/etc/kubernetes/download.sh"
   permissions: '0777'
   content: |
@@ -112,8 +129,13 @@ write_files:
     set -xeuo pipefail
     mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
     if [ ! -f /opt/bin/kubelet ]; then
-      curl -L -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/{{ .MachineSpec.Versions.Kubelet }}/bin/linux/amd64/kubelet
+      curl -L -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .MachineSpec.Versions.Kubelet }}/bin/linux/amd64/kubelet
       chmod +x /opt/bin/kubelet
+    fi
+    if [ ! -f /opt/cni/bin/bridge ]; then
+      curl -L -o /opt/cni.tgz https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz
+      mkdir -p /opt/cni/bin/
+      tar -xzf /opt/cni.tgz -C /opt/cni/bin/
     fi
 
 - path: "/etc/systemd/system/kubelet.service"
@@ -131,7 +153,14 @@ write_files:
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
     ExecStartPre=/etc/kubernetes/download.sh
     ExecStart=/opt/bin/kubelet \
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
       --container-runtime=docker \
+{{- end }}
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+      --container-runtime=remote \
+      --container-runtime-endpoint=unix:///var/run/crio/crio.sock \
+      --cgroup-driver="systemd" \
+{{- end }}
       --allow-privileged=true \
       --cni-bin-dir=/opt/cni/bin \
       --cni-conf-dir=/etc/cni/net.d \
@@ -154,14 +183,28 @@ write_files:
     [Install]
     WantedBy=multi-user.target
 
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+
+- path: "/etc/sysconfig/crio-network"
+  content: |
+    CRIO_NETWORK_OPTIONS="--registry=docker.io"
+{{- end }}
+
 runcmd:
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+- systemctl enable crio
+- systemctl start crio
+{{- end }}
 - systemctl enable kubelet
 - systemctl start kubelet
 
 apt:
   sources:
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
     cri-o:
       source: "ppa:projectatomic/ppa"
+{{- end }}
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
     docker:
       source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
       key: |
@@ -227,6 +270,7 @@ apt:
         YT90qFF93M3v01BbxP+EIY2/9tiIPbrd
         =0YYh
         -----END PGP PUBLIC KEY BLOCK-----
+{{- end }}
 
 # install dependencies for cloud-init via bootcmd...
 bootcmd:
@@ -250,5 +294,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
-- ["{{ .DockerPackage }}", "{{ .DockerVersion }}"]
+{{- if .CRAptPackage }}
+- ["{{ .CRAptPackage }}", "{{ .CRAptPackageVersion }}"]
+{{- end }}
 `
