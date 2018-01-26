@@ -30,6 +30,8 @@ var (
 // Protects creation of public key
 var publicKeyCreationLock = &sync.Mutex{}
 
+const openstackFloatingIPErrorStatusName = "ERROR"
+
 func getRegion(client *gophercloud.ProviderClient, id string) (*osregions.Region, error) {
 	idClient, err := goopenstack.NewIdentityV3(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic})
 	if err != nil {
@@ -302,7 +304,7 @@ func getFreeFloatingIPs(client *gophercloud.ProviderClient, region string, float
 
 	var freeFIPs []osfloatingips.FloatingIP
 	for _, f := range allFIPs {
-		if f.Status == "ACTIVE" && f.PortID == "" {
+		if f.Status != openstackFloatingIPErrorStatusName && f.PortID == "" {
 			freeFIPs = append(freeFIPs, f)
 		}
 	}
