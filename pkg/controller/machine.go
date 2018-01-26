@@ -165,6 +165,16 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
+func (c *Controller) setPublicAddress(machine *machinev1alpha1.Machine, address string) error {
+	glog.V(4).Infof("Setting public address of machine '%s' to '%s'...", machine.Name, address)
+	if address != "" {
+		oldMachine := machine.DeepCopy()
+		machine.Status.PublicAddress = address
+		return c.patchMachine(machine, oldMachine)
+	}
+	return nil
+}
+
 func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError) error {
 	if machine.Status.ErrorReason != nil && *machine.Status.ErrorReason == reason {
 		oldMachine := machine.DeepCopy()
@@ -277,6 +287,10 @@ func (c *Controller) syncHandler(key string) error {
 				}
 				return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
 			}
+			if err := c.setPublicAddress(machine, providerInstance.PublicAddress()); err != nil {
+				return fmt.Errorf("Failed to set public address of machine '%s': '%v'", machine.Name, err)
+			}
+
 			// Remove error message in case it was set
 			if err := c.clearMachineErrorIfSet(machine, machinev1alpha1.CreateMachineError); err != nil {
 				return fmt.Errorf("failed to patch machine after removing the create machine error: %v", err)
@@ -484,6 +498,21 @@ func (c *Controller) patchMachine(newMachine, oldMachine *machinev1alpha1.Machin
 	if string(patch) == emptyJSON {
 		//nothing to do
 		return nil
+	}
+
+	// Kubernetes refuses requests with patch method if the payload contains a metadata field,
+	// shouldn't this get handled in jsonmergepatch?
+	var patchMap map[string]interface{}
+	err = json.Unmarshal(patch, &patchMap)
+	if err != nil {
+		fmt.Errorf("Failed to create a map from mergepatch: '%v'", err)
+	}
+	if _, ok := patchMap["metadata"]; ok {
+		delete(patchMap, "metadata")
+		patch, err = json.Marshal(patchMap)
+		if err != nil {
+			return fmt.Errorf("failed to marshal patch with removed metadata: '%v'", err)
+		}
 	}
 	_, err = c.machineClient.MachineV1alpha1().Machines().Patch(newMachine.Name, types.MergePatchType, patch)
 	return err

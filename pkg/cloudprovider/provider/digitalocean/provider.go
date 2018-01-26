@@ -318,6 +318,11 @@ func (d *doInstance) ID() string {
 	return strconv.Itoa(d.droplet.ID)
 }
 
+func (d *doInstance) PublicAddress() string {
+	//TODO: Implement this
+	return "Not implemented"
+}
+
 func (d *doInstance) Addresses() []string {
 	var addresses []string
 	for _, n := range d.droplet.Networks.V4 {

@@ -251,6 +251,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		if err := assignFloatingIP(client, c.Region, ip.ID, server.ID, network.ID); err != nil {
 			return nil, fmt.Errorf("failed to assign a floating ip: %v", err)
 		}
+
+		return &osInstance{publicAddress: ip.FloatingIP, server: &server}, nil
 	}
 
 	return &osInstance{server: &server}, nil
@@ -346,7 +348,12 @@ type serverWithExt struct {
 }
 
 type osInstance struct {
-	server *serverWithExt
+	server        *serverWithExt
+	publicAddress string
+}
+
+func (d *osInstance) PublicAddress() string {
+	return d.publicAddress
 }
 
 func (d *osInstance) Name() string {

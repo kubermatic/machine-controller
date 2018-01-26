@@ -5,4 +5,5 @@ type Instance interface {
 	Name() string
 	ID() string
 	Addresses() []string
+	PublicAddress() string
 }

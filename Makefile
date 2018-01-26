@@ -21,7 +21,7 @@ machine-controller: cmd pkg vendor
 			--best --lzma \
 			machine-controller
 
-docker-image:
+docker-image: machine-controller
 	docker build -t $(IMAGE_NAME) .
 
 push: docker-image
