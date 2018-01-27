@@ -13,14 +13,9 @@
 # Features
 ## What works
 - Kubernetes v1.8.5 and v1.9.0
-- Creation of worker nodes
-  - AWS
-    - Creation of a kubernetes security group
-    - Creation of a kubernetes instance profile
-  - Openstack
-    - Creation of a kubernetes security group
-  - Digitalocean
-- Using Ubuntu & Coreos as operating system
+- Creation of worker nodes on AWS, Digitalocean and Openstack
+- Using Ubuntu & Coreos ContainerLinux distributions
+- Using Ubuntu with [CRI-O](https://github.com/kubernetes-incubator/cri-o) container runtime instead of Docker
 
 ## What does not work
 - Master creation (Not planned at the moment)
