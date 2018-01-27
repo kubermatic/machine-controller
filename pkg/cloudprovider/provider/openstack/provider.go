@@ -314,9 +314,9 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, err
 	}
 
-	for _, s := range allServers {
+	for i, s := range allServers {
 		if s.Metadata[machineUIDMetaKey] == string(machine.UID) {
-			return &osInstance{server: &s}, nil
+			return &osInstance{server: &allServers[i]}, nil
 		}
 	}
 

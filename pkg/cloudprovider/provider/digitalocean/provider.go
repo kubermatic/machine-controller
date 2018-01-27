@@ -289,17 +289,13 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, fmt.Errorf("failed to get droplets: %v", err)
 	}
 
-	var d *godo.Droplet
-	for _, droplet := range droplets {
+	for i, droplet := range droplets {
 		if droplet.Name == machine.Spec.Name && sets.NewString(droplet.Tags...).Has(string(machine.UID)) {
-			d = &droplet
+			return &doInstance{droplet: &droplets[i]}, nil
 		}
 	}
-	if d == nil {
-		return nil, cloudprovidererrors.ErrInstanceNotFound
-	}
 
-	return &doInstance{droplet: d}, nil
+	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
