@@ -37,6 +37,13 @@ func TestGetCRIOInstallCandidate(t *testing.T) {
 			resPkg:  "cri-o",
 			resVer:  "1.9.0-1~ubuntu16.04.2~ppa1",
 		},
+		{
+			name:    "get default version",
+			version: "",
+			resErr:  nil,
+			resPkg:  "cri-o",
+			resVer:  "1.9.0-1~ubuntu16.04.2~ppa1",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
