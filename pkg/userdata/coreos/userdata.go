@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"text/template"
 
+	"github.com/Masterminds/semver"
 	"github.com/Masterminds/sprig"
 	ctconfig "github.com/coreos/container-linux-config-transpiler/config"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
@@ -32,10 +33,36 @@ func getConfig(r runtime.RawExtension) (*config, error) {
 	return &p, nil
 }
 
+func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.ContainerRuntimeInfo) {
+	return []machinesv1alpha1.ContainerRuntimeInfo{
+		{
+			Name:    "docker",
+			Version: "1.12",
+		},
+		{
+			Name:    "docker",
+			Version: "1.12.6",
+		},
+		{
+			Name:    "docker",
+			Version: "17.09",
+		},
+		{
+			Name:    "docker",
+			Version: "17.09.0",
+		},
+	}
+}
+
 func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(sprig.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+	}
+
+	kubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
+	if err != nil {
+		return "", fmt.Errorf("invalid kubelet version: %v", err)
 	}
 
 	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
@@ -54,19 +81,21 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}
 
 	data := struct {
-		MachineSpec    machinesv1alpha1.MachineSpec
-		ProviderConfig *providerconfig.Config
-		CoreOSConfig   *config
-		Kubeconfig     string
-		CloudProvider  string
-		CloudConfig    string
+		MachineSpec       machinesv1alpha1.MachineSpec
+		ProviderConfig    *providerconfig.Config
+		CoreOSConfig      *config
+		Kubeconfig        string
+		CloudProvider     string
+		CloudConfig       string
+		HyperkubeImageTag string
 	}{
-		MachineSpec:    spec,
-		ProviderConfig: pconfig,
-		CoreOSConfig:   coreosConfig,
-		Kubeconfig:     kubeconfig,
-		CloudProvider:  cpName,
-		CloudConfig:    cpConfig,
+		MachineSpec:       spec,
+		ProviderConfig:    pconfig,
+		CoreOSConfig:      coreosConfig,
+		Kubeconfig:        kubeconfig,
+		CloudProvider:     cpName,
+		CloudConfig:       cpConfig,
+		HyperkubeImageTag: fmt.Sprintf("v%s_coreos.0", kubeletVersion.String()),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -85,7 +114,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to convert container linux config to ignition: %s", report.String())
 	}
 
-	out, err := json.Marshal(ignCfg)
+	out, err := json.MarshalIndent(ignCfg, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal ignition config: %v", err)
 	}
@@ -124,7 +153,7 @@ systemd:
         [Unit]
         Description=Kubernetes Kubelet
         [Service]
-        Environment=KUBELET_IMAGE_TAG={{ .MachineSpec.Versions.Kubelet }}_coreos.0
+        Environment=KUBELET_IMAGE_TAG={{ .HyperkubeImageTag }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
           --mount volume=resolv,target=/etc/resolv.conf \
@@ -179,4 +208,12 @@ storage:
       contents:
         inline: |
 {{ .CloudConfig | indent 10 }}
+
+{{- if contains "1.12" .MachineSpec.Versions.ContainerRuntime.Version }}
+    - path: /etc/coreos/docker-1.12
+      filesystem: root
+      contents:
+        inline: |
+          yes
+{{ end }}
 `
