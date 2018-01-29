@@ -51,7 +51,7 @@ func TestProvider_UserData(t *testing.T) {
 						Name:    "docker",
 						Version: "1.13.1",
 					},
-					Kubelet: "1.9.2",
+					Kubelet: "v1.9.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
@@ -73,7 +73,7 @@ func TestProvider_UserData(t *testing.T) {
 						Name:    "cri-o",
 						Version: "1.9",
 					},
-					Kubelet: "1.9.2",
+					Kubelet: "v1.9.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{name: "", config: "", err: nil},
@@ -95,7 +95,7 @@ func TestProvider_UserData(t *testing.T) {
 						Name:    "docker",
 						Version: "17.03.2",
 					},
-					Kubelet: "1.9.2",
+					Kubelet: "v1.9.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
@@ -332,7 +332,7 @@ ssh_authorized_keys:
 write_files:
 - path: "/etc/kubernetes/cloud-config"
   content: |
-    
+
 
 - path: "/etc/kubernetes/bootstrap.kubeconfig"
   content: |
