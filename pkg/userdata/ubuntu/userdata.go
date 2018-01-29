@@ -116,7 +116,7 @@ ssh_authorized_keys:
 write_files:
 - path: "/etc/kubernetes/cloud-config"
   content: |
-{{ .CloudConfig | indent 4 }}
+{{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
 
 - path: "/etc/kubernetes/bootstrap.kubeconfig"
   content: |
@@ -129,7 +129,7 @@ write_files:
     set -xeuo pipefail
     mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
     if [ ! -f /opt/bin/kubelet ]; then
-      curl -L -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .MachineSpec.Versions.Kubelet }}/bin/linux/amd64/kubelet
+      curl -L -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/{{ .MachineSpec.Versions.Kubelet }}/bin/linux/amd64/kubelet
       chmod +x /opt/bin/kubelet
     fi
     if [ ! -f /opt/cni/bin/bridge ]; then
