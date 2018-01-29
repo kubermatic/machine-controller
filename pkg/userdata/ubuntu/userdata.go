@@ -65,7 +65,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	} else if spec.Versions.ContainerRuntime.Name == CRIO {
 		crPkg, crPkgVersion, err = getCRIOInstallCandidate(spec.Versions.ContainerRuntime.Version)
 		if err != nil {
-			return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
+			return "", fmt.Errorf("failed to get cri-o install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
 		}
 	} else {
 		return "", fmt.Errorf("unknown container runtime selected '%s'", spec.Versions.ContainerRuntime.Name)
