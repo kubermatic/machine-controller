@@ -1,10 +1,10 @@
 package ubuntu
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/kubermatic/machine-controller/pkg/errors"
 )
 
 func TestGetCRIOInstallCandidate(t *testing.T) {
@@ -19,7 +19,7 @@ func TestGetCRIOInstallCandidate(t *testing.T) {
 		{
 			name:    "no version found",
 			version: "foo-does-not-exist",
-			resErr:  errors.VersionNotAvailableErr,
+			resErr:  errors.New("no install candidate available for the desired version"),
 			resPkg:  "",
 			resVer:  "",
 		},

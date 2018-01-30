@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -9,7 +10,6 @@ import (
 	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
-	"github.com/kubermatic/machine-controller/pkg/errors"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
@@ -235,7 +235,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 		},
 		{
 			name:  "v1.8.5 ubuntu - no available cri-o version",
-			err:   errors.NoSupportedVersionAvailableErr,
+			err:   errors.New("no supported versions available for 'cri-o'"),
 			os:    providerconfig.OperatingSystemUbuntu,
 			resCR: v1alpha1.ContainerRuntimeInfo{},
 			machine: &v1alpha1.Machine{
@@ -259,7 +259,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			controller := Controller{machineClient: client}
 			err = controller.defaultContainerRuntime(test.machine, prov)
 			if diff := deep.Equal(err, test.err); diff != nil {
-				t.Errorf("expected to get %v instead got: %v", test.err, err)
+				t.Errorf("expected to get '%v' instead got: '%v'", test.err, err)
 			}
 			if err != nil {
 				return

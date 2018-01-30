@@ -1,7 +1,8 @@
 package ubuntu
 
 import (
-	"github.com/kubermatic/machine-controller/pkg/errors"
+	"errors"
+
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -76,5 +77,5 @@ func getDockerInstallCandidate(desiredVersion string) (pkg string, version strin
 		}
 	}
 
-	return "", "", errors.VersionNotAvailableErr
+	return "", "", errors.New("no install candidate available for the desired version")
 }

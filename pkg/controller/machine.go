@@ -32,7 +32,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime/crio"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime/docker"
-	"github.com/kubermatic/machine-controller/pkg/errors"
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
@@ -516,12 +515,12 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 		case containerruntime.Docker:
 			defaultVersions, err = docker.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get a officially supported docker version for the given kubelet version: %v", err)
 			}
 		case containerruntime.CRIO:
 			defaultVersions, err = crio.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get a officially supported cri-o version for the given kubelet version: %v", err)
 			}
 		default:
 			return fmt.Errorf("invalid container runtime. Supported: '%s', '%s' ", containerruntime.Docker, containerruntime.CRIO)
@@ -537,7 +536,7 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 			}
 		}
 		if machine.Spec.Versions.ContainerRuntime.Version == "" {
-			return errors.NoSupportedVersionAvailableErr
+			return fmt.Errorf("no supported versions available for '%s'", machine.Spec.Versions.ContainerRuntime.Name)
 		}
 	}
 
