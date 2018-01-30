@@ -1,10 +1,10 @@
 package crio
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/Masterminds/semver"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime/errors"
 )
 
 // GetOfficiallySupportedVersions returns the officially supported cri-o version for the given kubernetes version
@@ -21,6 +21,6 @@ func GetOfficiallySupportedVersions(kubernetesVersion string) ([]string, error) 
 	case "1.9":
 		return []string{"1.9"}, nil
 	default:
-		return nil, errors.New("no supported versions available")
+		return nil, errors.NoSupportedVersionsAvailableErr
 	}
 }

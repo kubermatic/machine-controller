@@ -3,6 +3,7 @@ package ubuntu
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"text/template"
 
@@ -20,6 +21,10 @@ type Provider struct{}
 type config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
+
+var (
+	NoInstallCandidateAvailableErr = errors.New("no install candidate available for the desired version")
+)
 
 func getConfig(r runtime.RawExtension) (*config, error) {
 	p := config{}

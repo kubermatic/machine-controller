@@ -1,8 +1,6 @@
 package ubuntu
 
 import (
-	"errors"
-
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -21,5 +19,5 @@ func getCRIOInstallCandidate(desiredVersion string) (pkg string, version string,
 		}
 	}
 
-	return "", "", errors.New("no install candidate available for the desired version")
+	return "", "", NoInstallCandidateAvailableErr
 }
