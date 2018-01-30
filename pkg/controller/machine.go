@@ -439,7 +439,7 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 }
 
 var (
-	containerRuntime = regexp.MustCompile(`(\w*)://(.*)`)
+	containerRuntime = regexp.MustCompile(`(docker|cri-o)://(.*)`)
 )
 
 func parseContainerRuntime(s string) (runtime, version string, err error) {
