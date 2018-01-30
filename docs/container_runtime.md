@@ -60,7 +60,7 @@ The machine-controller would default to cri-o in version 1.9 as it is the suppor
 - 17.12 / 17.12.0
 
 #### CRI-O
-- 1.9 / 1.9.0
+- 1.9 / 1.9.1
 
 ### Container Linux
 
