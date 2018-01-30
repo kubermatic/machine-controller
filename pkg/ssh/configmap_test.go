@@ -11,9 +11,8 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func generateByteSlice(n int) []byte {
@@ -24,30 +23,28 @@ func generateByteSlice(n int) []byte {
 
 func generateValidPEM() []byte {
 	b := &bytes.Buffer{}
-	pk, _ := NewPrivateKey()
+	pk, _ := NewPrivateKey("test")
 
-	_ = pem.Encode(b, &pem.Block{Type: rsaPrivateKey, Bytes: x509.MarshalPKCS1PrivateKey(pk)})
+	_ = pem.Encode(b, &pem.Block{Type: rsaPrivateKey, Bytes: x509.MarshalPKCS1PrivateKey(pk.key)})
 	return b.Bytes()
 }
 
-func generateSecretWithCustomNameAndIndex(name, index string, b []byte) runtime.Object {
+func generateSecretWithCustomNameData(secretName string, data map[string][]byte) runtime.Object {
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      secretName,
 			Namespace: metav1.NamespaceSystem,
 		},
-		Data: map[string][]byte{
-			index: b,
-		},
+		Data: data,
 	}
 }
 
-func generateSecretWithCustomName(name string, b []byte) runtime.Object {
-	return generateSecretWithCustomNameAndIndex(name, privateKeyDataIndex, b)
+func generateSecretWithCustomName(secretName, keyName string, b []byte) runtime.Object {
+	return generateSecretWithCustomNameData(secretName, map[string][]byte{privateKeyDataIndex: b, privateKeyNameIndex: []byte(keyName)})
 }
 
-func generateSecretWithKey(b []byte) runtime.Object {
-	return generateSecretWithCustomName(secretName, b)
+func generateSecretWithKey(keyName string, b []byte) runtime.Object {
+	return generateSecretWithCustomName(secretName, keyName, b)
 }
 
 func fakeClientFactory(objs ...runtime.Object) kubernetes.Interface {
@@ -75,7 +72,7 @@ func TestEnsureSSHKeypairSecret(t *testing.T) {
 		{
 			name: "fake basis client without a key",
 			args: args{
-				client: fakeClientFactory(generateSecretWithKey(nil)),
+				client: fakeClientFactory(generateSecretWithKey("does-not-exist", nil)),
 			},
 			want:    nil,
 			wantErr: true,
@@ -83,7 +80,7 @@ func TestEnsureSSHKeypairSecret(t *testing.T) {
 		{
 			name: "fake basis client with a malformed key",
 			args: args{
-				client: fakeClientFactory(generateSecretWithKey(generateByteSlice(2048))),
+				client: fakeClientFactory(generateSecretWithKey("malformed-key", generateByteSlice(2048))),
 			},
 			want:    nil,
 			wantErr: true,
@@ -91,7 +88,7 @@ func TestEnsureSSHKeypairSecret(t *testing.T) {
 		{
 			name: "fake basis client with a valid key",
 			args: args{
-				client: fakeClientFactory(generateSecretWithKey(generateValidPEM())),
+				client: fakeClientFactory(generateSecretWithKey("some-valid-key", generateValidPEM())),
 			},
 			want:    nil,
 			wantErr: false,
@@ -99,15 +96,23 @@ func TestEnsureSSHKeypairSecret(t *testing.T) {
 		{
 			name: "fake basis client with a valid key, but the wrong secrete name",
 			args: args{
-				client: fakeClientFactory(generateSecretWithCustomName("blah", generateValidPEM())),
+				client: fakeClientFactory(generateSecretWithCustomName("foo", "bar", generateValidPEM())),
 			},
 			want:    nil,
 			wantErr: false,
 		},
 		{
-			name: "fake basis client with a valid key, but the wrong index",
+			name: "fake basis client with missing keydata in secret",
 			args: args{
-				client: fakeClientFactory(generateSecretWithCustomNameAndIndex(secretName, "blah", generateValidPEM())),
+				client: fakeClientFactory(generateSecretWithCustomNameData(secretName, map[string][]byte{privateKeyNameIndex: []byte("my-key"), privateKeyDataIndex: nil})),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "fake basis client with missing name in secret",
+			args: args{
+				client: fakeClientFactory(generateSecretWithCustomNameData(secretName, map[string][]byte{privateKeyNameIndex: []byte(""), privateKeyDataIndex: generateValidPEM()})),
 			},
 			want:    nil,
 			wantErr: true,
@@ -115,7 +120,7 @@ func TestEnsureSSHKeypairSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := EnsureSSHKeypairSecret(tt.args.client)
+			_, err := EnsureSSHKeypairSecret("test", tt.args.client)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EnsureSSHKeypairSecret() error = %+v, wantErr %+v", err, tt.wantErr)
 				return

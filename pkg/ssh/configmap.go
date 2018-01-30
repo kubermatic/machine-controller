@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -47,11 +47,11 @@ func EnsureSSHKeypairSecret(name string, client kubernetes.Interface) (*PrivateK
 		return nil, err
 	}
 
-	secret = &v1.Secret{
+	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: secretName,
 		},
-		Type: v1.SecretTypeOpaque,
+		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			privateKeyDataIndex: privBuf.Bytes(),
 			privateKeyNameIndex: []byte(name),
@@ -66,7 +66,7 @@ func EnsureSSHKeypairSecret(name string, client kubernetes.Interface) (*PrivateK
 
 }
 
-func keyFromSecret(secret *v1.Secret) (*PrivateKey, error) {
+func keyFromSecret(secret *corev1.Secret) (*PrivateKey, error) {
 	b, exists := secret.Data[privateKeyDataIndex]
 	if !exists {
 		return nil, fmt.Errorf("key data not found in secret '%s/%s' (secret.data['%s']). remove it and a new one will be created", secret.Namespace, secret.Name, privateKeyDataIndex)
