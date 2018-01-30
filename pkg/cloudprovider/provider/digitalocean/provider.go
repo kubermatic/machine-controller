@@ -2,7 +2,6 @@ package digitalocean
 
 import (
 	"context"
-	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,13 +24,16 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
-type provider struct{}
+type provider struct {
+	privateKey *machinessh.PrivateKey
+}
 
 // New returns a digitalocean provider
-func New() cloud.Provider {
-	return &provider{}
+func New(privateKey *machinessh.PrivateKey) cloud.Provider {
+	return &provider{privateKey: privateKey}
 }
 
 type config struct {
@@ -169,11 +171,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func ensureSSHKeysExist(ctx context.Context, service godo.KeysService, rsa rsa.PublicKey) (string, error) {
+func ensureSSHKeysExist(ctx context.Context, service godo.KeysService, key *machinessh.PrivateKey) (string, error) {
 	publicKeyCreationLock.Lock()
 	defer publicKeyCreationLock.Unlock()
 
-	pk, err := ssh.NewPublicKey(&rsa)
+	publicKey := key.PublicKey()
+	pk, err := ssh.NewPublicKey(&publicKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse publickey: %v", err)
 	}
@@ -184,7 +187,7 @@ func ensureSSHKeysExist(ctx context.Context, service godo.KeysService, rsa rsa.P
 		if res != nil && res.StatusCode == http.StatusNotFound {
 			dokey, _, err = service.Create(ctx, &godo.KeyCreateRequest{
 				PublicKey: string(ssh.MarshalAuthorizedKey(pk)),
-				Name:      "machine-controller",
+				Name:      key.Name(),
 			})
 			if err != nil {
 				return "", fmt.Errorf("failed to create ssh public key on digitalocean: %v", err)
@@ -197,7 +200,7 @@ func ensureSSHKeysExist(ctx context.Context, service godo.KeysService, rsa rsa.P
 	return dokey.Fingerprint, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey rsa.PublicKey) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	c, pc, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
@@ -206,9 +209,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	fingerprint, err := ensureSSHKeysExist(ctx, client.Keys, publicKey)
+	fingerprint, err := ensureSSHKeysExist(ctx, client.Keys, p.privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to ensure ssh keys exist: %v", err)
+		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)
 	}
 
 	slug, err := getSlugForOS(pc.OperatingSystem)
