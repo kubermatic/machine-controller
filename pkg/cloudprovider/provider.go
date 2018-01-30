@@ -11,13 +11,11 @@ import (
 	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
-type providerInitializer = func(key *machinessh.PrivateKey) cloud.Provider
-
 var (
 	// ErrProviderNotFound tells that the requested cloud provider was not found
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
-	providers = map[providerconfig.CloudProvider]providerInitializer{
+	providers = map[providerconfig.CloudProvider]func(key *machinessh.PrivateKey) cloud.Provider{
 		providerconfig.CloudProviderDigitalocean: func(key *machinessh.PrivateKey) cloud.Provider { return digitalocean.New(key) },
 		providerconfig.CloudProviderAWS:          func(key *machinessh.PrivateKey) cloud.Provider { return aws.New(key) },
 		providerconfig.CloudProviderOpenstack:    func(key *machinessh.PrivateKey) cloud.Provider { return openstack.New(key) },
