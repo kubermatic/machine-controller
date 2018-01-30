@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"regexp"
 	"time"
@@ -34,6 +33,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/containerruntime/docker"
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/ssh"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -74,7 +74,7 @@ type Controller struct {
 
 	workqueue workqueue.RateLimitingInterface
 
-	sshPrivateKey *rsa.PrivateKey
+	sshPrivateKey *ssh.PrivateKey
 }
 
 // NewMachineController returns a new machine controller
@@ -83,7 +83,7 @@ func NewMachineController(
 	machineClient machineclientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	machineInformerFactory externalversions.SharedInformerFactory,
-	sshKeypair *rsa.PrivateKey) *Controller {
+	sshKeypair *ssh.PrivateKey) *Controller {
 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
@@ -203,7 +203,7 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}
-	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, c.sshPrivateKey)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}
@@ -555,7 +555,7 @@ func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, pr
 	}
 
 	glog.Infof("creating instance...")
-	return prov.Create(machine, data, c.sshPrivateKey.PublicKey)
+	return prov.Create(machine, data)
 }
 
 func (c *Controller) enqueueMachine(obj interface{}) {

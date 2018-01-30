@@ -1,7 +1,6 @@
 package openstack
 
 import (
-	"crypto/rsa"
 	"errors"
 	"fmt"
 	"sync"
@@ -20,6 +19,7 @@ import (
 	osports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	ossubnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
+	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -211,7 +211,7 @@ func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubn
 	return nil, errNotFound
 }
 
-func ensureSSHKeysExist(client *gophercloud.ProviderClient, region, name string, rsa rsa.PublicKey) (string, error) {
+func ensureSSHKeysExist(client *gophercloud.ProviderClient, region string, key *machinessh.PrivateKey) (string, error) {
 	publicKeyCreationLock.Lock()
 	defer publicKeyCreationLock.Unlock()
 
@@ -220,25 +220,26 @@ func ensureSSHKeysExist(client *gophercloud.ProviderClient, region, name string,
 		return "", err
 	}
 
-	pk, err := ssh.NewPublicKey(&rsa)
+	publicKey := key.PublicKey()
+	pk, err := ssh.NewPublicKey(&publicKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse publickey: %v", err)
 	}
 
-	kp, err := oskeypairs.Get(computeClient, name).Extract()
+	kp, err := oskeypairs.Get(computeClient, key.Name()).Extract()
 	if err != nil {
 		if _, ok := err.(gophercloud.ErrDefault404); ok {
 			kp, err = oskeypairs.Create(computeClient, oskeypairs.CreateOpts{
-				Name:      name,
+				Name:      key.Name(),
 				PublicKey: string(ssh.MarshalAuthorizedKey(pk)),
 			}).Extract()
 			if err != nil {
-				return "", fmt.Errorf("failed to create publickey %q: %v", name, err)
+				return "", fmt.Errorf("failed to create publickey: %v", err)
 			}
 
 			return kp.Name, nil
 		}
-		return "", fmt.Errorf("failed to get publickey %q: %v", name, err)
+		return "", fmt.Errorf("failed to get publickey: %v", err)
 	}
 
 	return kp.Name, nil

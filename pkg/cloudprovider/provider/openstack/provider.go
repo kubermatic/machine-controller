@@ -1,7 +1,6 @@
 package openstack
 
 import (
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -24,13 +23,16 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
-type provider struct{}
+type provider struct {
+	privateKey *machinessh.PrivateKey
+}
 
 // New returns a openstack provider
-func New() cloud.Provider {
-	return &provider{}
+func New(privateKey *machinessh.PrivateKey) cloud.Provider {
+	return &provider{privateKey: privateKey}
 }
 
 type config struct {
@@ -142,7 +144,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey rsa.PublicKey) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	c, _, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
@@ -153,9 +155,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string, publicKey 
 		return nil, fmt.Errorf("failed to get a openstack client: %v", err)
 	}
 
-	name, err := ensureSSHKeysExist(client, c.Region, "machine-controller", publicKey)
+	name, err := ensureSSHKeysExist(client, c.Region, p.privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed ensure that the ssh key exists: %v", err)
+		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)
 	}
 
 	flavor, err := getFlavor(client, c.Region, c.Flavor)

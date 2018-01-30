@@ -2,13 +2,12 @@ package ssh
 
 import (
 	"bytes"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 
 	"github.com/golang/glog"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -16,12 +15,13 @@ import (
 
 const (
 	privateKeyDataIndex = "id_rsa"
+	privateKeyNameIndex = "name"
 	secretName          = "machine-controller-ssh-key"
 	rsaPrivateKey       = "RSA PRIVATE KEY"
 )
 
 // EnsureSSHKeypairSecret
-func EnsureSSHKeypairSecret(client kubernetes.Interface) (*rsa.PrivateKey, error) {
+func EnsureSSHKeypairSecret(name string, client kubernetes.Interface) (*PrivateKey, error) {
 	if client == nil {
 		return nil, fmt.Errorf("got an nil k8s client")
 	}
@@ -35,25 +35,26 @@ func EnsureSSHKeypairSecret(client kubernetes.Interface) (*rsa.PrivateKey, error
 	}
 
 	glog.V(4).Info("generating master ssh keypair")
-	pk, err := NewPrivateKey()
+	pk, err := NewPrivateKey(name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh keypair: %v", err)
 	}
 
-	privateKeyPEM := &pem.Block{Type: rsaPrivateKey, Bytes: x509.MarshalPKCS1PrivateKey(pk)}
+	privateKeyPEM := &pem.Block{Type: rsaPrivateKey, Bytes: x509.MarshalPKCS1PrivateKey(pk.key)}
 	privBuf := bytes.Buffer{}
 	err = pem.Encode(&privBuf, privateKeyPEM)
 	if err != nil {
 		return nil, err
 	}
 
-	secret = &v1.Secret{
+	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: secretName,
 		},
-		Type: v1.SecretTypeOpaque,
+		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			privateKeyDataIndex: privBuf.Bytes(),
+			privateKeyNameIndex: []byte(name),
 		},
 	}
 
@@ -65,7 +66,7 @@ func EnsureSSHKeypairSecret(client kubernetes.Interface) (*rsa.PrivateKey, error
 
 }
 
-func keyFromSecret(secret *v1.Secret) (*rsa.PrivateKey, error) {
+func keyFromSecret(secret *corev1.Secret) (*PrivateKey, error) {
 	b, exists := secret.Data[privateKeyDataIndex]
 	if !exists {
 		return nil, fmt.Errorf("key data not found in secret '%s/%s' (secret.data['%s']). remove it and a new one will be created", secret.Namespace, secret.Name, privateKeyDataIndex)
@@ -84,5 +85,13 @@ func keyFromSecret(secret *v1.Secret) (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to parse private key: %v", err)
 	}
 
-	return pk, nil
+	name, _ := secret.Data[privateKeyNameIndex]
+	if string(name) == "" {
+		return nil, fmt.Errorf("invalid name in secret '%s/%s'. remove it and a new one will be created", secret.Namespace, secret.Name)
+	}
+
+	return &PrivateKey{
+		key:  pk,
+		name: string(name),
+	}, nil
 }

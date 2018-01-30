@@ -36,12 +36,14 @@ import (
 var (
 	masterURL   string
 	kubeconfig  string
+	sshKeyName  string
 	workerCount int
 )
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&sshKeyName, "ssh-key-name", "machine-controller", "The name of the private key. This name will be used when a public key will be created at the cloud provider.")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 
 	flag.Parse()
@@ -73,12 +75,12 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 
-	keypair, err := ssh.EnsureSSHKeypairSecret(kubeClient)
+	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
 	if err != nil {
-		glog.Fatalf("failed to get/create ssh keypair configmap: %v", err)
+		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
 	}
 
-	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, keypair)
+	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key)
 
 	go kubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
