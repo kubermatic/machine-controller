@@ -82,6 +82,28 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:   &config{DisableAutoUpdate: false},
 			userdata:   docker12AutoUpdateOpenstack,
 		},
+		{
+			name: "docker 1.12.6 auto-update openstack kubelet v version prefix",
+			providerConfig: &providerconfig.Config{
+				CloudProvider: "openstack",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: machinesv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: machinesv1alpha1.MachineVersionInfo{
+					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
+						Name:    "docker",
+						Version: "1.12.6",
+					},
+					Kubelet: "v1.9.2",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
+			kubeconfig: "kubeconfig",
+			resErr:     nil,
+			osConfig:   &config{DisableAutoUpdate: false},
+			userdata:   docker12AutoUpdateOpenstack,
+		},
 	}
 
 	for _, test := range tests {
