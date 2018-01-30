@@ -1,4 +1,4 @@
-REGISTRY ?= registry.hub.docker.com
+REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
 IMAGE_TAG = \
@@ -14,12 +14,6 @@ machine-controller: cmd pkg vendor
 				-ldflags '-s -w' \
 				-o machine-controller \
 				cmd/controller/main.go
-		@docker run --rm \
-			-w $$PWD \
-			-v $$PWD:$$PWD \
-			gruebel/upx:latest \
-			--best --lzma \
-			machine-controller
 
 docker-image:
 	docker build -t $(IMAGE_NAME) .
