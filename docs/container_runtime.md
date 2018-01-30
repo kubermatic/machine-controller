@@ -2,8 +2,7 @@
 
 ## Defaulting
 The machine-controller is able to default to a supported container runtime in case no runtime was specified in the machine-spec.
-Also in case only the version is missing only that will get defaulted.
-Docker is the default container runtime.
+Also when no specific container runtime version is defined, the controller will try to default to a version. 
 
 Having a machine like the following:
 ```yaml
@@ -40,7 +39,41 @@ spec:
       version: ""
 ```
 
-The machine-controller would default to cri-o in version 1.9 as it is the supported version for kubernetes 1.9. 
+The machine-controller would default to cri-o in version 1.9 as it is the supported version for kubernetes 1.9:
+
+```yaml
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: machine-crio
+spec:
+  metadata:
+    name: node-crio
+  providerConfig:
+    sshPublicKeys:
+     - "some-ssh-pub-key"
+    cloudProvider: "digitalocean"
+    cloudProviderSpec:
+      token: "some-do-token"
+      region: "fra1"
+      size: "2gb"
+      backups: false
+      ipv6: false
+      private_networking: true
+      monitoring: false
+      tags:
+       - "machine-controller"
+    operatingSystem: "ubuntu"
+    operatingSystemSpec:
+      distUpgradeOnBoot: false
+  roles:
+ - "Node"
+  versions:
+    kubelet: "1.9.2"
+    containerRuntime:
+      name: "cri-o"
+      version: "1.9"
+``` 
 
 ## Available runtimes
 
