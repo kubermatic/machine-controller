@@ -1,19 +1,25 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/go-test/deep"
+	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
+	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -133,7 +139,7 @@ func TestController_GetNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			client := fake.NewSimpleClientset(test.objects...)
+			client := kubefake.NewSimpleClientset(test.objects...)
 			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, time.Second*30)
 			nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 			go nodeInformer.Informer().Run(wait.NeverStop)
@@ -161,5 +167,108 @@ func TestController_GetNode(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestController_defaultContainerRuntime(t *testing.T) {
+	tests := []struct {
+		name    string
+		machine *v1alpha1.Machine
+		os      providerconfig.OperatingSystem
+		err     error
+		resCR   v1alpha1.ContainerRuntimeInfo
+	}{
+		{
+			name:  "v1.9.2 ubuntu - get default container runtime",
+			err:   nil,
+			os:    providerconfig.OperatingSystemUbuntu,
+			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
+			machine: &v1alpha1.Machine{
+				Spec: v1alpha1.MachineSpec{
+					Versions: v1alpha1.MachineVersionInfo{
+						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: "", Version: ""},
+						Kubelet:          "1.9.2",
+					},
+				},
+			},
+		},
+		{
+			name:  "v1.9.2 ubuntu - get default docker version",
+			err:   nil,
+			os:    providerconfig.OperatingSystemUbuntu,
+			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
+			machine: &v1alpha1.Machine{
+				Spec: v1alpha1.MachineSpec{
+					Versions: v1alpha1.MachineVersionInfo{
+						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
+						Kubelet:          "1.9.2",
+					},
+				},
+			},
+		},
+		{
+			name:  "v1.9.2 coreos - get default docker version",
+			err:   nil,
+			os:    providerconfig.OperatingSystemCoreos,
+			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "1.12.6"},
+			machine: &v1alpha1.Machine{
+				Spec: v1alpha1.MachineSpec{
+					Versions: v1alpha1.MachineVersionInfo{
+						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
+						Kubelet:          "1.9.2",
+					},
+				},
+			},
+		},
+		{
+			name:  "v1.9.2 ubuntu - get default cri-o version",
+			err:   nil,
+			os:    providerconfig.OperatingSystemUbuntu,
+			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: "1.9"},
+			machine: &v1alpha1.Machine{
+				Spec: v1alpha1.MachineSpec{
+					Versions: v1alpha1.MachineVersionInfo{
+						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: ""},
+						Kubelet:          "1.9.2",
+					},
+				},
+			},
+		},
+		{
+			name:  "v1.8.5 ubuntu - no available cri-o version",
+			err:   errors.New("no supported versions available for 'cri-o'"),
+			os:    providerconfig.OperatingSystemUbuntu,
+			resCR: v1alpha1.ContainerRuntimeInfo{},
+			machine: &v1alpha1.Machine{
+				Spec: v1alpha1.MachineSpec{
+					Versions: v1alpha1.MachineVersionInfo{
+						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: ""},
+						Kubelet:          "v1.8.5",
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client := machinefake.NewSimpleClientset(test.machine)
+			prov, err := userdata.ForOS(test.os)
+			if err != nil {
+				t.Fatal(err)
+			}
+			controller := Controller{machineClient: client}
+			err = controller.defaultContainerRuntime(test.machine, prov)
+			if diff := deep.Equal(err, test.err); diff != nil {
+				t.Errorf("expected to get '%v' instead got: '%v'", test.err, err)
+			}
+			if err != nil {
+				return
+			}
+
+			cr := test.machine.Spec.Versions.ContainerRuntime
+			if diff := deep.Equal(cr, test.resCR); diff != nil {
+				t.Errorf("expected to get %s+%s instead got: %s+%s", test.resCR.Name, test.resCR.Version, cr.Name, cr.Version)
+			}
+		})
+	}
 }

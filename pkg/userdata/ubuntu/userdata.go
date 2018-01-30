@@ -3,10 +3,13 @@ package ubuntu
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"text/template"
 
+	"github.com/Masterminds/semver"
 	"github.com/Masterminds/sprig"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -19,9 +22,8 @@ type config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
 
-const (
-	Docker = "docker"
-	CRIO   = "cri-o"
+var (
+	NoInstallCandidateAvailableErr = errors.New("no install candidate available for the desired version")
 )
 
 func getConfig(r runtime.RawExtension) (*config, error) {
@@ -35,10 +37,31 @@ func getConfig(r runtime.RawExtension) (*config, error) {
 	return &p, nil
 }
 
+func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.ContainerRuntimeInfo) {
+	for _, ic := range dockerInstallCandidates {
+		for _, v := range ic.versions {
+			runtimes = append(runtimes, machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: v})
+		}
+	}
+
+	for _, ic := range crioInstallCandidates {
+		for _, v := range ic.versions {
+			runtimes = append(runtimes, machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: v})
+		}
+	}
+
+	return runtimes
+}
+
 func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(sprig.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+	}
+
+	kubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
+	if err != nil {
+		return "", fmt.Errorf("invalid kubelet version: %v", err)
 	}
 
 	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
@@ -57,12 +80,12 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}
 
 	var crPkg, crPkgVersion string
-	if spec.Versions.ContainerRuntime.Name == Docker {
+	if spec.Versions.ContainerRuntime.Name == containerruntime.Docker {
 		crPkg, crPkgVersion, err = getDockerInstallCandidate(spec.Versions.ContainerRuntime.Version)
 		if err != nil {
 			return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
 		}
-	} else if spec.Versions.ContainerRuntime.Name == CRIO {
+	} else if spec.Versions.ContainerRuntime.Name == containerruntime.CRIO {
 		crPkg, crPkgVersion, err = getCRIOInstallCandidate(spec.Versions.ContainerRuntime.Version)
 		if err != nil {
 			return "", fmt.Errorf("failed to get cri-o install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
@@ -80,6 +103,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		CloudConfig         string
 		CRAptPackage        string
 		CRAptPackageVersion string
+		KubeletDownloadURL  string
 	}{
 		MachineSpec:         spec,
 		ProviderConfig:      pconfig,
@@ -89,6 +113,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		CloudConfig:         cpConfig,
 		CRAptPackage:        crPkg,
 		CRAptPackageVersion: crPkgVersion,
+		KubeletDownloadURL:  fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/v%s/bin/linux/amd64/kubelet", kubeletVersion.String()),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -129,7 +154,7 @@ write_files:
     set -xeuo pipefail
     mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
     if [ ! -f /opt/bin/kubelet ]; then
-      curl -L -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/{{ .MachineSpec.Versions.Kubelet }}/bin/linux/amd64/kubelet
+      curl -L -o /opt/bin/kubelet {{ .KubeletDownloadURL }}
       chmod +x /opt/bin/kubelet
     fi
     if [ ! -f /opt/cni/bin/bridge ]; then
@@ -143,6 +168,14 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
+    Requires=docker.service
+    After=docker.service
+{{- end }}
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+    Requires=crio.service
+    After=crio.service
+{{- end }}
     After=network.target
 
     [Service]

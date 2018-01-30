@@ -29,13 +29,16 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime/crio"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime/docker"
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -188,7 +191,7 @@ func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason
 func (c *Controller) syncHandler(key string) error {
 	listerMachine, err := c.machinesLister.Get(key)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if kerrors.IsNotFound(err) {
 			runtime.HandleError(fmt.Errorf("machine '%s' in work queue no longer exists", key))
 			return nil
 		}
@@ -255,6 +258,14 @@ func (c *Controller) syncHandler(key string) error {
 		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
 
+	userdataProvider, err := userdata.ForOS(providerConfig.OperatingSystem)
+	if err != nil {
+		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
+	}
+	if err := c.defaultContainerRuntime(machine, userdataProvider); err != nil {
+		return fmt.Errorf("failed to default the container runtime version: %v", err)
+	}
+
 	providerInstance, err := prov.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -270,7 +281,7 @@ func (c *Controller) syncHandler(key string) error {
 			}
 			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
-			providerInstance, err = c.createProviderInstance(machine, prov, providerConfig)
+			providerInstance, err = c.createProviderInstance(machine, prov, providerConfig, userdataProvider)
 			if err != nil {
 				if err := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); err != nil {
 					return fmt.Errorf("failed to update machine error after failed machine creation: %v", err)
@@ -427,7 +438,7 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 }
 
 var (
-	containerRuntime = regexp.MustCompile(`(\w*)://(.*)`)
+	containerRuntime = regexp.MustCompile(`(docker|cri-o)://(.*)`)
 )
 
 func parseContainerRuntime(s string) (runtime, version string, err error) {
@@ -489,12 +500,50 @@ func (c *Controller) patchMachine(newMachine, oldMachine *machinev1alpha1.Machin
 	return err
 }
 
-func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloud.Provider, providerConfig *providerconfig.Config) (instance.Instance, error) {
-	userdataProvider, err := userdata.ForOS(providerConfig.OperatingSystem)
-	if err != nil {
-		return nil, fmt.Errorf("failed to userdata provider for coreos: %v", err)
+func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, prov userdata.Provider) error {
+	oldMachine := machine.DeepCopy()
+	if machine.Spec.Versions.ContainerRuntime.Name == "" {
+		machine.Spec.Versions.ContainerRuntime.Name = containerruntime.Docker
 	}
 
+	if machine.Spec.Versions.ContainerRuntime.Version == "" {
+		var (
+			defaultVersions []string
+			err             error
+		)
+		switch machine.Spec.Versions.ContainerRuntime.Name {
+		case containerruntime.Docker:
+			defaultVersions, err = docker.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
+			if err != nil {
+				return fmt.Errorf("failed to get a officially supported docker version for the given kubelet version: %v", err)
+			}
+		case containerruntime.CRIO:
+			defaultVersions, err = crio.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
+			if err != nil {
+				return fmt.Errorf("failed to get a officially supported cri-o version for the given kubelet version: %v", err)
+			}
+		default:
+			return fmt.Errorf("invalid container runtime. Supported: '%s', '%s' ", containerruntime.Docker, containerruntime.CRIO)
+		}
+
+		providerSupportedVersions := prov.SupportedContainerRuntimes()
+		for _, v := range defaultVersions {
+			for _, sv := range providerSupportedVersions {
+				if sv.Version == v {
+					// we should not return asap as we prefer the highest supported version
+					machine.Spec.Versions.ContainerRuntime.Version = sv.Version
+				}
+			}
+		}
+		if machine.Spec.Versions.ContainerRuntime.Version == "" {
+			return fmt.Errorf("no supported versions available for '%s'", machine.Spec.Versions.ContainerRuntime.Name)
+		}
+	}
+
+	return c.patchMachine(machine, oldMachine)
+}
+
+func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloud.Provider, providerConfig *providerconfig.Config, userdataProvider userdata.Provider) (instance.Instance, error) {
 	kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)

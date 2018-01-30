@@ -8,6 +8,7 @@
   - [Creating a machine](#creating-a-machine)
 - [Cloud provider](/docs/cloud-provider.md)
 - [Operating system](/docs/operating-system.md)
+- [Container runtimes](/docs/container_runtime.md)
 - [Development](#development)
 
 # Features
@@ -19,7 +20,6 @@
 
 ## What does not work
 - Master creation (Not planned at the moment)
-- Installation of a container runtime based on `machine.spec.versions.containerRuntime`. Currently only latest docker will be used.
 
 # Running
 
@@ -69,5 +69,3 @@ go build -i github.com/kubermatic/machine-controller/cmd/controller
 ```bash
 ./controller -logtostderr -v=8 -kubeconfig=/path/to/kubeconfig
 ```
-
-

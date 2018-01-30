@@ -51,7 +51,7 @@ func TestProvider_UserData(t *testing.T) {
 						Name:    "docker",
 						Version: "1.13.1",
 					},
-					Kubelet: "v1.9.2",
+					Kubelet: "1.9.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
@@ -73,7 +73,7 @@ func TestProvider_UserData(t *testing.T) {
 						Name:    "cri-o",
 						Version: "1.9",
 					},
-					Kubelet: "v1.9.2",
+					Kubelet: "1.9.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{name: "", config: "", err: nil},
@@ -84,6 +84,28 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "docker 17.03 openstack",
+			providerConfig: &providerconfig.Config{
+				CloudProvider: "openstack",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: machinesv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: machinesv1alpha1.MachineVersionInfo{
+					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
+						Name:    "docker",
+						Version: "17.03.2",
+					},
+					Kubelet: "1.9.2",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
+			kubeconfig: "kubeconfig",
+			resErr:     nil,
+			osConfig:   &config{DistUpgradeOnBoot: true},
+			userdata:   docker1703DistupgradeOpenstack,
+		},
+		{
+			name: "docker 17.03 openstack kubelet v version prefix",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -192,6 +214,8 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+    Requires=docker.service
+    After=docker.service
     After=network.target
 
     [Service]
@@ -359,6 +383,8 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+    Requires=crio.service
+    After=crio.service
     After=network.target
 
     [Service]
@@ -427,7 +453,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
-- ["cri-o", "1.9.0-1~ubuntu16.04.2~ppa1"]
+- ["cri-o", "1.9.1-1~ubuntu16.04.2~ppa1"]
 `
 
 	docker1703DistupgradeOpenstack = `#cloud-config
@@ -471,6 +497,8 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+    Requires=docker.service
+    After=docker.service
     After=network.target
 
     [Service]
