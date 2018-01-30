@@ -163,6 +163,14 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
+    Requires=docker.service
+    After=docker.service
+{{- end }}
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+    Requires=crio.service
+    After=crio.service
+{{- end }}
     After=network.target
 
     [Service]

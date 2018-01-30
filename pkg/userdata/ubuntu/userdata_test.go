@@ -214,6 +214,8 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+    Requires=docker.service
+    After=docker.service
     After=network.target
 
     [Service]
@@ -381,6 +383,8 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+    Requires=crio.service
+    After=crio.service
     After=network.target
 
     [Service]
@@ -449,7 +453,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
-- ["cri-o", "1.9.0-1~ubuntu16.04.2~ppa1"]
+- ["cri-o", "1.9.1-1~ubuntu16.04.2~ppa1"]
 `
 
 	docker1703DistupgradeOpenstack = `#cloud-config
@@ -493,6 +497,8 @@ write_files:
     [Unit]
     Description=Kubelet
     Requires=network.target
+    Requires=docker.service
+    After=docker.service
     After=network.target
 
     [Service]

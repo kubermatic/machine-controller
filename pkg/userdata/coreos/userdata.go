@@ -152,6 +152,8 @@ systemd:
       contents: |
         [Unit]
         Description=Kubernetes Kubelet
+        Requires=docker.service
+        After=docker.service
         [Service]
         Environment=KUBELET_IMAGE_TAG={{ .HyperkubeImageTag }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
