@@ -18,6 +18,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"net"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -34,19 +37,26 @@ import (
 )
 
 var (
-	masterURL   string
-	kubeconfig  string
-	sshKeyName  string
-	workerCount int
+	masterURL     string
+	kubeconfig    string
+	sshKeyName    string
+	clusterDNSIPs string
+	workerCount   int
 )
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&sshKeyName, "ssh-key-name", "machine-controller", "The name of the private key. This name will be used when a public key will be created at the cloud provider.")
+	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 
 	flag.Parse()
+
+	ips, err := parseClusterDNSIPs(clusterDNSIPs)
+	if err != nil {
+		glog.Fatalf("invalid cluster dns specified: %v", err)
+	}
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -80,7 +90,7 @@ func main() {
 		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
 	}
 
-	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key)
+	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key, ips)
 
 	go kubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
@@ -88,4 +98,17 @@ func main() {
 	if err = c.Run(workerCount, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %v", err)
 	}
+}
+
+func parseClusterDNSIPs(s string) ([]net.IP, error) {
+	var ips []net.IP
+	sips := strings.Split(s, ",")
+	for _, sip := range sips {
+		ip := net.ParseIP(strings.TrimSpace(sip))
+		if ip == nil {
+			return nil, fmt.Errorf("unable to parse ip %s", sip)
+		}
+		ips = append(ips, ip)
+	}
+	return ips, nil
 }

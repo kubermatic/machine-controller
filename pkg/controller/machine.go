@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"time"
 
@@ -71,6 +72,7 @@ type Controller struct {
 	workqueue workqueue.RateLimitingInterface
 
 	sshPrivateKey *ssh.PrivateKey
+	clusterDNSIPs []net.IP
 }
 
 // NewMachineController returns a new machine controller
@@ -79,7 +81,8 @@ func NewMachineController(
 	machineClient machineclientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	machineInformerFactory externalversions.SharedInformerFactory,
-	sshKeypair *ssh.PrivateKey) *Controller {
+	sshKeypair *ssh.PrivateKey,
+	clusterDNSIPs []net.IP) *Controller {
 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
@@ -96,6 +99,7 @@ func NewMachineController(
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
 
 		sshPrivateKey: sshKeypair,
+		clusterDNSIPs: clusterDNSIPs,
 	}
 
 	machineInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -519,7 +523,7 @@ func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, pr
 		return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 	}
 
-	data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov)
+	data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
 	if err != nil {
 		return nil, fmt.Errorf("failed get userdata: %v", err)
 	}
