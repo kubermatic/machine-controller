@@ -41,9 +41,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -59,7 +56,6 @@ import (
 
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
-	emptyJSON               = "{}"
 )
 
 // Controller is the controller implementation for Foo resources
@@ -168,24 +164,24 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
-func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError) error {
+func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError) (*machinev1alpha1.Machine, error) {
 	if machine.Status.ErrorReason != nil && *machine.Status.ErrorReason == reason {
-		oldMachine := machine.DeepCopy()
 		machine.Status.ErrorMessage = nil
 		machine.Status.ErrorReason = nil
 		machine.Status.LastUpdated = metav1.Now()
-		return c.patchMachine(machine, oldMachine)
+		return c.machineClient.MachineV1alpha1().Machines().Update(machine)
 	}
-	return nil
+	return machine, nil
 }
 
-func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError, message string) error {
-	oldMachine := machine.DeepCopy()
-	machine.Status.ErrorMessage = &message
-	machine.Status.ErrorReason = &reason
-	machine.Status.LastUpdated = metav1.Now()
-
-	return c.patchMachine(machine, oldMachine)
+func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError, message string) (*machinev1alpha1.Machine, error) {
+	if machine.Status.ErrorReason == nil || *machine.Status.ErrorReason == reason {
+		machine.Status.ErrorMessage = &message
+		machine.Status.ErrorReason = &reason
+		machine.Status.LastUpdated = metav1.Now()
+		return c.machineClient.MachineV1alpha1().Machines().Update(machine)
+	}
+	return machine, nil
 }
 
 func (c *Controller) syncHandler(key string) error {
@@ -211,7 +207,7 @@ func (c *Controller) syncHandler(key string) error {
 	// Delete machine
 	if machine.DeletionTimestamp != nil && sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
 		if err := prov.Delete(machine); err != nil {
-			if err := c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, err.Error()); err != nil {
+			if machine, err = c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, err.Error()); err != nil {
 				return fmt.Errorf("failed to update machine error after failed delete: %v", err)
 			}
 			return fmt.Errorf("failed to delete machine at cloudprovider: %v", err)
@@ -227,18 +223,17 @@ func (c *Controller) syncHandler(key string) error {
 
 		glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
 		// Delete delete instance finalizer
-		oldMachine := machine.DeepCopy()
 		finalizers := sets.NewString(machine.Finalizers...)
 		finalizers.Delete(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
-		if err := c.patchMachine(machine, oldMachine); err != nil {
-			return fmt.Errorf("failed to patch machine after removing the delete instance finalizer: %v", err)
+		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+			return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
 
 		// Remove error message in case it was set
-		if err := c.clearMachineErrorIfSet(machine, machinev1alpha1.DeleteMachineError); err != nil {
-			return fmt.Errorf("failed to patch machine after removing the delete error: %v", err)
+		if machine, err = c.clearMachineErrorIfSet(machine, machinev1alpha1.DeleteMachineError); err != nil {
+			return fmt.Errorf("failed to update machine after removing the delete error: %v", err)
 		}
 
 		return nil
@@ -248,12 +243,11 @@ func (c *Controller) syncHandler(key string) error {
 	// otherwise the machine gets created at the cloud provider and the machine resource gets deleted meanwhile
 	// which causes a orphaned instance
 	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
-		oldMachine := machine.DeepCopy()
 		finalizers := sets.NewString(machine.Finalizers...)
 		finalizers.Insert(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
-		if err := c.patchMachine(machine, oldMachine); err != nil {
-			return fmt.Errorf("failed to patch machine after adding the delete instance finalizer: %v", err)
+		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+			return fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
@@ -262,7 +256,7 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
 	}
-	if err := c.defaultContainerRuntime(machine, userdataProvider); err != nil {
+	if machine, err = c.defaultContainerRuntime(machine, userdataProvider); err != nil {
 		return fmt.Errorf("failed to default the container runtime version: %v", err)
 	}
 
@@ -270,27 +264,27 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			if err := prov.Validate(machine.Spec); err != nil {
-				if err := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
+				if machine, err = c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
 					return fmt.Errorf("failed to update machine error after failed validation: %v", err)
 				}
 				return fmt.Errorf("invalid provider config: %v", err)
 			}
 			// Remove error message in case it was set
-			if err := c.clearMachineErrorIfSet(machine, machinev1alpha1.InvalidConfigurationMachineError); err != nil {
-				return fmt.Errorf("failed to patch machine after removing the failed validation error: %v", err)
+			if machine, err = c.clearMachineErrorIfSet(machine, machinev1alpha1.InvalidConfigurationMachineError); err != nil {
+				return fmt.Errorf("failed to update machine after removing the failed validation error: %v", err)
 			}
 			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
 			providerInstance, err = c.createProviderInstance(machine, prov, providerConfig, userdataProvider)
 			if err != nil {
-				if err := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); err != nil {
+				if machine, err = c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); err != nil {
 					return fmt.Errorf("failed to update machine error after failed machine creation: %v", err)
 				}
 				return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
 			}
 			// Remove error message in case it was set
-			if err := c.clearMachineErrorIfSet(machine, machinev1alpha1.CreateMachineError); err != nil {
-				return fmt.Errorf("failed to patch machine after removing the create machine error: %v", err)
+			if machine, err = c.clearMachineErrorIfSet(machine, machinev1alpha1.CreateMachineError); err != nil {
+				return fmt.Errorf("failed to update machine after removing the create machine error: %v", err)
 			}
 			glog.V(4).Infof("Created machine %s at cloud provider", machine.Name)
 
@@ -389,7 +383,6 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 	if node == nil {
 		return nil
 	}
-	oldMachine := machine.DeepCopy()
 
 	var (
 		updated                     bool
@@ -430,8 +423,8 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 
 	if updated {
 		machine.Status.LastUpdated = metav1.Now()
-		if err := c.patchMachine(machine, oldMachine); err != nil {
-			return fmt.Errorf("failed to patch machine: %v", err)
+		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+			return fmt.Errorf("failed to update machine: %v", err)
 		}
 	}
 	return nil
@@ -471,39 +464,13 @@ func (c *Controller) getNode(instance instance.Instance, provider string) (node 
 	return nil, false, nil
 }
 
-func (c *Controller) patchMachine(newMachine, oldMachine *machinev1alpha1.Machine) error {
-	currentMachine, err := c.machineClient.MachineV1alpha1().Machines().Get(newMachine.Name, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get current machine from lister: %v", err)
-	}
-	currentJSON, err := json.Marshal(currentMachine)
-	if err != nil {
-		return fmt.Errorf("failed to marshal current machine to json: %v", err)
-	}
-	oldJSON, err := json.Marshal(oldMachine)
-	if err != nil {
-		return fmt.Errorf("failed to marshal old machine to json: %v", err)
-	}
-	newJSON, err := json.Marshal(newMachine)
-	if err != nil {
-		return fmt.Errorf("failed to marshal updated machine to json: %v", err)
-	}
-	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldJSON, newJSON, currentJSON)
-	if err != nil {
-		return fmt.Errorf("failed to create three-way-json-merge-patch: %v", err)
-	}
-	if string(patch) == emptyJSON {
-		//nothing to do
-		return nil
-	}
-	_, err = c.machineClient.MachineV1alpha1().Machines().Patch(newMachine.Name, types.MergePatchType, patch)
-	return err
-}
-
-func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, prov userdata.Provider) error {
-	oldMachine := machine.DeepCopy()
+func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, prov userdata.Provider) (*machinev1alpha1.Machine, error) {
+	var err error
 	if machine.Spec.Versions.ContainerRuntime.Name == "" {
 		machine.Spec.Versions.ContainerRuntime.Name = containerruntime.Docker
+		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+			return nil, err
+		}
 	}
 
 	if machine.Spec.Versions.ContainerRuntime.Version == "" {
@@ -515,15 +482,15 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 		case containerruntime.Docker:
 			defaultVersions, err = docker.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
 			if err != nil {
-				return fmt.Errorf("failed to get a officially supported docker version for the given kubelet version: %v", err)
+				return nil, fmt.Errorf("failed to get a officially supported docker version for the given kubelet version: %v", err)
 			}
 		case containerruntime.CRIO:
 			defaultVersions, err = crio.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
 			if err != nil {
-				return fmt.Errorf("failed to get a officially supported cri-o version for the given kubelet version: %v", err)
+				return nil, fmt.Errorf("failed to get a officially supported cri-o version for the given kubelet version: %v", err)
 			}
 		default:
-			return fmt.Errorf("invalid container runtime. Supported: '%s', '%s' ", containerruntime.Docker, containerruntime.CRIO)
+			return nil, fmt.Errorf("invalid container runtime. Supported: '%s', '%s' ", containerruntime.Docker, containerruntime.CRIO)
 		}
 
 		providerSupportedVersions := prov.SupportedContainerRuntimes()
@@ -536,11 +503,14 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 			}
 		}
 		if machine.Spec.Versions.ContainerRuntime.Version == "" {
-			return fmt.Errorf("no supported versions available for '%s'", machine.Spec.Versions.ContainerRuntime.Name)
+			return nil, fmt.Errorf("no supported versions available for '%s'", machine.Spec.Versions.ContainerRuntime.Name)
+		}
+		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+			return nil, err
 		}
 	}
 
-	return c.patchMachine(machine, oldMachine)
+	return machine, nil
 }
 
 func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloud.Provider, providerConfig *providerconfig.Config, userdataProvider userdata.Provider) (instance.Instance, error) {

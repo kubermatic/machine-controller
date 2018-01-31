@@ -257,7 +257,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 				t.Fatal(err)
 			}
 			controller := Controller{machineClient: client}
-			err = controller.defaultContainerRuntime(test.machine, prov)
+			machine, err := controller.defaultContainerRuntime(test.machine, prov)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get '%v' instead got: '%v'", test.err, err)
 			}
@@ -265,7 +265,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 				return
 			}
 
-			cr := test.machine.Spec.Versions.ContainerRuntime
+			cr := machine.Spec.Versions.ContainerRuntime
 			if diff := deep.Equal(cr, test.resCR); diff != nil {
 				t.Errorf("expected to get %s+%s instead got: %s+%s", test.resCR.Name, test.resCR.Version, cr.Name, cr.Version)
 			}
