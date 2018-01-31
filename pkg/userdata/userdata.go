@@ -2,6 +2,7 @@ package userdata
 
 import (
 	"errors"
+	"net"
 
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -27,6 +28,6 @@ func ForOS(os providerconfig.OperatingSystem) (Provider, error) {
 }
 
 type Provider interface {
-	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider) (string, error)
+	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error)
 	SupportedContainerRuntimes() []machinesv1alpha1.ContainerRuntimeInfo
 }

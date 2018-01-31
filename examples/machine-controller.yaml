@@ -47,6 +47,7 @@ spec:
             - /usr/local/bin/machine-controller
             - -logtostderr
             - -v=8
+            - -cluster-dns=10.10.10.10
 ---
 apiVersion: v1
 kind: ServiceAccount

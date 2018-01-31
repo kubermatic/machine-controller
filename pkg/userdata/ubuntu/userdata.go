@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"text/template"
 
 	"github.com/Masterminds/semver"
-	"github.com/Masterminds/sprig"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -53,8 +54,8 @@ func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.Cont
 	return runtimes
 }
 
-func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider) (string, error) {
-	tmpl, err := template.New("user-data").Funcs(sprig.TxtFuncMap()).Parse(ctTemplate)
+func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error) {
+	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
 	}
@@ -104,6 +105,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		CRAptPackage        string
 		CRAptPackageVersion string
 		KubeletDownloadURL  string
+		ClusterDNSIPs       []net.IP
 	}{
 		MachineSpec:         spec,
 		ProviderConfig:      pconfig,
@@ -114,6 +116,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		CRAptPackage:        crPkg,
 		CRAptPackageVersion: crPkgVersion,
 		KubeletDownloadURL:  fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/v%s/bin/linux/amd64/kubelet", kubeletVersion.String()),
+		ClusterDNSIPs:       clusterDNSIPs,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -198,7 +201,7 @@ write_files:
       --allow-privileged=true \
       --cni-bin-dir=/opt/cni/bin \
       --cni-conf-dir=/etc/cni/net.d \
-      --cluster-dns=10.10.10.10 \
+      --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
       --cluster-domain=cluster.local \
       --network-plugin=cni \
       {{- if .CloudProvider }}
