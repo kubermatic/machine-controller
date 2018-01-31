@@ -155,6 +155,7 @@ systemd:
         Requires=docker.service
         After=docker.service
         [Service]
+        TimeoutStartSec=5min
         Environment=KUBELET_IMAGE_TAG={{ .HyperkubeImageTag }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
