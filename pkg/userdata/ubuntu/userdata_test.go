@@ -223,6 +223,7 @@ write_files:
     RestartSec=10
     StartLimitInterval=600
     StartLimitBurst=50
+    TimeoutStartSec=5min
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
     ExecStartPre=/etc/kubernetes/download.sh
     ExecStart=/opt/bin/kubelet \
@@ -392,6 +393,7 @@ write_files:
     RestartSec=10
     StartLimitInterval=600
     StartLimitBurst=50
+    TimeoutStartSec=5min
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
     ExecStartPre=/etc/kubernetes/download.sh
     ExecStart=/opt/bin/kubelet \
@@ -506,6 +508,7 @@ write_files:
     RestartSec=10
     StartLimitInterval=600
     StartLimitBurst=50
+    TimeoutStartSec=5min
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
     ExecStartPre=/etc/kubernetes/download.sh
     ExecStart=/opt/bin/kubelet \
