@@ -16,7 +16,7 @@ machine-controller: cmd pkg vendor
 			env CGO_ENABLED=0 go build \
 				-ldflags '-s -w' \
 				-o machine-controller \
-				cmd/controller/main.go
+				github.com/kubermatic/machine-controller/cmd/controller
 
 docker-image:
 	docker build -t $(IMAGE_NAME) .

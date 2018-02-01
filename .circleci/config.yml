@@ -44,7 +44,7 @@ jobs:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
-      - run: go build -o machine-controller cmd/controller/main.go
+      - run: go build -o machine-controller github.com/kubermatic/machine-controller/cmd/controller
 
 workflows:
   version: 2
