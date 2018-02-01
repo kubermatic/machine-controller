@@ -165,12 +165,16 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
+func (c *Controller) updateMachine(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
+	machine.Status.LastUpdated = metav1.Now()
+	return c.machineClient.MachineV1alpha1().Machines().Update(machine)
+}
+
 func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError) (*machinev1alpha1.Machine, error) {
 	if machine.Status.ErrorReason != nil && *machine.Status.ErrorReason == reason {
 		machine.Status.ErrorMessage = nil
 		machine.Status.ErrorReason = nil
-		machine.Status.LastUpdated = metav1.Now()
-		return c.machineClient.MachineV1alpha1().Machines().Update(machine)
+		return c.updateMachine(machine)
 	}
 	return machine, nil
 }
@@ -179,8 +183,7 @@ func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason
 	if machine.Status.ErrorReason == nil || *machine.Status.ErrorReason == reason {
 		machine.Status.ErrorMessage = &message
 		machine.Status.ErrorReason = &reason
-		machine.Status.LastUpdated = metav1.Now()
-		return c.machineClient.MachineV1alpha1().Machines().Update(machine)
+		return c.updateMachine(machine)
 	}
 	return machine, nil
 }
@@ -227,7 +230,7 @@ func (c *Controller) syncHandler(key string) error {
 		finalizers := sets.NewString(machine.Finalizers...)
 		finalizers.Delete(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
@@ -247,7 +250,7 @@ func (c *Controller) syncHandler(key string) error {
 		finalizers := sets.NewString(machine.Finalizers...)
 		finalizers.Insert(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
@@ -423,8 +426,7 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 	}
 
 	if updated {
-		machine.Status.LastUpdated = metav1.Now()
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine: %v", err)
 		}
 	}
@@ -469,7 +471,7 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 	var err error
 	if machine.Spec.Versions.ContainerRuntime.Name == "" {
 		machine.Spec.Versions.ContainerRuntime.Name = containerruntime.Docker
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return nil, err
 		}
 	}
@@ -506,7 +508,7 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 		if machine.Spec.Versions.ContainerRuntime.Version == "" {
 			return nil, fmt.Errorf("no supported versions available for '%s'", machine.Spec.Versions.ContainerRuntime.Name)
 		}
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return nil, err
 		}
 	}
