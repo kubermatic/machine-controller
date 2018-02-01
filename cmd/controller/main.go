@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 	"time"
 
@@ -94,6 +95,14 @@ func main() {
 
 	go kubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
+
+	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
+		for key, synced := range syncsMap {
+			if !synced {
+				glog.Fatalf("unable to sync %s", key)
+			}
+		}
+	}
 
 	if err = c.Run(workerCount, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %v", err)
