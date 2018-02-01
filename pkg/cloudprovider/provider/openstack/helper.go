@@ -41,6 +41,26 @@ func getRegion(client *gophercloud.ProviderClient, id string) (*osregions.Region
 	return osregions.Get(idClient, id).Extract()
 }
 
+func getRegions(client *gophercloud.ProviderClient) ([]osregions.Region, error) {
+	idClient, err := goopenstack.NewIdentityV3(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic})
+	if err != nil {
+		return nil, err
+	}
+
+	listOpts := osregions.ListOpts{
+		ParentRegionID: "RegionOne",
+	}
+	allPages, err := osregions.List(idClient, listOpts).AllPages()
+	if err != nil {
+		return nil, err
+	}
+	regions, err := osregions.ExtractRegions(allPages)
+	if err != nil {
+		return nil, err
+	}
+	return regions, nil
+}
+
 func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string) (*osavailabilityzones.AvailabilityZone, error) {
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {

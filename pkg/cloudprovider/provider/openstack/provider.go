@@ -77,6 +77,14 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	return &c, &pconfig, err
 }
 
+func setConfig(config *config) (runtime.RawExtension, error) {
+	rawConfig, err := json.Marshal(config)
+	if err != nil {
+		return runtime.RawExtension{}, err
+	}
+	return runtime.RawExtension{Raw: rawConfig}, nil
+}
+
 func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: c.IdentityEndpoint,
@@ -88,6 +96,34 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	}
 
 	return openstack.AuthenticatedClient(opts)
+}
+
+func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+	c, _, err := getConfig(spec.ProviderConfig)
+	if err != nil {
+		return spec, fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	client, err := getClient(c)
+	if err != nil {
+		return spec, fmt.Errorf("failed to get a openstack client: %v", err)
+	}
+
+	if c.Region == "" {
+		regions, err := getRegions(client)
+		if err != nil {
+			return spec, fmt.Errorf("Failed to get regions: %s", err)
+		}
+		if len(regions) == 1 {
+			glog.V(4).Infof("Defaulted region to '%s'", regions[0].ID)
+			c.Region = regions[0].ID
+		}
+	}
+	spec.ProviderConfig, err = setConfig(c)
+	if err != nil {
+		return spec, fmt.Errorf("Error marshaling providerconfig: '%v'", err)
+	}
+	return spec, nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
