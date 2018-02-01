@@ -62,7 +62,7 @@ kubectl create -f examples/machine.yaml
 
 ## Building
 ```bash
-go build -i github.com/kubermatic/machine-controller/cmd/controller
+make machine-controller
 ```
 
 ## Running
