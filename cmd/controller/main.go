@@ -34,6 +34,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/kubermatic/machine-controller/pkg/ssh"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -41,12 +42,14 @@ import (
 )
 
 var (
-	masterURL           string
-	kubeconfig          string
-	sshKeyName          string
-	clusterDNSIPs       string
+	masterURL      string
+	kubeconfig     string
+	sshKeyName     string
+	clusterDNSIPs  string
 	healthListenAddress string
-	workerCount         int
+	prometheusAddr string
+	prometheusPath string
+	workerCount    int
 )
 
 func main() {
@@ -56,6 +59,8 @@ func main() {
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
 	flag.StringVar(&healthListenAddress, "health-listen-address", "127.0.0.1:8086", "Listen address for the readiness/liveness http server. The endpoints are /live /ready")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
+	flag.StringVar(&prometheusAddr, "prometheus-address", "127.0.0.1:8085", "The Address on which the prometheus handler should be exposed")
+	flag.StringVar(&prometheusPath, "prometheus-path", "/metrics", "The path on the host, on which the handler is available")
 
 	flag.Parse()
 
@@ -96,7 +101,20 @@ func main() {
 		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
 	}
 
-	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key, ips)
+	metrics := NewMachineControllerMetrics()
+	machineMetrics := controller.MetricsCollection{
+		Machines:            metrics.Machines,
+		Workers:             metrics.Workers,
+		Errors:              metrics.Errors,
+		Nodes:               metrics.Nodes,
+		CloudCreateDuration: metrics.CloudCreateDuration,
+		CloudDeleteDuration: metrics.CloudDeleteDuration,
+		CloudGetDuration:    metrics.CloudGetDuration,
+		ValidateDuration:    metrics.ValidateDuration,
+		NodeJoinDuration:    metrics.NodeJoinDuration,
+	}
+
+	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key, ips, machineMetrics)
 
 	go kubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
@@ -117,6 +135,8 @@ func main() {
 	}
 	go http.ListenAndServe(healthListenAddress, health)
 
+	go serveMetrics()
+
 	if err = c.Run(workerCount, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %v", err)
 	}
@@ -133,4 +153,16 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+func serveMetrics() {
+	m := http.NewServeMux()
+	m.Handle(prometheusPath, promhttp.Handler())
+
+	s := http.Server{
+		Addr:    prometheusAddr,
+		Handler: m,
+	}
+	glog.V(4).Infof("exposing metrics on %s%s", prometheusAddr, prometheusPath)
+	glog.Fatalf("prometheus http server died: %v", s.ListenAndServe())
 }
