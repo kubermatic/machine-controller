@@ -96,6 +96,10 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	return &c, &pconfig, err
 }
 
+func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
+	return spec, false, nil
+}
+
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	c, pc, err := getConfig(spec.ProviderConfig)
 	if err != nil {

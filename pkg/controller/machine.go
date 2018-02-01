@@ -267,7 +267,18 @@ func (c *Controller) syncHandler(key string) error {
 	providerInstance, err := prov.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			if err := prov.Validate(machine.Spec); err != nil {
+			defaultedMachine, changed, err := prov.AddDefaults(machine.Spec)
+			if err != nil {
+				return fmt.Errorf("Failed to add defaults to machine: '%v'", err)
+			}
+			if changed {
+				machine.Spec = defaultedMachine
+				_, err = c.updateMachine(machine)
+				if err != nil {
+					return fmt.Errorf("Failed to update machine after adding defaults: '%v'", err)
+				}
+			}
+			if err = prov.Validate(machine.Spec); err != nil {
 				if machine, err = c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
 					return fmt.Errorf("failed to update machine error after failed validation: %v", err)
 				}
