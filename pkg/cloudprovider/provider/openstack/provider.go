@@ -112,6 +112,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	}
 
 	if c.Region == "" {
+		glog.V(4).Infof("Trying to default region...")
 		regions, err := getRegions(client)
 		if err != nil {
 			return spec, changed, fmt.Errorf("Failed to get regions: %s", err)
@@ -120,6 +121,8 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			glog.V(4).Infof("Defaulted region to '%s'", regions[0].ID)
 			changed = true
 			c.Region = regions[0].ID
+		} else {
+			glog.V(4).Infof("Could not defaut region because got '%s' results!", len(regions))
 		}
 	}
 	spec.ProviderConfig, err = setConfig(c)
