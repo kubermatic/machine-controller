@@ -652,7 +652,6 @@ func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 	}
 }
 
-
 func (c *Controller) updateMachinesMetric() {
 	machines, err := c.machinesLister.List(labels.Everything())
 	if err != nil {

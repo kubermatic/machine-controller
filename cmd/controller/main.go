@@ -42,14 +42,14 @@ import (
 )
 
 var (
-	masterURL      string
-	kubeconfig     string
-	sshKeyName     string
-	clusterDNSIPs  string
+	masterURL           string
+	kubeconfig          string
+	sshKeyName          string
+	clusterDNSIPs       string
 	healthListenAddress string
-	prometheusAddr string
-	prometheusPath string
-	workerCount    int
+	prometheusAddr      string
+	prometheusPath      string
+	workerCount         int
 )
 
 func main() {
