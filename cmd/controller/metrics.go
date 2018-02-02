@@ -48,37 +48,37 @@ func NewMachineControllerMetrics() *MachineControllerMetrics {
 		Errors: prometheus.NewCounterFrom(prom.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "errors",
+			Name:      "errors_total",
 			Help:      "The total number or unexpected errors the controller encountered",
 		}, []string{}),
 		CloudCreateDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "cloud_create_duration",
+			Name:      "cloud_create_duration_seconds",
 			Help:      "The time it takes to create an instance on the cloud provider",
 		}, []string{}),
 		CloudDeleteDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "cloud_delete_duration",
+			Name:      "cloud_delete_duration_seconds",
 			Help:      "The time it takes to delete an instance on the cloud provider",
 		}, []string{}),
 		CloudGetDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "cloud_get_duration",
+			Name:      "cloud_get_duration_seconds",
 			Help:      "The time it takes to get an instance from the cloud provider",
 		}, []string{}),
 		ValidateDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "validate_duration",
+			Name:      "validate_duration_seconds",
 			Help:      "The time it takes to validate a machine",
 		}, []string{}),
 		NodeJoinDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "node_join_duration",
+			Name:      "node_join_duration_seconds",
 			Help:      "The time it takes from creation of the machine resource and the final creation of the node resource",
 		}, []string{}),
 	}
