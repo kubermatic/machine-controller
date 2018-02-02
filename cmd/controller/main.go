@@ -20,14 +20,17 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	"github.com/kubermatic/machine-controller/pkg/controller"
+	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/kubermatic/machine-controller/pkg/ssh"
@@ -38,11 +41,12 @@ import (
 )
 
 var (
-	masterURL     string
-	kubeconfig    string
-	sshKeyName    string
-	clusterDNSIPs string
-	workerCount   int
+	masterURL           string
+	kubeconfig          string
+	sshKeyName          string
+	clusterDNSIPs       string
+	healthListenAddress string
+	workerCount         int
 )
 
 func main() {
@@ -50,6 +54,7 @@ func main() {
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&sshKeyName, "ssh-key-name", "machine-controller", "The name of the private key. This name will be used when a public key will be created at the cloud provider.")
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
+	flag.StringVar(&healthListenAddress, "health-listen-address", "127.0.0.1:8086", "Listen address for the readiness/liveness http server. The endpoints are /live /ready")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 
 	flag.Parse()
@@ -103,6 +108,14 @@ func main() {
 			}
 		}
 	}
+
+	health := healthcheck.NewHandler()
+	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
+	health.AddReadinessCheck("custom-resource-definitions-exist", machinehealth.CustomResourceDefinitionsEstablished(extclient))
+	for name, c := range c.ReadinessChecks() {
+		health.AddReadinessCheck(name, c)
+	}
+	go http.ListenAndServe(healthListenAddress, health)
 
 	if err = c.Run(workerCount, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %v", err)

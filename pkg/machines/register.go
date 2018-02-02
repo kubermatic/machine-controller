@@ -14,19 +14,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+type resource struct {
+	plural string
+	kind   string
+}
+
+var resourceNames = []resource{
+	{
+		plural: "machines",
+		kind:   reflect.TypeOf(v1alpha1.Machine{}).Name(),
+	},
+}
+
 func EnsureCustomResourceDefinitions(clientset apiextensionsclient.Interface) error {
-	type resource struct {
-		plural string
-		kind   string
-	}
-
-	resourceNames := []resource{
-		{
-			plural: "machines",
-			kind:   reflect.TypeOf(v1alpha1.Machine{}).Name(),
-		},
-	}
-
 	for _, res := range resourceNames {
 		if err := createCustomResourceDefinition(res.plural, res.kind, clientset); err != nil {
 			return err
@@ -34,6 +34,38 @@ func EnsureCustomResourceDefinitions(clientset apiextensionsclient.Interface) er
 	}
 
 	return nil
+}
+
+func AllCustomResourceDefinitionsExists(clientset apiextensionsclient.Interface) (bool, error) {
+	for _, res := range resourceNames {
+		name := res.plural + "." + v1alpha1.GroupName
+		exists, err := CustomResourceDefinitionExists(name, clientset)
+		if err != nil || !exists {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.Interface) (bool, error) {
+	crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+	for _, cond := range crd.Status.Conditions {
+		switch cond.Type {
+		case apiextensionsv1beta1.Established:
+			if cond.Status == apiextensionsv1beta1.ConditionTrue {
+				return true, err
+			}
+		case apiextensionsv1beta1.NamesAccepted:
+			if cond.Status == apiextensionsv1beta1.ConditionFalse {
+				return false, fmt.Errorf("Name conflict: %v\n", cond.Reason)
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func createCustomResourceDefinition(plural, kind string, clientset apiextensionsclient.Interface) error {
@@ -52,6 +84,7 @@ func createCustomResourceDefinition(plural, kind string, clientset apiextensions
 			},
 		},
 	}
+
 	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 	if err != nil {
 		if kerrors.IsAlreadyExists(err) {
@@ -62,23 +95,7 @@ func createCustomResourceDefinition(plural, kind string, clientset apiextensions
 
 	// wait for CRD being established
 	err = wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
-		crd, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		for _, cond := range crd.Status.Conditions {
-			switch cond.Type {
-			case apiextensionsv1beta1.Established:
-				if cond.Status == apiextensionsv1beta1.ConditionTrue {
-					return true, err
-				}
-			case apiextensionsv1beta1.NamesAccepted:
-				if cond.Status == apiextensionsv1beta1.ConditionFalse {
-					fmt.Printf("Name conflict: %v\n", cond.Reason)
-				}
-			}
-		}
-		return false, err
+		return CustomResourceDefinitionExists(name, clientset)
 	})
 	if err != nil {
 		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(name, nil)

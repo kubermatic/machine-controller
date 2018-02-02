@@ -17,12 +17,14 @@ limitations under the License.
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"regexp"
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	"github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
@@ -64,10 +66,9 @@ type Controller struct {
 	kubeClient    kubernetes.Interface
 	machineClient machineclientset.Interface
 
-	nodesLister    listerscorev1.NodeLister
-	nodesSynced    cache.InformerSynced
-	machinesLister machinelistersv1alpha1.MachineLister
-	machinesSynced cache.InformerSynced
+	nodesLister     listerscorev1.NodeLister
+	configMapLister listerscorev1.ConfigMapLister
+	machinesLister  machinelistersv1alpha1.MachineLister
 
 	workqueue workqueue.RateLimitingInterface
 
@@ -85,16 +86,16 @@ func NewMachineController(
 	clusterDNSIPs []net.IP) *Controller {
 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	configMapInformer := kubeInformerFactory.Core().V1().ConfigMaps()
 	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
 
 	controller := &Controller{
-		kubeClient:  kubeClient,
-		nodesLister: nodeInformer.Lister(),
-		nodesSynced: nodeInformer.Informer().HasSynced,
+		kubeClient:      kubeClient,
+		nodesLister:     nodeInformer.Lister(),
+		configMapLister: configMapInformer.Lister(),
 
 		machineClient:  machineClient,
 		machinesLister: machineInformer.Lister(),
-		machinesSynced: machineInformer.Informer().HasSynced,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
 
@@ -129,10 +130,6 @@ func NewMachineController(
 func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 	defer c.workqueue.ShutDown()
-
-	if ok := cache.WaitForCacheSync(stopCh, c.nodesSynced, c.machinesSynced); !ok {
-		return fmt.Errorf("failed to wait for caches to sync")
-	}
 
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
@@ -571,5 +568,34 @@ func (c *Controller) handleObject(obj interface{}) {
 
 		c.enqueueMachine(machine)
 		return
+	}
+}
+
+func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
+	return map[string]healthcheck.Check{
+		"valid-info-kubeconfig": func() error {
+			cm, err := c.getClusterInfoKubeconfig()
+			if err != nil {
+				return err
+			}
+			if len(cm.Clusters) != 1 {
+				err := errors.New("invalid kubeconfig: no clusters found")
+				glog.V(2).Info(err)
+				return err
+			}
+			for name, c := range cm.Clusters {
+				if len(c.CertificateAuthorityData) == 0 {
+					err := fmt.Errorf("invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.['%s']", name)
+					glog.V(2).Info(err)
+					return err
+				}
+				if len(c.Server) == 0 {
+					err := fmt.Errorf("invalid kubeconfig: no server was specified for kuberconfig.clusters.['%s']", name)
+					glog.V(2).Info(err)
+					return err
+				}
+			}
+			return nil
+		},
 	}
 }

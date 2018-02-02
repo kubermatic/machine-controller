@@ -55,3 +55,7 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 [[constraint]]
   name = "github.com/pmezard/go-difflib"
   version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/heptiolabs/healthcheck"
