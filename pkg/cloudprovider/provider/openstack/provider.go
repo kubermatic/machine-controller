@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/fatih/structs"
 	"github.com/golang/glog"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
@@ -77,12 +78,22 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	return &c, &pconfig, err
 }
 
-func setConfig(config *config) (runtime.RawExtension, error) {
-	rawConfig, err := json.Marshal(config)
+func setProviderConfig(config *config, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+	var providerConfig map[string]interface{}
+	err := json.Unmarshal(spec.ProviderConfig.Raw, &providerConfig)
 	if err != nil {
-		return runtime.RawExtension{}, err
+		return spec, err
 	}
-	return runtime.RawExtension{Raw: rawConfig}, nil
+	if _, ok := providerConfig["CloudProviderSpec"]; ok {
+		providerConfig["CloudProviderSpec"] = structs.Map(config)
+	}
+	rawProviderConfig, err := json.Marshal(providerConfig)
+	if err != nil {
+		return spec, err
+	}
+
+	spec.ProviderConfig = runtime.RawExtension{Raw: rawProviderConfig}
+	return spec, nil
 }
 
 func getClient(c *Config) (*gophercloud.ProviderClient, error) {
@@ -125,7 +136,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			glog.V(4).Infof("Could not defaut region because got '%v' results!", len(regions))
 		}
 	}
-	spec.ProviderConfig, err = setConfig(c)
+	spec, err = setProviderConfig(c, spec)
 	if err != nil {
 		return spec, changed, fmt.Errorf("Error marshaling providerconfig: '%v'", err)
 	}

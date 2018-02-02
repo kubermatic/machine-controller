@@ -59,3 +59,7 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 [[constraint]]
   branch = "master"
   name = "github.com/heptiolabs/healthcheck"
+
+[[constraint]]
+  name = "github.com/fatih/structs"
+  version = "1.0.0"
