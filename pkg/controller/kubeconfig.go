@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -17,7 +16,7 @@ const (
 )
 
 func (c *Controller) getClusterInfoKubeconfig() (*clientcmdapi.Config, error) {
-	cm, err := c.kubeClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get("cluster-info", metav1.GetOptions{})
+	cm, err := c.configMapLister.ConfigMaps(metav1.NamespacePublic).Get("cluster-info")
 	if err != nil {
 		return nil, err
 	}
