@@ -117,7 +117,7 @@ var (
 	publicKeyCreationLock = &sync.Mutex{}
 )
 
-type config struct {
+type Config struct {
 	AccessKeyID     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
 
@@ -147,13 +147,13 @@ func getAMIID(os providerconfig.OperatingSystem, region string) (string, error) 
 	return id, nil
 }
 
-func getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) {
+func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	c := config{}
+	c := Config{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
 	return &c, &pconfig, err
 }

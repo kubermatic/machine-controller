@@ -35,7 +35,7 @@ func New(privateKey *machinessh.PrivateKey) cloud.Provider {
 	return &provider{privateKey: privateKey}
 }
 
-type config struct {
+type Config struct {
 	// Auth details
 	IdentityEndpoint string `json:"identityEndpoint"`
 	Username         string `json:"username"`
@@ -66,18 +66,18 @@ const (
 // Protects floating ip assignment
 var floatingIPAssignLock = &sync.Mutex{}
 
-func getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) {
+func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	c := config{}
+	c := Config{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
 	return &c, &pconfig, err
 }
 
-func getClient(c *config) (*gophercloud.ProviderClient, error) {
+func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: c.IdentityEndpoint,
 		Username:         c.Username,

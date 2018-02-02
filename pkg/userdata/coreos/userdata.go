@@ -18,12 +18,12 @@ import (
 
 type Provider struct{}
 
-type config struct {
+type Config struct {
 	DisableAutoUpdate bool `json:"disableAutoUpdate"`
 }
 
-func getConfig(r runtime.RawExtension) (*config, error) {
-	p := config{}
+func getConfig(r runtime.RawExtension) (*Config, error) {
+	p := Config{}
 	if len(r.Raw) == 0 {
 		return &p, nil
 	}
@@ -84,7 +84,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	data := struct {
 		MachineSpec       machinesv1alpha1.MachineSpec
 		ProviderConfig    *providerconfig.Config
-		CoreOSConfig      *config
+		CoreOSConfig      *Config
 		Kubeconfig        string
 		CloudProvider     string
 		CloudConfig       string
