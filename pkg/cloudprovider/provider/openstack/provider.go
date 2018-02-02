@@ -78,14 +78,14 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	return &c, &pconfig, err
 }
 
-func setProviderConfig(config *config, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func setProviderConfig(config *Config, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	var providerConfig map[string]interface{}
 	err := json.Unmarshal(spec.ProviderConfig.Raw, &providerConfig)
 	if err != nil {
 		return spec, err
 	}
-	if _, ok := providerConfig["CloudProviderSpec"]; ok {
-		providerConfig["CloudProviderSpec"] = structs.Map(config)
+	if _, ok := providerConfig["cloudProviderSpec"]; ok {
+		providerConfig["cloudProviderSpec"] = structs.Map(config)
 	}
 	rawProviderConfig, err := json.Marshal(providerConfig)
 	if err != nil {
@@ -133,7 +133,20 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			changed = true
 			c.Region = regions[0].ID
 		} else {
-			glog.V(4).Infof("Could not defaut region because got '%v' results!", len(regions))
+			return spec, changed, fmt.Errorf("Could not default region because got '%v' results!", len(regions))
+		}
+	}
+
+	if c.AvailabilityZone == "" {
+		glog.V(4).Infof("Trying to default availability zone...")
+		availabilityZones, err := getAvailabilityZones(client, c.Region)
+		if err != nil {
+			return spec, changed, fmt.Errorf("Failed to get availability zones: '%v'", err)
+		}
+		if len(availabilityZones) == 1 {
+			glog.V(4).Infof("Defaulted availability Zone to '%s'", availabilityZones[0].ZoneName)
+			changed = true
+			c.AvailabilityZone = availabilityZones[0].ZoneName
 		}
 	}
 	spec, err = setProviderConfig(c, spec)
