@@ -61,7 +61,7 @@ func getRegions(client *gophercloud.ProviderClient) ([]osregions.Region, error) 
 	return regions, nil
 }
 
-func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string) (*osavailabilityzones.AvailabilityZone, error) {
+func getAvailabilityZones(client *gophercloud.ProviderClient, region string) ([]osavailabilityzones.AvailabilityZone, error) {
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {
 		return nil, err
@@ -71,7 +71,11 @@ func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string
 	if err != nil {
 		return nil, err
 	}
-	zones, err := osavailabilityzones.ExtractAvailabilityZones(allPages)
+	return osavailabilityzones.ExtractAvailabilityZones(allPages)
+}
+
+func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string) (*osavailabilityzones.AvailabilityZone, error) {
+	zones, err := getAvailabilityZones(client, region)
 	if err != nil {
 		return nil, err
 	}
