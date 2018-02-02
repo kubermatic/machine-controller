@@ -152,6 +152,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
+	var subnetsFromDefaultedNetwork []string
 	if c.Network == "" {
 		glog.V(4).Infof("Trying to default network...")
 		networks, err := getNetworks(client, c.Region)
@@ -163,6 +164,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			changed = true
 			c.Network = networks[0].Name
 			c.NetworkID = networks[0].ID
+			subnetsFromDefaultedNetwork = networks[0].Subnets
 		} else {
 			// Networks without subnets can't be used, try finding a default by excluding them
 			var candidates []osnetworks.Network
@@ -175,6 +177,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 					changed = true
 					c.Network = candidates[0].Name
 					c.NetworkID = candidates[0].ID
+					subnetsFromDefaultedNetwork = candidates[0].Subnets
 				}
 			}
 		}
@@ -182,23 +185,31 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 	if c.Subnet == "" {
 		glog.V(4).Infof("Trying to default subnet...")
-		var subnets []ossubnets.Subnet
-		var err error
-		if c.NetworkID != "" {
-			subnets, err = getSubnets(client, c.Region, c.NetworkID)
-			if err != nil {
-				return spec, changed, fmt.Errorf("Failed to get subnets for network with ID '%s': '%v'", c.NetworkID, err)
-			}
-		} else {
-			subnets, err = getSubnetsForNamedNetwork(client, c.Region, c.Network)
-			if err != nil {
-				return spec, changed, fmt.Errorf("Failed to get Subnets for Network '%s': '%v'", c.Network, err)
-			}
-		}
-		if len(subnets) == 1 {
-			glog.V(4).Infof("Defaulted subnet to '%s'", subnets[0].Name)
+		// The point of the redundant condition is to ensure no further defaulting
+		// happens in case subnetsFromDefaultedNetwork > 1
+		if len(subnetsFromDefaultedNetwork) > 0 && len(subnetsFromDefaultedNetwork) == 1 {
+			glog.V(4).Infof("Defaulted subnet to '%s'", subnetsFromDefaultedNetwork[0])
 			changed = true
-			c.Subnet = subnets[0].Name
+			c.Subnet = subnetsFromDefaultedNetwork[0]
+		} else {
+			var subnets []ossubnets.Subnet
+			var err error
+			if c.NetworkID != "" {
+				subnets, err = getSubnets(client, c.Region, c.NetworkID)
+				if err != nil {
+					return spec, changed, fmt.Errorf("Failed to get subnets for network with ID '%s': '%v'", c.NetworkID, err)
+				}
+			} else {
+				subnets, err = getSubnetsForNamedNetwork(client, c.Region, c.Network)
+				if err != nil {
+					return spec, changed, fmt.Errorf("Failed to get Subnets for Network '%s': '%v'", c.Network, err)
+				}
+			}
+			if len(subnets) == 1 {
+				glog.V(4).Infof("Defaulted subnet to '%s'", subnets[0].Name)
+				changed = true
+				c.Subnet = subnets[0].Name
+			}
 		}
 	}
 

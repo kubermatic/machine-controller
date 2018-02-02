@@ -200,14 +200,14 @@ func getNetworks(client *gophercloud.ProviderClient, region string) ([]osnetwork
 	return allNetworks, nil
 }
 
-func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnetworks.Network, error) {
+func getNetwork(client *gophercloud.ProviderClient, region, nameOrID string) (*osnetworks.Network, error) {
 	allNetworks, err := getNetworks(client, region)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, n := range allNetworks {
-		if n.Name == name {
+		if n.Name == nameOrID || n.ID == nameOrID {
 			return &n, nil
 		}
 	}
@@ -241,13 +241,13 @@ func getSubnets(client *gophercloud.ProviderClient, region, networkID string) ([
 	return allSubnets, nil
 }
 
-func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubnets.Subnet, error) {
+func getSubnet(client *gophercloud.ProviderClient, region, nameOrID string) (*ossubnets.Subnet, error) {
 	allSubnets, err := getSubnets(client, region, "")
 	if err != nil {
 		return nil, err
 	}
 	for _, s := range allSubnets {
-		if s.Name == name {
+		if s.Name == nameOrID || s.ID == nameOrID {
 			return &s, nil
 		}
 	}
