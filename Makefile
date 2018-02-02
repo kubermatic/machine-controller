@@ -8,7 +8,7 @@ IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 vendor:
 	dep ensure -vendor-only
 
-machine-controller: cmd pkg vendor
+machine-controller: $(shell find cmd pkg -name '*.go') Gopkg.lock Gopkg.toml
 		@docker run --rm \
 			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
 			-w /go/src/github.com/kubermatic/machine-controller \
@@ -18,7 +18,7 @@ machine-controller: cmd pkg vendor
 				-o machine-controller \
 				cmd/controller/main.go
 
-docker-image:
+docker-image: machine-controller
 	docker build -t $(IMAGE_NAME) .
 
 push: docker-image
