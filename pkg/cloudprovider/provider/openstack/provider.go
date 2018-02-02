@@ -12,7 +12,6 @@ import (
 	"github.com/fatih/structs"
 	"github.com/golang/glog"
 	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
@@ -108,7 +107,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		TokenID:          c.TokenID,
 	}
 
-	return openstack.AuthenticatedClient(opts)
+	return goopenstack.AuthenticatedClient(opts)
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
