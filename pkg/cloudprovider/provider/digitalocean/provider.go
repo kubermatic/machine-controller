@@ -36,7 +36,7 @@ func New(privateKey *machinessh.PrivateKey) cloud.Provider {
 	return &provider{privateKey: privateKey}
 }
 
-type config struct {
+type Config struct {
 	Token             string   `json:"token"`
 	Region            string   `json:"region"`
 	Size              string   `json:"size"`
@@ -85,13 +85,13 @@ func getClient(token string) *godo.Client {
 	return godo.NewClient(oauthClient)
 }
 
-func getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) {
+func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	c := config{}
+	c := Config{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
 	return &c, &pconfig, err
 }

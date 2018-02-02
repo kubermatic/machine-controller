@@ -19,7 +19,7 @@ import (
 
 type Provider struct{}
 
-type config struct {
+type Config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
 
@@ -27,8 +27,8 @@ var (
 	NoInstallCandidateAvailableErr = errors.New("no install candidate available for the desired version")
 )
 
-func getConfig(r runtime.RawExtension) (*config, error) {
-	p := config{}
+func getConfig(r runtime.RawExtension) (*Config, error) {
+	p := Config{}
 	if len(r.Raw) == 0 {
 		return &p, nil
 	}
@@ -98,7 +98,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	data := struct {
 		MachineSpec         machinesv1alpha1.MachineSpec
 		ProviderConfig      *providerconfig.Config
-		OSConfig            *config
+		OSConfig            *Config
 		Kubeconfig          string
 		CloudProvider       string
 		CloudConfig         string

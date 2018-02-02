@@ -33,7 +33,7 @@ func TestProvider_UserData(t *testing.T) {
 		spec           machinesv1alpha1.MachineSpec
 		kubeconfig     string
 		ccProvider     cloud.ConfigProvider
-		osConfig       *config
+		osConfig       *Config
 		providerConfig *providerconfig.Config
 		DNSIPs         []net.IP
 		resErr         error
@@ -59,7 +59,7 @@ func TestProvider_UserData(t *testing.T) {
 			kubeconfig: "kubeconfig",
 			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10")},
 			resErr:     nil,
-			osConfig:   &config{DistUpgradeOnBoot: true},
+			osConfig:   &Config{DistUpgradeOnBoot: true},
 			userdata:   docker12DistupgradeAWS,
 		},
 		{
@@ -82,7 +82,7 @@ func TestProvider_UserData(t *testing.T) {
 			kubeconfig: "kubeconfig",
 			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10")},
 			resErr:     nil,
-			osConfig:   &config{DistUpgradeOnBoot: false},
+			osConfig:   &Config{DistUpgradeOnBoot: false},
 			userdata:   CRIO19Digitalocean,
 		},
 		{
@@ -105,7 +105,7 @@ func TestProvider_UserData(t *testing.T) {
 			kubeconfig: "kubeconfig",
 			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			resErr:     nil,
-			osConfig:   &config{DistUpgradeOnBoot: true},
+			osConfig:   &Config{DistUpgradeOnBoot: true},
 			userdata:   docker1703DistupgradeOpenstackMultipleDNS,
 		},
 		{
@@ -128,7 +128,7 @@ func TestProvider_UserData(t *testing.T) {
 			kubeconfig: "kubeconfig",
 			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10")},
 			resErr:     nil,
-			osConfig:   &config{DistUpgradeOnBoot: true},
+			osConfig:   &Config{DistUpgradeOnBoot: true},
 			userdata:   docker1703DistupgradeOpenstack,
 		},
 	}
