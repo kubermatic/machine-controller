@@ -122,7 +122,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			changed = true
 			c.Region = regions[0].ID
 		} else {
-			glog.V(4).Infof("Could not defaut region because got '%s' results!", len(regions))
+			glog.V(4).Infof("Could not defaut region because got '%v' results!", len(regions))
 		}
 	}
 	spec.ProviderConfig, err = setConfig(c)

@@ -48,7 +48,7 @@ func getRegions(client *gophercloud.ProviderClient) ([]osregions.Region, error) 
 	}
 
 	listOpts := osregions.ListOpts{
-		ParentRegionID: "RegionOne",
+		ParentRegionID: "",
 	}
 	allPages, err := osregions.List(idClient, listOpts).AllPages()
 	if err != nil {
