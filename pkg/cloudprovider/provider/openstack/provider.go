@@ -18,6 +18,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
+	ossubnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudproviererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -50,6 +51,7 @@ type Config struct {
 	Flavor           string   `json:"flavor"`
 	SecurityGroups   []string `json:"securityGroups"`
 	Network          string   `json:"network"`
+	NetworkID        string   `json:"networkID"`
 	Subnet           string   `json:"subnet"`
 	FloatingIPPool   string   `json:"floatingIpPool"`
 	AvailabilityZone string   `json:"availabilityZone"`
@@ -160,14 +162,24 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			glog.V(4).Infof("Defaulted network to '%s'", networks[0].Name)
 			changed = true
 			c.Network = networks[0].Name
+			c.NetworkID = networks[0].ID
 		}
 	}
 
 	if c.Subnet == "" {
 		glog.V(4).Infof("Trying to default subnet...")
-		subnets, err := getSubnetsForNamedNetwork(client, c.Region, c.Network)
-		if err != nil {
-			return spec, changed, fmt.Errorf("Failed to get Subnets for Network '%s': '%v'", c.Network, err)
+		var subnets []ossubnets.Subnet
+		var err error
+		if c.NetworkID != "" {
+			subnets, err = getSubnets(client, c.Region, c.NetworkID)
+			if err != nil {
+				return spec, changed, fmt.Errorf("Failed to get subnets for network with ID '%s': '%v'", c.NetworkID, err)
+			}
+		} else {
+			subnets, err = getSubnetsForNamedNetwork(client, c.Region, c.Network)
+			if err != nil {
+				return spec, changed, fmt.Errorf("Failed to get Subnets for Network '%s': '%v'", c.Network, err)
+			}
 		}
 		if len(subnets) == 1 {
 			glog.V(4).Infof("Defaulted subnet to '%s'", subnets[0].Name)
