@@ -17,6 +17,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
+	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	ossubnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -162,6 +163,20 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			changed = true
 			c.Network = networks[0].Name
 			c.NetworkID = networks[0].ID
+		} else {
+			// Networks without subnets can't be used, try finding a default by excluding them
+			var candidates []osnetworks.Network
+			for _, network := range networks {
+				if len(network.Subnets) > 0 {
+					candidates = append(candidates, network)
+				}
+				if len(candidates) == 1 {
+					glog.V(4).Infof("Defaulted network to '%s'", networks[0].Name)
+					changed = true
+					c.Network = candidates[0].Name
+					c.NetworkID = candidates[0].ID
+				}
+			}
 		}
 	}
 
