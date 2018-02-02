@@ -209,7 +209,7 @@ write_files:
       chmod +x /opt/bin/kubelet
     fi
     if [ ! -f /opt/cni/bin/bridge ]; then
-      curl -L -o /opt/cni.tgz https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz
+      curl -L -o /opt/cni.tgz https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz
       mkdir -p /opt/cni/bin/
       tar -xzf /opt/cni.tgz -C /opt/cni/bin/
     fi
@@ -379,7 +379,7 @@ write_files:
       chmod +x /opt/bin/kubelet
     fi
     if [ ! -f /opt/cni/bin/bridge ]; then
-      curl -L -o /opt/cni.tgz https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz
+      curl -L -o /opt/cni.tgz https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz
       mkdir -p /opt/cni/bin/
       tar -xzf /opt/cni.tgz -C /opt/cni/bin/
     fi
@@ -494,7 +494,7 @@ write_files:
       chmod +x /opt/bin/kubelet
     fi
     if [ ! -f /opt/cni/bin/bridge ]; then
-      curl -L -o /opt/cni.tgz https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz
+      curl -L -o /opt/cni.tgz https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz
       mkdir -p /opt/cni/bin/
       tar -xzf /opt/cni.tgz -C /opt/cni/bin/
     fi
@@ -665,7 +665,7 @@ write_files:
       chmod +x /opt/bin/kubelet
     fi
     if [ ! -f /opt/cni/bin/bridge ]; then
-      curl -L -o /opt/cni.tgz https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz
+      curl -L -o /opt/cni.tgz https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz
       mkdir -p /opt/cni/bin/
       tar -xzf /opt/cni.tgz -C /opt/cni/bin/
     fi
