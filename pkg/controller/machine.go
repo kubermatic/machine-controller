@@ -90,10 +90,7 @@ type MetricsCollection struct {
 	Nodes               metrics.Gauge
 	Workers             metrics.Gauge
 	Errors              metrics.Counter
-	CloudCreateDuration metrics.Histogram
-	CloudDeleteDuration metrics.Histogram
-	CloudGetDuration    metrics.Histogram
-	ValidateDuration    metrics.Histogram
+	ControllerOperation metrics.Histogram
 	NodeJoinDuration    metrics.Histogram
 }
 
@@ -217,25 +214,25 @@ func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason
 
 func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) (instance.Instance, error) {
 	start := time.Now()
-	defer c.metrics.CloudGetDuration.Observe(time.Now().Sub(start).Seconds())
+	defer c.metrics.ControllerOperation.With("operation", "get").Observe(time.Since(start).Seconds())
 	return prov.Get(machine)
 }
 
 func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
 	start := time.Now()
-	defer c.metrics.CloudDeleteDuration.Observe(time.Now().Sub(start).Seconds())
+	defer c.metrics.ControllerOperation.With("operation", "delete").Observe(time.Since(start).Seconds())
 	return prov.Delete(machine)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
 	start := time.Now()
-	defer c.metrics.CloudCreateDuration.Observe(time.Now().Sub(start).Seconds())
+	defer c.metrics.ControllerOperation.With("operation", "create").Observe(time.Since(start).Seconds())
 	return prov.Create(machine, userdata)
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
 	start := time.Now()
-	defer c.metrics.ValidateDuration.Observe(time.Now().Sub(start).Seconds())
+	defer c.metrics.ControllerOperation.With("operation", "validate").Observe(time.Since(start).Seconds())
 	return prov.Validate(machine.Spec)
 }
 

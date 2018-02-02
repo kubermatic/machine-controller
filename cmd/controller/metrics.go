@@ -13,10 +13,7 @@ type MachineControllerMetrics struct {
 	Nodes               metrics.Gauge
 	Workers             metrics.Gauge
 	Errors              metrics.Counter
-	CloudCreateDuration metrics.Histogram
-	CloudDeleteDuration metrics.Histogram
-	CloudGetDuration    metrics.Histogram
-	ValidateDuration    metrics.Histogram
+	ControllerOperation metrics.Histogram
 	NodeJoinDuration    metrics.Histogram
 }
 
@@ -51,30 +48,12 @@ func NewMachineControllerMetrics() *MachineControllerMetrics {
 			Name:      "errors_total",
 			Help:      "The total number or unexpected errors the controller encountered",
 		}, []string{}),
-		CloudCreateDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
+		ControllerOperation: prometheus.NewHistogramFrom(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "cloud_create_duration_seconds",
-			Help:      "The time it takes to create an instance on the cloud provider",
-		}, []string{}),
-		CloudDeleteDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			Name:      "cloud_delete_duration_seconds",
-			Help:      "The time it takes to delete an instance on the cloud provider",
-		}, []string{}),
-		CloudGetDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			Name:      "cloud_get_duration_seconds",
-			Help:      "The time it takes to get an instance from the cloud provider",
-		}, []string{}),
-		ValidateDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			Name:      "validate_duration_seconds",
-			Help:      "The time it takes to validate a machine",
-		}, []string{}),
+			Name:      "controller_operation_duration_seconds",
+			Help:      "The duration it takes to execute an operation",
+		}, []string{"operation"}),
 		NodeJoinDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,

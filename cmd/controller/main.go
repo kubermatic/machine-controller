@@ -107,10 +107,7 @@ func main() {
 		Workers:             metrics.Workers,
 		Errors:              metrics.Errors,
 		Nodes:               metrics.Nodes,
-		CloudCreateDuration: metrics.CloudCreateDuration,
-		CloudDeleteDuration: metrics.CloudDeleteDuration,
-		CloudGetDuration:    metrics.CloudGetDuration,
-		ValidateDuration:    metrics.ValidateDuration,
+		ControllerOperation: metrics.ControllerOperation,
 		NodeJoinDuration:    metrics.NodeJoinDuration,
 	}
 
