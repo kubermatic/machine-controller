@@ -177,7 +177,7 @@ func getSecurityGroup(client *gophercloud.ProviderClient, region, name string) (
 	return nil, errNotFound
 }
 
-func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnetworks.Network, error) {
+func getNetworks(client *gophercloud.ProviderClient, region string) ([]osnetworks.Network, error) {
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {
 		return nil, err
@@ -193,6 +193,15 @@ func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnet
 		allNetworks = append(allNetworks, networks...)
 		return true, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return allNetworks, nil
+}
+
+func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnetworks.Network, error) {
+	allNetworks, err := getNetworks(client, region)
 	if err != nil {
 		return nil, err
 	}

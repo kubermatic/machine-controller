@@ -149,6 +149,20 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			c.AvailabilityZone = availabilityZones[0].ZoneName
 		}
 	}
+
+	if c.Network == "" {
+		glog.V(4).Infof("Trying to default network...")
+		networks, err := getNetworks(client, c.Region)
+		if err != nil {
+			return spec, changed, fmt.Errorf("Failed to retrieve networks: '%v'", err)
+		}
+		if len(networks) == 1 {
+			glog.V(4).Infof("Defaulted network to '%s'", networks[0].Name)
+			changed = true
+			c.Network = networks[0].Name
+		}
+	}
+
 	spec, err = setProviderConfig(c, spec)
 	if err != nil {
 		return spec, changed, fmt.Errorf("Error marshaling providerconfig: '%v'", err)
