@@ -281,8 +281,8 @@ func (c *Controller) syncHandler(key string) error {
 				glog.V(4).Infof("Successfully updated machine with defaults!")
 			}
 			if err = prov.Validate(machine.Spec); err != nil {
-				if machine, err = c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
-					return fmt.Errorf("failed to update machine error after failed validation: %v", err)
+				if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
+					return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
 				}
 				return fmt.Errorf("invalid provider config: %v", err)
 			}

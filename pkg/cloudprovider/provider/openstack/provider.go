@@ -163,6 +163,19 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
+	if c.Subnet == "" {
+		glog.V(4).Infof("Trying to default subnet...")
+		subnets, err := getSubnetsForNamedNetwork(client, c.Region, c.Network)
+		if err != nil {
+			return spec, changed, fmt.Errorf("Failed to get Subnets for Network '%s': '%v'", c.Network, err)
+		}
+		if len(subnets) == 1 {
+			glog.V(4).Infof("Defaulted subnet to '%s'", subnets[0].Name)
+			changed = true
+			c.Subnet = subnets[0].Name
+		}
+	}
+
 	spec, err = setProviderConfig(c, spec)
 	if err != nil {
 		return spec, changed, fmt.Errorf("Error marshaling providerconfig: '%v'", err)

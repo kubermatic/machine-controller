@@ -215,14 +215,18 @@ func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnet
 	return nil, errNotFound
 }
 
-func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubnets.Subnet, error) {
+func getSubnets(client *gophercloud.ProviderClient, region, networkID string) ([]ossubnets.Subnet, error) {
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {
 		return nil, err
 	}
 
+	listOpts := ossubnets.ListOpts{}
+	if networkID != "" {
+		listOpts = ossubnets.ListOpts{NetworkID: networkID}
+	}
 	var allSubnets []ossubnets.Subnet
-	pager := ossubnets.List(netClient, ossubnets.ListOpts{})
+	pager := ossubnets.List(netClient, listOpts)
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		subnets, err := ossubnets.ExtractSubnets(page)
 		if err != nil {
@@ -234,7 +238,14 @@ func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubn
 	if err != nil {
 		return nil, err
 	}
+	return allSubnets, nil
+}
 
+func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubnets.Subnet, error) {
+	allSubnets, err := getSubnets(client, region, "")
+	if err != nil {
+		return nil, err
+	}
 	for _, s := range allSubnets {
 		if s.Name == name {
 			return &s, nil
@@ -242,6 +253,14 @@ func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubn
 	}
 
 	return nil, errNotFound
+}
+
+func getSubnetsForNamedNetwork(client *gophercloud.ProviderClient, region, networkName string) ([]ossubnets.Subnet, error) {
+	network, err := getNetwork(client, region, networkName)
+	if err != nil {
+		return nil, err
+	}
+	return getSubnets(client, region, network.ID)
 }
 
 func ensureSSHKeysExist(client *gophercloud.ProviderClient, region string, key *machinessh.PrivateKey) (string, error) {
