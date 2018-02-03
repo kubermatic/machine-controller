@@ -167,9 +167,17 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			subnetsFromDefaultedNetwork = networks[0].Subnets
 		} else {
 			// Networks without subnets can't be used, try finding a default by excluding them
+			// However the network object itself still contains the subnet, the only difference
+			// is that the subnet can not be retrieved by itself
 			var candidates []osnetworks.Network
 			for _, network := range networks {
-				if len(network.Subnets) > 0 {
+				for _, subnet := range network.Subnets {
+					_, err := getSubnet(client, c.Region, subnet)
+					if err == errNotFound {
+						continue
+					} else if err != nil {
+						return spec, changed, fmt.Errorf("Failed to retrieve subnet: '%v'", err)
+					}
 					candidates = append(candidates, network)
 				}
 				if len(candidates) == 1 {
