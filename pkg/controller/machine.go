@@ -294,8 +294,8 @@ func (c *Controller) syncHandler(key string) error {
 
 			providerInstance, err = c.createProviderInstance(machine, prov, providerConfig, userdataProvider)
 			if err != nil {
-				if machine, err = c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); err != nil {
-					return fmt.Errorf("failed to update machine error after failed machine creation: %v", err)
+				if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); errNested != nil {
+					return fmt.Errorf("failed to update machine error after failed machine creation: %v", errNested)
 				}
 				return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
 			}
