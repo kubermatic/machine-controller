@@ -170,6 +170,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			// However the network object itself still contains the subnet, the only difference
 			// is that the subnet can not be retrieved by itself
 			var candidates []osnetworks.Network
+		NetworkLoop:
 			for _, network := range networks {
 				for _, subnet := range network.Subnets {
 					_, err := getSubnet(client, c.Region, subnet)
@@ -179,14 +180,15 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 						return spec, changed, fmt.Errorf("Failed to retrieve subnet: '%v'", err)
 					}
 					candidates = append(candidates, network)
+					continue NetworkLoop
 				}
-				if len(candidates) == 1 {
-					glog.V(4).Infof("Defaulted network to '%s'", networks[0].Name)
-					changed = true
-					c.Network = candidates[0].Name
-					c.NetworkID = candidates[0].ID
-					subnetsFromDefaultedNetwork = candidates[0].Subnets
-				}
+			}
+			if len(candidates) == 1 {
+				glog.V(4).Infof("Defaulted network to '%s'", networks[0].Name)
+				changed = true
+				c.Network = candidates[0].Name
+				c.NetworkID = candidates[0].ID
+				subnetsFromDefaultedNetwork = candidates[0].Subnets
 			}
 		}
 	}
