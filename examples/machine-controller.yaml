@@ -52,7 +52,7 @@ spec:
             - -logtostderr
             - -v=8
             - -cluster-dns=10.10.10.10
-            - -internal-listen-address=0.0.0.0:8086
+            - -internal-listen-address=0.0.0.0:8085
           livenessProbe:
             httpGet:
               path: /live
