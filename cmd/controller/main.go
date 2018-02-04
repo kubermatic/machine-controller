@@ -47,8 +47,7 @@ var (
 	sshKeyName          string
 	clusterDNSIPs       string
 	healthListenAddress string
-	prometheusAddr      string
-	prometheusPath      string
+	listenAddress       string
 	workerCount         int
 )
 
@@ -59,8 +58,7 @@ func main() {
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
 	flag.StringVar(&healthListenAddress, "health-listen-address", "127.0.0.1:8086", "Listen address for the readiness/liveness http server. The endpoints are /live /ready")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
-	flag.StringVar(&prometheusAddr, "prometheus-address", "127.0.0.1:8085", "The Address on which the prometheus handler should be exposed")
-	flag.StringVar(&prometheusPath, "prometheus-path", "/metrics", "The path on the host, on which the handler is available")
+	flag.StringVar(&listenAddress, "listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposed metrics  on /metrics, liveness check on /live and readiness check on /ready")
 
 	flag.Parse()
 
@@ -130,9 +128,7 @@ func main() {
 	for name, c := range c.ReadinessChecks() {
 		health.AddReadinessCheck(name, c)
 	}
-	go http.ListenAndServe(healthListenAddress, health)
-
-	go serveMetrics()
+	go serveUtilHttpServer(health)
 
 	if err = c.Run(workerCount, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %v", err)
@@ -152,14 +148,16 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 	return ips, nil
 }
 
-func serveMetrics() {
+func serveUtilHttpServer(health healthcheck.Handler) {
 	m := http.NewServeMux()
-	m.Handle(prometheusPath, promhttp.Handler())
+	m.Handle("/metrics", promhttp.Handler())
+	m.Handle("/live", http.HandlerFunc(health.LiveEndpoint))
+	m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
 
 	s := http.Server{
-		Addr:    prometheusAddr,
+		Addr:    listenAddress,
 		Handler: m,
 	}
-	glog.V(4).Infof("exposing metrics on %s%s", prometheusAddr, prometheusPath)
-	glog.Fatalf("prometheus http server died: %v", s.ListenAndServe())
+	glog.V(4).Infof("serving util http server on %s", listenAddress)
+	glog.Fatalf("util http server died: %v", s.ListenAndServe())
 }
