@@ -195,13 +195,11 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 	if c.Subnet == "" {
 		glog.V(4).Infof("Trying to default subnet...")
-		// The point of the redundant condition is to ensure no further defaulting
-		// happens in case subnetsFromDefaultedNetwork > 1
-		if len(subnetsFromDefaultedNetwork) > 0 && len(subnetsFromDefaultedNetwork) == 1 {
+		if len(subnetsFromDefaultedNetwork) == 1 {
 			glog.V(4).Infof("Defaulted subnet to '%s'", subnetsFromDefaultedNetwork[0])
 			changed = true
 			c.Subnet = subnetsFromDefaultedNetwork[0]
-		} else {
+		} else if len(subnetsFromDefaultedNetwork) < 1 {
 			var subnets []ossubnets.Subnet
 			var err error
 			if c.NetworkID != "" {
