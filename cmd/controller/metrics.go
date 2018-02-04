@@ -28,7 +28,7 @@ func NewMachineControllerMetrics() *MachineControllerMetrics {
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "machines",
-			Help:      "The number of currently managed machines",
+			Help:      "The number of machines",
 		}, []string{}),
 		Workers: prometheus.NewGaugeFrom(prom.GaugeOpts{
 			Namespace: namespace,
