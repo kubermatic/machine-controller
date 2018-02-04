@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -34,6 +35,8 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/kubermatic/machine-controller/pkg/ssh"
+	"github.com/oklog/run"
+	"github.com/pkg/errors"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -59,66 +62,93 @@ func main() {
 
 	flag.Parse()
 
-	ips, err := parseClusterDNSIPs(clusterDNSIPs)
-	if err != nil {
-		glog.Fatalf("invalid cluster dns specified: %v", err)
+	healthchecks := healthcheck.NewHandler()
+
+	var g run.Group
+	{
+		s := http.Server{
+			Addr:    healthListenAddress,
+			Handler: healthchecks,
+		}
+
+		g.Add(func() error {
+			return s.ListenAndServe()
+		}, func(err error) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			s.Shutdown(ctx)
+		})
 	}
+	{
+		ips, err := parseClusterDNSIPs(clusterDNSIPs)
+		if err != nil {
+			glog.Fatalf("invalid cluster dns specified: %v", err)
+		}
 
-	// set up signals so we handle the first shutdown signal gracefully
-	stopCh := signals.SetupSignalHandler()
+		cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+		if err != nil {
+			glog.Fatalf("Error building kubeconfig: %v", err)
+		}
 
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-	if err != nil {
-		glog.Fatalf("Error building kubeconfig: %v", err)
-	}
+		kubeClient, err := kubernetes.NewForConfig(cfg)
+		if err != nil {
+			glog.Fatalf("Error building kubernetes clientset: %v", err)
+		}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("Error building kubernetes clientset: %v", err)
-	}
+		extclient := apiextclient.NewForConfigOrDie(cfg)
+		err = machines.EnsureCustomResourceDefinitions(extclient)
+		if err != nil {
+			glog.Fatalf("failed to create CustomResourceDefinition: %v", err)
+		}
 
-	extclient := apiextclient.NewForConfigOrDie(cfg)
-	err = machines.EnsureCustomResourceDefinitions(extclient)
-	if err != nil {
-		glog.Fatalf("failed to create CustomResourceDefinition: %v", err)
-	}
+		machineClient, err := machineclientset.NewForConfig(cfg)
+		if err != nil {
+			glog.Fatalf("Error building example clientset: %v", err)
+		}
 
-	machineClient, err := machineclientset.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("Error building example clientset: %v", err)
-	}
+		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+		machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
+		key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
+		if err != nil {
+			glog.Fatalf("failed to get/create ssh key configmap: %v", err)
+		}
 
-	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
-	if err != nil {
-		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
-	}
+		c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key, ips)
 
-	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key, ips)
+		// set up signals so we handle the first shutdown signal gracefully
+		stopCh := signals.SetupSignalHandler()
 
-	go kubeInformerFactory.Start(stopCh)
-	go machineInformerFactory.Start(stopCh)
+		go kubeInformerFactory.Start(stopCh)
+		go machineInformerFactory.Start(stopCh)
 
-	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
-		for key, synced := range syncsMap {
-			if !synced {
-				glog.Fatalf("unable to sync %s", key)
+		for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
+			for key, synced := range syncsMap {
+				if !synced {
+					glog.Fatalf("unable to sync %s", key)
+				}
 			}
 		}
+
+		healthchecks.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
+		healthchecks.AddReadinessCheck("custom-resource-definitions-exist", machinehealth.CustomResourceDefinitionsEstablished(extclient))
+		for name, c := range c.ReadinessChecks() {
+			healthchecks.AddReadinessCheck(name, c)
+		}
+
+		g.Add(func() error {
+			if err := c.Run(workerCount, stopCh); err != nil {
+				return errors.Wrap(err, "running controller failed")
+			}
+			return nil
+		}, func(err error) {
+			stopCh <- struct{}{}
+		})
 	}
 
-	health := healthcheck.NewHandler()
-	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
-	health.AddReadinessCheck("custom-resource-definitions-exist", machinehealth.CustomResourceDefinitionsEstablished(extclient))
-	for name, c := range c.ReadinessChecks() {
-		health.AddReadinessCheck(name, c)
-	}
-	go http.ListenAndServe(healthListenAddress, health)
-
-	if err = c.Run(workerCount, stopCh); err != nil {
-		glog.Fatalf("Error running controller: %v", err)
+	if err := g.Run(); err != nil {
+		glog.Fatal(err)
 	}
 }
 
