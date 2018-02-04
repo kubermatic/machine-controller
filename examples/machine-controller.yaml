@@ -36,6 +36,10 @@ spec:
       app: machine-controller
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: true
+        prometheus.io/port: 8085
+        prometheus.io/path: /metrics
       labels:
         app: machine-controller
     spec:
@@ -48,7 +52,7 @@ spec:
             - -logtostderr
             - -v=8
             - -cluster-dns=10.10.10.10
-            - -health-listen-address=0.0.0.0:8086
+            - -listen-address=0.0.0.0:8086
           livenessProbe:
             httpGet:
               path: /live
