@@ -42,13 +42,12 @@ import (
 )
 
 var (
-	masterURL           string
-	kubeconfig          string
-	sshKeyName          string
-	clusterDNSIPs       string
-	healthListenAddress string
-	listenAddress       string
-	workerCount         int
+	masterURL     string
+	kubeconfig    string
+	sshKeyName    string
+	clusterDNSIPs string
+	listenAddress string
+	workerCount   int
 )
 
 func main() {
@@ -56,7 +55,6 @@ func main() {
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&sshKeyName, "ssh-key-name", "machine-controller", "The name of the private key. This name will be used when a public key will be created at the cloud provider.")
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
-	flag.StringVar(&healthListenAddress, "health-listen-address", "127.0.0.1:8086", "Listen address for the readiness/liveness http server. The endpoints are /live /ready")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposed metrics  on /metrics, liveness check on /live and readiness check on /ready")
 
