@@ -23,12 +23,14 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/go-kit/kit/metrics"
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	"github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
@@ -39,7 +41,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/ssh"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,6 +60,11 @@ import (
 
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
+
+	metricsUpdatePeriod     = 10 * time.Second
+	deletionRetryWaitPeriod = 1 * time.Second
+
+	machineKind = "Machine"
 )
 
 // Controller is the controller implementation for Foo resources
@@ -74,6 +80,18 @@ type Controller struct {
 
 	sshPrivateKey *ssh.PrivateKey
 	clusterDNSIPs []net.IP
+	metrics       MetricsCollection
+}
+
+// MetricsCollection is a struct of all metrics used in
+// this controller.
+type MetricsCollection struct {
+	Machines            metrics.Gauge
+	Nodes               metrics.Gauge
+	Workers             metrics.Gauge
+	Errors              metrics.Counter
+	ControllerOperation metrics.Histogram
+	NodeJoinDuration    metrics.Histogram
 }
 
 // NewMachineController returns a new machine controller
@@ -83,7 +101,8 @@ func NewMachineController(
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	machineInformerFactory externalversions.SharedInformerFactory,
 	sshKeypair *ssh.PrivateKey,
-	clusterDNSIPs []net.IP) *Controller {
+	clusterDNSIPs []net.IP,
+	metrics MetricsCollection) *Controller {
 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	configMapInformer := kubeInformerFactory.Core().V1().ConfigMaps()
@@ -101,6 +120,7 @@ func NewMachineController(
 
 		sshPrivateKey: sshKeypair,
 		clusterDNSIPs: clusterDNSIPs,
+		metrics:       metrics,
 	}
 
 	machineInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -123,6 +143,10 @@ func NewMachineController(
 		DeleteFunc: controller.handleObject,
 	})
 
+	utilruntime.ErrorHandlers = append(utilruntime.ErrorHandlers, func(err error) {
+		controller.metrics.Errors.Add(1)
+	})
+
 	return controller
 }
 
@@ -134,6 +158,9 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
+
+	c.metrics.Workers.Set(float64(threadiness))
+	go wait.Until(c.updateMetrics, metricsUpdatePeriod, stopCh)
 
 	<-stopCh
 	return nil
@@ -185,11 +212,36 @@ func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason
 	return machine, nil
 }
 
+func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) (instance.Instance, error) {
+	start := time.Now()
+	defer c.metrics.ControllerOperation.With("operation", "get-cloud-instance").Observe(time.Since(start).Seconds())
+	return prov.Get(machine)
+}
+
+func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
+	start := time.Now()
+	defer c.metrics.ControllerOperation.With("operation", "delete-cloud-instance").Observe(time.Since(start).Seconds())
+	return prov.Delete(machine)
+}
+
+func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
+	start := time.Now()
+	defer c.metrics.ControllerOperation.With("operation", "create-cloud-instance").Observe(time.Since(start).Seconds())
+	return prov.Create(machine, userdata)
+}
+
+func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
+	start := time.Now()
+	defer c.metrics.ControllerOperation.With("operation", "validate-machine").Observe(time.Since(start).Seconds())
+	return prov.Validate(machine.Spec)
+}
+
 func (c *Controller) syncHandler(key string) error {
+	var providerInstance instance.Instance
 	listerMachine, err := c.machinesLister.Get(key)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			runtime.HandleError(fmt.Errorf("machine '%s' in work queue no longer exists", key))
+			glog.V(2).Infof("machine '%s' in work queue no longer exists", key)
 			return nil
 		}
 		return err
@@ -207,7 +259,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// Delete machine
 	if machine.DeletionTimestamp != nil && sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
-		if err := prov.Delete(machine); err != nil {
+		if c.deleteProviderInstance(prov, machine); err != nil {
 			if machine, err = c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, err.Error()); err != nil {
 				return fmt.Errorf("failed to update machine error after failed delete: %v", err)
 			}
@@ -215,11 +267,12 @@ func (c *Controller) syncHandler(key string) error {
 		}
 
 		//Check that the instance has really gone
-		i, err := prov.Get(machine)
-		if err == nil {
-			return fmt.Errorf("instance %s is not deleted yet", i.ID())
+		if providerInstance, err = c.getProviderInstance(prov, machine); err == nil {
+			glog.V(2).Infof("instance %s of machine %s is not deleted yet", providerInstance.ID(), machine.Name)
+			c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
+			return nil
 		} else if err != cloudprovidererrors.ErrInstanceNotFound {
-			return fmt.Errorf("failed to check instance %s after the delete got triggered", i.ID())
+			return fmt.Errorf("failed to get instance for machine %s after the delete got triggered", machine.Name)
 		}
 
 		glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
@@ -261,10 +314,9 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf("failed to default the container runtime version: %v", err)
 	}
 
-	providerInstance, err := prov.Get(machine)
-	if err != nil {
+	if providerInstance, err = prov.Get(machine); err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			if err := prov.Validate(machine.Spec); err != nil {
+			if err := c.validateMachine(prov, machine); err != nil {
 				if machine, err = c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
 					return fmt.Errorf("failed to update machine error after failed validation: %v", err)
 				}
@@ -276,8 +328,18 @@ func (c *Controller) syncHandler(key string) error {
 			}
 			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
-			providerInstance, err = c.createProviderInstance(machine, prov, providerConfig, userdataProvider)
+			kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
 			if err != nil {
+				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
+			}
+
+			data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
+			if err != nil {
+				return fmt.Errorf("failed get userdata: %v", err)
+			}
+
+			glog.Infof("creating instance...")
+			if providerInstance, err = c.createProviderInstance(prov, machine, data); err != nil {
 				if machine, err = c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); err != nil {
 					return fmt.Errorf("failed to update machine error after failed machine creation: %v", err)
 				}
@@ -302,12 +364,13 @@ func (c *Controller) syncHandler(key string) error {
 		ownerRef := metav1.GetControllerOf(node)
 		if ownerRef == nil {
 			gv := machinev1alpha1.SchemeGroupVersion
-			node.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machine, gv.WithKind("Machine"))}
+			node.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machine, gv.WithKind(machineKind))}
 			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
 			if err != nil {
 				return fmt.Errorf("failed to update node %s after adding the owner ref: %v", node.Name, err)
 			}
-			glog.V(4).Infof("Added owner ref to node %s (machine %s)", node.Name, machine.Name)
+			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
+			c.metrics.NodeJoinDuration.Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
@@ -514,21 +577,6 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 	return machine, nil
 }
 
-func (c *Controller) createProviderInstance(machine *machinev1alpha1.Machine, prov cloud.Provider, providerConfig *providerconfig.Config, userdataProvider userdata.Provider) (instance.Instance, error) {
-	kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
-	}
-
-	data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
-	if err != nil {
-		return nil, fmt.Errorf("failed get userdata: %v", err)
-	}
-
-	glog.Infof("creating instance...")
-	return prov.Create(machine, data)
-}
-
 func (c *Controller) enqueueMachine(obj interface{}) {
 	var key string
 	var err error
@@ -555,7 +603,7 @@ func (c *Controller) handleObject(obj interface{}) {
 		}
 		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
-	glog.V(6).Infof("Processing object: %s", object.GetName())
+
 	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
 		if ownerRef.Kind != "Machine" {
 			return
@@ -566,6 +614,7 @@ func (c *Controller) handleObject(obj interface{}) {
 			return
 		}
 
+		glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), machine.Name)
 		c.enqueueMachine(machine)
 		return
 	}
@@ -598,4 +647,35 @@ func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 			return nil
 		},
 	}
+}
+
+func (c *Controller) updateMachinesMetric() {
+	machines, err := c.machinesLister.List(labels.Everything())
+	if err != nil {
+		glog.Errorf("failed to list machines for machines metric: %v", err)
+		return
+	}
+	c.metrics.Machines.Set(float64(len(machines)))
+}
+
+func (c *Controller) updateNodesMetric() {
+	nodes, err := c.nodesLister.List(labels.Everything())
+	if err != nil {
+		glog.Errorf("failed to list nodes for machine nodes metric: %v", err)
+		return
+	}
+
+	machineNodes := 0
+	for _, n := range nodes {
+		ownerRef := metav1.GetControllerOf(n)
+		if ownerRef != nil && ownerRef.Kind == machineKind {
+			machineNodes++
+		}
+	}
+	c.metrics.Nodes.Set(float64(machineNodes))
+}
+
+func (c *Controller) updateMetrics() {
+	c.updateMachinesMetric()
+	c.updateNodesMetric()
 }
