@@ -41,7 +41,27 @@ func getRegion(client *gophercloud.ProviderClient, id string) (*osregions.Region
 	return osregions.Get(idClient, id).Extract()
 }
 
-func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string) (*osavailabilityzones.AvailabilityZone, error) {
+func getRegions(client *gophercloud.ProviderClient) ([]osregions.Region, error) {
+	idClient, err := goopenstack.NewIdentityV3(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic})
+	if err != nil {
+		return nil, err
+	}
+
+	listOpts := osregions.ListOpts{
+		ParentRegionID: "",
+	}
+	allPages, err := osregions.List(idClient, listOpts).AllPages()
+	if err != nil {
+		return nil, err
+	}
+	regions, err := osregions.ExtractRegions(allPages)
+	if err != nil {
+		return nil, err
+	}
+	return regions, nil
+}
+
+func getAvailabilityZones(client *gophercloud.ProviderClient, region string) ([]osavailabilityzones.AvailabilityZone, error) {
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {
 		return nil, err
@@ -51,7 +71,11 @@ func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string
 	if err != nil {
 		return nil, err
 	}
-	zones, err := osavailabilityzones.ExtractAvailabilityZones(allPages)
+	return osavailabilityzones.ExtractAvailabilityZones(allPages)
+}
+
+func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string) (*osavailabilityzones.AvailabilityZone, error) {
+	zones, err := getAvailabilityZones(client, region)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +177,7 @@ func getSecurityGroup(client *gophercloud.ProviderClient, region, name string) (
 	return nil, errNotFound
 }
 
-func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnetworks.Network, error) {
+func getNetworks(client *gophercloud.ProviderClient, region string) ([]osnetworks.Network, error) {
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {
 		return nil, err
@@ -173,8 +197,17 @@ func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnet
 		return nil, err
 	}
 
+	return allNetworks, nil
+}
+
+func getNetwork(client *gophercloud.ProviderClient, region, nameOrID string) (*osnetworks.Network, error) {
+	allNetworks, err := getNetworks(client, region)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, n := range allNetworks {
-		if n.Name == name {
+		if n.Name == nameOrID || n.ID == nameOrID {
 			return &n, nil
 		}
 	}
@@ -182,14 +215,18 @@ func getNetwork(client *gophercloud.ProviderClient, region, name string) (*osnet
 	return nil, errNotFound
 }
 
-func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubnets.Subnet, error) {
+func getSubnets(client *gophercloud.ProviderClient, region, networkID string) ([]ossubnets.Subnet, error) {
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: region})
 	if err != nil {
 		return nil, err
 	}
 
+	listOpts := ossubnets.ListOpts{}
+	if networkID != "" {
+		listOpts = ossubnets.ListOpts{NetworkID: networkID}
+	}
 	var allSubnets []ossubnets.Subnet
-	pager := ossubnets.List(netClient, ossubnets.ListOpts{})
+	pager := ossubnets.List(netClient, listOpts)
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		subnets, err := ossubnets.ExtractSubnets(page)
 		if err != nil {
@@ -201,9 +238,16 @@ func getSubnet(client *gophercloud.ProviderClient, region, name string) (*ossubn
 	if err != nil {
 		return nil, err
 	}
+	return allSubnets, nil
+}
 
+func getSubnet(client *gophercloud.ProviderClient, region, nameOrID string) (*ossubnets.Subnet, error) {
+	allSubnets, err := getSubnets(client, region, "")
+	if err != nil {
+		return nil, err
+	}
 	for _, s := range allSubnets {
-		if s.Name == name {
+		if s.Name == nameOrID || s.ID == nameOrID {
 			return &s, nil
 		}
 	}
@@ -362,4 +406,54 @@ func getInstancePort(client *gophercloud.ProviderClient, region, instanceID, net
 	}
 
 	return nil, errNotFound
+}
+
+func getDefaultNetwork(client *gophercloud.ProviderClient, region string) (*osnetworks.Network, error) {
+	networks, err := getNetworks(client, region)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve networks: '%v'", err)
+	}
+	if len(networks) == 1 {
+		return &networks[0], nil
+	} else {
+		// Networks without subnets can't be used, try finding a default by excluding them
+		// However the network object itself still contains the subnet, the only difference
+		// is that the subnet can not be retrieved by itself
+		var candidates []osnetworks.Network
+	NetworkLoop:
+		for _, network := range networks {
+			for _, subnet := range network.Subnets {
+				_, err := getSubnet(client, region, subnet)
+				if err == errNotFound {
+					continue
+				} else if err != nil {
+					return nil, fmt.Errorf("failed to retrieve subnet: '%v'", err)
+				}
+				candidates = append(candidates, network)
+				continue NetworkLoop
+			}
+		}
+		if len(candidates) == 1 {
+			return &candidates[0], nil
+		}
+	}
+
+	return nil, nil
+}
+
+func getDefaultSubnet(client *gophercloud.ProviderClient, network *osnetworks.Network, region string) (*string, error) {
+	if len(network.Subnets) == 0 {
+		return nil, nil
+	} else if len(network.Subnets) == 1 {
+		return &network.Subnets[0], nil
+	} else {
+		subnets, err := getSubnets(client, region, network.ID)
+		if err != nil {
+			return nil, err
+		}
+		if len(subnets) == 1 {
+			return &subnets[0].ID, nil
+		}
+	}
+	return nil, nil
 }

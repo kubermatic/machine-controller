@@ -21,11 +21,16 @@ spec:
       flavor: "m1.small"
       securityGroups:
         - "external-ssh"
-      subnet: "subnet"
+      # The machine won't get a floating ip if you leave this empty
       floatingIpPool: "ext-net"
-      availabilityZone: "<< YOUR_OS_AZ >>"
-      region: "<< YOUR_OS_REGION >>"
-      network: "network"
+      # Only required if there is more than one AZ to choose from
+      availabilityZone: ""
+      # Only required if there is more than one region to choose from
+      region: ""
+      # Only required if there is more than one network available
+      network: ""
+      # Only required if the network has more than one subnet
+      subnet: ""
     operatingSystem: "ubuntu"
     operatingSystemSpec:
       distUpgradeOnBoot: true
