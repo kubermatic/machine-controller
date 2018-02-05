@@ -14,7 +14,7 @@
 # Features
 ## What works
 - Kubernetes v1.8.5 and v1.9.0
-- Creation of worker nodes on AWS, Digitalocean and Openstack
+- Creation of worker nodes on AWS, Digitalocean, Openstack and Hetzner cloud
 - Using Ubuntu & Coreos ContainerLinux distributions
 - Using Ubuntu with [CRI-O](https://github.com/kubernetes-incubator/cri-o) container runtime instead of Docker
 

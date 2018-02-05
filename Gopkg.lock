@@ -301,6 +301,15 @@
   revision = "da5fdee475fb09de87c5d4a50da233b7d28767b1"
 
 [[projects]]
+  name = "github.com/hetznercloud/hcloud-go"
+  packages = [
+    "hcloud",
+    "hcloud/schema"
+  ]
+  revision = "8ba5ecb6e802d98c3b7a65f755a240cbe79bebea"
+  version = "v1.3.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/howeyc/gopass"
   packages = ["."]
@@ -802,6 +811,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "50ce49bfc63362d1f70e00807204909230906cca96734b383381502d31028e76"
+  inputs-digest = "99b88cc9f284243e931f4d5374cfc648bb00b04d8a0a864c11216b8a7637e718"
   solver-name = "gps-cdcl"
   solver-version = 1
