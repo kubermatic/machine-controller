@@ -59,14 +59,15 @@ jobs:
           go/src/github.com/kubermatic/machine-controller &&
           sudo mkdir -p /go/src/github.com/kubermatic/machine-controller && sudo chmod 777 -R
           /go/src/github.com/kubermatic/machine-controller &&
-          sudo chown -R circleci:circleci /go/src/github.com/kubermatic/machine-controller
+          sudo chown -R circleci:circleci /go/src/github.com/kubermatic/machine-controller &&
+          cd /go/src/github.com/kubermatic/machine-controller
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - run: cd /go/src/github.com/kubermatic/machine-controller && make docker-image
+      - run: make docker-image
 
 workflows:
   version: 2
