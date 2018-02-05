@@ -12,7 +12,7 @@ spec:
     cloudProviderSpec:
       token: "<<DO_TOKEN>>"
       region: "fra1"
-      size: "2gb"
+      size: "512mb"
       backups: false
       ipv6: false
       private_networking: true
