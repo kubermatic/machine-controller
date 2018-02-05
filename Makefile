@@ -1,3 +1,5 @@
+SHELL = /bin/bash
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
