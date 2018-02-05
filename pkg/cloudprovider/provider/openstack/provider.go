@@ -11,12 +11,12 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
+	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudproviererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -77,6 +77,25 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	return &c, &pconfig, err
 }
 
+func setProviderConfig(c *Config, s runtime.RawExtension) (runtime.RawExtension, error) {
+	pconfig := providerconfig.Config{}
+	err := json.Unmarshal(s.Raw, &pconfig)
+	if err != nil {
+		return s, err
+	}
+	rawCloudProviderSpec, err := json.Marshal(c)
+	if err != nil {
+		return s, err
+	}
+	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
+	rawPconfig, err := json.Marshal(pconfig)
+	if err != nil {
+		return s, err
+	}
+
+	return runtime.RawExtension{Raw: rawPconfig}, nil
+}
+
 func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: c.IdentityEndpoint,
@@ -87,7 +106,90 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		TokenID:          c.TokenID,
 	}
 
-	return openstack.AuthenticatedClient(opts)
+	return goopenstack.AuthenticatedClient(opts)
+}
+
+func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
+	var changed bool
+
+	c, _, err := getConfig(spec.ProviderConfig)
+	if err != nil {
+		return spec, changed, fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	client, err := getClient(c)
+	if err != nil {
+		return spec, changed, fmt.Errorf("failed to get a openstack client: %v", err)
+	}
+
+	if c.Region == "" {
+		glog.V(4).Infof("Trying to default region for machine '%s'...", spec.Name)
+		regions, err := getRegions(client)
+		if err != nil {
+			return spec, changed, fmt.Errorf("failed to get regions: %s", err)
+		}
+		if len(regions) == 1 {
+			glog.V(4).Infof("Defaulted region for machine '%s' to '%s'", spec.Name, regions[0].ID)
+			changed = true
+			c.Region = regions[0].ID
+		} else {
+			return spec, changed, fmt.Errorf("could not default region because got '%v' results!", len(regions))
+		}
+	}
+
+	if c.AvailabilityZone == "" {
+		glog.V(4).Infof("Trying to default availability zone for machine '%s'...", spec.Name)
+		availabilityZones, err := getAvailabilityZones(client, c.Region)
+		if err != nil {
+			return spec, changed, fmt.Errorf("failed to get availability zones: '%v'", err)
+		}
+		if len(availabilityZones) == 1 {
+			glog.V(4).Infof("Defaulted availability zone for machine '%s' to '%s'", spec.Name, availabilityZones[0].ZoneName)
+			changed = true
+			c.AvailabilityZone = availabilityZones[0].ZoneName
+		}
+	}
+
+	// Define the network var here to be able to re-use
+	// it when the network got defaulted
+	var net *osnetworks.Network
+	if c.Network == "" {
+		glog.V(4).Infof("Trying to default network for machine '%s'...", spec.Name)
+		net, err = getDefaultNetwork(client, c.Region)
+		if err != nil {
+			return spec, changed, fmt.Errorf("failed to default network: '%v'", err)
+		}
+		if net != nil {
+			glog.V(4).Infof("Defaulted network for machine '%s' to '%s'", spec.Name, net.Name)
+			// Use the id as the name may not be unique
+			c.Network = net.ID
+			changed = true
+		}
+	}
+
+	if c.Subnet == "" {
+		if c.Network != "" && net == nil {
+			net, err = getNetwork(client, c.Region, c.Network)
+			if err != nil {
+				return spec, changed, fmt.Errorf("failed to get network '%s': '%v'", c.Network, err)
+			}
+		}
+		subnet, err := getDefaultSubnet(client, net, c.Region)
+		if err != nil {
+			return spec, changed, fmt.Errorf("error defaulting subnet: '%v'", err)
+		}
+		if subnet != nil {
+			glog.V(4).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
+			c.Subnet = *subnet
+			changed = true
+		}
+	}
+
+	spec.ProviderConfig, err = setProviderConfig(c, spec.ProviderConfig)
+	if err != nil {
+		return spec, changed, fmt.Errorf("error marshaling providerconfig: '%v'", err)
+	}
+	return spec, changed, nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {

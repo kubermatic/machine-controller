@@ -192,12 +192,16 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
+func (c *Controller) updateMachine(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
+	machine.Status.LastUpdated = metav1.Now()
+	return c.machineClient.MachineV1alpha1().Machines().Update(machine)
+}
+
 func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError) (*machinev1alpha1.Machine, error) {
 	if machine.Status.ErrorReason != nil && *machine.Status.ErrorReason == reason {
 		machine.Status.ErrorMessage = nil
 		machine.Status.ErrorReason = nil
-		machine.Status.LastUpdated = metav1.Now()
-		return c.machineClient.MachineV1alpha1().Machines().Update(machine)
+		return c.updateMachine(machine)
 	}
 	return machine, nil
 }
@@ -206,8 +210,7 @@ func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason
 	if machine.Status.ErrorReason == nil || *machine.Status.ErrorReason == reason {
 		machine.Status.ErrorMessage = &message
 		machine.Status.ErrorReason = &reason
-		machine.Status.LastUpdated = metav1.Now()
-		return c.machineClient.MachineV1alpha1().Machines().Update(machine)
+		return c.updateMachine(machine)
 	}
 	return machine, nil
 }
@@ -280,7 +283,7 @@ func (c *Controller) syncHandler(key string) error {
 		finalizers := sets.NewString(machine.Finalizers...)
 		finalizers.Delete(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
@@ -300,7 +303,7 @@ func (c *Controller) syncHandler(key string) error {
 		finalizers := sets.NewString(machine.Finalizers...)
 		finalizers.Insert(finalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
 		}
 		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
@@ -316,9 +319,21 @@ func (c *Controller) syncHandler(key string) error {
 
 	if providerInstance, err = prov.Get(machine); err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
+			defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
+			if err != nil {
+				return fmt.Errorf("failed to add defaults to machine: '%v'", err)
+			}
+			if changed {
+				glog.V(4).Infof("Updating machine '%s' with defaults...", machine.Name)
+				machine.Spec = defaultedMachineSpec
+				if machine, err = c.updateMachine(machine); err != nil {
+					return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
+				}
+				glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
+			}
 			if err := c.validateMachine(prov, machine); err != nil {
-				if machine, err = c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); err != nil {
-					return fmt.Errorf("failed to update machine error after failed validation: %v", err)
+				if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
+					return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
 				}
 				return fmt.Errorf("invalid provider config: %v", err)
 			}
@@ -340,8 +355,8 @@ func (c *Controller) syncHandler(key string) error {
 
 			glog.Infof("creating instance...")
 			if providerInstance, err = c.createProviderInstance(prov, machine, data); err != nil {
-				if machine, err = c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); err != nil {
-					return fmt.Errorf("failed to update machine error after failed machine creation: %v", err)
+				if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); errNested != nil {
+					return fmt.Errorf("failed to update machine error after failed machine creation: %v", errNested)
 				}
 				return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
 			}
@@ -486,8 +501,7 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 	}
 
 	if updated {
-		machine.Status.LastUpdated = metav1.Now()
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine: %v", err)
 		}
 	}
@@ -532,7 +546,7 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 	var err error
 	if machine.Spec.Versions.ContainerRuntime.Name == "" {
 		machine.Spec.Versions.ContainerRuntime.Name = containerruntime.Docker
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return nil, err
 		}
 	}
@@ -569,7 +583,7 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 		if machine.Spec.Versions.ContainerRuntime.Version == "" {
 			return nil, fmt.Errorf("no supported versions available for '%s'", machine.Spec.Versions.ContainerRuntime.Name)
 		}
-		if machine, err = c.machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		if machine, err = c.updateMachine(machine); err != nil {
 			return nil, err
 		}
 	}
