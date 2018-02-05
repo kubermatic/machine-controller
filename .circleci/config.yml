@@ -52,7 +52,9 @@ jobs:
 
   publish:
     machine: true
+    working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
+      run: echo $PWD && mkdir testfolder && ls -l
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
