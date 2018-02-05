@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/fatih/structs"
 	"github.com/golang/glog"
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
@@ -80,22 +79,23 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	return &c, &pconfig, err
 }
 
-func setProviderConfig(config *Config, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	var providerConfig map[string]interface{}
-	err := json.Unmarshal(spec.ProviderConfig.Raw, &providerConfig)
+func setProviderConfig(c *Config, s runtime.RawExtension) (runtime.RawExtension, error) {
+	pconfig := providerconfig.Config{}
+	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
-		return spec, err
+		return s, err
 	}
-	if _, ok := providerConfig["cloudProviderSpec"]; ok {
-		providerConfig["cloudProviderSpec"] = structs.Map(config)
-	}
-	rawProviderConfig, err := json.Marshal(providerConfig)
+	rawCloudProviderSpec, err := json.Marshal(c)
 	if err != nil {
-		return spec, err
+		return s, err
+	}
+	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
+	rawPconfig, err := json.Marshal(pconfig)
+	if err != nil {
+		return s, err
 	}
 
-	spec.ProviderConfig = runtime.RawExtension{Raw: rawProviderConfig}
-	return spec, nil
+	return runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
 func getClient(c *Config) (*gophercloud.ProviderClient, error) {
@@ -221,7 +221,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
-	spec, err = setProviderConfig(c, spec)
+	spec.ProviderConfig, err = setProviderConfig(c, spec.ProviderConfig)
 	if err != nil {
 		return spec, changed, fmt.Errorf("Error marshaling providerconfig: '%v'", err)
 	}
