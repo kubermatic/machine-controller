@@ -53,7 +53,9 @@ jobs:
   publish:
     machine: true
     steps:
-      - run: echo $PWD >/dev/stderr && mkdir ~/testfolder && ls -l ~ >/dev/stderr
+      - run: >
+          echo $PWD >/dev/stderr && mkdir ~/testfolder && ls -l ~ >/dev/stderr && sudo mkdir
+          /go/src/github.com/kubermatic/machine-controller -p
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
