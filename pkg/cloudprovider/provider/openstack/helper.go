@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/golang/glog"
+
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osavailabilityzones "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
@@ -414,4 +416,76 @@ func getInstancePort(client *gophercloud.ProviderClient, region, instanceID, net
 	}
 
 	return nil, errNotFound
+}
+
+func defaultNetworkSettings(client *gophercloud.ProviderClient, c *Config, name string) (Config, bool, error) {
+	var subnetsFromDefaultedNetwork []string
+	var changed bool
+	networks, err := getNetworks(client, c.Region)
+	if err != nil {
+		return *c, changed, fmt.Errorf("failed to retrieve networks: '%v'", err)
+	}
+	if len(networks) == 1 {
+		glog.V(4).Infof("Defaulted network for machine '%s' to '%s'", name, networks[0].Name)
+		changed = true
+		c.Network = networks[0].Name
+		c.NetworkID = networks[0].ID
+		subnetsFromDefaultedNetwork = networks[0].Subnets
+	} else {
+		// Networks without subnets can't be used, try finding a default by excluding them
+		// However the network object itself still contains the subnet, the only difference
+		// is that the subnet can not be retrieved by itself
+		var candidates []osnetworks.Network
+	NetworkLoop:
+		for _, network := range networks {
+			for _, subnet := range network.Subnets {
+				_, err := getSubnet(client, c.Region, subnet)
+				if err == errNotFound {
+					continue
+				} else if err != nil {
+					return *c, changed, fmt.Errorf("failed to retrieve subnet: '%v'", err)
+				}
+				candidates = append(candidates, network)
+				continue NetworkLoop
+			}
+		}
+		if len(candidates) == 1 {
+			glog.V(4).Infof("Defaulted network for machine '%s' to '%s'", name, networks[0].Name)
+			changed = true
+			c.Network = candidates[0].Name
+			c.NetworkID = candidates[0].ID
+			subnetsFromDefaultedNetwork = candidates[0].Subnets
+		}
+	}
+
+	if c.Subnet == "" {
+		glog.V(4).Infof("Trying to default subnet for machine '%s'...", name)
+		if len(subnetsFromDefaultedNetwork) == 1 {
+			glog.V(4).Infof("Defaulted subnet for machine '%s' to '%s'", name, subnetsFromDefaultedNetwork[0])
+			changed = true
+			c.Subnet = subnetsFromDefaultedNetwork[0]
+		} else if len(subnetsFromDefaultedNetwork) < 1 {
+			var subnets []ossubnets.Subnet
+			var err error
+			if c.NetworkID != "" {
+				subnets, err = getSubnets(client, c.Region, c.NetworkID)
+				if err != nil {
+					return *c, changed, fmt.Errorf("failed to get subnets for network with ID '%s': '%v'", c.NetworkID, err)
+				}
+			} else {
+				subnets, err = getSubnetsForNamedNetwork(client, c.Region, c.Network)
+				if err != nil {
+					return *c, changed, fmt.Errorf("failed to get Subnets for Network '%s': '%v'", c.Network, err)
+				}
+			}
+			if len(subnets) == 1 {
+				glog.V(4).Infof("Defaulted subnet for machine '%s' to '%s'", name, subnets[0].Name)
+				changed = true
+				c.Subnet = subnets[0].Name
+			}
+		}
+	}
+
+	return *c, changed, nil
+
 }
