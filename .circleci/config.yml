@@ -48,17 +48,16 @@ jobs:
       - save_cache:
           key: machine-controller-{{ .Revision }}
           paths:
-            - /go/src/github.com/kubermatic/machine-controller/machine-controller
+            - machine-controller
 
   publish:
     machine: true
     working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
-      - run: >
-          sudo mkdir -p /go/src/github.com/kubermatic/machine-controller &&
-          sudo chmod 777 /go/src/github.com/kubermatic/machine-controller
       - restore_cache:
           key: machine-controller-{{ .Revision }}
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: make docker-image
 
 workflows:
