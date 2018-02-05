@@ -267,13 +267,13 @@ func (c *Controller) syncHandler(key string) error {
 	providerInstance, err := prov.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			defaultedMachine, changed, err := prov.AddDefaults(machine.Spec)
+			defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
 			if err != nil {
 				return fmt.Errorf("failed to add defaults to machine: '%v'", err)
 			}
 			if changed {
 				glog.V(4).Infof("Updating machine '%s' with defaults...", machine.Name)
-				machine.Spec = defaultedMachine
+				machine.Spec = defaultedMachineSpec
 				machine, err = c.updateMachine(machine)
 				if err != nil {
 					return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
