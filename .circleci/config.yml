@@ -55,7 +55,8 @@ jobs:
     steps:
       - run: >
           echo $PWD >/dev/stderr && mkdir ~/testfolder && ls -l ~ >/dev/stderr && sudo mkdir
-          /go/src/github.com/kubermatic/machine-controller -p
+          go/src/github.com/kubermatic/machine-controller -p && sudo chmod 777
+          go/src/github.com/kubermatic/machine-controller
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
