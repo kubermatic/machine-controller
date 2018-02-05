@@ -154,6 +154,16 @@
   version = "v1.32.0"
 
 [[projects]]
+  name = "github.com/go-kit/kit"
+  packages = [
+    "metrics",
+    "metrics/internal/lv",
+    "metrics/prometheus"
+  ]
+  revision = "4dc7be5d2d12881735283bcab7352178e190fc71"
+  version = "v0.6.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/go-openapi/jsonpointer"
   packages = ["."]
@@ -361,7 +371,10 @@
 
 [[projects]]
   name = "github.com/prometheus/client_golang"
-  packages = ["prometheus"]
+  packages = [
+    "prometheus",
+    "prometheus/promhttp"
+  ]
   revision = "c5b7fccd204277076155f10851dad72b76a49317"
   version = "v0.8.0"
 
@@ -789,6 +802,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9a6c5b326af0b14454df5922b187e76512826bf74dd05a719cc28556190eb2d8"
+  inputs-digest = "50ce49bfc63362d1f70e00807204909230906cca96734b383381502d31028e76"
   solver-name = "gps-cdcl"
   solver-version = 1
