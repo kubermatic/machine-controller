@@ -52,7 +52,6 @@ jobs:
 
   publish:
     machine: true
-    working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
       - run: echo $PWD >/dev/stderr && mkdir ~/testfolder && ls -l ~ >/dev/stderr
       - restore_cache:
