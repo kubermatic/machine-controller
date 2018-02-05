@@ -54,7 +54,7 @@ jobs:
     machine: true
     working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
-      - run: sudo mkdir -p go/src/github.com/kubermatic/machine-controller/machine-controller
+      - run: whoami && sudo whoami && sudo mkdir -p go/src/github.com/kubermatic/machine-controller/machine-controller
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
