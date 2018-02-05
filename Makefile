@@ -19,6 +19,9 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 				github.com/kubermatic/machine-controller/cmd/controller
 
 docker-image: machine-controller
+	make docker-image-nodep
+
+docker-image-nodep:
 	docker build -t $(IMAGE_NAME) .
 	if git describe --tags $(shell git rev-parse HEAD)|grep -v -- '-g'; then \
 		$(eval IMAGE_TAG = $(shell git describe --abbrev=0 --tags)) \
