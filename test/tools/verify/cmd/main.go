@@ -112,11 +112,12 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		return false, nil
 	})
 	if err != nil {
-		// TODO(lukasz) grab the machine's State and put it into the logs"
-		return fmt.Errorf("falied to created the new machine, err = %v", err)
+		status := getMachineStatusAsString(machine.Name, machineClient)
+		return fmt.Errorf("falied to created the new machine, err = %v, machine Status = %v", err, status)
 	}
 
 	fmt.Printf("waiting for status = %s to come \n", v1.NodeReady)
+	nodeName := ""
 	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
 		nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
@@ -127,6 +128,9 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		if len(nodes.Items) != 1 {
 			return false, fmt.Errorf("expected to get only one node but got = %d", len(nodes.Items))
 		}
+		if len(nodeName) == 0 {
+			nodeName = nodes.Items[0].Name
+		}
 		for _, condition := range nodes.Items[0].Status.Conditions {
 			if condition.Type == v1.NodeReady && condition.Status == v1.ConditionTrue {
 				return true, nil
@@ -135,8 +139,8 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		return false, nil
 	})
 	if err != nil {
-		// TODO(lukasz) grab the machine's State and put it into the logs"
-		return fmt.Errorf("falied to created the new machine, err = %v", err)
+		status := getNodeStatusAsString(nodeName, kubeClient)
+		return fmt.Errorf("falied to created the new machine, err = %v, node Status %v", err, status)
 	}
 	return nil
 }
@@ -189,6 +193,35 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	}
 
 	return content, nil
+}
+
+func getMachineStatusAsString(machineName string, machineClient machineclientset.Interface) string {
+	statusMessage := ""
+
+	machine, err := machineClient.MachineV1alpha1().Machines().Get(machineName, metav1.GetOptions{})
+	if err == nil {
+		if machine.Status.ErrorReason != nil {
+			statusMessage = fmt.Sprintf("ErrorReason = %s", machine.Status.ErrorReason)
+		}
+		if machine.Status.ErrorMessage != nil {
+			statusMessage = fmt.Sprintf("%s ErrorMessage", statusMessage, machine.Status.ErrorMessage)
+		}
+	}
+
+	return strings.Trim(statusMessage, " ")
+}
+
+func getNodeStatusAsString(nodeName string, kubeClient kubernetes.Interface) string {
+	statusMessage := ""
+
+	node, err := kubeClient.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	if err == nil {
+		for _, condition := range node.Status.Conditions {
+			statusMessage = fmt.Sprintf("%s %s = %s", statusMessage, condition.Type, condition.Reason)
+		}
+	}
+
+	return strings.Trim(statusMessage, " ")
 }
 
 func printAndDie(msg string) {
