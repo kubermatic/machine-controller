@@ -122,7 +122,6 @@ func main() {
 
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
-	health.AddReadinessCheck("custom-resource-definitions-exist", machinehealth.CustomResourceDefinitionsEstablished(extclient))
 	for name, c := range c.ReadinessChecks() {
 		health.AddReadinessCheck(name, c)
 	}
