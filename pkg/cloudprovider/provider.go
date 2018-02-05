@@ -6,6 +6,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
@@ -19,6 +20,7 @@ var (
 		providerconfig.CloudProviderDigitalocean: func(key *machinessh.PrivateKey) cloud.Provider { return digitalocean.New(key) },
 		providerconfig.CloudProviderAWS:          func(key *machinessh.PrivateKey) cloud.Provider { return aws.New(key) },
 		providerconfig.CloudProviderOpenstack:    func(key *machinessh.PrivateKey) cloud.Provider { return openstack.New(key) },
+		providerconfig.CloudProviderHetzner:      func(key *machinessh.PrivateKey) cloud.Provider { return hetzner.New(key) },
 	}
 )
 
