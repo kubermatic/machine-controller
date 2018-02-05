@@ -274,8 +274,7 @@ func (c *Controller) syncHandler(key string) error {
 			if changed {
 				glog.V(4).Infof("Updating machine '%s' with defaults...", machine.Name)
 				machine.Spec = defaultedMachineSpec
-				machine, err = c.updateMachine(machine)
-				if err != nil {
+				if machine, err = c.updateMachine(machine); err != nil {
 					return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
 				}
 				glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
