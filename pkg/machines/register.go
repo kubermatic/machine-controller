@@ -36,17 +36,6 @@ func EnsureCustomResourceDefinitions(clientset apiextensionsclient.Interface) er
 	return nil
 }
 
-func AllCustomResourceDefinitionsExists(clientset apiextensionsclient.Interface) (bool, error) {
-	for _, res := range resourceNames {
-		name := res.plural + "." + v1alpha1.GroupName
-		exists, err := CustomResourceDefinitionExists(name, clientset)
-		if err != nil || !exists {
-			return false, err
-		}
-	}
-	return true, nil
-}
-
 func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.Interface) (bool, error) {
 	crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
 	if err != nil {
