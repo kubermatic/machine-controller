@@ -128,14 +128,14 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		glog.V(4).Infof("Trying to default region...")
 		regions, err := getRegions(client)
 		if err != nil {
-			return spec, changed, fmt.Errorf("Failed to get regions: %s", err)
+			return spec, changed, fmt.Errorf("failed to get regions: %s", err)
 		}
 		if len(regions) == 1 {
 			glog.V(4).Infof("Defaulted region to '%s'", regions[0].ID)
 			changed = true
 			c.Region = regions[0].ID
 		} else {
-			return spec, changed, fmt.Errorf("Could not default region because got '%v' results!", len(regions))
+			return spec, changed, fmt.Errorf("could not default region because got '%v' results!", len(regions))
 		}
 	}
 
@@ -143,7 +143,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		glog.V(4).Infof("Trying to default availability zone...")
 		availabilityZones, err := getAvailabilityZones(client, c.Region)
 		if err != nil {
-			return spec, changed, fmt.Errorf("Failed to get availability zones: '%v'", err)
+			return spec, changed, fmt.Errorf("failed to get availability zones: '%v'", err)
 		}
 		if len(availabilityZones) == 1 {
 			glog.V(4).Infof("Defaulted availability Zone to '%s'", availabilityZones[0].ZoneName)
@@ -157,7 +157,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		glog.V(4).Infof("Trying to default network...")
 		networks, err := getNetworks(client, c.Region)
 		if err != nil {
-			return spec, changed, fmt.Errorf("Failed to retrieve networks: '%v'", err)
+			return spec, changed, fmt.Errorf("failed to retrieve networks: '%v'", err)
 		}
 		if len(networks) == 1 {
 			glog.V(4).Infof("Defaulted network to '%s'", networks[0].Name)
@@ -177,7 +177,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 					if err == errNotFound {
 						continue
 					} else if err != nil {
-						return spec, changed, fmt.Errorf("Failed to retrieve subnet: '%v'", err)
+						return spec, changed, fmt.Errorf("failed to retrieve subnet: '%v'", err)
 					}
 					candidates = append(candidates, network)
 					continue NetworkLoop
@@ -205,12 +205,12 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			if c.NetworkID != "" {
 				subnets, err = getSubnets(client, c.Region, c.NetworkID)
 				if err != nil {
-					return spec, changed, fmt.Errorf("Failed to get subnets for network with ID '%s': '%v'", c.NetworkID, err)
+					return spec, changed, fmt.Errorf("failed to get subnets for network with ID '%s': '%v'", c.NetworkID, err)
 				}
 			} else {
 				subnets, err = getSubnetsForNamedNetwork(client, c.Region, c.Network)
 				if err != nil {
-					return spec, changed, fmt.Errorf("Failed to get Subnets for Network '%s': '%v'", c.Network, err)
+					return spec, changed, fmt.Errorf("failed to get Subnets for Network '%s': '%v'", c.Network, err)
 				}
 			}
 			if len(subnets) == 1 {
@@ -223,7 +223,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 	spec.ProviderConfig, err = setProviderConfig(c, spec.ProviderConfig)
 	if err != nil {
-		return spec, changed, fmt.Errorf("Error marshaling providerconfig: '%v'", err)
+		return spec, changed, fmt.Errorf("error marshaling providerconfig: '%v'", err)
 	}
 	return spec, changed, nil
 }
