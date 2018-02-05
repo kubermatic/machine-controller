@@ -1,20 +1,21 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+	"time"
+
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	"io/ioutil"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"os"
-	"strings"
-	"time"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 	machineReadyCheckTimeout = 5 * time.Minute
 )
 
+// TODO(lukasz): put the binary under github.com/kubermatic/machine-controller/tree/master/cmd
 func main() {
 	var manifestPath string
 	var parameters string
@@ -62,15 +64,15 @@ func main() {
 	// prepare the manifest
 	manifest, err := readAndModifyManifest(manifestPath, keyValuePairs)
 	if err != nil {
-		printAndDie(fmt.Sprintf("failed to prepare the manifest, due to = %v", err))
+		printAndDie(fmt.Sprintf("failed to prepare the manifest, due to: %v", err))
 	}
 
 	// act
 	err = verify(manifest, kubeClient, machineClient)
 	if err != nil {
-		printAndDie(fmt.Sprintf("failed to verify if a machine/node has been created, reason: \n%v", err))
+		printAndDie(fmt.Sprintf("failed to verify if a machine/node has been created/deleted, due to: \n%v", err))
 	}
-	fmt.Println("all good, successfully verified that a machine/node has been created within the cluster")
+	fmt.Println("all good, successfully verified that a machine/node has been created and then deleted")
 }
 
 func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface) error {
@@ -84,14 +86,22 @@ func verify(manifest string, kubeClient kubernetes.Interface, machineClient mach
 		}
 	}
 
+	err := createAndAssure(newMachine, machineClient, kubeClient)
+	if err != nil {
+		return err
+	}
+	return deleteAndAssure(newMachine, machineClient, kubeClient)
+}
+
+func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
 	// we expect to find no nodes within the cluster
 	err := assureNodeCount(0, kubeClient)
 	if err != nil {
 		return fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
-	fmt.Printf("creating a new \"%s\" machine\n", newMachine.Name)
-	_, err = machineClient.MachineV1alpha1().Machines().Create(newMachine)
+	fmt.Printf("creating a new \"%s\" machine\n", machine.Name)
+	_, err = machineClient.MachineV1alpha1().Machines().Create(machine)
 	if err != nil {
 		return err
 	}
@@ -103,12 +113,57 @@ func verify(manifest string, kubeClient kubernetes.Interface, machineClient mach
 		return false, nil
 	})
 	if err != nil {
-		return fmt.Errorf("falied to created the new machine, err = %v", err)
+		status := getMachineStatusAsString(machine.Name, machineClient)
+		return fmt.Errorf("falied to created the new machine, err = %v, machine Status = %v", err, status)
 	}
 
-	// TODO(lukasz): implement clean-up logic
-	// TODO(lukasz): add dep
-	return errors.New("not fully implemented")
+	fmt.Printf("waiting for status = %s to come \n", v1.NodeReady)
+	nodeName := ""
+	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
+		nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
+		if err != nil {
+			return false, nil
+		}
+		// assertion check - if true then something weird has happened
+		// or someone else is playing with the cluster
+		if len(nodes.Items) != 1 {
+			return false, fmt.Errorf("expected to get only one node but got = %d", len(nodes.Items))
+		}
+		if len(nodeName) == 0 {
+			nodeName = nodes.Items[0].Name
+		}
+		for _, condition := range nodes.Items[0].Status.Conditions {
+			if condition.Type == v1.NodeReady && condition.Status == v1.ConditionTrue {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		status := getNodeStatusAsString(nodeName, kubeClient)
+		return fmt.Errorf("falied to created the new machine, err = %v, node Status %v", err, status)
+	}
+	return nil
+}
+
+func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
+	fmt.Printf("deleting the machine \"%s\"\n", machine.Name)
+	err := machineClient.MachineV1alpha1().Machines().Delete(machine.Name, nil)
+	if err != nil {
+		return fmt.Errorf("unable to remove machine %s, due to %v", machine.Name, err)
+	}
+
+	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
+		err := assureNodeCount(0, kubeClient)
+		if err == nil {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("falied to delete the node, err = %v", err)
+	}
+	return nil
 }
 
 func assureNodeCount(expectedNodeCount int, kubeClient kubernetes.Interface) error {
@@ -139,6 +194,35 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	}
 
 	return content, nil
+}
+
+func getMachineStatusAsString(machineName string, machineClient machineclientset.Interface) string {
+	statusMessage := ""
+
+	machine, err := machineClient.MachineV1alpha1().Machines().Get(machineName, metav1.GetOptions{})
+	if err == nil {
+		if machine.Status.ErrorReason != nil {
+			statusMessage = fmt.Sprintf("ErrorReason = %s", machine.Status.ErrorReason)
+		}
+		if machine.Status.ErrorMessage != nil {
+			statusMessage = fmt.Sprintf("%s ErrorMessage", statusMessage, machine.Status.ErrorMessage)
+		}
+	}
+
+	return strings.Trim(statusMessage, " ")
+}
+
+func getNodeStatusAsString(nodeName string, kubeClient kubernetes.Interface) string {
+	statusMessage := ""
+
+	node, err := kubeClient.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	if err == nil {
+		for _, condition := range node.Status.Conditions {
+			statusMessage = fmt.Sprintf("%s %s = %s", statusMessage, condition.Type, condition.Reason)
+		}
+	}
+
+	return strings.Trim(statusMessage, " ")
 }
 
 func printAndDie(msg string) {
