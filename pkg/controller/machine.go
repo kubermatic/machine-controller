@@ -272,13 +272,13 @@ func (c *Controller) syncHandler(key string) error {
 				return fmt.Errorf("failed to add defaults to machine: '%v'", err)
 			}
 			if changed {
-				glog.V(4).Infof("Updating machine with defaults...")
+				glog.V(4).Infof("Updating machine '%s' with defaults...", machine.Name)
 				machine.Spec = defaultedMachine
 				machine, err = c.updateMachine(machine)
 				if err != nil {
-					return fmt.Errorf("failed to update machine after adding defaults: '%v'", err)
+					return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
 				}
-				glog.V(4).Infof("Successfully updated machine with defaults!")
+				glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
 			}
 			if err = prov.Validate(machine.Spec); err != nil {
 				if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
