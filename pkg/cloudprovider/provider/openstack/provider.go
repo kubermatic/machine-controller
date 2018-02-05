@@ -16,6 +16,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
+	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudproviererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -48,7 +49,6 @@ type Config struct {
 	Flavor           string   `json:"flavor"`
 	SecurityGroups   []string `json:"securityGroups"`
 	Network          string   `json:"network"`
-	NetworkID        string   `json:"networkID"`
 	Subnet           string   `json:"subnet"`
 	FloatingIPPool   string   `json:"floatingIpPool"`
 	AvailabilityZone string   `json:"availabilityZone"`
@@ -150,15 +150,41 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
+	// Define the network var here to be able to re-use
+	// it when the network got defaulted
+	var net *osnetworks.Network
 	if c.Network == "" {
 		glog.V(4).Infof("Trying to default network for machine '%s'...", spec.Name)
-		var networkSettingsChanged bool
-		*c, networkSettingsChanged, err = defaultNetworkSettings(client, c, spec.Name)
+		net, err = getDefaultNetwork(client, c.Region)
 		if err != nil {
-			return spec, changed, fmt.Errorf("error defaulting network for machine '%s': '%v'", spec.Name, err)
+			return spec, changed, fmt.Errorf("failed to default network: '%v'", err)
 		}
-		changed = changed || networkSettingsChanged
+		if net != nil {
+			glog.V(4).Infof("Defaulted network for machine '%s' to '%s'", spec.Name, net.Name)
+			// Use the id as the name may not be unique
+			c.Network = net.ID
+			changed = true
+		}
 	}
+
+	if c.Subnet == "" {
+		if c.Network != "" && net == nil {
+			net, err = getNetwork(client, c.Region, c.Network)
+			if err != nil {
+				return spec, changed, fmt.Errorf("failed to get network '%s': '%v'", c.Network, err)
+			}
+		}
+		subnet, err := getDefaultSubnet(client, net, c.Region)
+		if err != nil {
+			return spec, changed, fmt.Errorf("error defaulting subnet: '%v'", err)
+		}
+		if subnet != nil {
+			glog.V(4).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
+			c.Subnet = *subnet
+			changed = true
+		}
+	}
+
 	spec.ProviderConfig, err = setProviderConfig(c, spec.ProviderConfig)
 	if err != nil {
 		return spec, changed, fmt.Errorf("error marshaling providerconfig: '%v'", err)
