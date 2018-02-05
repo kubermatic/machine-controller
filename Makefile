@@ -5,10 +5,10 @@ IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 
-vendor:
+vendor: Gopkg.lock Gopkg.toml
 	dep ensure -vendor-only
 
-machine-controller: $(shell find cmd pkg -name '*.go') Gopkg.lock Gopkg.toml
+machine-controller: $(shell find cmd pkg -name '*.go') vendor
 		@docker run --rm \
 			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
 			-w /go/src/github.com/kubermatic/machine-controller \
