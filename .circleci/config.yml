@@ -64,7 +64,7 @@ jobs:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - run: make docker-image
+      - run: cd /go/src/github.com/kubermatic/machine-controller && make docker-image
 
 workflows:
   version: 2
