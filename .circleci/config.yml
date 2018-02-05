@@ -45,6 +45,18 @@ jobs:
       - restore_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
       - run: go build -o machine-controller github.com/kubermatic/machine-controller/cmd/controller
+      - save_cache:
+          key: machine-controller-{{ .Revision }}
+          paths:
+            - /go/src/github.com/kubermatic/machine-controller/machine-controller
+
+  publish:
+    machine: true
+    working_directory: /go/src/github.com/kubermatic/machine-controller
+    steps:
+      - restore_cache:
+          key: machine-controller-{{ .Revision }}
+      - run: make docker-image
 
 workflows:
   version: 2
@@ -60,4 +72,6 @@ workflows:
       - build:
           requires:
             - install-dependencies
-
+      - publish:
+          requires:
+            - build

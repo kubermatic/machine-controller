@@ -20,6 +20,13 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 
 docker-image: machine-controller
 	docker build -t $(IMAGE_NAME) .
+	if git describe --tags $(shell git rev-parse HEAD)|grep -v -- '-g'; then \
+		$(eval IMAGE_TAG = $(shell git describe --abbrev=0 --tags)) \
+		docker build -t $(IMAGE_NAME) . && \
+		$(eval IMAGE_TAG = latest) \
+		docker build -t $(IMAGE_NAME) . ;\
+	fi
+
 
 push: docker-image
 	docker push $(IMAGE_NAME)
