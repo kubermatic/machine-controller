@@ -54,7 +54,7 @@ jobs:
     machine: true
     working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
-      - run: echo $PWD && mkdir testfolder && ls -l
+      - run: echo $PWD >/dev/stderr && mkdir ~/testfolder && ls -l ~ >/dev/stderr
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
