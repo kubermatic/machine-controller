@@ -54,6 +54,9 @@ jobs:
     machine: true
     working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
+      - run: >
+          sudo mkdir -p /go/src/github.com/kubermatic/machine-controller &&
+          sudo chmod 777 /go/src/github.com/kubermatic/machine-controller
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - run: make docker-image
