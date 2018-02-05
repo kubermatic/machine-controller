@@ -33,11 +33,10 @@ func New(privateKey *machinessh.PrivateKey) cloud.Provider {
 }
 
 type Config struct {
-	Token              string `json:"token"`
-	ServerType         string `json:"serverType"`
-	Datacenter         string `json:"datacenter"`
-	Location           string `json:"location"`
-	AllocateFloatingIP bool   `json:"allocateFloatingIP"`
+	Token      string `json:"token"`
+	ServerType string `json:"serverType"`
+	Datacenter string `json:"datacenter"`
+	Location   string `json:"location"`
 }
 
 // Protects creation of public key
@@ -196,29 +195,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to create server invalid status code returned. expected=%d got %d", http.StatusCreated, res.StatusCode)
 	}
 
-	if c.AllocateFloatingIP {
-		floatingIPs, err := client.FloatingIP.All(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list floating ips: %v", err)
-		}
-		var freeFips []*hcloud.FloatingIP
-		for _, fip := range floatingIPs {
-			if fip.Server == nil {
-				freeFips = append(freeFips, fip)
-			}
-		}
-		if len(freeFips) == 0 {
-			_, _, err := client.FloatingIP.Create(ctx, hcloud.FloatingIPCreateOpts{
-				Server:       serverCreateRes.Server,
-				Type:         hcloud.FloatingIPTypeIPv4,
-				HomeLocation: serverCreateRes.Server.Datacenter.Location,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to create a floating ip: %v", err)
-			}
-		}
-	}
-
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
@@ -237,18 +213,6 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 			return nil
 		}
 		return err
-	}
-
-	fips, err := client.FloatingIP.All(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list floating ips: %v", err)
-	}
-	for _, fip := range fips {
-		if fip.Server != nil && fip.Server.ID == i.(*hetznerServer).server.ID {
-			if _, err = client.FloatingIP.Delete(ctx, fip); err != nil {
-				return fmt.Errorf("failed to delete floating ip: %v", err)
-			}
-		}
 	}
 
 	res, err := client.Server.Delete(ctx, i.(*hetznerServer).server)
@@ -274,15 +238,12 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	server, res, err := client.Server.Get(ctx, machine.Spec.Name)
+	server, _, err := client.Server.Get(ctx, machine.Spec.Name)
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode != http.StatusNotFound {
+	if server == nil {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
-	}
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("invalid statuscode returned. expected=%d got=%d", http.StatusOK, res.StatusCode)
 	}
 
 	return &hetznerServer{server: server}, nil
