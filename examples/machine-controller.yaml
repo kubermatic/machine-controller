@@ -24,7 +24,7 @@ subjects:
   kind: Group
   name: system:bootstrappers:machine-controller:default-node-token
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
   name: machine-controller
@@ -37,9 +37,9 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io/scrape: true
-        prometheus.io/port: 8085
-        prometheus.io/path: /metrics
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "8085"
+        "prometheus.io/path": "/metrics"
       labels:
         app: machine-controller
     spec:
@@ -50,19 +50,21 @@ spec:
           command:
             - /usr/local/bin/machine-controller
             - -logtostderr
-            - -v=8
+            - -v=6
             - -cluster-dns=10.10.10.10
             - -internal-listen-address=0.0.0.0:8085
+          ports:
+          - containerPort: 8085
           livenessProbe:
             httpGet:
               path: /live
-              port: 8086
+              port: 8085
             initialDelaySeconds: 5
             periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /ready
-              port: 8086
+              port: 8085
             periodSeconds: 5
 ---
 apiVersion: v1
@@ -102,10 +104,10 @@ rules:
   - ""
   resources:
   - configmaps
-  resourceNames:
-  - "cluster-info"
   verbs:
   - get
+  - watch
+  - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding

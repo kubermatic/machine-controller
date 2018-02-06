@@ -27,7 +27,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
-	"github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
+	"github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/machines/v1alpha1"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -49,7 +49,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
+	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -98,15 +98,12 @@ type MetricsCollection struct {
 func NewMachineController(
 	kubeClient kubernetes.Interface,
 	machineClient machineclientset.Interface,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	machineInformerFactory externalversions.SharedInformerFactory,
+	nodeInformer corev1informers.NodeInformer,
+	configMapInformer corev1informers.ConfigMapInformer,
+	machineInformer v1alpha1.MachineInformer,
 	sshKeypair *ssh.PrivateKey,
 	clusterDNSIPs []net.IP,
 	metrics MetricsCollection) *Controller {
-
-	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-	configMapInformer := kubeInformerFactory.Core().V1().ConfigMaps()
-	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
 
 	controller := &Controller{
 		kubeClient:      kubeClient,
@@ -639,6 +636,8 @@ func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 		"valid-info-kubeconfig": func() error {
 			cm, err := c.getClusterInfoKubeconfig()
 			if err != nil {
+				err := fmt.Errorf("failed to get cluster-info configmap: %v", err)
+				glog.V(2).Info(err)
 				return err
 			}
 			if len(cm.Clusters) != 1 {
