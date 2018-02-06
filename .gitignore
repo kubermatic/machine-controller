@@ -3,3 +3,5 @@ vendor
 .idea
 machine-controller
 .terraform
+terraform.tfstate
+terraform.tfstate.backup
