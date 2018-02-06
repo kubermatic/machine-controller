@@ -8,7 +8,7 @@ import (
 
 func ApiserverReachable(client kubernetes.Interface) healthcheck.Check {
 	return func() error {
-		_, err := client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		_, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
 		return err
 	}
 }
