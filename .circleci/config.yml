@@ -67,6 +67,7 @@ jobs:
           make docker-image-nodep &&
           docker login --help &&
           docker version &&
+          env &&
           set -u &&
           docker login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}" &&
           make push-nodep
