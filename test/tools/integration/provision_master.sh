@@ -25,4 +25,10 @@ EOF
   apt-get install -y kubelet kubeadm kubectl
   kubeadm init --apiserver-advertise-address=$ADDR
 fi
+if ! ls \$HOME/.kube/config; then
+  mkdir -p \$HOME/.kube
+  cp -i /etc/kubernetes/admin.conf \$HOME/.kube/config
+  kubectl taint nodes --all node-role.kubernetes.io/master-
+fi
+
 EOEXEC
