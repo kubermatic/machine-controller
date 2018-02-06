@@ -21,6 +21,9 @@ apply:
 		terraform-hetzner \
 		/bin/bash -c "terraform apply -auto-approve"
 
+provision: apply
+	./provision_master.sh
+
 destroy:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
