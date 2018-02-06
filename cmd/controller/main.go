@@ -35,7 +35,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/kubermatic/machine-controller/pkg/ssh"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -89,8 +91,13 @@ func main() {
 		glog.Fatalf("Error building example clientset: %v", err)
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
+
+	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	configMapInformer := kubePublicKubeInformerFactory.Core().V1().ConfigMaps()
+	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
 
 	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
 	if err != nil {
@@ -107,12 +114,13 @@ func main() {
 		NodeJoinDuration:    metrics.NodeJoinDuration,
 	}
 
-	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key, ips, machineMetrics)
+	c := controller.NewMachineController(kubeClient, machineClient, nodeInformer, configMapInformer, machineInformer, key, ips, machineMetrics)
 
 	go kubeInformerFactory.Start(stopCh)
+	go kubePublicKubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
 
-	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
+	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
 		for key, synced := range syncsMap {
 			if !synced {
 				glog.Fatalf("unable to sync %s", key)
