@@ -54,11 +54,7 @@ jobs:
     machine: true
     steps:
       - run: >
-          echo $PWD >/dev/stderr && mkdir ~/testfolder && ls -l ~ >/dev/stderr && sudo mkdir
-          go/src/github.com/kubermatic/machine-controller -p && sudo chmod 777
-          go/src/github.com/kubermatic/machine-controller &&
-          sudo mkdir -p /go/src/github.com/kubermatic/machine-controller && sudo chmod 777 -R
-          /go/src/github.com/kubermatic/machine-controller &&
+          sudo mkdir -p /go/src/github.com/kubermatic/machine-controller &&
           sudo chown -R circleci:circleci /go/src/github.com/kubermatic/machine-controller
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
