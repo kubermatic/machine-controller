@@ -9,6 +9,12 @@ ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no roo
 
 until ssh_exec exit; do sleep 1; done
 
+cat ../../../examples/machine-controller.yaml|sed "s/latest/$(git rev-parse HEAD)/g" > mc_temp.yml
+scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+    mc_temp.yml \
+    root@$ADDR:/root/machine-controller.yaml
+
+
 cat <<EOEXEC |ssh_exec
 set -ex
 
@@ -37,4 +43,10 @@ if ! ls kube-flannel.yml; then
   curl -LO https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml
   kubectl apply -f kube-flannel.yml
 fi
+
+if ! ls machine-controller-deployed; then
+  kubectl apply -f machine-controller.yaml
+  touch machine-controller-deployed
+fi
+
 EOEXEC
