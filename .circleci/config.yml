@@ -65,6 +65,8 @@ jobs:
       - run: >
           cd /go/src/github.com/kubermatic/machine-controller &&
           make docker-image-nodep &&
+          docker login --help &&
+          docker version &&
           docker login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}" &&
           make push-nodep
 
