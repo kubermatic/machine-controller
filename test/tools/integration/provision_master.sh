@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -x
 
 export ADDR=$(cat terraform.tfstate |jq -r '.modules[0].resources["hcloud_server.machine-controller-test"].primary.attributes.ipv4_address')
 
@@ -9,11 +10,9 @@ ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no roo
 
 until ssh_exec exit; do sleep 1; done
 
-cat ../../../examples/machine-controller.yaml|sed "s/latest/$(git rev-parse HEAD)/g" > mc_temp.yml
-scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-    mc_temp.yml \
-    root@$ADDR:/root/machine-controller.yaml
-
+rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
+    ../../../{examples,machine-controller,Dockerfile} \
+    root@$ADDR:/root/
 
 cat <<EOEXEC |ssh_exec
 set -ex
@@ -45,8 +44,19 @@ if ! ls kube-flannel.yml; then
 fi
 
 if ! ls machine-controller-deployed; then
-  kubectl apply -f machine-controller.yaml
+  docker build -t kubermatic/machine-controller:latest .
+  kubectl apply -f examples/machine-controller.yaml
   touch machine-controller-deployed
 fi
 
+for try in {1..10}; do
+  if kubectl get pods -n kube-system|egrep '^machine-controller'|grep Running; then
+    echo "Success!"
+    exit 0
+  fi
+  sleep 10s
+done
+
+echo "Error: machine-controller didn't come up within 100 seconds!"
+exit 1
 EOEXEC
