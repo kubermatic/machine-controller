@@ -69,3 +69,7 @@ make machine-controller
 ```bash
 ./controller -logtostderr -v=8 -kubeconfig=/path/to/kubeconfig
 ```
+
+## More testing
+
+Check out `test/tools/`
