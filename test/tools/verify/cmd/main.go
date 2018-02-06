@@ -23,7 +23,6 @@ const (
 	machineReadyCheckTimeout = 5 * time.Minute
 )
 
-// TODO(lukasz): put the binary under github.com/kubermatic/machine-controller/tree/master/cmd
 func main() {
 	var manifestPath string
 	var parameters string
