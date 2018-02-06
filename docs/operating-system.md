@@ -9,19 +9,7 @@
 | AWS | ✓ | ✓ |
 | Openstack | ✓ | ✓  |
 | Digitalocean  | ✓ | ✓ |
-
-### Features
-
-|   | Ubuntu | Container Linux |
-|---|---|---|
-| `machine.spec.versions.containerRuntime` | x* | x** |
-| `machine.spec.versions.kubelet` | ✓ | ✓*** |
-
-```
-* currently the latest version from https://download.docker.com/linux/ubuntu will be installed
-** whatever comes with container linux will be used
-*** as we use the kubelet-wrapper, the version needs to be a tag from https://quay.io/repository/coreos/hyperkube?tag=latest&tab=tags
-```
+| Hetzner | ✓ | x |
 
 ## Configuring a operating system
 

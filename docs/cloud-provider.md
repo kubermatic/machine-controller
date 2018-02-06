@@ -84,3 +84,13 @@ region: ""
 # the name of the network to use
 network: ""
 ```
+
+## Hetzner cloud
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+  token: "<< HETZNER_API_TOKEN >>"
+  serverType: "cx11"
+  datacenter: ""
+  location: "fsn1"
+```
