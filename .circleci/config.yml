@@ -62,7 +62,11 @@ jobs:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
           key: vendor-{{ checksum "/go/src/github.com/kubermatic/machine-controller/Gopkg.lock" }}
-      - run: cd /go/src/github.com/kubermatic/machine-controller && make docker-image-nodep
+      - run: >
+          cd /go/src/github.com/kubermatic/machine-controller &&
+          make docker-image-nodep &&
+          docker login -u $DOCKERHUB_USER -p $DOCKERHUB_PASS &&
+          make push-nodep
 
 workflows:
   version: 2

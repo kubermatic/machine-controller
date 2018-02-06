@@ -34,4 +34,13 @@ docker-image-nodep:
 
 
 push: docker-image
+	make push-nodep
+
+push-nodep:
 	docker push $(IMAGE_NAME)
+	if git describe --tags $(shell git rev-parse HEAD)|grep -v -- '-g'; then \
+		$(eval IMAGE_TAG = $(shell git describe --abbrev=0 --tags)) \
+		docker push $(IMAGE_NAME) && \
+		$(eval IMAGE_TAG = latest) \
+		docker push $(IMAGE_NAME) ;\
+	fi
