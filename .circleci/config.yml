@@ -60,7 +60,7 @@ jobs:
       - restore_cache:
           key: vendor-{{ checksum "/go/src/github.com/kubermatic/machine-controller/Gopkg.lock" }}
       - setup_remote_docker
-      - run: apk update && apk add make
+      - run: apk update && apk add make bash
       - run: |
           set -e
           make docker-image-nodep
