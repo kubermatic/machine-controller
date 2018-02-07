@@ -63,6 +63,7 @@ jobs:
       - run: apk update && apk add make bash
       - run: |
           set -e
+          export GIT_TAG=$CIRCLE_TAG
           make docker-image-nodep
           docker login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}"
           make push-nodep

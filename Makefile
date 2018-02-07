@@ -38,8 +38,8 @@ push: docker-image
 
 push-nodep:
 	docker push $(IMAGE_NAME)
-	if git describe --tags $(shell git rev-parse HEAD)|grep -v -- '-g'; then \
-		$(eval IMAGE_TAG = $(shell git describe --abbrev=0 --tags)) \
+	if [[ -n "$(GIT_TAG)" ]]; then \
+		$(eval IMAGE_TAG = $(GIT_TAG)) \
 		docker push $(IMAGE_NAME) && \
 		$(eval IMAGE_TAG = latest) \
 		docker push $(IMAGE_NAME) ;\
