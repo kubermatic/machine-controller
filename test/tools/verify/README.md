@@ -13,7 +13,7 @@ the API and verifies whether the expected machine resource has been created.
 
 # Building
 ```bash
-go build cmd\main.go
+make verify
 ```
 
 # Running
