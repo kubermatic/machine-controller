@@ -30,7 +30,6 @@ func main() {
 	var manifestPath string
 	var parameters string
 	var kubeConfig string
-	var nodeCount int
 	var createOnly bool
 
 	defaultKubeconfigPath, err := getDefaultKubeconfigPath()
@@ -41,7 +40,6 @@ func main() {
 	flag.StringVar(&kubeConfig, "kubeconfig", defaultKubeconfigPath, "a path to the kubeconfig.")
 	flag.StringVar(&manifestPath, "input", "", "a path to the machine's manifest.")
 	flag.StringVar(&parameters, "parameters", "", "a list of comma-delimited key value pairs i.e key=value,key1=value2.")
-	flag.IntVar(&nodeCount, "nodeCount", 0, "the number of nodes that already exist in the cluster")
 	flag.BoolVar(&createOnly, "createOnly", false, "if the tool should create only but not run deletion")
 	flag.Parse()
 
@@ -61,33 +59,40 @@ func main() {
 	// init kube related stuff
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
-		printAndDie(fmt.Sprintf("error building kubeconfig: %v", err))
+		log.Fatalf("Error building kubeconfig: %v", err)
 	}
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		printAndDie(fmt.Sprintf("error building kubernetes clientset: %v", err))
+		log.Fatalf("Error building kubernetes clientset: %v", err)
 	}
 	machineClient, err := machineclientset.NewForConfig(cfg)
 	if err != nil {
-		printAndDie(fmt.Sprintf("error building example clientset: %v", err))
+		log.Fatalf("Error building example clientset: %v", err)
 	}
 
 	// prepare the manifest
 	manifest, err := readAndModifyManifest(manifestPath, keyValuePairs)
 	if err != nil {
-		printAndDie(fmt.Sprintf("failed to prepare the manifest, due to: %v", err))
+		log.Fatalf("Failed to prepare the manifest, due to: %v", err)
 	}
+
+	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		log.Fatalf("Error retrieving nodes: '%v'", err)
+	}
+	nodeCount := len(nodes.Items)
+	log.Printf("Cluster currently has %v nodes...", nodeCount)
 
 	// act
 	err = verify(manifest, kubeClient, machineClient, nodeCount, createOnly)
 	if err != nil {
-		printAndDie(fmt.Sprintf("failed to verify if a machine/node has been created/deleted, due to: \n%v", err))
+		log.Fatalf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
 	}
 	msg := "all good, successfully verified that a machine/node has been created"
 	if !createOnly {
 		msg += " and then deleted"
 	}
-	fmt.Println(msg)
+	log.Println(msg)
 }
 
 func getDefaultKubeconfigPath() (string, error) {
@@ -126,7 +131,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		return fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
-	fmt.Printf("creating a new \"%s\" machine\n", machine.Name)
+	log.Printf("creating a new \"%s\" machine\n", machine.Name)
 	_, err = machineClient.MachineV1alpha1().Machines().Create(machine)
 	if err != nil {
 		return err
@@ -143,7 +148,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		return fmt.Errorf("falied to created the new machine, err = %v, machine Status = %v", err, status)
 	}
 
-	fmt.Printf("waiting for status = %s to come \n", v1.NodeReady)
+	log.Printf("waiting for status = %s to come \n", v1.NodeReady)
 	nodeName := machine.Spec.Name
 	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
 		nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
@@ -172,7 +177,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 }
 
 func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, nodeCount int) error {
-	fmt.Printf("deleting the machine \"%s\"\n", machine.Name)
+	log.Printf("deleting the machine \"%s\"\n", machine.Name)
 	err := machineClient.MachineV1alpha1().Machines().Delete(machine.Name, nil)
 	if err != nil {
 		return fmt.Errorf("unable to remove machine %s, due to %v", machine.Name, err)
@@ -248,9 +253,4 @@ func getNodeStatusAsString(nodeName string, kubeClient kubernetes.Interface) str
 	}
 
 	return strings.Trim(statusMessage, " ")
-}
-
-func printAndDie(msg string) {
-	fmt.Println(msg)
-	os.Exit(1)
 }
