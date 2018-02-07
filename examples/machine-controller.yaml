@@ -46,6 +46,7 @@ spec:
       serviceAccountName: machine-controller
       containers:
         - image: kubermatic/machine-controller:latest
+          imagePullPolicy: IfNotPresent
           name: machine-controller
           command:
             - /usr/local/bin/machine-controller
