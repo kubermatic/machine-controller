@@ -27,10 +27,14 @@ func main() {
 	var manifestPath string
 	var parameters string
 	var kubeConfig string
+	var nodeCount int
+	var createOnly bool
 
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "a path to the kubeconfig.")
 	flag.StringVar(&manifestPath, "input", "", "a path to the machine's manifest.")
 	flag.StringVar(&parameters, "parameters", "", "a list of comma-delimited key value pairs i.e key=value,key1=value2.")
+	flag.IntVar(&nodeCount, "nodeCount", 0, "the number of nodes that already exist in the cluster")
+	flag.BoolVar(&createOnly, "createOnly", false, "if the tool should create only but not run deletion")
 	flag.Parse()
 
 	// input sanitizaiton
@@ -67,14 +71,18 @@ func main() {
 	}
 
 	// act
-	err = verify(manifest, kubeClient, machineClient)
+	err = verify(manifest, kubeClient, machineClient, nodeCount, createOnly)
 	if err != nil {
 		printAndDie(fmt.Sprintf("failed to verify if a machine/node has been created/deleted, due to: \n%v", err))
 	}
-	fmt.Println("all good, successfully verified that a machine/node has been created and then deleted")
+	msg := "all good, successfully verified that a machine/node has been created"
+	if !createOnly {
+		msg += " and then deleted"
+	}
+	fmt.Println(msg)
 }
 
-func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface) error {
+func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface, nodeCount int, createOnly bool) error {
 	newMachine := &machinev1alpha1.Machine{}
 	{
 		manifestReader := strings.NewReader(manifest)
@@ -85,16 +93,19 @@ func verify(manifest string, kubeClient kubernetes.Interface, machineClient mach
 		}
 	}
 
-	err := createAndAssure(newMachine, machineClient, kubeClient)
+	err := createAndAssure(newMachine, machineClient, kubeClient, nodeCount)
 	if err != nil {
 		return err
+	}
+	if createOnly {
+		return nil
 	}
 	return deleteAndAssure(newMachine, machineClient, kubeClient)
 }
 
-func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
+func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, nodeCount int) error {
 	// we expect to find no nodes within the cluster
-	err := assureNodeCount(0, kubeClient)
+	err := assureNodeCount(nodeCount, kubeClient)
 	if err != nil {
 		return fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
@@ -105,7 +116,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		return err
 	}
 	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
-		err := assureNodeCount(1, kubeClient)
+		err := assureNodeCount(nodeCount+1, kubeClient)
 		if err == nil {
 			return true, nil
 		}
@@ -117,7 +128,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	}
 
 	fmt.Printf("waiting for status = %s to come \n", v1.NodeReady)
-	nodeName := ""
+	nodeName := machine.Spec.Name
 	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
 		nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
@@ -125,15 +136,14 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		}
 		// assertion check - if true then something weird has happened
 		// or someone else is playing with the cluster
-		if len(nodes.Items) != 1 {
-			return false, fmt.Errorf("expected to get only one node but got = %d", len(nodes.Items))
+		if len(nodes.Items) != nodeCount+1 {
+			return false, fmt.Errorf("expected to get only %v node but got = %d", nodeCount+1, len(nodes.Items))
 		}
-		if len(nodeName) == 0 {
-			nodeName = nodes.Items[0].Name
-		}
-		for _, condition := range nodes.Items[0].Status.Conditions {
-			if condition.Type == v1.NodeReady && condition.Status == v1.ConditionTrue {
-				return true, nil
+		for _, node := range nodes.Items {
+			for _, condition := range node.Status.Conditions {
+				if condition.Type == v1.NodeReady && condition.Status == v1.ConditionTrue {
+					return true, nil
+				}
 			}
 		}
 		return false, nil
