@@ -11,7 +11,7 @@ ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no roo
 until ssh_exec exit; do sleep 1; done
 
 rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../../{examples,machine-controller,Dockerfile} \
+    ../../../{examples,machine-controller,Dockerfile} ../verify/verify \
     root@$ADDR:/root/
 
 cat <<EOEXEC |ssh_exec
@@ -60,3 +60,14 @@ done
 echo "Error: machine-controller didn't come up within 100 seconds!"
 exit 1
 EOEXEC
+
+cat <<EOF |ssh_exec
+set -e
+echo "Testing create of a node via machine-controller...."
+./verify \
+  -input examples/machine-hetzner.yaml \
+  -parameters "<< HETZNER_API_TOKEN >>=$HZ_TOKEN" \
+   -nodeCount 1 \
+  -createOnly true
+echo "Remember to remove the node again!"
+EOF
