@@ -4,7 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,7 +33,12 @@ func main() {
 	var nodeCount int
 	var createOnly bool
 
-	flag.StringVar(&kubeConfig, "kubeconfig", "", "a path to the kubeconfig.")
+	defaultKubeconfigPath, err := getDefaultKubeconfigPath()
+	if err != nil {
+		log.Fatalf("Error getting default path for kubeconfig: '%v'", err)
+	}
+
+	flag.StringVar(&kubeConfig, "kubeconfig", defaultKubeconfigPath, "a path to the kubeconfig.")
 	flag.StringVar(&manifestPath, "input", "", "a path to the machine's manifest.")
 	flag.StringVar(&parameters, "parameters", "", "a list of comma-delimited key value pairs i.e key=value,key1=value2.")
 	flag.IntVar(&nodeCount, "nodeCount", 0, "the number of nodes that already exist in the cluster")
@@ -80,6 +88,14 @@ func main() {
 		msg += " and then deleted"
 	}
 	fmt.Println(msg)
+}
+
+func getDefaultKubeconfigPath() (string, error) {
+	user, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(user.HomeDir, ".kube/config"), nil
 }
 
 func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface, nodeCount int, createOnly bool) error {
