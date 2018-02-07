@@ -144,44 +144,43 @@ func main() {
 		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
 	}
 
+	startUtilHttpServer(kubeClient)
+
 	metrics := NewMachineControllerMetrics()
+	run := func() {
 
-	ctx := newControllerContextFromExisting(controllerContext{
-		kubeClient:    kubeClient,
-		extClient:     extClient,
-		machineClient: machineClient,
-		sshKeyPair:    key,
-		metrics:       metrics,
-		ips:           ips,
-		stopCh:        stopCh,
-	})
+		ctx := newControllerContextFromExisting(controllerContext{
+			kubeClient:    kubeClient,
+			extClient:     extClient,
+			machineClient: machineClient,
+			sshKeyPair:    key,
+			metrics:       metrics,
+			ips:           ips,
+			stopCh:        stopCh,
+		})
 
-	c := controller.NewMachineControllerOrDie(ctx.kubeClient,
-		ctx.machineClient,
-		ctx.kubeInformerFactory,
-		ctx.machineInformerFactory,
-		ctx.sshKeyPair,
-		ctx.ips,
-		controller.MetricsCollection{
-			Machines:            metrics.Machines,
-			Workers:             metrics.Workers,
-			Errors:              metrics.Errors,
-			Nodes:               metrics.Nodes,
-			ControllerOperation: metrics.ControllerOperation,
-			NodeJoinDuration:    metrics.NodeJoinDuration,
-		},
-		stopCh)
+		c := controller.NewMachineControllerOrDie(ctx.kubeClient,
+			ctx.machineClient,
+			ctx.kubeInformerFactory,
+			ctx.machineInformerFactory,
+			ctx.sshKeyPair,
+			ctx.ips,
+			controller.MetricsCollection{
+				Machines:            metrics.Machines,
+				Workers:             metrics.Workers,
+				Errors:              metrics.Errors,
+				Nodes:               metrics.Nodes,
+				ControllerOperation: metrics.ControllerOperation,
+				NodeJoinDuration:    metrics.NodeJoinDuration,
+			},
+			stopCh)
 
-	health := healthcheck.NewHandler()
-	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
-	for name, c := range utils.ReadinessChecks(createConfigMapInformer(kubeClient)) {
-		health.AddReadinessCheck(name, c)
+		if err = c.Run(workerCount, stopCh); err != nil {
+			glog.Fatalf("error running controller: %v", err)
+		}
 	}
-	go serveUtilHttpServer(health)
 
-	if err = c.Run(workerCount, stopCh); err != nil {
-		glog.Fatalf("error running controller: %v", err)
-	}
+	run()
 }
 
 // TODO: desc
@@ -202,6 +201,16 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+func startUtilHttpServer(kubeClient kubernetes.Interface) {
+	health := healthcheck.NewHandler()
+	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
+	for name, c := range utils.ReadinessChecks(createConfigMapInformer(kubeClient)) {
+		health.AddReadinessCheck(name, c)
+	}
+
+	go serveUtilHttpServer(health)
 }
 
 func serveUtilHttpServer(health healthcheck.Handler) {
