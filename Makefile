@@ -1,3 +1,5 @@
+SHELL = /bin/bash
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
@@ -19,7 +21,20 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 				github.com/kubermatic/machine-controller/cmd/controller
 
 docker-image: machine-controller
-	docker build -t $(IMAGE_NAME) .
+	make docker-image-nodep
 
-push: docker-image
+# This target exists because in our CI
+# we do not want to restore the vendor
+# folder for the push step, but we know
+# for sure it is not required there
+docker-image-nodep:
+	docker build -t $(IMAGE_NAME) .
 	docker push $(IMAGE_NAME)
+	if [[ -n "$(GIT_TAG)" ]]; then \
+		$(eval IMAGE_TAG = $(GIT_TAG)) \
+		docker build -t $(IMAGE_NAME) . && \
+		docker push $(IMAGE_NAME) && \
+		$(eval IMAGE_TAG = latest) \
+		docker build -t $(IMAGE_NAME) . ;\
+		docker push $(IMAGE_NAME) ;\
+	fi
