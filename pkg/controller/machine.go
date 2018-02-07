@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"regexp"
 	"time"
 
@@ -94,15 +95,27 @@ type MetricsCollection struct {
 	NodeJoinDuration    metrics.Histogram
 }
 
-// NewMachineController returns a new machine controller
-func NewMachineController(
+// NewMachineControllerOrDie returns a new machine controller
+func NewMachineControllerOrDie(
 	kubeClient kubernetes.Interface,
 	machineClient machineclientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	machineInformerFactory externalversions.SharedInformerFactory,
 	sshKeypair *ssh.PrivateKey,
 	clusterDNSIPs []net.IP,
-	metrics MetricsCollection) *Controller {
+	metrics MetricsCollection,
+	stopCh <-chan struct{}) *Controller {
+
+	go kubeInformerFactory.Start(stopCh)
+	go machineInformerFactory.Start(stopCh)
+
+	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
+		for key, synced := range syncsMap {
+			if !synced {
+				glog.Fatalf("unable to sync %s", key)
+			}
+		}
+	}
 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	configMapInformer := kubeInformerFactory.Core().V1().ConfigMaps()

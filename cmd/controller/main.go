@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"reflect"
 	"strings"
 	"time"
 
@@ -38,6 +37,7 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -49,6 +49,63 @@ var (
 	listenAddress string
 	workerCount   int
 )
+
+// TODO:desc
+type controllerContext struct {
+	// TODO: desc
+	kubeClient kubernetes.Interface
+
+	// TODO: desc
+	extClient apiextclient.Interface
+
+	// TODO: desc
+	machineClient machineclientset.Interface
+	// TODO add leaderElectionClient
+
+	// TODO: desc
+	sshKeyPair *ssh.PrivateKey
+
+	// TODO: desc
+	ips []net.IP
+
+	// TODO: desc
+	metrics *MachineControllerMetrics
+
+	// TODO: desc
+	kubeInformerFactory kubeinformers.SharedInformerFactory
+
+	// TODO: desc
+	machineInformerFactory machineinformers.SharedInformerFactory
+
+	// TODO: desc
+	stopCh <-chan struct{}
+}
+
+// TODO: desc
+func createClientsOrDie(cfg *rest.Config) (kubernetes.Interface, apiextclient.Interface, machineclientset.Interface) {
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("error building kubernetes clientset: %v", err)
+	}
+
+	extClient, err := apiextclient.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("error building kubernetes clientset: %v", err)
+	}
+
+	machineClient, err := machineclientset.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("error building example clientset: %v", err)
+	}
+	return kubeClient, extClient, machineClient
+}
+
+// TODO: desc
+func newControllerContextFromExisting(ctx controllerContext) controllerContext {
+	ctx.kubeInformerFactory = kubeinformers.NewSharedInformerFactory(ctx.kubeClient, time.Second*30)
+	ctx.machineInformerFactory = machineinformers.NewSharedInformerFactory(ctx.machineClient, time.Second*30)
+	return ctx
+}
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
@@ -70,27 +127,15 @@ func main() {
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		glog.Fatalf("Error building kubeconfig: %v", err)
+		glog.Fatalf("error building kubeconfig: %v", err)
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("Error building kubernetes clientset: %v", err)
-	}
+	kubeClient, extClient, machineClient := createClientsOrDie(cfg)
 
-	extclient := apiextclient.NewForConfigOrDie(cfg)
-	err = machines.EnsureCustomResourceDefinitions(extclient)
+	err = machines.EnsureCustomResourceDefinitions(extClient)
 	if err != nil {
 		glog.Fatalf("failed to create CustomResourceDefinition: %v", err)
 	}
-
-	machineClient, err := machineclientset.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("Error building example clientset: %v", err)
-	}
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 
 	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
 	if err != nil {
@@ -98,27 +143,32 @@ func main() {
 	}
 
 	metrics := NewMachineControllerMetrics()
-	machineMetrics := controller.MetricsCollection{
-		Machines:            metrics.Machines,
-		Workers:             metrics.Workers,
-		Errors:              metrics.Errors,
-		Nodes:               metrics.Nodes,
-		ControllerOperation: metrics.ControllerOperation,
-		NodeJoinDuration:    metrics.NodeJoinDuration,
-	}
 
-	c := controller.NewMachineController(kubeClient, machineClient, kubeInformerFactory, machineInformerFactory, key, ips, machineMetrics)
+	ctx := newControllerContextFromExisting(controllerContext{
+		kubeClient:    kubeClient,
+		extClient:     extClient,
+		machineClient: machineClient,
+		sshKeyPair:    key,
+		metrics:       metrics,
+		ips:           ips,
+		stopCh:        stopCh,
+	})
 
-	go kubeInformerFactory.Start(stopCh)
-	go machineInformerFactory.Start(stopCh)
-
-	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
-		for key, synced := range syncsMap {
-			if !synced {
-				glog.Fatalf("unable to sync %s", key)
-			}
-		}
-	}
+	c := controller.NewMachineControllerOrDie(ctx.kubeClient,
+		ctx.machineClient,
+		ctx.kubeInformerFactory,
+		ctx.machineInformerFactory,
+		ctx.sshKeyPair,
+		ctx.ips,
+		controller.MetricsCollection{
+			Machines:            metrics.Machines,
+			Workers:             metrics.Workers,
+			Errors:              metrics.Errors,
+			Nodes:               metrics.Nodes,
+			ControllerOperation: metrics.ControllerOperation,
+			NodeJoinDuration:    metrics.NodeJoinDuration,
+		},
+		stopCh)
 
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
@@ -128,7 +178,7 @@ func main() {
 	go serveUtilHttpServer(health)
 
 	if err = c.Run(workerCount, stopCh); err != nil {
-		glog.Fatalf("Error running controller: %v", err)
+		glog.Fatalf("error running controller: %v", err)
 	}
 }
 
