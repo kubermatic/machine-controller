@@ -23,24 +23,18 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 docker-image: machine-controller
 	make docker-image-nodep
 
+# This target exists because in our CI
+# we do not want to restore the vendor
+# folder for the push step, but we know
+# for sure it is not required there
 docker-image-nodep:
 	docker build -t $(IMAGE_NAME) .
-	if git describe --tags $(shell git rev-parse HEAD)|grep -v -- '-g'; then \
-		$(eval IMAGE_TAG = $(shell git describe --abbrev=0 --tags)) \
-		docker build -t $(IMAGE_NAME) . && \
-		$(eval IMAGE_TAG = latest) \
-		docker build -t $(IMAGE_NAME) . ;\
-	fi
-
-
-push: docker-image
-	make push-nodep
-
-push-nodep:
-	docker push $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
 		$(eval IMAGE_TAG = $(GIT_TAG)) \
+		docker build -t $(IMAGE_NAME) . && \
 		docker push $(IMAGE_NAME) && \
 		$(eval IMAGE_TAG = latest) \
+		docker build -t $(IMAGE_NAME) . ;\
 		docker push $(IMAGE_NAME) ;\
 	fi
+	docker push $(IMAGE_NAME)

@@ -64,9 +64,8 @@ jobs:
       - run: |
           set -e
           export GIT_TAG=$CIRCLE_TAG
-          make docker-image-nodep
           docker login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}"
-          make push-nodep
+          make docker-image-nodep
 
 workflows:
   version: 2
