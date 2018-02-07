@@ -67,7 +67,5 @@ echo "Testing create of a node via machine-controller...."
 ./verify \
   -input examples/machine-hetzner.yaml \
   -parameters "<< HETZNER_API_TOKEN >>=$HZ_TOKEN" \
-   -nodeCount 1 \
-  -createOnly true
-echo "Remember to remove the node again!"
+   -nodeCount 1
 EOF

@@ -116,7 +116,7 @@ func verify(manifest string, kubeClient kubernetes.Interface, machineClient mach
 	if createOnly {
 		return nil
 	}
-	return deleteAndAssure(newMachine, machineClient, kubeClient)
+	return deleteAndAssure(newMachine, machineClient, kubeClient, nodeCount)
 }
 
 func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, nodeCount int) error {
@@ -171,7 +171,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	return nil
 }
 
-func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
+func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, nodeCount int) error {
 	fmt.Printf("deleting the machine \"%s\"\n", machine.Name)
 	err := machineClient.MachineV1alpha1().Machines().Delete(machine.Name, nil)
 	if err != nil {
@@ -179,7 +179,7 @@ func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	}
 
 	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
-		err := assureNodeCount(0, kubeClient)
+		err := assureNodeCount(nodeCount, kubeClient)
 		if err == nil {
 			return true, nil
 		}
