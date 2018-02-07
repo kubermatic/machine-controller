@@ -29,6 +29,7 @@ docker-image: machine-controller
 # for sure it is not required there
 docker-image-nodep:
 	docker build -t $(IMAGE_NAME) .
+	docker push $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
 		$(eval IMAGE_TAG = $(GIT_TAG)) \
 		docker build -t $(IMAGE_NAME) . && \
@@ -37,4 +38,3 @@ docker-image-nodep:
 		docker build -t $(IMAGE_NAME) . ;\
 		docker push $(IMAGE_NAME) ;\
 	fi
-	docker push $(IMAGE_NAME)
