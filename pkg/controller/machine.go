@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"reflect"
@@ -26,7 +25,6 @@ import (
 
 	"github.com/go-kit/kit/metrics"
 	"github.com/golang/glog"
-	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	"github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
@@ -109,6 +107,7 @@ func NewMachineControllerOrDie(
 	go kubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
 
+	// TODO: return an error
 	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
 		for key, synced := range syncsMap {
 			if !synced {
@@ -644,35 +643,6 @@ func (c *Controller) handleObject(obj interface{}) {
 		glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), machine.Name)
 		c.enqueueMachine(machine)
 		return
-	}
-}
-
-func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
-	return map[string]healthcheck.Check{
-		"valid-info-kubeconfig": func() error {
-			cm, err := c.getClusterInfoKubeconfig()
-			if err != nil {
-				return err
-			}
-			if len(cm.Clusters) != 1 {
-				err := errors.New("invalid kubeconfig: no clusters found")
-				glog.V(2).Info(err)
-				return err
-			}
-			for name, c := range cm.Clusters {
-				if len(c.CertificateAuthorityData) == 0 {
-					err := fmt.Errorf("invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
-					return err
-				}
-				if len(c.Server) == 0 {
-					err := fmt.Errorf("invalid kubeconfig: no server was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
-					return err
-				}
-			}
-			return nil
-		},
 	}
 }
 

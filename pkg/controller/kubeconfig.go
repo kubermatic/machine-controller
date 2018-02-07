@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kubermatic/machine-controller/pkg/utils"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -14,18 +15,6 @@ import (
 const (
 	secretTypeBootstrapToken v1.SecretType = "bootstrap.kubernetes.io/token"
 )
-
-func (c *Controller) getClusterInfoKubeconfig() (*clientcmdapi.Config, error) {
-	cm, err := c.configMapLister.ConfigMaps(metav1.NamespacePublic).Get("cluster-info")
-	if err != nil {
-		return nil, err
-	}
-	data, found := cm.Data["kubeconfig"]
-	if !found {
-		return nil, fmt.Errorf("no kubeconfig found in cluster-info configmap")
-	}
-	return clientcmd.Load([]byte(data))
-}
 
 func (c *Controller) createBootstrapToken(name string) (string, error) {
 	tokenID := rand.String(6)
@@ -61,7 +50,7 @@ func (c *Controller) createBootstrapKubeconfig(name string) (string, error) {
 		return "", err
 	}
 
-	infoKubeconfig, err := c.getClusterInfoKubeconfig()
+	infoKubeconfig, err := utils.GetClusterInfoKubeconfig(c.configMapLister)
 	if err != nil {
 		return "", err
 	}

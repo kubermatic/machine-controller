@@ -33,10 +33,12 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/kubermatic/machine-controller/pkg/ssh"
+	"github.com/kubermatic/machine-controller/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -172,7 +174,7 @@ func main() {
 
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
-	for name, c := range c.ReadinessChecks() {
+	for name, c := range utils.ReadinessChecks(createConfigMapInformer(kubeClient)) {
 		health.AddReadinessCheck(name, c)
 	}
 	go serveUtilHttpServer(health)
@@ -180,6 +182,13 @@ func main() {
 	if err = c.Run(workerCount, stopCh); err != nil {
 		glog.Fatalf("error running controller: %v", err)
 	}
+}
+
+// TODO: desc
+func createConfigMapInformer(kubeClient kubernetes.Interface) listerscorev1.ConfigMapLister {
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	configMapInformer := kubeInformerFactory.Core().V1().ConfigMaps()
+	return configMapInformer.Lister()
 }
 
 func parseClusterDNSIPs(s string) ([]net.IP, error) {
