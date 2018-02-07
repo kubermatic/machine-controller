@@ -58,7 +58,7 @@ jobs:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: vendor-{{ checksum "/go/src/github.com/kubermatic/machine-controller/Gopkg.lock" }}
+          key: machine-controller-{{ .Revision }}
       - setup_remote_docker
       - run: apk update && apk add make bash git
       - run: |
