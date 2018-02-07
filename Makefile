@@ -23,3 +23,6 @@ docker-image: machine-controller
 
 push: docker-image
 	docker push $(IMAGE_NAME)
+
+test-e2e:
+	cd test && make hetzner-e2e
