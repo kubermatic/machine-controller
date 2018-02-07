@@ -19,7 +19,7 @@ apply:
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
-		/bin/bash -c "terraform apply -auto-approve"
+		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform apply -auto-approve"
 
 provision: apply
 	./provision_master.sh

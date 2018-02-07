@@ -66,5 +66,6 @@ set -e
 echo "Testing create of a node via machine-controller...."
 ./verify \
   -input examples/machine-hetzner.yaml \
-  -parameters "<< HETZNER_API_TOKEN >>=$HZ_TOKEN"
+  -parameters "<< HETZNER_API_TOKEN >>=$HZ_TOKEN" \
+  -logtostderr true
 EOF
