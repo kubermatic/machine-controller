@@ -2,3 +2,7 @@ vendor
 .gitignore
 .idea
 machine-controller
+.terraform
+terraform.tfstate
+terraform.tfstate.backup
+test/tools/verify/verify

@@ -69,3 +69,9 @@ make machine-controller
 ```bash
 ./controller -logtostderr -v=8 -kubeconfig=/path/to/kubeconfig
 ```
+
+## End-to-end testing
+
+For a simple e2e-testing using Hetzner cloud, just run `make test-e2e`.
+This requires the environment variable `HZ_TOKEN` to be filled with a
+valid token.

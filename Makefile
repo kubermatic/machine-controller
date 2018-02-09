@@ -38,3 +38,6 @@ docker-image-nodep:
 		docker build -t $(IMAGE_NAME) . ;\
 		docker push $(IMAGE_NAME) ;\
 	fi
+
+test-e2e:
+	cd test && make hetzner-e2e
