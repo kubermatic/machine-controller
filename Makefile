@@ -39,5 +39,12 @@ docker-image-nodep:
 		docker push $(IMAGE_NAME) ;\
 	fi
 
+test-unit: vendor
+		@docker run --rm \
+			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+			-w /go/src/github.com/kubermatic/machine-controller \
+			golang:1.9.2 \
+			go test ./...
+
 test-e2e:
 	cd test && make hetzner-e2e
