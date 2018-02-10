@@ -615,7 +615,8 @@ func (c *Controller) handleObject(obj interface{}) {
 		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 
-	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
+	ownerRef := metav1.GetControllerOf(object)
+	if ownerRef != nil {
 		if ownerRef.Kind != "Machine" {
 			return
 		}
@@ -628,6 +629,21 @@ func (c *Controller) handleObject(obj interface{}) {
 		glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), machine.Name)
 		c.enqueueMachine(machine)
 		return
+	}
+
+	if ownerRef == nil {
+		machines, err := c.machinesLister.List(labels.Everything())
+		if err != nil {
+			runtime.HandleError(fmt.Errorf("error listing machines: '%v'", err))
+			return
+		}
+		for _, machine := range machines {
+			// We get triggered by node{Add,Update}, so enqeue machines if they
+			// have no nodeRef yet to make matching happen ASAP
+			if machine.Status.NodeRef == nil {
+				c.enqueueMachine(machine)
+			}
+		}
 	}
 }
 
