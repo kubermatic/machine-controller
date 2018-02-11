@@ -98,13 +98,27 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
 metadata:
-  name: machine-controller
+  name: configmap-reader-kube-public
   namespace: kube-public
 rules:
 - apiGroups:
   - ""
   resources:
   - configmaps
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: endpoints-reader-default
+  namespace: default
+rules:
+- apiGroups:
+  - ""
+  resources:
   - endpoints
   verbs:
   - get
@@ -114,12 +128,26 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
-  name: machine-controller
+  name: machine-controller-kube-public
   namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
+  name: configmap-reader-kube-public
+subjects:
+- kind: ServiceAccount
   name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller-default
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: endpoints-reader-default
 subjects:
 - kind: ServiceAccount
   name: machine-controller
