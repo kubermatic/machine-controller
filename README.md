@@ -21,12 +21,34 @@
 ## What does not work
 - Master creation (Not planned at the moment)
 
-# Running
+# Quickstart
 
-## Requirements
-The controller expects a cluster-info configmap to exist within the kube-public namespace.
-This configmap needs to contain a kubeconfig without credentials. It is already present in all kubeadm-generated
-clusters.
+## Deploy the machine-controller
+
+`kubectl apply -f examples/machine-controller.yaml`
+
+## Creating a machine
+```bash
+# edit examples/machine.yaml & create the machine
+kubectl create -f examples/machine.yaml
+```
+
+## Advanced usage
+
+### Specifying the apiserver endpoint
+By default the controller looks for a cluster-info ConfigMap within the kube-public Namespace.
+If one is found which contains a minimal kubeconfig (kubeadm cluster have them by default), this kubeconfig will be used for the node bootstrapping.
+The kubeconfig only needs to container only two things:
+- CA-Data
+- The public endpoint for the Apiserver 
+
+If no ConfigMap can be found:
+**CA-data** 
+The CA will be loaded from the passed kubeconfig when running outside the cluster or from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` when running inside the cluster.
+**Apiserver endpoint**
+The first endpoint from the kubernetes endpoints will be taken. `kubectl get endpoints kubernetes -o yaml`
+  
+#### Example cluster-info ConfigMap
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -46,16 +68,6 @@ data:
     kind: Config
     preferences: {}
     users: []
-```
-
-## Deploy the machine-controller
-
-`kubectl apply -f examples/machine-controller.yaml`
-
-## Creating a machine
-```bash
-# edit examples/machine.yaml & create the machine
-kubectl create -f examples/machine.yaml
 ```
 
 # Development
