@@ -46,7 +46,12 @@ jobs:
           key: vendor-{{ checksum "Gopkg.lock" }}
       - setup_remote_docker
       - run: apk update && apk add make bash git
-      - run: make machine-controller-nodep
+      - run: |
+          set -e
+          docker create -v /go/src/github.com/kubermatic/machine-controller --name vol-container alpine /bin/true
+          docker cp . vol-container:/go/src/github.com/kubermatic/machine-controller/
+          export USE_VOLUME_CONTAINER=true && make machine-controller-nodep
+          docker cp vol-container:/go/src/github.com/kubermatic/machine-controller/machine-controller .
       - save_cache:
           key: machine-controller-{{ .Revision }}
           paths:
