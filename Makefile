@@ -11,6 +11,9 @@ vendor: Gopkg.lock Gopkg.toml
 	dep ensure -vendor-only
 
 machine-controller: $(shell find cmd pkg -name '*.go') vendor
+	make machine-controller-nodep
+
+machine-controller-nodep:
 		@docker run --rm \
 			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
 			-w /go/src/github.com/kubermatic/machine-controller \
