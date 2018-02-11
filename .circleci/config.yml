@@ -37,14 +37,21 @@ jobs:
 
   build:
     docker:
-      - image: circleci/golang:1.9
+      - image: docker:stable
     working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
-      - run: go build -o machine-controller github.com/kubermatic/machine-controller/cmd/controller
+      - setup_remote_docker
+      - run: apk update && apk add make bash git
+      - run: |
+          set -e
+          docker create -v /go/src/github.com/kubermatic/machine-controller --name vol-container alpine /bin/true
+          docker cp . vol-container:/go/src/github.com/kubermatic/machine-controller/
+          export USE_VOLUME_CONTAINER=true && make machine-controller-nodep
+          docker cp vol-container:/go/src/github.com/kubermatic/machine-controller/machine-controller .
       - save_cache:
           key: machine-controller-{{ .Revision }}
           paths:

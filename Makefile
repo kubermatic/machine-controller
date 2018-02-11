@@ -3,16 +3,33 @@ SHELL = /bin/bash
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
+USE_VOLUME_CONTAINER ?= false
+
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
+
+
+
+# Required because circlecCI can not use
+# Docker volumes, so we have to use a volume
+# container instead there
+ifeq ($(USE_VOLUME_CONTAINER),true)
+	VOL_ARG = --volumes-from vol-container
+else
+	VOL_ARG = -v $$PWD:/go/src/github.com/kubermatic/machine-controller
+endif
+
 
 vendor: Gopkg.lock Gopkg.toml
 	dep ensure -vendor-only
 
 machine-controller: $(shell find cmd pkg -name '*.go') vendor
+	make machine-controller-nodep
+
+machine-controller-nodep:
 		@docker run --rm \
-			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+			$(VOL_ARG) \
 			-w /go/src/github.com/kubermatic/machine-controller \
 			golang:1.9.2 \
 			env CGO_ENABLED=0 go build \
