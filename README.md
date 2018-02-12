@@ -36,16 +36,20 @@ kubectl create -f examples/machine.yaml
 ## Advanced usage
 
 ### Specifying the apiserver endpoint
-By default the controller looks for a cluster-info ConfigMap within the kube-public Namespace.
+By default the controller looks for a `cluster-info` ConfigMap within the `kube-public` Namespace.
 If one is found which contains a minimal kubeconfig (kubeadm cluster have them by default), this kubeconfig will be used for the node bootstrapping.
-The kubeconfig only needs to container only two things:
+The kubeconfig only needs to contain two things:
 - CA-Data
 - The public endpoint for the Apiserver 
 
 If no ConfigMap can be found:
-**CA-data** 
+
+**CA-data**
+ 
 The CA will be loaded from the passed kubeconfig when running outside the cluster or from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` when running inside the cluster.
+
 **Apiserver endpoint**
+
 The first endpoint from the kubernetes endpoints will be taken. `kubectl get endpoints kubernetes -o yaml`
   
 #### Example cluster-info ConfigMap
