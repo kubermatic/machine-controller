@@ -37,7 +37,7 @@ spec:
   roles:
   - "Node"
   versions:
-    kubelet: "v1.8.5" # Kubelet wrapper image tag
+    kubelet: "v1.8.5"
     containerRuntime:
       # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "docker"
