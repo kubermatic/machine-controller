@@ -102,16 +102,15 @@ func NewMachineControllerOrDie(
 	sshKeypair *ssh.PrivateKey,
 	clusterDNSIPs []net.IP,
 	metrics MetricsCollection,
-	stopCh <-chan struct{}) *Controller {
+	stopCh <-chan struct{}) (*Controller, error) {
 
 	go kubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
 
-	// TODO: return an error
 	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
 		for key, synced := range syncsMap {
 			if !synced {
-				glog.Fatalf("unable to sync %s", key)
+				return nil, fmt.Errorf("unable to sync %s", key)
 			}
 		}
 	}
@@ -159,7 +158,7 @@ func NewMachineControllerOrDie(
 		controller.metrics.Errors.Add(1)
 	})
 
-	return controller
+	return controller, nil
 }
 
 // Run starts the control loop

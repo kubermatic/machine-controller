@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kubermatic/machine-controller/pkg/utils"
+	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -50,7 +50,7 @@ func (c *Controller) createBootstrapKubeconfig(name string) (string, error) {
 		return "", err
 	}
 
-	infoKubeconfig, err := utils.GetClusterInfoKubeconfig(c.configMapLister)
+	infoKubeconfig, err := clusterinfo.GetFromKubeconfig(c.configMapLister)
 	if err != nil {
 		return "", err
 	}
