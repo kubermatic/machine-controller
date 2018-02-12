@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -248,10 +249,15 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	machine := listerMachine.DeepCopy()
 
-	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
+	providerConfig, err := providerconfig.GetConfig(c.kubeClient, machine.Spec.ProviderConfig, true)
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}
+	pconfig, err := json.Marshal(providerConfig)
+	if err != nil {
+		return fmt.Errorf("faield to marshall providerconfig: '%v'", err)
+	}
+	machine.Spec.ProviderConfig = runtime.RawExtension{Raw: pconfig}
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, c.sshPrivateKey)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)

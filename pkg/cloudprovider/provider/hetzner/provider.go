@@ -27,7 +27,7 @@ type provider struct {
 	privateKey *machinessh.PrivateKey
 }
 
-// New returns a digitalocean provider
+// New returns a Hetzner provider
 func New(privateKey *machinessh.PrivateKey) cloud.Provider {
 	return &provider{privateKey: privateKey}
 }
