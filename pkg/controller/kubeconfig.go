@@ -15,18 +15,6 @@ const (
 	secretTypeBootstrapToken v1.SecretType = "bootstrap.kubernetes.io/token"
 )
 
-func (c *Controller) getClusterInfoKubeconfig() (*clientcmdapi.Config, error) {
-	cm, err := c.configMapLister.ConfigMaps(metav1.NamespacePublic).Get("cluster-info")
-	if err != nil {
-		return nil, err
-	}
-	data, found := cm.Data["kubeconfig"]
-	if !found {
-		return nil, fmt.Errorf("no kubeconfig found in cluster-info configmap")
-	}
-	return clientcmd.Load([]byte(data))
-}
-
 func (c *Controller) createBootstrapToken(name string) (string, error) {
 	tokenID := rand.String(6)
 	tokenSecret := rand.String(16)
@@ -61,7 +49,7 @@ func (c *Controller) createBootstrapKubeconfig(name string) (string, error) {
 		return "", err
 	}
 
-	infoKubeconfig, err := c.getClusterInfoKubeconfig()
+	infoKubeconfig, err := c.kubeconfigProvider.GetKubeconfig()
 	if err != nil {
 		return "", err
 	}
