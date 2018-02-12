@@ -6,12 +6,13 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
   name = "github.com/Masterminds/sprig"
-  version = "v2.14.1"
+  version = "v2.14.*"
 
 [[constraint]]
   name = "github.com/coreos/container-linux-config-transpiler"
-  version = "v0.5.0"
+  version = "v0.6.*"
 
+# For container-linux-config-transpiler
 [[override]]
   name = "github.com/ajeddeloh/yaml"
   revision = "6b94386aeefd8c4b8470aee72bfca084c2f91da9"
@@ -34,7 +35,7 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
   name = "github.com/digitalocean/godo"
-  version = "v1.1.1"
+  version = "v1.1.*"
 
 [[constraint]]
   name = "k8s.io/apiextensions-apiserver"
@@ -42,7 +43,7 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
-  version = "1.12.53"
+  version = "1.12.*"
 
 [[constraint]]
   name = "github.com/gophercloud/gophercloud"
@@ -50,24 +51,24 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
   name = "github.com/go-test/deep"
-  version = "1.0.0"
+  version = "1.0.*"
 
 [[constraint]]
   name = "github.com/pmezard/go-difflib"
-  version = "1.0.0"
+  version = "1.0.*"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/heptiolabs/healthcheck"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/go-kit/kit"
-  version = "v0.6.0"
+  version = "v0.6.*"
 
 [[constraint]]
   name = "github.com/prometheus/client_golang"
-  version = "v0.8.0"
+  version = "v0.8.*"
 
 [[constraint]]
   name = "github.com/hetznercloud/hcloud-go"
-  version = "v1.3.0"
+  version = "v1.3.*"
