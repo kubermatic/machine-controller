@@ -45,7 +45,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -149,7 +149,7 @@ func NewMachineController(
 
 // Run starts the control loop
 func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
-	defer runtime.HandleCrash()
+	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
 	for i := 0; i < threadiness; i++ {
@@ -592,7 +592,7 @@ func (c *Controller) enqueueMachine(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
+		utilruntime.HandleError(err)
 		return
 	}
 	c.workqueue.AddRateLimited(key)
@@ -604,12 +604,12 @@ func (c *Controller) handleObject(obj interface{}) {
 	if object, ok = obj.(metav1.Object); !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			runtime.HandleError(fmt.Errorf("error decoding object, invalid type"))
+			utilruntime.HandleError(fmt.Errorf("error decoding object, invalid type"))
 			return
 		}
 		object, ok = tombstone.Obj.(metav1.Object)
 		if !ok {
-			runtime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
+			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
 			return
 		}
 		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
@@ -634,7 +634,7 @@ func (c *Controller) handleObject(obj interface{}) {
 	if ownerRef == nil {
 		machines, err := c.machinesLister.List(labels.Everything())
 		if err != nil {
-			runtime.HandleError(fmt.Errorf("error listing machines: '%v'", err))
+			utilruntime.HandleError(fmt.Errorf("error listing machines: '%v'", err))
 			return
 		}
 		for _, machine := range machines {
