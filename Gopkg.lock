@@ -72,8 +72,8 @@
     "service/iam",
     "service/sts"
   ]
-  revision = "82ad808f2307df0776c038bfd7ea85440a35c02e"
-  version = "v1.12.53"
+  revision = "82eadef012f77590875babb177c60878727821c0"
+  version = "v1.12.74"
 
 [[projects]]
   branch = "master"
@@ -89,10 +89,11 @@
     "config/platform",
     "config/templating",
     "config/types",
-    "config/types/util"
+    "config/types/util",
+    "internal/util"
   ]
-  revision = "be4cb16b0aaf0f6b4fdf63b8b2a081397276bf0f"
-  version = "v0.5.0"
+  revision = "b76ab0b2d66ff1ac6902f4fe118a02c1bed6e5ce"
+  version = "v0.6.1"
 
 [[projects]]
   name = "github.com/coreos/go-semver"
@@ -103,8 +104,8 @@
 [[projects]]
   name = "github.com/coreos/go-systemd"
   packages = ["unit"]
-  revision = "d2196463941895ee908e13531a23a39feb9e1243"
-  version = "v15"
+  revision = "40e2722dffead74698ca12a750f64ef313ddce05"
+  version = "v16"
 
 [[projects]]
   name = "github.com/coreos/ignition"
@@ -114,8 +115,8 @@
     "config/validate/astnode",
     "config/validate/report"
   ]
-  revision = "6e2cffb8c39ef5fe3042606dd742d4d3204d6b91"
-  version = "v0.20.0"
+  revision = "65f3f407178537b32d6075d042dea3a8fa9be501"
+  version = "v0.22.0"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -138,8 +139,8 @@
     ".",
     "log"
   ]
-  revision = "5741799b275a3c4a5a9623a993576d7545cf7b5c"
-  version = "v2.4.0"
+  revision = "26b41036311f2da8242db402557a0dbd09dc83da"
+  version = "v2.6.0"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -179,19 +180,19 @@
   branch = "master"
   name = "github.com/go-openapi/spec"
   packages = ["."]
-  revision = "fa03337d7da5735229ee8f5e9d5d0b996014b7f8"
+  revision = "e5cac0107f33264c59bcfe43d12a0e19eba644f0"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/swag"
   packages = ["."]
-  revision = "cf0bdb963811675a4d7e74901cefc7411a1df939"
+  revision = "84f4bee7c0a6db40e3166044c7983c1c32125429"
 
 [[projects]]
   name = "github.com/go-test/deep"
   packages = ["."]
-  revision = "9898238679c264cfb10411539f14a0553dc8b295"
-  version = "v1.0.0"
+  revision = "6592d9cc0a499ad2d5f574fde80a2b5c5cc3b4f5"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -199,8 +200,8 @@
     "proto",
     "sortkeys"
   ]
-  revision = "342cbe0a04158f6dcb03ca0079991a51a4248c02"
-  version = "v0.5"
+  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -209,7 +210,6 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  branch = "master"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -218,13 +218,14 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/google/btree"
   packages = ["."]
-  revision = "316fb6d3f031ae8f4d457c6c5186b9e3ded70435"
+  revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
 
 [[projects]]
   branch = "master"
@@ -274,7 +275,7 @@
     "openstack/utils",
     "pagination"
   ]
-  revision = "b2bf8a613b41baa2a8b56a6a8483321a84520dfa"
+  revision = "6da026c32e2d622cc242d32984259c77237aefe1"
 
 [[projects]]
   branch = "master"
@@ -292,7 +293,7 @@
     ".",
     "simplelru"
   ]
-  revision = "0a025b7e63adc15a622f29b0b2c4c3848243bbf6"
+  revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
 
 [[projects]]
   branch = "master"
@@ -324,8 +325,8 @@
 [[projects]]
   name = "github.com/imdario/mergo"
   packages = ["."]
-  revision = "7fe0c75c13abdee74b09fcacef5ea1c6bba6a874"
-  version = "0.2.4"
+  revision = "163f41321a19dd09362d4c63cc2489db2015f1f4"
+  version = "0.3.2"
 
 [[projects]]
   name = "github.com/jmespath/go-jmespath"
@@ -335,14 +336,14 @@
 [[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
-  revision = "f7279a603edee96fe7764d3de9c6ff8cf9970994"
-  version = "1.0.4"
+  revision = "28452fcdec4e44348d2af0d91d1e9e38da3a9e0a"
+  version = "1.0.5"
 
 [[projects]]
-  branch = "master"
   name = "github.com/juju/ratelimit"
   packages = ["."]
   revision = "59fac5042749a5afb9af70e813da1dd5474f0167"
+  version = "1.0.1"
 
 [[projects]]
   branch = "master"
@@ -412,13 +413,13 @@
     "nfs",
     "xfs"
   ]
-  revision = "cb4147076ac75738c9a7d279075a253c0cc5acbd"
+  revision = "282c8707aa210456a825798969cc27edda34992a"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
-  revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
-  version = "v1.1.0"
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/spf13/pflag"
@@ -445,12 +446,14 @@
     "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
+    "internal/chacha20",
     "pbkdf2",
+    "poly1305",
     "scrypt",
     "ssh",
     "ssh/terminal"
   ]
-  revision = "d585fd2cc9195196078f516b69daff6744ef5e84"
+  revision = "9de5f2eaf759b4c4550b3db39fed2e9e5f86f45c"
 
 [[projects]]
   branch = "master"
@@ -463,7 +466,7 @@
     "idna",
     "lex/httplex"
   ]
-  revision = "d866cfc389cec985d6fda2859936a575a55a3ab6"
+  revision = "f5dfe339be1d06f81b22525fe34671ee7d2c8904"
 
 [[projects]]
   branch = "master"
@@ -472,7 +475,7 @@
     ".",
     "internal"
   ]
-  revision = "0448841f0cbe9d174c6c1cedd177f583337b8e2c"
+  revision = "543e37812f10c46c622c9575afd7ad22f22a12ba"
 
 [[projects]]
   branch = "master"
@@ -481,7 +484,7 @@
     "unix",
     "windows"
   ]
-  revision = "83801418e1b59fb1880e363299581ee543af32ca"
+  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
 
 [[projects]]
   branch = "master"
@@ -503,7 +506,7 @@
     "unicode/rangetable",
     "width"
   ]
-  revision = "eb22672bea55af56d225d4e35405f4d2e9f062a0"
+  revision = "4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -529,7 +532,7 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "287cf08546ab5e7e37d55a84f7ed3fd1db036de5"
+  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
 [[projects]]
   branch = "master"
@@ -564,7 +567,7 @@
     "storage/v1alpha1",
     "storage/v1beta1"
   ]
-  revision = "d19b0bad6fd13374f9b4568c3fdfe5af633ecbff"
+  revision = "2694da5be9c4ab4f3fd826112d4c3f71b8bf4b23"
 
 [[projects]]
   branch = "release-1.9"
@@ -576,7 +579,7 @@
     "pkg/client/clientset/clientset/scheme",
     "pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
   ]
-  revision = "98ecf7bbd60f9f11a72000e4f05203f542136219"
+  revision = "f1425805c0335c1f5b23e70f0154747b3df5a16a"
 
 [[projects]]
   branch = "release-1.9"
@@ -622,7 +625,7 @@
     "pkg/watch",
     "third_party/forked/golang/reflect"
   ]
-  revision = "180eddb345a5be3a157cea1c624700ad5bd27b8f"
+  revision = "19e3f5aa3adca672c153d324e6b7d82ff8935f03"
 
 [[projects]]
   branch = "release-6.0"
@@ -789,7 +792,7 @@
     "cmd/client-gen/path",
     "cmd/client-gen/types"
   ]
-  revision = "fef8bcdbaf36ac6a1a18c9ef7d85200b249fad30"
+  revision = "91d3f6a57905178524105a085085901bb73bd3dc"
 
 [[projects]]
   name = "k8s.io/gengo"
@@ -806,11 +809,11 @@
   branch = "master"
   name = "k8s.io/kube-openapi"
   packages = ["pkg/common"]
-  revision = "b16ebc07f5cad97831f961e4b5a9cc1caed33b7e"
+  revision = "275e2ce91dec4c05a4094a7b1daee5560b555ac9"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "99b88cc9f284243e931f4d5374cfc648bb00b04d8a0a864c11216b8a7637e718"
+  inputs-digest = "758a9a6967935b0b8805e44e66aef043d7563d7a332db83ab7080c71c710344e"
   solver-name = "gps-cdcl"
   solver-version = 1
