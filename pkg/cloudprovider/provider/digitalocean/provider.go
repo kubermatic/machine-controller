@@ -44,17 +44,19 @@ type RawConfig struct {
 	Backups           providerconfig.ConfigVarBool     `json:"backups"`
 	IPv6              providerconfig.ConfigVarBool     `json:"ipv6"`
 	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
+	Monitoring        providerconfig.ConfigVarBool     `json:"monitoring"`
 	Tags              []providerconfig.ConfigVarString `json:"tags"`
 }
 
 type Config struct {
-	Token             string
-	Region            string
-	Size              string
-	Backups           bool
-	IPv6              bool
-	PrivateNetworking bool
-	Tags              []string
+	Token             string   `json:"token"`
+	Region            string   `json:"region"`
+	Size              string   `json:"size"`
+	Backups           bool     `json:"backups"`
+	IPv6              bool     `json:"ipv6"`
+	PrivateNetworking bool     `json:"private_networking"`
+	Monitoring        bool     `json:"monitoring"`
+	Tags              []string `json:"tags"`
 }
 
 const (
@@ -255,6 +257,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		IPv6:              c.IPv6,
 		PrivateNetworking: c.PrivateNetworking,
 		Backups:           c.Backups,
+		Monitoring:        c.Monitoring,
 		UserData:          userdata,
 		SSHKeys:           []godo.DropletCreateSSHKey{{Fingerprint: fingerprint}},
 		Tags:              append(c.Tags, string(machine.UID)),
