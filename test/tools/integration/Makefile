@@ -22,6 +22,7 @@ apply:
 		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform apply -auto-approve"
 
 provision: apply
+	cd ../../../ && make machine-controller
 	./provision_master.sh
 
 destroy:
