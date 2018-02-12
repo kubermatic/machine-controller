@@ -43,6 +43,7 @@ type Config struct {
 	Backups           bool     `json:"backups"`
 	IPv6              bool     `json:"ipv6"`
 	PrivateNetworking bool     `json:"private_networking"`
+	Monitoring        bool     `json:"monitoring"`
 	Tags              []string `json:"tags"`
 }
 
@@ -230,6 +231,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		IPv6:              c.IPv6,
 		PrivateNetworking: c.PrivateNetworking,
 		Backups:           c.Backups,
+		Monitoring:        c.Monitoring,
 		UserData:          userdata,
 		SSHKeys:           []godo.DropletCreateSSHKey{{Fingerprint: fingerprint}},
 		Tags:              append(c.Tags, string(machine.UID)),
