@@ -54,6 +54,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -78,9 +79,14 @@ type Controller struct {
 
 	workqueue workqueue.RateLimitingInterface
 
-	sshPrivateKey *ssh.PrivateKey
-	clusterDNSIPs []net.IP
-	metrics       MetricsCollection
+	sshPrivateKey      *ssh.PrivateKey
+	clusterDNSIPs      []net.IP
+	metrics            MetricsCollection
+	kubeconfigProvider KubeconfigProvider
+}
+
+type KubeconfigProvider interface {
+	GetKubeconfig() (*clientcmdapi.Config, error)
 }
 
 // MetricsCollection is a struct of all metrics used in
@@ -103,7 +109,8 @@ func NewMachineController(
 	machineInformer v1alpha1.MachineInformer,
 	sshKeypair *ssh.PrivateKey,
 	clusterDNSIPs []net.IP,
-	metrics MetricsCollection) *Controller {
+	metrics MetricsCollection,
+	kubeconfigProvider KubeconfigProvider) *Controller {
 
 	controller := &Controller{
 		kubeClient:      kubeClient,
@@ -115,9 +122,10 @@ func NewMachineController(
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
 
-		sshPrivateKey: sshKeypair,
-		clusterDNSIPs: clusterDNSIPs,
-		metrics:       metrics,
+		sshPrivateKey:      sshKeypair,
+		clusterDNSIPs:      clusterDNSIPs,
+		metrics:            metrics,
+		kubeconfigProvider: kubeconfigProvider,
 	}
 
 	machineInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -650,7 +658,7 @@ func (c *Controller) handleObject(obj interface{}) {
 func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 	return map[string]healthcheck.Check{
 		"valid-info-kubeconfig": func() error {
-			cm, err := c.getClusterInfoKubeconfig()
+			cm, err := c.kubeconfigProvider.GetKubeconfig()
 			if err != nil {
 				err := fmt.Errorf("failed to get cluster-info configmap: %v", err)
 				glog.V(2).Info(err)

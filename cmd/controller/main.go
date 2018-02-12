@@ -29,6 +29,7 @@ import (
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
+	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/controller"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
 	"github.com/kubermatic/machine-controller/pkg/machines"
@@ -94,10 +95,14 @@ func main() {
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
+	defaultKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceDefault, nil)
 
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 	configMapInformer := kubePublicKubeInformerFactory.Core().V1().ConfigMaps()
+	endpointInformer := defaultKubeInformerFactory.Core().V1().Endpoints()
 	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
+
+	kubeconfigProvider := clusterinfo.New(cfg, configMapInformer.Lister(), endpointInformer.Lister())
 
 	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
 	if err != nil {
@@ -114,10 +119,11 @@ func main() {
 		NodeJoinDuration:    metrics.NodeJoinDuration,
 	}
 
-	c := controller.NewMachineController(kubeClient, machineClient, nodeInformer, configMapInformer, machineInformer, key, ips, machineMetrics)
+	c := controller.NewMachineController(kubeClient, machineClient, nodeInformer, configMapInformer, machineInformer, key, ips, machineMetrics, kubeconfigProvider)
 
 	go kubeInformerFactory.Start(stopCh)
 	go kubePublicKubeInformerFactory.Start(stopCh)
+	go defaultKubeInformerFactory.Start(stopCh)
 	go machineInformerFactory.Start(stopCh)
 
 	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
