@@ -183,7 +183,8 @@ var (
         "contents": {
           "source": "data:,kubeconfig%0A",
           "verification": {}
-        }
+        },
+        "mode": 256
       },
       {
         "filesystem": "root",
@@ -193,7 +194,8 @@ var (
         "contents": {
           "source": "data:,%7Baws-config%3Atrue%7D%0A",
           "verification": {}
-        }
+        },
+        "mode": 256
       },
       {
         "filesystem": "root",
@@ -203,7 +205,8 @@ var (
         "contents": {
           "source": "data:,yes%0A",
           "verification": {}
-        }
+        },
+        "mode": 420
       }
     ]
   },
@@ -264,7 +267,8 @@ var (
         "contents": {
           "source": "data:,kubeconfig%0A",
           "verification": {}
-        }
+        },
+        "mode": 256
       },
       {
         "filesystem": "root",
@@ -274,7 +278,8 @@ var (
         "contents": {
           "source": "data:,%7Bopenstack-config%3Atrue%7D%0A",
           "verification": {}
-        }
+        },
+        "mode": 256
       },
       {
         "filesystem": "root",
@@ -284,7 +289,8 @@ var (
         "contents": {
           "source": "data:,yes%0A",
           "verification": {}
-        }
+        },
+        "mode": 420
       }
     ]
   },
@@ -337,7 +343,8 @@ var (
         "contents": {
           "source": "data:,kubeconfig%0A",
           "verification": {}
-        }
+        },
+        "mode": 256
       },
       {
         "filesystem": "root",
@@ -347,7 +354,8 @@ var (
         "contents": {
           "source": "data:,%7Bopenstack-config%3Atrue%7D%0A",
           "verification": {}
-        }
+        },
+        "mode": 256
       },
       {
         "filesystem": "root",
@@ -357,7 +365,8 @@ var (
         "contents": {
           "source": "data:,yes%0A",
           "verification": {}
-        }
+        },
+        "mode": 420
       }
     ]
   },

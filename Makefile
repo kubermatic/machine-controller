@@ -31,7 +31,7 @@ machine-controller-nodep:
 		@docker run --rm \
 			$(VOL_ARG) \
 			-w /go/src/github.com/kubermatic/machine-controller \
-			golang:1.9.2 \
+			golang:1.9.3 \
 			env CGO_ENABLED=0 go build \
 				-ldflags '-s -w' \
 				-o machine-controller \
@@ -60,7 +60,7 @@ test-unit: vendor
 		@docker run --rm \
 			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
 			-w /go/src/github.com/kubermatic/machine-controller \
-			golang:1.9.2 \
+			golang:1.9.3 \
 			go test ./...
 
 test-e2e:

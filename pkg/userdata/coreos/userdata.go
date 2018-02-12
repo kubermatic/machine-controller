@@ -112,7 +112,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to validate coreos cloud config: %s", report.String())
 	}
 
-	ignCfg, report := ctconfig.ConvertAs2_0(cfg, "", ast)
+	ignCfg, report := ctconfig.Convert(cfg, "", ast)
 	if len(report.Entries) > 0 {
 		return "", fmt.Errorf("failed to convert container linux config to ignition: %s", report.String())
 	}
@@ -205,18 +205,21 @@ storage:
   files:
     - path: /etc/kubernetes/bootstrap.kubeconfig
       filesystem: root
+      mode: 0400
       contents:
         inline: |
 {{ .Kubeconfig | indent 10 }}
 
     - path: /etc/kubernetes/cloud-config
       filesystem: root
+      mode: 0400
       contents:
         inline: |
 {{ .CloudConfig | indent 10 }}
 
 {{- if contains "1.12" .MachineSpec.Versions.ContainerRuntime.Version }}
     - path: /etc/coreos/docker-1.12
+      mode: 0644
       filesystem: root
       contents:
         inline: |
