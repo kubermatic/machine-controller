@@ -36,14 +36,24 @@ func New(privateKey *machinessh.PrivateKey) cloud.Provider {
 	return &provider{privateKey: privateKey}
 }
 
+type RawConfig struct {
+	Token             providerconfig.ConfigVarString   `json:"token"`
+	Region            providerconfig.ConfigVarString   `json:"region"`
+	Size              providerconfig.ConfigVarString   `json:"size"`
+	Backups           providerconfig.ConfigVarBool     `json:"backups"`
+	IPv6              providerconfig.ConfigVarBool     `json:"ipv6"`
+	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
+	Tags              []providerconfig.ConfigVarString `json:"tags"`
+}
+
 type Config struct {
-	Token             string   `json:"token"`
-	Region            string   `json:"region"`
-	Size              string   `json:"size"`
-	Backups           bool     `json:"backups"`
-	IPv6              bool     `json:"ipv6"`
-	PrivateNetworking bool     `json:"private_networking"`
-	Tags              []string `json:"tags"`
+	Token             string
+	Region            string
+	Size              string
+	Backups           bool
+	IPv6              bool
+	PrivateNetworking bool
+	Tags              []string
 }
 
 const (
@@ -91,8 +101,22 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	if err != nil {
 		return nil, nil, err
 	}
+	rawConfig := RawConfig{}
+	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+
+	//TODO: Don't simply use .Value, use some external func that gets the Value from .ObjectReference
+	// if unset
 	c := Config{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
+	c.Token = rawConfig.Token.Value
+	c.Region = rawConfig.Region.Value
+	c.Size = rawConfig.Size.Value
+	c.Backups = rawConfig.Backups.Value
+	c.IPv6 = rawConfig.IPv6.Value
+	c.PrivateNetworking = rawConfig.PrivateNetworking.Value
+	for _, tag := range rawConfig.Tags {
+		c.Tags = append(c.Tags, tag.Value)
+	}
+
 	return &c, &pconfig, err
 }
 
