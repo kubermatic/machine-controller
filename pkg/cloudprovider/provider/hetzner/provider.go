@@ -32,11 +32,18 @@ func New(privateKey *machinessh.PrivateKey) cloud.Provider {
 	return &provider{privateKey: privateKey}
 }
 
+type RawConfig struct {
+	Token      providerconfig.ConfigVarString `json:"token"`
+	ServerType providerconfig.ConfigVarString `json:"serverType"`
+	Datacenter providerconfig.ConfigVarString `json:"datacenter"`
+	Location   providerconfig.ConfigVarString `json:"location"`
+}
+
 type Config struct {
-	Token      string `json:"token"`
-	ServerType string `json:"serverType"`
-	Datacenter string `json:"datacenter"`
-	Location   string `json:"location"`
+	Token      string
+	ServerType string
+	Datacenter string
+	Location   string
 }
 
 // Protects creation of public key
@@ -60,8 +67,17 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	if err != nil {
 		return nil, nil, err
 	}
+
+	rawConfig := RawConfig{}
+	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+
+	//TODO: Don't simply use .Value, use some external func that gets the Value from .ObjectReference
+	// if unset
 	c := Config{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
+	c.Token = rawConfig.Token.Value
+	c.ServerType = rawConfig.ServerType.Value
+	c.Datacenter = rawConfig.Datacenter.Value
+	c.Location = rawConfig.Location.Value
 	return &c, &pconfig, err
 }
 
