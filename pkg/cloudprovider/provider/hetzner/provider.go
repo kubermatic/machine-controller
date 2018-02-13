@@ -24,12 +24,13 @@ import (
 )
 
 type provider struct {
-	privateKey *machinessh.PrivateKey
+	privateKey      *machinessh.PrivateKey
+	secretKeyGetter *providerconfig.SecretKeyGetter
 }
 
 // New returns a Hetzner provider
-func New(privateKey *machinessh.PrivateKey) cloud.Provider {
-	return &provider{privateKey: privateKey}
+func New(privateKey *machinessh.PrivateKey, secretKeyGetter *providerconfig.SecretKeyGetter) cloud.Provider {
+	return &provider{privateKey: privateKey, secretKeyGetter: secretKeyGetter}
 }
 
 type RawConfig struct {

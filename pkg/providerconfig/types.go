@@ -61,7 +61,7 @@ type SecretKeyGetter struct {
 	kubeClient kubernetes.Interface
 }
 
-func (secretKeyGetter *SecretKeyGetter) getConfigVarStringValue(kubeClient kubernetes.Interface, configVar ConfigVarString) (string, error) {
+func (secretKeyGetter *SecretKeyGetter) getConfigVarStringValue(configVar ConfigVarString) (string, error) {
 	if configVar.Value != "" {
 		return configVar.Value, nil
 	}
@@ -74,6 +74,10 @@ func (secretKeyGetter *SecretKeyGetter) getConfigVarStringValue(kubeClient kuber
 		return string(val), nil
 	}
 	return "", fmt.Errorf("secret '%s' in namespace '%s' has no key '%s'!", configVar.ValueFrom.Name, configVar.ValueFrom.Namespace, configVar.ValueFrom.Key)
+}
+
+func NewSecretKeyGetter(kubeClient kubernetes.Interface) *SecretKeyGetter {
+	return &SecretKeyGetter{kubeClient: kubeClient}
 }
 
 func GetConfig(r runtime.RawExtension) (*Config, error) {
