@@ -92,6 +92,7 @@ rules:
   - secrets
   resourceNames:
   - machine-controller-ssh-key
+  - machine-controller-hetzner
   verbs:
   - get
 ---

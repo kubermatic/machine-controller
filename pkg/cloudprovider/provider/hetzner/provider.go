@@ -62,7 +62,7 @@ func getClient(token string) *hcloud.Client {
 	return hcloud.NewClient(hcloud.WithToken(token))
 }
 
-func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
@@ -72,18 +72,28 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	rawConfig := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 
-	//TODO: Don't simply use .Value, use some external func that gets the Value from .ObjectReference
-	// if unset
 	c := Config{}
-	c.Token = rawConfig.Token.Value
-	c.ServerType = rawConfig.ServerType.Value
-	c.Datacenter = rawConfig.Datacenter.Value
-	c.Location = rawConfig.Location.Value
+	c.Token, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Token)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.ServerType, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.ServerType)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Datacenter, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Datacenter)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Location, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Location)
+	if err != nil {
+		return nil, nil, err
+	}
 	return &c, &pconfig, err
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, pc, err := getConfig(spec.ProviderConfig)
+	c, pc, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -156,7 +166,7 @@ func ensureSSHKeysExist(ctx context.Context, client hcloud.SSHKeyClient, key *ma
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	c, pc, err := getConfig(machine.Spec.ProviderConfig)
+	c, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -216,7 +226,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -247,7 +257,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}

@@ -61,8 +61,9 @@ type SecretKeyGetter struct {
 	kubeClient kubernetes.Interface
 }
 
-func (secretKeyGetter *SecretKeyGetter) getConfigVarStringValue(configVar ConfigVarString) (string, error) {
-	if configVar.Value != "" {
+func (secretKeyGetter *SecretKeyGetter) GetConfigVarStringValue(configVar ConfigVarString) (string, error) {
+	// We need all three of these to fetch and use a secret, so fallback to .Value if any of it is an empty string
+	if configVar.ValueFrom.Name == "" || configVar.ValueFrom.Namespace == "" || configVar.ValueFrom.Key == "" {
 		return configVar.Value, nil
 	}
 	secret, err := secretKeyGetter.kubeClient.CoreV1().Secrets(

@@ -1,3 +1,15 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-hetzner
+  namespace: kube-system
+type: Opaque
+data:
+  # Must be base64 encoded like this: echo -n '<<token>>'|base64 -w0
+  token: PDx0b2tlbj4+
+---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
@@ -11,7 +23,10 @@ spec:
     cloudProvider: "hetzner"
     cloudProviderSpec:
       token:
-        value: "<< HETZNER_API_TOKEN >>"
+        valueFrom:
+          namespace: kube-system
+          name: machine-controller-hetzner
+          key: token
       serverType:
         value: "cx11"
       datacenter:
