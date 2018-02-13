@@ -72,7 +72,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}
 
 	pconfig, err := providerconfig.GetConfig(spec.ProviderConfig)
-
 	if err != nil {
 		return "", fmt.Errorf("failed to get provider config: %v", err)
 	}

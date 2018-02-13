@@ -56,6 +56,5 @@ func GetConfig(r runtime.RawExtension) (*Config, error) {
 	if err := json.Unmarshal(r.Raw, p); err != nil {
 		return nil, err
 	}
-
 	return p, nil
 }
