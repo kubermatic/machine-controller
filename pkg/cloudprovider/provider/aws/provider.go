@@ -242,9 +242,6 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 }
 
 func ensureSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
-	publicKeyCreationLock.Lock()
-	defer publicKeyCreationLock.Unlock()
-
 	sgOut, err := client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
 		GroupNames: aws.StringSlice([]string{securityGroupName}),
 	})
@@ -307,6 +304,9 @@ func ensureSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
 }
 
 func ensureSSHKeysExist(client *ec2.EC2, key *machinessh.PrivateKey) (string, error) {
+	publicKeyCreationLock.Lock()
+	defer publicKeyCreationLock.Unlock()
+
 	publicKey := key.PublicKey()
 	out, err := x509.MarshalPKIXPublicKey(&publicKey)
 	if err != nil {
@@ -339,7 +339,7 @@ func ensureSSHKeysExist(client *ec2.EC2, key *machinessh.PrivateKey) (string, er
 
 	glog.V(4).Infof("importing ssh public key into aws...")
 
-	spk, err := ssh.NewPublicKey(&key)
+	spk, err := ssh.NewPublicKey(&publicKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse public key: %v", err)
 	}
