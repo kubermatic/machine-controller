@@ -95,6 +95,20 @@ rules:
   - machine-controller-hetzner
   verbs:
   - get
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  resourceNames:
+  - machine-controller
+  verbs:
+  - "*"
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
