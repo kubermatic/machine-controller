@@ -17,35 +17,18 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"reflect"
 	"strings"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
-	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	kubeinformers "k8s.io/client-go/informers"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
 
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/controller"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
@@ -53,6 +36,12 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/kubermatic/machine-controller/pkg/ssh"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
@@ -63,51 +52,6 @@ var (
 	listenAddress string
 	workerCount   int
 )
-
-const (
-	controllerName                     = "machine-controller"
-	defaultLeaderElectionNamespace     = "kube-system"
-	defaultLeaderElectionLeaseDuration = 15 * time.Second
-	defaultLeaderElectionRenewDeadline = 10 * time.Second
-	defaultLeaderElectionRetryPeriod   = 2 * time.Second
-)
-
-// controllerRunOptions holds data that are required to create and run machine controller
-type controllerRunOptions struct {
-	// kubeClient a client that knows how to consume kubernetes API
-	kubeClient *kubernetes.Clientset
-
-	// extClient a client that knows how to consume kubernetes extension API
-	extClient *apiextclient.Clientset
-
-	// machineClient a client that knows how to consume Machine resources
-	machineClient *machineclientset.Clientset
-
-	// sshKeyPair sets a trust between the controller and a machine by
-	// pre-installing public part of that key on a machine.
-	sshKeyPair *ssh.PrivateKey
-
-	// this essentially sets the cluster DNS IP addresses. The list is passed to kubelet and then down to pods.
-	clusterDNSIPs []net.IP
-
-	// metrics a struct that holds all metrics we want to collect
-	metrics *MachineControllerMetrics
-
-	// leaderElectionClient holds a client that is used by the leader election library
-	leaderElectionClient *kubernetes.Clientset
-
-	// nodeInformer holds a shared informer and lister for Nodes
-	nodeInformer corev1informers.NodeInformer
-
-	// configMapInformer holds a shared informer and lister for ConfigMaps
-	configMapInformer corev1informers.ConfigMapInformer
-
-	// machineInformer holds a shared informer and lister for Machines
-	machineInformer machinesv1alpha1.MachineInformer
-
-	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
-	kubeconfigProvider controller.KubeconfigProvider
-}
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
@@ -124,45 +68,30 @@ func main() {
 		glog.Fatalf("invalid cluster dns specified: %v", err)
 	}
 
-	// TODO: add graceful shutdown, propagate stopCh to run method and to http server
+	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		glog.Fatalf("error building kubeconfig: %v", err)
+		glog.Fatalf("Error building kubeconfig: %v", err)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
+		glog.Fatalf("Error building kubernetes clientset: %v", err)
 	}
 
-	extClient, err := apiextclient.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for extClient: %v", err)
-	}
-
-	machineClient, err := machineclientset.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("error building example clientset for machineClient: %v", err)
-	}
-
-	leaderElectionClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for leaderElectionClient: %v", err)
-	}
-
-	err = machines.EnsureCustomResourceDefinitions(extClient)
+	extclient := apiextclient.NewForConfigOrDie(cfg)
+	err = machines.EnsureCustomResourceDefinitions(extclient)
 	if err != nil {
 		glog.Fatalf("failed to create CustomResourceDefinition: %v", err)
 	}
 
-	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
+	machineClient, err := machineclientset.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
+		glog.Fatalf("Error building example clientset: %v", err)
 	}
 
-	// before we acquire a lock we actually warm up caches mirroring the state of the API server
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
@@ -174,6 +103,23 @@ func main() {
 	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
 
 	kubeconfigProvider := clusterinfo.New(cfg, configMapInformer.Lister(), endpointInformer.Lister())
+
+	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
+	if err != nil {
+		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
+	}
+
+	metrics := NewMachineControllerMetrics()
+	machineMetrics := controller.MetricsCollection{
+		Machines:            metrics.Machines,
+		Workers:             metrics.Workers,
+		Errors:              metrics.Errors,
+		Nodes:               metrics.Nodes,
+		ControllerOperation: metrics.ControllerOperation,
+		NodeJoinDuration:    metrics.NodeJoinDuration,
+	}
+
+	c := controller.NewMachineController(kubeClient, machineClient, nodeInformer, configMapInformer, machineInformer, key, ips, machineMetrics, kubeconfigProvider)
 
 	go kubeInformerFactory.Start(stopCh)
 	go kubePublicKubeInformerFactory.Start(stopCh)
@@ -188,148 +134,16 @@ func main() {
 		}
 	}
 
-	runOptions := controllerRunOptions{
-		kubeClient:           kubeClient,
-		extClient:            extClient,
-		machineClient:        machineClient,
-		sshKeyPair:           key,
-		metrics:              NewMachineControllerMetrics(),
-		clusterDNSIPs:        ips,
-		leaderElectionClient: leaderElectionClient,
-		nodeInformer:         nodeInformer,
-		configMapInformer:    configMapInformer,
-		machineInformer:      machineInformer,
-		kubeconfigProvider:   kubeconfigProvider,
-	}
-
-	startUtilHttpServerOrDie(kubeClient, kubeconfigProvider, stopCh)
-	startControllerViaLeaderElectionOrDie(runOptions)
-}
-
-// startControllerViaLeaderElectionOrDie starts machine controller only if a proper lock was acquired.
-// This essentially means that we can have multiple instances and at the same time only one is operational.
-// The program terminates when the leadership was lost.
-func startControllerViaLeaderElectionOrDie(runOptions controllerRunOptions) {
-	id, err := os.Hostname()
-	if err != nil {
-		glog.Fatalf("error getting hostname: %s", err.Error())
-	}
-	// add a seed to the id, so that two processes on the same host don't accidentally both become active
-	id = id + "_" + string(uuid.NewUUID())
-
-	rl := resourcelock.EndpointsLock{
-		EndpointsMeta: metav1.ObjectMeta{
-			Namespace: defaultLeaderElectionNamespace,
-			Name:      controllerName,
-		},
-		Client: runOptions.leaderElectionClient.CoreV1(),
-		LockConfig: resourcelock.ResourceLockConfig{
-			Identity:      id + fmt.Sprintf("-%s", controllerName),
-			EventRecorder: createRecorder(runOptions.kubeClient),
-		},
-	}
-
-	run := func(stopCh <-chan struct{}) {
-		machineController := controller.NewMachineController(
-			runOptions.kubeClient,
-			runOptions.machineClient,
-			runOptions.nodeInformer,
-			runOptions.configMapInformer,
-			runOptions.machineInformer,
-			runOptions.sshKeyPair,
-			runOptions.clusterDNSIPs,
-			controller.MetricsCollection{
-				Machines:            runOptions.metrics.Machines,
-				Workers:             runOptions.metrics.Workers,
-				Errors:              runOptions.metrics.Errors,
-				Nodes:               runOptions.metrics.Nodes,
-				ControllerOperation: runOptions.metrics.ControllerOperation,
-				NodeJoinDuration:    runOptions.metrics.NodeJoinDuration,
-			},
-			runOptions.kubeconfigProvider)
-
-		if err = machineController.Run(workerCount, stopCh); err != nil {
-			glog.Fatalf("error running controller: %v", err)
-		}
-	}
-
-	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
-		Lock:          &rl,
-		LeaseDuration: defaultLeaderElectionLeaseDuration,
-		RenewDeadline: defaultLeaderElectionRenewDeadline,
-		RetryPeriod:   defaultLeaderElectionRetryPeriod,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: run,
-			OnStoppedLeading: func() {
-				glog.Fatalf("leaderelection lost, closing the app")
-			},
-		},
-	})
-}
-
-// startUtilHttpServer starts a new HTTP server asynchronously
-func startUtilHttpServerOrDie(kubeClient *kubernetes.Clientset, kubeconfigProvider controller.KubeconfigProvider, stopCh <-chan struct{}) {
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
-
-	for name, c := range readinessChecks(kubeconfigProvider) {
+	for name, c := range c.ReadinessChecks() {
 		health.AddReadinessCheck(name, c)
 	}
-
-	serveUtilHttpServer := func(health healthcheck.Handler) {
-		m := http.NewServeMux()
-		m.Handle("/metrics", promhttp.Handler())
-		m.Handle("/live", http.HandlerFunc(health.LiveEndpoint))
-		m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
-
-		s := http.Server{
-			Addr:    listenAddress,
-			Handler: m,
-		}
-		glog.V(4).Infof("serving util http server on %s", listenAddress)
-		glog.Fatalf("util http server died: %v", s.ListenAndServe())
-	}
-
 	go serveUtilHttpServer(health)
-}
 
-func readinessChecks(kubeconfigProvider controller.KubeconfigProvider) map[string]healthcheck.Check {
-	return map[string]healthcheck.Check{
-		"valid-info-kubeconfig": func() error {
-			cm, err := kubeconfigProvider.GetKubeconfig()
-			if err != nil {
-				return err
-			}
-			if len(cm.Clusters) != 1 {
-				err := errors.New("invalid kubeconfig: no clusters found")
-				glog.V(2).Info(err)
-				return err
-			}
-			for name, c := range cm.Clusters {
-				if len(c.CertificateAuthorityData) == 0 {
-					err := fmt.Errorf("invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
-					return err
-				}
-				if len(c.Server) == 0 {
-					err := fmt.Errorf("invalid kubeconfig: no server was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
-					return err
-				}
-			}
-			return nil
-		},
+	if err = c.Run(workerCount, stopCh); err != nil {
+		glog.Fatalf("Error running controller: %v", err)
 	}
-}
-
-// createRecorder creates a new event recorder which is later used by the leader election
-// library to broadcast events
-func createRecorder(kubeClient *kubernetes.Clientset) record.EventRecorder {
-	glog.V(4).Info("creating event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.V(4).Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerName})
 }
 
 func parseClusterDNSIPs(s string) ([]net.IP, error) {
@@ -343,4 +157,18 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+func serveUtilHttpServer(health healthcheck.Handler) {
+	m := http.NewServeMux()
+	m.Handle("/metrics", promhttp.Handler())
+	m.Handle("/live", http.HandlerFunc(health.LiveEndpoint))
+	m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
+
+	s := http.Server{
+		Addr:    listenAddress,
+		Handler: m,
+	}
+	glog.V(4).Infof("serving util http server on %s", listenAddress)
+	glog.Fatalf("util http server died: %v", s.ListenAndServe())
 }
