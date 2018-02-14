@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
@@ -46,8 +47,8 @@ type Config struct {
 
 // We can not use v1.SecretKeySelector because it is not cross namespace
 type GlobalSecretKeySelector struct {
-	*v1.ObjectReference `json:",inline"`
-	Key                 string `json:"key"`
+	v1.ObjectReference `json:",inline"`
+	Key                string `json:"key"`
 }
 
 type ConfigVarString struct {
@@ -58,84 +59,27 @@ type ConfigVarString struct {
 // This type only exists to have the same fields as ConfigVarString but
 // not its funcs, so it can be used as target for json.Unmarshal without
 // causing a recursion
-type configVarStringInheritant struct {
-	ConfigVarString `json:",inline"`
-}
-
-func (c configVarStringInheritant) Namespace() string {
-	return c.ConfigVarString.ValueFrom.Namespace
-}
-
-func (c configVarStringInheritant) Name() string {
-	return c.ConfigVarString.ValueFrom.Name
-}
-
-func (c configVarStringInheritant) Key() string {
-	return c.ConfigVarString.ValueFrom.Key
+type configVarStringWithoutUnmarshaller struct {
+	Value     string                  `json:"value,omitempty"`
+	ValueFrom GlobalSecretKeySelector `json:"valueFrom,omitempty"`
 }
 
 func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		configVarString = &ConfigVarString{Value: string(b)}
+		configVarString.Value = strings.Replace(string(b), "\"", "", -1)
+		configVarString.ValueFrom = GlobalSecretKeySelector{}
 		return nil
 	}
 	// This type must have the same fields as ConfigVarString but not
 	// its UnmarshalJSON, otherwise we cause a recursion
-	var cvsDummy configVarStringInheritant
+	var cvsDummy configVarStringWithoutUnmarshaller
 	err := json.Unmarshal(b, &cvsDummy)
 	if err != nil {
 		return err
 	}
-	objr := v1.ObjectReference{
-		Namespace: cvsDummy.Namespace(),
-		Name:      cvsDummy.Name(),
-	}
-	cvs := ConfigVarString{
-		ValueFrom: GlobalSecretKeySelector{
-			ObjectReference: &objr,
-			Key:             cvsDummy.Key(),
-		},
-	}
-	configVarString = &cvs
+	configVarString.Value = cvsDummy.Value
+	configVarString.ValueFrom = cvsDummy.ValueFrom
 	return nil
-	//	var cvs map[string]interface{}
-	//	err := json.Unmarshal(b, &cvs)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if valueFrom, ok := cvs["valueFrom"]; ok {
-	//		if valueFromMap, ok := valueFrom.(map[string]interface{}); ok {
-	//			var namespace, name, key string
-	//			if ns, ok := valueFromMap["namespace"]; ok {
-	//				if nsString, ok := ns.(string); ok {
-	//					namespace = nsString
-	//				}
-	//			}
-	//			if n, ok := valueFromMap["name"]; ok {
-	//				if nString, ok := n.(string); ok {
-	//					name = nString
-	//				}
-	//			}
-	//			if k, ok := valueFromMap["key"]; ok {
-	//				if kString, ok := k.(string); ok {
-	//					key = kString
-	//				}
-	//			}
-	//			gsks := GlobalSecretKeySelector{v1.ObjectReference{Namespace: namespace, Name: name}, key}
-	//			configVarString = &ConfigVarString{ValueFrom: gsks}
-	//			return nil
-	//
-	//		}
-	//		return fmt.Errorf("valueFrom must be a string map but is '%s'!", reflect.TypeOf(valueFrom))
-	//	}
-	//	if value, ok := cvs["value"]; ok {
-	//		if valueString, ok := value.(string); ok {
-	//			configVarString = &ConfigVarString{Value: valueString}
-	//			return nil
-	//		}
-	//		return fmt.Errorf("value must be a string!")
-	//	}
-	//	return fmt.Errorf("error decoding, object is neither a string nor a map with a 'value' or 'valueFrom' key!")
 }
 
 type ConfigVarBool struct {
