@@ -27,12 +27,9 @@ spec:
           namespace: kube-system
           name: machine-controller-hetzner
           key: token
-      serverType:
-        value: "cx11"
-      datacenter:
-        value: ""
-      location:
-        value: "fsn1"
+      serverType: "cx11"
+      datacenter: ""
+      location: "fsn1"
     operatingSystem: "ubuntu"
     operatingSystemSpec:
       distUpgradeOnBoot: false

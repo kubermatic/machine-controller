@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +51,18 @@ type GlobalSecretKeySelector struct {
 type ConfigVarString struct {
 	Value     string                  `json:"value,omitempty"`
 	ValueFrom GlobalSecretKeySelector `json:"valueFrom,omitempty"`
+}
+
+func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	if !strings.Contains(s, "{") {
+		configVarString = &ConfigVarString{Value: s}
+		return nil
+	}
+	return json.Unmarshal(b, configVarString)
 }
 
 type ConfigVarBool struct {
