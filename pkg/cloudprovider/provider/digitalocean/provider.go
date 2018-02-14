@@ -49,14 +49,14 @@ type RawConfig struct {
 }
 
 type Config struct {
-	Token             string   `json:"token"`
-	Region            string   `json:"region"`
-	Size              string   `json:"size"`
-	Backups           bool     `json:"backups"`
-	IPv6              bool     `json:"ipv6"`
-	PrivateNetworking bool     `json:"private_networking"`
-	Monitoring        bool     `json:"monitoring"`
-	Tags              []string `json:"tags"`
+	Token             string
+	Region            string
+	Size              string
+	Backups           bool
+	IPv6              bool
+	PrivateNetworking bool
+	Monitoring        bool
+	Tags              []string
 }
 
 const (
@@ -98,7 +98,7 @@ func getClient(token string) *godo.Client {
 	return godo.NewClient(oauthClient)
 }
 
-func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
@@ -106,18 +106,48 @@ func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) 
 	}
 	rawConfig := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	//TODO: Don't simply use .Value, use some external func that gets the Value from .ObjectReference
-	// if unset
 	c := Config{}
-	c.Token = rawConfig.Token.Value
-	c.Region = rawConfig.Region.Value
-	c.Size = rawConfig.Size.Value
-	c.Backups = rawConfig.Backups.Value
-	c.IPv6 = rawConfig.IPv6.Value
-	c.PrivateNetworking = rawConfig.PrivateNetworking.Value
+	glog.V(6).Infof("Setting do token...")
+	c.Token, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Token)
+	if err != nil {
+		return nil, nil, err
+	}
+	glog.V(6).Infof("Sucessfully set do token...")
+	glog.V(6).Infof("Token value: '%s'", c.Token)
+	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Region)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Size, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Size)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Backups, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.Backups)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.IPv6, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.IPv6)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.PrivateNetworking, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.PrivateNetworking)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Monitoring, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.Monitoring)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, tag := range rawConfig.Tags {
-		c.Tags = append(c.Tags, tag.Value)
+		tagVal, err := p.secretKeyGetter.GetConfigVarStringValue(tag)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.Tags = append(c.Tags, tagVal)
 	}
 
 	return &c, &pconfig, err
@@ -128,7 +158,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, pc, err := getConfig(spec.ProviderConfig)
+	c, pc, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -232,7 +262,7 @@ func ensureSSHKeysExist(ctx context.Context, service godo.KeysService, key *mach
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	c, pc, err := getConfig(machine.Spec.ProviderConfig)
+	c, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -288,7 +318,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -312,7 +342,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}

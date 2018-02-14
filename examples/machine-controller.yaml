@@ -93,6 +93,7 @@ rules:
   resourceNames:
   - machine-controller-ssh-key
   - machine-controller-hetzner
+  - machine-controller-digitalocean
   verbs:
   - get
 - apiGroups:
