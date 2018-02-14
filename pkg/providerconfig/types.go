@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -68,6 +69,24 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 type ConfigVarBool struct {
 	Value     bool                    `json:"value,omitempty"`
 	ValueFrom GlobalSecretKeySelector `json:"valueFrom,omitempty"`
+}
+
+func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
+	var configVarStr ConfigVarString
+	err := json.Unmarshal(b, &configVarStr)
+	if err != nil {
+		return err
+	}
+	if configVarStr.Value != "" {
+		boolVal, err := strconv.ParseBool(configVarStr.Value)
+		if err != nil {
+			return fmt.Errorf("can not cast '%s' to bool: '%v'", configVarStr.Value, err)
+		}
+		configVarBool = &ConfigVarBool{Value: boolVal, ValueFrom: configVarStr.ValueFrom}
+		return nil
+	}
+	configVarBool = &ConfigVarBool{ValueFrom: configVarStr.ValueFrom}
+	return nil
 }
 
 type SecretKeyGetter struct {
