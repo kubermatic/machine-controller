@@ -301,9 +301,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		}
 	}
 
-	err = ensureKubernetesSecurityGroupExist(client, c.Region, securityGroupName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to ensure that the kubernetes security group %q exists: %v", securityGroupName, err)
+	securityGroups := c.SecurityGroups
+	if len(securityGroups) == 0 {
+		glog.V(2).Infof("creating security group %s for worker nodes", securityGroupName)
+		err = ensureKubernetesSecurityGroupExist(client, c.Region, securityGroupName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to ensure that the kubernetes security group %q exists: %v", securityGroupName, err)
+		}
+		securityGroups = append(securityGroups, securityGroupName)
 	}
 
 	serverOpts := osservers.CreateOpts{
@@ -311,7 +316,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		FlavorRef:        flavor.ID,
 		ImageRef:         image.ID,
 		UserData:         []byte(userdata),
-		SecurityGroups:   append(c.SecurityGroups, securityGroupName),
+		SecurityGroups:   securityGroups,
 		AvailabilityZone: c.AvailabilityZone,
 		Networks:         []osservers.Network{{UUID: network.ID}},
 		Metadata: map[string]string{
