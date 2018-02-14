@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,7 @@ import (
 const (
 	machineReadyCheckPeriod  = 2 * time.Second
 	machineReadyCheckTimeout = 5 * time.Minute
+	tempDir                  = "/tmp"
 )
 
 func main() {
@@ -72,7 +74,7 @@ func main() {
 	}
 
 	// prepare the manifest
-	manifest, err := readAndModifyManifest(manifestPath, keyValuePairs)
+	manifests, err := readAndModifyManifest(manifestPath, keyValuePairs)
 	if err != nil {
 		glog.Fatalf("Failed to prepare the manifest, due to: %v", err)
 	}
@@ -84,16 +86,58 @@ func main() {
 	nodeCount := len(nodes.Items)
 	glog.Infof("Cluster currently has %v nodes...", nodeCount)
 
-	// act
-	err = verify(manifest, kubeClient, machineClient, nodeCount, createOnly)
+	// Pragmatic solution for multiple manifests in one file
+	manifestsList := strings.Split(manifests, "\n---\n")
+	for _, manifest := range manifestsList {
+		if manifest == "" {
+			continue
+		}
+		if strings.Contains(manifest, "kind: Machine") {
+			err = verify(manifest, kubeClient, machineClient, nodeCount, createOnly)
+			if err != nil {
+				glog.Fatalf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
+				msg := "all good, successfully verified that a machine/node has been created"
+				if !createOnly {
+					msg += " and then deleted"
+				}
+				glog.Infoln(msg)
+			}
+		} else {
+			// Be pragmatic
+			glog.Infof("Trying to apply additional manifest...")
+			err = kubectlApply(kubeConfig, manifest)
+			if err != nil {
+				glog.Fatalf("Error applying manifest: '%v'", err)
+			}
+			glog.Infof("Successfully applied additional manifest!")
+		}
+	}
+}
+
+func kubectlApply(kubecfgPath, manifest string) error {
+	file, err := ioutil.TempFile(tempDir, "")
 	if err != nil {
-		glog.Fatalf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
+		return err
 	}
-	msg := "all good, successfully verified that a machine/node has been created"
-	if !createOnly {
-		msg += " and then deleted"
+	_, err = file.WriteString(manifest)
+	if err != nil {
+		return err
 	}
-	glog.Infoln(msg)
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	filePath := filepath.Join(tempDir, fileInfo.Name())
+	glog.Infof("Wrote temporary manifest file to '%s'", filePath)
+
+	cmdSlice := []string{"kubectl", "--kubeconfig", kubecfgPath, "apply", "-f", filePath}
+	command := exec.Command(cmdSlice[0], cmdSlice[1:]...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Error executing command '%s': '%v'\nOutput:\n", strings.Join(cmdSlice, " "), err, string(output))
+	}
+
+	return nil
 }
 
 func getDefaultKubeconfigPath() (string, error) {
@@ -106,16 +150,14 @@ func getDefaultKubeconfigPath() (string, error) {
 
 func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface, nodeCount int, createOnly bool) error {
 	newMachine := &machinev1alpha1.Machine{}
-	{
-		manifestReader := strings.NewReader(manifest)
-		manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
-		err := manifestDecoder.Decode(newMachine)
-		if err != nil {
-			return err
-		}
+	manifestReader := strings.NewReader(manifest)
+	manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
+	err := manifestDecoder.Decode(newMachine)
+	if err != nil {
+		return err
 	}
 
-	err := createAndAssure(newMachine, machineClient, kubeClient, nodeCount)
+	err = createAndAssure(newMachine, machineClient, kubeClient, nodeCount)
 	if err != nil {
 		return err
 	}

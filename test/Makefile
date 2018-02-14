@@ -1,7 +1,4 @@
-tools/verify/verify:
-	cd tools/verify && make verify
-
-hetzner-e2e: tools/verify/verify
+hetzner-e2e:
 	cd tools/integration && \
 		make provision && \
 		make destroy

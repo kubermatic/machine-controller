@@ -8,7 +8,7 @@ metadata:
 type: Opaque
 data:
   # Must be base64 encoded like this: echo -n '<<token>>'|base64 -w0
-  token: PDx0b2tlbj4+
+  token: << HETZNER_TOKEN_BASE64_ENCODED >>
 ---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
