@@ -477,3 +477,14 @@ func (d *osInstance) Addresses() []string {
 
 	return addresses
 }
+
+func (d *osInstance) Status() instance.Status {
+	switch d.server.Status {
+	case "IN_PROGRESS":
+		return instance.StatusCreating
+	case "ACTIVE":
+		return instance.StatusRunning
+	default:
+		return instance.StatusUnknown
+	}
+}
