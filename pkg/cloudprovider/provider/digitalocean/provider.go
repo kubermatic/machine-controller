@@ -333,3 +333,14 @@ func (d *doInstance) Addresses() []string {
 	}
 	return addresses
 }
+
+func (d *doInstance) Status() instance.Status {
+	switch d.droplet.Status {
+	case "new":
+		return instance.StatusCreating
+	case "active":
+		return instance.StatusRunning
+	default:
+		return instance.StatusUnknown
+	}
+}
