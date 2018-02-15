@@ -45,6 +45,16 @@ instanceType: "t2.micro"
 diskSize: 50
 # root disk type (gp2, io1, st1, sc1, or standard)
 diskType: "gp2"
+# optional! the ami id to use. Needs to fit to the specified operating system
+ami: ""
+# optional! The security group ids for the instance. 
+# When not set a 'kubernetes-v1' security gruop will get created
+securityGroupIDs:
+- ""
+# name of the instance profile to use.
+# When not set a 'kubernetes-v1' instance profile will get created 
+instanceProfile : ""
+
 # instance tags ("KubernetesCluster": "my-cluster" is a required tag. 
 # If not set, the kubernetes controller-manager will delete the nodes)
 tags:
