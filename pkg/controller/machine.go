@@ -275,10 +275,10 @@ func (c *Controller) syncHandler(key string) error {
 		if machineControllerName != "" && c.name == "" {
 			glog.V(6).Infof("this controller is configured to process all machines which have no controller specified via annotation %s. The machine has %s:%s", controllerNameAnnotationKey, controllerNameAnnotationKey, machineControllerName)
 			return nil
-		} else {
-			glog.V(6).Infof("this controller is configured to process machines which the annotation %s:%s. The machine has %s:%s", controllerNameAnnotationKey, c.name, controllerNameAnnotationKey, machineControllerName)
-			return nil
 		}
+
+		glog.V(6).Infof("this controller is configured to process machines which the annotation %s:%s. The machine has %s:%s", controllerNameAnnotationKey, c.name, controllerNameAnnotationKey, machineControllerName)
+		return nil
 	}
 
 	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
