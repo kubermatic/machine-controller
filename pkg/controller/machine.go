@@ -64,6 +64,8 @@ const (
 	deletionRetryWaitPeriod = 5 * time.Second
 
 	machineKind = "Machine"
+
+	controllerNameAnnotationKey = "machine.k8s.io/controller"
 )
 
 // Controller is the controller implementation for Foo resources
@@ -81,6 +83,8 @@ type Controller struct {
 	clusterDNSIPs      []net.IP
 	metrics            MetricsCollection
 	kubeconfigProvider KubeconfigProvider
+
+	name string
 }
 
 type KubeconfigProvider interface {
@@ -110,7 +114,8 @@ func NewMachineController(
 	sshKeypair *ssh.PrivateKey,
 	clusterDNSIPs []net.IP,
 	metrics MetricsCollection,
-	kubeconfigProvider KubeconfigProvider) *Controller {
+	kubeconfigProvider KubeconfigProvider,
+	name string) *Controller {
 
 	controller := &Controller{
 		kubeClient:      kubeClient,
@@ -126,6 +131,8 @@ func NewMachineController(
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
 		kubeconfigProvider: kubeconfigProvider,
+
+		name: name,
 	}
 
 	machineInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -255,6 +262,23 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 	machine := listerMachine.DeepCopy()
+
+	// set the annotation "machine.k8s.io/controller": my-controller
+	// and the flag --name=my-controller to make only this controller process a node
+	machineControllerName := machine.Annotations[controllerNameAnnotationKey]
+	if machineControllerName != c.name {
+		glog.V(6).Infof("skipping machine '%s' as it is not meant for this controller", machine.Name)
+		if machineControllerName == "" && c.name != "" {
+			glog.V(6).Infof("this controller is configured to only process machines with the annotation %s:%s", controllerNameAnnotationKey, c.name)
+			return nil
+		} else if machineControllerName != "" && c.name == "" {
+			glog.V(6).Infof("this controller is configured to process all machines which have no controller specified via annotation %s. The machine has %s:%s", controllerNameAnnotationKey, controllerNameAnnotationKey, machineControllerName)
+			return nil
+		} else {
+			glog.V(6).Infof("this controller is configured to process machines which the annotation %s:%s. The machine has %s:%s", controllerNameAnnotationKey, c.name, controllerNameAnnotationKey, machineControllerName)
+			return nil
+		}
+	}
 
 	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
 	if err != nil {

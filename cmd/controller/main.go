@@ -62,6 +62,7 @@ var (
 	sshKeyName    string
 	clusterDNSIPs string
 	listenAddress string
+	name          string
 	workerCount   int
 )
 
@@ -114,6 +115,9 @@ type controllerRunOptions struct {
 
 	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
 	kubeconfigProvider controller.KubeconfigProvider
+
+	// name of the controller. When set the controller will only process machines with the annotation "machine.k8s.io/controller": name
+	name string
 }
 
 func main() {
@@ -123,6 +127,7 @@ func main() {
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
+	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the annotation \"machine.k8s.io/controller\": name")
 
 	flag.Parse()
 
@@ -190,6 +195,7 @@ func main() {
 		machineInformer:      machineInformerFactory.Machine().V1alpha1().Machines().Informer(),
 		machineLister:        machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		kubeconfigProvider:   kubeconfigProvider,
+		name:                 name,
 	}
 
 	go kubeInformerFactory.Start(stopCh)
@@ -251,7 +257,9 @@ func startControllerViaLeaderElectionOrDie(runOptions controllerRunOptions) {
 				ControllerOperation: runOptions.metrics.ControllerOperation,
 				NodeJoinDuration:    runOptions.metrics.NodeJoinDuration,
 			},
-			runOptions.kubeconfigProvider)
+			runOptions.kubeconfigProvider,
+			runOptions.name,
+		)
 
 		if err = machineController.Run(workerCount, stopCh); err != nil {
 			glog.Fatalf("error running controller: %v", err)
