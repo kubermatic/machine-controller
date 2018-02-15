@@ -46,9 +46,9 @@ const (
 	policyRoute53FullAccess = "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
 	policyEC2FullAccess     = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
 
-	roleName            = "kubernetes-v1"
-	instanceProfileName = "kubernetes-v1"
-	securityGroupName   = "kubernetes-v1"
+	defaultRoleName            = "kubernetes-v1"
+	defaultInstanceProfileName = "kubernetes-v1"
+	defaultSecurityGroupName   = "kubernetes-v1"
 )
 
 var (
@@ -124,8 +124,10 @@ type Config struct {
 	Region           string `json:"region"`
 	AvailabilityZone string `json:"availabilityZone"`
 
-	VpcID    string `json:"vpcId"`
-	SubnetID string `json:"subnetId"`
+	VpcID            string   `json:"vpcId"`
+	SubnetID         string   `json:"subnetId"`
+	SecurityGroupIDs []string `json:"securityGroupIDs"`
+	InstanceProfile  string   `json:"instanceProfile"`
 
 	InstanceType string            `json:"instanceType"`
 	AMI          string            `json:"ami"`
@@ -225,6 +227,27 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid region %q specified: %v", config.Region, err)
 	}
 
+	if len(config.SecurityGroupIDs) > 0 {
+		_, err := ec2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
+			GroupIds: aws.StringSlice(config.SecurityGroupIDs),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to validate security group id's: %v", err)
+		}
+	}
+
+	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	if err != nil {
+		return fmt.Errorf("failed to create iam client: %v", err)
+	}
+
+	if config.InstanceProfile != "" {
+		_, err := iamClient.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(config.InstanceProfile)})
+		if err != nil {
+			return fmt.Errorf("failed to validate instance profile: %v", err)
+		}
+	}
+
 	if !volumeTypes.Has(config.DiskType) {
 		return fmt.Errorf("invalid volume type %s specified. Supported: %s", config.DiskType, volumeTypes)
 	}
@@ -250,17 +273,17 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 	return vpcOut.Vpcs[0], nil
 }
 
-func ensureSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
+func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
 	sgOut, err := client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
-		GroupNames: aws.StringSlice([]string{securityGroupName}),
+		GroupNames: aws.StringSlice([]string{defaultSecurityGroupName}),
 	})
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == "InvalidGroup.NotFound" {
-				glog.V(4).Infof("creating security group %s...", securityGroupName)
+				glog.V(4).Infof("creating security group %s...", defaultSecurityGroupName)
 				csgOut, err := client.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
 					VpcId:       vpc.VpcId,
-					GroupName:   aws.String(securityGroupName),
+					GroupName:   aws.String(defaultSecurityGroupName),
 					Description: aws.String("Kubernetes security group"),
 				})
 				if err != nil {
@@ -294,21 +317,21 @@ func ensureSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
 
 				// Allow node-to-node communication
 				_, err = client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
-					SourceSecurityGroupName: aws.String(securityGroupName),
+					SourceSecurityGroupName: aws.String(defaultSecurityGroupName),
 					GroupId:                 csgOut.GroupId,
 				})
 				if err != nil {
 					return "", fmt.Errorf("failed to authorize security group ingress rule for node-to-node communication to security group %s: %v", groupID, err)
 				}
 
-				glog.V(4).Infof("security group %s successfully created", securityGroupName)
+				glog.V(4).Infof("security group %s successfully created", defaultSecurityGroupName)
 				return groupID, nil
 			}
 		}
 		return "", fmt.Errorf("failed to list security group: %v", err)
 	}
 
-	glog.V(6).Infof("security group %s already exists", securityGroupName)
+	glog.V(6).Infof("security group %s already exists", defaultSecurityGroupName)
 	return aws.StringValue(sgOut.SecurityGroups[0].GroupId), nil
 }
 
@@ -364,15 +387,15 @@ func ensureSSHKeysExist(client *ec2.EC2, key *machinessh.PrivateKey) (string, er
 	return *importOut.KeyName, nil
 }
 
-func ensureRoleExists(client *iam.IAM) error {
-	_, err := client.GetRole(&iam.GetRoleInput{RoleName: aws.String(roleName)})
+func ensureDefaultRoleExists(client *iam.IAM) error {
+	_, err := client.GetRole(&iam.GetRoleInput{RoleName: aws.String(defaultRoleName)})
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == "NoSuchEntity" {
-				glog.V(4).Infof("creating machine iam role %s...", roleName)
+				glog.V(4).Infof("creating machine iam role %s...", defaultRoleName)
 				paramsRole := &iam.CreateRoleInput{
 					AssumeRolePolicyDocument: aws.String(instanceProfileRole),
-					RoleName:                 aws.String(roleName),
+					RoleName:                 aws.String(defaultRoleName),
 				}
 				_, err := client.CreateRole(paramsRole)
 				if err != nil {
@@ -382,37 +405,37 @@ func ensureRoleExists(client *iam.IAM) error {
 				for _, arn := range roleARNS {
 					paramsAttachPolicy := &iam.AttachRolePolicyInput{
 						PolicyArn: aws.String(arn),
-						RoleName:  aws.String(roleName),
+						RoleName:  aws.String(defaultRoleName),
 					}
 					_, err = client.AttachRolePolicy(paramsAttachPolicy)
 					if err != nil {
-						return fmt.Errorf("failed to attach role %q to policy %q: %v", roleName, arn, err)
+						return fmt.Errorf("failed to attach role %q to policy %q: %v", defaultRoleName, arn, err)
 					}
 				}
-				glog.V(4).Infof("machine iam role %s successfully created", roleName)
+				glog.V(4).Infof("machine iam role %s successfully created", defaultRoleName)
 				return nil
 			}
-			return fmt.Errorf("failed to get role %s: %s - %s", roleName, awsErr.Code(), awsErr.Message())
+			return fmt.Errorf("failed to get role %s: %s - %s", defaultRoleName, awsErr.Code(), awsErr.Message())
 		}
-		return fmt.Errorf("failed to get role %s: %v", roleName, err)
+		return fmt.Errorf("failed to get role %s: %v", defaultRoleName, err)
 	}
-	glog.V(6).Infof("machine iam role %s already exists", roleName)
+	glog.V(6).Infof("machine iam role %s already exists", defaultRoleName)
 	return nil
 }
 
-func ensureInstanceProfileExists(client *iam.IAM) error {
-	err := ensureRoleExists(client)
+func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
+	err := ensureDefaultRoleExists(client)
 	if err != nil {
-		return fmt.Errorf("failed to ensure that role %q exists: %v", roleName, err)
+		return fmt.Errorf("failed to ensure that role %q exists: %v", defaultRoleName, err)
 	}
 
-	_, err = client.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(instanceProfileName)})
+	_, err = client.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(defaultInstanceProfileName)})
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			if awsErr.Code() == "NoSuchEntity" {
-				glog.V(4).Infof("creating instance profile %s...", instanceProfileName)
+				glog.V(4).Infof("creating instance profile %s...", defaultInstanceProfileName)
 				paramsInstanceProfile := &iam.CreateInstanceProfileInput{
-					InstanceProfileName: aws.String(instanceProfileName),
+					InstanceProfileName: aws.String(defaultInstanceProfileName),
 				}
 				_, err = client.CreateInstanceProfile(paramsInstanceProfile)
 				if err != nil {
@@ -420,21 +443,21 @@ func ensureInstanceProfileExists(client *iam.IAM) error {
 				}
 
 				paramsAddRole := &iam.AddRoleToInstanceProfileInput{
-					InstanceProfileName: aws.String(instanceProfileName),
-					RoleName:            aws.String(roleName),
+					InstanceProfileName: aws.String(defaultInstanceProfileName),
+					RoleName:            aws.String(defaultRoleName),
 				}
 				_, err = client.AddRoleToInstanceProfile(paramsAddRole)
 				if err != nil {
-					return fmt.Errorf("failed to add role %q to instance profile %q: %v", instanceProfileName, roleName, err)
+					return fmt.Errorf("failed to add role %q to instance profile %q: %v", defaultInstanceProfileName, defaultRoleName, err)
 				}
-				glog.V(4).Infof("instance profile %s successfully created", instanceProfileName)
+				glog.V(4).Infof("instance profile %s successfully created", defaultInstanceProfileName)
 				return nil
 			}
-			return fmt.Errorf("failed to get instance profile %s: %s - %s", instanceProfileName, awsErr.Code(), awsErr.Message())
+			return fmt.Errorf("failed to get instance profile %s: %s - %s", defaultInstanceProfileName, awsErr.Code(), awsErr.Message())
 		}
 		return fmt.Errorf("failed to get instance profile: %v", err)
 	}
-	glog.V(6).Infof("instance profile %s already exists", instanceProfileName)
+	glog.V(6).Infof("instance profile %s already exists", defaultInstanceProfileName)
 
 	return nil
 }
@@ -455,9 +478,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to create iam client: %v", err)
 	}
 
-	err = ensureInstanceProfileExists(iamClient)
-	if err != nil {
-		return nil, fmt.Errorf("failed ensure that the instance profile exists: %v", err)
+	instanceProfileName := config.InstanceProfile
+	if instanceProfileName == "" {
+		err = ensureDefaultInstanceProfileExists(iamClient)
+		if err != nil {
+			return nil, fmt.Errorf("failed ensure that the instance profile exists: %v", err)
+		}
+		instanceProfileName = defaultInstanceProfileName
 	}
 
 	vpc, err := getVpc(ec2Client, config.VpcID)
@@ -465,9 +492,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed get vpc %s: %v", config.VpcID, err)
 	}
 
-	sgID, err := ensureSecurityGroupExists(ec2Client, vpc)
-	if err != nil {
-		return nil, fmt.Errorf("failed ensure that the security group exists: %v", err)
+	securityGroupIDs := config.SecurityGroupIDs
+	if len(securityGroupIDs) == 0 {
+		sgID, err := ensureDefaultSecurityGroupExists(ec2Client, vpc)
+		if err != nil {
+			return nil, fmt.Errorf("failed ensure that the security group exists: %v", err)
+		}
+		securityGroupIDs = append(securityGroupIDs, sgID)
+	} else {
+
 	}
 
 	keyName, err := ensureSSHKeysExist(ec2Client, p.privateKey)
@@ -550,14 +583,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	// Change to our security group
 	_, err = ec2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
 		InstanceId: runOut.Instances[0].InstanceId,
-		Groups:     []*string{aws.String(sgID)},
+		Groups:     aws.StringSlice(securityGroupIDs),
 	})
 	if err != nil {
 		delErr := p.Delete(machine)
 		if delErr != nil {
-			return nil, fmt.Errorf("failed to attach instance %s to security group %s & delete the created instance: %v", aws.StringValue(runOut.Instances[0].InstanceId), securityGroupName, err)
+			return nil, fmt.Errorf("failed to attach instance %s to security group %s & delete the created instance: %v", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName, err)
 		}
-		return nil, fmt.Errorf("failed to attach instance %s to security group %s: %v", aws.StringValue(runOut.Instances[0].InstanceId), securityGroupName, err)
+		return nil, fmt.Errorf("failed to attach instance %s to security group %s: %v", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName, err)
 	}
 
 	return awsInstance, nil
@@ -569,7 +602,6 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 		return fmt.Errorf("failed to get instance from aws: %v", err)
 	}
 
-	glog.V(4).Infof("deleting instance %s at aws...", i.ID())
 	config, _, err := getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
