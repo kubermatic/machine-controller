@@ -129,12 +129,13 @@ type Config struct {
 	SubnetID string `json:"subnetId"`
 
 	InstanceType string            `json:"instanceType"`
+	AMI          string            `json:"ami"`
 	DiskSize     int64             `json:"diskSize"`
 	DiskType     string            `json:"diskType"`
 	Tags         map[string]string `json:"tags"`
 }
 
-func getAMIID(os providerconfig.OperatingSystem, region string) (string, error) {
+func getDefaultAMIID(os providerconfig.OperatingSystem, region string) (string, error) {
 	amis, osSupported := amis[os]
 	if !osSupported {
 		return "", fmt.Errorf("operating system %q not supported", os)
@@ -193,14 +194,22 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	_, err = getAMIID(pc.OperatingSystem, config.Region)
-	if err != nil {
-		return fmt.Errorf("invalid region+os configuration: %v", err)
-	}
-
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
 		return fmt.Errorf("failed to create ec2 client: %v", err)
+	}
+	if config.AMI != "" {
+		_, err := ec2Client.DescribeImages(&ec2.DescribeImagesInput{
+			ImageIds: aws.StringSlice([]string{config.AMI}),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to validate ami: %v", err)
+		}
+	} else {
+		_, err := getDefaultAMIID(pc.OperatingSystem, config.Region)
+		if err != nil {
+			return fmt.Errorf("invalid region+os configuration: %v", err)
+		}
 	}
 
 	if _, err := getVpc(ec2Client, config.VpcID); err != nil {
@@ -467,9 +476,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)
 	}
 
-	amiID, err := getAMIID(pc.OperatingSystem, config.Region)
-	if err != nil {
-		return nil, fmt.Errorf("invalid region+os configuration: %v", err)
+	amiID := config.AMI
+	if amiID == "" {
+		if amiID, err = getDefaultAMIID(pc.OperatingSystem, config.Region); err != nil {
+			if err != nil {
+				return nil, fmt.Errorf("invalid region+os configuration: %v", err)
+			}
+		}
 	}
 
 	tags := []*ec2.Tag{
@@ -568,14 +581,17 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 		return fmt.Errorf("failed to create ec2 client: %v", err)
 	}
 
-	_, err = ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
+	tOut, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
 		InstanceIds: aws.StringSlice([]string{i.ID()}),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to terminate instance: %v", err)
 	}
 
-	glog.V(4).Infof("successfully deleted instance %s at aws", i.ID())
+	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
+		glog.V(4).Infof("successfully triggered termination of instance %s at aws", i.ID())
+	}
+
 	return nil
 }
 
@@ -633,6 +649,21 @@ func (d *awsInstance) Addresses() []string {
 		aws.StringValue(d.instance.PublicDnsName),
 		aws.StringValue(d.instance.PrivateIpAddress),
 		aws.StringValue(d.instance.PrivateDnsName),
+	}
+}
+
+func (d *awsInstance) Status() instance.Status {
+	switch *d.instance.State.Name {
+	case ec2.InstanceStateNameRunning:
+		return instance.StatusRunning
+	case ec2.InstanceStateNamePending:
+		return instance.StatusCreating
+	case ec2.InstanceStateNameTerminated:
+		return instance.StatusDeleted
+	case ec2.InstanceStateNameShuttingDown:
+		return instance.StatusDeleting
+	default:
+		return instance.StatusUnknown
 	}
 }
 

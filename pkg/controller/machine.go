@@ -60,7 +60,7 @@ const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
 
 	metricsUpdatePeriod     = 10 * time.Second
-	deletionRetryWaitPeriod = 1 * time.Second
+	deletionRetryWaitPeriod = 5 * time.Second
 
 	machineKind = "Machine"
 )
@@ -276,6 +276,11 @@ func (c *Controller) syncHandler(key string) error {
 
 		//Check that the instance has really gone
 		if providerInstance, err = c.getProviderInstance(prov, machine); err == nil {
+			if sets.NewString(string(instance.StatusDeleted), string(instance.StatusDeleting)).Has(string(providerInstance.Status())) {
+				glog.V(4).Infof("deletion of instance %s got triggered. Waiting until it fully disappears", providerInstance.ID())
+				c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
+				return nil
+			}
 			glog.V(2).Infof("instance %s of machine %s is not deleted yet", providerInstance.ID(), machine.Name)
 			c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
 			return nil

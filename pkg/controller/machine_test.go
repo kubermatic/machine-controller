@@ -27,6 +27,7 @@ type fakeInstance struct {
 	name      string
 	id        string
 	addresses []string
+	status    instance.Status
 }
 
 func (i *fakeInstance) Name() string {
@@ -35,6 +36,10 @@ func (i *fakeInstance) Name() string {
 
 func (i *fakeInstance) ID() string {
 	return i.id
+}
+
+func (i *fakeInstance) Status() instance.Status {
+	return i.status
 }
 
 func (i *fakeInstance) Addresses() []string {
