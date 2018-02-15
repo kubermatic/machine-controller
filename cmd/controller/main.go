@@ -32,10 +32,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	kubeinformers "k8s.io/client-go/informers"
-	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -45,7 +46,7 @@ import (
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/machines/v1alpha1"
+	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/controller"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
@@ -96,14 +97,20 @@ type controllerRunOptions struct {
 	// leaderElectionClient holds a client that is used by the leader election library
 	leaderElectionClient *kubernetes.Clientset
 
-	// nodeInformer holds a shared informer and lister for Nodes
-	nodeInformer corev1informers.NodeInformer
+	// nodeInformer holds a shared informer for Nodes
+	nodeInformer cache.SharedIndexInformer
 
-	// configMapInformer holds a shared informer and lister for ConfigMaps
-	configMapInformer corev1informers.ConfigMapInformer
+	// nodeLister holds a lister that knows how to list Nodes from a cache
+	nodeLister listerscorev1.NodeLister
 
-	// machineInformer holds a shared informer and lister for Machines
-	machineInformer machinesv1alpha1.MachineInformer
+	// configMapLister holds a lister that knows how to list ConfigMaps from a cache
+	configMapLister listerscorev1.ConfigMapLister
+
+	// machineInformer holds a shared informer for Machines
+	machineInformer cache.SharedIndexInformer
+
+	// machineLister holds a lister that knows how to list Machines from a cache
+	machineLister machinelistersv1alpha1.MachineLister
 
 	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
 	kubeconfigProvider controller.KubeconfigProvider
@@ -168,26 +175,7 @@ func main() {
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
 	defaultKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceDefault, nil)
 
-	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-	configMapInformer := kubePublicKubeInformerFactory.Core().V1().ConfigMaps()
-	endpointInformer := defaultKubeInformerFactory.Core().V1().Endpoints()
-	machineInformer := machineInformerFactory.Machine().V1alpha1().Machines()
-
-	kubeconfigProvider := clusterinfo.New(cfg, configMapInformer.Lister(), endpointInformer.Lister())
-
-	go kubeInformerFactory.Start(stopCh)
-	go kubePublicKubeInformerFactory.Start(stopCh)
-	go defaultKubeInformerFactory.Start(stopCh)
-	go machineInformerFactory.Start(stopCh)
-
-	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh)} {
-		for key, synced := range syncsMap {
-			if !synced {
-				glog.Fatalf("unable to sync %s", key)
-			}
-		}
-	}
-
+	kubeconfigProvider := clusterinfo.New(cfg, kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(), defaultKubeInformerFactory.Core().V1().Endpoints().Lister())
 	runOptions := controllerRunOptions{
 		kubeClient:           kubeClient,
 		extClient:            extClient,
@@ -196,10 +184,25 @@ func main() {
 		metrics:              NewMachineControllerMetrics(),
 		clusterDNSIPs:        ips,
 		leaderElectionClient: leaderElectionClient,
-		nodeInformer:         nodeInformer,
-		configMapInformer:    configMapInformer,
-		machineInformer:      machineInformer,
+		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
+		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
+		configMapLister:      kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
+		machineInformer:      machineInformerFactory.Machine().V1alpha1().Machines().Informer(),
+		machineLister:        machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		kubeconfigProvider:   kubeconfigProvider,
+	}
+
+	go kubeInformerFactory.Start(stopCh)
+	go kubePublicKubeInformerFactory.Start(stopCh)
+	go defaultKubeInformerFactory.Start(stopCh)
+	go machineInformerFactory.Start(stopCh)
+
+	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh), defaultKubeInformerFactory.WaitForCacheSync(stopCh)} {
+		for key, synced := range syncsMap {
+			if !synced {
+				glog.Fatalf("unable to sync %s", key)
+			}
+		}
 	}
 
 	startUtilHttpServerOrDie(kubeClient, kubeconfigProvider, stopCh)
@@ -234,8 +237,10 @@ func startControllerViaLeaderElectionOrDie(runOptions controllerRunOptions) {
 			runOptions.kubeClient,
 			runOptions.machineClient,
 			runOptions.nodeInformer,
-			runOptions.configMapInformer,
+			runOptions.nodeLister,
+			runOptions.configMapLister,
 			runOptions.machineInformer,
+			runOptions.machineLister,
 			runOptions.sshKeyPair,
 			runOptions.clusterDNSIPs,
 			controller.MetricsCollection{
