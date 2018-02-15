@@ -27,7 +27,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
-	"github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/machines/v1alpha1"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -48,7 +47,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -103,9 +101,11 @@ type MetricsCollection struct {
 func NewMachineController(
 	kubeClient kubernetes.Interface,
 	machineClient machineclientset.Interface,
-	nodeInformer corev1informers.NodeInformer,
-	configMapInformer corev1informers.ConfigMapInformer,
-	machineInformer v1alpha1.MachineInformer,
+	nodeInformer cache.SharedIndexInformer,
+	nodeLister listerscorev1.NodeLister,
+	configMapLister listerscorev1.ConfigMapLister,
+	machineInformer cache.SharedIndexInformer,
+	machineLister machinelistersv1alpha1.MachineLister,
 	sshKeypair *ssh.PrivateKey,
 	clusterDNSIPs []net.IP,
 	metrics MetricsCollection,
@@ -113,11 +113,11 @@ func NewMachineController(
 
 	controller := &Controller{
 		kubeClient:      kubeClient,
-		nodesLister:     nodeInformer.Lister(),
-		configMapLister: configMapInformer.Lister(),
+		nodesLister:     nodeLister,
+		configMapLister: configMapLister,
 
 		machineClient:  machineClient,
-		machinesLister: machineInformer.Lister(),
+		machinesLister: machineLister,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
 
@@ -127,14 +127,14 @@ func NewMachineController(
 		kubeconfigProvider: kubeconfigProvider,
 	}
 
-	machineInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	machineInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueMachine,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueMachine(new)
 		},
 	})
 
-	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
 		UpdateFunc: func(old, new interface{}) {
 			newNode := new.(*corev1.Node)
