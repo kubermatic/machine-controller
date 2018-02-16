@@ -29,6 +29,7 @@ import (
 type provider struct {
 	privateKey      *machinessh.PrivateKey
 	secretKeyGetter *providerconfig.SecretKeyGetter
+	rawConfig       RawConfig
 }
 
 // New returns a openstack provider
@@ -57,23 +58,24 @@ type RawConfig struct {
 }
 
 type Config struct {
-	// Auth details
-	IdentityEndpoint string
-	Username         string
-	Password         string
-	DomainName       string
-	TenantName       string
-	TokenID          string
+	// There are already resolved to their actual value that may be retrieved from a secret
+	// so ensure they don't get posted back to the machine object
+	IdentityEndpoint string `json:"-"`
+	Username         string `json:"-"`
+	Password         string `json:"-"`
+	DomainName       string `json:"-"`
+	TenantName       string `json:"-"`
+	TokenID          string `json:"-"`
 
 	// Machine details
-	Image            string
-	Flavor           string
-	SecurityGroups   []string
-	Network          string
-	Subnet           string
-	FloatingIPPool   string
-	AvailabilityZone string
-	Region           string
+	Image            string   `json:"-"`
+	Flavor           string   `json:"-"`
+	SecurityGroups   []string `json:"-"`
+	Network          string   `json:"-"`
+	Subnet           string   `json:"-"`
+	FloatingIPPool   string   `json:"-"`
+	AvailabilityZone string   `json:"-"`
+	Region           string   `json:"-"`
 }
 
 const (
@@ -93,81 +95,80 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	if err != nil {
 		return nil, nil, err
 	}
-	rawConfig := RawConfig{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &p.rawConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 	c := Config{}
-	c.IdentityEndpoint, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.IdentityEndpoint)
+	c.IdentityEndpoint, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.IdentityEndpoint)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Username, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Username)
+	c.Username, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.Username)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Password, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Password)
+	c.Password, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.Password)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.DomainName, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.DomainName)
+	c.DomainName, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.DomainName)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.TenantName, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.TenantName)
+	c.TenantName, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.TenantName)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.TokenID, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.TokenID)
+	c.TokenID, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.TokenID)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Image, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Image)
+	c.Image, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.Image)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Flavor, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Flavor)
+	c.Flavor, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.Flavor)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, securityGroup := range rawConfig.SecurityGroups {
+	for _, securityGroup := range p.rawConfig.SecurityGroups {
 		securityGroupValue, err := p.secretKeyGetter.GetConfigVarStringValue(securityGroup)
 		if err != nil {
 			return nil, nil, err
 		}
 		c.SecurityGroups = append(c.SecurityGroups, securityGroupValue)
 	}
-	c.Network, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Network)
+	c.Network, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.Network)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Subnet, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Subnet)
+	c.Subnet, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.Subnet)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.FloatingIPPool, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.FloatingIPPool)
+	c.FloatingIPPool, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.FloatingIPPool)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.AvailabilityZone, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	c.AvailabilityZone, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.AvailabilityZone)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Region)
+	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(p.rawConfig.Region)
 	if err != nil {
 		return nil, nil, err
 	}
 	return &c, &pconfig, err
 }
 
-func setProviderConfig(c *Config, s runtime.RawExtension) (runtime.RawExtension, error) {
+func setProviderConfig(rawConfig RawConfig, s runtime.RawExtension) (runtime.RawExtension, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
 		return s, err
 	}
-	rawCloudProviderSpec, err := json.Marshal(c)
+	rawCloudProviderSpec, err := json.Marshal(rawConfig)
 	if err != nil {
 		return s, err
 	}
@@ -215,7 +216,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		if len(regions) == 1 {
 			glog.V(4).Infof("Defaulted region for machine '%s' to '%s'", spec.Name, regions[0].ID)
 			changed = true
-			c.Region = regions[0].ID
+			p.rawConfig.Region.Value = regions[0].ID
 		} else {
 			return spec, changed, fmt.Errorf("could not default region because got '%v' results!", len(regions))
 		}
@@ -230,7 +231,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		if len(availabilityZones) == 1 {
 			glog.V(4).Infof("Defaulted availability zone for machine '%s' to '%s'", spec.Name, availabilityZones[0].ZoneName)
 			changed = true
-			c.AvailabilityZone = availabilityZones[0].ZoneName
+			p.rawConfig.AvailabilityZone.Value = availabilityZones[0].ZoneName
 		}
 	}
 
@@ -246,7 +247,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		if net != nil {
 			glog.V(4).Infof("Defaulted network for machine '%s' to '%s'", spec.Name, net.Name)
 			// Use the id as the name may not be unique
-			c.Network = net.ID
+			p.rawConfig.Network.Value = net.ID
 			changed = true
 		}
 	}
@@ -264,12 +265,12 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 		if subnet != nil {
 			glog.V(4).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
-			c.Subnet = *subnet
+			p.rawConfig.Subnet.Value = *subnet
 			changed = true
 		}
 	}
 
-	spec.ProviderConfig, err = setProviderConfig(c, spec.ProviderConfig)
+	spec.ProviderConfig, err = setProviderConfig(p.rawConfig, spec.ProviderConfig)
 	if err != nil {
 		return spec, changed, fmt.Errorf("error marshaling providerconfig: '%v'", err)
 	}
