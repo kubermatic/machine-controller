@@ -1,3 +1,19 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-openstack
+  namespace: kube-system
+type: Opaque
+data:
+  # Must be base64 encoded like this: echo -n '<<string>>'|base64 -w0
+  identityEndpoint: << OS_AUTH_URL_BASE64_ENCODED >>
+  username: << OS_USERNAME_BASE64_ENCODED >>
+  password: << OS_PASSWORD_BASE64_ENCODED >>
+  domainName: << OS_DOMAIN_NAME_BASE64_ENCODED >>
+  tenantName: << OS_TENANT_NAME_BASE64_ENCODED >>
+---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
@@ -12,11 +28,31 @@ spec:
       - "<< YOUR_PUBLIC_KEY >>"
     cloudProvider: "openstack"
     cloudProviderSpec:
-      identityEndpoint: "<< YOUR_OS_AUTH_URL >>"
-      username: "<< YOUR_OS_USERNAME >>"
-      password: "<< YOUR_OS_PASSWORD >>"
-      domainName: "<< YOUR_OS_DOMAIN >>"
-      tenantName: "<< YOUR_OS_TENANT >>"
+      identityEndpoint:
+        valueFrom:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: identityEndpoint
+      username:
+        valueFrom:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: username
+      password:
+        valueFrom:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: password
+      domainName:
+        valueFrom:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: domainName
+      tenantName:
+        valueFrom:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: tenantName
       image: "Ubuntu 16.04 amd64"
       flavor: "m1.small"
       securityGroups:

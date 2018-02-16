@@ -36,24 +36,44 @@ func New(privateKey *machinessh.PrivateKey, secretKeyGetter *providerconfig.Secr
 	return &provider{privateKey: privateKey, secretKeyGetter: secretKeyGetter}
 }
 
-type Config struct {
+type RawConfig struct {
 	// Auth details
-	IdentityEndpoint string `json:"identityEndpoint"`
-	Username         string `json:"username"`
-	Password         string `json:"password"`
-	DomainName       string `json:"domainName"`
-	TenantName       string `json:"tenantName"`
-	TokenID          string `json:"tokenId"`
+	IdentityEndpoint providerconfig.ConfigVarString `json:"identityEndpoint"`
+	Username         providerconfig.ConfigVarString `json:"username"`
+	Password         providerconfig.ConfigVarString `json:"password"`
+	DomainName       providerconfig.ConfigVarString `json:"domainName"`
+	TenantName       providerconfig.ConfigVarString `json:"tenantName"`
+	TokenID          providerconfig.ConfigVarString `json:"tokenId"`
 
 	// Machine details
-	Image            string   `json:"image"`
-	Flavor           string   `json:"flavor"`
-	SecurityGroups   []string `json:"securityGroups"`
-	Network          string   `json:"network"`
-	Subnet           string   `json:"subnet"`
-	FloatingIPPool   string   `json:"floatingIpPool"`
-	AvailabilityZone string   `json:"availabilityZone"`
-	Region           string   `json:"region"`
+	Image            providerconfig.ConfigVarString   `json:"image"`
+	Flavor           providerconfig.ConfigVarString   `json:"flavor"`
+	SecurityGroups   []providerconfig.ConfigVarString `json:"securityGroups"`
+	Network          providerconfig.ConfigVarString   `json:"network"`
+	Subnet           providerconfig.ConfigVarString   `json:"subnet"`
+	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
+	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
+	Region           providerconfig.ConfigVarString   `json:"region"`
+}
+
+type Config struct {
+	// Auth details
+	IdentityEndpoint string
+	Username         string
+	Password         string
+	DomainName       string
+	TenantName       string
+	TokenID          string
+
+	// Machine details
+	Image            string
+	Flavor           string
+	SecurityGroups   []string
+	Network          string
+	Subnet           string
+	FloatingIPPool   string
+	AvailabilityZone string
+	Region           string
 }
 
 const (
@@ -67,14 +87,77 @@ const (
 // Protects floating ip assignment
 var floatingIPAssignLock = &sync.Mutex{}
 
-func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
+	rawConfig := RawConfig{}
+	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	if err != nil {
+		return nil, nil, err
+	}
 	c := Config{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
+	c.IdentityEndpoint, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.IdentityEndpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Username, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Username)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Password, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Password)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.DomainName, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.DomainName)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.TenantName, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.TenantName)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.TokenID, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.TokenID)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Image, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Image)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Flavor, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Flavor)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, securityGroup := range rawConfig.SecurityGroups {
+		securityGroupValue, err := p.secretKeyGetter.GetConfigVarStringValue(securityGroup)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.SecurityGroups = append(c.SecurityGroups, securityGroupValue)
+	}
+	c.Network, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Network)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Subnet, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Subnet)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.FloatingIPPool, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.FloatingIPPool)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.AvailabilityZone, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Region)
+	if err != nil {
+		return nil, nil, err
+	}
 	return &c, &pconfig, err
 }
 
@@ -113,7 +196,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
 	var changed bool
 
-	c, _, err := getConfig(spec.ProviderConfig)
+	c, _, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return spec, changed, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -194,7 +277,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, _, err := getConfig(spec.ProviderConfig)
+	c, _, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -248,7 +331,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -367,7 +450,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -394,7 +477,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -434,7 +517,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, err := getConfig(spec.ProviderConfig)
+	c, _, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
