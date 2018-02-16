@@ -111,13 +111,10 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	}
 
 	c := Config{}
-	glog.V(6).Infof("Setting do token...")
 	c.Token, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Token)
 	if err != nil {
 		return nil, nil, err
 	}
-	glog.V(6).Infof("Sucessfully set do token...")
-	glog.V(6).Infof("Token value: '%s'", c.Token)
 	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, err
