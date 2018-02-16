@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,10 +61,9 @@ type configVarStringWithoutUnmarshaller ConfigVarString
 
 func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		value := string(b)
-		value = strings.TrimPrefix(value, `"`)
-		value = strings.TrimSuffix(value, `"`)
-		configVarString.Value = value
+		b = bytes.TrimPrefix(b, []byte(`"`))
+		b = bytes.TrimSuffix(b, []byte(`"`))
+		configVarString.Value = string(b)
 		return nil
 	}
 	// This type must have the same fields as ConfigVarString but not
@@ -89,10 +87,9 @@ type configVarBoolWithoutUnmarshaller ConfigVarBool
 
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		stringValue := string(b)
-		stringValue = strings.TrimPrefix(stringValue, `"`)
-		stringValue = strings.TrimSuffix(stringValue, `"`)
-		value, err := strconv.ParseBool(stringValue)
+		b = bytes.TrimPrefix(b, []byte(`"`))
+		b = bytes.TrimSuffix(b, []byte(`"`))
+		value, err := strconv.ParseBool(string(b))
 		if err != nil {
 			return fmt.Errorf("Error converting string to bool: '%v'", err)
 		}
