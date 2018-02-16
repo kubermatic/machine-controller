@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -129,10 +128,8 @@ type SecretKeyGetter struct {
 func (secretKeyGetter *SecretKeyGetter) GetConfigVarStringValue(configVar ConfigVarString) (string, error) {
 	// We need all three of these to fetch and use a secret, so fallback to .Value if any of it is an empty string
 	if configVar.ValueFrom.Name == "" || configVar.ValueFrom.Namespace == "" || configVar.ValueFrom.Key == "" {
-		glog.V(6).Infof("Not getting secret for configVar, valueFrom values: Name: '%s', Namespace: '%s', Key: '%s'", configVar.ValueFrom.Name, configVar.ValueFrom.Namespace, configVar.ValueFrom.Key)
 		return configVar.Value, nil
 	}
-	glog.V(6).Infof("Getting secret '%s' in namespace '%s' for config var...", configVar.ValueFrom.Name, configVar.ValueFrom.Namespace)
 	secret, err := secretKeyGetter.kubeClient.CoreV1().Secrets(
 		configVar.ValueFrom.Namespace).Get(configVar.ValueFrom.Name, metav1.GetOptions{})
 	if err != nil {
