@@ -86,18 +86,39 @@ type ConfigVarBool struct {
 	ValueFrom GlobalSecretKeySelector `json:"valueFrom,omitempty"`
 }
 
+type configVarBoolWithoutUnmarshaller ConfigVarBool
+
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
-	var bVar bool
-	if err := json.Unmarshal(b, &bVar); err == nil {
-		configVarBool = &ConfigVarBool{Value: bVar}
+	if !bytes.HasPrefix(b, []byte("{")) {
+		stringValue := string(b)
+		stringValue = strings.TrimPrefix(stringValue, `"`)
+		stringValue = strings.TrimSuffix(stringValue, `"`)
+		value, err := strconv.ParseBool(stringValue)
+		if err != nil {
+			return fmt.Errorf("Error converting string to bool: '%v'", err)
+		}
+		configVarBool.Value = value
 		return nil
 	}
-	var cvb ConfigVarBool
-	err := json.Unmarshal(b, &cvb)
+	var cvsDummy configVarStringWithoutUnmarshaller
+	err := json.Unmarshal(b, &cvsDummy)
+	// Assume error was caused by `Value` being a bool, not a string
 	if err != nil {
-		return err
+		var cvbDummy configVarBoolWithoutUnmarshaller
+		err := json.Unmarshal(b, &cvbDummy)
+		if err != nil {
+			return err
+		}
+		configVarBool.Value = cvbDummy.Value
+		configVarBool.ValueFrom = cvbDummy.ValueFrom
+		return nil
 	}
-	configVarBool = &cvb
+	value, err := strconv.ParseBool(cvsDummy.Value)
+	if err != nil {
+		return fmt.Errorf("Error converting string value to bool: '%v'", err)
+	}
+	configVarBool.Value = value
+	configVarBool.ValueFrom = cvsDummy.ValueFrom
 	return nil
 }
 
