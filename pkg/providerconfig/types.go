@@ -59,15 +59,14 @@ type ConfigVarString struct {
 // This type only exists to have the same fields as ConfigVarString but
 // not its funcs, so it can be used as target for json.Unmarshal without
 // causing a recursion
-type configVarStringWithoutUnmarshaller struct {
-	Value     string                  `json:"value,omitempty"`
-	ValueFrom GlobalSecretKeySelector `json:"valueFrom,omitempty"`
-}
+type configVarStringWithoutUnmarshaller ConfigVarString
 
 func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		configVarString.Value = strings.Replace(string(b), "\"", "", -1)
-		configVarString.ValueFrom = GlobalSecretKeySelector{}
+		value := string(b)
+		value = strings.TrimPrefix(value, `"`)
+		value = strings.TrimSuffix(value, `"`)
+		configVarString.Value = value
 		return nil
 	}
 	// This type must have the same fields as ConfigVarString but not
