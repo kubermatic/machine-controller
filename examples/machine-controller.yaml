@@ -95,6 +95,7 @@ rules:
   - machine-controller-hetzner
   - machine-controller-digitalocean
   - machine-controller-openstack
+  - machine-controller-aws
   verbs:
   - get
 - apiGroups:
