@@ -1,5 +1,7 @@
 SHELL = /bin/bash
 
+GO_VERSION = 1.10.0
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
@@ -30,8 +32,10 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 machine-controller-nodep:
 		@docker run --rm \
 			$(VOL_ARG) \
+			-v $$PWD/.buildcache:/cache \
+			-e GOCACHE=/cache \
 			-w /go/src/github.com/kubermatic/machine-controller \
-			golang:1.9.3 \
+			golang:$(GO_VERSION) \
 			env CGO_ENABLED=0 go build \
 				-ldflags '-s -w' \
 				-o machine-controller \
@@ -59,8 +63,10 @@ docker-image-nodep:
 test-unit: vendor
 		@docker run --rm \
 			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+			-v $$PWD/.buildcache:/cache \
+			-e GOCACHE=/cache \
 			-w /go/src/github.com/kubermatic/machine-controller \
-			golang:1.9.3 \
+			golang:$(GO_VERSION) \
 			go test ./...
 
 test-e2e:
