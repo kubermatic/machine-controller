@@ -61,8 +61,11 @@ docker-image-nodep:
 	fi
 
 test-unit: vendor
+	make test-unit-nodep
+
+test-unit-nodep:
 		@docker run --rm \
-			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+			$(VOL_ARG) \
 			-v $$PWD/.buildcache:/cache \
 			-e GOCACHE=/cache \
 			-w /go/src/github.com/kubermatic/machine-controller \
