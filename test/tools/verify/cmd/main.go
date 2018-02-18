@@ -134,7 +134,7 @@ func kubectlApply(kubecfgPath, manifest string) error {
 	command := exec.Command(cmdSlice[0], cmdSlice[1:]...)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error executing command '%s': '%v'\nOutput:\n", strings.Join(cmdSlice, " "), err, string(output))
+		return fmt.Errorf("Error executing command '%s': '%v'\nOutput:\n%s", strings.Join(cmdSlice, " "), err, string(output))
 	}
 
 	return nil
