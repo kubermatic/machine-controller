@@ -472,13 +472,6 @@ func (c *Controller) syncHandler(key string) error {
 				node.Labels[k] = v
 			}
 		}
-		if labelsUpdated {
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting the labels: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added labels to node %s (machine %s)", node.Name, machine.Name)
-		}
 
 		var annotationsUpdated bool
 		for k, v := range machine.Spec.Annotations {
@@ -486,13 +479,6 @@ func (c *Controller) syncHandler(key string) error {
 				annotationsUpdated = true
 				node.Annotations[k] = v
 			}
-		}
-		if annotationsUpdated {
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting the annotations: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added annotations to node %s (machine %s)", node.Name, machine.Name)
 		}
 
 		taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
@@ -510,12 +496,12 @@ func (c *Controller) syncHandler(key string) error {
 				taintsUpdated = true
 			}
 		}
-		if taintsUpdated {
+		if labelsUpdated || annotationsUpdated || taintsUpdated {
 			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
 			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting the taints: %v", node.Name, err)
+				return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 			}
-			glog.V(4).Infof("Added taints to node %s (machine %s)", node.Name, machine.Name)
+			glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
 		}
 	}
 
