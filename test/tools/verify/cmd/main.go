@@ -275,10 +275,10 @@ func getMachineStatusAsString(machineName string, machineClient machineclientset
 	machine, err := machineClient.MachineV1alpha1().Machines().Get(machineName, metav1.GetOptions{})
 	if err == nil {
 		if machine.Status.ErrorReason != nil {
-			statusMessage = fmt.Sprintf("ErrorReason = %s", machine.Status.ErrorReason)
+			statusMessage = fmt.Sprintf("ErrorReason = %s", *machine.Status.ErrorReason)
 		}
 		if machine.Status.ErrorMessage != nil {
-			statusMessage = fmt.Sprintf("%s ErrorMessage", statusMessage, machine.Status.ErrorMessage)
+			statusMessage = fmt.Sprintf("%s ErrorMessage: '%s'", statusMessage, *machine.Status.ErrorMessage)
 		}
 	}
 
