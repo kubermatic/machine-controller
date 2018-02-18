@@ -84,6 +84,7 @@ rules:
   - ""
   resources:
   - secrets
+  - events
   verbs:
   - create
 - apiGroups:
