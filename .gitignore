@@ -6,3 +6,4 @@ machine-controller
 terraform.tfstate
 terraform.tfstate.backup
 test/tools/verify/verify
+.buildcache
