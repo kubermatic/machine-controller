@@ -6,10 +6,9 @@ metadata:
   name: machine-controller-aws
   namespace: kube-system
 type: Opaque
-data:
-  # Must be base64 encoded like this: echo -n '<<value>>'|base64 -w0
-  accessKeyId: << AWS_ACCESS_KEY_ID_BASE64_ENCODED >>
-  secretAccessKey: << AWS_SECRET_ACCESS_KEY_BASE64_ENCODED>>
+stringData:
+  accessKeyId: << AWS_ACCESS_KEY_ID >
+  secretAccessKey: << AWS_SECRET_ACCESS_KEY >>
 ---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine

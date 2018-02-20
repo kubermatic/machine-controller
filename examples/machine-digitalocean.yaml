@@ -6,9 +6,8 @@ metadata:
   name: machine-controller-digitalocean
   namespace: kube-system
 type: Opaque
-data:
-  # Must be base64 encoded like this: echo -n '<<token>>'|base64 -w0
-  token: << DIGITALOCEAN_TOKEN_BASE64_ENCODED >>
+stringData:
+  token: << DIGITALOCEAN_TOKEN >>
 ---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine

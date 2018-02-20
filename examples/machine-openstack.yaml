@@ -6,13 +6,12 @@ metadata:
   name: machine-controller-openstack
   namespace: kube-system
 type: Opaque
-data:
-  # Must be base64 encoded like this: echo -n '<<string>>'|base64 -w0
-  identityEndpoint: << OS_AUTH_URL_BASE64_ENCODED >>
-  username: << OS_USERNAME_BASE64_ENCODED >>
-  password: << OS_PASSWORD_BASE64_ENCODED >>
-  domainName: << OS_DOMAIN_NAME_BASE64_ENCODED >>
-  tenantName: << OS_TENANT_NAME_BASE64_ENCODED >>
+stringData:
+  identityEndpoint: << OS_AUTH_URL >>
+  username: << OS_USERNAME >>
+  password: << OS_PASSWORD >>
+  domainName: << OS_DOMAIN_NAME >>
+  tenantName: << OS_TENANT_NAME >>
 ---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
