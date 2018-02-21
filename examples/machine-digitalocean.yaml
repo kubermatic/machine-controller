@@ -22,7 +22,7 @@ spec:
     cloudProvider: "digitalocean"
     cloudProviderSpec:
       token:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-digitalocean
           key: token

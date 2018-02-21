@@ -22,7 +22,7 @@ spec:
     cloudProvider: "hetzner"
     cloudProviderSpec:
       token:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-hetzner
           key: token

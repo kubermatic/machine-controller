@@ -28,27 +28,27 @@ spec:
     cloudProvider: "openstack"
     cloudProviderSpec:
       identityEndpoint:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-openstack
           key: identityEndpoint
       username:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-openstack
           key: username
       password:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-openstack
           key: password
       domainName:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-openstack
           key: domainName
       tenantName:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-openstack
           key: tenantName

@@ -23,12 +23,12 @@ spec:
     cloudProvider: "aws"
     cloudProviderSpec:
       accessKeyId:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-aws
           key: accessKeyId
       secretAccessKey:
-        valueFrom:
+        secretKeyRef:
           namespace: kube-system
           name: machine-controller-aws
           key: secretAccessKey

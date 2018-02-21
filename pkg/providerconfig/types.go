@@ -44,14 +44,16 @@ type Config struct {
 }
 
 // We can not use v1.SecretKeySelector because it is not cross namespace
-type GlobalSecretKeySelector struct {
+type GlobaObjectKeySelector struct {
 	v1.ObjectReference `json:",inline"`
 	Key                string `json:"key"`
 }
 
+type GlobalSecretKeySelector GlobaObjectKeySelector
+
 type ConfigVarString struct {
-	Value     string                  `json:"value,omitempty"`
-	ValueFrom GlobalSecretKeySelector `json:"valueFrom,omitempty"`
+	Value        string                  `json:"value,omitempty"`
+	SecretKeyRef GlobalSecretKeySelector `json:"secretKeyRef,omitempty"`
 }
 
 // This type only exists to have the same fields as ConfigVarString but
@@ -74,13 +76,13 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	configVarString.Value = cvsDummy.Value
-	configVarString.ValueFrom = cvsDummy.ValueFrom
+	configVarString.SecretKeyRef = cvsDummy.SecretKeyRef
 	return nil
 }
 
 type ConfigVarBool struct {
-	Value     bool                    `json:"value,omitempty"`
-	ValueFrom GlobalSecretKeySelector `json:"valueFrom,omitempty"`
+	Value        bool                    `json:"value,omitempty"`
+	SecretKeyRef GlobalSecretKeySelector `json:"secretKeyRef,omitempty"`
 }
 
 type configVarBoolWithoutUnmarshaller ConfigVarBool
@@ -106,7 +108,7 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		configVarBool.Value = cvbDummy.Value
-		configVarBool.ValueFrom = cvbDummy.ValueFrom
+		configVarBool.SecretKeyRef = cvbDummy.SecretKeyRef
 		return nil
 	}
 	value, err := strconv.ParseBool(cvsDummy.Value)
@@ -114,7 +116,7 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("Error converting string value to bool: '%v'", err)
 	}
 	configVarBool.Value = value
-	configVarBool.ValueFrom = cvsDummy.ValueFrom
+	configVarBool.SecretKeyRef = cvsDummy.SecretKeyRef
 	return nil
 }
 
@@ -124,22 +126,22 @@ type SecretKeyGetter struct {
 
 func (secretKeyGetter *SecretKeyGetter) GetConfigVarStringValue(configVar ConfigVarString) (string, error) {
 	// We need all three of these to fetch and use a secret, so fallback to .Value if any of it is an empty string
-	if configVar.ValueFrom.Name == "" || configVar.ValueFrom.Namespace == "" || configVar.ValueFrom.Key == "" {
+	if configVar.SecretKeyRef.Name == "" || configVar.SecretKeyRef.Namespace == "" || configVar.SecretKeyRef.Key == "" {
 		return configVar.Value, nil
 	}
 	secret, err := secretKeyGetter.kubeClient.CoreV1().Secrets(
-		configVar.ValueFrom.Namespace).Get(configVar.ValueFrom.Name, metav1.GetOptions{})
+		configVar.SecretKeyRef.Namespace).Get(configVar.SecretKeyRef.Name, metav1.GetOptions{})
 	if err != nil {
-		return "", fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%v'", configVar.ValueFrom.Name, configVar.ValueFrom.Namespace, err)
+		return "", fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%v'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, err)
 	}
-	if val, ok := secret.Data[configVar.ValueFrom.Key]; ok {
+	if val, ok := secret.Data[configVar.SecretKeyRef.Key]; ok {
 		return string(val), nil
 	}
-	return "", fmt.Errorf("secret '%s' in namespace '%s' has no key '%s'!", configVar.ValueFrom.Name, configVar.ValueFrom.Namespace, configVar.ValueFrom.Key)
+	return "", fmt.Errorf("secret '%s' in namespace '%s' has no key '%s'!", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, configVar.SecretKeyRef.Key)
 }
 
 func (secretKeyGetter *SecretKeyGetter) GetConfigVarBoolValue(configVar ConfigVarBool) (bool, error) {
-	cvs := ConfigVarString{Value: strconv.FormatBool(configVar.Value), ValueFrom: configVar.ValueFrom}
+	cvs := ConfigVarString{Value: strconv.FormatBool(configVar.Value), SecretKeyRef: configVar.SecretKeyRef}
 	stringVal, err := secretKeyGetter.GetConfigVarStringValue(cvs)
 	if err != nil {
 		return false, err
