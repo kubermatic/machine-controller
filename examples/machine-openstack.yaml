@@ -13,6 +13,14 @@ stringData:
   domainName: << OS_DOMAIN_NAME >>
   tenantName: << OS_TENANT_NAME >>
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: machine-controller
+  namespace: kube-system
+data:
+  securityGroup: external-ssh
+---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
@@ -55,7 +63,10 @@ spec:
       image: "Ubuntu 16.04 amd64"
       flavor: "m1.small"
       securityGroups:
-        - "external-ssh"
+        - configMapKeyRef:
+            namespace: kube-system
+            name: machine-controller
+            key: securityGroup
       # The machine won't get a floating ip if you leave this empty
       floatingIpPool: "ext-net"
       # Only required if there is more than one AZ to choose from

@@ -102,6 +102,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  resourceNames:
+  - machine-controller
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
   - endpoints
   resourceNames:
   - machine-controller
