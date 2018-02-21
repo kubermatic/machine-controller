@@ -465,47 +465,54 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	if node != nil {
-		var labelsUpdated bool
-		for k, v := range machine.Spec.Labels {
-			if _, exists := node.Labels[k]; !exists {
-				labelsUpdated = true
-				node.Labels[k] = v
-			}
-		}
-
-		var annotationsUpdated bool
-		for k, v := range machine.Spec.Annotations {
-			if _, exists := node.Annotations[k]; !exists {
-				annotationsUpdated = true
-				node.Annotations[k] = v
-			}
-		}
-
-		taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
-			for _, t := range node.Spec.Taints {
-				if t.MatchTaint(&taint) {
-					return true
-				}
-			}
-			return false
-		}
-		var taintsUpdated bool
-		for _, t := range machine.Spec.Taints {
-			if !taintExists(node, t) {
-				node.Spec.Taints = append(node.Spec.Taints, t)
-				taintsUpdated = true
-			}
-		}
-		if labelsUpdated || annotationsUpdated || taintsUpdated {
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
-		}
+		return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
 	}
 
 	return nil
+}
+
+func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, machine *machinev1alpha1.Machine) error {
+	var labelsUpdated bool
+	for k, v := range machine.Spec.Labels {
+		if _, exists := node.Labels[k]; !exists {
+			labelsUpdated = true
+			node.Labels[k] = v
+		}
+	}
+
+	var annotationsUpdated bool
+	for k, v := range machine.Spec.Annotations {
+		if _, exists := node.Annotations[k]; !exists {
+			annotationsUpdated = true
+			node.Annotations[k] = v
+		}
+	}
+
+	taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
+		for _, t := range node.Spec.Taints {
+			if t.MatchTaint(&taint) {
+				return true
+			}
+		}
+		return false
+	}
+	var taintsUpdated bool
+	for _, t := range machine.Spec.Taints {
+		if !taintExists(node, t) {
+			node.Spec.Taints = append(node.Spec.Taints, t)
+			taintsUpdated = true
+		}
+	}
+	if labelsUpdated || annotationsUpdated || taintsUpdated {
+		node, err := c.kubeClient.CoreV1().Nodes().Update(node)
+		if err != nil {
+			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
+		}
+		glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
+	}
+
+	return nil
+
 }
 
 func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node *corev1.Node) error {
