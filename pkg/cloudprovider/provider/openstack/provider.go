@@ -57,24 +57,22 @@ type RawConfig struct {
 }
 
 type Config struct {
-	// There are already resolved to their actual value that may be retrieved from a secret
-	// so ensure they don't get posted back to the machine object
-	IdentityEndpoint string `json:"-"`
-	Username         string `json:"-"`
-	Password         string `json:"-"`
-	DomainName       string `json:"-"`
-	TenantName       string `json:"-"`
-	TokenID          string `json:"-"`
+	IdentityEndpoint string
+	Username         string
+	Password         string
+	DomainName       string
+	TenantName       string
+	TokenID          string
 
 	// Machine details
-	Image            string   `json:"-"`
-	Flavor           string   `json:"-"`
-	SecurityGroups   []string `json:"-"`
-	Network          string   `json:"-"`
-	Subnet           string   `json:"-"`
-	FloatingIPPool   string   `json:"-"`
-	AvailabilityZone string   `json:"-"`
-	Region           string   `json:"-"`
+	Image            string
+	Flavor           string
+	SecurityGroups   []string
+	Network          string
+	Subnet           string
+	FloatingIPPool   string
+	AvailabilityZone string
+	Region           string
 }
 
 const (
