@@ -303,7 +303,7 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}
-	skg := providerconfig.NewSecretKeyGetter(c.kubeClient)
+	skg := providerconfig.NewConfigVarResolver(c.kubeClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, c.sshPrivateKey, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)

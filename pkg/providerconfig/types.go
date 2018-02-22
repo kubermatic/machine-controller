@@ -125,14 +125,14 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type SecretKeyGetter struct {
+type ConfigVarResolver struct {
 	kubeClient kubernetes.Interface
 }
 
-func (secretKeyGetter *SecretKeyGetter) GetConfigVarStringValue(configVar ConfigVarString) (string, error) {
+func (configVarResolver *ConfigVarResolver) GetConfigVarStringValue(configVar ConfigVarString) (string, error) {
 	// We need all three of these to fetch and use a secret
 	if configVar.SecretKeyRef.Name != "" && configVar.SecretKeyRef.Namespace != "" && configVar.SecretKeyRef.Key != "" {
-		secret, err := secretKeyGetter.kubeClient.CoreV1().Secrets(
+		secret, err := configVarResolver.kubeClient.CoreV1().Secrets(
 			configVar.SecretKeyRef.Namespace).Get(configVar.SecretKeyRef.Name, metav1.GetOptions{})
 		if err != nil {
 			return "", fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%v'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, err)
@@ -145,7 +145,7 @@ func (secretKeyGetter *SecretKeyGetter) GetConfigVarStringValue(configVar Config
 
 	// We need all three of these to fetch and use a configmap
 	if configVar.ConfigMapKeyRef.Name != "" && configVar.ConfigMapKeyRef.Namespace != "" && configVar.ConfigMapKeyRef.Key != "" {
-		configMap, err := secretKeyGetter.kubeClient.CoreV1().ConfigMaps(configVar.ConfigMapKeyRef.Namespace).Get(configVar.ConfigMapKeyRef.Name, metav1.GetOptions{})
+		configMap, err := configVarResolver.kubeClient.CoreV1().ConfigMaps(configVar.ConfigMapKeyRef.Namespace).Get(configVar.ConfigMapKeyRef.Name, metav1.GetOptions{})
 		if err != nil {
 			return "", fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%v'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
 		}
@@ -158,9 +158,9 @@ func (secretKeyGetter *SecretKeyGetter) GetConfigVarStringValue(configVar Config
 	return configVar.Value, nil
 }
 
-func (secretKeyGetter *SecretKeyGetter) GetConfigVarBoolValue(configVar ConfigVarBool) (bool, error) {
+func (configVarResolver *ConfigVarResolver) GetConfigVarBoolValue(configVar ConfigVarBool) (bool, error) {
 	cvs := ConfigVarString{Value: strconv.FormatBool(configVar.Value), SecretKeyRef: configVar.SecretKeyRef}
-	stringVal, err := secretKeyGetter.GetConfigVarStringValue(cvs)
+	stringVal, err := configVarResolver.GetConfigVarStringValue(cvs)
 	if err != nil {
 		return false, err
 	}
@@ -171,8 +171,8 @@ func (secretKeyGetter *SecretKeyGetter) GetConfigVarBoolValue(configVar ConfigVa
 	return boolVal, nil
 }
 
-func NewSecretKeyGetter(kubeClient kubernetes.Interface) *SecretKeyGetter {
-	return &SecretKeyGetter{kubeClient: kubeClient}
+func NewConfigVarResolver(kubeClient kubernetes.Interface) *ConfigVarResolver {
+	return &ConfigVarResolver{kubeClient: kubeClient}
 }
 
 func GetConfig(r runtime.RawExtension) (*Config, error) {

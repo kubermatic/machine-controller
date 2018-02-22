@@ -27,13 +27,13 @@ import (
 )
 
 type provider struct {
-	privateKey      *machinessh.PrivateKey
-	secretKeyGetter *providerconfig.SecretKeyGetter
+	privateKey        *machinessh.PrivateKey
+	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a openstack provider
-func New(privateKey *machinessh.PrivateKey, secretKeyGetter *providerconfig.SecretKeyGetter) cloud.Provider {
-	return &provider{privateKey: privateKey, secretKeyGetter: secretKeyGetter}
+func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
@@ -98,62 +98,62 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 		return nil, nil, nil, err
 	}
 	c := Config{}
-	c.IdentityEndpoint, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.IdentityEndpoint)
+	c.IdentityEndpoint, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.IdentityEndpoint)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Username, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Username)
+	c.Username, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Username)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Password, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Password)
+	c.Password, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Password)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.DomainName, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.DomainName)
+	c.DomainName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DomainName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.TenantName, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.TenantName)
+	c.TenantName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TenantName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.TokenID, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.TokenID)
+	c.TokenID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TokenID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Image, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Image)
+	c.Image, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Image)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Flavor, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Flavor)
+	c.Flavor, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Flavor)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	for _, securityGroup := range rawConfig.SecurityGroups {
-		securityGroupValue, err := p.secretKeyGetter.GetConfigVarStringValue(securityGroup)
+		securityGroupValue, err := p.configVarResolver.GetConfigVarStringValue(securityGroup)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		c.SecurityGroups = append(c.SecurityGroups, securityGroupValue)
 	}
-	c.Network, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Network)
+	c.Network, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Network)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Subnet, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Subnet)
+	c.Subnet, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Subnet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.FloatingIPPool, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.FloatingIPPool)
+	c.FloatingIPPool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.FloatingIPPool)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.AvailabilityZone, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Region)
+	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, nil, err
 	}

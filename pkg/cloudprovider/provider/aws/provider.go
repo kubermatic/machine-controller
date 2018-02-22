@@ -31,13 +31,13 @@ import (
 )
 
 type provider struct {
-	privateKey      *machinessh.PrivateKey
-	secretKeyGetter *providerconfig.SecretKeyGetter
+	privateKey        *machinessh.PrivateKey
+	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a aws provider
-func New(privateKey *machinessh.PrivateKey, secretKeyGetter *providerconfig.SecretKeyGetter) cloud.Provider {
-	return &provider{privateKey: privateKey, secretKeyGetter: secretKeyGetter}
+func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
 }
 
 const (
@@ -179,47 +179,47 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	rawConfig := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	c := Config{}
-	c.AccessKeyID, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.AccessKeyID)
+	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AccessKeyID)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.SecretAccessKey, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.SecretAccessKey)
+	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SecretAccessKey)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Region)
+	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.VpcID, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.VpcID)
+	c.VpcID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VpcID)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.SubnetID, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.SubnetID)
+	c.SubnetID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SubnetID)
 	if err != nil {
 		return nil, nil, err
 	}
 	for _, securityGroupIDRaw := range rawConfig.SecurityGroupIDs {
-		securityGroupID, err := p.secretKeyGetter.GetConfigVarStringValue(securityGroupIDRaw)
+		securityGroupID, err := p.configVarResolver.GetConfigVarStringValue(securityGroupIDRaw)
 		if err != nil {
 			return nil, nil, err
 		}
 		c.SecurityGroupIDs = append(c.SecurityGroupIDs, securityGroupID)
 	}
-	c.InstanceProfile, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.InstanceProfile)
+	c.InstanceProfile, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceProfile)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.InstanceType, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.InstanceType)
+	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.AMI, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.AMI)
+	c.AMI, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AMI)
 	if err != nil {
 		return nil, nil, err
 	}
 	c.DiskSize = rawConfig.DiskSize
-	c.DiskType, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.DiskType)
+	c.DiskType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -24,13 +24,13 @@ import (
 )
 
 type provider struct {
-	privateKey      *machinessh.PrivateKey
-	secretKeyGetter *providerconfig.SecretKeyGetter
+	privateKey        *machinessh.PrivateKey
+	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a Hetzner provider
-func New(privateKey *machinessh.PrivateKey, secretKeyGetter *providerconfig.SecretKeyGetter) cloud.Provider {
-	return &provider{privateKey: privateKey, secretKeyGetter: secretKeyGetter}
+func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
@@ -73,19 +73,19 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 
 	c := Config{}
-	c.Token, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Token)
+	c.Token, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Token)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.ServerType, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.ServerType)
+	c.ServerType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerType)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Datacenter, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Datacenter)
+	c.Datacenter, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datacenter)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Location, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Location)
+	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Location)
 	if err != nil {
 		return nil, nil, err
 	}

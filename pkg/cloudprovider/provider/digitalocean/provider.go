@@ -28,13 +28,13 @@ import (
 )
 
 type provider struct {
-	privateKey      *machinessh.PrivateKey
-	secretKeyGetter *providerconfig.SecretKeyGetter
+	privateKey        *machinessh.PrivateKey
+	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a digitalocean provider
-func New(privateKey *machinessh.PrivateKey, secretKeyGetter *providerconfig.SecretKeyGetter) cloud.Provider {
-	return &provider{privateKey: privateKey, secretKeyGetter: secretKeyGetter}
+func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
@@ -111,36 +111,36 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	}
 
 	c := Config{}
-	c.Token, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Token)
+	c.Token, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Token)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Region, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Region)
+	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Size, err = p.secretKeyGetter.GetConfigVarStringValue(rawConfig.Size)
+	c.Size, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Size)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Backups, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.Backups)
+	c.Backups, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Backups)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.IPv6, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.IPv6)
+	c.IPv6, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.IPv6)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.PrivateNetworking, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.PrivateNetworking)
+	c.PrivateNetworking, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.PrivateNetworking)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Monitoring, err = p.secretKeyGetter.GetConfigVarBoolValue(rawConfig.Monitoring)
+	c.Monitoring, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Monitoring)
 	if err != nil {
 		return nil, nil, err
 	}
 	for _, tag := range rawConfig.Tags {
-		tagVal, err := p.secretKeyGetter.GetConfigVarStringValue(tag)
+		tagVal, err := p.configVarResolver.GetConfigVarStringValue(tag)
 		if err != nil {
 			return nil, nil, err
 		}
