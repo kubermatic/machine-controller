@@ -17,6 +17,11 @@ rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" 
 cat <<EOEXEC |ssh_exec
 set -ex
 
+if ! grep -q kubectl /root/.bashrc; then
+  echo 'function cn { kubectl config set-context \$(kubectl config current-context) --namespace=\$1; }' >> /root/.bashrc
+  echo 'source <(kubectl completion bash)' >> /root/.bashrc
+fi
+
 if ! which docker; then
   apt update
   apt install -y docker.io
@@ -66,6 +71,10 @@ set -e
 echo "Testing create of a node via machine-controller...."
 ./verify \
   -input examples/machine-hetzner.yaml \
-  -parameters "<< HETZNER_API_TOKEN >>=$HZ_TOKEN" \
+  -parameters "<< HETZNER_TOKEN_BASE64_ENCODED >>=$HZ_TOKEN" \
   -logtostderr true
+#./verify \
+#  -input examples/machine-digitalocean.yaml \
+#  -parameters "<< DIGITALOCEAN_TOKEN_BASE64_ENCODED >>=$DO_TOKEN" \
+#  -logtostderr true
 EOF

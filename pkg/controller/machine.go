@@ -44,7 +44,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -68,7 +67,7 @@ const (
 	controllerNameAnnotationKey = "machine.k8s.io/controller"
 )
 
-// Controller is the controller implementation for Foo resources
+// Controller is the controller implementation for machine resources
 type Controller struct {
 	kubeClient    kubernetes.Interface
 	machineClient machineclientset.Interface
@@ -164,7 +163,7 @@ func NewMachineController(
 
 // Run starts the control loop
 func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
-	defer runtime.HandleCrash()
+	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
 	for i := 0; i < threadiness; i++ {
@@ -202,6 +201,25 @@ func (c *Controller) processNextWorkItem() bool {
 	c.workqueue.AddRateLimited(key)
 
 	return true
+}
+
+func (c *Controller) doesNodeForMachineExistAndIsReady(machine *machinev1alpha1.Machine) (*corev1.Node, bool, error) {
+	if machine.Status.NodeRef != nil {
+		listerNode, err := c.nodesLister.Get(machine.Status.NodeRef.Name)
+		if err != nil {
+			return nil, false, err
+		}
+		node := listerNode.DeepCopy()
+		for _, condition := range node.Status.Conditions {
+			if condition.Type == corev1.NodeReady {
+				if condition.Status == corev1.ConditionTrue {
+					return node, true, nil
+				}
+			}
+		}
+	}
+
+	return nil, false, nil
 }
 
 func (c *Controller) updateMachine(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
@@ -285,7 +303,8 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}
-	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, c.sshPrivateKey)
+	skg := providerconfig.NewConfigVarResolver(c.kubeClient)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, c.sshPrivateKey, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}
@@ -352,145 +371,148 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf("failed to default the container runtime version: %v", err)
 	}
 
-	if providerInstance, err = prov.Get(machine); err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
-			if err != nil {
-				return fmt.Errorf("failed to add defaults to machine: '%v'", err)
-			}
-			if changed {
-				glog.V(4).Infof("Updating machine '%s' with defaults...", machine.Name)
-				machine.Spec = defaultedMachineSpec
-				if machine, err = c.updateMachine(machine); err != nil {
-					return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
+	node, nodeExistsAndIsReady, err := c.doesNodeForMachineExistAndIsReady(machine)
+	if err != nil {
+		return fmt.Errorf("failed to check if node for machine exists ans is ready: '%s'", err)
+	}
+	if !nodeExistsAndIsReady {
+		glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
+		if providerInstance, err = prov.Get(machine); err != nil {
+			if err == cloudprovidererrors.ErrInstanceNotFound {
+				defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
+				if err != nil {
+					return fmt.Errorf("failed to add defaults to machine: '%v'", err)
 				}
-				glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
-			}
-			if err := c.validateMachine(prov, machine); err != nil {
-				if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
-					return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
+				if changed {
+					glog.V(4).Infof("Updating machine '%s' with defaults...", machine.Name)
+					machine.Spec = defaultedMachineSpec
+					if machine, err = c.updateMachine(machine); err != nil {
+						return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
+					}
+					glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
 				}
-				return fmt.Errorf("invalid provider config: %v", err)
-			}
-			// Remove error message in case it was set
-			if machine, err = c.clearMachineErrorIfSet(machine, machinev1alpha1.InvalidConfigurationMachineError); err != nil {
-				return fmt.Errorf("failed to update machine after removing the failed validation error: %v", err)
-			}
-			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
-
-			kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
-			if err != nil {
-				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
-			}
-
-			data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
-			if err != nil {
-				return fmt.Errorf("failed get userdata: %v", err)
-			}
-
-			glog.Infof("creating instance...")
-			if providerInstance, err = c.createProviderInstance(prov, machine, data); err != nil {
-				if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); errNested != nil {
-					return fmt.Errorf("failed to update machine error after failed machine creation: %v", errNested)
+				if err := c.validateMachine(prov, machine); err != nil {
+					if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
+						return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
+					}
+					return fmt.Errorf("invalid provider config: %v", err)
 				}
-				return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
-			}
-			// Remove error message in case it was set
-			if machine, err = c.clearMachineErrorIfSet(machine, machinev1alpha1.CreateMachineError); err != nil {
-				return fmt.Errorf("failed to update machine after removing the create machine error: %v", err)
-			}
-			glog.V(4).Infof("Created machine %s at cloud provider", machine.Name)
+				// Remove error message in case it was set
+				if machine, err = c.clearMachineErrorIfSet(machine, machinev1alpha1.InvalidConfigurationMachineError); err != nil {
+					return fmt.Errorf("failed to update machine after removing the failed validation error: %v", err)
+				}
+				glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
+				kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
+				if err != nil {
+					return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
+				}
+
+				data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
+				if err != nil {
+					return fmt.Errorf("failed get userdata: %v", err)
+				}
+
+				glog.Infof("creating instance...")
+				if providerInstance, err = c.createProviderInstance(prov, machine, data); err != nil {
+					if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); errNested != nil {
+						return fmt.Errorf("failed to update machine error after failed machine creation: %v", errNested)
+					}
+					return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
+				}
+				// Remove error message in case it was set
+				if machine, err = c.clearMachineErrorIfSet(machine, machinev1alpha1.CreateMachineError); err != nil {
+					return fmt.Errorf("failed to update machine after removing the create machine error: %v", err)
+				}
+				glog.V(4).Infof("Created machine %s at cloud provider", machine.Name)
+
+			} else {
+				return fmt.Errorf("failed to get instance from provider: %v", err)
+			}
 		} else {
-			return fmt.Errorf("failed to get instance from provider: %v", err)
-		}
-	}
-
-	node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
-	if err != nil {
-		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
-	}
-	if exists {
-		ownerRef := metav1.GetControllerOf(node)
-		if ownerRef == nil {
-			gv := machinev1alpha1.SchemeGroupVersion
-			node.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machine, gv.WithKind(machineKind))}
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
+			// Case retrieving instance from cloudprovider was successfull
+			node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
 			if err != nil {
-				return fmt.Errorf("failed to update node %s after adding the owner ref: %v", node.Name, err)
+				return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
 			}
-			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
-			c.metrics.NodeJoinDuration.Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
-		}
+			if exists {
+				ownerRef := metav1.GetControllerOf(node)
+				if ownerRef == nil {
+					gv := machinev1alpha1.SchemeGroupVersion
+					node.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machine, gv.WithKind(machineKind))}
+					node, err = c.kubeClient.CoreV1().Nodes().Update(node)
+					if err != nil {
+						return fmt.Errorf("failed to update node %s after adding the owner ref: %v", node.Name, err)
+					}
+					glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
+					c.metrics.NodeJoinDuration.Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
+				}
 
-		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
-			node.Spec.ConfigSource = machine.Spec.ConfigSource
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
-		}
-
-		var labelsUpdated bool
-		for k, v := range machine.Spec.Labels {
-			if _, exists := node.Labels[k]; !exists {
-				labelsUpdated = true
-				node.Labels[k] = v
-			}
-		}
-		if labelsUpdated {
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting the labels: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added labels to node %s (machine %s)", node.Name, machine.Name)
-		}
-
-		var annotationsUpdated bool
-		for k, v := range machine.Spec.Annotations {
-			if _, exists := node.Annotations[k]; !exists {
-				annotationsUpdated = true
-				node.Annotations[k] = v
-			}
-		}
-		if annotationsUpdated {
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting the annotations: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added annotations to node %s (machine %s)", node.Name, machine.Name)
-		}
-
-		taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
-			for _, t := range node.Spec.Taints {
-				if t.MatchTaint(&taint) {
-					return true
+				if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
+					node.Spec.ConfigSource = machine.Spec.ConfigSource
+					node, err = c.kubeClient.CoreV1().Nodes().Update(node)
+					if err != nil {
+						return fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
+					}
+					glog.V(4).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
+				}
+				err = c.updateMachineStatus(machine, node)
+				if err != nil {
+					return fmt.Errorf("failed to update machine status: %v", err)
 				}
 			}
-			return false
-		}
-		var taintsUpdated bool
-		for _, t := range machine.Spec.Taints {
-			if !taintExists(node, t) {
-				node.Spec.Taints = append(node.Spec.Taints, t)
-				taintsUpdated = true
-			}
-		}
-		if taintsUpdated {
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after setting the taints: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added taints to node %s (machine %s)", node.Name, machine.Name)
 		}
 	}
 
-	err = c.updateMachineStatus(machine, node)
-	if err != nil {
-		return fmt.Errorf("failed to update machine status: %v", err)
+	if node != nil {
+		return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
 	}
+
 	return nil
+}
+
+func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, machine *machinev1alpha1.Machine) error {
+	var labelsUpdated bool
+	for k, v := range machine.Spec.Labels {
+		if _, exists := node.Labels[k]; !exists {
+			labelsUpdated = true
+			node.Labels[k] = v
+		}
+	}
+
+	var annotationsUpdated bool
+	for k, v := range machine.Spec.Annotations {
+		if _, exists := node.Annotations[k]; !exists {
+			annotationsUpdated = true
+			node.Annotations[k] = v
+		}
+	}
+
+	taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
+		for _, t := range node.Spec.Taints {
+			if t.MatchTaint(&taint) {
+				return true
+			}
+		}
+		return false
+	}
+	var taintsUpdated bool
+	for _, t := range machine.Spec.Taints {
+		if !taintExists(node, t) {
+			node.Spec.Taints = append(node.Spec.Taints, t)
+			taintsUpdated = true
+		}
+	}
+	if labelsUpdated || annotationsUpdated || taintsUpdated {
+		node, err := c.kubeClient.CoreV1().Nodes().Update(node)
+		if err != nil {
+			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
+		}
+		glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
+	}
+
+	return nil
+
 }
 
 func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node *corev1.Node) error {
@@ -556,6 +578,9 @@ func parseContainerRuntime(s string) (runtime, version string, err error) {
 }
 
 func (c *Controller) getNode(instance instance.Instance, provider string) (node *corev1.Node, exists bool, err error) {
+	if instance == nil {
+		return nil, false, fmt.Errorf("getNode called with nil provider instance!")
+	}
 	nodes, err := c.nodesLister.List(labels.Everything())
 	if err != nil {
 		return nil, false, err
@@ -630,7 +655,7 @@ func (c *Controller) enqueueMachine(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
+		utilruntime.HandleError(err)
 		return
 	}
 	c.workqueue.AddRateLimited(key)
@@ -642,12 +667,12 @@ func (c *Controller) handleObject(obj interface{}) {
 	if object, ok = obj.(metav1.Object); !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			runtime.HandleError(fmt.Errorf("error decoding object, invalid type"))
+			utilruntime.HandleError(fmt.Errorf("error decoding object, invalid type"))
 			return
 		}
 		object, ok = tombstone.Obj.(metav1.Object)
 		if !ok {
-			runtime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
+			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
 			return
 		}
 		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
@@ -672,7 +697,7 @@ func (c *Controller) handleObject(obj interface{}) {
 	if ownerRef == nil {
 		machines, err := c.machinesLister.List(labels.Everything())
 		if err != nil {
-			runtime.HandleError(fmt.Errorf("error listing machines: '%v'", err))
+			utilruntime.HandleError(fmt.Errorf("error listing machines: '%v'", err))
 			return
 		}
 		for _, machine := range machines {

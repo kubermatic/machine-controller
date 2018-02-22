@@ -93,6 +93,18 @@ rules:
   - secrets
   resourceNames:
   - machine-controller-ssh-key
+  - machine-controller-hetzner
+  - machine-controller-digitalocean
+  - machine-controller-openstack
+  - machine-controller-aws
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - machine-controller
   verbs:
   - get
 - apiGroups:

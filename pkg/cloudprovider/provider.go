@@ -16,18 +16,26 @@ var (
 	// ErrProviderNotFound tells that the requested cloud provider was not found
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
-	providers = map[providerconfig.CloudProvider]func(key *machinessh.PrivateKey) cloud.Provider{
-		providerconfig.CloudProviderDigitalocean: func(key *machinessh.PrivateKey) cloud.Provider { return digitalocean.New(key) },
-		providerconfig.CloudProviderAWS:          func(key *machinessh.PrivateKey) cloud.Provider { return aws.New(key) },
-		providerconfig.CloudProviderOpenstack:    func(key *machinessh.PrivateKey) cloud.Provider { return openstack.New(key) },
-		providerconfig.CloudProviderHetzner:      func(key *machinessh.PrivateKey) cloud.Provider { return hetzner.New(key) },
+	providers = map[providerconfig.CloudProvider]func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider{
+		providerconfig.CloudProviderDigitalocean: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return digitalocean.New(key, cvr)
+		},
+		providerconfig.CloudProviderAWS: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return aws.New(key, cvr)
+		},
+		providerconfig.CloudProviderOpenstack: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return openstack.New(key, cvr)
+		},
+		providerconfig.CloudProviderHetzner: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return hetzner.New(key, cvr)
+		},
 	}
 )
 
 // ForProvider returns a CloudProvider actuator for the requested provider
-func ForProvider(p providerconfig.CloudProvider, key *machinessh.PrivateKey) (cloud.Provider, error) {
+func ForProvider(p providerconfig.CloudProvider, key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) (cloud.Provider, error) {
 	if p, found := providers[p]; found {
-		return p(key), nil
+		return p(key, cvr), nil
 	}
 	return nil, ErrProviderNotFound
 }

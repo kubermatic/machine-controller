@@ -1,3 +1,26 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-openstack
+  namespace: kube-system
+type: Opaque
+stringData:
+  identityEndpoint: << OS_AUTH_URL >>
+  username: << OS_USERNAME >>
+  password: << OS_PASSWORD >>
+  domainName: << OS_DOMAIN_NAME >>
+  tenantName: << OS_TENANT_NAME >>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: machine-controller
+  namespace: kube-system
+data:
+  securityGroup: external-ssh
+---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
@@ -12,15 +35,38 @@ spec:
       - "<< YOUR_PUBLIC_KEY >>"
     cloudProvider: "openstack"
     cloudProviderSpec:
-      identityEndpoint: "<< YOUR_OS_AUTH_URL >>"
-      username: "<< YOUR_OS_USERNAME >>"
-      password: "<< YOUR_OS_PASSWORD >>"
-      domainName: "<< YOUR_OS_DOMAIN >>"
-      tenantName: "<< YOUR_OS_TENANT >>"
+      identityEndpoint:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: identityEndpoint
+      username:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: username
+      password:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: password
+      domainName:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: domainName
+      tenantName:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-openstack
+          key: tenantName
       image: "Ubuntu 16.04 amd64"
       flavor: "m1.small"
       securityGroups:
-        - "external-ssh"
+        - configMapKeyRef:
+            namespace: kube-system
+            name: machine-controller
+            key: securityGroup
       # The machine won't get a floating ip if you leave this empty
       floatingIpPool: "ext-net"
       # Only required if there is more than one AZ to choose from

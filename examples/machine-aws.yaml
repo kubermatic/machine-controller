@@ -1,3 +1,15 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-aws
+  namespace: kube-system
+type: Opaque
+stringData:
+  accessKeyId: << AWS_ACCESS_KEY_ID >
+  secretAccessKey: << AWS_SECRET_ACCESS_KEY >>
+---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
@@ -10,8 +22,16 @@ spec:
       - "<< YOUR_PUBLIC_KEY >>"
     cloudProvider: "aws"
     cloudProviderSpec:
-      accessKeyId: "<< YOUR_ACCESS_KEY_ID >>"
-      secretAccessKey: "<< YOUR_SECRET_ACCESS_KEY_ID >>"
+      accessKeyId:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-aws
+          key: accessKeyId
+      secretAccessKey:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-aws
+          key: secretAccessKey
       region: "eu-central-1"
       availabilityZone: "eu-central-1a"
       vpcId: "vpc-819f62e9"

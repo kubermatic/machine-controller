@@ -28,23 +28,35 @@ import (
 )
 
 type provider struct {
-	privateKey *machinessh.PrivateKey
+	privateKey        *machinessh.PrivateKey
+	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a digitalocean provider
-func New(privateKey *machinessh.PrivateKey) cloud.Provider {
-	return &provider{privateKey: privateKey}
+func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
+}
+
+type RawConfig struct {
+	Token             providerconfig.ConfigVarString   `json:"token"`
+	Region            providerconfig.ConfigVarString   `json:"region"`
+	Size              providerconfig.ConfigVarString   `json:"size"`
+	Backups           providerconfig.ConfigVarBool     `json:"backups"`
+	IPv6              providerconfig.ConfigVarBool     `json:"ipv6"`
+	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
+	Monitoring        providerconfig.ConfigVarBool     `json:"monitoring"`
+	Tags              []providerconfig.ConfigVarString `json:"tags"`
 }
 
 type Config struct {
-	Token             string   `json:"token"`
-	Region            string   `json:"region"`
-	Size              string   `json:"size"`
-	Backups           bool     `json:"backups"`
-	IPv6              bool     `json:"ipv6"`
-	PrivateNetworking bool     `json:"private_networking"`
-	Monitoring        bool     `json:"monitoring"`
-	Tags              []string `json:"tags"`
+	Token             string
+	Region            string
+	Size              string
+	Backups           bool
+	IPv6              bool
+	PrivateNetworking bool
+	Monitoring        bool
+	Tags              []string
 }
 
 const (
@@ -86,14 +98,55 @@ func getClient(token string) *godo.Client {
 	return godo.NewClient(oauthClient)
 }
 
-func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
+	rawConfig := RawConfig{}
+	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	c := Config{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
+	c.Token, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Token)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Size, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Size)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Backups, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Backups)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.IPv6, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.IPv6)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.PrivateNetworking, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.PrivateNetworking)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Monitoring, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Monitoring)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, tag := range rawConfig.Tags {
+		tagVal, err := p.configVarResolver.GetConfigVarStringValue(tag)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.Tags = append(c.Tags, tagVal)
+	}
+
 	return &c, &pconfig, err
 }
 
@@ -102,7 +155,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, pc, err := getConfig(spec.ProviderConfig)
+	c, pc, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -206,7 +259,7 @@ func ensureSSHKeysExist(ctx context.Context, service godo.KeysService, key *mach
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	c, pc, err := getConfig(machine.Spec.ProviderConfig)
+	c, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -262,7 +315,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -286,7 +339,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	c, _, err := getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}

@@ -31,12 +31,13 @@ import (
 )
 
 type provider struct {
-	privateKey *machinessh.PrivateKey
+	privateKey        *machinessh.PrivateKey
+	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a aws provider
-func New(privateKey *machinessh.PrivateKey) cloud.Provider {
-	return &provider{privateKey: privateKey}
+func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
 }
 
 const (
@@ -117,23 +118,42 @@ var (
 	publicKeyCreationLock = &sync.Mutex{}
 )
 
+type RawConfig struct {
+	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyId"`
+	SecretAccessKey providerconfig.ConfigVarString `json:"secretAccessKey"`
+
+	Region           providerconfig.ConfigVarString `json:"region"`
+	AvailabilityZone providerconfig.ConfigVarString `json:"availabilityZone"`
+
+	VpcID            providerconfig.ConfigVarString   `json:"vpcId"`
+	SubnetID         providerconfig.ConfigVarString   `json:"subnetId"`
+	SecurityGroupIDs []providerconfig.ConfigVarString `json:"securityGroupIDs"`
+	InstanceProfile  providerconfig.ConfigVarString   `json:"instanceProfile"`
+
+	InstanceType providerconfig.ConfigVarString `json:"instanceType"`
+	AMI          providerconfig.ConfigVarString `json:"ami"`
+	DiskSize     int64                          `json:"diskSize"`
+	DiskType     providerconfig.ConfigVarString `json:"diskType"`
+	Tags         map[string]string              `json:"tags"`
+}
+
 type Config struct {
-	AccessKeyID     string `json:"accessKeyId"`
-	SecretAccessKey string `json:"secretAccessKey"`
+	AccessKeyID     string
+	SecretAccessKey string
 
-	Region           string `json:"region"`
-	AvailabilityZone string `json:"availabilityZone"`
+	Region           string
+	AvailabilityZone string
 
-	VpcID            string   `json:"vpcId"`
-	SubnetID         string   `json:"subnetId"`
-	SecurityGroupIDs []string `json:"securityGroupIDs"`
-	InstanceProfile  string   `json:"instanceProfile"`
+	VpcID            string
+	SubnetID         string
+	SecurityGroupIDs []string
+	InstanceProfile  string
 
-	InstanceType string            `json:"instanceType"`
-	AMI          string            `json:"ami"`
-	DiskSize     int64             `json:"diskSize"`
-	DiskType     string            `json:"diskType"`
-	Tags         map[string]string `json:"tags"`
+	InstanceType string
+	AMI          string
+	DiskSize     int64
+	DiskType     string
+	Tags         map[string]string
 }
 
 func getDefaultAMIID(os providerconfig.OperatingSystem, region string) (string, error) {
@@ -150,14 +170,61 @@ func getDefaultAMIID(os providerconfig.OperatingSystem, region string) (string, 
 	return id, nil
 }
 
-func getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
+	rawConfig := RawConfig{}
+	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	c := Config{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &c)
+	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AccessKeyID)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SecretAccessKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.VpcID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VpcID)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.SubnetID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SubnetID)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, securityGroupIDRaw := range rawConfig.SecurityGroupIDs {
+		securityGroupID, err := p.configVarResolver.GetConfigVarStringValue(securityGroupIDRaw)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.SecurityGroupIDs = append(c.SecurityGroupIDs, securityGroupID)
+	}
+	c.InstanceProfile, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceProfile)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.AMI, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AMI)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.DiskSize = rawConfig.DiskSize
+	c.DiskType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Tags = rawConfig.Tags
+
 	return &c, &pconfig, err
 }
 
@@ -190,7 +257,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	config, pc, err := getConfig(spec.ProviderConfig)
+	config, pc, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -463,7 +530,7 @@ func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	config, pc, err := getConfig(machine.Spec.ProviderConfig)
+	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -602,7 +669,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 		return fmt.Errorf("failed to get instance from aws: %v", err)
 	}
 
-	config, _, err := getConfig(machine.Spec.ProviderConfig)
+	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -627,7 +694,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	config, _, err := getConfig(machine.Spec.ProviderConfig)
+	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}

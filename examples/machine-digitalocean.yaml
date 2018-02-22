@@ -1,3 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-digitalocean
+  namespace: kube-system
+type: Opaque
+stringData:
+  token: << DIGITALOCEAN_TOKEN >>
+---
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
@@ -10,9 +21,13 @@ spec:
       - "<< YOUR_PUBLIC_KEY >>"
     cloudProvider: "digitalocean"
     cloudProviderSpec:
-      token: "<< YOUR_DO_TOKEN >>"
-      region: "fra1"
-      size: "2gb"
+      token:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-digitalocean
+          key: token
+      region: fra1
+      size: 2gb
       backups: false
       ipv6: false
       private_networking: true
