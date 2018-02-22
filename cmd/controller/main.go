@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -53,6 +55,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/kubermatic/machine-controller/pkg/ssh"
+	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -118,6 +121,9 @@ type controllerRunOptions struct {
 
 	// name of the controller. When set the controller will only process machines with the annotation "machine.k8s.io/controller": name
 	name string
+
+	// ctx carries a cancelation signal
+	ctx context.Context
 }
 
 func main() {
@@ -136,7 +142,6 @@ func main() {
 		glog.Fatalf("invalid cluster dns specified: %v", err)
 	}
 
-	// TODO: add graceful shutdown, propagate stopCh to run method and to http server
 	stopCh := signals.SetupSignalHandler()
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -211,14 +216,44 @@ func main() {
 		}
 	}
 
-	startUtilHttpServerOrDie(kubeClient, kubeconfigProvider, stopCh)
-	startControllerViaLeaderElectionOrDie(runOptions)
+	ctx, ctxDone := context.WithCancel(context.Background())
+	runOptions.ctx = ctx
+	var g run.Group
+	{
+		g.Add(func() error {
+			return startUtilHttpServer(kubeClient, kubeconfigProvider, ctx)
+		}, func(err error) {
+			ctxDone()
+		})
+	}
+	{
+		g.Add(func() error {
+			select {
+			case <-stopCh:
+				return errors.New("user requested to stop the application")
+			case <-ctx.Done():
+				return errors.New("parent context has been closed - propagating the request")
+			}
+		}, func(err error) {
+			ctxDone()
+		})
+
+	}
+	{
+		g.Add(func() error {
+			return startControllerViaLeaderElection(runOptions)
+		}, func(err error) {
+			ctxDone()
+		})
+	}
+
+	glog.Info(g.Run())
 }
 
-// startControllerViaLeaderElectionOrDie starts machine controller only if a proper lock was acquired.
+// startControllerViaLeaderElection starts machine controller only if a proper lock was acquired.
 // This essentially means that we can have multiple instances and at the same time only one is operational.
 // The program terminates when the leadership was lost.
-func startControllerViaLeaderElectionOrDie(runOptions controllerRunOptions) {
+func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	id, err := os.Hostname()
 	if err != nil {
 		glog.Fatalf("error getting hostname: %s", err.Error())
@@ -238,7 +273,16 @@ func startControllerViaLeaderElectionOrDie(runOptions controllerRunOptions) {
 		},
 	}
 
-	run := func(stopCh <-chan struct{}) {
+	mutex := &sync.Mutex{}
+	canControllerWork := true
+	newCtx, newCtxDone := context.WithCancel(runOptions.ctx)
+
+	runController := func(_ <-chan struct{}) {
+		mutex.Lock()
+		defer mutex.Unlock()
+		if !canControllerWork {
+			return
+		}
 		machineController := controller.NewMachineController(
 			runOptions.kubeClient,
 			runOptions.machineClient,
@@ -261,27 +305,44 @@ func startControllerViaLeaderElectionOrDie(runOptions controllerRunOptions) {
 			runOptions.name,
 		)
 
-		if err = machineController.Run(workerCount, stopCh); err != nil {
-			glog.Fatalf("error running controller: %v", err)
+		err := machineController.Run(workerCount, newCtx.Done())
+		if err != nil {
+			glog.Errorf("error running controller: %v", err)
+			return
 		}
+		glog.Info("machine controller has been successfully stopped")
 	}
 
-	leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
+	go leaderelection.RunOrDie(leaderelection.LeaderElectionConfig{
 		Lock:          &rl,
 		LeaseDuration: defaultLeaderElectionLeaseDuration,
 		RenewDeadline: defaultLeaderElectionRenewDeadline,
 		RetryPeriod:   defaultLeaderElectionRetryPeriod,
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: run,
+			OnStartedLeading: runController,
 			OnStoppedLeading: func() {
-				glog.Fatalf("leaderelection lost, closing the app")
+				newCtxDone()
 			},
 		},
 	})
+
+	var g run.Group
+	{
+		g.Add(func() error {
+			<-newCtx.Done()
+			mutex.Lock()
+			defer mutex.Unlock()
+			canControllerWork = false
+			return errors.New("closing the app because leadership position was lost")
+		}, func(err error) {
+			newCtxDone()
+		})
+	}
+	return g.Run()
 }
 
-// startUtilHttpServer starts a new HTTP server asynchronously
-func startUtilHttpServerOrDie(kubeClient *kubernetes.Clientset, kubeconfigProvider controller.KubeconfigProvider, stopCh <-chan struct{}) {
+// startUtilHttpServer starts a new HTTP server
+func startUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider controller.KubeconfigProvider, ctx context.Context) error {
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
 
@@ -289,21 +350,37 @@ func startUtilHttpServerOrDie(kubeClient *kubernetes.Clientset, kubeconfigProvid
 		health.AddReadinessCheck(name, c)
 	}
 
-	serveUtilHttpServer := func(health healthcheck.Handler) {
-		m := http.NewServeMux()
-		m.Handle("/metrics", promhttp.Handler())
-		m.Handle("/live", http.HandlerFunc(health.LiveEndpoint))
-		m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
-
-		s := http.Server{
-			Addr:    listenAddress,
-			Handler: m,
-		}
-		glog.V(4).Infof("serving util http server on %s", listenAddress)
-		glog.Fatalf("util http server died: %v", s.ListenAndServe())
+	ln, err := net.Listen("tcp", listenAddress)
+	if err != nil {
+		return err
 	}
+	m := http.NewServeMux()
+	m.Handle("/metrics", promhttp.Handler())
+	m.Handle("/live", http.HandlerFunc(health.LiveEndpoint))
+	m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
 
-	go serveUtilHttpServer(health)
+	var g run.Group
+	{
+		g.Add(func() error {
+			glog.V(4).Infof("serving util http server on %s", listenAddress)
+			err = http.Serve(ln, m)
+			glog.Infof("util http server exited: %v", err)
+			return err
+		}, func(err error) {
+			ln.Close()
+		})
+	}
+	{
+		newCtx, newCtxDone := context.WithCancel(ctx)
+		g.Add(func() error {
+			<-newCtx.Done()
+			return errors.New("stopping http server requested")
+		}, func(err error) {
+			newCtxDone()
+		})
+
+	}
+	return g.Run()
 }
 
 func readinessChecks(kubeconfigProvider controller.KubeconfigProvider) map[string]healthcheck.Check {
