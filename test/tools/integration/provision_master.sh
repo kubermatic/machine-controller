@@ -82,6 +82,6 @@ echo "Testing create of a node via machine-controller...."
       -n kube-system|egrep '^machine-con'|awk '{ print \$1 }')
 #./verify \
 #  -input examples/machine-digitalocean.yaml \
-#  -parameters "<< DIGITALOCEAN_TOKEN_BASE64_ENCODED >>=$DO_TOKEN" \
+#  -parameters "<< DIGITALOCEAN_TOKEN_BASE64_ENCODED >>=${DO_TOKEN:-undefined}" \
 #  -logtostderr true
 EOF
