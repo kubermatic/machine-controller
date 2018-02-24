@@ -78,6 +78,7 @@ jobs:
           docker create -v /go/src/github.com/kubermatic/machine-controller --name vol-container alpine /bin/true
           docker cp . vol-container:/go/src/github.com/kubermatic/machine-controller/
           export USE_VOLUME_CONTAINER=true && cd test/tools/verify && make verify
+          docker cp vol-container:/go/src/github.com/kubermatic/machine-controller/test/tools/verify/verify .
       - save_cache:
           key: verify-tool-{{ .Revision }}
           paths:
@@ -118,6 +119,7 @@ jobs:
               cd test/tools/integration
               make plan
               make apply
+              docker cp vol-container:/opt/hetzner/terraform.tfstate .
       - run:
           name: Create kubeadm cluster and test machine-controller
           command: |
