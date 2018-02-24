@@ -96,7 +96,7 @@ jobs:
       - setup_remote_docker
       - run:
           name: Install dependencies
-          command: apk update && apk add make bash git openssh-client
+          command: apk update && apk add make bash git openssh-client jq
       - run:
           name: Generate ssh keypair
           command: ssh-keygen -f $HOME/.ssh/id_rsa -P ''
@@ -116,6 +116,8 @@ jobs:
               set -e
               export USE_VOLUME_CONTAINER=true
               cd test/tools/integration
+              make plan
+              make apply
       - run:
           name: Create kubeadm cluster and test machine-controller
           command: |

@@ -8,7 +8,11 @@ export ADDR=$(cat terraform.tfstate |jq -r '.modules[0].resources["hcloud_server
 
 ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@$ADDR $@; }
 
-until ssh_exec exit; do sleep 1; done
+for try in {1..100}; do
+  if ssh_exec exit; then break; fi;
+  sleep 1;
+done
+
 
 rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
     ../../../{examples,machine-controller,Dockerfile} ../verify/verify \
