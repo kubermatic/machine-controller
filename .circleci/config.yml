@@ -87,6 +87,8 @@ jobs:
     docker:
       - image: docker:stable
     working_directory: /go/src/github.com/kubermatic/machine-controller
+    environment:
+      - USE_VOLUME_CONTAINER: true
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
@@ -115,24 +117,18 @@ jobs:
           name: Create environment at cloud provider
           command: |
               set -e
-              export USE_VOLUME_CONTAINER=true
               cd test/tools/integration
               make plan
               make apply
               docker cp vol-container:/opt/hetzner/terraform.tfstate .
       - run:
           name: Create kubeadm cluster and test machine-controller
-          command: |
-            set -e
-            export USE_VOLUME_CONTAINER=true
-            ./test/tools/integration/provision_master.sh
+          command: ./test/tools/integration/provision_master.sh
       - run:
           name: Clean up
           command: |
             set -e
-            export USE_VOLUME_CONTAINER=true
-            cd test/tools/integration
-            make destroy
+            make -C test/tools/integration destroy
           when: always
 
   publish:
