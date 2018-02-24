@@ -82,6 +82,30 @@ jobs:
           key: verify-tool-{{ .Revision }}
           paths:
             - test/tools/verify/verify
+  end-to-end:
+    docker:
+      - image: docker:stable
+    working_directory: /go/src/github.com/kubermatic/machine-controller
+    steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: machine-controller-{{ .Revision }}
+      - restore_cache:
+          key: verify-tool-{{ .Revision }}
+      - setup_remote_docker
+      - run: apk update && apk add make bash git openssh-client
+      - run: ssh-keygen -f $HOME/.ssh/id_rsa -P ''
+      - run: |
+          set -e
+          export USE_VOLUME_CONTAINER=true
+          cd test/tools/integration
+          docker create -v /opt/hetzner --name vol-container alpine /bin/true
+          docker cp . vol-container:/opt/hetzner
+          make terraform-image
+          terraform plan
+          terraform apply
+          terraform destroy
 
   publish:
     docker:
@@ -117,9 +141,15 @@ workflows:
       - verify-tool:
           requires:
             - install-dependencies
+      - end-to-end:
+          requires:
+            - install-dependencies
+            - test
+            - build
+            - verify-tool
       - publish:
           requires:
-            - build
+            - end-to-end
           filters:
             branches:
               only:

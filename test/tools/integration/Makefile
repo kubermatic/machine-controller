@@ -20,7 +20,7 @@ plan:
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
-		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform plan"
+		/bin/bash -c "if ! ls .terraform; then /usr/local/bin/terraform init; fi; /usr/local/bin/terraform plan"
 
 apply:
 	@docker run --rm \
@@ -30,7 +30,7 @@ apply:
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
-		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform apply -auto-approve"
+		/bin/bash -c "if ! ls .terraform; then /usr/local/bin/terraform init; fi; /usr/local/bin/terraform apply -auto-approve"
 
 provision: apply
 	cd ../verify/ && make verify
@@ -45,4 +45,4 @@ destroy:
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
-		/bin/bash -c "terraform destroy -force"
+		/bin/bash -c "/usr/local/bin/terraform destroy -force"
