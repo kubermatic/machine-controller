@@ -1,5 +1,7 @@
 USE_VOLUME_CONTAINER ?= false
 
+USER ?= circleCI
+
 # Required because circlecCI can not use
 # Docker volumes, so we have to use a volume
 # container instead there
@@ -16,8 +18,8 @@ plan:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
 		$(VOL_ARG) \
-		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
+		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
+		-e TF_VAR_hcloud_sshkey_name=$(USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
 		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform plan"
@@ -26,8 +28,8 @@ apply:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
 		$(VOL_ARG) \
-		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
+		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
+		-e TF_VAR_hcloud_sshkey_name=$(USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
 		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform apply -auto-approve"
@@ -41,8 +43,8 @@ destroy:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
 		$(VOL_ARG) \
-		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
+		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
+		-e TF_VAR_hcloud_sshkey_name=$(USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
 		/bin/bash -c "/usr/local/bin/terraform destroy -force"
