@@ -116,14 +116,20 @@ jobs:
               set -e
               export USE_VOLUME_CONTAINER=true
               cd test/tools/integration
-        - run:
-            name: Clean up
-            command: |
-              set -e
-              export USE_VOLUME_CONTAINER=true
-              cd test/tools/integration
-              make destroy
-            when: always
+      - run:
+          name: Create kubeadm cluster and test machine-controller
+          command: |
+            set -e
+            export USE_VOLUME_CONTAINER=true
+            ./test/tools/integration/provision_master.sh
+      - run:
+          name: Clean up
+          command: |
+            set -e
+            export USE_VOLUME_CONTAINER=true
+            cd test/tools/integration
+            make destroy
+          when: always
 
   publish:
     docker:
