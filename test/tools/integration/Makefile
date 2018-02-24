@@ -13,7 +13,7 @@ terraform-image:
 	docker build -t terraform-hetzner .
 
 plan:
-	docker run --rm \
+	@docker run --rm \
 		--workdir=/opt/hetzner \
 		$(VOL_ARG) \
 		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \

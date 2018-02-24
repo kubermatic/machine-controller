@@ -115,9 +115,10 @@ jobs:
           command: |
               set -e
               export USE_VOLUME_CONTAINER=true
-              terraform plan
-              terraform apply
-              terraform destroy
+              cd test/tools/integration
+              make plan
+              make apply
+              make destroy
 
   publish:
     docker:
