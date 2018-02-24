@@ -104,13 +104,17 @@ jobs:
           name: Build docker image for terraform
           command: cd test/tools/integration && make terraform-image
       - run:
+          name: Create volume container
+          command: |
+              set -e
+              cd test/tools/integration
+              docker create -v /opt/hetzner --name vol-container alpine /bin/true
+              docker cp . vol-container:/opt/hetzner
+      - run:
           name: Create and destroy environment at cloud provider
           command: |
               set -e
               export USE_VOLUME_CONTAINER=true
-              cd test/tools/integration
-              docker create -v /opt/hetzner --name vol-container alpine /bin/true
-              docker cp . vol-container:/opt/hetzner
               terraform plan
               terraform apply
               terraform destroy
