@@ -1,10 +1,21 @@
+USE_VOLUME_CONTAINER ?= false
+
+# Required because circlecCI can not use
+# Docker volumes, so we have to use a volume
+# container instead there
+ifeq ($(USE_VOLUME_CONTAINER),true)
+	VOL_ARG = --volumes-from vol-container
+else
+	VOl_ARG = -v $(shell pwd):/opt/hetzner:rw
+endif
+
 terraform-image:
 	docker build -t terraform-hetzner .
 
 plan:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
-		-v $(shell pwd):/opt/hetzner:rw \
+		$(VOl_ARG) \
 		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
@@ -14,7 +25,7 @@ plan:
 apply:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
-		-v $(shell pwd):/opt/hetzner:rw \
+		$(VOl_ARG) \
 		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
@@ -29,8 +40,8 @@ provision: apply
 destroy:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
-		-v $(shell pwd):/opt/hetzner:rw \
-		-e TF_VAR_hcloud_token=$(shell vault read --field=token work/hetzner_cloud) \
+		$(VOl_ARG) \
+		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
