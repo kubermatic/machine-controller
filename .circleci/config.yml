@@ -111,14 +111,19 @@ jobs:
               docker create -v /opt/hetzner --name vol-container alpine /bin/true
               docker cp . vol-container:/opt/hetzner
       - run:
-          name: Create and destroy environment at cloud provider
+          name: Create environment at cloud provider
           command: |
               set -e
               export USE_VOLUME_CONTAINER=true
               cd test/tools/integration
-              make plan
-              make apply
+        - run:
+            name: Clean up
+            command: |
+              set -e
+              export USE_VOLUME_CONTAINER=true
+              cd test/tools/integration
               make destroy
+            when: always
 
   publish:
     docker:
