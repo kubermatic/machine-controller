@@ -11,7 +11,7 @@ export ADDR=$(cat terraform.tfstate |jq -r '.modules[0].resources["hcloud_server
 ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@$ADDR $@; }
 
 for try in {1..100}; do
-  if ssh_exec exit; then break; fi;
+  if ssh_exec "systemctl stop apt-daily apt-daily-upgrade && systemctl mask apt-daily apt-daily-upgrade && exit"; then break; fi;
   sleep 1;
 done
 
