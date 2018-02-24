@@ -3,6 +3,8 @@
 set -euo pipefail
 set -x
 
+cd $(dirname $0)
+
 export ADDR=$(cat terraform.tfstate |jq -r '.modules[0].resources["hcloud_server.machine-controller-test"].primary.attributes.ipv4_address')
 
 
