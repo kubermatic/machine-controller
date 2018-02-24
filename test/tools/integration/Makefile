@@ -6,7 +6,7 @@ USE_VOLUME_CONTAINER ?= false
 ifeq ($(USE_VOLUME_CONTAINER),true)
 	VOL_ARG = --volumes-from vol-container
 else
-	VOl_ARG = -v $(shell pwd):/opt/hetzner:rw
+	VOL_ARG = -v $(shell pwd):/opt/hetzner:rw
 endif
 
 terraform-image:
@@ -15,22 +15,22 @@ terraform-image:
 plan:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
-		$(VOl_ARG) \
+		$(VOL_ARG) \
 		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
-		/bin/bash -c "if ! ls .terraform; then /usr/local/bin/terraform init; fi; /usr/local/bin/terraform plan"
+		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform plan"
 
 apply:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
-		$(VOl_ARG) \
+		$(VOL_ARG) \
 		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		terraform-hetzner \
-		/bin/bash -c "if ! ls .terraform; then /usr/local/bin/terraform init; fi; /usr/local/bin/terraform apply -auto-approve"
+		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform apply -auto-approve"
 
 provision: apply
 	cd ../verify/ && make verify
@@ -40,7 +40,7 @@ provision: apply
 destroy:
 	@docker run --rm \
 		--workdir=/opt/hetzner \
-		$(VOl_ARG) \
+		$(VOL_ARG) \
 		-e TF_VAR_hcloud_token=$(shell echo $$HZ_TOKEN) \
 		-e TF_VAR_hcloud_sshkey_name=$(shell echo $$USER) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
