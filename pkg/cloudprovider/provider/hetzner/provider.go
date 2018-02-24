@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
-	"golang.org/x/crypto/ssh"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -24,13 +23,12 @@ import (
 )
 
 type provider struct {
-	privateKey        *machinessh.PrivateKey
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a Hetzner provider
-func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
-	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
+func New(_ *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
@@ -133,38 +131,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func ensureSSHKeysExist(ctx context.Context, client hcloud.SSHKeyClient, key *machinessh.PrivateKey) (*hcloud.SSHKey, error) {
-	publicKeyCreationLock.Lock()
-	defer publicKeyCreationLock.Unlock()
-
-	publicKey := key.PublicKey()
-	pk, err := ssh.NewPublicKey(&publicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse publickey: %v", err)
-	}
-
-	fingerprint := ssh.FingerprintLegacyMD5(pk)
-	keys, err := client.All(ctx)
-	for _, key := range keys {
-		if key.Fingerprint == fingerprint {
-			return key, nil
-		}
-	}
-
-	hkey, res, err := client.Create(ctx, hcloud.SSHKeyCreateOpts{
-		Name:      key.Name(),
-		PublicKey: string(ssh.MarshalAuthorizedKey(pk)),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ssh public key on hetzner cloud: %v", err)
-	}
-	if res.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("failed to create ssh public key on hetzner cloud. invalid statuscode returned: %d", res.StatusCode)
-	}
-
-	return hkey, nil
-}
-
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
@@ -174,11 +140,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	key, err := ensureSSHKeysExist(ctx, client.SSHKey, p.privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)
-	}
-
 	imageName, err := getNameForOS(pc.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
@@ -187,7 +148,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
 		UserData: userdata,
-		SSHKeys:  []*hcloud.SSHKey{key},
 	}
 
 	if c.Datacenter != "" {
