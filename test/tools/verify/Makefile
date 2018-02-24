@@ -1,8 +1,19 @@
 GO_VERSION = 1.10.0
 
+USE_VOLUME_CONTAINER ?= false
+
+# Required because circlecCI can not use
+# Docker volumes, so we have to use a volume
+# container instead there
+ifeq ($(USE_VOLUME_CONTAINER),true)
+	VOL_ARG = --volumes-from vol-container
+else
+	VOL_ARG = -v $$PWD/../../..:/go/src/github.com/kubermatic/machine-controller
+endif
+
 verify: cmd/*
 		@docker run --rm \
-			-v $$PWD/../../..:/go/src/github.com/kubermatic/machine-controller \
+			$(VOL_ARG) \
 			-v $$PWD/../../../.buildcache:/cache \
 			-e GOCACHE=/cache \
 			-w /go/src/github.com/kubermatic/machine-controller/test/tools/verify \
