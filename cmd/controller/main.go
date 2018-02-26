@@ -335,16 +335,8 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	}
 	go le.Run()
 
-	var g run.Group
-	{
-		g.Add(func() error {
-			<-runOptions.parentCtx.Done()
-			return errors.New("closing the app because leadership position was lost")
-		}, func(err error) {
-			runOptions.parentCtxDone()
-		})
-	}
-	return g.Run()
+	<-runOptions.parentCtx.Done()
+	return nil
 }
 
 // createUtilHttpServer creates a new HTTP server
