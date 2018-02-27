@@ -354,8 +354,10 @@ func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider c
 	m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
 
 	return &http.Server{
-		Addr:    listenAddress,
-		Handler: m,
+		Addr:         listenAddress,
+		Handler:      m,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 }
 
