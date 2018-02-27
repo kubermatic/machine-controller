@@ -207,6 +207,17 @@ var (
           "verification": {}
         },
         "mode": 420
+      },
+      {
+        "filesystem": "root",
+        "group": {},
+        "path": "/etc/hostname",
+        "user": {},
+        "contents": {
+          "source": "data:,node1",
+          "verification": {}
+        },
+        "mode": 384
       }
     ]
   },
@@ -291,6 +302,17 @@ var (
           "verification": {}
         },
         "mode": 420
+      },
+      {
+        "filesystem": "root",
+        "group": {},
+        "path": "/etc/hostname",
+        "user": {},
+        "contents": {
+          "source": "data:,node1",
+          "verification": {}
+        },
+        "mode": 384
       }
     ]
   },
@@ -367,6 +389,17 @@ var (
           "verification": {}
         },
         "mode": 420
+      },
+      {
+        "filesystem": "root",
+        "group": {},
+        "path": "/etc/hostname",
+        "user": {},
+        "contents": {
+          "source": "data:,node1",
+          "verification": {}
+        },
+        "mode": 384
       }
     ]
   },
