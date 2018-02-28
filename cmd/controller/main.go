@@ -208,10 +208,10 @@ func main() {
 		name:                 name,
 	}
 
-	go kubeInformerFactory.Start(stopCh)
-	go kubePublicKubeInformerFactory.Start(stopCh)
-	go defaultKubeInformerFactory.Start(stopCh)
-	go machineInformerFactory.Start(stopCh)
+	kubeInformerFactory.Start(stopCh)
+	kubePublicKubeInformerFactory.Start(stopCh)
+	defaultKubeInformerFactory.Start(stopCh)
+	machineInformerFactory.Start(stopCh)
 
 	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh), defaultKubeInformerFactory.WaitForCacheSync(stopCh)} {
 		for key, synced := range syncsMap {
