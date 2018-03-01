@@ -32,13 +32,13 @@ var publicKeyCreationLock = &sync.Mutex{}
 
 const openstackFloatingIPErrorStatusName = "ERROR"
 
-func getRegion(client *gophercloud.ProviderClient, id string) (*osregions.Region, error) {
-	idClient, err := goopenstack.NewIdentityV3(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic})
+func getRegion(client *gophercloud.ProviderClient, name string) (*osregions.Region, error) {
+	idClient, err := goopenstack.NewIdentityV3(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: name})
 	if err != nil {
 		return nil, err
 	}
 
-	return osregions.Get(idClient, id).Extract()
+	return osregions.Get(idClient, name).Extract()
 }
 
 func getRegions(client *gophercloud.ProviderClient) ([]osregions.Region, error) {
