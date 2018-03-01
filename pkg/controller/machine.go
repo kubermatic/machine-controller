@@ -110,7 +110,6 @@ func NewMachineController(
 	configMapLister listerscorev1.ConfigMapLister,
 	machineInformer cache.SharedIndexInformer,
 	machineLister machinelistersv1alpha1.MachineLister,
-	sshKeypair *ssh.PrivateKey,
 	clusterDNSIPs []net.IP,
 	metrics MetricsCollection,
 	kubeconfigProvider KubeconfigProvider,
@@ -126,7 +125,6 @@ func NewMachineController(
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
 
-		sshPrivateKey:      sshKeypair,
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
 		kubeconfigProvider: kubeconfigProvider,
@@ -304,7 +302,7 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}
 	skg := providerconfig.NewConfigVarResolver(c.kubeClient)
-	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, c.sshPrivateKey, skg)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}

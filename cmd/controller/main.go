@@ -53,7 +53,6 @@ import (
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
-	"github.com/kubermatic/machine-controller/pkg/ssh"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -61,7 +60,6 @@ import (
 var (
 	masterURL     string
 	kubeconfig    string
-	sshKeyName    string
 	clusterDNSIPs string
 	listenAddress string
 	name          string
@@ -86,10 +84,6 @@ type controllerRunOptions struct {
 
 	// machineClient a client that knows how to consume Machine resources
 	machineClient *machineclientset.Clientset
-
-	// sshKeyPair sets a trust between the controller and a machine by
-	// pre-installing public part of that key on a machine.
-	sshKeyPair *ssh.PrivateKey
 
 	// this essentially sets the cluster DNS IP addresses. The list is passed to kubelet and then down to pods.
 	clusterDNSIPs []net.IP
@@ -134,7 +128,6 @@ type controllerRunOptions struct {
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&sshKeyName, "ssh-key-name", "machine-controller", "The name of the private key. This name will be used when a public key will be created at the cloud provider.")
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
@@ -179,11 +172,6 @@ func main() {
 		glog.Fatalf("failed to create CustomResourceDefinition: %v", err)
 	}
 
-	key, err := ssh.EnsureSSHKeypairSecret(sshKeyName, kubeClient)
-	if err != nil {
-		glog.Fatalf("failed to get/create ssh key configmap: %v", err)
-	}
-
 	// before we acquire a lock we actually warm up caches mirroring the state of the API server
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
@@ -195,7 +183,6 @@ func main() {
 		kubeClient:           kubeClient,
 		extClient:            extClient,
 		machineClient:        machineClient,
-		sshKeyPair:           key,
 		metrics:              NewMachineControllerMetrics(),
 		clusterDNSIPs:        ips,
 		leaderElectionClient: leaderElectionClient,
@@ -295,7 +282,6 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.configMapLister,
 			runOptions.machineInformer,
 			runOptions.machineLister,
-			runOptions.sshKeyPair,
 			runOptions.clusterDNSIPs,
 			controller.MetricsCollection{
 				Machines:            runOptions.metrics.Machines,

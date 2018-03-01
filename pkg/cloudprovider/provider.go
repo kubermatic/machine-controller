@@ -9,33 +9,32 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
 var (
 	// ErrProviderNotFound tells that the requested cloud provider was not found
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
-	providers = map[providerconfig.CloudProvider]func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider{
-		providerconfig.CloudProviderDigitalocean: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
-			return digitalocean.New(key, cvr)
+	providers = map[providerconfig.CloudProvider]func(cvr *providerconfig.ConfigVarResolver) cloud.Provider{
+		providerconfig.CloudProviderDigitalocean: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return digitalocean.New(cvr)
 		},
-		providerconfig.CloudProviderAWS: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
-			return aws.New(key, cvr)
+		providerconfig.CloudProviderAWS: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return aws.New(cvr)
 		},
-		providerconfig.CloudProviderOpenstack: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
-			return openstack.New(key, cvr)
+		providerconfig.CloudProviderOpenstack: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return openstack.New(cvr)
 		},
-		providerconfig.CloudProviderHetzner: func(key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) cloud.Provider {
-			return hetzner.New(key, cvr)
+		providerconfig.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return hetzner.New(cvr)
 		},
 	}
 )
 
 // ForProvider returns a CloudProvider actuator for the requested provider
-func ForProvider(p providerconfig.CloudProvider, key *machinessh.PrivateKey, cvr *providerconfig.ConfigVarResolver) (cloud.Provider, error) {
+func ForProvider(p providerconfig.CloudProvider, cvr *providerconfig.ConfigVarResolver) (cloud.Provider, error) {
 	if p, found := providers[p]; found {
-		return p(key, cvr), nil
+		return p(cvr), nil
 	}
 	return nil, ErrProviderNotFound
 }
