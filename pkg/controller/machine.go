@@ -37,7 +37,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/containerruntime/docker"
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/ssh"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
 	corev1 "k8s.io/api/core/v1"
@@ -78,7 +77,6 @@ type Controller struct {
 
 	workqueue workqueue.RateLimitingInterface
 
-	sshPrivateKey      *ssh.PrivateKey
 	clusterDNSIPs      []net.IP
 	metrics            MetricsCollection
 	kubeconfigProvider KubeconfigProvider
