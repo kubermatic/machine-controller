@@ -192,6 +192,10 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	if err != nil {
 		return nil, nil, err
 	}
+	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, securityGroupIDRaw := range rawConfig.SecurityGroupIDs {
 		securityGroupID, err := p.configVarResolver.GetConfigVarStringValue(securityGroupIDRaw)
 		if err != nil {
