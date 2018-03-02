@@ -28,13 +28,14 @@ import (
 )
 
 type provider struct {
+	// TODO(p0lyn0mial): remove privateKey
 	privateKey        *machinessh.PrivateKey
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a digitalocean provider
-func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
-	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{privateKey: nil, configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
@@ -267,6 +268,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
+	// TODO(p0lyn0mial): an ssh-key should be created only if the CoreOS was requested
+	// TODO(p0lyn0mial): an ssh-key must be temporal - deleted after an instance has been created.
+	if p.privateKey == nil {
+		var err error
+		p.privateKey, err = machinessh.NewPrivateKey("machine-controller")
+		if err != nil {
+			return nil, err
+		}
+	}
 	fingerprint, err := ensureSSHKeysExist(ctx, client.Keys, p.privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)

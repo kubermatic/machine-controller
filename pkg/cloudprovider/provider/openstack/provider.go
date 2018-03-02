@@ -22,17 +22,15 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
 type provider struct {
-	privateKey        *machinessh.PrivateKey
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a openstack provider
-func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
-	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
@@ -339,11 +337,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to get a openstack client: %v", err)
 	}
 
-	name, err := ensureSSHKeysExist(client, c.Region, p.privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)
-	}
-
 	flavor, err := getFlavor(client, c.Region, c.Flavor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get flavor %s: %v", c.Flavor, err)
@@ -413,7 +406,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	var server serverWithExt
 	err = osservers.Create(computeClient, keypairs.CreateOptsExt{
 		serverOpts,
-		name,
+		"",
 	}).ExtractInto(&server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create server: %v", err)
