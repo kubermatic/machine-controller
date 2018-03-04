@@ -11,7 +11,7 @@ set -e
 echo "Testing create of a node via machine-controller...."
 ./verify \
   -input examples/machine-hetzner.yaml \
-  -parameters "<< HETZNER_TOKEN >>=$HZ_TOKEN" \
+  -parameters "<< HETZNER_TOKEN >>=$HZ_TOKEN,cri-o=docker" \
   -logtostderr true || (kubectl logs -n kube-system \$(kubectl get pods \
       -n kube-system|egrep '^machine-con'|awk '{ print \$1 }'); exit 1)
 #./verify \
