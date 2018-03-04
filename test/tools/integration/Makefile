@@ -1,4 +1,5 @@
 USE_VOLUME_CONTAINER ?= false
+CIRCLE_BUILD_NUM ?= local
 
 USER ?= circleCI
 
@@ -19,8 +20,9 @@ plan:
 		--workdir=/opt/hetzner \
 		$(VOL_ARG) \
 		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(USER) \
+		-e TF_VAR_hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
+		-e TF_VAR_hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)" \
 		terraform-hetzner \
 		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform plan"
 
@@ -29,8 +31,9 @@ apply:
 		--workdir=/opt/hetzner \
 		$(VOL_ARG) \
 		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(USER) \
+		-e TF_VAR_hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
+		-e TF_VAR_hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)" \
 		terraform-hetzner \
 		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform apply -auto-approve"
 
@@ -45,7 +48,8 @@ destroy:
 		--workdir=/opt/hetzner \
 		$(VOL_ARG) \
 		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(USER) \
+		-e TF_VAR_hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
 		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
+		-e TF_VAR_hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)" \
 		terraform-hetzner \
 		/bin/bash -c "/usr/local/bin/terraform destroy -force"
