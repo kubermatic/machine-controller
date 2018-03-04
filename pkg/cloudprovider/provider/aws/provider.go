@@ -1,13 +1,9 @@
 package aws
 
 import (
-	"crypto/md5"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -15,7 +11,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -27,17 +22,15 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/golang/glog"
-	"golang.org/x/crypto/ssh"
 )
 
 type provider struct {
-	privateKey        *machinessh.PrivateKey
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a aws provider
-func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
-	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{configVarResolver: configVarResolver}
 }
 
 const (
@@ -196,6 +189,10 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 		return nil, nil, err
 	}
 	c.SubnetID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SubnetID)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -402,58 +399,6 @@ func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, er
 	return aws.StringValue(sgOut.SecurityGroups[0].GroupId), nil
 }
 
-func ensureSSHKeysExist(client *ec2.EC2, key *machinessh.PrivateKey) (string, error) {
-	publicKeyCreationLock.Lock()
-	defer publicKeyCreationLock.Unlock()
-
-	publicKey := key.PublicKey()
-	out, err := x509.MarshalPKIXPublicKey(&publicKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal public key to PKIX format: %v", err)
-	}
-
-	//Basically copied from golang.org/x/crypto/ssh/keys.go:1013
-	md5sum := md5.Sum(out)
-	hexarray := make([]string, len(md5sum))
-	for i, c := range md5sum {
-		hexarray[i] = hex.EncodeToString([]byte{c})
-	}
-	fingerprint := strings.Join(hexarray, ":")
-
-	keyout, err := client.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("fingerprint"),
-				Values: aws.StringSlice([]string{fingerprint}),
-			},
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to list public keys from aws: %v", err)
-	}
-	if len(keyout.KeyPairs) != 0 {
-		glog.V(6).Infof("ssh public key already exists")
-		return *keyout.KeyPairs[0].KeyName, nil
-	}
-
-	glog.V(4).Infof("importing ssh public key into aws...")
-
-	spk, err := ssh.NewPublicKey(&publicKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse public key: %v", err)
-	}
-
-	importOut, err := client.ImportKeyPair(&ec2.ImportKeyPairInput{
-		KeyName:           aws.String(key.Name()),
-		PublicKeyMaterial: ssh.MarshalAuthorizedKey(spk),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to import public key at aws: %v", err)
-	}
-	glog.V(4).Infof("successfully imported ssh public key into aws")
-	return *importOut.KeyName, nil
-}
-
 func ensureDefaultRoleExists(client *iam.IAM) error {
 	_, err := client.GetRole(&iam.GetRoleInput{RoleName: aws.String(defaultRoleName)})
 	if err != nil {
@@ -570,11 +515,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	}
 
-	keyName, err := ensureSSHKeysExist(ec2Client, p.privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)
-	}
-
 	amiID := config.AMI
 	if amiID == "" {
 		if amiID, err = getDefaultAMIID(pc.OperatingSystem, config.Region); err != nil {
@@ -618,7 +558,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		MinCount:     aws.Int64(1),
 		InstanceType: aws.String(config.InstanceType),
 		UserData:     aws.String(base64.StdEncoding.EncodeToString([]byte(userdata))),
-		KeyName:      aws.String(keyName),
 		Placement: &ec2.Placement{
 			AvailabilityZone: aws.String(config.AvailabilityZone),
 		},

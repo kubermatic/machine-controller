@@ -19,7 +19,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
 type provider struct {
@@ -27,7 +26,7 @@ type provider struct {
 }
 
 // New returns a Hetzner provider
-func New(_ *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 

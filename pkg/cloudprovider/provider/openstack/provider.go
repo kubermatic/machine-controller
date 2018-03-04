@@ -16,24 +16,21 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
-	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudproviererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	machinessh "github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
 type provider struct {
-	privateKey        *machinessh.PrivateKey
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // New returns a openstack provider
-func New(privateKey *machinessh.PrivateKey, configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
-	return &provider{privateKey: privateKey, configVarResolver: configVarResolver}
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+	return &provider{configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
@@ -233,12 +230,9 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
-	// Define the network var here to be able to re-use
-	// it when the network got defaulted
-	var net *osnetworks.Network
 	if c.Network == "" {
 		glog.V(4).Infof("Trying to default network for machine '%s'...", spec.Name)
-		net, err = getDefaultNetwork(client, c.Region)
+		net, err := getDefaultNetwork(client, c.Region)
 		if err != nil {
 			return spec, changed, fmt.Errorf("failed to default network: '%v'", err)
 		}
@@ -251,11 +245,14 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	}
 
 	if c.Subnet == "" {
-		if c.Network != "" && net == nil {
-			net, err = getNetwork(client, c.Region, c.Network)
-			if err != nil {
-				return spec, changed, fmt.Errorf("failed to get network '%s': '%v'", c.Network, err)
-			}
+		networkID := c.Network
+		if rawConfig.Network.Value != "" {
+			networkID = rawConfig.Network.Value
+		}
+
+		net, err := getNetwork(client, c.Region, networkID)
+		if err != nil {
+			return spec, changed, fmt.Errorf("failed to get network for subnet defaulting '%s': '%v'", networkID, err)
 		}
 		subnet, err := getDefaultSubnet(client, net, c.Region)
 		if err != nil {
@@ -340,11 +337,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to get a openstack client: %v", err)
 	}
 
-	name, err := ensureSSHKeysExist(client, c.Region, p.privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed ensure that the ssh key '%s' exists: %v", p.privateKey.Name(), err)
-	}
-
 	flavor, err := getFlavor(client, c.Region, c.Flavor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get flavor %s: %v", c.Flavor, err)
@@ -414,7 +406,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	var server serverWithExt
 	err = osservers.Create(computeClient, keypairs.CreateOptsExt{
 		serverOpts,
-		name,
+		"",
 	}).ExtractInto(&server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create server: %v", err)
@@ -528,7 +520,8 @@ username = "%s"
 password = "%s"
 domain-name="%s"
 tenant-name = "%s"
-`, c.IdentityEndpoint, c.Username, c.Password, c.DomainName, c.TenantName)
+region = "%s"
+`, c.IdentityEndpoint, c.Username, c.Password, c.DomainName, c.TenantName, c.Region)
 	return config, "openstack", nil
 }
 
