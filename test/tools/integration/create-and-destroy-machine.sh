@@ -12,8 +12,8 @@ echo "Testing create of a node via machine-controller...."
 ./verify \
   -input examples/machine-hetzner.yaml \
   -parameters "<< HETZNER_TOKEN >>=$HZ_TOKEN" \
-  -logtostderr true || kubectl logs -n kube-system \$(kubectl get pods \
-      -n kube-system|egrep '^machine-con'|awk '{ print \$1 }')
+  -logtostderr true || (kubectl logs -n kube-system \$(kubectl get pods \
+      -n kube-system|egrep '^machine-con'|awk '{ print $1 }'); exit 1)
 #./verify \
 #  -input examples/machine-digitalocean.yaml \
 #  -parameters "<< DIGITALOCEAN_TOKEN_BASE64_ENCODED >>=${DO_TOKEN:-undefined}" \
