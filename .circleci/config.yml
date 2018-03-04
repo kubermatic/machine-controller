@@ -122,8 +122,11 @@ jobs:
               make apply
               docker cp vol-container:/opt/hetzner/terraform.tfstate .
       - run:
-          name: Create kubeadm cluster and test machine-controller
+          name: Create kubeadm cluster
           command: ./test/tools/integration/provision_master.sh
+      - run:
+          name: Test create and destroy machine
+          command: ./test/tools/integration/create-and-destroy-machine.sh
       - run:
           name: Clean up
           command: |

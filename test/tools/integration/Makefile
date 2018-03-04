@@ -38,6 +38,7 @@ provision: apply
 	cd ../verify/ && make verify
 	cd ../../../ && make machine-controller
 	./provision_master.sh
+	./create-and-destroy-machine.sh
 
 destroy:
 	@docker run --rm \
