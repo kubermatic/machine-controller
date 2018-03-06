@@ -87,8 +87,6 @@ jobs:
     docker:
       - image: docker:stable
     working_directory: /go/src/github.com/kubermatic/machine-controller
-    environment:
-      - USE_VOLUME_CONTAINER: true
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
@@ -99,28 +97,13 @@ jobs:
       - setup_remote_docker
       - run:
           name: Install dependencies
-          command: apk update && apk add make bash git openssh-client jq rsync
+          command: apk update && apk add make bash git openssh-client jq rsync curl
       - run:
           name: Generate ssh keypair
           command: ssh-keygen -f $HOME/.ssh/id_rsa -P ''
       - run:
-          name: Build docker image for terraform
-          command: cd test/tools/integration && make terraform-image
-      - run:
-          name: Create volume container
-          command: |
-              set -e
-              cd test/tools/integration
-              docker create -v /opt/hetzner --name vol-container alpine /bin/true
-              docker cp . vol-container:/opt/hetzner
-      - run:
           name: Create environment at cloud provider
-          command: |
-              set -e
-              cd test/tools/integration
-              make plan
-              make apply
-              docker cp vol-container:/opt/hetzner/terraform.tfstate .
+          command: make -C test/tools/integration apply
       - run:
           name: Create kubeadm cluster and install machine-controller onto it
           command: ./test/tools/integration/provision_master.sh
@@ -129,9 +112,7 @@ jobs:
           command: ./test/tools/integration/create-and-destroy-machine.sh
       - run:
           name: Clean up
-          command: |
-            set -e
-            make -C test/tools/integration destroy
+          command: make -C test/tools/integration destroy
           when: always
 
   publish:

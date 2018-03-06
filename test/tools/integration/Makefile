@@ -1,55 +1,41 @@
-USE_VOLUME_CONTAINER ?= false
 CIRCLE_BUILD_NUM ?= local
 
 USER ?= circleCI
 
-# Required because circlecCI can not use
-# Docker volumes, so we have to use a volume
-# container instead there
-ifeq ($(USE_VOLUME_CONTAINER),true)
-	VOL_ARG = --volumes-from vol-container
-else
-	VOL_ARG = -v $(shell pwd):/opt/hetzner:rw
+export PATH := $(shell pwd):$(PATH)
+
+ifeq ($(MAKECMDGOALS),apply)
+	EXTRA_ARG = -auto-approve
+else ifeq ($(MAKECMDGOALS),destroy)
+	EXTRA_ARG = -force
 endif
 
-terraform-image:
-	docker build -t terraform-hetzner .
+.plugins/terraform-provider-hcloud:
+	mkdir -p $(dir $@)
+	curl -L https://github.com/hetznercloud/terraform-provider-hcloud/releases/download/v1.0.0/terraform-provider-hcloud_v1.0.0_linux_amd64.zip > /tmp/provider-hcloud.zip
+	unzip -n /tmp/provider-hcloud.zip terraform-provider-hcloud
+	mv terraform-provider-hcloud $@
 
-plan:
-	@docker run --rm \
-		--workdir=/opt/hetzner \
-		$(VOL_ARG) \
-		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
-		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
-		-e TF_VAR_hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)" \
-		terraform-hetzner \
-		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform plan"
+terraform: .plugins/terraform-provider-hcloud
+	@if ! which terraform; then \
+		curl https://releases.hashicorp.com/terraform/0.11.3/terraform_0.11.3_linux_amd64.zip > /tmp/terraform.zip && \
+		unzip -n /tmp/terraform.zip terraform; \
+	fi
 
-apply:
-	@docker run --rm \
-		--workdir=/opt/hetzner \
-		$(VOL_ARG) \
-		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
-		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
-		-e TF_VAR_hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)" \
-		terraform-hetzner \
-		/bin/bash -c "if ! ls .terraform; then terraform init; fi; terraform apply -auto-approve"
+.terraform: terraform
+	terraform init -plugin-dir .plugins >/dev/null 2>&1
+
+.PHONY: plan apply destroy
+plan apply destroy: .terraform
+	@terraform $@\
+		$(EXTRA_ARG) \
+		-var hcloud_token=$(HZ_TOKEN) \
+		-var hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
+		-var hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
+		-var hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)"
 
 provision: apply
 	cd ../verify/ && make verify
 	cd ../../../ && make machine-controller
 	./provision_master.sh
 	./create-and-destroy-machine.sh
-
-destroy:
-	@docker run --rm \
-		--workdir=/opt/hetzner \
-		$(VOL_ARG) \
-		-e TF_VAR_hcloud_token=$(HZ_TOKEN) \
-		-e TF_VAR_hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
-		-e TF_VAR_hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
-		-e TF_VAR_hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)" \
-		terraform-hetzner \
-		/bin/bash -c "/usr/local/bin/terraform destroy -force"
