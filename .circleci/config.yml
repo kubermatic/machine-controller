@@ -85,7 +85,7 @@ jobs:
             - test/tools/verify/verify
   end-to-end:
     docker:
-      - image: docker:stable
+      - image: alpine:latest
     working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
       - restore_cache:
@@ -94,7 +94,6 @@ jobs:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
           key: verify-tool-{{ .Revision }}
-      - setup_remote_docker
       - run:
           name: Install dependencies
           command: apk update && apk add make bash git openssh-client jq rsync curl

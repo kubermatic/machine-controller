@@ -12,7 +12,7 @@ endif
 
 .plugins/terraform-provider-hcloud:
 	mkdir -p $(dir $@)
-	curl -L https://github.com/hetznercloud/terraform-provider-hcloud/releases/download/v1.0.0/terraform-provider-hcloud_v1.0.0_linux_amd64.zip > /tmp/provider-hcloud.zip
+	curl -L https://github.com/hetznercloud/terraform-provider-hcloud/releases/download/v1.1.0/terraform-provider-hcloud_v1.1.0_linux_amd64.zip > /tmp/provider-hcloud.zip
 	unzip -n /tmp/provider-hcloud.zip terraform-provider-hcloud
 	mv terraform-provider-hcloud $@
 
