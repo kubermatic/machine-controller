@@ -88,15 +88,15 @@ jobs:
       - image: alpine:latest
     working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
+      - run:
+          name: Install dependencies
+          command: apk update && apk add make bash git openssh-client jq rsync curl
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - restore_cache:
           key: verify-tool-{{ .Revision }}
-      - run:
-          name: Install dependencies
-          command: apk update && apk add make bash git openssh-client jq rsync curl
       - run:
           name: Generate ssh keypair
           command: ssh-keygen -f $HOME/.ssh/id_rsa -P ''
