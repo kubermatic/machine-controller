@@ -64,25 +64,18 @@ jobs:
             - machine-controller
   verify-tool:
     docker:
-      - image: docker:stable
-    working_directory: /go/src/github.com/kubermatic/machine-controller
+      - image: golang:1.10.0
+    working_directory: /go/src/github.com/kubermatic/machine-controller/test/tools/verify
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: vendor-{{ checksum "Gopkg.lock" }}
-      - setup_remote_docker
-      - run: apk update && apk add make bash git
-      - run: |
-          set -e
-          docker create -v /go/src/github.com/kubermatic/machine-controller --name vol-container alpine /bin/true
-          docker cp . vol-container:/go/src/github.com/kubermatic/machine-controller/
-          export USE_VOLUME_CONTAINER=true && cd test/tools/verify && make verify
-          docker cp vol-container:/go/src/github.com/kubermatic/machine-controller/test/tools/verify/verify .
+          key: vendor-{{ checksum "../../../Gopkg.lock" }}
+      - run: make verify
       - save_cache:
           key: verify-tool-{{ .Revision }}
           paths:
-            - test/tools/verify/verify
+            - /go/src/github.com/kubermatic/machine-controller/test/tools/verify/verify
   end-to-end:
     docker:
       - image: alpine:latest
