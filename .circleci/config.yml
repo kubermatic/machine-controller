@@ -84,16 +84,28 @@ workflows:
   version: 2
   build:
     jobs:
-      - checkout_code
+      - checkout_code:
+          filters:
+            tags:
+              only: /release.*/
       - install-dependencies:
           requires:
             - checkout_code
+          filters:
+            tags:
+              only: /release.*/
       - test:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /release.*/
       - build:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /release.*/
       - publish:
           requires:
             - build
@@ -101,3 +113,5 @@ workflows:
             branches:
               only:
                 - master
+            tags:
+              only: /release.*/
