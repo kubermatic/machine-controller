@@ -63,6 +63,18 @@ jobs:
           paths:
             - machine-controller
 
+  printer:
+    docker:
+      - image: docker:stable
+    steps:
+      - run: echo "printing git_tag:"
+      - run: echo $GIT_TAG
+      - run: echo "printing circle_tag:"
+      - run: echo $CIRCLE_TAG
+      - run: echo "printing circle_branch:"
+      - run: echo $CIRCLE_BRANCH
+
+
   publish:
     docker:
       - image: docker:stable
@@ -84,16 +96,33 @@ workflows:
   version: 2
   build:
     jobs:
-      - checkout_code
+      - printer:
+          filters:
+            tags:
+              only: /release.*/
+      - checkout_code:
+          filters:
+            tags:
+              only: /release.*/
       - install-dependencies:
           requires:
             - checkout_code
+          filters:
+            tags:
+              only: /release.*/
       - test:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /release.*/
       - build:
           requires:
             - install-dependencies
+            - printer
+          filters:
+            tags:
+              only: /release.*/
       - publish:
           requires:
             - build
@@ -101,3 +130,5 @@ workflows:
             branches:
               only:
                 - master
+            tags:
+              only: /release.*/
