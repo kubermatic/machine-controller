@@ -94,6 +94,9 @@ workflows:
       - build:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /release-.*/
       - publish:
           requires:
             - build
