@@ -88,12 +88,21 @@ workflows:
       - install-dependencies:
           requires:
             - checkout_code
+          filters:
+            tags:
+              only: /.*/
       - test:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /.*/
       - build:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /.*/
       - publish:
           requires:
             - build
@@ -101,3 +110,11 @@ workflows:
             branches:
               only:
                 - master
+  tagged-build:
+    jobs:
+      - build:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /.*/
