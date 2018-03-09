@@ -128,25 +128,43 @@ workflows:
   version: 2
   build:
     jobs:
-      - checkout_code
+      - checkout_code:
+          filters:
+            tags:
+              only: /v.*/
       - install-dependencies:
           requires:
             - checkout_code
+          filters:
+            tags:
+              only: /v.*/
       - test:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
       - build:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
       - verify-tool:
           requires:
             - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
       - end-to-end:
           requires:
             - install-dependencies
             - test
             - build
             - verify-tool
+          filters:
+            tags:
+              only: /v.*/
       - publish:
           requires:
             - end-to-end
@@ -154,3 +172,5 @@ workflows:
             branches:
               only:
                 - master
+            tags:
+              only: /v.*/
