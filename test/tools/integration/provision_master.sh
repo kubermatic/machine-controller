@@ -3,12 +3,18 @@
 set -euo pipefail
 set -x
 
+cd $(dirname $0)
+
 export ADDR=$(cat terraform.tfstate |jq -r '.modules[0].resources["hcloud_server.machine-controller-test"].primary.attributes.ipv4_address')
 
 
 ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@$ADDR $@; }
 
-until ssh_exec exit; do sleep 1; done
+for try in {1..100}; do
+  if ssh_exec "systemctl stop apt-daily apt-daily-upgrade && systemctl mask apt-daily apt-daily-upgrade && exit"; then break; fi;
+  sleep 1;
+done
+
 
 rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
     ../../../{examples,machine-controller,Dockerfile} ../verify/verify \
@@ -63,18 +69,7 @@ for try in {1..10}; do
 done
 
 echo "Error: machine-controller didn't come up within 100 seconds!"
+echo "Logs:"
+kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
 exit 1
 EOEXEC
-
-cat <<EOF |ssh_exec
-set -e
-echo "Testing create of a node via machine-controller...."
-./verify \
-  -input examples/machine-hetzner.yaml \
-  -parameters "<< HETZNER_TOKEN_BASE64_ENCODED >>=$HZ_TOKEN" \
-  -logtostderr true
-#./verify \
-#  -input examples/machine-digitalocean.yaml \
-#  -parameters "<< DIGITALOCEAN_TOKEN_BASE64_ENCODED >>=$DO_TOKEN" \
-#  -logtostderr true
-EOF

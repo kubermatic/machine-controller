@@ -62,6 +62,50 @@ jobs:
           key: machine-controller-{{ .Revision }}
           paths:
             - machine-controller
+  verify-tool:
+    docker:
+      - image: golang:1.10.0
+    working_directory: /go/src/github.com/kubermatic/machine-controller/test/tools/verify
+    steps:
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: vendor-{{ checksum "../../../Gopkg.lock" }}
+      - run: make verify
+      - save_cache:
+          key: verify-tool-{{ .Revision }}
+          paths:
+            - /go/src/github.com/kubermatic/machine-controller/test/tools/verify/verify
+  end-to-end:
+    docker:
+      - image: alpine:latest
+    working_directory: /go/src/github.com/kubermatic/machine-controller
+    steps:
+      - run:
+          name: Install dependencies
+          command: apk update && apk add make bash git openssh-client jq rsync curl
+      - restore_cache:
+          key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: machine-controller-{{ .Revision }}
+      - restore_cache:
+          key: verify-tool-{{ .Revision }}
+      - run:
+          name: Generate ssh keypair
+          command: ssh-keygen -f $HOME/.ssh/id_rsa -P ''
+      - run:
+          name: Create environment at cloud provider
+          command: make -C test/tools/integration apply
+      - run:
+          name: Create kubeadm cluster and install machine-controller onto it
+          command: ./test/tools/integration/provision_master.sh
+      - run:
+          name: Test create and destroy machine
+          command: ./test/tools/integration/create-and-destroy-machine.sh
+      - run:
+          name: Clean up
+          command: make -C test/tools/integration destroy
+          when: always
 
   publish:
     docker:
@@ -106,9 +150,24 @@ workflows:
           filters:
             tags:
               only: /v.*/
+      - verify-tool:
+          requires:
+            - install-dependencies
+          filters:
+            tags:
+              only: /v.*/
+      - end-to-end:
+          requires:
+            - install-dependencies
+            - test
+            - build
+            - verify-tool
+          filters:
+            tags:
+              only: /v.*/
       - publish:
           requires:
-            - build
+            - end-to-end
           filters:
             branches:
               only:
