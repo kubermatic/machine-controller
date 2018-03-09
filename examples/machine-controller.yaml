@@ -206,6 +206,14 @@ rules:
   verbs:
   - "create"
 - apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - "customresourcedefinitions"
+  resourceNames:
+  - "machines.machine.k8s.io"
+  verbs:
+  - "*"
+- apiGroups:
   - "machine.k8s.io"
   resources:
   - "machines"
