@@ -460,7 +460,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
-- ["cri-o", "1.9.2-1~ubuntu16.04.2~ppa1"]
+- "cri-o-1.9"
 `
 
 	docker1703DistupgradeOpenstack = `#cloud-config
