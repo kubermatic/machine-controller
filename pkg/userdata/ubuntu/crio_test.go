@@ -23,18 +23,11 @@ func TestGetCRIOInstallCandidate(t *testing.T) {
 			resVer:  "",
 		},
 		{
-			name:    "get patch version",
-			version: "1.9.2",
-			resErr:  nil,
-			resPkg:  "cri-o",
-			resVer:  "1.9.2-1~ubuntu16.04.2~ppa1",
-		},
-		{
 			name:    "get minor version",
 			version: "1.9",
 			resErr:  nil,
-			resPkg:  "cri-o",
-			resVer:  "1.9.2-1~ubuntu16.04.2~ppa1",
+			resPkg:  "cri-o-1.9",
+			resVer:  "",
 		},
 	}
 	for _, test := range tests {
