@@ -215,7 +215,8 @@ write_files:
       --kubeconfig=/etc/kubernetes/kubeconfig \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
       --lock-file=/var/run/lock/kubelet.lock \
-      --exit-on-lock-contention
+      --exit-on-lock-contention \
+      --read-only-port 0
 
     [Install]
     WantedBy=multi-user.target

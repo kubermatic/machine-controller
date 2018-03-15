@@ -194,7 +194,8 @@ systemd:
           --kubeconfig=/etc/kubernetes/kubeconfig \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
           --lock-file=/var/run/lock/kubelet.lock \
-          --exit-on-lock-contention
+          --exit-on-lock-contention \
+          --read-only-port 0
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
