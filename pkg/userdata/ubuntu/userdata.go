@@ -216,7 +216,8 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
       --lock-file=/var/run/lock/kubelet.lock \
       --exit-on-lock-contention \
-      --read-only-port 0
+      --read-only-port 0 \
+      --authorization-mode=Webhook
 
     [Install]
     WantedBy=multi-user.target

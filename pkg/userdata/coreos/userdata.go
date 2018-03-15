@@ -195,7 +195,8 @@ systemd:
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
           --lock-file=/var/run/lock/kubelet.lock \
           --exit-on-lock-contention \
-          --read-only-port 0
+          --read-only-port 0 \
+          --authorization-mode=Webhook
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
