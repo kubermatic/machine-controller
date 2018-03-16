@@ -404,13 +404,24 @@ func (c *Controller) syncHandler(key string) error {
 					return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 				}
 
-				data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
+				//Need the kubeconfig to extract the CACert for the userdata rendering
+				cm, err := c.kubeconfigProvider.GetKubeconfig()
 				if err != nil {
-					return fmt.Errorf("failed get userdata: %v", err)
+					return fmt.Errorf("failed to get kubeconfig: '%v'", err)
+				}
+				if len(cm.Clusters) != 1 {
+					return fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract cacert...")
+				}
+				var userData string
+				for _, clusterConfig := range cm.Clusters {
+					userData, err = userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs, string(clusterConfig.CertificateAuthorityData))
+					if err != nil {
+						return fmt.Errorf("failed get userdata: %v", err)
+					}
 				}
 
 				glog.Infof("creating instance...")
-				if providerInstance, err = c.createProviderInstance(prov, machine, data); err != nil {
+				if providerInstance, err = c.createProviderInstance(prov, machine, userData); err != nil {
 					if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); errNested != nil {
 						return fmt.Errorf("failed to update machine error after failed machine creation: %v", errNested)
 					}
