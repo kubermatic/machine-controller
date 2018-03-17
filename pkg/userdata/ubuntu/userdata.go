@@ -54,8 +54,7 @@ func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.Cont
 	return runtimes
 }
 
-func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, caCert string) (string, error) {
-	_ = caCert
+func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, kubernetesCACert string) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -107,6 +106,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		CRAptPackageVersion string
 		KubeletDownloadURL  string
 		ClusterDNSIPs       []net.IP
+		KubernetesCACert    string
 	}{
 		MachineSpec:         spec,
 		ProviderConfig:      pconfig,
@@ -118,6 +118,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		CRAptPackageVersion: crPkgVersion,
 		KubeletDownloadURL:  fmt.Sprintf("https://storage.googleapis.com/kubernetes-release/release/v%s/bin/linux/amd64/kubelet", kubeletVersion.String()),
 		ClusterDNSIPs:       clusterDNSIPs,
+		KubernetesCACert:    kubernetesCACert,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -150,6 +151,10 @@ write_files:
 - path: "/etc/kubernetes/bootstrap.kubeconfig"
   content: |
 {{ .Kubeconfig | indent 4 }}
+
+- path: /etc/kubernetes/ca.crt
+  content: |
+{{ .KubernetesCACert | indent 4 }}
 
 - path: "/etc/kubernetes/download.sh"
   permissions: '0777'
@@ -218,7 +223,9 @@ write_files:
       --lock-file=/var/run/lock/kubelet.lock \
       --exit-on-lock-contention \
       --read-only-port 0 \
-      --authorization-mode=Webhook
+      --authorization-mode=Webhook \
+      --anonymous-auth=false \
+      --client-ca-file=/etc/kubernetes/ca.crt
 
     [Install]
     WantedBy=multi-user.target
