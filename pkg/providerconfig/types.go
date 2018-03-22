@@ -20,8 +20,9 @@ var (
 type OperatingSystem string
 
 const (
-	OperatingSystemCoreos OperatingSystem = "coreos"
-	OperatingSystemUbuntu OperatingSystem = "ubuntu"
+	OperatingSystemCoreos          OperatingSystem = "coreos"
+	OperatingSystemUbuntu          OperatingSystem = "ubuntu"
+	OperationSystemEnterpriseLinux OperatingSystem = "el"
 )
 
 type CloudProvider string

@@ -51,6 +51,8 @@ func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfig.OperatingSystemUbuntu:
 		return "ubuntu-16.04", nil
+	case providerconfig.OperationSystemEnterpriseLinux:
+		return "centos-7", nil
 	}
 	return "", providerconfig.ErrOSNotSupported
 }

@@ -14,6 +14,15 @@ import (
 
 type Provider struct{}
 
+func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.ContainerRuntimeInfo) {
+	return []machinesv1alpha1.ContainerRuntimeInfo{
+		{
+			Name:    "docker",
+			Version: "1.13",
+		},
+	}
+}
+
 func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
@@ -28,11 +37,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	pconfig, err := providerconfig.GetConfig(spec.ProviderConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to get provider config: %v", err)
-	}
-
-	_, err = getConfig(pconfig.OperatingSystemSpec)
-	if err != nil {
-		return "", fmt.Errorf("failed to get el config from provider config: %v", err)
 	}
 
 	data := struct {
