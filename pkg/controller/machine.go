@@ -407,7 +407,7 @@ func (c *Controller) syncHandler(key string) error {
 
 				clusterCACert, err := c.kubeconfigProvider.GetCACert()
 				if err != nil {
-					return fmt.Errorf("Error getting CACert: '%v'", err)
+					return fmt.Errorf("error getting CACert: '%v'", err)
 				}
 				userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs, clusterCACert)
 				if err != nil {

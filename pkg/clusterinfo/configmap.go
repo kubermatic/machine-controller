@@ -58,7 +58,7 @@ func (p *KubeconfigProvider) GetCACert() (string, error) {
 		return string(clusterConfig.CertificateAuthorityData), nil
 	}
 
-	return "", fmt.Errorf("No CACert found!")
+	return "", fmt.Errorf("no CACert found!")
 }
 
 func (p *KubeconfigProvider) getKubeconfigFromConfigMap() (*clientcmdapi.Config, error) {
