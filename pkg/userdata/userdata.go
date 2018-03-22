@@ -28,6 +28,6 @@ func ForOS(os providerconfig.OperatingSystem) (Provider, error) {
 }
 
 type Provider interface {
-	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error)
+	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, caCert string) (string, error)
 	SupportedContainerRuntimes() []machinesv1alpha1.ContainerRuntimeInfo
 }

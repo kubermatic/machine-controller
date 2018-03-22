@@ -86,6 +86,7 @@ type Controller struct {
 
 type KubeconfigProvider interface {
 	GetKubeconfig() (*clientcmdapi.Config, error)
+	GetCACert() (string, error)
 }
 
 // MetricsCollection is a struct of all metrics used in
@@ -404,13 +405,17 @@ func (c *Controller) syncHandler(key string) error {
 					return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 				}
 
-				data, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
+				clusterCACert, err := c.kubeconfigProvider.GetCACert()
+				if err != nil {
+					return fmt.Errorf("error getting CACert: '%v'", err)
+				}
+				userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs, clusterCACert)
 				if err != nil {
 					return fmt.Errorf("failed get userdata: %v", err)
 				}
 
 				glog.Infof("creating instance...")
-				if providerInstance, err = c.createProviderInstance(prov, machine, data); err != nil {
+				if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 					if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, err.Error()); errNested != nil {
 						return fmt.Errorf("failed to update machine error after failed machine creation: %v", errNested)
 					}

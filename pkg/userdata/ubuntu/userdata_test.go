@@ -29,15 +29,16 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec machinesv1alpha1.MachineSp
 func TestProvider_UserData(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name           string
-		spec           machinesv1alpha1.MachineSpec
-		kubeconfig     string
-		ccProvider     cloud.ConfigProvider
-		osConfig       *Config
-		providerConfig *providerconfig.Config
-		DNSIPs         []net.IP
-		resErr         error
-		userdata       string
+		name             string
+		spec             machinesv1alpha1.MachineSpec
+		kubeconfig       string
+		ccProvider       cloud.ConfigProvider
+		osConfig         *Config
+		providerConfig   *providerconfig.Config
+		DNSIPs           []net.IP
+		kubernetesCACert string
+		resErr           error
+		userdata         string
 	}{
 		{
 			name: "docker 1.13 dist-upgrade-on-boot aws",
@@ -55,12 +56,13 @@ func TestProvider_UserData(t *testing.T) {
 					Kubelet: "1.9.2",
 				},
 			},
-			ccProvider: &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
-			kubeconfig: "kubeconfig",
-			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10")},
-			resErr:     nil,
-			osConfig:   &Config{DistUpgradeOnBoot: true},
-			userdata:   docker12DistupgradeAWS,
+			ccProvider:       &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
+			kubeconfig:       "kubeconfig",
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			resErr:           nil,
+			osConfig:         &Config{DistUpgradeOnBoot: true},
+			userdata:         docker12DistupgradeAWS,
 		},
 		{
 			name: "cri-o 1.9 digitalocean",
@@ -78,12 +80,13 @@ func TestProvider_UserData(t *testing.T) {
 					Kubelet: "1.9.2",
 				},
 			},
-			ccProvider: &fakeCloudConfigProvider{name: "", config: "", err: nil},
-			kubeconfig: "kubeconfig",
-			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10")},
-			resErr:     nil,
-			osConfig:   &Config{DistUpgradeOnBoot: false},
-			userdata:   CRIO19Digitalocean,
+			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			kubeconfig:       "kubeconfig",
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			resErr:           nil,
+			osConfig:         &Config{DistUpgradeOnBoot: false},
+			userdata:         CRIO19Digitalocean,
 		},
 		{
 			name: "docker 17.03 openstack multiple dns",
@@ -101,12 +104,13 @@ func TestProvider_UserData(t *testing.T) {
 					Kubelet: "1.9.2",
 				},
 			},
-			ccProvider: &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
-			kubeconfig: "kubeconfig",
-			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
-			resErr:     nil,
-			osConfig:   &Config{DistUpgradeOnBoot: true},
-			userdata:   docker1703DistupgradeOpenstackMultipleDNS,
+			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
+			kubeconfig:       "kubeconfig",
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			kubernetesCACert: "CACert",
+			resErr:           nil,
+			osConfig:         &Config{DistUpgradeOnBoot: true},
+			userdata:         docker1703DistupgradeOpenstackMultipleDNS,
 		},
 		{
 			name: "docker 17.03 openstack kubelet v version prefix",
@@ -124,12 +128,13 @@ func TestProvider_UserData(t *testing.T) {
 					Kubelet: "v1.9.2",
 				},
 			},
-			ccProvider: &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
-			kubeconfig: "kubeconfig",
-			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10")},
-			resErr:     nil,
-			osConfig:   &Config{DistUpgradeOnBoot: true},
-			userdata:   docker1703DistupgradeOpenstack,
+			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
+			kubeconfig:       "kubeconfig",
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			resErr:           nil,
+			osConfig:         &Config{DistUpgradeOnBoot: true},
+			userdata:         docker1703DistupgradeOpenstack,
 		},
 	}
 
@@ -150,7 +155,7 @@ func TestProvider_UserData(t *testing.T) {
 			spec.ProviderConfig = runtime.RawExtension{Raw: providerConfigRaw}
 			p := Provider{}
 
-			userdata, err := p.UserData(spec, test.kubeconfig, test.ccProvider, test.DNSIPs)
+			userdata, err := p.UserData(spec, test.kubeconfig, test.ccProvider, test.DNSIPs, test.kubernetesCACert)
 			if diff := deep.Equal(err, test.resErr); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.resErr, err)
 			}
@@ -197,6 +202,10 @@ write_files:
 - path: "/etc/kubernetes/bootstrap.kubeconfig"
   content: |
     kubeconfig
+
+- path: /etc/kubernetes/ca.crt
+  content: |
+    CACert
 
 - path: "/etc/kubernetes/download.sh"
   permissions: '0777'
@@ -250,7 +259,9 @@ write_files:
       --lock-file=/var/run/lock/kubelet.lock \
       --exit-on-lock-contention \
       --read-only-port 0 \
-      --authorization-mode=Webhook
+      --authorization-mode=Webhook \
+      --anonymous-auth=false \
+      --client-ca-file=/etc/kubernetes/ca.crt
 
     [Install]
     WantedBy=multi-user.target
@@ -370,6 +381,10 @@ write_files:
   content: |
     kubeconfig
 
+- path: /etc/kubernetes/ca.crt
+  content: |
+    CACert
+
 - path: "/etc/kubernetes/download.sh"
   permissions: '0777'
   content: |
@@ -422,7 +437,9 @@ write_files:
       --lock-file=/var/run/lock/kubelet.lock \
       --exit-on-lock-contention \
       --read-only-port 0 \
-      --authorization-mode=Webhook
+      --authorization-mode=Webhook \
+      --anonymous-auth=false \
+      --client-ca-file=/etc/kubernetes/ca.crt
 
     [Install]
     WantedBy=multi-user.target
@@ -487,6 +504,10 @@ write_files:
   content: |
     kubeconfig
 
+- path: /etc/kubernetes/ca.crt
+  content: |
+    CACert
+
 - path: "/etc/kubernetes/download.sh"
   permissions: '0777'
   content: |
@@ -539,7 +560,9 @@ write_files:
       --lock-file=/var/run/lock/kubelet.lock \
       --exit-on-lock-contention \
       --read-only-port 0 \
-      --authorization-mode=Webhook
+      --authorization-mode=Webhook \
+      --anonymous-auth=false \
+      --client-ca-file=/etc/kubernetes/ca.crt
 
     [Install]
     WantedBy=multi-user.target
@@ -660,6 +683,10 @@ write_files:
   content: |
     kubeconfig
 
+- path: /etc/kubernetes/ca.crt
+  content: |
+    CACert
+
 - path: "/etc/kubernetes/download.sh"
   permissions: '0777'
   content: |
@@ -712,7 +739,9 @@ write_files:
       --lock-file=/var/run/lock/kubelet.lock \
       --exit-on-lock-contention \
       --read-only-port 0 \
-      --authorization-mode=Webhook
+      --authorization-mode=Webhook \
+      --anonymous-auth=false \
+      --client-ca-file=/etc/kubernetes/ca.crt
 
     [Install]
     WantedBy=multi-user.target
