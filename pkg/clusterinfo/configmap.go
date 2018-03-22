@@ -45,6 +45,22 @@ func (p *KubeconfigProvider) GetKubeconfig() (*clientcmdapi.Config, error) {
 	return cm, nil
 }
 
+func (p *KubeconfigProvider) GetCACert() (string, error) {
+	//Need the kubeconfig to extract the CACert for the userdata rendering
+	cm, err := p.GetKubeconfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to get kubeconfig: '%v'", err)
+	}
+	if len(cm.Clusters) != 1 {
+		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract cacert...")
+	}
+	for _, clusterConfig := range cm.Clusters {
+		return string(clusterConfig.CertificateAuthorityData), nil
+	}
+
+	return "", fmt.Errorf("No CACert found!")
+}
+
 func (p *KubeconfigProvider) getKubeconfigFromConfigMap() (*clientcmdapi.Config, error) {
 	cm, err := p.configMapLister.ConfigMaps(metav1.NamespacePublic).Get(configMapName)
 	if err != nil {
