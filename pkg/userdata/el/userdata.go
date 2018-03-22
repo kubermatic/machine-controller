@@ -65,14 +65,17 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 const ctTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 
-ssh_authorized_keys:
+users:
+  - name: centos
+    ssh-authorized-keys:
 {{- range .ProviderConfig.SSHPublicKeys }}
-- "{{ . }}"
+      - "{{ . }}"
 {{- end }}
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
 
 write_files:
 - path: "/etc/yum.repos.d/kubernetes.repo"
-	content: |
+  content: |
     [kubernetes]
     name=Kubernetes
     baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
@@ -105,7 +108,7 @@ write_files:
   content: |
 {{ .Kubeconfig | indent 4 }}
 
-- path: "/etc/systemd/system/kubelet.service"
+- path: "/etc/systemd/system/kubelet.service.d/10-machine-controller.conf"
   content: |
     [Unit]
     Description=Kubelet
@@ -119,10 +122,10 @@ write_files:
     StartLimitBurst=50
     TimeoutStartSec=5min
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
-    ExecStartPre=/etc/kubernetes/download.sh
-    ExecStart=/opt/bin/kubelet \
+    ExecStart=
+    ExecStart=/bin/kubelet \
       --container-runtime=docker \
-      --cgroup-driver="systemd" \
+      --cgroup-driver=systemd \
       --allow-privileged=true \
       --cni-bin-dir=/opt/cni/bin \
       --cni-conf-dir=/etc/cni/net.d \
@@ -147,8 +150,11 @@ write_files:
     [Install]
     WantedBy=multi-user.target
 
+runcmd:
+- systemctl enable --now kubelet
+
 bootcmd:
-- sudo setenforce 0
+- sudo setenforce 0 || true
 
 packages:
 - docker
