@@ -83,6 +83,8 @@ func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
 		return "ubuntu-16-04-x64", nil
 	case providerconfig.OperatingSystemCoreos:
 		return "coreos-stable", nil
+	case providerconfig.OperatingSystemCentOS:
+		return "centos-7-x64", nil
 	}
 	return "", providerconfig.ErrOSNotSupported
 }
