@@ -2,6 +2,7 @@ package el
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net"
 	"text/template"
@@ -12,9 +13,14 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Provider struct{}
+
+type Config struct {
+	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
+}
 
 type packageCompatibilityMatrix struct {
 	versions []string
@@ -39,6 +45,17 @@ func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.Cont
 		}
 	}
 	return runtimes
+}
+
+func getConfig(r runtime.RawExtension) (*Config, error) {
+	p := Config{}
+	if len(r.Raw) == 0 {
+		return &p, nil
+	}
+	if err := json.Unmarshal(r.Raw, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 func getDockerPackageName(version string) (string, error) {
@@ -79,9 +96,15 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to get provider config: %v", err)
 	}
 
+	osConfig, err := getConfig(pconfig.OperatingSystemSpec)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse OperatingSystemSpec: '%v'", err)
+	}
+
 	data := struct {
 		MachineSpec       machinesv1alpha1.MachineSpec
 		ProviderConfig    *providerconfig.Config
+		OSConfig          *Config
 		Kubeconfig        string
 		CloudProvider     string
 		CloudConfig       string
@@ -92,6 +115,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}{
 		MachineSpec:       spec,
 		ProviderConfig:    pconfig,
+		OSConfig:          osConfig,
 		Kubeconfig:        kubeconfig,
 		CloudProvider:     cpName,
 		CloudConfig:       cpConfig,
@@ -110,6 +134,11 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 
 const ctTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
+
+{{- if .OSConfig.DistUpgradeOnBoot }}
+package_upgrade: true
+package_reboot_if_required: true
+{{- end }}
 
 {{ if ne (len .ProviderConfig.SSHPublicKeys) 0 }}
 ssh_authorized_keys:
