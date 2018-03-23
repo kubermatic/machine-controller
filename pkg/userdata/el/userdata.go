@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
@@ -15,13 +16,40 @@ import (
 
 type Provider struct{}
 
+type packageCompatibilityMatrix struct {
+	versions []string
+	pkg      string
+}
+
+var dockerInstallCandidates = []packageCompatibilityMatrix{
+	{
+		versions: []string{"1.12", "1.12.6"},
+		pkg:      "docker-1.12.6",
+	},
+	{
+		versions: []string{"1.13", "1.13.1"},
+		pkg:      "docker-1.13.1",
+	},
+}
+
 func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.ContainerRuntimeInfo) {
-	return []machinesv1alpha1.ContainerRuntimeInfo{
-		{
-			Name:    "docker",
-			Version: "1.13",
-		},
+	for _, installCandidate := range dockerInstallCandidates {
+		for _, v := range installCandidate.versions {
+			runtimes = append(runtimes, machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: v})
+		}
 	}
+	return runtimes
+}
+
+func getDockerPackageName(version string) (string, error) {
+	for _, installCandidate := range dockerInstallCandidates {
+		for _, v := range installCandidate.versions {
+			if v == version {
+				return installCandidate.pkg, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no package found for version '%s'", version)
 }
 
 func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, kubernetesCACert string) (string, error) {
@@ -30,15 +58,15 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
 	}
 
-	// Just leave the version string empty in case no version was passed, this will result
-	// in the lastest one getting installed
-	var kubeletVersion string
-	if spec.Versions.Kubelet != "" {
-		semverKubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
-		if err != nil {
-			return "", fmt.Errorf("invalid kubelet version: '%v'", err)
-			kubeletVersion = fmt.Sprintf("-%s", semverKubeletVersion.String())
-		}
+	semverKubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
+	if err != nil {
+		return "", fmt.Errorf("invalid kubelet version: '%v'", err)
+	}
+	kubeletVersion = fmt.Sprintf("-%s", semverKubeletVersion.String())
+
+	dockerPackageName, err := getDockerPackageName(spec.Versions.ContainerRuntime.Version)
+	if err != nil {
+		return "", fmt.Errorf("error getting Docker package name: '%v'", err)
 	}
 
 	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
@@ -52,23 +80,25 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}
 
 	data := struct {
-		MachineSpec      machinesv1alpha1.MachineSpec
-		ProviderConfig   *providerconfig.Config
-		Kubeconfig       string
-		CloudProvider    string
-		CloudConfig      string
-		KubeletVersion   string
-		ClusterDNSIPs    []net.IP
-		KubernetesCACert string
+		MachineSpec       machinesv1alpha1.MachineSpec
+		ProviderConfig    *providerconfig.Config
+		Kubeconfig        string
+		CloudProvider     string
+		CloudConfig       string
+		KubeletVersion    string
+		DockerPackageName string
+		ClusterDNSIPs     []net.IP
+		KubernetesCACert  string
 	}{
-		MachineSpec:      spec,
-		ProviderConfig:   pconfig,
-		Kubeconfig:       kubeconfig,
-		CloudProvider:    cpName,
-		CloudConfig:      cpConfig,
-		KubeletVersion:   kubeletVersion,
-		ClusterDNSIPs:    clusterDNSIPs,
-		KubernetesCACert: kubernetesCACert,
+		MachineSpec:       spec,
+		ProviderConfig:    pconfig,
+		Kubeconfig:        kubeconfig,
+		CloudProvider:     cpName,
+		CloudConfig:       cpConfig,
+		KubeletVersion:    kubeletVersion,
+		DockerPackageName: dockerPackageName,
+		ClusterDNSIPs:     clusterDNSIPs,
+		KubernetesCACert:  kubernetesCACert,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -175,7 +205,7 @@ runcmd:
 - systemctl enable --now kubelet
 
 packages:
-- docker
+- {{ .DockerPackageName }}
 - kubelet{{ .KubeletVersion }}
 - ebtables
 - ethtool
