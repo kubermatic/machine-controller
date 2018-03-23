@@ -29,12 +29,14 @@ spec:
       serverType: "cx11"
       datacenter: ""
       location: "fsn1"
+    # Can be 'ubuntu', 'coreos' or 'centos'
     operatingSystem: "ubuntu"
     operatingSystemSpec:
       distUpgradeOnBoot: false
   roles:
   - "Node"
   versions:
-    kubelet: "1.9.2"
+    kubelet: "1.9.6"
+    # Must be 'docker' if you don't use Ubuntu
     containerRuntime:
       name: "cri-o"

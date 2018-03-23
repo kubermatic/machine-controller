@@ -15,7 +15,7 @@
 ## What works
 - Kubernetes v1.8.5 and v1.9.0
 - Creation of worker nodes on AWS, Digitalocean, Openstack and Hetzner cloud
-- Using Ubuntu & Coreos ContainerLinux distributions
+- Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions
 - Using Ubuntu with [CRI-O](https://github.com/kubernetes-incubator/cri-o) container runtime instead of Docker
 
 ## What does not work
@@ -40,18 +40,18 @@ By default the controller looks for a `cluster-info` ConfigMap within the `kube-
 If one is found which contains a minimal kubeconfig (kubeadm cluster have them by default), this kubeconfig will be used for the node bootstrapping.
 The kubeconfig only needs to contain two things:
 - CA-Data
-- The public endpoint for the Apiserver 
+- The public endpoint for the Apiserver
 
 If no ConfigMap can be found:
 
 **CA-data**
- 
+
 The CA will be loaded from the passed kubeconfig when running outside the cluster or from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` when running inside the cluster.
 
 **Apiserver endpoint**
 
 The first endpoint from the kubernetes endpoints will be taken. `kubectl get endpoints kubernetes -o yaml`
-  
+
 #### Example cluster-info ConfigMap
 ```yaml
 apiVersion: v1
