@@ -23,7 +23,7 @@ func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.Cont
 	}
 }
 
-func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error) {
+func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, kubernetesCACert string) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -40,19 +40,21 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	}
 
 	data := struct {
-		MachineSpec    machinesv1alpha1.MachineSpec
-		ProviderConfig *providerconfig.Config
-		Kubeconfig     string
-		CloudProvider  string
-		CloudConfig    string
-		ClusterDNSIPs  []net.IP
+		MachineSpec      machinesv1alpha1.MachineSpec
+		ProviderConfig   *providerconfig.Config
+		Kubeconfig       string
+		CloudProvider    string
+		CloudConfig      string
+		ClusterDNSIPs    []net.IP
+		KubernetesCACert string
 	}{
-		MachineSpec:    spec,
-		ProviderConfig: pconfig,
-		Kubeconfig:     kubeconfig,
-		CloudProvider:  cpName,
-		CloudConfig:    cpConfig,
-		ClusterDNSIPs:  clusterDNSIPs,
+		MachineSpec:      spec,
+		ProviderConfig:   pconfig,
+		Kubeconfig:       kubeconfig,
+		CloudProvider:    cpName,
+		CloudConfig:      cpConfig,
+		ClusterDNSIPs:    clusterDNSIPs,
+		KubernetesCACert: kubernetesCACert,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -108,6 +110,10 @@ write_files:
   content: |
 {{ .Kubeconfig | indent 4 }}
 
+- path: /etc/kubernetes/ca.crt
+  content: |
+{{ .KubernetesCACert | indent 4 }}
+
 - path: "/etc/systemd/system/kubelet.service.d/10-machine-controller.conf"
   content: |
     [Unit]
@@ -145,7 +151,9 @@ write_files:
       --lock-file=/var/run/lock/kubelet.lock \
       --exit-on-lock-contention \
       --read-only-port 0 \
-      --authorization-mode=Webhook
+      --authorization-mode=Webhook \
+      --anonymous-auth=false \
+      --client-ca-file=/etc/kubernetes/ca.crt
 
     [Install]
     WantedBy=multi-user.target
