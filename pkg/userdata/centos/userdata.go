@@ -1,4 +1,4 @@
-package el
+package centos
 
 import (
 	"bytes"

@@ -104,7 +104,7 @@ jobs:
           command: ./test/tools/integration/create-and-destroy-machine.sh
       - run:
           name: Test create and destroy centos machine
-          command: ./test/tools/integration/create-and-destroy-machine.sh el
+          command: ./test/tools/integration/create-and-destroy-machine.sh centos
       - run:
           name: Clean up
           command: make -C test/tools/integration destroy
