@@ -6,6 +6,7 @@ import (
 	"net"
 	"text/template"
 
+	"github.com/Masterminds/semver"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
@@ -29,6 +30,17 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
 	}
 
+	// Just leave the version string empty in case no version was passed, this will result
+	// in the lastest one getting installed
+	var kubeletVersion string
+	if spec.Versions.Kubelet != "" {
+		semverKubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
+		if err != nil {
+			return "", fmt.Errorf("invalid kubelet version: '%v'", err)
+			kubeletVersion = fmt.Sprintf("-%s", semverKubeletVersion.String())
+		}
+	}
+
 	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get cloud config: %v", err)
@@ -45,6 +57,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		Kubeconfig       string
 		CloudProvider    string
 		CloudConfig      string
+		KubeletVersion   string
 		ClusterDNSIPs    []net.IP
 		KubernetesCACert string
 	}{
@@ -53,6 +66,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		Kubeconfig:       kubeconfig,
 		CloudProvider:    cpName,
 		CloudConfig:      cpConfig,
+		KubeletVersion:   kubeletVersion,
 		ClusterDNSIPs:    clusterDNSIPs,
 		KubernetesCACert: kubernetesCACert,
 	}
@@ -166,7 +180,7 @@ bootcmd:
 
 packages:
 - docker
-- kubelet
+- kubelet{{ .KubeletVersion }}
 - ebtables
 - ethtool
 - nfs-utils
