@@ -81,13 +81,10 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 const ctTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 
-users:
-  - name: centos
-    ssh-authorized-keys:
+ssh_authorized_keys:
 {{- range .ProviderConfig.SSHPublicKeys }}
-      - "{{ . }}"
+  - "{{ . }}"
 {{- end }}
-    sudo: ['ALL=(ALL) NOPASSWD:ALL']
 
 write_files:
 - path: "/etc/yum.repos.d/kubernetes.repo"
@@ -173,10 +170,9 @@ write_files:
     WantedBy=multi-user.target
 
 runcmd:
+- setenforce 0 || true
+- chage -d $(date +%s) root
 - systemctl enable --now kubelet
-
-bootcmd:
-- sudo setenforce 0 || true
 
 packages:
 - docker
