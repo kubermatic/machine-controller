@@ -62,7 +62,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	if err != nil {
 		return "", fmt.Errorf("invalid kubelet version: '%v'", err)
 	}
-	kubeletVersion = fmt.Sprintf("-%s", semverKubeletVersion.String())
+	kubeletVersion := fmt.Sprintf("-%s", semverKubeletVersion.String())
 
 	dockerPackageName, err := getDockerPackageName(spec.Versions.ContainerRuntime.Version)
 	if err != nil {
@@ -111,9 +111,11 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 const ctTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 
+{{ if ne (len .ProviderConfig.SSHPublicKeys) 0 }}
 ssh_authorized_keys:
 {{- range .ProviderConfig.SSHPublicKeys }}
   - "{{ . }}"
+{{- end }}
 {{- end }}
 
 write_files:
