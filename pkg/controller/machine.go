@@ -334,7 +334,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	if !nodeExistsAndIsReady {
 		glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
-		err = c.createNodeForMachine(prov, providerInstance, machine, userdataProvider, providerConfig)
+		err = c.createInstanceForMachine(prov, providerInstance, machine, userdataProvider, providerConfig)
 		if err != nil {
 			return err
 		}
@@ -401,7 +401,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, provi
 	return nil
 }
 
-func (c *Controller) createNodeForMachine(prov cloud.Provider, providerInstance instance.Instance, machine *machinev1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
+func (c *Controller) createInstanceForMachine(prov cloud.Provider, providerInstance instance.Instance, machine *machinev1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
 	providerInstance, err := prov.Get(machine)
 
 	// case 1: retrieving instance from provider was not successful
@@ -479,6 +479,10 @@ func (c *Controller) createNodeForMachine(prov cloud.Provider, providerInstance 
 	}
 
 	// case 2: retrieving instance from cloudprovider was successfull
+	return c.ensuereNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
+}
+
+func (c *Controller) ensuereNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *machinev1alpha1.Machine, providerConfig *providerconfig.Config) error {
 	node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
 	if err != nil {
 		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
@@ -509,7 +513,6 @@ func (c *Controller) createNodeForMachine(prov cloud.Provider, providerInstance 
 			return fmt.Errorf("failed to update machine status: %v", err)
 		}
 	}
-
 	return nil
 }
 
