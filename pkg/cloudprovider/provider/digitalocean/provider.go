@@ -246,10 +246,7 @@ func uploadSSHPublicKey(ctx context.Context, service godo.KeysService, key *rsa.
 		Name:      string(uuid.NewUUID()),
 	})
 	if err != nil {
-		if terminalError := httpStatusToTerminalError(rsp.StatusCode); terminalError != nil {
-			return "", terminalError
-		}
-		return "", fmt.Errorf("failed to create ssh public key on digitalocean: %v", err)
+		return "", doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to create ssh public key on digitalocean: %v", err))
 	}
 
 	return newDoKey.Fingerprint, nil
@@ -309,19 +306,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	droplet, rsp, err := client.Droplets.Create(ctx, createRequest)
 	if err != nil {
-		if terminalError := httpStatusToTerminalError(rsp.StatusCode); terminalError != nil {
-			return nil, terminalError
-		}
-		return nil, err
+		return nil, doStatusAndErrToTerminalError(rsp.StatusCode, err)
 	}
 
 	//We need to wait until the droplet really got created as tags will be only applied when the droplet is running
 	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
 		newDroplet, rsp, err := client.Droplets.Get(ctx, droplet.ID)
 		if err != nil {
-			if terminalError := httpStatusToTerminalError(rsp.StatusCode); terminalError != nil {
-				return false, terminalError
-			}
+			return false, doStatusAndErrToTerminalError(rsp.StatusCode, err)
 			//Well just wait 10 sec and hope the droplet got started by then...
 			time.Sleep(createCheckFailedWaitPeriod)
 			return false, fmt.Errorf("droplet (id='%d') got created but we failed to fetch its status", droplet.ID)
@@ -363,10 +355,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 
 	rsp, err := client.Droplets.Delete(ctx, doID)
 	if err != nil {
-		if terminalError := httpStatusToTerminalError(rsp.StatusCode); terminalError != nil {
-			return terminalError
-		}
-		return err
+		return doStatusAndErrToTerminalError(rsp.StatusCode, err)
 	}
 	return nil
 }
@@ -385,10 +374,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	droplets, rsp, err := client.Droplets.List(ctx, &godo.ListOptions{PerPage: 1000})
 
 	if err != nil {
-		if terminalError := httpStatusToTerminalError(rsp.StatusCode); terminalError != nil {
-			return nil, terminalError
-		}
-		return nil, fmt.Errorf("failed to get droplets: %v", err)
+		return nil, doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to get droplets: %v", err))
 	}
 
 	for i, droplet := range droplets {
@@ -438,10 +424,12 @@ func (d *doInstance) Status() instance.Status {
 	}
 }
 
-// httpStatusToTerminalError judges if the given HTTP status
-// can be qualified as a "terminal" error, for more info
-// see v1alpha1.MachineStatus
-func httpStatusToTerminalError(status int) error {
+// doStatusAndErrToTerminalError judges if the given HTTP status
+// can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
+
+// if the given error doesn't qualify the error passed as
+// an argument will be returned
+func doStatusAndErrToTerminalError(status int, err error) error {
 	switch status {
 	case http.StatusUnauthorized:
 		// authorization primitives come from MachineSpec
@@ -451,6 +439,6 @@ func httpStatusToTerminalError(status int) error {
 			Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",
 		}
 	default:
-		return nil
+		return err
 	}
 }
