@@ -236,7 +236,7 @@ func getSession(id, secret, token, region string) (*session.Session, error) {
 func getIAMclient(id, secret, region string) (*iam.IAM, error) {
 	sess, err := getSession(id, secret, "", region)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get aws session: %v", err)
+		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
 	return iam.New(sess), nil
 }
@@ -244,7 +244,7 @@ func getIAMclient(id, secret, region string) (*iam.IAM, error) {
 func getEC2client(id, secret, region string) (*ec2.EC2, error) {
 	sess, err := getSession(id, secret, "", region)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get aws session: %v", err)
+		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
 	return ec2.New(sess), nil
 }
@@ -327,7 +327,7 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to list vpc's: %v", err)
+		return nil, awsErrorToTerminalError(err, "failed to list vpc's")
 	}
 
 	if len(vpcOut.Vpcs) != 1 {
@@ -351,7 +351,7 @@ func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, er
 					Description: aws.String("Kubernetes security group"),
 				})
 				if err != nil {
-					return "", fmt.Errorf("failed to create security group: %v", err)
+					return "", awsErrorToTerminalError(err, "failed to create security group")
 				}
 				groupID := aws.StringValue(csgOut.GroupId)
 
@@ -364,7 +364,7 @@ func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, er
 					IpProtocol: aws.String("tcp"),
 				})
 				if err != nil {
-					return "", fmt.Errorf("failed to authorize security group ingress rule for ssh to security group %s: %v", groupID, err)
+					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for ssh to security group %s", groupID))
 				}
 
 				// Allow kubelet 10250 from everywhere
@@ -376,7 +376,7 @@ func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, er
 					IpProtocol: aws.String("tcp"),
 				})
 				if err != nil {
-					return "", fmt.Errorf("failed to authorize security group ingress rule for kubelet port 10250 to security group %s: %v", groupID, err)
+					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for kubelet port 10250 to security group %s", groupID))
 				}
 
 				// Allow node-to-node communication
@@ -385,14 +385,14 @@ func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, er
 					GroupId:                 csgOut.GroupId,
 				})
 				if err != nil {
-					return "", fmt.Errorf("failed to authorize security group ingress rule for node-to-node communication to security group %s: %v", groupID, err)
+					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for node-to-node communication to security group %s", groupID))
 				}
 
 				glog.V(4).Infof("security group %s successfully created", defaultSecurityGroupName)
 				return groupID, nil
 			}
 		}
-		return "", fmt.Errorf("failed to list security group: %v", err)
+		return "", awsErrorToTerminalError(err, "failed to list security group")
 	}
 
 	glog.V(6).Infof("security group %s already exists", defaultSecurityGroupName)
@@ -403,7 +403,7 @@ func ensureDefaultRoleExists(client *iam.IAM) error {
 	_, err := client.GetRole(&iam.GetRoleInput{RoleName: aws.String(defaultRoleName)})
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == "NoSuchEntity" {
+			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
 				glog.V(4).Infof("creating machine iam role %s...", defaultRoleName)
 				paramsRole := &iam.CreateRoleInput{
 					AssumeRolePolicyDocument: aws.String(instanceProfileRole),
@@ -427,7 +427,7 @@ func ensureDefaultRoleExists(client *iam.IAM) error {
 				glog.V(4).Infof("machine iam role %s successfully created", defaultRoleName)
 				return nil
 			}
-			return fmt.Errorf("failed to get role %s: %s - %s", defaultRoleName, awsErr.Code(), awsErr.Message())
+			return awsErrorToTerminalError(err, fmt.Sprintf("failed to get role %s", defaultRoleName))
 		}
 		return fmt.Errorf("failed to get role %s: %v", defaultRoleName, err)
 	}
@@ -438,20 +438,20 @@ func ensureDefaultRoleExists(client *iam.IAM) error {
 func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
 	err := ensureDefaultRoleExists(client)
 	if err != nil {
-		return fmt.Errorf("failed to ensure that role %q exists: %v", defaultRoleName, err)
+		return err
 	}
 
 	_, err = client.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(defaultInstanceProfileName)})
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == "NoSuchEntity" {
+			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
 				glog.V(4).Infof("creating instance profile %s...", defaultInstanceProfileName)
 				paramsInstanceProfile := &iam.CreateInstanceProfileInput{
 					InstanceProfileName: aws.String(defaultInstanceProfileName),
 				}
 				_, err = client.CreateInstanceProfile(paramsInstanceProfile)
 				if err != nil {
-					return fmt.Errorf("failed to create instance profile: %v", err)
+					return awsErrorToTerminalError(err, "failed to create instance profile")
 				}
 
 				paramsAddRole := &iam.AddRoleToInstanceProfileInput{
@@ -460,12 +460,12 @@ func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
 				}
 				_, err = client.AddRoleToInstanceProfile(paramsAddRole)
 				if err != nil {
-					return fmt.Errorf("failed to add role %q to instance profile %q: %v", defaultInstanceProfileName, defaultRoleName, err)
+					return awsErrorToTerminalError(err, fmt.Sprintf("failed to add role %q to instance profile %q", defaultInstanceProfileName, defaultRoleName))
 				}
 				glog.V(4).Infof("instance profile %s successfully created", defaultInstanceProfileName)
 				return nil
 			}
-			return fmt.Errorf("failed to get instance profile %s: %s - %s", defaultInstanceProfileName, awsErr.Code(), awsErr.Message())
+			return awsErrorToTerminalError(err, fmt.Sprintf("failed to get instance profile %s", defaultInstanceProfileName))
 		}
 		return fmt.Errorf("failed to get instance profile: %v", err)
 	}
@@ -477,38 +477,41 @@ func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create ec2 client: %v", err)
+		return nil, err
 	}
 
 	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create iam client: %v", err)
+		return nil, err
 	}
 
 	instanceProfileName := config.InstanceProfile
 	if instanceProfileName == "" {
 		err = ensureDefaultInstanceProfileExists(iamClient)
 		if err != nil {
-			return nil, fmt.Errorf("failed ensure that the instance profile exists: %v", err)
+			return nil, err
 		}
 		instanceProfileName = defaultInstanceProfileName
 	}
 
 	vpc, err := getVpc(ec2Client, config.VpcID)
 	if err != nil {
-		return nil, fmt.Errorf("failed get vpc %s: %v", config.VpcID, err)
+		return nil, err
 	}
 
 	securityGroupIDs := config.SecurityGroupIDs
 	if len(securityGroupIDs) == 0 {
 		sgID, err := ensureDefaultSecurityGroupExists(ec2Client, vpc)
 		if err != nil {
-			return nil, fmt.Errorf("failed ensure that the security group exists: %v", err)
+			return nil, err
 		}
 		securityGroupIDs = append(securityGroupIDs, sgID)
 	} else {
@@ -519,7 +522,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if amiID == "" {
 		if amiID, err = getDefaultAMIID(pc.OperatingSystem, config.Region); err != nil {
 			if err != nil {
-				return nil, fmt.Errorf("invalid region+os configuration: %v", err)
+				return nil, cloudprovidererrors.TerminalError{
+					Reason:  v1alpha1.InvalidConfigurationMachineError,
+					Message: fmt.Sprintf("Invalid Region and Operating System configuration: %v", err),
+				}
 			}
 		}
 	}
@@ -582,7 +588,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	runOut, err := ec2Client.RunInstances(instanceRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed create instance at aws: %v", err)
+		return nil, awsErrorToTerminalError(err, "failed create instance at aws")
 	}
 	awsInstance := &awsInstance{instance: runOut.Instances[0]}
 
@@ -594,9 +600,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		delErr := p.Delete(machine)
 		if delErr != nil {
-			return nil, fmt.Errorf("failed to attach instance %s to security group %s & delete the created instance: %v", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName, err)
+			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %s & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName))
 		}
-		return nil, fmt.Errorf("failed to attach instance %s to security group %s: %v", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName, err)
+		return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %s", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName))
 	}
 
 	return awsInstance, nil
@@ -605,24 +611,27 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	i, err := p.Get(machine)
 	if err != nil {
-		return fmt.Errorf("failed to get instance from aws: %v", err)
+		return err
 	}
 
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
-		return fmt.Errorf("failed to create ec2 client: %v", err)
+		return err
 	}
 
 	tOut, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
 		InstanceIds: aws.StringSlice([]string{i.ID()}),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to terminate instance: %v", err)
+		return awsErrorToTerminalError(err, "failed to terminate instance")
 	}
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
@@ -635,12 +644,15 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create ec2 client: %v", err)
+		return nil, err
 	}
 
 	inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
@@ -652,7 +664,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list instances from aws: %v", err)
+		return nil, awsErrorToTerminalError(err, "failed to list instances from aws")
 	}
 
 	if len(inOut.Reservations) == 0 || len(inOut.Reservations[0].Instances) == 0 {
@@ -711,4 +723,34 @@ func getTagValue(name string, tags []*ec2.Tag) string {
 		}
 	}
 	return ""
+}
+
+// awsErrorToTerminalError judges if the given error
+// can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
+//
+// if the given error doesn't qualify the error passed as
+// an argument will be formatted according to msg and returned
+func awsErrorToTerminalError(err error, msg string) error {
+	prepareAndReturnError := func() error {
+		return fmt.Errorf("%s, due to %s", msg, err)
+	}
+
+	if err != nil {
+		aerr, ok := err.(awserr.Error)
+		if !ok {
+			return prepareAndReturnError()
+		}
+		switch aerr.Code() {
+		case "AuthFailure":
+			// authorization primitives come from MachineSpec
+			// thus we are setting InvalidConfigurationMachineError
+			return cloudprovidererrors.TerminalError{
+				Reason:  v1alpha1.InvalidConfigurationMachineError,
+				Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",
+			}
+		default:
+			return prepareAndReturnError()
+		}
+	}
+	return prepareAndReturnError()
 }
