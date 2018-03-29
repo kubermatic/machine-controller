@@ -243,12 +243,12 @@ func uploadSSHPublicKey(ctx context.Context, service godo.KeysService, key *rsa.
 		return "", fmt.Errorf("failed to create ssh public key, the key already exists")
 	}
 
-	newDoKey, _, err := service.Create(ctx, &godo.KeyCreateRequest{
+	newDoKey, rsp, err := service.Create(ctx, &godo.KeyCreateRequest{
 		PublicKey: string(ssh.MarshalAuthorizedKey(pk)),
 		Name:      string(uuid.NewUUID()),
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to create ssh public key on digitalocean: %v", err)
+		return "", doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to create ssh public key on digitalocean: %v", err))
 	}
 
 	return newDoKey.Fingerprint, nil
@@ -257,7 +257,10 @@ func uploadSSHPublicKey(ctx context.Context, service godo.KeysService, key *rsa.
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ctx := context.TODO()
@@ -273,7 +276,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	}
 	fingerprint, err := uploadSSHPublicKey(ctx, client.Keys, &tmpRSAKeyPair.PublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed upload the ssh key, error = %v", err)
+		return nil, err
 	}
 	defer func() {
 		_, err := client.Keys.DeleteByFingerprint(ctx, fingerprint)
@@ -284,7 +287,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	slug, err := getSlugForOS(pc.OperatingSystem)
 	if err != nil {
-		return nil, fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, invalid operating system specified %q: %v", pc.OperatingSystem, err),
+		}
 	}
 	createRequest := &godo.DropletCreateRequest{
 		Image:             godo.DropletCreateImage{Slug: slug},
@@ -300,15 +306,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		Tags:              append(c.Tags, string(machine.UID)),
 	}
 
-	droplet, _, err := client.Droplets.Create(ctx, createRequest)
+	droplet, rsp, err := client.Droplets.Create(ctx, createRequest)
 	if err != nil {
-		return nil, err
+		return nil, doStatusAndErrToTerminalError(rsp.StatusCode, err)
 	}
 
 	//We need to wait until the droplet really got created as tags will be only applied when the droplet is running
 	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
-		newDroplet, _, err := client.Droplets.Get(ctx, droplet.ID)
+		newDroplet, rsp, err := client.Droplets.Get(ctx, droplet.ID)
 		if err != nil {
+			return false, doStatusAndErrToTerminalError(rsp.StatusCode, err)
 			//Well just wait 10 sec and hope the droplet got started by then...
 			time.Sleep(createCheckFailedWaitPeriod)
 			return false, fmt.Errorf("droplet (id='%d') got created but we failed to fetch its status", droplet.ID)
@@ -321,13 +328,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return false, nil
 	})
 
-	return &doInstance{droplet: droplet}, nil
+	return &doInstance{droplet: droplet}, err
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ctx := context.TODO()
@@ -344,21 +354,29 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	if err != nil {
 		return fmt.Errorf("failed to convert instance id %s to int: %v", i.ID(), err)
 	}
-	_, err = client.Droplets.Delete(ctx, doID)
-	return err
+
+	rsp, err := client.Droplets.Delete(ctx, doID)
+	if err != nil {
+		return doStatusAndErrToTerminalError(rsp.StatusCode, err)
+	}
+	return nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ctx := context.TODO()
 	client := getClient(c.Token)
-	droplets, _, err := client.Droplets.List(ctx, &godo.ListOptions{PerPage: 1000})
+	droplets, rsp, err := client.Droplets.List(ctx, &godo.ListOptions{PerPage: 1000})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to get droplets: %v", err)
+		return nil, doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to get droplets: %v", err))
 	}
 
 	for i, droplet := range droplets {
@@ -405,5 +423,24 @@ func (d *doInstance) Status() instance.Status {
 		return instance.StatusRunning
 	default:
 		return instance.StatusUnknown
+	}
+}
+
+// doStatusAndErrToTerminalError judges if the given HTTP status
+// can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
+
+// if the given error doesn't qualify the error passed as
+// an argument will be returned
+func doStatusAndErrToTerminalError(status int, err error) error {
+	switch status {
+	case http.StatusUnauthorized:
+		// authorization primitives come from MachineSpec
+		// thus we are setting InvalidConfigurationMachineError
+		return cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",
+		}
+	default:
+		return err
 	}
 }
