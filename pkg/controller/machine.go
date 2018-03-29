@@ -410,6 +410,15 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, providerInsta
 	if err != nil {
 		// case 1.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
+			// Clear any existing NodeRef on the machine
+			if machine.Status.NodeRef != nil {
+				machine.Status.NodeRef = nil
+				machine, err = c.updateMachine(machine)
+				if err != nil {
+					return fmt.Errorf("failed to update machine after clearing stale NodeRef: '%v'", err)
+				}
+			}
+
 			defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
 			if err != nil {
 				return fmt.Errorf("failed to add defaults to machine: '%v'", err)
