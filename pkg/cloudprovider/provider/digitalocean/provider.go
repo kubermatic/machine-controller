@@ -315,7 +315,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
 		newDroplet, rsp, err := client.Droplets.Get(ctx, droplet.ID)
 		if err != nil {
-			return false, doStatusAndErrToTerminalError(rsp.StatusCode, err)
+			tErr := doStatusAndErrToTerminalError(rsp.StatusCode, err)
+			if isTerminalError, _, _ := cloudprovidererrors.IsTerminalError(tErr); isTerminalError {
+				return true, tErr
+			}
 			//Well just wait 10 sec and hope the droplet got started by then...
 			time.Sleep(createCheckFailedWaitPeriod)
 			return false, fmt.Errorf("droplet (id='%d') got created but we failed to fetch its status", droplet.ID)

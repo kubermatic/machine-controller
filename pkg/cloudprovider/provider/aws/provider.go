@@ -769,5 +769,5 @@ func awsErrorToTerminalError(err error, msg string) error {
 			return prepareAndReturnError()
 		}
 	}
-	return prepareAndReturnError()
+	return err
 }
