@@ -79,7 +79,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 	if err != nil {
 		return "", fmt.Errorf("invalid kubelet version: '%v'", err)
 	}
-	kubeletVersion := fmt.Sprintf("-%s", semverKubeletVersion.String())
+	kubeletVersion := semverKubeletVersion.String()
 
 	dockerPackageName, err := getDockerPackageName(spec.Versions.ContainerRuntime.Version)
 	if err != nil {
@@ -237,7 +237,7 @@ runcmd:
 
 packages:
 - {{ .DockerPackageName }}
-- kubelet{{ .KubeletVersion }}
+- kubelet-{{ .KubeletVersion }}
 - ebtables
 - ethtool
 - nfs-utils
