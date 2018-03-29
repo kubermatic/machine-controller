@@ -34,13 +34,14 @@ spec:
       monitoring: true
       tags:
         - "machine-controller"
+    # Can be 'ubuntu', 'coreos' or 'centos'
     operatingSystem: "coreos"
     operatingSystemSpec:
       disableAutoUpdate: true
   roles:
   - "Node"
   versions:
-    kubelet: "v1.8.5"
+    kubelet: "v1.9.6"
     containerRuntime:
       # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "docker"

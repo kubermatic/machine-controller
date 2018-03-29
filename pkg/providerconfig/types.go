@@ -22,6 +22,7 @@ type OperatingSystem string
 const (
 	OperatingSystemCoreos OperatingSystem = "coreos"
 	OperatingSystemUbuntu OperatingSystem = "ubuntu"
+	OperatingSystemCentOS OperatingSystem = "centos"
 )
 
 type CloudProvider string

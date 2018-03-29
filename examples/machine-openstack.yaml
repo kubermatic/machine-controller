@@ -77,13 +77,14 @@ spec:
       network: ""
       # Only required if the network has more than one subnet
       subnet: ""
+    # Can be 'ubuntu', 'coreos' or 'centos'
     operatingSystem: "ubuntu"
     operatingSystemSpec:
       distUpgradeOnBoot: true
   roles:
   - "Node"
   versions:
-    kubelet: "v1.8.5"
+    kubelet: "v1.9.6"
     containerRuntime:
       # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "docker"

@@ -106,6 +106,23 @@ var (
 			"us-west-2":      "ami-a2e544da",
 			"eu-west-3":      "ami-794bfc04",
 		},
+		providerconfig.OperatingSystemCentOS: {
+			"ap-northeast-1": "ami-25bd2743",
+			"ap-south-1":     "ami-5d99ce32",
+			"ap-southeast-1": "ami-d2fa88ae",
+			"ca-central-1":   "ami-dcad28b8",
+			"eu-central-1":   "ami-337be65c",
+			"eu-west-1":      "ami-6e28b517",
+			"sa-east-1":      "ami-f9adef95",
+			"us-east-1":      "ami-4bf3d731",
+			"us-west-1":      "ami-65e0e305",
+			"ap-northeast-2": "ami-7248e81c",
+			"ap-southeast-2": "ami-b6bb47d4",
+			"eu-west-2":      "ami-22415846",
+			"us-east-2":      "ami-e1496384",
+			"us-west-2":      "ami-a042f4d8",
+			"eu-west-3":      "ami-bfff49c2",
+		},
 	}
 
 	publicKeyCreationLock = &sync.Mutex{}
