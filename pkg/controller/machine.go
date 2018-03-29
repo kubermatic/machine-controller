@@ -416,6 +416,12 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, providerInsta
 	if err != nil {
 		// case 1.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
+			// Clear any existing NodeRef on the machine
+			machine, err = c.clearNodeRef(machine)
+			if err != nil {
+				return fmt.Errorf("failed to clear nodeRef before creating intsance: '%v'", err)
+			}
+
 			defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
 			if err != nil {
 				return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error(), err, "failed to add defaults to machine")
@@ -818,4 +824,16 @@ func (c *Controller) updateNodesMetric() {
 func (c *Controller) updateMetrics() {
 	c.updateMachinesMetric()
 	c.updateNodesMetric()
+}
+
+func (c *Controller) clearNodeRef(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
+	var err error
+	if machine.Status.NodeRef != nil {
+		machine.Status.NodeRef = nil
+		machine, err = c.updateMachine(machine)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update machine after removing NodeRef: '%v'", err)
+		}
+	}
+	return machine, nil
 }
