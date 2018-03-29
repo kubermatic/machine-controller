@@ -64,6 +64,8 @@ const (
 	machineKind = "Machine"
 
 	controllerNameAnnotationKey = "machine.k8s.io/controller"
+
+	latestKubernetesVersion = "1.9.6"
 )
 
 // Controller is the controller implementation for machine resources
@@ -648,6 +650,10 @@ func (c *Controller) getNode(instance instance.Instance, provider string) (node 
 }
 
 func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, prov userdata.Provider) (*machinev1alpha1.Machine, error) {
+	if machine.Spec.Versions.Kubelet == "" {
+		machine.Spec.Versions.Kubelet = latestKubernetesVersion
+	}
+
 	var err error
 	if machine.Spec.Versions.ContainerRuntime.Name == "" {
 		machine.Spec.Versions.ContainerRuntime.Name = containerruntime.Docker
