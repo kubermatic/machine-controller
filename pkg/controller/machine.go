@@ -230,12 +230,25 @@ func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine) (*
 	return c.updateMachine(machine)
 }
 
-// updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not.
-// This essentially overwrites previous values.
+// updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not
+// this essentially overwrites previous values
 func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason machinev1alpha1.MachineStatusError, message string) (*machinev1alpha1.Machine, error) {
 	machine.Status.ErrorMessage = &message
 	machine.Status.ErrorReason = &reason
 	return c.updateMachine(machine)
+}
+
+// updateMachineErrorIfTerminalError is a convenience method that will update machine's Status if the given err is terminal
+// and at the same time terminal error will be returned to the caller
+// otherwise it will return formatted error according to errMsg
+func (c *Controller) updateMachineErrorIfTerminalError(machine *machinev1alpha1.Machine, stReason machinev1alpha1.MachineStatusError, stMessage string, err error, errMsg string) error {
+	if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
+		if _, errNested := c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, stMessage); errNested != nil {
+			return fmt.Errorf("failed to update machine error after due to %v, terminal error = %v", errNested, stMessage)
+		}
+		return err
+	}
+	return fmt.Errorf("%s, due to %v", errMsg, err)
 }
 
 func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) (instance.Instance, error) {
@@ -274,6 +287,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	machine := listerMachine.DeepCopy()
 
+	// step 1: check if the machine can be processed by this controller.
 	// set the annotation "machine.k8s.io/controller": my-controller
 	// and the flag --name=my-controller to make only this controller process a node
 	machineControllerName := machine.Annotations[controllerNameAnnotationKey]
@@ -302,12 +316,14 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}
 
-	// Delete machine
+	// step 2: check if a user requested to delete the machine
 	if machine.DeletionTimestamp != nil && sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
 		return c.deleteMachineAndProviderInstance(prov, providerInstance, machine)
 	}
 
-	// Create the delete finalizer before actually creating the instance.
+	// step 3: essentially creates an instance for the given machine
+	//
+	// case 3.1: first let's create the delete finalizer before actually creating the instance.
 	// otherwise the machine gets created at the cloud provider and the machine resource gets deleted meanwhile
 	// which causes a orphaned instance
 	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
@@ -328,6 +344,7 @@ func (c *Controller) syncHandler(key string) error {
 		return fmt.Errorf("failed to default the container runtime version: %v", err)
 	}
 
+	// case 3.2: creates an instance if there is no node associated with the given machine
 	node, nodeExistsAndIsReady, err := c.doesNodeForMachineExistAndIsReady(machine)
 	if err != nil {
 		return fmt.Errorf("failed to check if node for machine exists ans is ready: '%s'", err)
@@ -340,6 +357,7 @@ func (c *Controller) syncHandler(key string) error {
 		}
 	}
 
+	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
 	if node != nil {
 		return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
 	}
@@ -353,14 +371,8 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, provi
 
 	// step 1: delete provider instance
 	if err = c.deleteProviderInstance(prov, machine); err != nil {
-		if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
-			message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
-			if _, errNested := c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, message); errNested != nil {
-				return fmt.Errorf("failed to update machine error after failed delete: %v", errNested)
-			}
-			return err
-		}
-		return fmt.Errorf("failed to delete machine at cloudprovider: %v", err)
+		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
+		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
 
 	// step 2: check that the instance has really gone
@@ -375,13 +387,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, provi
 		return nil
 	}
 	if err != cloudprovidererrors.ErrInstanceNotFound {
-		if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
-			if _, errNested := c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, err.Error()); errNested != nil {
-				return fmt.Errorf("failed to update machine error after failed delete: %v", errNested)
-			}
-			return err
-		}
-		return fmt.Errorf("failed to get instance for machine %s after the delete got triggered", machine.Name)
+		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, err.Error(), err, fmt.Sprintf("failed to get instance for machine %s after the delete got triggered", machine.Name))
 	}
 	glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
 
@@ -410,7 +416,7 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, providerInsta
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
 			if err != nil {
-				return fmt.Errorf("failed to add defaults to machine: '%v'", err)
+				return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error(), err, "failed to add defaults to machine")
 			}
 			if changed {
 				glog.V(4).Infof("Updating machine '%s' with defaults...", machine.Name)
@@ -426,7 +432,7 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, providerInsta
 				}
 				return fmt.Errorf("invalid provider config: %v", err)
 			}
-			// Remove error message in case it was set
+			// remove error message in case it was set
 			if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
 				return fmt.Errorf("failed to update machine after removing the failed validation error: %v", err)
 			}
@@ -448,14 +454,8 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, providerInsta
 
 			glog.Infof("creating instance...")
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
-				if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
-					message := fmt.Sprintf("%v. Unable to create a machine.", err)
-					if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, message); errNested != nil {
-						return fmt.Errorf("failed to update machine error after failed machine creation: %v", errNested)
-					}
-					return err
-				}
-				return fmt.Errorf("failed to create machine at cloudprovider: %v", err)
+				message := fmt.Sprintf("%v. Unable to create a machine.", err)
+				return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.CreateMachineError, message, err, "failed to create machine at cloudprover")
 			}
 			// remove error message in case it was set
 			if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
@@ -468,10 +468,7 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, providerInsta
 		// case 1.2: terminal error was returned and manual interaction is required to recover
 		if ok, _, message := cloudprovidererrors.IsTerminalError(err); ok {
 			message = fmt.Sprintf("%v. Unable to create a machine.", err)
-			if _, errNested := c.updateMachineError(machine, machinev1alpha1.CreateMachineError, message); errNested != nil {
-				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
-			}
-			return err
+			return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.CreateMachineError, message, err, "failed to get instance from provider")
 		}
 
 		// case 1.3: transient error was returned requeue the request and try again in the future
