@@ -10,7 +10,9 @@ import (
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/mo"
+	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 )
 
@@ -174,27 +176,70 @@ func findSnapshot(v *object.VirtualMachine, ctx context.Context, name string) (o
 	}
 }
 
-//TODO: Store the vmref in provider type
-func powerOn(vm, datacenter string, client *govmomi.Client) error {
-	f := find.NewFinder(client.Client, true)
+func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, isoFile string, client *govmomi.Client) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dc, err := f.Datacenter(ctx, datacenter)
-	if err != nil {
-		return err
-	}
-	f.SetDatacenter(dc)
+	var refs []types.ManagedObjectReference
+	refs = append(refs, vmRef.Reference())
+	var vmResult mo.VirtualMachine
 
-	vmRef, err := f.VirtualMachine(ctx, vm)
+	pc := property.DefaultCollector(client.Client)
+	err := pc.RetrieveOne(ctx, vmRef.Reference(), []string{"datastore"}, &vmResult)
+	if err != nil {
+		return err
+	}
+	glog.V(3).Infof("vm property collector result :%+v\n", vmResult)
+
+	// We expect the VM to be on only 1 datastore
+	dsRef := vmResult.Datastore[0].Reference()
+	var dsResult mo.Datastore
+	err = pc.RetrieveOne(ctx, dsRef, []string{"summary"}, &dsResult)
+	if err != nil {
+		return err
+	}
+	glog.V(3).Infof("datastore property collector result :%+v\n", dsResult)
+	dsObj, err := f.Datastore(ctx, dsResult.Summary.Name)
+	if err != nil {
+		return err
+	}
+	p := soap.DefaultUpload
+	dstIsoFile := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
+	glog.V(3).Infof("Uploading ISO file %s to datastore %+v, destination iso is %s\n", isoFile, dsObj, dstIsoFile)
+	err = dsObj.UploadFile(ctx, isoFile, dstIsoFile, &p)
+	if err != nil {
+		return err
+	}
+	glog.V(3).Infof("Uploaded ISO file %s", isoFile)
+
+	// Find the cd-rom devide and insert the cloud init iso file into it.
+	devices, err := vmRef.Device(ctx)
 	if err != nil {
 		return err
 	}
 
-	task, err := vmRef.PowerOn(ctx)
+	// passing empty cd-rom name so that the first one gets returned
+	cdrom, err := devices.FindCdrom("")
+	cdrom.Connectable.StartConnected = true
 	if err != nil {
 		return err
 	}
-	task.Wait(ctx)
-	return nil
+	iso := dsObj.Path(dstIsoFile)
+	glog.V(2).Infof("Inserting ISO file %s into cd-rom", iso)
+	return vmRef.EditDevice(ctx, devices.InsertIso(cdrom, iso))
+
+}
+
+func getVirtualMachine(name string, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
+	return datacenterFinder.VirtualMachine(context.TODO(), name)
+}
+
+func getDatacenterFinder(datacenter string, client *govmomi.Client) (*find.Finder, error) {
+	finder := find.NewFinder(client.Client, true)
+	dc, err := finder.Datacenter(context.TODO(), datacenter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vsphere datacenter: %v", err)
+	}
+	finder.SetDatacenter(dc)
+	return finder, nil
 }

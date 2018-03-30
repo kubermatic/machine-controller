@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/vmware/govmomi"
-	"github.com/vmware/govmomi/find"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -163,16 +162,32 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, fmt.Errorf("failed to create linked vm: '%v'", err)
 	}
+
 	//TODO: Delete the clone if anything below this point goes wrong
 
 	//TODO: Implement this
 	//err = createCloudConfigIso()
 	//err = uploadCloudConfigIso()
 	//err = attachCloudConfigIso()
-	err = powerOn(machine.Spec.Name, config.Datacenter, client)
+	finder, err := getDatacenterFinder(config.Datacenter, client)
+	if err != nil {
+		return nil, err
+	}
+	virtualMachine, err := getVirtualMachine(machine.Spec.Name, finder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get virtual machine object: %v", err)
+	}
+
+	err = uploadAndAttachISO(finder, virtualMachine, "", client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload and attach userdata iso: %v", err)
+	}
+
+	powerOnTask, err := virtualMachine.PowerOn(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("failed to power on machine: %v", err)
 	}
+	powerOnTask.Wait(context.TODO())
 
 	glog.V(2).Infof("Successfully created a vm with name '%s'", vmName)
 
@@ -195,17 +210,11 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	f := find.NewFinder(client.Client, true)
-	dc, err := f.Datacenter(ctx, config.Datacenter)
+	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vsphere datacenter: %v", err)
+		return nil, err
 	}
-	f.SetDatacenter(dc)
-
-	vmRef, err := f.VirtualMachine(ctx, machine.Spec.Name)
+	virtualMachine, err := getVirtualMachine(machine.Spec.Name, finder)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -213,7 +222,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, fmt.Errorf("failed to get server: %v", err)
 	}
 
-	powerState, err := vmRef.PowerState(ctx)
+	powerState, err := virtualMachine.PowerState(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get powerstate: %v", err)
 	}
@@ -226,7 +235,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		status = instance.StatusUnknown
 	}
 
-	return VSphereServer{name: vmRef.Name(), status: status}, nil
+	return VSphereServer{name: virtualMachine.Name(), status: status}, nil
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
