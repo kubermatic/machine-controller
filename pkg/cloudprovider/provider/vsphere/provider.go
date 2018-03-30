@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/vmware/govmomi"
+	"github.com/vmware/govmomi/find"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -48,6 +49,29 @@ type Config struct {
 	Cluster        string
 	Datastore      string
 	AllowInsecure  bool
+}
+
+type VSphereServer struct {
+	name   string
+	status instance.Status
+}
+
+func (vsphereServer VSphereServer) Name() string {
+	return vsphereServer.name
+}
+
+//TODO: evaluate if VSphere has something like an ID
+func (vsphereServer VSphereServer) ID() string {
+	return vsphereServer.name
+}
+
+//VSphere doesn't know anything about it's guest addresses...
+func (vsphereServer VSphereServer) Addresses() []string {
+	return nil
+}
+
+func (vsphereServer VSphereServer) Status() instance.Status {
+	return vsphereServer.status
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
@@ -141,6 +165,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	}
 	//TODO: Delete the clone if anything below this point goes wrong
 
+	//TODO: Implement this
+	//err = createCloudConfigIso()
+	//err = uploadCloudConfigIso()
+	//err = attachCloudConfigIso()
 	err = powerOn(machine.Spec.Name, config.Datacenter, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to power on machine: %v", err)
@@ -148,12 +176,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	glog.V(2).Infof("Successfully created a vm with name '%s'", vmName)
 
-	//TODO: Implement this
-	//instance, err := createVM()
-	//err = createCloudConfigIso()
-	//err = uploadCloudConfigIso()
-	//err = attachCloudConfigIso()
-	//err = powerOn(instance)
 	return nil, nil
 }
 
@@ -163,13 +185,48 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	_, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	//TODO: Implement this
-	return nil, cloudprovidererrors.ErrInstanceNotFound
+	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f := find.NewFinder(client.Client, true)
+	dc, err := f.Datacenter(ctx, config.Datacenter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vsphere datacenter: %v", err)
+	}
+	f.SetDatacenter(dc)
+
+	vmRef, err := f.VirtualMachine(ctx, machine.Spec.Name)
+	if err != nil {
+		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
+			return nil, cloudprovidererrors.ErrInstanceNotFound
+		}
+		return nil, fmt.Errorf("failed to get server: %v", err)
+	}
+
+	powerState, err := vmRef.PowerState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get powerstate: %v", err)
+	}
+
+	var status instance.Status
+	switch powerState {
+	case "poweredOn":
+		status = instance.StatusRunning
+	default:
+		status = instance.StatusUnknown
+	}
+
+	return VSphereServer{name: vmRef.Name(), status: status}, nil
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
