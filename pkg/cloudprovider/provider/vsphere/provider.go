@@ -1,15 +1,19 @@
 package vsphere
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
-	_ "github.com/golang/glog"
+	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/vmware/govmomi"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
-	_ "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -30,8 +34,9 @@ type RawConfig struct {
 	Password       providerconfig.ConfigVarString `json:"password"`
 	VSphereURL     providerconfig.ConfigVarString `json:"vsphereURL"`
 	Datacenter     providerconfig.ConfigVarString `json:"datacenter"`
-	ResourcePool   providerconfig.ConfigVarString `json:"resourcePool"`
+	Cluster        providerconfig.ConfigVarString `json:"cluster"`
 	Datastore      providerconfig.ConfigVarString `json:"datastore"`
+	AllowInsecure  providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 
 type Config struct {
@@ -40,12 +45,23 @@ type Config struct {
 	Password       string
 	VSphereURL     string
 	Datacenter     string
-	ResourcePool   string
+	Cluster        string
 	Datastore      string
+	AllowInsecure  bool
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
 	return spec, false, nil
+}
+
+func getClient(username, password, address string, allowInsecure bool) (*govmomi.Client, error) {
+	clientUrl, err := url.Parse(fmt.Sprintf("%s/sdk", address))
+	if err != nil {
+		return nil, err
+	}
+	clientUrl.User = url.UserPassword(username, password)
+
+	return govmomi.NewClient(context.TODO(), clientUrl, allowInsecure)
 }
 
 func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
@@ -84,7 +100,7 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 		return nil, nil, err
 	}
 
-	c.ResourcePool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ResourcePool)
+	c.Cluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Cluster)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,7 +110,12 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 		return nil, nil, err
 	}
 
-	return nil, nil, nil
+	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.AllowInsecure)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &c, &pconfig, nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
@@ -103,10 +124,23 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	_, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
+
+	//TODO: Create provider type to not manually pass the client around
+	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
+	}
+
+	vmName, err := CreateLinkClonedVm(machine.Spec.Name, config.TemplateVMName, config.Datacenter, config.Cluster, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create linked vm: '%v'", err)
+	}
+
+	glog.V(2).Infof("Successfully created a vm with name '%s'", vmName)
 
 	//TODO: Implement this
 	//instance, err := createVM()
@@ -123,8 +157,13 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+	_, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config: %v", err)
+	}
+
 	//TODO: Implement this
-	return nil, nil
+	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
