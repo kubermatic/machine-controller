@@ -32,6 +32,7 @@ const (
 	CloudProviderDigitalocean CloudProvider = "digitalocean"
 	CloudProviderOpenstack    CloudProvider = "openstack"
 	CloudProviderHetzner      CloudProvider = "hetzner"
+	CloudProviderVsphere      CloudProvider = "vsphere"
 )
 
 type Config struct {
