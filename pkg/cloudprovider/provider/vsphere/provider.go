@@ -139,6 +139,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, fmt.Errorf("failed to create linked vm: '%v'", err)
 	}
+	//TODO: Delete the clone if anything below this point goes wrong
+
+	err = powerOn(machine.Spec.Name, config.Datacenter, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to power on machine: %v", err)
+	}
 
 	glog.V(2).Infof("Successfully created a vm with name '%s'", vmName)
 

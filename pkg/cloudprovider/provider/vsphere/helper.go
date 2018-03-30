@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	snapshotName string = "LinkCloneSnapshotPoint"
+	snapshotName string = "machine-controller"
 	snapshotDesc string = "Snapshot created by machine-controller"
 )
 
@@ -172,4 +172,29 @@ func findSnapshot(v *object.VirtualMachine, ctx context.Context, name string) (o
 		glog.Warningf("VM %s seems to have more than one snapshots with name %s. Using a random snapshot.", v, name)
 		return s[0], nil
 	}
+}
+
+//TODO: Store the vmref in provider type
+func powerOn(vm, datacenter string, client *govmomi.Client) error {
+	f := find.NewFinder(client.Client, true)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dc, err := f.Datacenter(ctx, datacenter)
+	if err != nil {
+		return err
+	}
+	f.SetDatacenter(dc)
+
+	vmRef, err := f.VirtualMachine(ctx, vm)
+	if err != nil {
+		return err
+	}
+
+	task, err := vmRef.PowerOn(ctx)
+	if err != nil {
+		return err
+	}
+	task.Wait(ctx)
+	return nil
 }
