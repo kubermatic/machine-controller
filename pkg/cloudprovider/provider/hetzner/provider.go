@@ -135,7 +135,10 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ctx := context.TODO()
@@ -143,7 +146,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	imageName, err := getNameForOS(pc.OperatingSystem)
 	if err != nil {
-		return nil, fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Invalid operating system specified %q, details = %v", pc.OperatingSystem, err),
+		}
 	}
 
 	serverCreateOpts := hcloud.ServerCreateOpts{
@@ -154,30 +160,30 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if c.Datacenter != "" {
 		serverCreateOpts.Datacenter, _, err = client.Datacenter.Get(ctx, c.Datacenter)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get datacenter: %v", err)
+			return nil, hzErrorToTerminalError(err, "failed to get datacenter")
 		}
 	}
 
 	if c.Location != "" {
 		serverCreateOpts.Location, _, err = client.Location.Get(ctx, c.Location)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get location: %v", err)
+			return nil, hzErrorToTerminalError(err, "failed to get location")
 		}
 	}
 
 	serverCreateOpts.Image, _, err = client.Image.Get(ctx, imageName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get image: %v", err)
+		return nil, hzErrorToTerminalError(err, "failed to get image")
 	}
 
 	serverCreateOpts.ServerType, _, err = client.ServerType.Get(ctx, c.ServerType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get server type: %v", err)
+		return nil, hzErrorToTerminalError(err, "failed to get server type")
 	}
 
 	serverCreateRes, res, err := client.Server.Create(ctx, serverCreateOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create server: %v", err)
+		return nil, hzErrorToTerminalError(err, "failed to create server")
 	}
 	if res.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("failed to create server invalid status code returned. expected=%d got %d", http.StatusCreated, res.StatusCode)
@@ -189,7 +195,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ctx := context.TODO()
@@ -205,12 +214,12 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 
 	res, err := client.Server.Delete(ctx, i.(*hetznerServer).server)
 	if err != nil {
-		return fmt.Errorf("failed to delete the server: %v", err)
+		return hzErrorToTerminalError(err, "failed to delete the server")
 	}
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
 		return fmt.Errorf("invalid status code returned. expected=%d got=%d", http.StatusOK, res.StatusCode)
 	}
-	return err
+	return nil
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
@@ -220,7 +229,10 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
 	}
 
 	ctx := context.TODO()
@@ -228,7 +240,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 
 	server, _, err := client.Server.Get(ctx, machine.Spec.Name)
 	if err != nil {
-		return nil, err
+		return nil, hzErrorToTerminalError(err, "failed to get the server object")
 	}
 	if server == nil {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -271,4 +283,29 @@ func (d *hetznerServer) Status() instance.Status {
 	default:
 		return instance.StatusUnknown
 	}
+}
+
+// hzErrorToTerminalError judges if the given error
+// can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
+//
+// if the given error doesn't qualify the error passed as an argument will be returned
+func hzErrorToTerminalError(err error, msg string) error {
+	prepareAndReturnError := func() error {
+		return fmt.Errorf("%s, due to %s", msg, err)
+	}
+
+	if err != nil {
+		if hcloud.IsError(err, hcloud.ErrorCode("unauthorized")) {
+			// authorization primitives come from MachineSpec
+			// thus we are setting InvalidConfigurationMachineError
+			return cloudprovidererrors.TerminalError{
+				Reason:  v1alpha1.InvalidConfigurationMachineError,
+				Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",
+			}
+		}
+
+		return prepareAndReturnError()
+	}
+
+	return err
 }

@@ -11,7 +11,7 @@ jobs:
           paths:
             - /go/src/github.com/kubermatic/machine-controller
 
-  install-dependencies:
+  check-dependencies:
     docker:
       - image: circleci/golang:1.9
     working_directory: /go/src/github.com/kubermatic/machine-controller
@@ -19,11 +19,8 @@ jobs:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: go get -u github.com/golang/dep/cmd/dep
-      - run: dep ensure -vendor-only
-      - save_cache:
-          key: vendor-{{ checksum "Gopkg.lock" }}
-          paths:
-            - /go/src/github.com/kubermatic/machine-controller/vendor
+      - run: dep status
+
   test:
     docker:
       - image: docker:stable
@@ -31,8 +28,6 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: vendor-{{ checksum "Gopkg.lock" }}
       - setup_remote_docker
       - run: apk update && apk add make bash git
       - run: |
@@ -48,8 +43,6 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: vendor-{{ checksum "Gopkg.lock" }}
       - setup_remote_docker
       - run: apk update && apk add make bash git
       - run: |
@@ -69,8 +62,6 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: vendor-{{ checksum "../../../Gopkg.lock" }}
       - run: make verify
       - save_cache:
           key: verify-tool-{{ .Revision }}
@@ -138,7 +129,7 @@ workflows:
           filters:
             tags:
               only: /v.*/
-      - install-dependencies:
+      - check-dependencies:
           requires:
             - checkout_code
           filters:
@@ -146,25 +137,25 @@ workflows:
               only: /v.*/
       - test:
           requires:
-            - install-dependencies
+            - check-dependencies
           filters:
             tags:
               only: /v.*/
       - build:
           requires:
-            - install-dependencies
+            - check-dependencies
           filters:
             tags:
               only: /v.*/
       - verify-tool:
           requires:
-            - install-dependencies
+            - check-dependencies
           filters:
             tags:
               only: /v.*/
       - end-to-end:
           requires:
-            - install-dependencies
+            - check-dependencies
             - test
             - build
             - verify-tool
