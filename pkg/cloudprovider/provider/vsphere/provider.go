@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/vmware/govmomi"
+	"github.com/vmware/govmomi/find"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -216,11 +217,18 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
+	finder := find.NewFinder(client.Client, true)
 
-	finder, err := getDatacenterFinder(config.Datacenter, client)
+	// We can't use getDatacenterFinder because we need the dc object to
+	// be able to initialize the Datastore Filemanager to delete the instaces
+	// folder on the storage - This doesn't happen automatically because there
+	// is still the cloud-init iso
+	dc, err := finder.Datacenter(context.TODO(), config.Datacenter)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get vsphere datacenter: %v", err)
 	}
+	finder.SetDatacenter(dc)
+
 	virtualMachine, err := getVirtualMachine(machine.Spec.Name, finder)
 	if err != nil {
 		return fmt.Errorf("failed to get virtual machine object: %v", err)
@@ -239,6 +247,18 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	}
 
 	destroyTask.Wait(context.TODO())
+
+	datastore, err := finder.Datastore(context.TODO(), config.Datastore)
+	if err != nil {
+		return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
+	}
+	filemanager := datastore.NewFileManager(dc, false)
+
+	err = filemanager.Delete(context.TODO(), virtualMachine.Name())
+	if err != nil {
+		return fmt.Errorf("failed to delete storage of deleted instance %s: %v", virtualMachine.Name(), err)
+	}
+
 	glog.V(2).Infof("Successfully destroyed vm %s", virtualMachine.Name())
 	return nil
 }

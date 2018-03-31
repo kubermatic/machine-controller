@@ -185,6 +185,7 @@ func findSnapshot(v *object.VirtualMachine, ctx context.Context, name string) (o
 }
 
 func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFilePath string, client *govmomi.Client) error {
+	//TODO: use func (f *Finder) Datastore since we know the Datastore name anyways
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -197,8 +198,6 @@ func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFi
 	if err != nil {
 		return err
 	}
-	glog.V(3).Infof("vm property collector result :%+v\n", vmResult)
-
 	// We expect the VM to be on only 1 datastore
 	dsRef := vmResult.Datastore[0].Reference()
 	var dsResult mo.Datastore
