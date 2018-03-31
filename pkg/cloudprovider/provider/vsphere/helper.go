@@ -176,7 +176,7 @@ func findSnapshot(v *object.VirtualMachine, ctx context.Context, name string) (o
 	}
 }
 
-func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, isoFile string, client *govmomi.Client) error {
+func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFilePath string, client *govmomi.Client) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -204,13 +204,13 @@ func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, isoFile st
 		return err
 	}
 	p := soap.DefaultUpload
-	dstIsoFile := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
-	glog.V(3).Infof("Uploading ISO file %s to datastore %+v, destination iso is %s\n", isoFile, dsObj, dstIsoFile)
-	err = dsObj.UploadFile(ctx, isoFile, dstIsoFile, &p)
+	remoteIsoFilePath := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
+	glog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", dsObj, remoteIsoFilePath)
+	err = dsObj.UploadFile(ctx, localIsoFilePath, remoteIsoFilePath, &p)
 	if err != nil {
 		return err
 	}
-	glog.V(3).Infof("Uploaded ISO file %s", isoFile)
+	glog.V(3).Infof("Uploaded ISO file %s", localIsoFilePath)
 
 	// Find the cd-rom devide and insert the cloud init iso file into it.
 	devices, err := vmRef.Device(ctx)
@@ -224,7 +224,7 @@ func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, isoFile st
 	if err != nil {
 		return err
 	}
-	iso := dsObj.Path(dstIsoFile)
+	iso := dsObj.Path(remoteIsoFilePath)
 	glog.V(2).Infof("Inserting ISO file %s into cd-rom", iso)
 	return vmRef.EditDevice(ctx, devices.InsertIso(cdrom, iso))
 
