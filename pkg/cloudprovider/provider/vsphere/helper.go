@@ -243,7 +243,7 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 
 	metadataTmpl, err := template.New("metadata").Parse(metaDataTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse metadata template: %v")
+		return "", fmt.Errorf("failed to parse metadata template: %v", err)
 	}
 	metadata := &bytes.Buffer{}
 	templateContext := struct {
@@ -301,13 +301,13 @@ func removeFloppyDevice(virtualMachine *object.VirtualMachine) error {
 	// assume this wont happen.
 	floppyDevice, err := vmDevices.FindFloppy("")
 	if err != nil {
-		return fmt.Errorf("failed to find floppy: %v")
+		return fmt.Errorf("failed to find floppy: %v", err)
 	}
 
 	if floppyDevice != nil {
 		err = virtualMachine.RemoveDevice(context.TODO(), false, floppyDevice)
 		if err != nil {
-			return fmt.Errorf("failed to remove floppy device: %v")
+			return fmt.Errorf("failed to remove floppy device: %v", err)
 		}
 	}
 
