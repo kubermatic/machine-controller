@@ -178,16 +178,22 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to get virtual machine object: %v", err)
 	}
 
-	err = uploadAndAttachISO(finder, virtualMachine, userdata, client)
+	localUserdataIsoFilePath, err := generateLocalUserdataIso(userdata, machine.Spec.Name)
+	if err != nil {
+		return nil, err
+	}
+	err = uploadAndAttachISO(finder, virtualMachine, localUserdataIsoFilePath, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload and attach userdata iso: %v", err)
 	}
 
-	powerOnTask, err := virtualMachine.PowerOn(context.TODO())
-	if err != nil {
-		return nil, fmt.Errorf("failed to power on machine: %v", err)
-	}
-	powerOnTask.Wait(context.TODO())
+	//TODO: Ensure vm has no floppy disk, otherwise Ubuntu wont boot
+	//TODO: Ensure there is a serial device, otherwise we wont get most of the output
+	//powerOnTask, err := virtualMachine.PowerOn(context.TODO())
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to power on machine: %v", err)
+	//}
+	//powerOnTask.Wait(context.TODO())
 
 	glog.V(2).Infof("Successfully created a vm with name '%s'", vmName)
 

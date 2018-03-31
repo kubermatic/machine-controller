@@ -1,9 +1,14 @@
 package vsphere
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"path"
+	"text/template"
 
 	"github.com/golang/glog"
 
@@ -17,8 +22,11 @@ import (
 )
 
 const (
-	snapshotName string = "machine-controller"
-	snapshotDesc string = "Snapshot created by machine-controller"
+	snapshotName     = "machine-controller"
+	snapshotDesc     = "Snapshot created by machine-controller"
+	localTempDir     = "/tmp"
+	metaDataTemplate = `instance-id: {{ .InstanceID}}
+	local-hostname: {{ .Hostname }}`
 )
 
 func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, client *govmomi.Client) (string, error) {
@@ -242,4 +250,61 @@ func getDatacenterFinder(datacenter string, client *govmomi.Client) (*find.Finde
 	}
 	finder.SetDatacenter(dc)
 	return finder, nil
+}
+
+func generateLocalUserdataIso(userdata, name string) (string, error) {
+	// We must create a directory, because the iso-generation commands
+	// take a directry as input
+	userdataDir := fmt.Sprintf("%s/%s", localTempDir, name)
+	userdataFilePath := fmt.Sprintf("%s/user-data", userdataDir)
+	metadataFilePath := fmt.Sprintf("%s/meta-data", userdataDir)
+	isoFilePath := fmt.Sprintf("%s/%s.iso", localTempDir, name)
+
+	metadataTmpl, err := template.New("metadata").Parse(metaDataTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse metadata template: %v")
+	}
+	metadata := &bytes.Buffer{}
+	templateContext := struct {
+		InstanceID string
+		Hostname   string
+	}{
+		InstanceID: name,
+		Hostname:   name,
+	}
+	err = metadataTmpl.Execute(metadata, templateContext)
+	if err != nil {
+		return "", fmt.Errorf("failed to render metadata: %v", err)
+	}
+
+	err = os.Mkdir(userdataDir, 0755)
+	if err != nil {
+		return "", fmt.Errorf("failed to create local temp directory for userdata at %s: %v", userdataDir, err)
+	}
+
+	err = ioutil.WriteFile(userdataFilePath, []byte(userdata), 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to locally write userdata file to %s: %v", userdataFilePath, err)
+	}
+
+	err = ioutil.WriteFile(metadataFilePath, metadata.Bytes(), 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to locally write metadata file to %s: %v", userdataFilePath, err)
+	}
+
+	command := "genisoimage"
+	args := []string{"-o", isoFilePath, "-volid", "cidata", "-joliet", "-rock", userdataDir}
+	cmd := exec.Command(command, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("error executing command `%s %s`: output: `%s`, error: `%v`", command, args, string(output), err)
+	}
+
+	err = os.RemoveAll(userdataDir)
+	if err != nil {
+		return "", fmt.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err)
+	}
+
+	return isoFilePath, nil
+
 }
