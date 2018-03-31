@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/golang/glog"
 
@@ -13,6 +14,8 @@ import (
 
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/property"
+	"github.com/vmware/govmomi/vim25/mo"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -57,8 +60,9 @@ type Config struct {
 }
 
 type VSphereServer struct {
-	name   string
-	status instance.Status
+	name      string
+	status    instance.Status
+	addresses []string
 }
 
 func (vsphereServer VSphereServer) Name() string {
@@ -70,9 +74,8 @@ func (vsphereServer VSphereServer) ID() string {
 	return vsphereServer.name
 }
 
-//VSphere doesn't know anything about it's guest addresses...
 func (vsphereServer VSphereServer) Addresses() []string {
-	return nil
+	return vsphereServer.addresses
 }
 
 func (vsphereServer VSphereServer) Status() instance.Status {
@@ -331,7 +334,30 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		status = instance.StatusUnknown
 	}
 
-	return VSphereServer{name: virtualMachine.Name(), status: status}, nil
+	isGuestToolsRunning, err := virtualMachine.IsToolsRunning(context.TODO())
+	glog.V(3).Infof("Guest tools status for machine %s: %t", machine.Spec.Name, isGuestToolsRunning)
+	addresses := []string{}
+	if isGuestToolsRunning {
+		var moVirtualMachine mo.VirtualMachine
+		pc := property.DefaultCollector(client.Client)
+		err = pc.RetrieveOne(context.TODO(), virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
+		}
+
+		for _, nic := range moVirtualMachine.Guest.Net {
+			for _, address := range nic.IpAddress {
+				// Exclude ipv6 link-local addresses and default Docker bridge
+				if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
+					addresses = append(addresses, address)
+				}
+			}
+		}
+	} else {
+		glog.Warningf("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
+	}
+
+	return VSphereServer{name: virtualMachine.Name(), status: status, addresses: addresses}, nil
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {

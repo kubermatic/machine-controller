@@ -341,6 +341,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
+- "open-vm-tools"
 {{- if .CRAptPackage }}
 {{- if ne .CRAptPackageVersion "" }}
 - ["{{ .CRAptPackage }}", "{{ .CRAptPackageVersion }}"]
