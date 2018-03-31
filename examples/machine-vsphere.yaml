@@ -15,7 +15,7 @@ metadata:
   name: vsphere-machine
 spec:
   metadata:
-    name: vsphere-node
+    name: node1
     labels:
       foo: "bar"
   providerConfig:
@@ -24,8 +24,8 @@ spec:
     cloudProvider: "vsphere"
     cloudProviderSpec:
       templateVMName: ubuntu-template
-      username: 'administrator@vsphere.local'
-      vsphereURL: 'https://photon-machine.fritz.box'
+      username: '<VSPHERE_USERNAME>'
+      vsphereURL: 'https://<VSHERE_ADDRESS>'
       datacenter: 'Datacenter'
       password:
         secretKeyRef:
