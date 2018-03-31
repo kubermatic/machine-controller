@@ -144,7 +144,26 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	//TODO: Implement this
+	config, _, err := p.getConfig(spec.ProviderConfig)
+	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	if err != nil {
+		return fmt.Errorf("failed to get vsphere client: '%v'", err)
+	}
+
+	finder, err := getDatacenterFinder(config.Datacenter, client)
+	if err != nil {
+		return err
+	}
+
+	_, err = finder.Datastore(context.TODO(), config.Datastore)
+	if err != nil {
+		return err
+	}
+
+	_, err = finder.ClusterComputeResource(context.TODO(), config.Cluster)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
