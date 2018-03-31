@@ -186,7 +186,6 @@ func findSnapshot(v *object.VirtualMachine, ctx context.Context, name string) (o
 }
 
 func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFilePath, datastoreName string, client *govmomi.Client) error {
-	//TODO: use func (f *Finder) Datastore since we know the Datastore name anyways
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -235,7 +234,7 @@ func getDatacenterFinder(datacenter string, client *govmomi.Client) (*find.Finde
 
 func generateLocalUserdataIso(userdata, name string) (string, error) {
 	// We must create a directory, because the iso-generation commands
-	// take a directry as input
+	// take a directory as input
 	userdataDir := fmt.Sprintf("%s/%s", localTempDir, name)
 	userdataFilePath := fmt.Sprintf("%s/user-data", userdataDir)
 	metadataFilePath := fmt.Sprintf("%s/meta-data", userdataDir)
@@ -296,19 +295,19 @@ func removeFloppyDevice(virtualMachine *object.VirtualMachine) error {
 		return fmt.Errorf("failed to get device list: %v", err)
 	}
 
-	// This is nil or a floppy device, if there is more than one
-	// floppy device attached, you will simply get the first one. We
+	// If there is more than one floppy device attached, you will simply get the first one. We
 	// assume this wont happen.
 	floppyDevice, err := vmDevices.FindFloppy("")
 	if err != nil {
+		if err.Error() == "no floppy device found" {
+			return nil
+		}
 		return fmt.Errorf("failed to find floppy: %v", err)
 	}
 
-	if floppyDevice != nil {
-		err = virtualMachine.RemoveDevice(context.TODO(), false, floppyDevice)
-		if err != nil {
-			return fmt.Errorf("failed to remove floppy device: %v", err)
-		}
+	err = virtualMachine.RemoveDevice(context.TODO(), false, floppyDevice)
+	if err != nil {
+		return fmt.Errorf("failed to remove floppy device: %v", err)
 	}
 
 	return nil
