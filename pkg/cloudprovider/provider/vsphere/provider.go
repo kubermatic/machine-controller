@@ -166,10 +166,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	//TODO: Delete the clone if anything below this point goes wrong
 
-	//TODO: Implement this
-	//err = createCloudConfigIso()
-	//err = uploadCloudConfigIso()
-	//err = attachCloudConfigIso()
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
 		return nil, err
@@ -193,13 +189,19 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to clean up local userdata iso file at %s: %v", localUserdataIsoFilePath, err)
 	}
 
-	//TODO: Ensure vm has no floppy disk, otherwise Ubuntu wont boot
-	//TODO: Ensure there is a serial device, otherwise we wont get most of the output
-	//powerOnTask, err := virtualMachine.PowerOn(context.TODO())
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to power on machine: %v", err)
-	//}
-	//powerOnTask.Wait(context.TODO())
+	// Ubuntu wont boot with attached floppy device, because it tries to write to it
+	// which fails, because the floppy device does not contain a floppy disk
+	// Upstream issue: https://bugs.launchpad.net/cloud-images/+bug/1573095
+	err = removeFloppyDevice(virtualMachine)
+	if err != nil {
+		return nil, err
+	}
+
+	powerOnTask, err := virtualMachine.PowerOn(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("failed to power on machine: %v", err)
+	}
+	powerOnTask.Wait(context.TODO())
 
 	glog.V(2).Infof("Successfully created a vm with name '%s'", vmName)
 

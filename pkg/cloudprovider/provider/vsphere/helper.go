@@ -308,3 +308,28 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	return isoFilePath, nil
 
 }
+
+func removeFloppyDevice(virtualMachine *object.VirtualMachine) error {
+
+	vmDevices, err := virtualMachine.Device(context.TODO())
+	if err != nil {
+		return fmt.Errorf("failed to get device list: %v", err)
+	}
+
+	// This is nil or a floppy device, if there is more than one
+	// floppy device attached, you will simply get the first one. We
+	// assume this wont happen.
+	floppyDevice, err := vmDevices.FindFloppy("")
+	if err != nil {
+		return fmt.Errorf("failed to find floppy: %v")
+	}
+
+	if floppyDevice != nil {
+		err = virtualMachine.RemoveDevice(context.TODO(), false, floppyDevice)
+		if err != nil {
+			return fmt.Errorf("failed to remove floppy device: %v")
+		}
+	}
+
+	return nil
+}
