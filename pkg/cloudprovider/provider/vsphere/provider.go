@@ -38,6 +38,8 @@ type RawConfig struct {
 	Datacenter     providerconfig.ConfigVarString `json:"datacenter"`
 	Cluster        providerconfig.ConfigVarString `json:"cluster"`
 	Datastore      providerconfig.ConfigVarString `json:"datastore"`
+	CPUs           int32                          `json:"cpus"`
+	MemoryMB       int64                          `json:"memoryMB"`
 	AllowInsecure  providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 
@@ -50,6 +52,8 @@ type Config struct {
 	Cluster        string
 	Datastore      string
 	AllowInsecure  bool
+	CPUs           int32
+	MemoryMB       int64
 }
 
 type VSphereServer struct {
@@ -140,6 +144,9 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 		return nil, nil, err
 	}
 
+	c.CPUs = rawConfig.CPUs
+	c.MemoryMB = rawConfig.MemoryMB
+
 	return &c, &pconfig, nil
 }
 
@@ -178,7 +185,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 
-	vmID, err := CreateLinkClonedVm(machine.Spec.Name, config.TemplateVMName, config.Datacenter, config.Cluster, client)
+	vmID, err := CreateLinkClonedVm(machine.Spec.Name,
+		config.TemplateVMName,
+		config.Datacenter,
+		config.Cluster,
+		config.CPUs,
+		config.MemoryMB,
+		client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create linked vm: '%v'", err)
 	}

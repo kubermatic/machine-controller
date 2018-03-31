@@ -28,7 +28,7 @@ const (
 	local-hostname: {{ .Hostname }}`
 )
 
-func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, client *govmomi.Client) (string, error) {
+func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus int32, memoryMB int64, client *govmomi.Client) (string, error) {
 	f := find.NewFinder(client.Client, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -81,6 +81,8 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, client 
 			Flags: &types.VirtualMachineFlagInfo{
 				DiskUuidEnabled: &diskUuidEnabled,
 			},
+			NumCPUs:  cpus,
+			MemoryMB: memoryMB,
 		},
 		Location: types.VirtualMachineRelocateSpec{
 			Pool:         &resPoolRef,

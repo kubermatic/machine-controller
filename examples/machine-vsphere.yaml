@@ -35,6 +35,8 @@ spec:
       cluster: "test-cluster"
       datastore: datastore1
       allowInsecure: true
+      cpus: 2
+      MemoryMB: 2048
     operatingSystem: "ubuntu"
     operatingSystemSpec:
       distUpgradeOnBoot: false
