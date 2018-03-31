@@ -153,7 +153,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	//TODO: Create provider type to not manually pass the client around
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
@@ -165,7 +164,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	}
 
 	//TODO: Delete the clone if anything below this point goes wrong
-
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
 		return nil, err
@@ -209,7 +207,39 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	//TODO: Implement this
+	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err != nil {
+		return fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	if err != nil {
+		return fmt.Errorf("failed to get vsphere client: '%v'", err)
+	}
+
+	finder, err := getDatacenterFinder(config.Datacenter, client)
+	if err != nil {
+		return err
+	}
+	virtualMachine, err := getVirtualMachine(machine.Spec.Name, finder)
+	if err != nil {
+		return fmt.Errorf("failed to get virtual machine object: %v", err)
+	}
+
+	// We can't destroy a VM thats powered on...
+	powerOffTask, err := virtualMachine.PowerOff(context.TODO())
+	if err != nil {
+		return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
+	}
+	powerOffTask.Wait(context.TODO())
+
+	destroyTask, err := virtualMachine.Destroy(context.TODO())
+	if err != nil {
+		return fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
+	}
+
+	destroyTask.Wait(context.TODO())
+	glog.V(2).Infof("Successfully destroyed vm %s", virtualMachine.Name())
 	return nil
 }
 
