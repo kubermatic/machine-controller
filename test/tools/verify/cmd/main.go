@@ -36,8 +36,16 @@ func (i *arrayFlags) String() string {
 }
 
 func (i *arrayFlags) Set(value string) error {
-	direct := arrayFlags(fmt.Sprintf("%s,%s", i, value))
-	i = &direct
+	if value == "" {
+		return nil
+	}
+	var direct arrayFlags
+	if *i != arrayFlags("") {
+		direct = arrayFlags(fmt.Sprintf("%s,%s", i, value))
+	} else {
+		direct = arrayFlags(value)
+	}
+	*i = direct
 
 	return nil
 }
@@ -60,8 +68,8 @@ func main() {
 	flag.Parse()
 
 	// input sanitizaiton
-	if len(manifestPath) == 0 || len(parameters) == 0 || len(kubeConfig) == 0 {
-		glog.Errorln("please specify kubeconfig, input and parameters flags:")
+	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
+		glog.Errorln("please specify kubeconfig and input flags!")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
