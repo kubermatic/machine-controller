@@ -15,7 +15,6 @@ import (
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
-	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
@@ -184,36 +183,19 @@ func findSnapshot(v *object.VirtualMachine, ctx context.Context, name string) (o
 	}
 }
 
-func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFilePath string, client *govmomi.Client) error {
+func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFilePath, datastoreName string, client *govmomi.Client) error {
 	//TODO: use func (f *Finder) Datastore since we know the Datastore name anyways
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var refs []types.ManagedObjectReference
-	refs = append(refs, vmRef.Reference())
-	var vmResult mo.VirtualMachine
-
-	pc := property.DefaultCollector(client.Client)
-	err := pc.RetrieveOne(ctx, vmRef.Reference(), []string{"datastore"}, &vmResult)
-	if err != nil {
-		return err
-	}
-	// We expect the VM to be on only 1 datastore
-	dsRef := vmResult.Datastore[0].Reference()
-	var dsResult mo.Datastore
-	err = pc.RetrieveOne(ctx, dsRef, []string{"summary"}, &dsResult)
-	if err != nil {
-		return err
-	}
-	glog.V(3).Infof("datastore property collector result :%+v\n", dsResult)
-	dsObj, err := f.Datastore(ctx, dsResult.Summary.Name)
+	datastore, err := f.Datastore(ctx, datastoreName)
 	if err != nil {
 		return err
 	}
 	p := soap.DefaultUpload
 	remoteIsoFilePath := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
-	glog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", dsObj, remoteIsoFilePath)
-	err = dsObj.UploadFile(ctx, localIsoFilePath, remoteIsoFilePath, &p)
+	glog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", datastore, remoteIsoFilePath)
+	err = datastore.UploadFile(ctx, localIsoFilePath, remoteIsoFilePath, &p)
 	if err != nil {
 		return err
 	}
@@ -231,10 +213,8 @@ func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFi
 	if err != nil {
 		return err
 	}
-	iso := dsObj.Path(remoteIsoFilePath)
-	glog.V(2).Infof("Inserting ISO file %s into cd-rom", iso)
+	iso := datastore.Path(remoteIsoFilePath)
 	return vmRef.EditDevice(ctx, devices.InsertIso(cdrom, iso))
-
 }
 
 func getVirtualMachine(name string, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {

@@ -197,7 +197,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, err
 	}
-	err = uploadAndAttachISO(finder, virtualMachine, localUserdataIsoFilePath, client)
+	err = uploadAndAttachISO(finder, virtualMachine, localUserdataIsoFilePath, config.Datastore, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload and attach userdata iso: %v", err)
 	}
