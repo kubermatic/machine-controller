@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 
 	"github.com/golang/glog"
 
@@ -185,6 +186,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	err = uploadAndAttachISO(finder, virtualMachine, localUserdataIsoFilePath, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload and attach userdata iso: %v", err)
+	}
+
+	err = os.Remove(localUserdataIsoFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to clean up local userdata iso file at %s: %v", localUserdataIsoFilePath, err)
 	}
 
 	//TODO: Ensure vm has no floppy disk, otherwise Ubuntu wont boot
