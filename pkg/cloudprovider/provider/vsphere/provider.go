@@ -159,7 +159,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 
-	vmName, err := CreateLinkClonedVm(machine.Spec.Name, config.TemplateVMName, config.Datacenter, config.Cluster, client)
+	vmID, err := CreateLinkClonedVm(machine.Spec.Name, config.TemplateVMName, config.Datacenter, config.Cluster, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create linked vm: '%v'", err)
 	}
@@ -203,7 +203,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	}
 	powerOnTask.Wait(context.TODO())
 
-	glog.V(2).Infof("Successfully created a vm with name '%s'", vmName)
+	glog.V(2).Infof("Successfully created a vm with name '%s' and id '%s'", machine.Spec.Name, vmID)
 
 	return nil, nil
 }

@@ -306,7 +306,6 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	}
 
 	return isoFilePath, nil
-
 }
 
 func removeFloppyDevice(virtualMachine *object.VirtualMachine) error {
