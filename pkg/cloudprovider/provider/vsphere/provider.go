@@ -199,12 +199,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to create linked vm: '%v'", err)
 	}
 
-	//TODO: Delete the clone if anything below this point goes wrong
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
 		return nil, err
 	}
-	virtualMachine, err := getVirtualMachine(machine.Spec.Name, finder)
+	virtualMachine, err := finder.VirtualMachine(context.TODO(), machine.Spec.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object: %v", err)
 	}
@@ -264,7 +263,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	}
 	finder.SetDatacenter(dc)
 
-	virtualMachine, err := getVirtualMachine(machine.Spec.Name, finder)
+	virtualMachine, err := finder.VirtualMachine(context.TODO(), machine.Spec.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get virtual machine object: %v", err)
 	}
@@ -312,7 +311,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, err
 	}
-	virtualMachine, err := getVirtualMachine(machine.Spec.Name, finder)
+	virtualMachine, err := finder.VirtualMachine(context.TODO(), machine.Spec.Name)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound

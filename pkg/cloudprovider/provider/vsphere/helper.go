@@ -201,10 +201,6 @@ func uploadAndAttachISO(f *find.Finder, vmRef *object.VirtualMachine, localIsoFi
 	return vmRef.EditDevice(ctx, devices.InsertIso(cdrom, iso))
 }
 
-func getVirtualMachine(name string, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
-	return datacenterFinder.VirtualMachine(context.TODO(), name)
-}
-
 func getDatacenterFinder(datacenter string, client *govmomi.Client) (*find.Finder, error) {
 	finder := find.NewFinder(client.Client, true)
 	dc, err := finder.Datacenter(context.TODO(), datacenter)
