@@ -3,11 +3,11 @@ package vsphere
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"text/template"
 
 	"github.com/golang/glog"
@@ -27,6 +27,8 @@ const (
 	metaDataTemplate = `instance-id: {{ .InstanceID}}
 	local-hostname: {{ .Hostname }}`
 )
+
+var errSnapshotNotFound = errors.New("no snapshot with given name found")
 
 func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus int32, memoryMB int64, client *govmomi.Client) (string, error) {
 	f := find.NewFinder(client.Client, true)
@@ -51,9 +53,15 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 	}
 
 	// Create snapshot of the template VM if not already snapshotted.
-	snapshot, err := createSnapshot(ctx, templateVm, snapshotName, snapshotDesc)
+	snapshot, err := findSnapshot(templateVm, ctx, snapshotName)
 	if err != nil {
-		return "", fmt.Errorf("failed to create snapshot: %v", err)
+		if err == errSnapshotNotFound {
+			snapshot, err = createSnapshot(ctx, templateVm, snapshotName, snapshotDesc)
+			if err != nil {
+				return "", fmt.Errorf("failed to create snapshot: %v", err)
+			}
+		}
+		return "", fmt.Errorf("failed to find snapshot: %v", err)
 	}
 
 	clsComputeRes, err := f.ClusterComputeResource(ctx, clusterName)
@@ -113,15 +121,6 @@ func createSnapshot(ctx context.Context, vm *object.VirtualMachine, snapshotName
 	//snapshotLock.Lock()
 	//defer snapshotLock.Unlock()
 
-	snapshotRef, err := findSnapshot(vm, ctx, snapshotName)
-	if err != nil {
-		return nil, err
-	}
-	glog.V(4).Infof("Template VM is %s and snapshot is %s", vm, snapshotRef)
-	if snapshotRef != nil {
-		return snapshotRef, nil
-	}
-
 	task, err := vm.CreateSnapshot(ctx, snapshotName, snapshotDesc, false, false)
 	if err != nil {
 		return nil, err
@@ -135,53 +134,29 @@ func createSnapshot(ctx context.Context, vm *object.VirtualMachine, snapshotName
 	return taskInfo.Result.(object.Reference), nil
 }
 
-type snapshotMap map[string][]object.Reference
+func findSnapshot(vm *object.VirtualMachine, ctx context.Context, name string) (object.Reference, error) {
+	var moVirtualMachine mo.VirtualMachine
 
-func (m snapshotMap) add(parent string, tree []types.VirtualMachineSnapshotTree) {
-	for i, st := range tree {
-		sname := st.Name
-		names := []string{sname, st.Snapshot.Value}
-
-		if parent != "" {
-			sname = path.Join(parent, sname)
-			// Add full path as an option to resolve duplicate names
-			names = append(names, sname)
-		}
-
-		for _, name := range names {
-			m[name] = append(m[name], &tree[i].Snapshot)
-		}
-
-		m.add(sname, st.ChildSnapshotList)
-	}
-}
-
-func findSnapshot(v *object.VirtualMachine, ctx context.Context, name string) (object.Reference, error) {
-	var o mo.VirtualMachine
-
-	err := v.Properties(ctx, v.Reference(), []string{"snapshot"}, &o)
+	err := vm.Properties(ctx, vm.Reference(), []string{"snapshot"}, &moVirtualMachine)
 	if err != nil {
 		return nil, err
 	}
 
-	if o.Snapshot == nil || len(o.Snapshot.RootSnapshotList) == 0 {
-		return nil, nil
+	snapshotCandidates := []object.Reference{}
+	for _, snapshot := range moVirtualMachine.Snapshot.RootSnapshotList {
+		if snapshot.Name == name || snapshot.Snapshot.Value == snapshot.Name {
+			snapshotCandidates = append(snapshotCandidates, &snapshot.Snapshot)
+		}
 	}
 
-	//TODO: Rework this for readability, the only thing we want to know is if there is exactly one
-	// snapshot without parent and with the correct name
-	m := make(snapshotMap)
-	m.add("", o.Snapshot.RootSnapshotList)
-
-	s := m[name]
-	switch len(s) {
+	switch len(snapshotCandidates) {
 	case 0:
-		return nil, nil
+		return nil, errSnapshotNotFound
 	case 1:
-		return s[0], nil
+		return snapshotCandidates[0], nil
 	default:
-		glog.Warningf("VM %s seems to have more than one snapshots with name %s. Using a random snapshot.", v, name)
-		return s[0], nil
+		glog.Warningf("VM %s seems to have more than one snapshots with name %s. Using a random snapshot.", vm, name)
+		return snapshotCandidates[0], nil
 	}
 }
 

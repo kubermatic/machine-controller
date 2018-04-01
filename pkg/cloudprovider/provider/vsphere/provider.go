@@ -280,7 +280,6 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	if err != nil {
 		return fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
 	}
-
 	destroyTask.Wait(context.TODO())
 
 	datastore, err := finder.Datastore(context.TODO(), config.Datastore)
