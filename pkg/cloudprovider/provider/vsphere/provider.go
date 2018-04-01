@@ -334,7 +334,6 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	}
 
 	isGuestToolsRunning, err := virtualMachine.IsToolsRunning(context.TODO())
-	glog.V(3).Infof("Guest tools status for machine %s: %t", machine.Spec.Name, isGuestToolsRunning)
 	addresses := []string{}
 	if isGuestToolsRunning {
 		var moVirtualMachine mo.VirtualMachine

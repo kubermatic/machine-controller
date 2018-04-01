@@ -55,13 +55,13 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 	// Create snapshot of the template VM if not already snapshotted.
 	snapshot, err := findSnapshot(templateVm, ctx, snapshotName)
 	if err != nil {
-		if err == errSnapshotNotFound {
-			snapshot, err = createSnapshot(ctx, templateVm, snapshotName, snapshotDesc)
-			if err != nil {
-				return "", fmt.Errorf("failed to create snapshot: %v", err)
-			}
+		if err != errSnapshotNotFound {
+			return "", fmt.Errorf("failed to find snapshot: %v", err)
 		}
-		return "", fmt.Errorf("failed to find snapshot: %v", err)
+		snapshot, err = createSnapshot(ctx, templateVm, snapshotName, snapshotDesc)
+		if err != nil {
+			return "", fmt.Errorf("failed to create snapshot: %v", err)
+		}
 	}
 
 	clsComputeRes, err := f.ClusterComputeResource(ctx, clusterName)
@@ -143,10 +143,8 @@ func findSnapshot(vm *object.VirtualMachine, ctx context.Context, name string) (
 	}
 
 	snapshotCandidates := []object.Reference{}
-	for _, snapshot := range moVirtualMachine.Snapshot.RootSnapshotList {
-		if snapshot.Name == name || snapshot.Snapshot.Value == snapshot.Name {
-			snapshotCandidates = append(snapshotCandidates, &snapshot.Snapshot)
-		}
+	for _, snapshotTree := range moVirtualMachine.Snapshot.RootSnapshotList {
+		addMatchingSnapshotToList(&snapshotCandidates, snapshotTree, name)
 	}
 
 	switch len(snapshotCandidates) {
@@ -157,6 +155,16 @@ func findSnapshot(vm *object.VirtualMachine, ctx context.Context, name string) (
 	default:
 		glog.Warningf("VM %s seems to have more than one snapshots with name %s. Using a random snapshot.", vm, name)
 		return snapshotCandidates[0], nil
+	}
+}
+
+// VirtualMachineSnapshotTree is a tree (As the name suggests) so we need to use recursion to get all elements
+func addMatchingSnapshotToList(list *[]object.Reference, tree types.VirtualMachineSnapshotTree, name string) {
+	for _, childTree := range tree.ChildSnapshotList {
+		addMatchingSnapshotToList(list, childTree, name)
+	}
+	if tree.Name == name || tree.Snapshot.Value == name {
+		*list = append(*list, &tree.Snapshot)
 	}
 }
 
