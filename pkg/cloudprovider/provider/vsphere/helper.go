@@ -117,10 +117,6 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 }
 
 func createSnapshot(ctx context.Context, vm *object.VirtualMachine, snapshotName string, snapshotDesc string) (object.Reference, error) {
-	//TODO: Add protection for snapshot creation
-	//snapshotLock.Lock()
-	//defer snapshotLock.Unlock()
-
 	task, err := vm.CreateSnapshot(ctx, snapshotName, snapshotDesc, false, false)
 	if err != nil {
 		return nil, err
