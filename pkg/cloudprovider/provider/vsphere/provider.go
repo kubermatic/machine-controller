@@ -61,6 +61,7 @@ type Config struct {
 
 type VSphereServer struct {
 	name      string
+	id        string
 	status    instance.Status
 	addresses []string
 }
@@ -69,9 +70,8 @@ func (vsphereServer VSphereServer) Name() string {
 	return vsphereServer.name
 }
 
-//TODO: evaluate if VSphere has something like an ID
 func (vsphereServer VSphereServer) ID() string {
-	return vsphereServer.name
+	return vsphereServer.id
 }
 
 func (vsphereServer VSphereServer) Addresses() []string {
@@ -354,7 +354,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		glog.Warningf("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
 	}
 
-	return VSphereServer{name: virtualMachine.Name(), status: status, addresses: addresses}, nil
+	return VSphereServer{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
