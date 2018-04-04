@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	machineReadyCheckPeriod  = 2 * time.Second
-	machineReadyCheckTimeout = 5 * time.Minute
+	machineReadyCheckPeriod  = 5 * time.Second
+	machineReadyCheckTimeout = 10 * time.Minute
 	tempDir                  = "/tmp"
 )
 
@@ -79,13 +79,6 @@ func main() {
 		glog.Fatalf("Failed to prepare the manifest, due to: %v", err)
 	}
 
-	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
-		glog.Fatalf("Error retrieving nodes: '%v'", err)
-	}
-	nodeCount := len(nodes.Items)
-	glog.Infof("Cluster currently has %v nodes...", nodeCount)
-
 	// Pragmatic solution for multiple manifests in one file
 	manifestsList := strings.Split(manifests, "\n---\n")
 	for _, manifest := range manifestsList {
@@ -93,7 +86,7 @@ func main() {
 			continue
 		}
 		if strings.Contains(manifest, "kind: Machine") {
-			err = verify(manifest, kubeClient, machineClient, nodeCount, createOnly)
+			err = verify(manifest, kubeClient, machineClient, createOnly)
 			if err != nil {
 				glog.Fatalf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
 				msg := "all good, successfully verified that a machine/node has been created"
@@ -148,7 +141,7 @@ func getDefaultKubeconfigPath() (string, error) {
 	return filepath.Join(user.HomeDir, ".kube/config"), nil
 }
 
-func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface, nodeCount int, createOnly bool) error {
+func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface, createOnly bool) error {
 	newMachine := &machinev1alpha1.Machine{}
 	manifestReader := strings.NewReader(manifest)
 	manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
@@ -157,30 +150,30 @@ func verify(manifest string, kubeClient kubernetes.Interface, machineClient mach
 		return err
 	}
 
-	err = createAndAssure(newMachine, machineClient, kubeClient, nodeCount)
+	err = createAndAssure(newMachine, machineClient, kubeClient)
 	if err != nil {
 		return err
 	}
 	if createOnly {
 		return nil
 	}
-	return deleteAndAssure(newMachine, machineClient, kubeClient, nodeCount)
+	return deleteAndAssure(newMachine, machineClient, kubeClient)
 }
 
-func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, nodeCount int) error {
-	// we expect to find no nodes within the cluster
-	err := assureNodeCount(nodeCount, kubeClient)
+func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
+	// we expect that no node for machine exists in the cluster
+	err := assureNodeForMachine(machine, kubeClient, false)
 	if err != nil {
 		return fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
 	glog.Infof("creating a new \"%s\" machine\n", machine.Name)
-	_, err = machineClient.MachineV1alpha1().Machines().Create(machine)
+	machine, err = machineClient.MachineV1alpha1().Machines().Create(machine)
 	if err != nil {
 		return err
 	}
 	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
-		err := assureNodeCount(nodeCount+1, kubeClient)
+		err := assureNodeForMachine(machine, kubeClient, true)
 		if err == nil {
 			return true, nil
 		}
@@ -198,15 +191,13 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		if err != nil {
 			return false, nil
 		}
-		// assertion check - if true then something weird has happened
-		// or someone else is playing with the cluster
-		if len(nodes.Items) != nodeCount+1 {
-			return false, fmt.Errorf("expected to get only %v node but got = %d", nodeCount+1, len(nodes.Items))
-		}
+
 		for _, node := range nodes.Items {
-			for _, condition := range node.Status.Conditions {
-				if condition.Type == v1.NodeReady && condition.Status == v1.ConditionTrue {
-					return true, nil
+			if isNodeForMachine(&node, machine) {
+				for _, condition := range node.Status.Conditions {
+					if condition.Type == v1.NodeReady && condition.Status == v1.ConditionTrue {
+						return true, nil
+					}
 				}
 			}
 		}
@@ -219,7 +210,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	return nil
 }
 
-func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, nodeCount int) error {
+func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
 	glog.Infof("deleting the machine \"%s\"\n", machine.Name)
 	err := machineClient.MachineV1alpha1().Machines().Delete(machine.Name, nil)
 	if err != nil {
@@ -227,7 +218,7 @@ func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	}
 
 	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
-		err := assureNodeCount(nodeCount, kubeClient)
+		err := assureNodeForMachine(machine, kubeClient, false)
 		if err == nil {
 			return true, nil
 		}
@@ -239,15 +230,34 @@ func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	return nil
 }
 
-func assureNodeCount(expectedNodeCount int, kubeClient kubernetes.Interface) error {
+// assureNodeForMachine according to shouldExists parameter check if a node for machine exists in the system or not
+// this method examines OwnerReference of each node.
+func assureNodeForMachine(machine *machinev1alpha1.Machine, kubeClient kubernetes.Interface, shouldExists bool) error {
 	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	if len(nodes.Items) != expectedNodeCount {
-		return fmt.Errorf("the current node count = %d is different than expected one = %d", len(nodes.Items), expectedNodeCount)
+
+	nodeForMachineExists := false
+	for _, node := range nodes.Items {
+		if isNodeForMachine(&node, machine) {
+			nodeForMachineExists = true
+			break
+		}
+	}
+
+	if shouldExists != nodeForMachineExists {
+		return fmt.Errorf("expeced a node in the system to exists=%v but have found a node in the current cluster=%v", shouldExists, nodeForMachineExists)
 	}
 	return nil
+}
+
+func isNodeForMachine(node *v1.Node, machine *machinev1alpha1.Machine) bool {
+	ownerRef := metav1.GetControllerOf(node)
+	if ownerRef == nil {
+		return false
+	}
+	return ownerRef.Name == machine.Name && ownerRef.UID == machine.UID
 }
 
 func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (string, error) {
