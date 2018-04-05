@@ -213,12 +213,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, err
 	}
 
-	defer func(path string) {
+	defer func() {
 		err := os.Remove(localUserdataIsoFilePath)
 		if err != nil {
 			glog.Errorf("failed to clean up local userdata iso file at %s: %v", localUserdataIsoFilePath, err)
 		}
-	}(localUserdataIsoFilePath)
+	}()
 
 	err = uploadAndAttachISO(finder, virtualMachine, localUserdataIsoFilePath, config.Datastore, client)
 	if err != nil {

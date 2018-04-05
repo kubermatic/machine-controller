@@ -214,12 +214,12 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create local temp directory for userdata at %s: %v", userdataDir, err)
 	}
-	defer func(dir string) {
+	defer func() {
 		err := os.RemoveAll(userdataDir)
 		if err != nil {
 			glog.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err)
 		}
-	}(userdataDir)
+	}()
 
 	userdataFilePath := fmt.Sprintf("%s/user-data", userdataDir)
 	metadataFilePath := fmt.Sprintf("%s/meta-data", userdataDir)
