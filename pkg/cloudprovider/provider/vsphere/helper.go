@@ -236,6 +236,12 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create local temp directory for userdata at %s: %v", userdataDir, err)
 	}
+	defer func(dir string) {
+		err := os.RemoveAll(userdataDir)
+		if err != nil {
+			glog.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err)
+		}
+	}(userdataDir)
 
 	err = ioutil.WriteFile(userdataFilePath, []byte(userdata), 0644)
 	if err != nil {
@@ -253,11 +259,6 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("error executing command `%s %s`: output: `%s`, error: `%v`", command, args, string(output), err)
-	}
-
-	err = os.RemoveAll(userdataDir)
-	if err != nil {
-		return "", fmt.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err)
 	}
 
 	return isoFilePath, nil

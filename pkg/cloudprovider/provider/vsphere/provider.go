@@ -212,14 +212,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, err
 	}
+
+	defer func(path string) {
+		err := os.Remove(localUserdataIsoFilePath)
+		if err != nil {
+			glog.Errorf("failed to clean up local userdata iso file at %s: %v", localUserdataIsoFilePath, err)
+		}
+	}(localUserdataIsoFilePath)
+
 	err = uploadAndAttachISO(finder, virtualMachine, localUserdataIsoFilePath, config.Datastore, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload and attach userdata iso: %v", err)
-	}
-
-	err = os.Remove(localUserdataIsoFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to clean up local userdata iso file at %s: %v", localUserdataIsoFilePath, err)
 	}
 
 	// Ubuntu wont boot with attached floppy device, because it tries to write to it
