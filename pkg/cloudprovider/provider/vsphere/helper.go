@@ -210,7 +210,17 @@ func getDatacenterFinder(datacenter string, client *govmomi.Client) (*find.Finde
 func generateLocalUserdataIso(userdata, name string) (string, error) {
 	// We must create a directory, because the iso-generation commands
 	// take a directory as input
-	userdataDir := fmt.Sprintf("%s/%s", localTempDir, name)
+	userdataDir, err := ioutil.TempDir(localTempDir, name)
+	if err != nil {
+		return "", fmt.Errorf("failed to create local temp directory for userdata at %s: %v", userdataDir, err)
+	}
+	defer func(dir string) {
+		err := os.RemoveAll(userdataDir)
+		if err != nil {
+			glog.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err)
+		}
+	}(userdataDir)
+
 	userdataFilePath := fmt.Sprintf("%s/user-data", userdataDir)
 	metadataFilePath := fmt.Sprintf("%s/meta-data", userdataDir)
 	isoFilePath := fmt.Sprintf("%s/%s.iso", localTempDir, name)
@@ -231,17 +241,6 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to render metadata: %v", err)
 	}
-
-	err = os.Mkdir(userdataDir, 0755)
-	if err != nil {
-		return "", fmt.Errorf("failed to create local temp directory for userdata at %s: %v", userdataDir, err)
-	}
-	defer func(dir string) {
-		err := os.RemoveAll(userdataDir)
-		if err != nil {
-			glog.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err)
-		}
-	}(userdataDir)
 
 	err = ioutil.WriteFile(userdataFilePath, []byte(userdata), 0644)
 	if err != nil {
@@ -265,7 +264,6 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 }
 
 func removeFloppyDevice(virtualMachine *object.VirtualMachine) error {
-
 	vmDevices, err := virtualMachine.Device(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to get device list: %v", err)
