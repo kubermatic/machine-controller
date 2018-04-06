@@ -17,6 +17,7 @@ import (
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/mo"
+	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -359,7 +360,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 
 	var status instance.Status
 	switch powerState {
-	case "poweredOn":
+	case types.VirtualMachinePowerStatePoweredOn:
 		status = instance.StatusRunning
 	default:
 		status = instance.StatusUnknown
