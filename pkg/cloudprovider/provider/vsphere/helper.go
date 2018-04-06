@@ -12,6 +12,8 @@ import (
 
 	"github.com/golang/glog"
 
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
@@ -217,7 +219,7 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	defer func() {
 		err := os.RemoveAll(userdataDir)
 		if err != nil {
-			glog.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err)
+			utilruntime.HandleError(fmt.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err))
 		}
 	}()
 

@@ -11,6 +11,7 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
@@ -216,7 +217,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	defer func() {
 		err := os.Remove(localUserdataIsoFilePath)
 		if err != nil {
-			glog.Errorf("failed to clean up local userdata iso file at %s: %v", localUserdataIsoFilePath, err)
+			utilruntime.HandleError(fmt.Errorf("failed to clean up local userdata iso file at %s: %v", localUserdataIsoFilePath, err))
 		}
 	}()
 
