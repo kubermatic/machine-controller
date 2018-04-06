@@ -20,6 +20,9 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 )
 
 const (
@@ -203,7 +206,10 @@ func getDatacenterFinder(datacenter string, client *govmomi.Client) (*find.Finde
 	finder := find.NewFinder(client.Client, true)
 	dc, err := finder.Datacenter(context.TODO(), datacenter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vsphere datacenter: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to get vsphere datacenter due to %v", err),
+		}
 	}
 	finder.SetDatacenter(dc)
 	return finder, nil
