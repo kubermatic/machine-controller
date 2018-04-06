@@ -116,7 +116,6 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 	}
 
 	clonedVm := clonedVmTaskInfo.Result.(object.Reference)
-	glog.V(2).Infof("Created VM %s successfully", clonedVm)
 
 	return clonedVm.Reference().Value, nil
 }
