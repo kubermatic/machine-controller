@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -219,7 +220,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, err
 	}
 
-	vmID, err := CreateLinkClonedVm(machine.Spec.Name,
+	_, err = CreateLinkClonedVm(machine.Spec.Name,
 		config.TemplateVMName,
 		config.Datacenter,
 		config.Cluster,
@@ -268,11 +269,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, fmt.Errorf("failed to power on machine: %v", err)
 	}
-	powerOnTask.Wait(context.TODO())
 
-	glog.V(2).Infof("Successfully created a vm with name '%s' and id '%s'", machine.Spec.Name, vmID)
+	powerOnTaskContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	err = powerOnTask.Wait(powerOnTaskContext)
+	if err != nil {
+		return nil, fmt.Errorf("timed out waiting to power on vm %s: %v", virtualMachine.Name(), err)
+	}
 
-	return nil, nil
+	return VSphereServer{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
