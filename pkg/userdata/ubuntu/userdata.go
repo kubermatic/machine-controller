@@ -188,6 +188,14 @@ write_files:
     [Unit]
     Requires=network-online.target
     After=network-online.target
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
+    Requires=docker.service
+    After=docker.service
+{{- end }}
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+    Requires=crio.service
+    After=crio.service
+{{- end }}
 
     [Service]
     Type=oneshot
@@ -204,6 +212,7 @@ write_files:
     Type=oneshot
     RemainAfterExit=true
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
+    ExecStartPre=/sbin/modprobe br_netfilter
     ExecStart=/opt/bin/kubeadm join \
 {{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
       --cri-socket /var/run/crio/crio.sock \
@@ -213,12 +222,11 @@ write_files:
       --ignore-preflight-errors=Port-10250 \
       {{ .ServerAddr }}
 
-{{- if .CloudProvider }}
-- path: "/etc/systemd/system/kubelet.service.d/20-cloudprovider.conf"
+- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
   content: |
     [Service]
-    Environment="KUBELET_EXTRA_ARGS=--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-conf"
-{{- end }}
+    Environment="KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-conf{{ end}} \
+      {{ if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o"}} --container-runtime=remote --container-runtime-endpoint=unix:///var/run/crio/crio.sock --cgroup-driver=systemd{{ end }}"
 
 - path: "/etc/systemd/system/kubelet.service.d/30-clusterdns.conf"
   content: |
