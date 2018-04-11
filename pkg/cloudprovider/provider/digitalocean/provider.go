@@ -111,9 +111,9 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	}
 
 	c := Config{}
-	c.Token, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Token)
+	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "DO_TOKEN")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %v", err)
 	}
 	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {

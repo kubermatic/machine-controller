@@ -189,13 +189,13 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	rawConfig := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	c := Config{}
-	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AccessKeyID)
+	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "AWS_ACCESS_KEY_ID")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get the value of \"accessKeyId\" field, error = %v", err)
 	}
-	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SecretAccessKey)
+	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.SecretAccessKey, "AWS_SECRET_ACCESS_KEY")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get the value of \"secretAccessKey\" field, error = %v", err)
 	}
 	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {

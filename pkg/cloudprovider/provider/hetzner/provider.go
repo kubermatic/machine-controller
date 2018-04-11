@@ -72,9 +72,9 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 
 	c := Config{}
-	c.Token, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Token)
+	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "HZ_TOKEN")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %v", err)
 	}
 	c.ServerType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerType)
 	if err != nil {
