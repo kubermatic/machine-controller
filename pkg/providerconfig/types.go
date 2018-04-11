@@ -171,7 +171,7 @@ func (configVarResolver *ConfigVarResolver) GetConfigVarStringValueOrEnv(configV
 
 	envVal, envValFound := os.LookupEnv(envVarName)
 	if !envValFound {
-		return "", fmt.Errorf("all machanisms(value, secret, configMap) of getting the value failed, including reading from environment varialbe = %s which was not set", envVarName)
+		return "", fmt.Errorf("all machanisms(value, secret, configMap) of getting the value failed, including reading from environment variable = %s which was not set", envVarName)
 	}
 	return envVal, nil
 }
