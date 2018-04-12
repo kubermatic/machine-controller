@@ -27,5 +27,5 @@ type Provider interface {
 	// Create creates a cloud instance according to the given machine
 	Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error)
 
-	Delete(machine *v1alpha1.Machine) error
+	Delete(machine *v1alpha1.Machine, instance instance.Instance) error
 }
