@@ -396,7 +396,6 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 	}
 
 	// step 2: we still have an instance on the cloud provider
-
 	// step 2.1: Check if its in deleting state - if so, the provider normally does some own cleanup. We wait until the instance is completely gone.
 	if sets.NewString(string(instance.StatusDeleted), string(instance.StatusDeleting)).Has(string(providerInstance.Status())) {
 		glog.V(4).Infof("deletion of instance %s got triggered. Waiting until it fully disappears", providerInstance.ID())
