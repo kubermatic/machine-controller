@@ -84,6 +84,8 @@ type Controller struct {
 	metrics            MetricsCollection
 	kubeconfigProvider KubeconfigProvider
 
+	validationCache map[string]bool
+
 	name string
 }
 
@@ -130,6 +132,7 @@ func NewMachineController(
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
 		kubeconfigProvider: kubeconfigProvider,
+		validationCache:    map[string]bool{},
 
 		name: name,
 	}
@@ -426,16 +429,27 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, machine *mach
 		}
 		glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
 	}
-	if err := c.validateMachine(prov, machine); err != nil {
-		if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
-			return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
+
+	cacheKey := string(machine.UID) + machine.ResourceVersion
+	if !c.validationCache[cacheKey] {
+		if err := c.validateMachine(prov, machine); err != nil {
+			if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
+				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
+			}
+			return fmt.Errorf("invalid provider config: %v", err)
 		}
-		return fmt.Errorf("invalid provider config: %v", err)
+		c.validationCache[cacheKey] = true
+	} else {
+		glog.V(6).Infof("Skipping validation as the machine was already successfully validated before")
 	}
 	providerInstance, err := prov.Get(machine)
 
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
+		//First invalidate the validation cache to make sure we run the validation on the next sync.
+		//This might happen in case the user invalidates his provider credentials...
+		c.validationCache[cacheKey] = false
+
 		// case 2.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			// remove an error message in case it was set
@@ -482,10 +496,10 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, machine *mach
 	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
-	return c.ensuereNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
+	return c.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
 }
 
-func (c *Controller) ensuereNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *machinev1alpha1.Machine, providerConfig *providerconfig.Config) error {
+func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *machinev1alpha1.Machine, providerConfig *providerconfig.Config) error {
 	node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
 	if err != nil {
 		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
