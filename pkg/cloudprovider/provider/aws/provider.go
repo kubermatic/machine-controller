@@ -42,6 +42,8 @@ const (
 	defaultRoleName            = "kubernetes-v1"
 	defaultInstanceProfileName = "kubernetes-v1"
 	defaultSecurityGroupName   = "kubernetes-v1"
+
+	maxRetries = 100
 )
 
 var (
@@ -252,7 +254,7 @@ func getIAMclient(id, secret, region string) (*iam.IAM, error) {
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
-	return iam.New(sess), nil
+	return iam.New(sess, aws.NewConfig().WithMaxRetries(maxRetries)), nil
 }
 
 func getEC2client(id, secret, region string) (*ec2.EC2, error) {
@@ -260,7 +262,7 @@ func getEC2client(id, secret, region string) (*ec2.EC2, error) {
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
-	return ec2.New(sess), nil
+	return ec2.New(sess, aws.NewConfig().WithMaxRetries(maxRetries)), nil
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
