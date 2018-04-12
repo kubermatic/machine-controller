@@ -180,6 +180,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
+func machineInvalidConfigurationTerminalError(err error) error {
+	return cloudprovidererrors.TerminalError{
+		Reason:  v1alpha1.InvalidConfigurationMachineError,
+		Message: err.Error(),
+	}
+}
+
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
@@ -199,7 +206,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		config.MemoryMB,
 		client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create linked vm: '%v'", err)
+		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create linked vm: '%v'", err))
 	}
 
 	finder, err := getDatacenterFinder(config.Datacenter, client)
@@ -225,7 +232,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	err = uploadAndAttachISO(finder, virtualMachine, localUserdataIsoFilePath, config.Datastore, client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to upload and attach userdata iso: %v", err)
+		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to upload and attach userdata iso: %v", err))
 	}
 
 	// Ubuntu wont boot with attached floppy device, because it tries to write to it
