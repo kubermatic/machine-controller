@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -124,8 +123,6 @@ var (
 			"eu-west-3":      "ami-bfff49c2",
 		},
 	}
-
-	publicKeyCreationLock = &sync.Mutex{}
 )
 
 type RawConfig struct {

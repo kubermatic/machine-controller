@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/golang/glog"
+
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
@@ -17,6 +18,7 @@ import (
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/pagination"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -451,6 +453,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
+	s, err := p.Get(machine)
+	if err != nil {
+		return err
+	}
+
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -467,14 +474,6 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get compute client")
-	}
-
-	s, err := p.Get(machine)
-	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			return nil
-		}
-		return err
 	}
 
 	err = osservers.Delete(computeClient, s.ID()).ExtractErr()

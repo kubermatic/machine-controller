@@ -1,24 +1,31 @@
 package hetzner
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"net/http"
-	"strconv"
-	"sync"
+"context"
+"encoding/json"
+"errors"
+"fmt"
+"net/http"
+"strconv"
 
-	"github.com/golang/glog"
-	"github.com/hetznercloud/hcloud-go/hcloud"
 
-	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
+
+
+
+"github.com/hetznercloud/hcloud-go/hcloud"
+
+
+"k8s.io/apimachinery/pkg/runtime"
+
+
+"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
+cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
 )
 
 type provider struct {
@@ -43,9 +50,6 @@ type Config struct {
 	Datacenter string
 	Location   string
 }
-
-// Protects creation of public key
-var publicKeyCreationLock = &sync.Mutex{}
 
 func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
@@ -193,6 +197,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
+	i, err := p.Get(machine)
+	if err != nil {
+		return err
+	}
+
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -203,14 +212,6 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 
 	ctx := context.TODO()
 	client := getClient(c.Token)
-	i, err := p.Get(machine)
-	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			glog.V(4).Info("instance already deleted")
-			return nil
-		}
-		return err
-	}
 
 	res, err := client.Server.Delete(ctx, i.(*hetznerServer).server)
 	if err != nil {

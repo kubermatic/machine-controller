@@ -13,6 +13,7 @@ import (
 
 	"github.com/digitalocean/godo"
 	"github.com/golang/glog"
+	"github.com/pborman/uuid"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/oauth2"
 
@@ -21,7 +22,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/pborman/uuid"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -335,6 +336,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine) error {
+	i, err := p.Get(machine)
+	if err != nil {
+		return err
+	}
+
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -342,17 +348,9 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-
 	ctx := context.TODO()
 	client := getClient(c.Token)
-	i, err := p.Get(machine)
-	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			glog.V(4).Info("instance already deleted")
-			return nil
-		}
-		return err
-	}
+
 	doID, err := strconv.Atoi(i.ID())
 	if err != nil {
 		return fmt.Errorf("failed to convert instance id %s to int: %v", i.ID(), err)
