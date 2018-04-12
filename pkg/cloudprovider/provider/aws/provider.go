@@ -42,6 +42,8 @@ const (
 	defaultRoleName            = "kubernetes-v1"
 	defaultInstanceProfileName = "kubernetes-v1"
 	defaultSecurityGroupName   = "kubernetes-v1"
+
+	maxRetries = 100
 )
 
 var (
@@ -243,7 +245,7 @@ func getSession(id, secret, token, region string) (*session.Session, error) {
 	config := aws.NewConfig()
 	config = config.WithRegion(region)
 	config = config.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
-	config = config.WithMaxRetries(3)
+	config = config.WithMaxRetries(maxRetries)
 	return session.NewSession(config)
 }
 
