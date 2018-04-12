@@ -280,7 +280,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	return VSphereServer{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return err
