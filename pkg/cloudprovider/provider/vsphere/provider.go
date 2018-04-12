@@ -89,38 +89,21 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, false, nil
 }
 
-func machineSpecParsingTerminalError(err error) error {
-	return cloudprovidererrors.TerminalError{
-		Reason:  v1alpha1.InvalidConfigurationMachineError,
-		Message: fmt.Sprintf("Failed to parse MachineSpec due to %v", err),
-	}
-}
-
 func getClient(username, password, address string, allowInsecure bool) (*govmomi.Client, error) {
 	clientUrl, err := url.Parse(fmt.Sprintf("%s/sdk", address))
 	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse vsphere url due to %v", err),
-		}
+		return nil, err
 	}
 	clientUrl.User = url.UserPassword(username, password)
 
-	client, err := govmomi.NewClient(context.TODO(), clientUrl, allowInsecure)
-	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to get vsphere client due to %v", err),
-		}
-	}
-	return client, nil
+	return govmomi.NewClient(context.TODO(), clientUrl, allowInsecure)
 }
 
 func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	rawConfig := RawConfig{}
@@ -129,42 +112,42 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	c := Config{}
 	c.TemplateVMName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateVMName)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.Username, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Username)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.Password, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Password)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.VSphereURL, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VSphereURL)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.Datacenter, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datacenter)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.Cluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Cluster)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.Datastore, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datastore)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.AllowInsecure)
 	if err != nil {
-		return nil, nil, machineSpecParsingTerminalError(err)
+		return nil, nil, err
 	}
 
 	c.CPUs = rawConfig.CPUs
@@ -175,36 +158,24 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	config, _, err := p.getConfig(spec.ProviderConfig)
-	if err != nil {
-		return err
-	}
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
-		return cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to get vsphere datacenter %s due to %v", config.Datacenter, err),
-		}
+		return err
 	}
 
 	_, err = finder.Datastore(context.TODO(), config.Datastore)
 	if err != nil {
-		return cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to get vsphere datastore %s due to %v", config.Datastore, err),
-		}
+		return err
 	}
 
 	_, err = finder.ClusterComputeResource(context.TODO(), config.Cluster)
 	if err != nil {
-		return cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to get vsphere cluster %s due to %v", config.Cluster, err),
-		}
+		return err
 	}
 	return nil
 }
@@ -212,12 +183,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 
 	_, err = CreateLinkClonedVm(machine.Spec.Name,
@@ -283,12 +254,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 	finder := find.NewFinder(client.Client, true)
 
@@ -338,12 +309,12 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 
 	finder, err := getDatacenterFinder(config.Datacenter, client)
