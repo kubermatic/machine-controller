@@ -245,7 +245,7 @@ func getSession(id, secret, token, region string) (*session.Session, error) {
 	config := aws.NewConfig()
 	config = config.WithRegion(region)
 	config = config.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
-	config = config.WithMaxRetries(3)
+	config = config.WithMaxRetries(maxRetries)
 	return session.NewSession(config)
 }
 
@@ -254,7 +254,7 @@ func getIAMclient(id, secret, region string) (*iam.IAM, error) {
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
-	return iam.New(sess, aws.NewConfig().WithMaxRetries(maxRetries)), nil
+	return iam.New(sess), nil
 }
 
 func getEC2client(id, secret, region string) (*ec2.EC2, error) {
@@ -262,7 +262,7 @@ func getEC2client(id, secret, region string) (*ec2.EC2, error) {
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
-	return ec2.New(sess, aws.NewConfig().WithMaxRetries(maxRetries)), nil
+	return ec2.New(sess), nil
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
