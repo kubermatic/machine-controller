@@ -21,6 +21,7 @@ spec:
       - "<< YOUR_PUBLIC_KEY >>"
     cloudProvider: "digitalocean"
     cloudProviderSpec:
+    # If empty, can be set via DO_TOKEN env var
       token:
         secretKeyRef:
           namespace: kube-system

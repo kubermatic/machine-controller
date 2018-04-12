@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"sync"
 
-	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,9 +42,6 @@ type Config struct {
 	Location   string
 }
 
-// Protects creation of public key
-var publicKeyCreationLock = &sync.Mutex{}
-
 func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfig.OperatingSystemUbuntu:
@@ -72,9 +67,9 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 
 	c := Config{}
-	c.Token, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Token)
+	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "HZ_TOKEN")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %v", err)
 	}
 	c.ServerType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerType)
 	if err != nil {
@@ -192,7 +187,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -203,16 +198,8 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 
 	ctx := context.TODO()
 	client := getClient(c.Token)
-	i, err := p.Get(machine)
-	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			glog.V(4).Info("instance already deleted")
-			return nil
-		}
-		return err
-	}
 
-	res, err := client.Server.Delete(ctx, i.(*hetznerServer).server)
+	res, err := client.Server.Delete(ctx, instance.(*hetznerServer).server)
 	if err != nil {
 		return hzErrorToTerminalError(err, "failed to delete the server")
 	}

@@ -60,7 +60,8 @@ const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
 
 	metricsUpdatePeriod     = 10 * time.Second
-	deletionRetryWaitPeriod = 5 * time.Second
+	deletionRetryWaitPeriod = 30 * time.Second
+	initialDeleteWaitPeriod = 5 * time.Second
 
 	machineKind = "Machine"
 
@@ -83,6 +84,8 @@ type Controller struct {
 	clusterDNSIPs      []net.IP
 	metrics            MetricsCollection
 	kubeconfigProvider KubeconfigProvider
+
+	validationCache map[string]bool
 
 	name string
 }
@@ -130,6 +133,7 @@ func NewMachineController(
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
 		kubeconfigProvider: kubeconfigProvider,
+		validationCache:    map[string]bool{},
 
 		name: name,
 	}
@@ -263,10 +267,10 @@ func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1
 	return prov.Get(machine)
 }
 
-func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
+func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, instance instance.Instance) error {
 	start := time.Now()
 	defer c.metrics.ControllerOperation.With("operation", "delete-cloud-instance").Observe(time.Since(start).Seconds())
-	return prov.Delete(machine)
+	return prov.Delete(machine, instance)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
@@ -356,7 +360,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	if !nodeExistsAndIsReady {
 		glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
-		err = c.createInstanceForMachine(prov, machine, userdataProvider, providerConfig)
+		err = c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
 		if err != nil {
 			return err
 		}
@@ -372,49 +376,54 @@ func (c *Controller) syncHandler(key string) error {
 
 // deleteMachineAndProviderInstance makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
-	var err error
-	var providerInstance instance.Instance
 
-	// step 1: delete provider instance
-	if err = c.deleteProviderInstance(prov, machine); err != nil {
-		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
-		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
+	// step 1: get the provider instance.
+	providerInstance, err := c.getProviderInstance(prov, machine)
+	if err != nil {
+		// step 1.1: failed to get instance, because of some unknown error -> return and see if we need to handle a terminal error here
+		if err != cloudprovidererrors.ErrInstanceNotFound {
+			return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, err.Error(), err, fmt.Sprintf("failed to get instance for machine %s after the delete got triggered", machine.Name))
+		}
+
+		// step 1.2 the instance could not be found -> it's gone, so we remove the finalizer. This essentially will remove the machine object from the system
+		glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
+
+		finalizers := sets.NewString(machine.Finalizers...)
+		finalizers.Delete(finalizerDeleteInstance)
+		machine.Finalizers = finalizers.List()
+		if machine, err = c.updateMachine(machine); err != nil {
+			return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
+		}
+
+		glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
+		return nil
 	}
 
-	// step 2: check that the instance has really gone
-	if providerInstance, err = c.getProviderInstance(prov, machine); err == nil {
-		if sets.NewString(string(instance.StatusDeleted), string(instance.StatusDeleting)).Has(string(providerInstance.Status())) {
-			glog.V(4).Infof("deletion of instance %s got triggered. Waiting until it fully disappears", providerInstance.ID())
-			c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
-			return nil
-		}
-		glog.V(2).Infof("instance %s of machine %s is not deleted yet", providerInstance.ID(), machine.Name)
+	// step 2: we still have an instance on the cloud provider
+	// step 2.1: Check if its in deleting state - if so, the provider normally does some own cleanup. We wait until the instance is completely gone.
+	if sets.NewString(string(instance.StatusDeleted), string(instance.StatusDeleting)).Has(string(providerInstance.Status())) {
+		glog.V(4).Infof("deletion of instance %s got triggered. Waiting until it fully disappears", providerInstance.ID())
 		c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
 		return nil
 	}
-	if err != cloudprovidererrors.ErrInstanceNotFound {
-		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, err.Error(), err, fmt.Sprintf("failed to get instance for machine %s after the delete got triggered", machine.Name))
+
+	// step 2.2: delete provider instance
+	if err = c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
+		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
+		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
-	glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
 
 	// step 3: remove error message in case it was set
 	if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
 		return fmt.Errorf("failed to update machine after removing the delete error: %v", err)
 	}
 
-	// step 4: remove finalizers this essentially will remove the machine object from the system
-	finalizers := sets.NewString(machine.Finalizers...)
-	finalizers.Delete(finalizerDeleteInstance)
-	machine.Finalizers = finalizers.List()
-	if machine, err = c.updateMachine(machine); err != nil {
-		return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
-	}
-
-	glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
+	// step 4: put machine back into the queue as we just triggered the deletion
+	c.workqueue.AddAfter(machine.Name, initialDeleteWaitPeriod)
 	return nil
 }
 
-func (c *Controller) createInstanceForMachine(prov cloud.Provider, machine *machinev1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
+func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *machinev1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
 	// case 1: validate the machine spec before getting the instance from cloud provider.
 	// even though this is a little bit premature and inefficient, it helps us detect invalid specification
 	defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
@@ -429,16 +438,27 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, machine *mach
 		}
 		glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
 	}
-	if err := c.validateMachine(prov, machine); err != nil {
-		if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
-			return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
+
+	cacheKey := string(machine.UID) + machine.ResourceVersion
+	if !c.validationCache[cacheKey] {
+		if err := c.validateMachine(prov, machine); err != nil {
+			if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
+				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
+			}
+			return fmt.Errorf("invalid provider config: %v", err)
 		}
-		return fmt.Errorf("invalid provider config: %v", err)
+		c.validationCache[cacheKey] = true
+	} else {
+		glog.V(6).Infof("Skipping validation as the machine was already successfully validated before")
 	}
 	providerInstance, err := prov.Get(machine)
 
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
+		//First invalidate the validation cache to make sure we run the validation on the next sync.
+		//This might happen in case the user invalidates his provider credentials...
+		c.validationCache[cacheKey] = false
+
 		// case 2.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			// remove an error message in case it was set
@@ -485,10 +505,10 @@ func (c *Controller) createInstanceForMachine(prov cloud.Provider, machine *mach
 	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
-	return c.ensuereNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
+	return c.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
 }
 
-func (c *Controller) ensuereNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *machinev1alpha1.Machine, providerConfig *providerconfig.Config) error {
+func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *machinev1alpha1.Machine, providerConfig *providerconfig.Config) error {
 	node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
 	if err != nil {
 		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)

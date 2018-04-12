@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"os"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -158,6 +160,21 @@ func (configVarResolver *ConfigVarResolver) GetConfigVarStringValue(configVar Co
 	}
 
 	return configVar.Value, nil
+}
+
+// GetConfigVarStringValueOrEvn tries to get the value from ConfigVarString, when it fails, it falls back to
+// getting the value from an environment variable specified by envVarName parameter
+func (configVarResolver *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar ConfigVarString, envVarName string) (string, error) {
+	cfgVar, err := configVarResolver.GetConfigVarStringValue(configVar)
+	if err == nil && len(cfgVar) > 0 {
+		return cfgVar, err
+	}
+
+	envVal, envValFound := os.LookupEnv(envVarName)
+	if !envValFound {
+		return "", fmt.Errorf("all machanisms(value, secret, configMap) of getting the value failed, including reading from environment variable = %s which was not set", envVarName)
+	}
+	return envVal, nil
 }
 
 func (configVarResolver *ConfigVarResolver) GetConfigVarBoolValue(configVar ConfigVarBool) (bool, error) {

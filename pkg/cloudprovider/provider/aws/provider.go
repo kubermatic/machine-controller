@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -43,6 +42,8 @@ const (
 	defaultRoleName            = "kubernetes-v1"
 	defaultInstanceProfileName = "kubernetes-v1"
 	defaultSecurityGroupName   = "kubernetes-v1"
+
+	maxRetries = 100
 )
 
 var (
@@ -124,8 +125,6 @@ var (
 			"eu-west-3":      "ami-bfff49c2",
 		},
 	}
-
-	publicKeyCreationLock = &sync.Mutex{}
 )
 
 type RawConfig struct {
@@ -189,13 +188,13 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	rawConfig := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	c := Config{}
-	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AccessKeyID)
+	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "AWS_ACCESS_KEY_ID")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get the value of \"accessKeyId\" field, error = %v", err)
 	}
-	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SecretAccessKey)
+	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.SecretAccessKey, "AWS_SECRET_ACCESS_KEY")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get the value of \"secretAccessKey\" field, error = %v", err)
 	}
 	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
@@ -246,7 +245,7 @@ func getSession(id, secret, token, region string) (*session.Session, error) {
 	config := aws.NewConfig()
 	config = config.WithRegion(region)
 	config = config.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
-	config = config.WithMaxRetries(3)
+	config = config.WithMaxRetries(maxRetries)
 	return session.NewSession(config)
 }
 
@@ -615,7 +614,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		Groups:     aws.StringSlice(securityGroupIDs),
 	})
 	if err != nil {
-		delErr := p.Delete(machine)
+		delErr := p.Delete(machine, awsInstance)
 		if delErr != nil {
 			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %s & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName))
 		}
@@ -625,12 +624,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	return awsInstance, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	i, err := p.Get(machine)
-	if err != nil {
-		return err
-	}
-
+func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -645,14 +639,14 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	}
 
 	tOut, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
-		InstanceIds: aws.StringSlice([]string{i.ID()}),
+		InstanceIds: aws.StringSlice([]string{instance.ID()}),
 	})
 	if err != nil {
 		return awsErrorToTerminalError(err, "failed to terminate instance")
 	}
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
-		glog.V(4).Infof("successfully triggered termination of instance %s at aws", i.ID())
+		glog.V(4).Infof("successfully triggered termination of instance %s at aws", instance.ID())
 	}
 
 	return nil
