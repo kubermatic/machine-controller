@@ -452,12 +452,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	return &osInstance{server: &server}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	s, err := p.Get(machine)
-	if err != nil {
-		return err
-	}
-
+func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance) error {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -476,7 +471,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 		return osErrorToTerminalError(err, "failed to get compute client")
 	}
 
-	err = osservers.Delete(computeClient, s.ID()).ExtractErr()
+	err = osservers.Delete(computeClient, instance.ID()).ExtractErr()
 	return osErrorToTerminalError(err, "failed to delete instance")
 }
 

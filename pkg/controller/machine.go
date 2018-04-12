@@ -61,6 +61,7 @@ const (
 
 	metricsUpdatePeriod     = 10 * time.Second
 	deletionRetryWaitPeriod = 30 * time.Second
+	initialDeleteWaitPeriod = 5 * time.Second
 
 	machineKind = "Machine"
 
@@ -263,10 +264,10 @@ func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1
 	return prov.Get(machine)
 }
 
-func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
+func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, instance instance.Instance) error {
 	start := time.Now()
 	defer c.metrics.ControllerOperation.With("operation", "delete-cloud-instance").Observe(time.Since(start).Seconds())
-	return prov.Delete(machine)
+	return prov.Delete(machine, instance)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
@@ -404,7 +405,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 	}
 
 	// step 2.2: delete provider instance
-	if err = c.deleteProviderInstance(prov, machine); err != nil {
+	if err = c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
 		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
@@ -414,6 +415,8 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 		return fmt.Errorf("failed to update machine after removing the delete error: %v", err)
 	}
 
+	// step 4: put machine back into the queue as we just triggered the deletion
+	c.workqueue.AddAfter(machine.Name, initialDeleteWaitPeriod)
 	return nil
 }
 

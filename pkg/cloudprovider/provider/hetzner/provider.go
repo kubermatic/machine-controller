@@ -187,12 +187,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	i, err := p.Get(machine)
-	if err != nil {
-		return err
-	}
-
+func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -204,7 +199,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	res, err := client.Server.Delete(ctx, i.(*hetznerServer).server)
+	res, err := client.Server.Delete(ctx, instance.(*hetznerServer).server)
 	if err != nil {
 		return hzErrorToTerminalError(err, "failed to delete the server")
 	}

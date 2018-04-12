@@ -335,12 +335,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	return &doInstance{droplet: droplet}, err
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	i, err := p.Get(machine)
-	if err != nil {
-		return err
-	}
-
+func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -351,9 +346,9 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	doID, err := strconv.Atoi(i.ID())
+	doID, err := strconv.Atoi(instance.ID())
 	if err != nil {
-		return fmt.Errorf("failed to convert instance id %s to int: %v", i.ID(), err)
+		return fmt.Errorf("failed to convert instance id %s to int: %v", instance.ID(), err)
 	}
 
 	rsp, err := client.Droplets.Delete(ctx, doID)

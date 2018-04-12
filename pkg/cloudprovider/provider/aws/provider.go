@@ -612,7 +612,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		Groups:     aws.StringSlice(securityGroupIDs),
 	})
 	if err != nil {
-		delErr := p.Delete(machine)
+		delErr := p.Delete(machine, awsInstance)
 		if delErr != nil {
 			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %s & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName))
 		}
@@ -622,12 +622,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	return awsInstance, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine) error {
-	i, err := p.Get(machine)
-	if err != nil {
-		return err
-	}
-
+func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -642,14 +637,14 @@ func (p *provider) Delete(machine *v1alpha1.Machine) error {
 	}
 
 	tOut, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
-		InstanceIds: aws.StringSlice([]string{i.ID()}),
+		InstanceIds: aws.StringSlice([]string{instance.ID()}),
 	})
 	if err != nil {
 		return awsErrorToTerminalError(err, "failed to terminate instance")
 	}
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
-		glog.V(4).Infof("successfully triggered termination of instance %s at aws", i.ID())
+		glog.V(4).Infof("successfully triggered termination of instance %s at aws", instance.ID())
 	}
 
 	return nil
