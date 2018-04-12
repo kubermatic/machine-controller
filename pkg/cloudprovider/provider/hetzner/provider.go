@@ -1,31 +1,22 @@
 package hetzner
 
 import (
-"context"
-"encoding/json"
-"errors"
-"fmt"
-"net/http"
-"strconv"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
 
+	"github.com/hetznercloud/hcloud-go/hcloud"
 
+	"k8s.io/apimachinery/pkg/runtime"
 
-
-
-
-
-"github.com/hetznercloud/hcloud-go/hcloud"
-
-
-"k8s.io/apimachinery/pkg/runtime"
-
-
-"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
-cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-"github.com/kubermatic/machine-controller/pkg/providerconfig"
-
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
 type provider struct {
