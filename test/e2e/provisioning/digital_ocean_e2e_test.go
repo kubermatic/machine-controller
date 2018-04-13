@@ -13,17 +13,7 @@ const (
 	do_manifest = "./testdata/machine-digitalocean.yaml"
 )
 
-var digitalOceanScenarios = []struct {
-	// name holds short description of the test scenario, it is also used to create machines and nodes names
-	// so please don't put "strange" characters there
-	name                    string
-	osName                  string
-	containerRuntime        string
-	containerRuntimeVersion string
-	// if the -short flag was provided and this variable is set
-	// the test scenario will be run otherwise it will be skipped.
-	short bool
-}{
+var digitalOceanScenarios = []scenarios{
 	{
 		name:                    "scenario 1 Ubuntu Docker 1.13",
 		osName:                  "ubuntu",
