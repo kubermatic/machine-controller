@@ -15,6 +15,7 @@ set -e
 echo "Testing create of a node via machine-controller...."
 ./verify \
   -input examples/machine-$TYPE.yaml \
+  -parameters "machine1=machine-${TYPE}-${OS}" \
   -parameters "<< HETZNER_TOKEN >>=$HZ_TOKEN,cri-o=docker,node1=testnode-${CIRCLE_BUILD_NUM:-local},ubuntu=${OS}" \
   -parameters "<< VSPHERE_PASSWORD >>=${VSPHERE_PASSWORD:-undef},<< VSPHERE_USERNAME >>=${VSPHERE_USERNAME:-undef}" \
   -parameters "<< VSPHERE_ADDRESS >>=${VSPHERE_ADDRESS:-undef}" \
