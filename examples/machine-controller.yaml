@@ -97,6 +97,7 @@ rules:
   - machine-controller-digitalocean
   - machine-controller-openstack
   - machine-controller-aws
+  - machine-controller-vsphere
   verbs:
   - get
 - apiGroups:

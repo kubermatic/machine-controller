@@ -91,6 +91,9 @@ jobs:
           name: Create kubeadm cluster and install machine-controller onto it
           command: ./test/tools/integration/provision_master.sh
       - run:
+          name: Test create and destroy ubuntu on vsphere
+          command: ./test/tools/integration/create-and-destroy-machine.sh ubuntu vsphere
+      - run:
           name: Test create and destroy ubuntu machine
           command: ./test/tools/integration/create-and-destroy-machine.sh
       - run:

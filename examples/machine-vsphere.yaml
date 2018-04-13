@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-vsphere
+  namespace: kube-system
+type: Opaque
+stringData:
+  password: << VSPHERE_PASSWORD >>
+---
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: vsphere-machine
+spec:
+  metadata:
+    name: node1
+    labels:
+      foo: "bar"
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "vsphere"
+    cloudProviderSpec:
+      templateVMName: ubuntu-template
+      username: '<< VSPHERE_USERNAME >>'
+      vsphereURL: 'https://<< VSPHERE_ADDRESS >>'
+      datacenter: 'Datacenter'
+      password:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-vsphere
+          key: password
+      cluster: "test-cluster"
+      datastore: datastore1
+      allowInsecure: true
+      cpus: 2
+      MemoryMB: 2048
+    operatingSystem: "ubuntu"
+    operatingSystemSpec:
+      distUpgradeOnBoot: false
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.9.6"
+    containerRuntime:
+      # If you are using Ubuntu, you may choose 'cri-o' instead
+      name: "docker"
+      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
+      version: "1.13"

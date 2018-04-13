@@ -360,6 +360,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
+- "open-vm-tools"
 - ["docker.io", "1.13.1-0ubuntu1~16.04.2"]
 `
 
@@ -481,6 +482,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
+- "open-vm-tools"
 - "cri-o-1.9"
 `
 
@@ -661,6 +663,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
+- "open-vm-tools"
 - ["docker-ce", "17.03.2~ce-0~ubuntu-xenial"]
 `
 	docker1703DistupgradeOpenstackMultipleDNS = `#cloud-config
@@ -840,6 +843,7 @@ packages:
 - "nfs-common"
 - "socat"
 - "util-linux"
+- "open-vm-tools"
 - ["docker-ce", "17.03.2~ce-0~ubuntu-xenial"]
 `
 )

@@ -232,9 +232,12 @@ func (c *Controller) updateMachine(machine *machinev1alpha1.Machine) (*machinev1
 }
 
 func (c *Controller) clearMachineErrorIfSet(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
-	machine.Status.ErrorMessage = nil
-	machine.Status.ErrorReason = nil
-	return c.updateMachine(machine)
+	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
+		machine.Status.ErrorMessage = nil
+		machine.Status.ErrorReason = nil
+		return c.updateMachine(machine)
+	}
+	return machine, nil
 }
 
 // updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not

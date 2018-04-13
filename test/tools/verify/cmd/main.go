@@ -29,9 +29,30 @@ const (
 	tempDir                  = "/tmp"
 )
 
+type arrayFlags string
+
+func (i *arrayFlags) String() string {
+	return string(*i)
+}
+
+func (i *arrayFlags) Set(value string) error {
+	if value == "" {
+		return nil
+	}
+	var direct arrayFlags
+	if *i != arrayFlags("") {
+		direct = arrayFlags(fmt.Sprintf("%s,%s", i, value))
+	} else {
+		direct = arrayFlags(value)
+	}
+	*i = direct
+
+	return nil
+}
+
 func main() {
 	var manifestPath string
-	var parameters string
+	var parameters arrayFlags
 	var kubeConfig string
 	var createOnly bool
 
@@ -42,17 +63,17 @@ func main() {
 
 	flag.StringVar(&kubeConfig, "kubeconfig", defaultKubeconfigPath, "a path to the kubeconfig.")
 	flag.StringVar(&manifestPath, "input", "", "a path to the machine's manifest.")
-	flag.StringVar(&parameters, "parameters", "", "a list of comma-delimited key value pairs i.e key=value,key1=value2.")
+	flag.Var(&parameters, "parameters", "a list of comma-delimited key value pairs i.e key=value,key1=value2. Can be passed multiple times")
 	flag.BoolVar(&createOnly, "createOnly", false, "if the tool should create only but not run deletion")
 	flag.Parse()
 
 	// input sanitizaiton
-	if len(manifestPath) == 0 || len(parameters) == 0 || len(kubeConfig) == 0 {
-		glog.Errorln("please specify kubeconfig, input and parameters flags:")
+	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
+		glog.Errorln("please specify kubeconfig and input flags!")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-	keyValuePairs := strings.Split(parameters, ",")
+	keyValuePairs := strings.Split(parameters.String(), ",")
 	if len(keyValuePairs) == 0 {
 		glog.Errorln("incorrect value of parameters flag:")
 		flag.PrintDefaults()
