@@ -55,7 +55,6 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []struct {
 		spec           machinesv1alpha1.MachineSpec
-		kubeconfig     string
 		ccProvider     cloud.ConfigProvider
 		clusterDNSIPs  []net.IP
 		expectedResult string
