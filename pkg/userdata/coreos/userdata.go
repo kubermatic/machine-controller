@@ -90,7 +90,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 
 	kubernetesCACert, err := userdatahelper.GetCACert(kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting cacert: %v")
+		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
 	data := struct {
