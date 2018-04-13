@@ -15,5 +15,5 @@ export DO_E2E_TESTS_TOKEN=$DO_E2E_TESTS_TOKEN
 
 echo "Running E2E tests"
 cd test/e2e
-go test -tags=e2e -v -timeout 60m  ./... || (kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-con'|awk '{ print \$1 }'); exit 1)
+go test -tags=e2e -v -short -timeout 60m  ./... || (kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-con'|awk '{ print \$1 }'); exit 1)
 EOF
