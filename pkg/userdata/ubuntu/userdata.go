@@ -91,7 +91,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 
 	kubeadmCACertHash, err := userdatahelper.GetKubeadmCACertHash(kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting kubeadm cacert hash: %v")
+		return "", fmt.Errorf("error extracting kubeadm cacert hash: %v", err)
 	}
 
 	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(kubeconfig)

@@ -45,6 +45,9 @@ func GetKubeadmCACertHash(kubeconfig *clientcmdapi.Config) (string, error) {
 	// _ is not an error but the remaining bytes in case the
 	// input to pem.Decode() contains more than one cert
 	certBlock, _ := pem.Decode([]byte(cacert))
+	if certBlock == nil {
+		return "", fmt.Errorf("pem certificate is empty")
+	}
 	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
 		return "", fmt.Errorf("error parsing certificate: %v", err)

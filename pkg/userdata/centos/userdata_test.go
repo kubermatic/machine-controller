@@ -13,6 +13,33 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 )
 
+var pemCertificate = `-----BEGIN CERTIFICATE-----
+MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
+BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
+A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
+DQEJARYOYnJhZEBkYW5nYS5jb20wHhcNMTQwNzE1MjA0NjA1WhcNMTcwNTA0MjA0
+NjA1WjB7MQswCQYDVQQGEwJVUzELMAkGA1UECBMCQ0ExFjAUBgNVBAcTDVNhbiBG
+cmFuY2lzY28xFDASBgNVBAoTC0JyYWRmaXR6aW5jMRIwEAYDVQQDEwlsb2NhbGhv
+c3QxHTAbBgkqhkiG9w0BCQEWDmJyYWRAZGFuZ2EuY29tMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEAt5fAjp4fTcekWUTfzsp0kyih1OYbsGL0KX1eRbSS
+R8Od0+9Q62Hyny+GFwMTb4A/KU8mssoHvcceSAAbwfbxFK/+s51TobqUnORZrOoT
+ZjkUygbyXDSK99YBbcR1Pip8vwMTm4XKuLtCigeBBdjjAQdgUO28LENGlsMnmeYk
+JfODVGnVmr5Ltb9ANA8IKyTfsnHJ4iOCS/PlPbUj2q7YnoVLposUBMlgUb/CykX3
+mOoLb4yJJQyA/iST6ZxiIEj36D4yWZ5lg7YJl+UiiBQHGCnPdGyipqV06ex0heYW
+caiW8LWZSUQ93jQ+WVCH8hT7DQO1dmsvUmXlq/JeAlwQ/QIDAQABo4HgMIHdMB0G
+A1UdDgQWBBRcAROthS4P4U7vTfjByC569R7E6DCBrQYDVR0jBIGlMIGigBRcAROt
+hS4P4U7vTfjByC569R7E6KF/pH0wezELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNB
+MRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRQwEgYDVQQKEwtCcmFkZml0emluYzES
+MBAGA1UEAxMJbG9jYWxob3N0MR0wGwYJKoZIhvcNAQkBFg5icmFkQGRhbmdhLmNv
+bYIJALfRlWsI8YQHMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBAG6h
+U9f9sNH0/6oBbGGy2EVU0UgITUQIrFWo9rFkrW5k/XkDjQm+3lzjT0iGR4IxE/Ao
+eU6sQhua7wrWeFEn47GL98lnCsJdD7oZNhFmQ95Tb/LnDUjs5Yj9brP0NWzXfYU4
+UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
+58SNVEUsztzQyXmJEhCpwVI0A6QCjzXj+qvpmw3ZZHi8JwXei8ZZBLTSFBki8Z7n
+sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
+kPe6XoSbiLm/kxk32T0=
+-----END CERTIFICATE-----`
+
 type fakeCloudConfigProvider struct {
 	config string
 	name   string
@@ -49,7 +76,7 @@ func TestUserDataGeneration(t *testing.T) {
 	}
 
 	cloudProvider := &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil}
-	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte("CACert")}},
+	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": &clientcmdapi.AuthInfo{Token: "my-token"}}}
 	provider := Provider{}
 	for _, test := range tests {
@@ -104,82 +131,36 @@ write_files:
     #     minimum - Modification of targeted policy. Only selected processes are protected.
     #     mls - Multi Level Security protection.
     SELINUXTYPE=targeted
-- path: "/etc/kubernetes/cloud-config"
-  content: |
-    {aws-config:true}
 
-- path: "/etc/kubernetes/bootstrap.kubeconfig"
-  content: |
-    apiVersion: v1
-    clusters:
-    - cluster:
-        certificate-authority-data: Q0FDZXJ0
-        server: https://server:443
-      name: ""
-    contexts: []
-    current-context: ""
-    kind: Config
-    preferences: {}
-    users:
-    - name: ""
-      user:
-        token: my-token
-    
-
-- path: /etc/kubernetes/ca.crt
-  content: |
-    CACert
-
-- path: "/etc/systemd/system/kubelet.service.d/10-machine-controller.conf"
+- path: "/etc/systemd/system/kubeadm-join.service"
   content: |
     [Unit]
-    Description=Kubelet
     Requires=network-online.target docker.service
-    After=docker.service network-online.target
+    After=network-online.target docker.service
 
     [Service]
-    Restart=always
-    RestartSec=10
-    StartLimitInterval=600
-    StartLimitBurst=50
-    TimeoutStartSec=5min
-    Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
-    ExecStart=
-    ExecStart=/bin/kubelet \
-      --container-runtime=docker \
-      --cgroup-driver=systemd \
-      --allow-privileged=true \
-      --cni-bin-dir=/opt/cni/bin \
-      --cni-conf-dir=/etc/cni/net.d \
-      --cluster-dns= \
-      --cluster-domain=cluster.local \
-      --network-plugin=cni \
-      --cloud-provider=aws \
-      --cloud-config=/etc/kubernetes/cloud-config \
-      --cert-dir=/etc/kubernetes/ \
-      --pod-manifest-path=/etc/kubernetes/manifests \
-      --resolv-conf=/etc/resolv.conf \
-      --rotate-certificates=true \
-      --kubeconfig=/etc/kubernetes/kubeconfig \
-      --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
-      --lock-file=/var/run/lock/kubelet.lock \
-      --exit-on-lock-contention \
-      --read-only-port 0 \
-      --authorization-mode=Webhook \
-      --anonymous-auth=false \
-      --client-ca-file=/etc/kubernetes/ca.crt
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStartPre=/usr/sbin/modprobe br_netfilter
+      --token my-token \
+      --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
+      server:443
 
-    [Install]
-    WantedBy=multi-user.target
+- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
+  content: |
+    [Service]
+    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-conf"
 
 runcmd:
 - setenforce 0 || true
 - chage -d $(date +%s) root
-- systemctl enable --now kubelet
+- systemctl enable kubelet
+- systemctl enable --now kubeadm-join
 
 packages:
 - docker-1.13.1
 - kubelet-1.9.6
+- kubeadm-1.9.6
 - ebtables
 - ethtool
 - nfs-utils
