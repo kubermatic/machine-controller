@@ -56,9 +56,7 @@ var digitalOceanScenarios = []scenarios{
 //
 // note that tests require  a valid API Token that is read from the DO_E2E_TEST_TOKEN environmental variable.
 func TestDigitalOceanProvisioningE2E(t *testing.T) {
-	if testing.Short() {
-		t.Parallel()
-	}
+	t.Parallel()
 
 	// test data
 	doToken := os.Getenv("DO_E2E_TESTS_TOKEN")

@@ -54,9 +54,7 @@ var awsScenarios = []scenarios{
 // TestAWSProvisioning - a test suite that exercises AWS provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
 func TestAWSProvisioningE2E(t *testing.T) {
-	if testing.Short() {
-		t.Parallel()
-	}
+	t.Parallel()
 
 	// test data
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
