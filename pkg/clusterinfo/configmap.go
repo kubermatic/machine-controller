@@ -1,14 +1,10 @@
 package clusterinfo
 
 import (
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
-	"strings"
 
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
@@ -47,55 +43,6 @@ func (p *KubeconfigProvider) GetKubeconfig() (*clientcmdapi.Config, error) {
 		return p.buildKubeconfigFromEndpoint()
 	}
 	return cm, nil
-}
-
-// Returns the API servers address without protocol prefix
-func (p *KubeconfigProvider) GetServerAddress() (string, error) {
-	cm, err := p.GetKubeconfig()
-	if err != nil {
-		return "", fmt.Errorf("failed to get kubeconfig: '%v'", err)
-	}
-	if len(cm.Clusters) != 1 {
-		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address...")
-	}
-	for _, clusterConfig := range cm.Clusters {
-		return strings.Replace(clusterConfig.Server, "https://", "", -1), nil
-	}
-
-	return "", fmt.Errorf("no server address found!")
-
-}
-
-func (p *KubeconfigProvider) GetCACert() (string, error) {
-	//Need the kubeconfig to extract the CACert for the userdata rendering
-	cm, err := p.GetKubeconfig()
-	if err != nil {
-		return "", fmt.Errorf("failed to get kubeconfig: '%v'", err)
-	}
-	if len(cm.Clusters) != 1 {
-		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract cacert...")
-	}
-	for _, clusterConfig := range cm.Clusters {
-		return string(clusterConfig.CertificateAuthorityData), nil
-	}
-
-	return "", fmt.Errorf("no CACert found!")
-}
-
-// Returns a sha256sum of the Certificates RawSubjectPublicKeyInfo
-func (p *KubeconfigProvider) GetKubeadmCACertHash() (string, error) {
-	cacert, err := p.GetCACert()
-	if err != nil {
-		return "", err
-	}
-	// _ is not an error but the remaining bytes in case the
-	// input to pem.Decode() contains more than one cert
-	certBlock, _ := pem.Decode([]byte(cacert))
-	cert, err := x509.ParseCertificate(certBlock.Bytes)
-	if err != nil {
-		return "", fmt.Errorf("error parsing certificate: %v", err)
-	}
-	return fmt.Sprintf("%x", sha256.Sum256(cert.RawSubjectPublicKeyInfo)), nil
 }
 
 func (p *KubeconfigProvider) getKubeconfigFromConfigMap() (*clientcmdapi.Config, error) {

@@ -14,7 +14,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 const crictlVersion = "v0.2"
@@ -56,7 +58,7 @@ func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.Cont
 	return runtimes
 }
 
-func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, bootstrapToken string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, kubeadmCACertHash, serverAddr string) (string, error) {
+func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -80,6 +82,21 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, bootstrapToken str
 	osConfig, err := getConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
+	}
+
+	bootstrapToken, err := userdatahelper.GetTokenFromKubeconfig(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting token: %v", err)
+	}
+
+	kubeadmCACertHash, err := userdatahelper.GetKubeadmCACertHash(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting kubeadm cacert hash: %v")
+	}
+
+	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
 	}
 
 	var crPkg, crPkgVersion string

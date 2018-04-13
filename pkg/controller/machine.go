@@ -92,9 +92,6 @@ type Controller struct {
 
 type KubeconfigProvider interface {
 	GetKubeconfig() (*clientcmdapi.Config, error)
-	GetCACert() (string, error)
-	GetServerAddress() (string, error)
-	GetKubeadmCACertHash() (string, error)
 }
 
 // MetricsCollection is a struct of all metrics used in
@@ -481,21 +478,12 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			}
 			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
-			bootstrapToken, err := c.createBootstrapToken(machine.Name)
+			kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
 			if err != nil {
-				return fmt.Errorf("failed to create bootstrap token: %v", err)
+				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
-			kubeadmCACertHash, err := c.kubeconfigProvider.GetKubeadmCACertHash()
-			if err != nil {
-				return fmt.Errorf("error getting CACert checksum: '%v'", err)
-			}
-
-			serverAddr, err := c.kubeconfigProvider.GetServerAddress()
-			if err != nil {
-				return fmt.Errorf("error getting server address: '%v'", err)
-			}
-			userdata, err := userdataProvider.UserData(machine.Spec, bootstrapToken, prov, c.clusterDNSIPs, kubeadmCACertHash, serverAddr)
+			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
 			if err != nil {
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
