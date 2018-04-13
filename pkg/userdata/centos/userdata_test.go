@@ -8,6 +8,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/pmezard/go-difflib/difflib"
 )
@@ -48,11 +49,11 @@ func TestUserDataGeneration(t *testing.T) {
 	}
 
 	cloudProvider := &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil}
-	kubeconfig := "kubeconfig"
-	kubernetesCACert := "CACert"
+	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte("CACert")}},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": &clientcmdapi.AuthInfo{Token: "my-token"}}}
 	provider := Provider{}
 	for _, test := range tests {
-		userdata, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs, kubernetesCACert)
+		userdata, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}
@@ -109,7 +110,21 @@ write_files:
 
 - path: "/etc/kubernetes/bootstrap.kubeconfig"
   content: |
-    kubeconfig
+    apiVersion: v1
+    clusters:
+    - cluster:
+        certificate-authority-data: Q0FDZXJ0
+        server: https://server:443
+      name: ""
+    contexts: []
+    current-context: ""
+    kind: Config
+    preferences: {}
+    users:
+    - name: ""
+      user:
+        token: my-token
+    
 
 - path: /etc/kubernetes/ca.crt
   content: |
