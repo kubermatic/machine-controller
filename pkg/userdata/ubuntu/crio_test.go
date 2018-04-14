@@ -23,10 +23,17 @@ func TestGetCRIOInstallCandidate(t *testing.T) {
 			resVer:  "",
 		},
 		{
-			name:    "get minor version",
+			name:    "get minor version 1.9",
 			version: "1.9",
 			resErr:  nil,
 			resPkg:  "cri-o-1.9",
+			resVer:  "",
+		},
+		{
+			name:    "get minor version 1.10",
+			version: "1.10",
+			resErr:  nil,
+			resPkg:  "cri-o-1.10",
 			resVer:  "",
 		},
 	}
