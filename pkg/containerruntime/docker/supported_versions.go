@@ -16,7 +16,7 @@ func GetOfficiallySupportedVersions(kubernetesVersion string) ([]string, error) 
 
 	majorMinorString := fmt.Sprintf("%d.%d", v.Major(), v.Minor())
 	switch majorMinorString {
-	case "1.8", "1.9":
+	case "1.8", "1.9", "1.10":
 		return []string{"1.11.2", "1.12.6", "1.13.1", "17.03.2"}, nil
 	default:
 		return nil, errors.NoSupportedVersionsAvailableErr
