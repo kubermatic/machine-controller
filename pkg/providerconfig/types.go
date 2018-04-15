@@ -162,13 +162,17 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		configMapKeyRefEmpty = true
 	}
 
+	if secretKeyRefEmpty && configMapKeyRefEmpty {
+		return []byte(fmt.Sprintf("%v", configVarBool.Value)), nil
+	}
+
 	buffer := bytes.NewBufferString("{")
 	if !secretKeyRefEmpty {
 		jsonVal, err := json.Marshal(configVarBool.SecretKeyRef)
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf("\"secretKeyRef\":%s", string(jsonVal)))
+		buffer.WriteString(fmt.Sprintf(`"secretKeyRef":%s`, string(jsonVal)))
 	}
 
 	if !configMapKeyRefEmpty {
@@ -180,12 +184,10 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf("%s\"configMapKeyRef\":%s", leadingComma, jsonVal))
+		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
-	if secretKeyRefEmpty && configMapKeyRefEmpty {
-		return []byte(fmt.Sprintf("%v", configVarBool.Value)), nil
-	}
+	buffer.WriteString(fmt.Sprintf(`,"value":%v`, configVarBool.Value))
 
 	buffer.WriteString("}")
 	return buffer.Bytes(), nil
@@ -193,8 +195,6 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		b = bytes.TrimPrefix(b, []byte(`"`))
-		b = bytes.TrimSuffix(b, []byte(`"`))
 		value, err := strconv.ParseBool(string(b))
 		if err != nil {
 			return fmt.Errorf("Error converting string to bool: '%v'", err)
@@ -202,26 +202,14 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 		configVarBool.Value = value
 		return nil
 	}
-	var cvsDummy configVarStringWithoutUnmarshaller
-	err := json.Unmarshal(b, &cvsDummy)
-	// Assume error was caused by `Value` being a bool, not a string
+	var cvbDummy configVarBoolWithoutUnmarshaller
+	err := json.Unmarshal(b, &cvbDummy)
 	if err != nil {
-		var cvbDummy configVarBoolWithoutUnmarshaller
-		err := json.Unmarshal(b, &cvbDummy)
-		if err != nil {
-			return err
-		}
-		configVarBool.Value = cvbDummy.Value
-		configVarBool.SecretKeyRef = cvbDummy.SecretKeyRef
-		configVarBool.ConfigMapKeyRef = cvsDummy.ConfigMapKeyRef
-		return nil
+		return err
 	}
-	value, err := strconv.ParseBool(cvsDummy.Value)
-	if err != nil {
-		return fmt.Errorf("Error converting string value to bool: '%v'", err)
-	}
-	configVarBool.Value = value
-	configVarBool.SecretKeyRef = cvsDummy.SecretKeyRef
+	configVarBool.Value = cvbDummy.Value
+	configVarBool.SecretKeyRef = cvbDummy.SecretKeyRef
+	configVarBool.ConfigMapKeyRef = cvbDummy.ConfigMapKeyRef
 	return nil
 }
 
