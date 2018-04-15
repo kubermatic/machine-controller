@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"k8s.io/api/core/v1"
 )
 
 func TestConfigVarStringUnmarshalling(t *testing.T) {
@@ -56,4 +58,32 @@ func TestConfigVarBoolUnmarshalling(t *testing.T) {
 		t.Fatalf("Decoding map string bool into configVarBool failed! Error: '%v'", err)
 	}
 
+}
+
+func TestConfigVarStringMarshalling(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		cvs      ConfigVarString
+		expected string
+	}{
+		{
+			cvs:      ConfigVarString{Value: "val"},
+			expected: `"val"`,
+		},
+		{
+			cvs:      ConfigVarString{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+			expected: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		result, err := json.Marshal(testCase.cvs)
+		if err != nil {
+			t.Errorf("Failed to marshall config var string: %v", err)
+		}
+		if string(result) != testCase.expected {
+			t.Errorf("Result '%s' of config var string marshalling does not match expected '%s'", string(result), testCase.expected)
+		}
+	}
 }
