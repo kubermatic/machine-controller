@@ -67,6 +67,56 @@ type ConfigVarString struct {
 // causing a recursion
 type configVarStringWithoutUnmarshaller ConfigVarString
 
+// This is done to not have the json object cluttered with empty strings
+// This will eventually hopefully be resolved within golang itself
+// https://github.com/golang/go/issues/11939
+func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
+	var secretKeyRefEmpty, configMapKeyRefEmpty bool
+	if configVarString.SecretKeyRef.ObjectReference.Namespace == "" &&
+		configVarString.SecretKeyRef.ObjectReference.Name == "" &&
+		configVarString.SecretKeyRef.Key == "" {
+		secretKeyRefEmpty = true
+	}
+
+	if configVarString.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
+		configVarString.ConfigMapKeyRef.ObjectReference.Name == "" &&
+		configVarString.ConfigMapKeyRef.Key == "" {
+		configMapKeyRefEmpty = true
+	}
+
+	buffer := bytes.NewBufferString("{")
+	if !secretKeyRefEmpty {
+		jsonVal, err := json.Marshal(configVarString.SecretKeyRef)
+		if err != nil {
+			return nil, err
+		}
+		buffer.WriteString(fmt.Sprintf("\"secretKeyRef\":%s", string(jsonVal)))
+	}
+
+	if !configMapKeyRefEmpty {
+		var leadingComma string
+		if !secretKeyRefEmpty {
+			leadingComma = ","
+		}
+		jsonVal, err := json.Marshal(configVarString.ConfigMapKeyRef)
+		if err != nil {
+			return nil, err
+		}
+		buffer.WriteString(fmt.Sprintf("%s\"configMapKeyRef\":%s", leadingComma, jsonVal))
+	}
+
+	if configVarString.Value != "" {
+		if !secretKeyRefEmpty || !configMapKeyRefEmpty {
+			buffer.WriteString(fmt.Sprintf(",\"value\":\"%s\"", configVarString.Value))
+		} else {
+			return []byte(fmt.Sprintf(`"%s"`, configVarString.Value)), nil
+		}
+	}
+
+	buffer.WriteString("}")
+	return buffer.Bytes(), nil
+}
+
 func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
 		b = bytes.TrimPrefix(b, []byte(`"`))
@@ -94,6 +144,52 @@ type ConfigVarBool struct {
 }
 
 type configVarBoolWithoutUnmarshaller ConfigVarBool
+
+// This is done to not have the json object cluttered with empty strings
+// This will eventually hopefully be resolved within golang itself
+// https://github.com/golang/go/issues/11939
+func (configVarBool *ConfigVarBool) MarshalJSON() ([]byte, error) {
+	var secretKeyRefEmpty, configMapKeyRefEmpty bool
+	if configVarBool.SecretKeyRef.ObjectReference.Namespace == "" &&
+		configVarBool.SecretKeyRef.ObjectReference.Name == "" &&
+		configVarBool.SecretKeyRef.Key == "" {
+		secretKeyRefEmpty = true
+	}
+
+	if configVarBool.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
+		configVarBool.ConfigMapKeyRef.ObjectReference.Name == "" &&
+		configVarBool.ConfigMapKeyRef.Key == "" {
+		configMapKeyRefEmpty = true
+	}
+
+	buffer := bytes.NewBufferString("{")
+	if !secretKeyRefEmpty {
+		jsonVal, err := json.Marshal(configVarBool.SecretKeyRef)
+		if err != nil {
+			return nil, err
+		}
+		buffer.WriteString(fmt.Sprintf("\"secretKeyRef\":%s", string(jsonVal)))
+	}
+
+	if !configMapKeyRefEmpty {
+		var leadingComma string
+		if !secretKeyRefEmpty {
+			leadingComma = ","
+		}
+		jsonVal, err := json.Marshal(configVarBool.ConfigMapKeyRef)
+		if err != nil {
+			return nil, err
+		}
+		buffer.WriteString(fmt.Sprintf("%s\"configMapKeyRef\":%s", leadingComma, jsonVal))
+	}
+
+	if secretKeyRefEmpty && configMapKeyRefEmpty {
+		buffer.WriteString(fmt.Sprintf("\"value\":%v", configVarBool.Value))
+	}
+
+	buffer.WriteString("}")
+	return buffer.Bytes(), nil
+}
 
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
