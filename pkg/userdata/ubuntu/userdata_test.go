@@ -59,8 +59,7 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec machinesv1alpha1.MachineSp
 	return p.config, p.name, p.err
 }
 
-//TODO: Re-enable once e2e tests verified this stuff works
-func testProvider_UserData(t *testing.T) {
+func TestProvider_UserData(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name             string
@@ -203,9 +202,10 @@ func testProvider_UserData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			_ = diffStr
 
 			if userdata != test.userdata {
-				t.Errorf("got diff between expected and actual result: \n%s\n", diffStr)
+				t.Errorf("got diff between expected and actual result: \n%s\n", userdata)
 			}
 		})
 	}
@@ -228,76 +228,99 @@ write_files:
   content: |
     {aws-config:true}
 
-- path: "/etc/kubernetes/bootstrap.kubeconfig"
-  content: |
-    kubeconfig
-
-- path: /etc/kubernetes/ca.crt
-  content: |
-    CACert
-
 - path: "/etc/kubernetes/download.sh"
   permissions: '0777'
   content: |
     #!/bin/bash
     set -xeuo pipefail
     mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
-    if [ ! -f /opt/bin/kubelet ]; then
-      curl -L -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.9.2/bin/linux/amd64/kubelet
-      chmod +x /opt/bin/kubelet
-    fi
+    for component in kubelet kubeadm; do
+      if ! [[ -x /opt/bin/$component ]]; then
+        curl -L --fail -o /opt/bin/$component https://storage.googleapis.com/kubernetes-release/release/v1.9.2/bin/linux/amd64/$component
+        chmod +x /opt/bin/$component
+      fi
+    done
     if [ ! -f /opt/cni/bin/bridge ]; then
       curl -L -o /opt/cni.tgz https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz
       mkdir -p /opt/cni/bin/
       tar -xzf /opt/cni.tgz -C /opt/cni/bin/
     fi
 
+    if ! [[ -f /etc/systemd/system/kubelet.service.d/10-kubeadm.conf ]]; then
+      curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v1.9.2/build/debs/10-kubeadm.conf \
+        |sed "s:/usr/bin:/opt/bin:g" > /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+      systemctl daemon-reload
+    fi
+
+- path: "/etc/systemd/system/kubernetes-binaries.service"
+  content: |
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+    Requires=docker.service
+    After=docker.service
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/etc/kubernetes/download.sh
+
+- path: "/etc/systemd/system/kubeadm-join.service"
+  content: |
+    [Unit]
+    Requires=network-online.target kubernetes-binaries.service
+    After=network-online.target kubernetes-binaries.service
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
+    ExecStartPre=/sbin/modprobe br_netfilter
+    ExecStart=/opt/bin/kubeadm join \
+      --token my-token \
+      --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
+      --ignore-preflight-errors=Port-10250 \
+      server:443
+
+- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
+  content: |
+    [Service]
+    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-conf \
+      "
+
+- path: "/etc/systemd/system/kubelet.service.d/30-clusterdns.conf"
+  content: |
+    [Service]
+    Environment="KUBELET_DNS_ARGS=--cluster-dns=10.10.10.10 --cluster-domain=cluster.local"
+
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
     Description=Kubelet
-    Requires=network.target
+    Requires=network-online.target kubernetes-binaries.service
+    After=network-online.target kubernetes-binaries.service
     Requires=docker.service
     After=docker.service
-    After=network.target
 
     [Service]
-    Restart=always
-    RestartSec=10
-    StartLimitInterval=600
-    StartLimitBurst=50
-    TimeoutStartSec=5min
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
-    ExecStartPre=/etc/kubernetes/download.sh
-    ExecStart=/opt/bin/kubelet \
-      --container-runtime=docker \
-      --allow-privileged=true \
-      --cni-bin-dir=/opt/cni/bin \
-      --cni-conf-dir=/etc/cni/net.d \
-      --cluster-dns=10.10.10.10 \
-      --cluster-domain=cluster.local \
-      --network-plugin=cni \
-      --cloud-provider=aws \
-      --cloud-config=/etc/kubernetes/cloud-config \
-      --cert-dir=/etc/kubernetes/ \
-      --pod-manifest-path=/etc/kubernetes/manifests \
-      --resolv-conf=/etc/resolv.conf \
-      --rotate-certificates=true \
-      --kubeconfig=/etc/kubernetes/kubeconfig \
-      --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
-      --lock-file=/var/run/lock/kubelet.lock \
-      --exit-on-lock-contention \
-      --read-only-port 0 \
-      --authorization-mode=Webhook \
-      --anonymous-auth=false \
-      --client-ca-file=/etc/kubernetes/ca.crt
+    ExecStart=/opt/bin/kubelet
+    Restart=always
+    StartLimitInterval=0
+    RestartSec=10
+    Restart=always
 
     [Install]
     WantedBy=multi-user.target
 
 runcmd:
+# Required for Hetzner, because they set some arbitrary password
+# if the sshkey wasnt set via their API and require as to change
+# that password on first login, which we cant do since we dont know
+# it
+- chage -d $(date +%s) root
 - systemctl enable kubelet
-- systemctl start kubelet
+- systemctl start kubeadm-join
 
 apt:
   sources:
