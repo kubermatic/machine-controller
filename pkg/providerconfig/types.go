@@ -187,9 +187,8 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
-	buffer.WriteString(fmt.Sprintf(`,"value":%v`, configVarBool.Value))
+	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, configVarBool.Value))
 
-	buffer.WriteString("}")
 	return buffer.Bytes(), nil
 }
 
