@@ -84,13 +84,17 @@ func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
 		configMapKeyRefEmpty = true
 	}
 
+	if secretKeyRefEmpty && configMapKeyRefEmpty {
+		return []byte(fmt.Sprintf(`"%s"`, configVarString.Value)), nil
+	}
+
 	buffer := bytes.NewBufferString("{")
 	if !secretKeyRefEmpty {
 		jsonVal, err := json.Marshal(configVarString.SecretKeyRef)
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf("\"secretKeyRef\":%s", string(jsonVal)))
+		buffer.WriteString(fmt.Sprintf(`"secretKeyRef":%s`, string(jsonVal)))
 	}
 
 	if !configMapKeyRefEmpty {
@@ -102,15 +106,11 @@ func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(fmt.Sprintf("%s\"configMapKeyRef\":%s", leadingComma, jsonVal))
+		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
 	if configVarString.Value != "" {
-		if !secretKeyRefEmpty || !configMapKeyRefEmpty {
-			buffer.WriteString(fmt.Sprintf(",\"value\":\"%s\"", configVarString.Value))
-		} else {
-			return []byte(fmt.Sprintf(`"%s"`, configVarString.Value)), nil
-		}
+		buffer.WriteString(fmt.Sprintf(`,"value":"%s"`, configVarString.Value))
 	}
 
 	buffer.WriteString("}")
