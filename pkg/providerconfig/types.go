@@ -148,7 +148,7 @@ type configVarBoolWithoutUnmarshaller ConfigVarBool
 // This is done to not have the json object cluttered with empty strings
 // This will eventually hopefully be resolved within golang itself
 // https://github.com/golang/go/issues/11939
-func (configVarBool *ConfigVarBool) MarshalJSON() ([]byte, error) {
+func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 	var secretKeyRefEmpty, configMapKeyRefEmpty bool
 	if configVarBool.SecretKeyRef.ObjectReference.Namespace == "" &&
 		configVarBool.SecretKeyRef.ObjectReference.Name == "" &&
@@ -184,7 +184,7 @@ func (configVarBool *ConfigVarBool) MarshalJSON() ([]byte, error) {
 	}
 
 	if secretKeyRefEmpty && configMapKeyRefEmpty {
-		buffer.WriteString(fmt.Sprintf("\"value\":%v", configVarBool.Value))
+		return []byte(fmt.Sprintf("%v", configVarBool.Value)), nil
 	}
 
 	buffer.WriteString("}")

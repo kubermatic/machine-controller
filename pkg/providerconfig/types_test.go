@@ -87,3 +87,31 @@ func TestConfigVarStringMarshalling(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigVarBoolMarshalling(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		cvb      ConfigVarBool
+		expected string
+	}{
+		{
+			cvb:      ConfigVarBool{Value: true},
+			expected: `true`,
+		},
+		{
+			cvb:      ConfigVarBool{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+			expected: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		result, err := json.Marshal(testCase.cvb)
+		if err != nil {
+			t.Errorf("Failed to marshall config var bool: %v", err)
+		}
+		if string(result) != testCase.expected {
+			t.Errorf("Result '%s' of config var bool marshalling does not match expected '%s'", string(result), testCase.expected)
+		}
+	}
+}
