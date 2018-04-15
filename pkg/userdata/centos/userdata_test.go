@@ -141,6 +141,7 @@ write_files:
     Type=oneshot
     RemainAfterExit=true
     ExecStartPre=/usr/sbin/modprobe br_netfilter
+    ExecStart=/usr/bin/kubeadm join \
       --token my-token \
       --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
       server:443

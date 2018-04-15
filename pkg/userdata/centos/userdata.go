@@ -201,6 +201,7 @@ write_files:
     Type=oneshot
     RemainAfterExit=true
     ExecStartPre=/usr/sbin/modprobe br_netfilter
+    ExecStart=/usr/bin/kubeadm join \
       --token {{ .BoostrapToken }} \
       --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
       {{ .ServerAddr }}
