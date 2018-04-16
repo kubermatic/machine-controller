@@ -5,7 +5,6 @@ package provisioning
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -13,13 +12,12 @@ const (
 	do_manifest = "./testdata/machine-digitalocean.yaml"
 )
 
-var digitalOceanScenarios = []scenarios{
+var digitalOceanScenarios = []scenario{
 	{
 		name:                    "scenario 1 Ubuntu Docker 1.13",
 		osName:                  "ubuntu",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
-		short: true,
 	},
 
 	{
@@ -65,26 +63,6 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 	}
 
 	// act
-	for _, scenario := range digitalOceanScenarios {
-		scenario := scenario // capture range variable
-		t.Run(scenario.name, func(t *testing.T) {
-			if testing.Short() == true && scenario.short == false {
-				t.SkipNow()
-			}
-			t.Parallel()
-
-			nameSufix := strings.Replace(scenario.name, " ", "-", -1)
-			nameSufix = strings.ToLower(nameSufix)
-			nameSufix = fmt.Sprintf("do-%s", nameSufix)
-			machineName := fmt.Sprintf("machine-%s", nameSufix)
-			nodeName := fmt.Sprintf("node-%s", nameSufix)
-			params := fmt.Sprintf("<< MACHINE_NAME >>=%s,<< DIGITALOCEAN_TOKEN >>=%s,<< NODE_NAME >>=%s", machineName, doToken, nodeName)
-			params = fmt.Sprintf("%s,<< OS_NAME >>=%s,<< CONTAINER_RUNTIME >>=%s,<< CONTAINER_RUNTIME_VERSION >>=%s", params, scenario.osName, scenario.containerRuntime, scenario.containerRuntimeVersion)
-
-			err := runVerifyTool(do_manifest, params)
-			if err != nil {
-				t.Errorf("verify tool failed due to %v", err)
-			}
-		})
-	}
+	params := fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)
+	runScenarios(t, digitalOceanScenarios, params, do_manifest, "do")
 }

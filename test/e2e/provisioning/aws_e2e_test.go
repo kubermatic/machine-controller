@@ -5,7 +5,6 @@ package provisioning
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -13,13 +12,12 @@ const (
 	aws_manifest = "./testdata/machine-aws.yaml"
 )
 
-var awsScenarios = []scenarios{
+var awsScenarios = []scenario{
 	{
 		name:                    "scenario 1 Ubuntu Docker 1.13",
 		osName:                  "ubuntu",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
-		short: true,
 	},
 
 	{
@@ -64,27 +62,6 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	}
 
 	// act
-	for _, scenario := range awsScenarios {
-		scenario := scenario // capture range variable
-		t.Run(scenario.name, func(t *testing.T) {
-			if testing.Short() == true && scenario.short == false {
-				t.SkipNow()
-			}
-			t.Parallel()
-
-			nameSufix := strings.Replace(scenario.name, " ", "-", -1)
-			nameSufix = strings.ToLower(nameSufix)
-			nameSufix = fmt.Sprintf("aws-%s", nameSufix)
-			machineName := fmt.Sprintf("machine-%s", nameSufix)
-			nodeName := fmt.Sprintf("node-%s", nameSufix)
-			params := fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s,<< AWS_SECRET_ACCESS_KEY >>=%s", awsKeyID, awsSecret)
-			params = fmt.Sprintf("%s,<< MACHINE_NAME >>=%s,<< NODE_NAME >>=%s", params, machineName, nodeName)
-			params = fmt.Sprintf("%s,<< OS_NAME >>=%s,<< CONTAINER_RUNTIME >>=%s,<< CONTAINER_RUNTIME_VERSION >>=%s", params, scenario.osName, scenario.containerRuntime, scenario.containerRuntimeVersion)
-
-			err := runVerifyTool(aws_manifest, params)
-			if err != nil {
-				t.Errorf("verify tool failed due to %v", err)
-			}
-		})
-	}
+	params := fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s,<< AWS_SECRET_ACCESS_KEY >>=%s", awsKeyID, awsSecret)
+	runScenarios(t, awsScenarios, params, aws_manifest, "aws")
 }
