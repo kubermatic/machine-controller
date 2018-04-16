@@ -48,7 +48,6 @@ func TestConfigVarBoolUnmarshalling(t *testing.T) {
 }
 
 func TestConfigVarStringMarshalling(t *testing.T) {
-	t.Parallel()
 
 	testCases := []struct {
 		cvs      ConfigVarString
@@ -76,7 +75,6 @@ func TestConfigVarStringMarshalling(t *testing.T) {
 }
 
 func TestConfigVarBoolMarshalling(t *testing.T) {
-	t.Parallel()
 
 	testCases := []struct {
 		cvb      ConfigVarBool
@@ -104,7 +102,6 @@ func TestConfigVarBoolMarshalling(t *testing.T) {
 }
 
 func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
-	t.Parallel()
 
 	testCases := []ConfigVarString{
 		ConfigVarString{Value: "val"},
@@ -140,7 +137,6 @@ func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 }
 
 func TestConfigVarBoolMarshallingAndUnmarshalling(t *testing.T) {
-	t.Parallel()
 
 	testCases := []ConfigVarBool{
 		ConfigVarBool{Value: true},
