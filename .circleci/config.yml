@@ -96,9 +96,7 @@ jobs:
       - run:
           name:  Run E2E test
           command: ./test/tools/integration/run_e2e_tests.sh
-      - run:
-          name: Test create and destroy centos machine
-          command: ./test/tools/integration/create-and-destroy-machine.sh centos
+          no_output_timeout: 15m
       - run:
           name: Clean up
           command: make -C test/tools/integration destroy

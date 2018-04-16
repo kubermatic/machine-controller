@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-hetzner
+  namespace: kube-system
+type: Opaque
+stringData:
+  token: << HETZNER_TOKEN >>
+---
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: << MACHINE_NAME >>
+spec:
+  metadata:
+    name: << NODE_NAME >>
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "hetzner"
+    cloudProviderSpec:
+    # If empty, can be set via HZ_TOKEN env var
+      token:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-hetzner
+          key: token
+      serverType: "cx11"
+      datacenter: ""
+      location: "fsn1"
+    # Can be 'ubuntu', or 'centos'
+    operatingSystem: "<< OS_NAME >>"
+    operatingSystemSpec:
+      distUpgradeOnBoot: false
+  roles:
+  - "Node"
+  versions:
+    kubelet: "1.9.6"
+    # Must be 'docker' if you don't use Ubuntu
+    containerRuntime:
+      name: "<< CONTAINER_RUNTIME >>"
+      version: "<< CONTAINER_RUNTIME_VERSION >>"
