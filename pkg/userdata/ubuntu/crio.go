@@ -10,6 +10,11 @@ var crioInstallCandidates = []installCandidate{
 		pkg:        "cri-o-1.9",
 		pkgVersion: "",
 	},
+	{
+		versions:   []string{"1.9", "1.10"},
+		pkg:        "cri-o-1.10",
+		pkgVersion: "",
+	},
 }
 
 func getCRIOInstallCandidate(desiredVersion string) (pkg string, version string, err error) {

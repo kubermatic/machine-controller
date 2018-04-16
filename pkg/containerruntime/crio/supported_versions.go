@@ -20,6 +20,8 @@ func GetOfficiallySupportedVersions(kubernetesVersion string) ([]string, error) 
 		return []string{"1.8"}, nil
 	case "1.9":
 		return []string{"1.9"}, nil
+	case "1.10":
+		return []string{"1.10"}, nil
 	default:
 		return nil, errors.NoSupportedVersionsAvailableErr
 	}
