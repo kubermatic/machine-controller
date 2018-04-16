@@ -191,7 +191,7 @@ write_files:
     mkdir -p /opt/bin
     if ! [[ -x /opt/bin/kubeadm ]]; then
       curl -L --fail -o /opt/bin/kubeadm https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/kubeadm
-      chmod +x /opt/bin/kubelet
+      chmod +x /opt/bin/kubeadm
     fi
 
 - path: "/usr/local/bin/download-cni"
