@@ -167,6 +167,11 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
+- path: "/etc/kubernetes/cloud-config"
+  content: |
+{{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
+
+
 - path: "/etc/yum.repos.d/kubernetes.repo"
   content: |
     [kubernetes]
@@ -209,7 +214,7 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
   content: |
     [Service]
-    Environment="KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-conf{{ end}}"
+    Environment="KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-config{{ end}}"
 
 runcmd:
 - setenforce 0 || true
