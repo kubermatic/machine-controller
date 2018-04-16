@@ -60,7 +60,7 @@ const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
 
 	metricsUpdatePeriod     = 10 * time.Second
-	deletionRetryWaitPeriod = 30 * time.Second
+	deletionRetryWaitPeriod = 10 * time.Second
 	initialDeleteWaitPeriod = 5 * time.Second
 
 	machineKind = "Machine"
@@ -374,6 +374,21 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
+func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machine) error {
+	var err error
+	glog.V(4).Infof("Removing finalizers from machine machine %s", machine.Name)
+
+	finalizers := sets.NewString(machine.Finalizers...)
+	finalizers.Delete(finalizerDeleteInstance)
+	machine.Finalizers = finalizers.List()
+	if machine, err = c.updateMachine(machine); err != nil {
+		return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
+	}
+
+	glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
+	return nil
+}
+
 // deleteMachineAndProviderInstance makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
 
@@ -384,30 +399,27 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 		if err != cloudprovidererrors.ErrInstanceNotFound {
 			return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, err.Error(), err, fmt.Sprintf("failed to get instance for machine %s after the delete got triggered", machine.Name))
 		}
+		glog.V(4).Infof("Provider has no instance for %s. Considering it as deleted", machine.Name)
 
 		// step 1.2 the instance could not be found -> it's gone, so we remove the finalizer. This essentially will remove the machine object from the system
-		glog.V(4).Infof("Deleted machine %s at cloud provider", machine.Name)
-
-		finalizers := sets.NewString(machine.Finalizers...)
-		finalizers.Delete(finalizerDeleteInstance)
-		machine.Finalizers = finalizers.List()
-		if machine, err = c.updateMachine(machine); err != nil {
-			return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
-		}
-
-		glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
-		return nil
+		return c.cleanupMachineAfterDeletion(machine)
 	}
 
 	// step 2: we still have an instance on the cloud provider
 	// step 2.1: Check if its in deleting state - if so, the provider normally does some own cleanup. We wait until the instance is completely gone.
-	if sets.NewString(string(instance.StatusDeleted), string(instance.StatusDeleting)).Has(string(providerInstance.Status())) {
+	if instance.StatusDeleting == providerInstance.Status() {
 		glog.V(4).Infof("deletion of instance %s got triggered. Waiting until it fully disappears", providerInstance.ID())
 		c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
 		return nil
 	}
 
-	// step 2.2: delete provider instance
+	// step 2.2: The instance exists at the provider, but its considered dead
+	if instance.StatusDeleted == providerInstance.Status() {
+		glog.V(4).Infof("Provider says the instance for %s is deleted", machine.Name)
+		return c.cleanupMachineAfterDeletion(machine)
+	}
+
+	// step 2.3: delete provider instance
 	if err = c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
 		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
