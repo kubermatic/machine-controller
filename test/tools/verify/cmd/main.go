@@ -24,9 +24,8 @@ import (
 )
 
 const (
-	machineReadyCheckPeriod  = 5 * time.Second
-	machineReadyCheckTimeout = 10 * time.Minute
-	tempDir                  = "/tmp"
+	machineReadyCheckPeriod = 15 * time.Second
+	tempDir                 = "/tmp"
 )
 
 type arrayFlags string
@@ -34,6 +33,10 @@ type arrayFlags string
 func (i *arrayFlags) String() string {
 	return string(*i)
 }
+
+var (
+	machineReadyCheckTimeout time.Duration
+)
 
 func (i *arrayFlags) Set(value string) error {
 	if value == "" {
@@ -56,16 +59,22 @@ func main() {
 	var kubeConfig string
 	var createOnly bool
 
-	defaultKubeconfigPath, err := getDefaultKubeconfigPath()
-	if err != nil {
-		glog.Fatalf("Error getting default path for kubeconfig: '%v'", err)
-	}
-
-	flag.StringVar(&kubeConfig, "kubeconfig", defaultKubeconfigPath, "a path to the kubeconfig.")
+	flag.StringVar(&kubeConfig, "kubeconfig", "", "a path to the kubeconfig.")
 	flag.StringVar(&manifestPath, "input", "", "a path to the machine's manifest.")
 	flag.Var(&parameters, "parameters", "a list of comma-delimited key value pairs i.e key=value,key1=value2. Can be passed multiple times")
 	flag.BoolVar(&createOnly, "createOnly", false, "if the tool should create only but not run deletion")
+	flag.DurationVar(&machineReadyCheckTimeout, "machineReadyTimeout", time.Duration(10*time.Minute), "specifies timeout for machine to be ready")
 	flag.Parse()
+
+	// since this method can fail due to "user: Current not implemented on linux/amd64" error
+	// we are trying to get the default path only when the path wasn't specified
+	if len(kubeConfig) == 0 {
+		defaultKubeconfigPath, err := getDefaultKubeconfigPath()
+		if err != nil {
+			glog.Fatalf("Error getting default path for kubeconfig: '%v'", err)
+		}
+		kubeConfig = defaultKubeconfigPath
+	}
 
 	// input sanitizaiton
 	if len(manifestPath) == 0 || len(kubeConfig) == 0 {

@@ -94,8 +94,8 @@ jobs:
           name: Test create and destroy ubuntu on vsphere
           command: ./test/tools/integration/create-and-destroy-machine.sh ubuntu vsphere
       - run:
-          name: Test create and destroy ubuntu machine
-          command: ./test/tools/integration/create-and-destroy-machine.sh
+          name:  Run E2E test
+          command: ./test/tools/integration/run_e2e_tests.sh
       - run:
           name: Test create and destroy centos machine
           command: ./test/tools/integration/create-and-destroy-machine.sh centos
