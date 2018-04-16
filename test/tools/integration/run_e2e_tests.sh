@@ -12,8 +12,9 @@ set -e
 export AWS_E2E_TESTS_KEY_ID=$AWS_E2E_TESTS_KEY_ID
 export AWS_E2E_TESTS_SECRET=$AWS_E2E_TESTS_SECRET
 export DO_E2E_TESTS_TOKEN=$DO_E2E_TESTS_TOKEN
+export HZ_TOKEN=$HZ_TOKEN
 
 echo "Running E2E tests"
 cd test/e2e
-go test -tags=e2e -parallel 24 -v -timeout 60m  ./... || (kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-con'|awk '{ print \$1 }'); exit 1)
+go test -tags=e2e -parallel 24 -v -timeout 10m  ./... || (kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-con'|awk '{ print \$1 }'); exit 1)
 EOF
