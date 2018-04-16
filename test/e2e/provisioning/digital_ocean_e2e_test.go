@@ -12,43 +12,6 @@ const (
 	do_manifest = "./testdata/machine-digitalocean.yaml"
 )
 
-var digitalOceanScenarios = []scenario{
-	{
-		name:                    "scenario 1 Ubuntu Docker 1.13",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-	},
-
-	{
-		name:                    "scenario 2 Ubuntu Docker 17.03",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
-	},
-
-	{
-		name:                    "scenario 3 Ubuntu CRI-O 1.9",
-		osName:                  "ubuntu",
-		containerRuntime:        "cri-o",
-		containerRuntimeVersion: "1.9",
-	},
-
-	{
-		name:                    "scenario 4 CoreOS Docker 1.13",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-	},
-
-	{
-		name:                    "scenario 5 CoreOS Docker 17.03",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
-	},
-}
-
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
 //
@@ -64,5 +27,5 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 
 	// act
 	params := fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)
-	runScenarios(t, digitalOceanScenarios, params, do_manifest, "do")
+	runScenarios(t, scenarios, params, do_manifest, "do")
 }

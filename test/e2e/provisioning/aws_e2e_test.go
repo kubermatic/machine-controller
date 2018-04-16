@@ -12,43 +12,6 @@ const (
 	aws_manifest = "./testdata/machine-aws.yaml"
 )
 
-var awsScenarios = []scenario{
-	{
-		name:                    "scenario 1 Ubuntu Docker 1.13",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-	},
-
-	{
-		name:                    "scenario 2 Ubuntu Docker 17.03",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
-	},
-
-	{
-		name:                    "scenario 3 Ubuntu CRI-O 1.9",
-		osName:                  "ubuntu",
-		containerRuntime:        "cri-o",
-		containerRuntimeVersion: "1.9",
-	},
-
-	{
-		name:                    "scenario 4 CoreOS Docker 1.13",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-	},
-
-	{
-		name:                    "scenario 5 CoreOS Docker 17.03",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
-	},
-}
-
 // TestAWSProvisioning - a test suite that exercises AWS provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
 func TestAWSProvisioningE2E(t *testing.T) {
@@ -63,5 +26,5 @@ func TestAWSProvisioningE2E(t *testing.T) {
 
 	// act
 	params := fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s,<< AWS_SECRET_ACCESS_KEY >>=%s", awsKeyID, awsSecret)
-	runScenarios(t, awsScenarios, params, aws_manifest, "aws")
+	runScenarios(t, scenarios, params, aws_manifest, "aws")
 }

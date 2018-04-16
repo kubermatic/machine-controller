@@ -10,6 +10,43 @@ import (
 	"testing"
 )
 
+var scenarios = []scenario{
+	{
+		name:                    "scenario 1 Ubuntu Docker 1.13",
+		osName:                  "ubuntu",
+		containerRuntime:        "docker",
+		containerRuntimeVersion: "1.13",
+	},
+
+	{
+		name:                    "scenario 2 Ubuntu Docker 17.03",
+		osName:                  "ubuntu",
+		containerRuntime:        "docker",
+		containerRuntimeVersion: "17.03",
+	},
+
+	{
+		name:                    "scenario 3 Ubuntu CRI-O 1.9",
+		osName:                  "ubuntu",
+		containerRuntime:        "cri-o",
+		containerRuntimeVersion: "1.9",
+	},
+
+	{
+		name:                    "scenario 4 CoreOS Docker 1.13",
+		osName:                  "coreos",
+		containerRuntime:        "docker",
+		containerRuntimeVersion: "1.13",
+	},
+
+	{
+		name:                    "scenario 5 CoreOS Docker 17.03",
+		osName:                  "coreos",
+		containerRuntime:        "docker",
+		containerRuntimeVersion: "17.03",
+	},
+}
+
 type scenario struct {
 	// name holds short description of the test scenario, it is also used to create machines and nodes names
 	// so please don't put "strange" characters there
