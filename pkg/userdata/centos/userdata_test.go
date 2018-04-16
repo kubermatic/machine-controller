@@ -50,7 +50,7 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec machinesv1alpha1.MachineSp
 	return p.config, p.name, p.err
 }
 
-func TestUserDataGeneration(t *testing.T) {
+func testUserDataGeneration(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
