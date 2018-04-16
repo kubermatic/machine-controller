@@ -171,59 +171,131 @@ write_files:
   content: |
 {{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
 
-- path: "/etc/kubernetes/download.sh"
-  permissions: '0777'
+
+- path: "/usr/local/bin/download-kubelet"
+  permissions: "0777"
   content: |
     #!/bin/bash
     set -xeuo pipefail
-    mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
-    for component in kubelet kubeadm; do
-      if ! [[ -x /opt/bin/$component ]]; then
-        curl -L --fail -o /opt/bin/$component https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/$component
-        chmod +x /opt/bin/$component
-      fi
-    done
-{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
-    if ! [[ -x /opt/bin/crictl ]]; then
-      curl -L --fail https://github.com/kubernetes-incubator/cri-tools/releases/download/{{ .CrictlVersion }}/crictl-{{ .CrictlVersion }}-linux-amd64.tar.gz |tar -xzC /opt/bin
-    fi
-{{- end }}
-    if [ ! -f /opt/cni/bin/bridge ]; then
-      curl -L -o /opt/cni.tgz https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz
-      mkdir -p /opt/cni/bin/
-      tar -xzf /opt/cni.tgz -C /opt/cni/bin/
+    mkdir -p /opt/bin
+    if ! [[ -x /opt/bin/kubelet ]]; then
+      curl -L --fail -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/kubelet
+      chmod +x /opt/bin/kubelet
     fi
 
+- path: "/usr/local/bin/download-kubeadm"
+  permissions: "0777"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    mkdir -p /opt/bin
+    if ! [[ -x /opt/bin/kubeadm ]]; then
+      curl -L --fail -o /opt/bin/kubeadm https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/kubeadm
+      chmod +x /opt/bin/kubelet
+    fi
+
+- path: "/usr/local/bin/download-cni"
+  permissions: "0777"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    mkdir -p /opt/cni/bin
+    if ! [[ -x /opt/cni/bin/bridge ]]; then
+      cd /opt/cni/bin/
+      curl -L --fail https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz|tar -xvz
+    fi
+
+- path: "/usr/local/bin/download-kubelet-kubeadm-unitfile"
+  permissions: "0777"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
     if ! [[ -f /etc/systemd/system/kubelet.service.d/10-kubeadm.conf ]]; then
       curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v{{ .KubernetesVersion }}/build/debs/10-kubeadm.conf \
         |sed "s:/usr/bin:/opt/bin:g" > /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
       systemctl daemon-reload
     fi
 
-- path: "/etc/systemd/system/kubernetes-binaries.service"
+{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+- path: "/usr/local/bin/download-crictl"
+  permissions: '0777'
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
+    if ! [[ -x /opt/bin/crictl ]]; then
+      curl -L --fail https://github.com/kubernetes-incubator/cri-tools/releases/download/{{ .CrictlVersion }}/crictl-{{ .CrictlVersion }}-linux-amd64.tar.gz |tar -xzC /opt/bin
+    fi
+
+- path: "/etc/systemd/system/crictl-binary.service"
   content: |
     [Unit]
     Requires=network-online.target
     After=network-online.target
-{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
-    Requires=docker.service
-    After=docker.service
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/usr/local/bin/download-crictl
 {{- end }}
+
+
+- path: "/etc/systemd/system/kubelet-binary.service"
+  content: |
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/usr/local/bin/download-kubelet
+
+- path: "/etc/systemd/system/kubeadm-binary.service"
+  content: |
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/usr/local/bin/download-kubeadm
+
+- path: "/etc/systemd/system/cni-binary.service"
+  content: |
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/usr/local/bin/download-cni
+
+- path: "/etc/systemd/system/kubeadm-unitfile.service"
+  content: |
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/usr/local/bin/download-kubelet-kubeadm-unitfile
+
+- path: "/etc/systemd/system/kubeadm-join.service"
+  content: |
+    [Unit]
+    Requires=network-online.target
+    Requires=kubelet-binary.service kubeadm-binary.service cni-binary.service kubeadm-unitfile.service
+    After=network-online.target
+    After=kubelet-binary.service kubeadm-binary.service cni-binary.service kubeadm-unitfile.service
 {{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
     Requires=crio.service
     After=crio.service
 {{- end }}
 
-    [Service]
-    Type=oneshot
-    RemainAfterExit=true
-    ExecStart=/etc/kubernetes/download.sh
-
-- path: "/etc/systemd/system/kubeadm-join.service"
-  content: |
-    [Unit]
-    Requires=network-online.target kubernetes-binaries.service
-    After=network-online.target kubernetes-binaries.service
 
     [Service]
     Type=oneshot
@@ -254,8 +326,10 @@ write_files:
   content: |
     [Unit]
     Description=Kubelet
-    Requires=network-online.target kubernetes-binaries.service
-    After=network-online.target kubernetes-binaries.service
+    Requires=network-online.target
+    After=network-online.target
+    Requires=kubelet-binary.service kubeadm-binary.service cni-binary.service kubeadm-unitfile.service
+    After=kubelet-binary.service kubeadm-binary.service cni-binary.service kubeadm-unitfile.service
 {{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
     Requires=docker.service
     After=docker.service
