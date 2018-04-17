@@ -220,7 +220,7 @@ runcmd:
 - setenforce 0 || true
 - chage -d $(date +%s) root
 - systemctl enable kubelet
-- systemctl enable --now kubeadm-join
+- systemctl start kubeadm-join
 
 packages:
 - {{ .DockerPackageName }}
