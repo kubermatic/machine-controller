@@ -1,7 +1,10 @@
 package centos
 
 import (
+	"flag"
+	"io/ioutil"
 	"net"
+	"path/filepath"
 	"testing"
 
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
@@ -50,16 +53,19 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec machinesv1alpha1.MachineSp
 	return p.config, p.name, p.err
 }
 
-func testUserDataGeneration(t *testing.T) {
+var update = flag.Bool("update", false, "update .golden files")
+
+func TestUserDataGeneration(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		spec           machinesv1alpha1.MachineSpec
-		ccProvider     cloud.ConfigProvider
-		clusterDNSIPs  []net.IP
-		expectedResult string
+		name          string
+		spec          machinesv1alpha1.MachineSpec
+		ccProvider    cloud.ConfigProvider
+		clusterDNSIPs []net.IP
 	}{
 		{
+			name: "docker-1.13-aws",
 			spec: machinesv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: machinesv1alpha1.MachineVersionInfo{
@@ -70,7 +76,6 @@ func testUserDataGeneration(t *testing.T) {
 					Kubelet: "1.9.6",
 				},
 			},
-			expectedResult: expectedResultDocker113,
 		},
 	}
 
@@ -83,9 +88,18 @@ func testUserDataGeneration(t *testing.T) {
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}
-		if test.expectedResult != userdata {
+		golden := filepath.Join("testdata", test.name+".golden")
+		if *update {
+			ioutil.WriteFile(golden, []byte(userdata), 0644)
+		}
+		expected, err := ioutil.ReadFile(golden)
+		if err != nil {
+			t.Errorf("failed to read .golden file: %v", err)
+		}
+
+		if string(expected) != userdata {
 			diff := difflib.UnifiedDiff{
-				A:        difflib.SplitLines(test.expectedResult),
+				A:        difflib.SplitLines(string(expected)),
 				B:        difflib.SplitLines(userdata),
 				FromFile: "Fixture",
 				ToFile:   "Current",
@@ -99,72 +113,3 @@ func testUserDataGeneration(t *testing.T) {
 		}
 	}
 }
-
-var (
-	expectedResultDocker113 = `#cloud-config
-hostname: node1
-
-
-
-write_files:
-- path: "/etc/yum.repos.d/kubernetes.repo"
-  content: |
-    [kubernetes]
-    name=Kubernetes
-    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
-    enabled=1
-    gpgcheck=1
-    repo_gpgcheck=1
-    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-
-- path: /etc/sysconfig/selinux
-  content: |
-    # This file controls the state of SELinux on the system.
-    # SELINUX= can take one of these three values:
-    #     enforcing - SELinux security policy is enforced.
-    #     permissive - SELinux prints warnings instead of enforcing.
-    #     disabled - No SELinux policy is loaded.
-    SELINUX=permissive
-    # SELINUXTYPE= can take one of three two values:
-    #     targeted - Targeted processes are protected,
-    #     minimum - Modification of targeted policy. Only selected processes are protected.
-    #     mls - Multi Level Security protection.
-    SELINUXTYPE=targeted
-
-- path: "/etc/systemd/system/kubeadm-join.service"
-  content: |
-    [Unit]
-    Requires=network-online.target docker.service
-    After=network-online.target docker.service
-
-    [Service]
-    Type=oneshot
-    RemainAfterExit=true
-    ExecStartPre=/usr/sbin/modprobe br_netfilter
-    ExecStart=/usr/bin/kubeadm join \
-      --token my-token \
-      --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
-      server:443
-
-- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
-  content: |
-    [Service]
-    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-conf"
-
-runcmd:
-- setenforce 0 || true
-- chage -d $(date +%s) root
-- systemctl enable kubelet
-- systemctl enable --now kubeadm-join
-
-packages:
-- docker-1.13.1
-- kubelet-1.9.6
-- kubeadm-1.9.6
-- ebtables
-- ethtool
-- nfs-utils
-- bash-completion # Have mercy for the poor operators
-- sudo
-`
-)
