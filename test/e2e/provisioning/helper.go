@@ -1,7 +1,6 @@
 package provisioning
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -81,28 +80,27 @@ func runScenarios(t *testing.T, testCases []scenario, testParams string, manifes
 }
 
 func runVerifyTool(manifestPath string, params string) error {
-	homeDir := os.Getenv("HOME")
-	kubeConfigDir := filepath.Join(homeDir, ".kube/config")
+	gopath := os.Getenv("GOPATH")
+	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
+
+	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 	args := []string{
 		"-input",
 		manifestPath,
 		"-parameters",
 		params,
 		"-kubeconfig",
-		kubeConfigDir,
+		kubeConfig,
 		"-machineReadyTimeout",
 		"40m",
 		"-logtostderr",
 		"true",
 	}
 
-	cmd := exec.Command("../../tools/verify/verify", args...)
-	var out bytes.Buffer
-	cmd.Stderr = &out
-
-	err := cmd.Run()
+	cmd := exec.Command(filepath.Join(projectDir, "test/tools/verify/verify"), args...)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("verify tool failed with the error=%v, output=\n%v", err, out.String())
+		return fmt.Errorf("verify tool failed with the error=%v, output=\n%v", err, string(out))
 	}
 	return nil
 }

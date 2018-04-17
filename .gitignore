@@ -8,3 +8,4 @@ test/tools/verify/verify
 .buildcache
 terraform
 terraform-provider-hcloud
+.kubeconfig
