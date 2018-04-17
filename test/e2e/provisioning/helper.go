@@ -70,8 +70,40 @@ type scenario struct {
 	containerRuntimeVersion string
 }
 
-func runScenarios(t *testing.T, testCases []scenario, testParams string, manifestPath string, cloudProvider string) {
-	for _, testCase := range testCases {
+type scenarioSelector struct {
+	osName                  []string
+	containerRuntime        []string
+	containerRuntimeVersion []string
+}
+
+func doesSenarioSelectorMatch(selector *scenarioSelector, testCase scenario) bool {
+	for _, selectorOSName := range selector.osName {
+		if testCase.osName == selectorOSName {
+			return true
+		}
+	}
+
+	for _, selectorContainerRuntime := range selector.containerRuntime {
+		if testCase.containerRuntime == selectorContainerRuntime {
+			return true
+		}
+	}
+
+	for _, selectorContainerRuntimeVersion := range selector.containerRuntimeVersion {
+		if testCase.containerRuntime == selectorContainerRuntimeVersion {
+			return true
+		}
+	}
+
+	return false
+}
+
+func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams string, manifestPath string, cloudProvider string) {
+	for _, testCase := range scenarios {
+		if excludeSelector != nil && doesSenarioSelectorMatch(excludeSelector, testCase) {
+			continue
+		}
+
 		testCase := testCase // capture range variable
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()

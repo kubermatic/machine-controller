@@ -30,15 +30,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 
 	// act
 	params := fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)
-	runScenarios(t, scenarios, params, do_manifest, "do")
-}
-
-var awsScenarios = []scenario{
-	scenarios[0], /* scenario 1 Ubuntu Docker 1.13 */
-	scenarios[1], /* scenario 2 Ubuntu Docker 17.03 */
-	scenarios[2], /* scenario 3 Ubuntu CRI-O 1.9 */
-	scenarios[5], /* scenario 6 CoreOS Docker 1.13 */
-	scenarios[6], /* scenario 7 CoreOS Docker 17.03 */
+	runScenarios(t, nil, params, do_manifest, "do")
 }
 
 // TestAWSProvisioning - a test suite that exercises AWS provider
@@ -53,17 +45,13 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
+	// CentOS on AWS seems to be broken, deactivating for now
+	// TODO: investigate this
+	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
+
 	// act
 	params := fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s,<< AWS_SECRET_ACCESS_KEY >>=%s", awsKeyID, awsSecret)
-	runScenarios(t, awsScenarios, params, aws_manifest, "aws")
-}
-
-var hzScenarios = []scenario{
-	scenarios[0], /* scenario 1 Ubuntu Docker 1.13 */
-	scenarios[1], /* scenario 2 Ubuntu Docker 17.03 */
-	scenarios[2], /* scenario 3 Ubuntu CRI-O 1.9 */
-	scenarios[3], /* scenario 4 CentOS Docker 1.12 */
-	scenarios[4], /* scenario 5 CentOS Docker 1.13 */
+	runScenarios(t, excludeSelector, params, aws_manifest, "aws")
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider
@@ -77,15 +65,12 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
+	// Hetzner does not support coreos
+	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
+
 	// act
 	params := fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)
-	runScenarios(t, hzScenarios, params, hz_manifest, "hz")
-}
-
-var vsphereScenarios = []scenario{
-	scenarios[0], /* scenario 1 Ubuntu Docker 1.13 */
-	scenarios[1], /* scenario 2 Ubuntu Docker 17.03 */
-	scenarios[2], /* scenario 3 Ubuntu CRI-O 1.9 */
+	runScenarios(t, excludeSelector, params, hz_manifest, "hz")
 }
 
 // TestVsphereProvisioning - a test suite that exercises vsphere provider
@@ -101,7 +86,10 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
+	// Vsphere only supports Ubuntu
+	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
+
 	// act
 	params := fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s,<< VSPHERE_USERNAME >>=%s,<< VSPHERE_ADDRESS >>=%s", vsPassword, vsUsername, vsAddress)
-	runScenarios(t, vsphereScenarios, params, vs_manifest, "vs")
+	runScenarios(t, excludeSelector, params, vs_manifest, "vs")
 }
