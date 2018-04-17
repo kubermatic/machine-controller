@@ -33,6 +33,14 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 	runScenarios(t, scenarios, params, do_manifest, "do")
 }
 
+var awsScenarios = []scenario{
+	scenarios[0], /* scenario 1 Ubuntu Docker 1.13 */
+	scenarios[1], /* scenario 2 Ubuntu Docker 17.03 */
+	scenarios[2], /* scenario 3 Ubuntu CRI-O 1.9 */
+	scenarios[5], /* scenario 6 CoreOS Docker 1.13 */
+	scenarios[6], /* scenario 7 CoreOS Docker 17.03 */
+}
+
 // TestAWSProvisioning - a test suite that exercises AWS provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
 func TestAWSProvisioningE2E(t *testing.T) {
@@ -47,27 +55,15 @@ func TestAWSProvisioningE2E(t *testing.T) {
 
 	// act
 	params := fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s,<< AWS_SECRET_ACCESS_KEY >>=%s", awsKeyID, awsSecret)
-	runScenarios(t, scenarios, params, aws_manifest, "aws")
+	runScenarios(t, awsScenarios, params, aws_manifest, "aws")
 }
 
 var hzScenarios = []scenario{
-	scenarios[0],
-	scenarios[1],
-	scenarios[2],
-
-	{
-		name:                    "scenario 4 CentOS Docker 1.12",
-		osName:                  "centos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.12",
-	},
-
-	{
-		name:                    "scenario 5 CentOS Docker 1.13",
-		osName:                  "centos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-	},
+	scenarios[0], /* scenario 1 Ubuntu Docker 1.13 */
+	scenarios[1], /* scenario 2 Ubuntu Docker 17.03 */
+	scenarios[2], /* scenario 3 Ubuntu CRI-O 1.9 */
+	scenarios[3], /* scenario 4 CentOS Docker 1.12 */
+	scenarios[4], /* scenario 5 CentOS Docker 1.13 */
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider
@@ -87,9 +83,9 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 }
 
 var vsphereScenarios = []scenario{
-	scenarios[0],
-	scenarios[1],
-	scenarios[2],
+	scenarios[0], /* scenario 1 Ubuntu Docker 1.13 */
+	scenarios[1], /* scenario 2 Ubuntu Docker 17.03 */
+	scenarios[2], /* scenario 3 Ubuntu CRI-O 1.9 */
 }
 
 // TestVsphereProvisioning - a test suite that exercises vsphere provider
