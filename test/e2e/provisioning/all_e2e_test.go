@@ -75,9 +75,9 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// test data
-	hzToken := os.Getenv("HZ_TOKEN")
+	hzToken := os.Getenv("HZ_E2E_TOKEN")
 	if len(hzToken) == 0 {
-		t.Fatal("unable to run the test suite, HZ_TOKEN environment variable cannot be empty")
+		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
 	// act
