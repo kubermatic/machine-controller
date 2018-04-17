@@ -5,24 +5,26 @@ metadata:
 spec:
   metadata:
     name: << NODE_NAME >>
+    labels:
+      foo: "bar"
   providerConfig:
     sshPublicKeys:
       - "<< YOUR_PUBLIC_KEY >>"
-    cloudProvider: "digitalocean"
+    cloudProvider: "vsphere"
     cloudProviderSpec:
-      token: << DIGITALOCEAN_TOKEN >>
-      region: fra1
-      size: 1gb
-      backups: false
-      ipv6: false
-      private_networking: true
-      monitoring: false
-      tags:
-        - "machine-controller"
-    # Can be 'ubuntu', 'coreos' or 'centos'
+      templateVMName: ubuntu-template
+      username: '<< VSPHERE_USERNAME >>'
+      vsphereURL: 'https://<< VSPHERE_ADDRESS >>'
+      datacenter: 'Datacenter'
+      password: << VSPHERE_PASSWORD >>
+      cluster: "test-cluster"
+      datastore: datastore1
+      allowInsecure: true
+      cpus: 2
+      MemoryMB: 2048
     operatingSystem: "<< OS_NAME >>"
     operatingSystemSpec:
-      disableAutoUpdate: true
+      distUpgradeOnBoot: false
   roles:
   - "Node"
   versions:

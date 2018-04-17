@@ -12,6 +12,7 @@ const (
 	do_manifest  = "./testdata/machine-digitalocean.yaml"
 	aws_manifest = "./testdata/machine-aws.yaml"
 	hz_manifest  = "./testdata/machine-hetzner.yaml"
+	vs_manifest  = "./testdata/machine-vsphere.yaml"
 )
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
@@ -83,4 +84,28 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	// act
 	params := fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)
 	runScenarios(t, hzScenarios, params, hz_manifest, "hz")
+}
+
+var vsphereScenarios = []scenario{
+	scenarios[0],
+	scenarios[1],
+	scenarios[2],
+}
+
+// TestVsphereProvisioning - a test suite that exercises vsphere provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVsphereProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
+	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
+	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
+	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	}
+
+	// act
+	params := fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s,<< VSPHERE_USERNAME >>=%s,<< VSPHERE_ADDRESS >>=%s", vsPassword, vsUsername, vsAddress)
+	runScenarios(t, vsphereScenarios, params, vs_manifest, "vs")
 }
