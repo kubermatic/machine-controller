@@ -29,7 +29,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 	}
 
 	// act
-	params := fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)
+	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
 	runScenarios(t, nil, params, do_manifest, "do")
 }
 
@@ -50,7 +50,9 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
 
 	// act
-	params := fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s,<< AWS_SECRET_ACCESS_KEY >>=%s", awsKeyID, awsSecret)
+	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+	}
 	runScenarios(t, excludeSelector, params, aws_manifest, "aws")
 }
 
@@ -69,7 +71,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
 
 	// act
-	params := fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)
+	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 	runScenarios(t, excludeSelector, params, hz_manifest, "hz")
 }
 
@@ -90,6 +92,9 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
 
 	// act
-	params := fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s,<< VSPHERE_USERNAME >>=%s,<< VSPHERE_ADDRESS >>=%s", vsPassword, vsUsername, vsAddress)
+	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
+		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
+		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
+	}
 	runScenarios(t, excludeSelector, params, vs_manifest, "vs")
 }
