@@ -17,7 +17,7 @@ done
 
 
 rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../../{examples,machine-controller,Dockerfile} \
+    ../../../{examples/machine-controller.yaml,machine-controller,Dockerfile} \
     root@$ADDR:/root/
 
 cat <<EOEXEC |ssh_exec
@@ -55,7 +55,7 @@ if ! ls kube-flannel.yml; then
 fi
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
-  kubectl apply -f examples/machine-controller.yaml
+  kubectl apply -f machine-controller.yaml
   touch machine-controller-deployed
 fi
 
