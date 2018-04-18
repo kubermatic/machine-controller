@@ -171,6 +171,15 @@ write_files:
   content: |
 {{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
 
+- path: "/etc/udev/rules.d/99-bridge.rules"
+  content: |
+    ACTION=="add", SUBSYSTEM=="module", KERNEL=="br_netfilter", \
+      RUN+="/lib/systemd/systemd-sysctl --prefix=/net/bridge"
+
+- path: "/etc/sysctl.d/bridge.conf"
+  content: |
+    net.bridge.bridge-nf-call-iptables = 1
+
 
 - path: "/etc/yum.repos.d/kubernetes.repo"
   content: |
