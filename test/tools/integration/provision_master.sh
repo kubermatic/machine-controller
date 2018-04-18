@@ -17,7 +17,7 @@ done
 
 
 rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../../{examples,machine-controller,Dockerfile,test/tools/verify/verify} \
+    ../../../{examples,machine-controller,Dockerfile} \
     root@$ADDR:/root/
 
 cat <<EOEXEC |ssh_exec
