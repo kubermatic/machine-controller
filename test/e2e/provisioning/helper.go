@@ -119,7 +119,7 @@ func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams []
 			machineName := fmt.Sprintf("machine-%s", nameSufix)
 			nodeName := fmt.Sprintf("node-%s", nameSufix)
 
-			scenarioParams := testParams[:]
+			scenarioParams := append([]string(nil), testParams...)
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", machineName))
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", nodeName))
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
