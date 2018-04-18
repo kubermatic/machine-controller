@@ -308,7 +308,6 @@ write_files:
 {{- end }}
       --token {{ .BoostrapToken }} \
       --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
-      --ignore-preflight-errors=Port-10250 \
       {{ .ServerAddr }}
 
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
