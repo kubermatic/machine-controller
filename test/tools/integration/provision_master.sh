@@ -17,7 +17,7 @@ done
 
 
 rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../../{examples,machine-controller,Dockerfile,test} ../verify/verify \
+    ../../../{examples/machine-controller.yaml,machine-controller,Dockerfile} \
     root@$ADDR:/root/
 
 cat <<EOEXEC |ssh_exec
@@ -53,15 +53,9 @@ if ! ls kube-flannel.yml; then
   curl -LO https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml
   kubectl apply -f kube-flannel.yml
 fi
-if ! which go; then
-  apt-get update
-  apt-get install -y golang-1.10-go
-  echo 'PATH="$PATH:/usr/lib/go-1.10/bin"' >> /root/.profile
-fi
-
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
-  kubectl apply -f examples/machine-controller.yaml
+  kubectl apply -f machine-controller.yaml
   touch machine-controller-deployed
 fi
 
@@ -78,3 +72,7 @@ echo "Logs:"
 kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
 exit 1
 EOEXEC
+
+scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+  root@$ADDR:/root/.kube/config \
+  $GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig
