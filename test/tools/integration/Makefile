@@ -29,7 +29,7 @@ terraform: .plugins/terraform-provider-hcloud
 plan apply destroy: .terraform
 	@terraform $@\
 		$(EXTRA_ARG) \
-		-var hcloud_token=$(HZ_TOKEN) \
+		-var hcloud_token=$(HZ_E2E_TOKEN) \
 		-var hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
 		-var hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
 		-var hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)"
