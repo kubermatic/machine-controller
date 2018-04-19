@@ -111,46 +111,34 @@ func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams [
 		}
 
 		st.Run(testCase.name, func(it *testing.T) {
-			nameSufix := strings.Replace(testCase.name, " ", "-", -1)
-			nameSufix = strings.ToLower(nameSufix)
-			nameSufix = fmt.Sprintf("%s-%s-%s", cloudProvider, nameSufix, buildNum)
-			machineName := fmt.Sprintf("machine-%s", nameSufix)
-			testScenario(it, machineName)
-			//nodeName := fmt.Sprintf("node-%s", nameSufix)
-			//
-			//scenarioParams := append([]string(nil), testParams...)
-			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", machineName))
-			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", nodeName))
-			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
-			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
-			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
-			//st.Logf("%v", scenarioParams)
-			//
-			//err := verify(manifestPath, scenarioParams)
-			//if err != nil {
-			//	st.Errorf("verify failed due to error=%v", err)
-			//}
+			testScenario(it, testCase, buildNum, cloudProvider, testParams, manifestPath)
 		})
 	}
 
 }
 
-func testScenario(t *testing.T, name string) {
+func testScenario(t *testing.T, testCase scenario, buildNum, cloudProvider string, testParams []string, manifestPath string) {
 	t.Parallel()
-	t.Log("starting " + name + "...")
-	time.Sleep(10*time.Second)
-	t.Log("finished " + name)
-}
 
-func verify(manifestPath string, params []string) error {
+	nameSufix := strings.Replace(testCase.name, " ", "-", -1)
+	nameSufix = strings.ToLower(nameSufix)
+	nameSufix = fmt.Sprintf("%s-%s-%s", cloudProvider, nameSufix, buildNum)
+	nodeName := fmt.Sprintf("node-%s", nameSufix)
+	machineName := fmt.Sprintf("machine-%s", nameSufix)
+	scenarioParams := append([]string(nil), testParams...)
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", machineName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", nodeName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
+
 	gopath := os.Getenv("GOPATH")
 	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
 
 	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 
-	err := verifyhelper.Verify(kubeConfig, manifestPath, params, false, 60*time.Hour)
+	err := verifyhelper.Verify(kubeConfig, manifestPath, scenarioParams, false, 60*time.Hour)
 	if err != nil {
-		return err
+		t.Errorf("verify failed due to error=%v", err)
 	}
-	return nil
 }

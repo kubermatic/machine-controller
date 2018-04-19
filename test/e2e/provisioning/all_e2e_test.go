@@ -84,9 +84,9 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
 	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
-	//	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 {
-	//		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
-	//	}
+	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	}
 
 	// Vsphere only supports Ubuntu
 	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
