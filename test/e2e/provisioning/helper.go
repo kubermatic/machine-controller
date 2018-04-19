@@ -99,7 +99,7 @@ func doesSenarioSelectorMatch(selector *scenarioSelector, testCase scenario) boo
 	return false
 }
 
-func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams []string, manifestPath string, cloudProvider string) {
+func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams []string, manifestPath string, cloudProvider string) {
 	buildNum := os.Getenv("CIRCLE_BUILD_NUM")
 	if buildNum == "" {
 		buildNum = "local"
@@ -110,31 +110,36 @@ func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams []
 			continue
 		}
 
-		t.Run(testCase.name, func(t *testing.T) {
-			t.Parallel()
-
+		st.Run(testCase.name, func(it *testing.T) {
 			nameSufix := strings.Replace(testCase.name, " ", "-", -1)
 			nameSufix = strings.ToLower(nameSufix)
 			nameSufix = fmt.Sprintf("%s-%s-%s", cloudProvider, nameSufix, buildNum)
 			machineName := fmt.Sprintf("machine-%s", nameSufix)
-			t.Log(machineName)
-			nodeName := fmt.Sprintf("node-%s", nameSufix)
-
-			scenarioParams := append([]string(nil), testParams...)
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", machineName))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", nodeName))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
-			t.Logf("%v", scenarioParams)
-
-			err := verify(manifestPath, scenarioParams)
-			if err != nil {
-				t.Errorf("verify failed due to error=%v", err)
-			}
+			testScenario(it, machineName)
+			//nodeName := fmt.Sprintf("node-%s", nameSufix)
+			//
+			//scenarioParams := append([]string(nil), testParams...)
+			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", machineName))
+			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", nodeName))
+			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
+			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
+			//scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
+			//st.Logf("%v", scenarioParams)
+			//
+			//err := verify(manifestPath, scenarioParams)
+			//if err != nil {
+			//	st.Errorf("verify failed due to error=%v", err)
+			//}
 		})
 	}
 
+}
+
+func testScenario(t *testing.T, name string) {
+	t.Parallel()
+	t.Log("starting " + name + "...")
+	time.Sleep(10*time.Second)
+	t.Log("finished " + name)
 }
 
 func verify(manifestPath string, params []string) error {
