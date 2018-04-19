@@ -136,19 +136,19 @@ workflows:
               only: /v.*/
       - test:
           requires:
-            - check-dependencies
+            - checkout_code
           filters:
             tags:
               only: /v.*/
       - build:
           requires:
-            - check-dependencies
+            - checkout_code
           filters:
             tags:
               only: /v.*/
       - verify-tool:
           requires:
-            - check-dependencies
+            - checkout_code
           filters:
             tags:
               only: /v.*/

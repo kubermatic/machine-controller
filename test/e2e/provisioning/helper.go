@@ -113,7 +113,7 @@ func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams st
 			machineName := fmt.Sprintf("machine-%s", nameSufix)
 			nodeName := fmt.Sprintf("node-%s", nameSufix)
 			params := testParams
-			params = fmt.Sprintf("%s,<< MACHINE_NAME >>=%s,<< NODE_NAME >>=%s", params, machineName, nodeName)
+			params = fmt.Sprintf("%s,<< MACHINE_NAME >>=%s,<< NODE_NAME >>=%s-%s", params, machineName, nodeName, os.Getenv("CIRCLE_BUILD_NUM"))
 			params = fmt.Sprintf("%s,<< OS_NAME >>=%s,<< CONTAINER_RUNTIME >>=%s,<< CONTAINER_RUNTIME_VERSION >>=%s", params, testCase.osName, testCase.containerRuntime, testCase.containerRuntimeVersion)
 
 			err := runVerifyTool(manifestPath, params)
