@@ -117,6 +117,7 @@ func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams []
 			nameSufix = strings.ToLower(nameSufix)
 			nameSufix = fmt.Sprintf("%s-%s-%s", cloudProvider, nameSufix, buildNum)
 			machineName := fmt.Sprintf("machine-%s", nameSufix)
+			t.Log(machineName)
 			nodeName := fmt.Sprintf("node-%s", nameSufix)
 
 			scenarioParams := append([]string(nil), testParams...)
@@ -125,6 +126,7 @@ func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams []
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
+			t.Logf("%v", scenarioParams)
 
 			err := verify(manifestPath, scenarioParams)
 			if err != nil {
