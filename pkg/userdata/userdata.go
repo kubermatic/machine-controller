@@ -10,6 +10,8 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
+
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
@@ -30,6 +32,6 @@ func ForOS(os providerconfig.OperatingSystem) (Provider, error) {
 }
 
 type Provider interface {
-	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, caCert string) (string, error)
+	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error)
 	SupportedContainerRuntimes() []machinesv1alpha1.ContainerRuntimeInfo
 }

@@ -7,7 +7,6 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
@@ -43,15 +42,15 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 	return fmt.Sprintf("%s.%s", tokenID, tokenSecret), nil
 }
 
-func (c *Controller) createBootstrapKubeconfig(name string) (string, error) {
+func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
 	token, err := c.createBootstrapToken(name)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	infoKubeconfig, err := c.kubeconfigProvider.GetKubeconfig()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	outConfig := infoKubeconfig.DeepCopy()
@@ -62,10 +61,5 @@ func (c *Controller) createBootstrapKubeconfig(name string) (string, error) {
 		},
 	}
 
-	bytes, err := clientcmd.Write(*outConfig)
-	if err != nil {
-		return "", err
-	}
-
-	return string(bytes), nil
+	return outConfig, nil
 }

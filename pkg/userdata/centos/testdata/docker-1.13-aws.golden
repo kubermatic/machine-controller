@@ -1,0 +1,79 @@
+#cloud-config
+hostname: node1
+
+
+
+write_files:
+- path: "/etc/kubernetes/cloud-config"
+  content: |
+    {aws-config:true}
+
+- path: "/etc/udev/rules.d/99-bridge.rules"
+  content: |
+    ACTION=="add", SUBSYSTEM=="module", KERNEL=="br_netfilter", \
+      RUN+="/lib/systemd/systemd-sysctl --prefix=/net/bridge"
+
+- path: "/etc/sysctl.d/bridge.conf"
+  content: |
+    net.bridge.bridge-nf-call-iptables = 1
+
+
+- path: "/etc/yum.repos.d/kubernetes.repo"
+  content: |
+    [kubernetes]
+    name=Kubernetes
+    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+    enabled=1
+    gpgcheck=1
+    repo_gpgcheck=1
+    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+- path: /etc/sysconfig/selinux
+  content: |
+    # This file controls the state of SELinux on the system.
+    # SELINUX= can take one of these three values:
+    #     enforcing - SELinux security policy is enforced.
+    #     permissive - SELinux prints warnings instead of enforcing.
+    #     disabled - No SELinux policy is loaded.
+    SELINUX=permissive
+    # SELINUXTYPE= can take one of three two values:
+    #     targeted - Targeted processes are protected,
+    #     minimum - Modification of targeted policy. Only selected processes are protected.
+    #     mls - Multi Level Security protection.
+    SELINUXTYPE=targeted
+
+- path: "/etc/systemd/system/kubeadm-join.service"
+  content: |
+    [Unit]
+    Requires=network-online.target docker.service
+    After=network-online.target docker.service
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStartPre=/usr/sbin/modprobe br_netfilter
+    ExecStart=/usr/bin/kubeadm join \
+      --token my-token \
+      --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
+      server:443
+
+- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
+  content: |
+    [Service]
+    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config"
+
+runcmd:
+- setenforce 0 || true
+- chage -d $(date +%s) root
+- systemctl enable kubelet
+- systemctl start kubeadm-join
+
+packages:
+- docker-1.13.1
+- kubelet-1.9.6
+- kubeadm-1.9.6
+- ebtables
+- ethtool
+- nfs-utils
+- bash-completion # Have mercy for the poor operators
+- sudo

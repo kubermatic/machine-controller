@@ -92,7 +92,6 @@ type Controller struct {
 
 type KubeconfigProvider interface {
 	GetKubeconfig() (*clientcmdapi.Config, error)
-	GetCACert() (string, error)
 }
 
 // MetricsCollection is a struct of all metrics used in
@@ -484,11 +483,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
-			clusterCACert, err := c.kubeconfigProvider.GetCACert()
-			if err != nil {
-				return fmt.Errorf("error getting CACert: '%v'", err)
-			}
-			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs, clusterCACert)
+			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
 			if err != nil {
 				return fmt.Errorf("failed get userdata: %v", err)
 			}

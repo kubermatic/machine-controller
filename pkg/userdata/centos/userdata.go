@@ -13,7 +13,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 type Provider struct{}
@@ -69,7 +71,7 @@ func getDockerPackageName(version string) (string, error) {
 	return "", fmt.Errorf("no package found for version '%s'", version)
 }
 
-func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP, kubernetesCACert string) (string, error) {
+func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -101,28 +103,45 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig string,
 		return "", fmt.Errorf("failed to parse OperatingSystemSpec: '%v'", err)
 	}
 
+	bootstrapToken, err := userdatahelper.GetTokenFromKubeconfig(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting token: %v", err)
+	}
+
+	kubeadmCACertHash, err := userdatahelper.GetKubeadmCACertHash(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting kubeadm cacert hash: %v", err)
+	}
+
+	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
+	}
+
 	data := struct {
 		MachineSpec       machinesv1alpha1.MachineSpec
 		ProviderConfig    *providerconfig.Config
 		OSConfig          *Config
-		Kubeconfig        string
+		BoostrapToken     string
 		CloudProvider     string
 		CloudConfig       string
 		KubeletVersion    string
 		DockerPackageName string
 		ClusterDNSIPs     []net.IP
-		KubernetesCACert  string
+		KubeadmCACertHash string
+		ServerAddr        string
 	}{
 		MachineSpec:       spec,
 		ProviderConfig:    pconfig,
 		OSConfig:          osConfig,
-		Kubeconfig:        kubeconfig,
+		BoostrapToken:     bootstrapToken,
 		CloudProvider:     cpName,
 		CloudConfig:       cpConfig,
 		KubeletVersion:    kubeletVersion,
 		DockerPackageName: dockerPackageName,
 		ClusterDNSIPs:     clusterDNSIPs,
-		KubernetesCACert:  kubernetesCACert,
+		KubeadmCACertHash: kubeadmCACertHash,
+		ServerAddr:        serverAddr,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -148,6 +167,20 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
+- path: "/etc/kubernetes/cloud-config"
+  content: |
+{{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
+
+- path: "/etc/udev/rules.d/99-bridge.rules"
+  content: |
+    ACTION=="add", SUBSYSTEM=="module", KERNEL=="br_netfilter", \
+      RUN+="/lib/systemd/systemd-sysctl --prefix=/net/bridge"
+
+- path: "/etc/sysctl.d/bridge.conf"
+  content: |
+    net.bridge.bridge-nf-call-iptables = 1
+
+
 - path: "/etc/yum.repos.d/kubernetes.repo"
   content: |
     [kubernetes]
@@ -172,72 +205,36 @@ write_files:
     #     mls - Multi Level Security protection.
     SELINUXTYPE=targeted
 
-{{- if ne .CloudConfig "" }}
-- path: "/etc/kubernetes/cloud-config"
-  content: |
-{{ .CloudConfig | indent 4 }}
-{{- end }}
-
-- path: "/etc/kubernetes/bootstrap.kubeconfig"
-  content: |
-{{ .Kubeconfig | indent 4 }}
-
-- path: /etc/kubernetes/ca.crt
-  content: |
-{{ .KubernetesCACert | indent 4 }}
-
-- path: "/etc/systemd/system/kubelet.service.d/10-machine-controller.conf"
+- path: "/etc/systemd/system/kubeadm-join.service"
   content: |
     [Unit]
-    Description=Kubelet
     Requires=network-online.target docker.service
-    After=docker.service network-online.target
+    After=network-online.target docker.service
 
     [Service]
-    Restart=always
-    RestartSec=10
-    StartLimitInterval=600
-    StartLimitBurst=50
-    TimeoutStartSec=5min
-    Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
-    ExecStart=
-    ExecStart=/bin/kubelet \
-      --container-runtime=docker \
-      --cgroup-driver=systemd \
-      --allow-privileged=true \
-      --cni-bin-dir=/opt/cni/bin \
-      --cni-conf-dir=/etc/cni/net.d \
-      --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
-      --cluster-domain=cluster.local \
-      --network-plugin=cni \
-      {{- if .CloudProvider }}
-      --cloud-provider={{ .CloudProvider }} \
-      --cloud-config=/etc/kubernetes/cloud-config \
-      {{- end }}
-      --cert-dir=/etc/kubernetes/ \
-      --pod-manifest-path=/etc/kubernetes/manifests \
-      --resolv-conf=/etc/resolv.conf \
-      --rotate-certificates=true \
-      --kubeconfig=/etc/kubernetes/kubeconfig \
-      --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
-      --lock-file=/var/run/lock/kubelet.lock \
-      --exit-on-lock-contention \
-      --read-only-port 0 \
-      --authorization-mode=Webhook \
-      --anonymous-auth=false \
-      --client-ca-file=/etc/kubernetes/ca.crt
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStartPre=/usr/sbin/modprobe br_netfilter
+    ExecStart=/usr/bin/kubeadm join \
+      --token {{ .BoostrapToken }} \
+      --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
+      {{ .ServerAddr }}
 
-    [Install]
-    WantedBy=multi-user.target
+- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
+  content: |
+    [Service]
+    Environment="KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-config{{ end}}"
 
 runcmd:
 - setenforce 0 || true
 - chage -d $(date +%s) root
-- systemctl enable --now kubelet
+- systemctl enable kubelet
+- systemctl start kubeadm-join
 
 packages:
 - {{ .DockerPackageName }}
 - kubelet-{{ .KubeletVersion }}
+- kubeadm-{{ .KubeletVersion }}
 - ebtables
 - ethtool
 - nfs-utils
