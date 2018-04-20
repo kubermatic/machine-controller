@@ -26,7 +26,7 @@ const (
 	tempDir                 = "/tmp"
 )
 
-func verify(kubeConfig, manifestPath string, parameters []string, createOnly bool, timeout time.Duration) error {
+func verify(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 
 	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
 		return fmt.Errorf("kubeconfig and manifest path must be defined")
@@ -70,9 +70,7 @@ func verify(kubeConfig, manifestPath string, parameters []string, createOnly boo
 			if err != nil {
 				return err
 			}
-			if createOnly {
-				continue
-			}
+
 			err = deleteAndAssure(newMachine, machineClient, kubeClient, timeout)
 			if err != nil {
 				return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
