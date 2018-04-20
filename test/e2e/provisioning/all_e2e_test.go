@@ -48,15 +48,11 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
-	// CentOS on AWS seems to be broken, deactivating for now
-	// TODO: investigate this
-	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
-
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
 	}
-	runScenarios(t, excludeSelector, params, aws_manifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+	runScenarios(t, nil, params, aws_manifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider
