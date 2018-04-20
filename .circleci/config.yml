@@ -65,7 +65,11 @@ jobs:
           command: go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier=$CIRCLE_BUILD_NUM
           no_output_timeout: 15m
       - run:
-          name: Clean up
+          name: Clean up machines
+          command: ./test/tools/integration/cleanup_machines.sh
+          when: always
+      - run:
+          name: Clean up master
           command: make -C test/tools/integration destroy
           when: always
 
