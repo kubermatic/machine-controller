@@ -100,34 +100,28 @@ func doesSenarioSelectorMatch(selector *scenarioSelector, testCase scenario) boo
 }
 
 func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams []string, manifestPath string, cloudProvider string) {
-	buildNum := os.Getenv("CIRCLE_BUILD_NUM")
-	if buildNum == "" {
-		buildNum = "local"
-	}
-
 	for _, testCase := range scenarios {
 		if excludeSelector != nil && doesSenarioSelectorMatch(excludeSelector, testCase) {
 			continue
 		}
 
 		st.Run(testCase.name, func(it *testing.T) {
-			testScenario(it, testCase, buildNum, cloudProvider, testParams, manifestPath)
+			testScenario(it, testCase, cloudProvider, testParams, manifestPath)
 		})
 	}
 
 }
 
-func testScenario(t *testing.T, testCase scenario, buildNum, cloudProvider string, testParams []string, manifestPath string) {
+func testScenario(t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string) {
 	t.Parallel()
 
-	nameSufix := strings.Replace(testCase.name, " ", "-", -1)
-	nameSufix = strings.ToLower(nameSufix)
-	nameSufix = fmt.Sprintf("%s-%s-%s", cloudProvider, nameSufix, buildNum)
-	nodeName := fmt.Sprintf("node-%s", nameSufix)
-	machineName := fmt.Sprintf("machine-%s", nameSufix)
+	kubernetesCompliantName := fmt.Sprintf("%s-%s", testCase.name, cloudProvider)
+	kubernetesCompliantName = strings.Replace(kubernetesCompliantName, " ", "-", -1)
+	kubernetesCompliantName = strings.ToLower(kubernetesCompliantName)
+
 	scenarioParams := append([]string(nil), testParams...)
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", machineName))
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", nodeName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", kubernetesCompliantName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", kubernetesCompliantName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
