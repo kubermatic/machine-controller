@@ -74,10 +74,7 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 			err = deleteAndAssure(newMachine, machineClient, kubeClient, timeout)
 			if err != nil {
 				return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
-				msg := "all good, successfully verified that a machine/node has been created"
-				if !createOnly {
-					msg += " and then deleted"
-				}
+				msg := "all good, successfully verified that a machine/node has been created and then deleted"
 				glog.Infoln(msg)
 			}
 		} else {
