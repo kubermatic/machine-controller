@@ -1,9 +1,12 @@
+defaults: &defaults
+  docker:
+    image: golang:1.10.1-alpine
+  working_directory: /go/src/github.com/kubermatic/machine-controller
+
 version: 2
 jobs:
   checkout_code:
-    docker:
-      - image: circleci/golang:1.9
-    working_directory: /go/src/github.com/kubermatic/machine-controller
+    <<: *defaults
     steps:
       - checkout
       - save_cache:
@@ -12,9 +15,7 @@ jobs:
             - /go/src/github.com/kubermatic/machine-controller
 
   check-dependencies:
-    docker:
-      - image: circleci/golang:1.9
-    working_directory: /go/src/github.com/kubermatic/machine-controller
+    <<: *defaults
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
@@ -22,43 +23,24 @@ jobs:
       - run: dep status
 
   test:
-    docker:
-      - image: docker:stable
-    working_directory: /go/src/github.com/kubermatic/machine-controller
+    <<: *defaults
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - setup_remote_docker
-      - run: apk update && apk add make bash git
-      - run: |
-          set -e
-          docker create -v /go/src/github.com/kubermatic/machine-controller --name vol-container alpine /bin/true
-          docker cp . vol-container:/go/src/github.com/kubermatic/machine-controller/
-          export USE_VOLUME_CONTAINER=true && make test-unit-nodep
+      - run: go test ./...
 
   build:
-    docker:
-      - image: docker:stable
-    working_directory: /go/src/github.com/kubermatic/machine-controller
+    <<: *defaults
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - setup_remote_docker
-      - run: apk update && apk add make bash git
-      - run: |
-          set -e
-          docker create -v /go/src/github.com/kubermatic/machine-controller --name vol-container alpine /bin/true
-          docker cp . vol-container:/go/src/github.com/kubermatic/machine-controller/
-          export USE_VOLUME_CONTAINER=true && make machine-controller-nodep
-          docker cp vol-container:/go/src/github.com/kubermatic/machine-controller/machine-controller .
+      - run: make machine-controller
       - save_cache:
           key: machine-controller-{{ .Revision }}
           paths:
             - machine-controller
   end-to-end:
-    docker:
-      - image: golang:1.10.0-alpine
-    working_directory: /go/src/github.com/kubermatic/machine-controller
+    <<: *defaults
     steps:
       - run:
           name: Install dependencies
@@ -90,9 +72,9 @@ jobs:
           when: always
 
   publish:
+    <<: *defaults
     docker:
       - image: docker:stable
-    working_directory: /go/src/github.com/kubermatic/machine-controller
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
