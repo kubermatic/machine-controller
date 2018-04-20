@@ -31,11 +31,10 @@ func Verify(kubeConfig, manifestPath string, parameters []string, createOnly boo
 	// since this method can fail due to "user: Current not implemented on linux/amd64" error
 	// we are trying to get the default path only when the path wasn't specified
 	if len(kubeConfig) == 0 {
-		defaultKubeconfigPath, err := getDefaultKubeconfigPath()
+		kubeConfig, err := getDefaultKubeconfigPath()
 		if err != nil {
 			return fmt.Errorf("error getting default path for kubeconfig: '%v'", err)
 		}
-		kubeConfig = defaultKubeconfigPath
 	}
 
 	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
