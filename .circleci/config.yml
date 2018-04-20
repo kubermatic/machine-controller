@@ -55,18 +55,6 @@ jobs:
           key: machine-controller-{{ .Revision }}
           paths:
             - machine-controller
-  verify-tool:
-    docker:
-      - image: golang:1.10.0
-    working_directory: /go/src/github.com/kubermatic/machine-controller/test/tools/verify
-    steps:
-      - restore_cache:
-          key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - run: make verify
-      - save_cache:
-          key: verify-tool-{{ .Revision }}
-          paths:
-            - /go/src/github.com/kubermatic/machine-controller/test/tools/verify/verify
   end-to-end:
     docker:
       - image: golang:1.10.0-alpine
@@ -83,8 +71,6 @@ jobs:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: machine-controller-{{ .Revision }}
-      - restore_cache:
-          key: verify-tool-{{ .Revision }}
       - run:
           name: Generate ssh keypair
           command: ssh-keygen -f $HOME/.ssh/id_rsa -P ''
@@ -146,18 +132,11 @@ workflows:
           filters:
             tags:
               only: /v.*/
-      - verify-tool:
-          requires:
-            - checkout_code
-          filters:
-            tags:
-              only: /v.*/
       - end-to-end:
           requires:
             - check-dependencies
             - test
             - build
-            - verify-tool
           filters:
             tags:
               only: /v.*/
