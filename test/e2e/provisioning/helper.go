@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	verifyhelper "github.com/kubermatic/machine-controller/test/tools/verify"
 )
 
 var scenarios = []scenario{
@@ -131,7 +129,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 
-	err := verifyhelper.Verify(kubeConfig, manifestPath, scenarioParams, false, 60*time.Hour)
+	err := verify(kubeConfig, manifestPath, scenarioParams, false, 60*time.Hour)
 	if err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}

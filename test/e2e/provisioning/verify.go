@@ -1,4 +1,4 @@
-package verify
+package provisioning
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ const (
 	tempDir                 = "/tmp"
 )
 
-func Verify(kubeConfig, manifestPath string, parameters []string, createOnly bool, timeout time.Duration) error {
+func verify(kubeConfig, manifestPath string, parameters []string, createOnly bool, timeout time.Duration) error {
 
 	// since this method can fail due to "user: Current not implemented on linux/amd64" error
 	// we are trying to get the default path only when the path wasn't specified
