@@ -1,10 +1,8 @@
-package main
+package provisioning
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
@@ -28,101 +26,55 @@ const (
 	tempDir                 = "/tmp"
 )
 
-type arrayFlags string
+func verify(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 
-func (i *arrayFlags) String() string {
-	return string(*i)
-}
-
-var (
-	machineReadyCheckTimeout time.Duration
-)
-
-func (i *arrayFlags) Set(value string) error {
-	if value == "" {
-		return nil
-	}
-	var direct arrayFlags
-	if *i != arrayFlags("") {
-		direct = arrayFlags(fmt.Sprintf("%s,%s", i, value))
-	} else {
-		direct = arrayFlags(value)
-	}
-	*i = direct
-
-	return nil
-}
-
-func main() {
-	var manifestPath string
-	var parameters arrayFlags
-	var kubeConfig string
-	var createOnly bool
-
-	flag.StringVar(&kubeConfig, "kubeconfig", "", "a path to the kubeconfig.")
-	flag.StringVar(&manifestPath, "input", "", "a path to the machine's manifest.")
-	flag.Var(&parameters, "parameters", "a list of comma-delimited key value pairs i.e key=value,key1=value2. Can be passed multiple times")
-	flag.BoolVar(&createOnly, "createOnly", false, "if the tool should create only but not run deletion")
-	flag.DurationVar(&machineReadyCheckTimeout, "machineReadyTimeout", time.Duration(10*time.Minute), "specifies timeout for machine to be ready")
-	flag.Parse()
-
-	// since this method can fail due to "user: Current not implemented on linux/amd64" error
-	// we are trying to get the default path only when the path wasn't specified
-	if len(kubeConfig) == 0 {
-		defaultKubeconfigPath, err := getDefaultKubeconfigPath()
-		if err != nil {
-			glog.Fatalf("Error getting default path for kubeconfig: '%v'", err)
-		}
-		kubeConfig = defaultKubeconfigPath
-	}
-
-	// input sanitizaiton
 	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
-		glog.Errorln("please specify kubeconfig and input flags!")
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-	keyValuePairs := strings.Split(parameters.String(), ",")
-	if len(keyValuePairs) == 0 {
-		glog.Errorln("incorrect value of parameters flag:")
-		flag.PrintDefaults()
-		os.Exit(1)
+		return fmt.Errorf("kubeconfig and manifest path must be defined")
 	}
 
 	// init kube related stuff
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
-		glog.Fatalf("Error building kubeconfig: %v", err)
+		return fmt.Errorf("Error building kubeconfig: %v", err)
 	}
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("Error building kubernetes clientset: %v", err)
+		return fmt.Errorf("Error building kubernetes clientset: %v", err)
 	}
 	machineClient, err := machineclientset.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("Error building example clientset: %v", err)
+		return fmt.Errorf("Error building example clientset: %v", err)
 	}
 
 	// prepare the manifest
-	manifests, err := readAndModifyManifest(manifestPath, keyValuePairs)
+	manifests, err := readAndModifyManifest(manifestPath, parameters)
 	if err != nil {
-		glog.Fatalf("Failed to prepare the manifest, due to: %v", err)
+		return fmt.Errorf("failed to prepare the manifest, due to: %v", err)
 	}
 
-	// Pragmatic solution for multiple manifests in one file
 	manifestsList := strings.Split(manifests, "\n---\n")
 	for _, manifest := range manifestsList {
 		if manifest == "" {
 			continue
 		}
 		if strings.Contains(manifest, "kind: Machine") {
-			err = verify(manifest, kubeClient, machineClient, createOnly)
+			newMachine := &machinev1alpha1.Machine{}
+			manifestReader := strings.NewReader(manifest)
+			manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
+			err := manifestDecoder.Decode(newMachine)
 			if err != nil {
-				glog.Fatalf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
-				msg := "all good, successfully verified that a machine/node has been created"
-				if !createOnly {
-					msg += " and then deleted"
-				}
+				return err
+			}
+
+			err = createAndAssure(newMachine, machineClient, kubeClient, timeout)
+			if err != nil {
+				return err
+			}
+
+			err = deleteAndAssure(newMachine, machineClient, kubeClient, timeout)
+			if err != nil {
+				return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
+				msg := "all good, successfully verified that a machine/node has been created and then deleted"
 				glog.Infoln(msg)
 			}
 		} else {
@@ -130,11 +82,13 @@ func main() {
 			glog.Infof("Trying to apply additional manifest...")
 			err = kubectlApply(kubeConfig, manifest)
 			if err != nil {
-				glog.Fatalf("Error applying manifest: '%v'", err)
+				return fmt.Errorf("error applying manifest: '%v'", err)
 			}
 			glog.Infof("Successfully applied additional manifest!")
 		}
 	}
+
+	return nil
 }
 
 func kubectlApply(kubecfgPath, manifest string) error {
@@ -171,26 +125,7 @@ func getDefaultKubeconfigPath() (string, error) {
 	return filepath.Join(user.HomeDir, ".kube/config"), nil
 }
 
-func verify(manifest string, kubeClient kubernetes.Interface, machineClient machineclientset.Interface, createOnly bool) error {
-	newMachine := &machinev1alpha1.Machine{}
-	manifestReader := strings.NewReader(manifest)
-	manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
-	err := manifestDecoder.Decode(newMachine)
-	if err != nil {
-		return err
-	}
-
-	err = createAndAssure(newMachine, machineClient, kubeClient)
-	if err != nil {
-		return err
-	}
-	if createOnly {
-		return nil
-	}
-	return deleteAndAssure(newMachine, machineClient, kubeClient)
-}
-
-func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
+func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachine(machine, kubeClient, false)
 	if err != nil {
@@ -202,7 +137,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	if err != nil {
 		return err
 	}
-	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
+	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		err := assureNodeForMachine(machine, kubeClient, true)
 		if err == nil {
 			return true, nil
@@ -216,7 +151,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 
 	glog.Infof("waiting for status = %s to come \n", v1.NodeReady)
 	nodeName := machine.Spec.Name
-	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
+	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 		if err != nil {
 			return false, nil
@@ -240,14 +175,14 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	return nil
 }
 
-func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface) error {
+func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	glog.Infof("deleting the machine \"%s\"\n", machine.Name)
 	err := machineClient.MachineV1alpha1().Machines().Delete(machine.Name, nil)
 	if err != nil {
 		return fmt.Errorf("unable to remove machine %s, due to %v", machine.Name, err)
 	}
 
-	err = wait.Poll(machineReadyCheckPeriod, machineReadyCheckTimeout, func() (bool, error) {
+	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		err := assureNodeForMachine(machine, kubeClient, false)
 		if err == nil {
 			return true, nil

@@ -3,6 +3,7 @@
 package provisioning
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -14,6 +15,8 @@ const (
 	hz_manifest  = "./testdata/machine-hetzner.yaml"
 	vs_manifest  = "./testdata/machine-vsphere.yaml"
 )
+
+var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
@@ -29,8 +32,8 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 	}
 
 	// act
-	params := fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)
-	runScenarios(t, nil, params, do_manifest, "do")
+	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
+	runScenarios(t, nil, params, do_manifest, fmt.Sprintf("do-%s", *testRunIdentifier))
 }
 
 // TestAWSProvisioning - a test suite that exercises AWS provider
@@ -45,13 +48,11 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
-	// CentOS on AWS seems to be broken, deactivating for now
-	// TODO: investigate this
-	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
-
 	// act
-	params := fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s,<< AWS_SECRET_ACCESS_KEY >>=%s", awsKeyID, awsSecret)
-	runScenarios(t, excludeSelector, params, aws_manifest, "aws")
+	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+	}
+	runScenarios(t, nil, params, aws_manifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider
@@ -69,8 +70,8 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
 
 	// act
-	params := fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)
-	runScenarios(t, excludeSelector, params, hz_manifest, "hz")
+	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
+	runScenarios(t, excludeSelector, params, hz_manifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
 }
 
 // TestVsphereProvisioning - a test suite that exercises vsphere provider
@@ -90,6 +91,9 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
 
 	// act
-	params := fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s,<< VSPHERE_USERNAME >>=%s,<< VSPHERE_ADDRESS >>=%s", vsPassword, vsUsername, vsAddress)
-	runScenarios(t, excludeSelector, params, vs_manifest, "vs")
+	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
+		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
+		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
+	}
+	runScenarios(t, excludeSelector, params, vs_manifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }

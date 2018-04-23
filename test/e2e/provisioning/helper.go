@@ -3,10 +3,10 @@ package provisioning
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 var scenarios = []scenario{
@@ -97,56 +97,40 @@ func doesSenarioSelectorMatch(selector *scenarioSelector, testCase scenario) boo
 	return false
 }
 
-func runScenarios(t *testing.T, excludeSelector *scenarioSelector, testParams string, manifestPath string, cloudProvider string) {
+func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
 		if excludeSelector != nil && doesSenarioSelectorMatch(excludeSelector, testCase) {
 			continue
 		}
 
-		testCase := testCase // capture range variable
-		t.Run(testCase.name, func(t *testing.T) {
-			t.Parallel()
-
-			nameSufix := strings.Replace(testCase.name, " ", "-", -1)
-			nameSufix = strings.ToLower(nameSufix)
-			nameSufix = fmt.Sprintf("%s-%s", cloudProvider, nameSufix)
-			machineName := fmt.Sprintf("machine-%s", nameSufix)
-			nodeName := fmt.Sprintf("node-%s", nameSufix)
-			params := testParams
-			params = fmt.Sprintf("%s,<< MACHINE_NAME >>=%s,<< NODE_NAME >>=%s-%s", params, machineName, nodeName, os.Getenv("CIRCLE_BUILD_NUM"))
-			params = fmt.Sprintf("%s,<< OS_NAME >>=%s,<< CONTAINER_RUNTIME >>=%s,<< CONTAINER_RUNTIME_VERSION >>=%s", params, testCase.osName, testCase.containerRuntime, testCase.containerRuntimeVersion)
-
-			err := runVerifyTool(manifestPath, params)
-			if err != nil {
-				t.Errorf("verify tool failed due to %v", err)
-			}
+		st.Run(testCase.name, func(it *testing.T) {
+			testScenario(it, testCase, cloudProvider, testParams, manifestPath)
 		})
 	}
 
 }
 
-func runVerifyTool(manifestPath string, params string) error {
+func testScenario(t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string) {
+	t.Parallel()
+
+	kubernetesCompliantName := fmt.Sprintf("%s-%s", testCase.name, cloudProvider)
+	kubernetesCompliantName = strings.Replace(kubernetesCompliantName, " ", "-", -1)
+	kubernetesCompliantName = strings.ToLower(kubernetesCompliantName)
+
+	scenarioParams := append([]string(nil), testParams...)
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", kubernetesCompliantName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", kubernetesCompliantName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
+
 	gopath := os.Getenv("GOPATH")
 	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
 
 	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
-	args := []string{
-		"-input",
-		manifestPath,
-		"-parameters",
-		params,
-		"-kubeconfig",
-		kubeConfig,
-		"-machineReadyTimeout",
-		"40m",
-		"-logtostderr",
-		"true",
-	}
 
-	cmd := exec.Command(filepath.Join(projectDir, "test/tools/verify/verify"), args...)
-	out, err := cmd.CombinedOutput()
+	err := verify(kubeConfig, manifestPath, scenarioParams, 60*time.Hour)
 	if err != nil {
-		return fmt.Errorf("verify tool failed with the error=%v, output=\n%v", err, string(out))
+		t.Errorf("verify failed due to error=%v", err)
 	}
-	return nil
 }
