@@ -125,7 +125,7 @@ func NewMachineController(
 
 	machinescheme.AddToScheme(scheme.Scheme)
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartLogging(glog.V(4).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	controller := &Controller{
@@ -373,6 +373,8 @@ func (c *Controller) syncHandler(key string) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		c.recorder.Event(machine, corev1.EventTypeNormal, "NodeReady", "Node for machine was found and is ready")
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
@@ -502,7 +504,6 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
-			c.recorder.Event(machine, corev1.EventTypeNormal, "Creating", "Creating instance")
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
