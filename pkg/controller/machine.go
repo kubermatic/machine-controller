@@ -429,6 +429,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 	// step 2.3: delete provider instance
 	if err = c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete machine: %v", err)
 		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
 
@@ -465,8 +466,10 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
 				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
 			}
+			c.recorder.Eventf(machine, corev1.EventTypeWarning, "ValidationFaled", "Validation failed: %v", err)
 			return fmt.Errorf("invalid provider config: %v", err)
 		}
+		c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSuceeded", "Validation succeeded")
 		c.validationCache[cacheKey] = true
 	} else {
 		glog.V(6).Infof("Skipping validation as the machine was already successfully validated before")
@@ -497,11 +500,13 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
-			glog.Infof("creating instance...")
+			c.recorder.Event(machine, corev1.EventTypeNormal, "Creating", "Creating instance")
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
+				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.CreateMachineError, message, err, "failed to create machine at cloudprover")
 			}
+			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			// remove error message in case it was set
 			if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
 				return fmt.Errorf("failed to update machine after removing the create machine error: %v", err)
@@ -521,6 +526,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
+	c.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", "Found instance at cloud provider")
 	return c.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
 }
 
@@ -539,6 +545,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 				return fmt.Errorf("failed to update node %s after adding the owner ref: %v", node.Name, err)
 			}
 			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
+			c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeMatched", "Successfully matched machine to node %s", node.Name)
 			c.metrics.NodeJoinDuration.Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
 		}
 
@@ -595,6 +602,7 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 		if err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
+		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTainsUpdated", "Sucecssfully updated labels/annotations/taints")
 		glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
 	}
 
