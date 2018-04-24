@@ -3,7 +3,6 @@ package aws
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -190,7 +189,7 @@ func getDefaultRootDevicePath(os providerconfig.OperatingSystem) (string, error)
 		return "/dev/xvda", nil
 	}
 
-	return "", errors.New("no default root path found")
+	return "", fmt.Errorf("no default root path found for %s operating system", os)
 }
 
 func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
