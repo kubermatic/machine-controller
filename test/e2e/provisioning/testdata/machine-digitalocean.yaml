@@ -12,7 +12,7 @@ spec:
     cloudProviderSpec:
       token: << DIGITALOCEAN_TOKEN >>
       region: fra1
-      size: 1gb
+      size: c-2
       backups: false
       ipv6: false
       private_networking: true
