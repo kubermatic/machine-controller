@@ -3,6 +3,7 @@ package aws
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -177,6 +178,19 @@ func getDefaultAMIID(os providerconfig.OperatingSystem, region string) (string, 
 	}
 
 	return id, nil
+}
+
+func getDefaultRootDevicePath(os providerconfig.OperatingSystem) (string, error) {
+	switch os {
+	case providerconfig.OperatingSystemUbuntu:
+		return "/dev/sda1", nil
+	case providerconfig.OperatingSystemCentOS:
+		return "/dev/sda1", nil
+	case providerconfig.OperatingSystemCoreos:
+		return "/dev/xvda", nil
+	}
+
+	return "", errors.New("no default root path found")
 }
 
 func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
@@ -530,8 +544,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 			return nil, err
 		}
 		securityGroupIDs = append(securityGroupIDs, sgID)
-	} else {
+	}
 
+	rootDevicePath, err := getDefaultRootDevicePath(pc.OperatingSystem)
+	if err != nil {
+		return nil, err
 	}
 
 	amiID := config.AMI
@@ -568,7 +585,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		ImageId: aws.String(amiID),
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
 			{
-				DeviceName: aws.String("/dev/xvda"),
+				DeviceName: aws.String(rootDevicePath),
 				Ebs: &ec2.EbsBlockDevice{
 					VolumeSize:          aws.Int64(config.DiskSize),
 					DeleteOnTermination: aws.Bool(true),
