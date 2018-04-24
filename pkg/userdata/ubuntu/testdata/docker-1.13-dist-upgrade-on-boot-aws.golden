@@ -126,7 +126,7 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
   content: |
     [Service]
-    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config \
+    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config --authentication-token-webhook=true \
       "
 
 - path: "/etc/systemd/system/kubelet.service.d/30-clusterdns.conf"
