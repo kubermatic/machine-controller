@@ -49,9 +49,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -80,6 +82,7 @@ type Controller struct {
 	machinesLister  machinelistersv1alpha1.MachineLister
 
 	workqueue workqueue.RateLimitingInterface
+	recorder  record.EventRecorder
 
 	clusterDNSIPs      []net.IP
 	metrics            MetricsCollection
@@ -119,6 +122,10 @@ func NewMachineController(
 	kubeconfigProvider KubeconfigProvider,
 	name string) *Controller {
 
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+
 	controller := &Controller{
 		kubeClient:      kubeClient,
 		nodesLister:     nodeLister,
@@ -128,6 +135,7 @@ func NewMachineController(
 		machinesLister: machineLister,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
+		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
 
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
@@ -443,6 +451,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	}
 	if changed {
 		glog.V(4).Infof("updating machine '%s' with defaults...", machine.Name)
+		c.recorder.Event(machine, corev1.EventTypeNormal, "Defaulted", "Updated machine with defaults")
 		machine.Spec = defaultedMachineSpec
 		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
