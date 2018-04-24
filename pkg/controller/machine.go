@@ -374,7 +374,7 @@ func (c *Controller) syncHandler(key string) error {
 			return err
 		}
 	} else {
-		c.recorder.Event(machine, corev1.EventTypeNormal, "NodeReady", "Node for machine was found and is ready")
+		c.recorder.Event(machine, corev1.EventTypeNormal, "NodeReady", "Node was found and is ready")
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
