@@ -196,6 +196,7 @@ systemd:
           --cni-conf-dir=/etc/cni/net.d \
           --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
           --cluster-domain=cluster.local \
+          --authentication-token-webhook=true \
           --network-plugin=cni \
           {{- if .CloudProvider }}
           --cloud-provider={{ .CloudProvider }} \
