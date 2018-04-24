@@ -3,7 +3,6 @@ package aws
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
