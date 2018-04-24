@@ -27,6 +27,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
+	machinescheme "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/scheme"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -122,6 +123,7 @@ func NewMachineController(
 	kubeconfigProvider KubeconfigProvider,
 	name string) *Controller {
 
+	machinescheme.AddToScheme(scheme.Scheme)
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
