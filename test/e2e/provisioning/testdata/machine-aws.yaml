@@ -13,9 +13,9 @@ spec:
       region: "eu-west-2"
       availabilityZone: "eu-west-2a"
       vpcId: "vpc-40827629"
-      instanceType: "t2.micro"
+      instanceType: "t2.medium"
       diskSize: 50
-      diskType: "standard"
+      diskType: "gp2"
       tags:
       # you have to set this flag to real clusterID when running against our dev or prod
       # otherwise you might have issues with your nodes not joining the cluster
