@@ -752,6 +752,11 @@ func awsErrorToTerminalError(err error, msg string) error {
 			return prepareAndReturnError()
 		}
 		switch aerr.Code() {
+		case "InstanceLimitExceeded":
+			return cloudprovidererrors.TerminalError{
+				Reason:  v1alpha1.InsufficientResourcesMachineError,
+				Message: "You've reached the limit on the number of instances you can run concurrently. The limit depends on the instance type",
+			}
 		case "AuthFailure":
 			// authorization primitives come from MachineSpec
 			// thus we are setting InvalidConfigurationMachineError
