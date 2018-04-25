@@ -27,6 +27,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
+	machinescheme "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/scheme"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -49,9 +50,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -80,6 +83,7 @@ type Controller struct {
 	machinesLister  machinelistersv1alpha1.MachineLister
 
 	workqueue workqueue.RateLimitingInterface
+	recorder  record.EventRecorder
 
 	clusterDNSIPs      []net.IP
 	metrics            MetricsCollection
@@ -119,6 +123,11 @@ func NewMachineController(
 	kubeconfigProvider KubeconfigProvider,
 	name string) *Controller {
 
+	machinescheme.AddToScheme(scheme.Scheme)
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(glog.V(4).Infof)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+
 	controller := &Controller{
 		kubeClient:      kubeClient,
 		nodesLister:     nodeLister,
@@ -128,6 +137,7 @@ func NewMachineController(
 		machinesLister: machineLister,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
+		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
 
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
@@ -363,6 +373,8 @@ func (c *Controller) syncHandler(key string) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		c.recorder.Event(machine, corev1.EventTypeNormal, "NodeReady", "Node was found and is ready")
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
@@ -421,6 +433,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 	// step 2.3: delete provider instance
 	if err = c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete machine: %v", err)
 		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
 
@@ -443,6 +456,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	}
 	if changed {
 		glog.V(4).Infof("updating machine '%s' with defaults...", machine.Name)
+		c.recorder.Event(machine, corev1.EventTypeNormal, "Defaulted", "Updated machine with defaults")
 		machine.Spec = defaultedMachineSpec
 		if machine, err = c.updateMachine(machine); err != nil {
 			return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
@@ -456,8 +470,10 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
 				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
 			}
+			c.recorder.Eventf(machine, corev1.EventTypeWarning, "ValidationFailed", "Validation failed: %v", err)
 			return fmt.Errorf("invalid provider config: %v", err)
 		}
+		c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSucceeded", "Validation succeeded")
 		c.validationCache[cacheKey] = true
 	} else {
 		glog.V(6).Infof("Skipping validation as the machine was already successfully validated before")
@@ -488,11 +504,12 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
-			glog.Infof("creating instance...")
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
+				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.CreateMachineError, message, err, "failed to create machine at cloudprover")
 			}
+			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			// remove error message in case it was set
 			if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
 				return fmt.Errorf("failed to update machine after removing the create machine error: %v", err)
@@ -512,6 +529,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
+	c.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", "Found instance at cloud provider")
 	return c.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
 }
 
@@ -530,6 +548,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 				return fmt.Errorf("failed to update node %s after adding the owner ref: %v", node.Name, err)
 			}
 			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
+			c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeMatched", "Successfully matched machine to node %s", node.Name)
 			c.metrics.NodeJoinDuration.Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
 		}
 
@@ -586,6 +605,7 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 		if err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
+		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTainsUpdated", "Sucecssfully updated labels/annotations/taints")
 		glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
 	}
 

@@ -313,7 +313,7 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
   content: |
     [Service]
-    Environment="KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-config{{ end}} \
+    Environment="KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-config{{ end}} --authentication-token-webhook=true \
       {{ if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o"}} --container-runtime=remote --container-runtime-endpoint=unix:///var/run/crio/crio.sock --cgroup-driver=systemd{{ end }}"
 
 - path: "/etc/systemd/system/kubelet.service.d/30-clusterdns.conf"
