@@ -129,7 +129,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 
-	err := verify(kubeConfig, manifestPath, scenarioParams, 10*time.Minute)
+	err := verify(kubeConfig, manifestPath, scenarioParams, 60*time.Hour)
 	if err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}
