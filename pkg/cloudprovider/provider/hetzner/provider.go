@@ -2,13 +2,17 @@ package hetzner
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
+	"golang.org/x/crypto/ssh"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -18,6 +22,8 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
+
+const privateRSAKeyBitSize = 4096
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
@@ -175,6 +181,34 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to get server type")
 	}
+
+	tmpRSAKeyPair, err := rsa.GenerateKey(rand.Reader, privateRSAKeyBitSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create private RSA key: %v", err)
+	}
+
+	if err := tmpRSAKeyPair.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate private RSA key: %v", err)
+	}
+	pubKey, err := ssh.NewPublicKey(&tmpRSAKeyPair.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ssh public key: %v", err)
+	}
+
+	hkey, res, err := client.SSHKey.Create(ctx, hcloud.SSHKeyCreateOpts{
+		Name:      fmt.Sprintf("machine-controller-temp-%s", machine.Spec.Name),
+		PublicKey: string(ssh.MarshalAuthorizedKey(pubKey)),
+	})
+	if err != nil || res.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("creating temporary ssh key failed with http status %d and error %v", res.StatusCode, err)
+	}
+	defer func() {
+		_, err := client.SSHKey.Delete(ctx, hkey)
+		if err != nil {
+			glog.Errorf("Failed to delete temporary ssh key: %v", err)
+		}
+	}()
+	serverCreateOpts.SSHKeys = []*hcloud.SSHKey{hkey}
 
 	serverCreateRes, res, err := client.Server.Create(ctx, serverCreateOpts)
 	if err != nil {
