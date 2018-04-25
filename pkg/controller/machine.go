@@ -470,10 +470,10 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
 				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
 			}
-			c.recorder.Eventf(machine, corev1.EventTypeWarning, "ValidationFaled", "Validation failed: %v", err)
+			c.recorder.Eventf(machine, corev1.EventTypeWarning, "ValidationFailed", "Validation failed: %v", err)
 			return fmt.Errorf("invalid provider config: %v", err)
 		}
-		c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSuceeded", "Validation succeeded")
+		c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSucceeded", "Validation succeeded")
 		c.validationCache[cacheKey] = true
 	} else {
 		glog.V(6).Infof("Skipping validation as the machine was already successfully validated before")
