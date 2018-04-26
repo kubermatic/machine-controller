@@ -139,6 +139,10 @@ func findSnapshot(vm *object.VirtualMachine, ctx context.Context, name string) (
 		return nil, err
 	}
 
+	if moVirtualMachine.Snapshot == nil {
+		return nil, errSnapshotNotFound
+	}
+
 	snapshotCandidates := []object.Reference{}
 	for _, snapshotTree := range moVirtualMachine.Snapshot.RootSnapshotList {
 		addMatchingSnapshotToList(&snapshotCandidates, snapshotTree, name)
