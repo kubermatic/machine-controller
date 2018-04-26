@@ -91,10 +91,10 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 
 	vAppAconfig := &types.VmConfigSpec{Property: []types.VAppPropertySpec{
 		{
-			Info: &types.VAppPropertyInfo{Key: 1, Id: "guestinfo.coreos.config.data.encoding", Value: "base64"},
+			Info: &types.VAppPropertyInfo{Key: 0, Id: "coreos_production_vmware_ova", InstanceId: "guestinfo.coreos.config.data.encoding", Value: "base64"},
 		},
 		{
-			Info: &types.VAppPropertyInfo{Key: 2, Id: "guestinfo.coreos.config.data", Value: userdataBase64},
+			Info: &types.VAppPropertyInfo{Key: 0, Id: "coreos_production_vmware_ova", InstanceId: "guestinfo.coreos.config.data", Value: userdataBase64},
 		},
 	}}
 	for idx, _ := range vAppAconfig.Property {
