@@ -258,7 +258,7 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	}
 
 	command := "genisoimage"
-	args := []string{"-o", isoFilePath, "-volid", "cidata", "-joliet", "-rock", userdataDir}
+	args := []string{"-o", isoFilePath, "-volid", "OEM", "-joliet", "-rock", userdataDir}
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
