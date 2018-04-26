@@ -157,7 +157,7 @@ func findSnapshot(vm *object.VirtualMachine, ctx context.Context, name string) (
 		return nil, err
 	}
 
-	if moVirtualMachine.Snapshot == nil || moVirtualMachine.Snapshot.RootSnapshotList == nil {
+	if moVirtualMachine.Snapshot == nil {
 		return nil, errSnapshotNotFound
 	}
 
