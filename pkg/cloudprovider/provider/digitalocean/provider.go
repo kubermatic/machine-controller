@@ -2,8 +2,6 @@ package digitalocean
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,8 +11,6 @@ import (
 
 	"github.com/digitalocean/godo"
 	"github.com/golang/glog"
-	"github.com/pborman/uuid"
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/oauth2"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -232,21 +228,20 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 // uploadSSHPublicKey uploads public part of the key to digital ocean
 // this method returns an error if the key already exists
-func uploadSSHPublicKey(ctx context.Context, service godo.KeysService, key *rsa.PublicKey) (string, error) {
-	pk, err := ssh.NewPublicKey(key)
+func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (string, error) {
+	sshkey, err := cloud.NewSSHKey()
 	if err != nil {
-		return "", fmt.Errorf("failed to parse publickey: %v", err)
+		return "", fmt.Errorf("failed to generate ssh key: %v", err)
 	}
 
-	fingerprint := ssh.FingerprintLegacyMD5(pk)
-	existingkey, res, err := service.GetByFingerprint(ctx, fingerprint)
+	existingkey, res, err := service.GetByFingerprint(ctx, sshkey.FingerprintMD5)
 	if err == nil && existingkey != nil && res.StatusCode >= http.StatusOK && res.StatusCode <= http.StatusAccepted {
 		return "", fmt.Errorf("failed to create ssh public key, the key already exists")
 	}
 
 	newDoKey, rsp, err := service.Create(ctx, &godo.KeyCreateRequest{
-		PublicKey: string(ssh.MarshalAuthorizedKey(pk)),
-		Name:      string(uuid.NewUUID()),
+		PublicKey: sshkey.PublicKey,
+		Name:      sshkey.Name,
 	})
 	if err != nil {
 		return "", doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to create ssh public key on digitalocean: %v", err))
@@ -267,15 +262,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	tmpRSAKeyPair, err := rsa.GenerateKey(rand.Reader, privateRSAKeyBitSize)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create private RSA key: %v", err)
-	}
-
-	if err := tmpRSAKeyPair.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate private RSA key: %v", err)
-	}
-	fingerprint, err := uploadSSHPublicKey(ctx, client.Keys, &tmpRSAKeyPair.PublicKey)
+	fingerprint, err := uploadRandomSSHPublicKey(ctx, client.Keys)
 	if err != nil {
 		return nil, err
 	}
