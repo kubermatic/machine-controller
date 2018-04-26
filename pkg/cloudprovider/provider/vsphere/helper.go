@@ -90,12 +90,13 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 	userdataBase64 := base64.StdEncoding.EncodeToString([]byte(userdata))
 	glog.Errorf("Userdata base64: %s", userdataBase64)
 
+	//Found out via `govc  vm.info -json containerlinux-template`
 	vAppAconfig := &types.VmConfigSpec{Property: []types.VAppPropertySpec{
 		{
-			Info: &types.VAppPropertyInfo{Key: 0, Id: "coreos_production_vmware_ova", InstanceId: "guestinfo.coreos.config.data.encoding", Value: "base64"},
+			Info: &types.VAppPropertyInfo{Key: 7, Id: "guestinfo.coreos.config.data.encoding", Value: "base64"},
 		},
 		{
-			Info: &types.VAppPropertyInfo{Key: 0, Id: "coreos_production_vmware_ova", InstanceId: "guestinfo.coreos.config.data", Value: userdataBase64},
+			Info: &types.VAppPropertyInfo{Key: 4, Id: "guestinfo.coreos.config.data", Value: userdataBase64},
 		},
 	}}
 	for idx, _ := range vAppAconfig.Property {
