@@ -204,7 +204,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		config.Cluster,
 		config.CPUs,
 		config.MemoryMB,
-		client)
+		client,
+		userdata)
 	if err != nil {
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create linked vm: '%v'", err))
 	}

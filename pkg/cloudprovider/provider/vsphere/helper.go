@@ -3,6 +3,7 @@ package vsphere
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -32,7 +33,7 @@ const (
 
 var errSnapshotNotFound = errors.New("no snapshot with given name found")
 
-func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus int32, memoryMB int64, client *govmomi.Client) (string, error) {
+func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus int32, memoryMB int64, client *govmomi.Client, userdata string) (string, error) {
 	f := find.NewFinder(client.Client, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -85,14 +86,27 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 	resPoolRef := resPool.Reference()
 	snapshotRef := snapshot.Reference()
 
+	userdataBase64 := base64.StdEncoding.EncodeToString([]byte(userdata))
+	glog.Errorf("Userdata base64: %s", userdataBase64)
+
+	vAppAconfig := &types.VmConfigSpec{Property: []types.VAppPropertySpec{
+		{
+			Info: &types.VAppPropertyInfo{Key: 1, Id: "guestinfo.coreos.config.data.encoding", Value: "base64"},
+		},
+		{
+			Info: &types.VAppPropertyInfo{Key: 2, Id: "guestinfo.coreos.config.data", Value: userdataBase64},
+		},
+	}}
+
 	diskUuidEnabled := true
 	cloneSpec := &types.VirtualMachineCloneSpec{
 		Config: &types.VirtualMachineConfigSpec{
 			Flags: &types.VirtualMachineFlagInfo{
 				DiskUuidEnabled: &diskUuidEnabled,
 			},
-			NumCPUs:  cpus,
-			MemoryMB: memoryMB,
+			NumCPUs:    cpus,
+			MemoryMB:   memoryMB,
+			VAppConfig: vAppAconfig,
 		},
 		Location: types.VirtualMachineRelocateSpec{
 			Pool:         &resPoolRef,
@@ -258,7 +272,7 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 	}
 
 	command := "genisoimage"
-	args := []string{"-o", isoFilePath, "-volid", "OEM", "-joliet", "-rock", userdataDir}
+	args := []string{"-o", isoFilePath, "-volid", "cidata", "-joliet", "-rock", userdataDir}
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
