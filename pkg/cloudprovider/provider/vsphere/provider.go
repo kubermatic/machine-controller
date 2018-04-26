@@ -203,15 +203,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		containerLinuxUserdata = userdata
 	}
 
-	_, err = CreateLinkClonedVm(machine.Spec.Name,
+	if err = CreateLinkClonedVm(machine.Spec.Name,
 		config.TemplateVMName,
 		config.Datacenter,
 		config.Cluster,
 		config.CPUs,
 		config.MemoryMB,
 		client,
-		containerLinuxUserdata)
-	if err != nil {
+		containerLinuxUserdata); err != nil {
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create linked vm: '%v'", err))
 	}
 

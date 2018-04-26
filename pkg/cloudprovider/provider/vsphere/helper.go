@@ -33,54 +33,54 @@ const (
 
 var errSnapshotNotFound = errors.New("no snapshot with given name found")
 
-func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus int32, memoryMB int64, client *govmomi.Client, containerLinuxUserdata string) (string, error) {
+func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus int32, memoryMB int64, client *govmomi.Client, containerLinuxUserdata string) error {
 	f := find.NewFinder(client.Client, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	dc, err := f.Datacenter(ctx, datacenter)
 	if err != nil {
-		return "", err
+		return err
 	}
 	f.SetDatacenter(dc)
 
 	templateVm, err := f.VirtualMachine(ctx, vmImage)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	glog.V(3).Infof("Template VM ref is %+v", templateVm)
 	datacenterFolders, err := dc.Folders(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get datacenter folders: %v", err)
+		return fmt.Errorf("failed to get datacenter folders: %v", err)
 	}
 
 	// Create snapshot of the template VM if not already snapshotted.
 	snapshot, err := findSnapshot(templateVm, ctx, snapshotName)
 	if err != nil {
 		if err != errSnapshotNotFound {
-			return "", fmt.Errorf("failed to find snapshot: %v", err)
+			return fmt.Errorf("failed to find snapshot: %v", err)
 		}
 		snapshot, err = createSnapshot(ctx, templateVm, snapshotName, snapshotDesc)
 		if err != nil {
-			return "", fmt.Errorf("failed to create snapshot: %v", err)
+			return fmt.Errorf("failed to create snapshot: %v", err)
 		}
 	}
 
 	clsComputeRes, err := f.ClusterComputeResource(ctx, clusterName)
 	if err != nil {
-		return "", fmt.Errorf("failed to get cluster %s: %v", clusterName, err)
+		return fmt.Errorf("failed to get cluster %s: %v", clusterName, err)
 	}
 	glog.V(3).Infof("Cluster is %+v", clsComputeRes)
 
 	resPool, err := clsComputeRes.ResourcePool(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get ressource pool: %v", err)
+		return fmt.Errorf("failed to get ressource pool: %v", err)
 	}
 	glog.V(3).Infof("Cluster resource pool is %+v", resPool)
 
 	if resPool == nil {
-		return "", fmt.Errorf("no resource pool found for cluster %s", clusterName)
+		return fmt.Errorf("no resource pool found for cluster %s", clusterName)
 	}
 
 	resPoolRef := resPool.Reference()
@@ -128,17 +128,11 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 	// Create a link cloned VM from the template VM's snapshot
 	clonedVmTask, err := templateVm.Clone(ctx, datacenterFolders.VmFolder, vmName, *cloneSpec)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	clonedVmTaskInfo, err := clonedVmTask.WaitForResult(ctx, nil)
-	if err != nil {
-		return "", err
-	}
-
-	clonedVm := clonedVmTaskInfo.Result.(object.Reference)
-
-	return clonedVm.Reference().Value, nil
+	_, err = clonedVmTask.WaitForResult(ctx, nil)
+	return err
 }
 
 func createSnapshot(ctx context.Context, vm *object.VirtualMachine, snapshotName string, snapshotDesc string) (object.Reference, error) {
