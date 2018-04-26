@@ -266,7 +266,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error {
-	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -305,15 +305,17 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error 
 	}
 	destroyTask.Wait(context.TODO())
 
-	datastore, err := finder.Datastore(context.TODO(), config.Datastore)
-	if err != nil {
-		return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
-	}
-	filemanager := datastore.NewFileManager(dc, false)
+	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
+		datastore, err := finder.Datastore(context.TODO(), config.Datastore)
+		if err != nil {
+			return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
+		}
+		filemanager := datastore.NewFileManager(dc, false)
 
-	err = filemanager.Delete(context.TODO(), virtualMachine.Name())
-	if err != nil {
-		return fmt.Errorf("failed to delete storage of deleted instance %s: %v", virtualMachine.Name(), err)
+		err = filemanager.Delete(context.TODO(), virtualMachine.Name())
+		if err != nil {
+			return fmt.Errorf("failed to delete storage of deleted instance %s: %v", virtualMachine.Name(), err)
+		}
 	}
 
 	glog.V(2).Infof("Successfully destroyed vm %s", virtualMachine.Name())
