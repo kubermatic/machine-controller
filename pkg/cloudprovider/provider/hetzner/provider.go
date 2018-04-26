@@ -14,11 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
 type provider struct {
