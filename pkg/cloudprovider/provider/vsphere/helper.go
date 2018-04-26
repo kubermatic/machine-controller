@@ -120,7 +120,7 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 		},
 		Location: types.VirtualMachineRelocateSpec{
 			Pool:         &resPoolRef,
-			DiskMoveType: "createNewChildDiskBacking",
+			DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsCreateNewChildDiskBacking),
 		},
 		Snapshot: &snapshotRef,
 	}
