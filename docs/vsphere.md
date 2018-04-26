@@ -1,7 +1,7 @@
-# VMWware VSphere
+# VMWware vSphere
 
 To use the machine-controller to create machines on VMWare vsphere, you must first
-create a template. Currently Ubuntu and Containerlinxux are supported.
+create a template. Currently Ubuntu and Container Linux are supported.
 
 1. Go into the VSphere WebUI, select your datacenter, right click onto it and choose "Deploy OVF Template"
 2. Fill in the "URL" field with the appropriate url:
