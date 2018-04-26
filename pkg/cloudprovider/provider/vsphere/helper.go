@@ -97,6 +97,9 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 			Info: &types.VAppPropertyInfo{Key: 2, Id: "guestinfo.coreos.config.data", Value: userdataBase64},
 		},
 	}}
+	for idx, _ := range vAppAconfig.Property {
+		vAppAconfig.Property[idx].Operation = types.ArrayUpdateOperationEdit
+	}
 
 	diskUuidEnabled := true
 	cloneSpec := &types.VirtualMachineCloneSpec{
