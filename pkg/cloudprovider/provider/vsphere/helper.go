@@ -97,15 +97,14 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 		//and I have no idea if that generation is deterministic
 		vAppAconfig = &types.VmConfigSpec{Property: []types.VAppPropertySpec{
 			{
-				Info: &types.VAppPropertyInfo{Key: 7, Id: "guestinfo.coreos.config.data.encoding", Value: "base64"},
+				Info:            &types.VAppPropertyInfo{Key: 7, Id: "guestinfo.coreos.config.data.encoding", Value: "base64"},
+				ArrayUpdateSpec: types.ArrayUpdateSpec{Operation: types.ArrayUpdateOperationEdit},
 			},
 			{
-				Info: &types.VAppPropertyInfo{Key: 4, Id: "guestinfo.coreos.config.data", Value: userdataBase64},
+				Info:            &types.VAppPropertyInfo{Key: 4, Id: "guestinfo.coreos.config.data", Value: userdataBase64},
+				ArrayUpdateSpec: types.ArrayUpdateSpec{Operation: types.ArrayUpdateOperationEdit},
 			},
 		}}
-		for idx, _ := range vAppAconfig.Property {
-			vAppAconfig.Property[idx].Operation = types.ArrayUpdateOperationEdit
-		}
 	}
 
 	diskUuidEnabled := true
