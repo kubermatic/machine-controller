@@ -1,4 +1,4 @@
-package cloud
+package ssh
 
 import (
 	"crypto/rand"

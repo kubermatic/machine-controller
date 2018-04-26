@@ -18,6 +18,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/ssh"
 )
 
 type provider struct {
@@ -177,7 +178,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, hzErrorToTerminalError(err, "failed to get server type")
 	}
 
-	sshkey, err := cloud.NewSSHKey()
+	sshkey, err := ssh.NewSSHKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/ssh"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -229,7 +230,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 // uploadSSHPublicKey uploads public part of the key to digital ocean
 // this method returns an error if the key already exists
 func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (string, error) {
-	sshkey, err := cloud.NewSSHKey()
+	sshkey, err := ssh.NewSSHKey()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate ssh key: %v", err)
 	}
