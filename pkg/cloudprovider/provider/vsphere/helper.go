@@ -250,7 +250,7 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 
 	userdataFilePath := fmt.Sprintf("%s/user-data", userdataDir)
 	metadataFilePath := fmt.Sprintf("%s/meta-data", userdataDir)
-	containerLinuxUserdataFilePath := fmt.Sprintf("%s/user_data")
+	containerLinuxUserdataFilePath := fmt.Sprintf("%s/user_data", containerLinuxUserdataDir)
 	glog.Errorf("Coreos containerlinux userdata filepath: %s", containerLinuxUserdataFilePath)
 	isoFilePath := fmt.Sprintf("%s/%s.iso", localTempDir, name)
 
