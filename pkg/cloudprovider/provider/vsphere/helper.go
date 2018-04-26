@@ -249,15 +249,9 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 			utilruntime.HandleError(fmt.Errorf("error cleaning up local userdata tempdir %s: %v", userdataDir, err))
 		}
 	}()
-	containerLinuxUserdataDir := fmt.Sprintf("%s/openstack/latest", userdataDir)
-	if err = os.MkdirAll(containerLinuxUserdataDir, 0755); err != nil {
-		return "", fmt.Errorf("Error creating container linux userdata dir:  %v", err)
-	}
 
 	userdataFilePath := fmt.Sprintf("%s/user-data", userdataDir)
 	metadataFilePath := fmt.Sprintf("%s/meta-data", userdataDir)
-	containerLinuxUserdataFilePath := fmt.Sprintf("%s/user_data", containerLinuxUserdataDir)
-	glog.Errorf("Coreos containerlinux userdata filepath: %s", containerLinuxUserdataFilePath)
 	isoFilePath := fmt.Sprintf("%s/%s.iso", localTempDir, name)
 
 	metadataTmpl, err := template.New("metadata").Parse(metaDataTemplate)
@@ -282,18 +276,13 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 		return "", fmt.Errorf("failed to locally write userdata file to %s: %v", userdataFilePath, err)
 	}
 
-	err = ioutil.WriteFile(containerLinuxUserdataFilePath, []byte(userdata), 0644)
-	if err != nil {
-		return "", fmt.Errorf("failed to locally write containerlinux userdata file to %s: %v", containerLinuxUserdataFilePath, err)
-	}
-
 	err = ioutil.WriteFile(metadataFilePath, metadata.Bytes(), 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to locally write metadata file to %s: %v", userdataFilePath, err)
 	}
 
 	command := "genisoimage"
-	args := []string{"-o", isoFilePath, "-volid", "config-2", "-joliet", "-rock", userdataDir}
+	args := []string{"-o", isoFilePath, "-volid", "cidata", "-joliet", "-rock", userdataDir}
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
