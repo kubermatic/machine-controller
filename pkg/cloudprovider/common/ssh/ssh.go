@@ -38,7 +38,7 @@ func NewSSHKey() (*SSHPubkey, error) {
 	}
 
 	return &SSHPubkey{
-		Name:           string(uuid.NewUUID()),
+		Name:           uuid.New(),
 		PublicKey:      string(ssh.MarshalAuthorizedKey(pubKey)),
 		FingerprintMD5: ssh.FingerprintLegacyMD5(pubKey),
 	}, nil
