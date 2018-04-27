@@ -11,7 +11,7 @@ spec:
     cloudProvider: "digitalocean"
     cloudProviderSpec:
       token: << DIGITALOCEAN_TOKEN >>
-      region: fra1
+      region: nyc3
       size: c-2
       backups: false
       ipv6: false

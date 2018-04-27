@@ -123,6 +123,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", os.Getenv("E2E_SSH_PUBKEY")))
 
 	gopath := os.Getenv("GOPATH")
 	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")

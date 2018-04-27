@@ -181,11 +181,6 @@ write_files:
     CRIO_NETWORK_OPTIONS="--registry=docker.io"
 
 runcmd:
-# Required for Hetzner, because they set some arbitrary password
-# if the sshkey wasnt set via their API and require as to change
-# that password on first login, which we cant do since we dont know
-# it
-- chage -d $(date +%s) root
 - systemctl enable kubelet
 - systemctl start kubeadm-join
 

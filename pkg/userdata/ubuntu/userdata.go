@@ -356,11 +356,6 @@ write_files:
 {{- end }}
 
 runcmd:
-# Required for Hetzner, because they set some arbitrary password
-# if the sshkey wasnt set via their API and require as to change
-# that password on first login, which we cant do since we dont know
-# it
-- chage -d $(date +%s) root
 - systemctl enable kubelet
 - systemctl start kubeadm-join
 

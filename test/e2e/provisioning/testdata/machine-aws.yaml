@@ -6,6 +6,8 @@ spec:
   metadata:
     name: << NODE_NAME >>
   providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
     cloudProvider: "aws"
     cloudProviderSpec:
       accessKeyId: << AWS_ACCESS_KEY_ID >>

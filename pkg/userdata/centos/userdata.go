@@ -227,7 +227,6 @@ write_files:
 
 runcmd:
 - setenforce 0 || true
-- chage -d $(date +%s) root
 - systemctl enable kubelet
 - systemctl start kubeadm-join
 

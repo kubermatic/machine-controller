@@ -62,7 +62,11 @@ jobs:
           command: ./test/tools/integration/provision_master.sh
       - run:
           name:  Run E2E test
-          command: go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier=$CIRCLE_BUILD_NUM
+          command: >-
+              export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig &&
+              go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier=$CIRCLE_BUILD_NUM ||
+              (kubectl logs -n kube-system $(kubectl get pods -n kube-system|egrep '^machine-controller'|
+              awk '{print $1}'); exit 1)
           no_output_timeout: 25m
       - run:
           name: Clean up machines
