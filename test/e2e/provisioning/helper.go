@@ -115,6 +115,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	kubernetesCompliantName := fmt.Sprintf("%s-%s", testCase.name, cloudProvider)
 	kubernetesCompliantName = strings.Replace(kubernetesCompliantName, " ", "-", -1)
+	kubernetesCompliantName = strings.Replace(kubernetesCompliantName, ".", "-", -1)
 	kubernetesCompliantName = strings.ToLower(kubernetesCompliantName)
 
 	scenarioParams := append([]string(nil), testParams...)
