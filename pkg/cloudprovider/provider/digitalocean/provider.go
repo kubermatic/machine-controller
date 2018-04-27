@@ -227,7 +227,8 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-// uploadSSHPublicKey uploads public part of the key to digital ocean
+// uploadRandomSSHPublicKey generates a random key pair and uploads the public part of the key to
+// digital ocean because it is not possible to create a droplet without ssh key assigned
 // this method returns an error if the key already exists
 func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (string, error) {
 	sshkey, err := ssh.NewSSHKey()
