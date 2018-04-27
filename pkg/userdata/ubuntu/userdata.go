@@ -180,11 +180,13 @@ write_files:
     mkdir -p /opt/bin
     if ! [[ -x /opt/bin/kubelet ]]; then
       for try in {1..3}; do
-        curl -L --fail -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/kubelet
-        chmod +x /opt/bin/kubelet
-        break
+         if curl -L --fail -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/kubelet; then
+          chmod +x /opt/bin/kubelet
+          exit 0
+         fi
       done
     fi
+    exit 1
 
 - path: "/usr/local/bin/download-kubeadm"
   permissions: "0777"
@@ -194,11 +196,13 @@ write_files:
     mkdir -p /opt/bin
     if ! [[ -x /opt/bin/kubeadm ]]; then
       for try in {1..3}; do
-        curl -L --fail -o /opt/bin/kubeadm https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/kubeadm
-        chmod +x /opt/bin/kubeadm
-        break
+        if curl -L --fail -o /opt/bin/kubeadm https://storage.googleapis.com/kubernetes-release/release/v{{ .KubernetesVersion }}/bin/linux/amd64/kubeadm; then
+          chmod +x /opt/bin/kubeadm
+          exit 0
+        fi
       done
     fi
+    exit 1
 
 - path: "/usr/local/bin/download-cni"
   permissions: "0777"
@@ -209,10 +213,12 @@ write_files:
     if ! [[ -x /opt/cni/bin/bridge ]]; then
       cd /opt/cni/bin/
       for try in {1..3}; do
-        curl -L --fail https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz|tar -xvz
-        break
+        if curl -L --fail https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz|tar -xvz; then
+          exit 0
+        fi
       done
     fi
+    exit 1
 
 - path: "/usr/local/bin/download-kubelet-kubeadm-unitfile"
   permissions: "0777"
@@ -221,12 +227,14 @@ write_files:
     set -xeuo pipefail
     if ! [[ -f /etc/systemd/system/kubelet.service.d/10-kubeadm.conf ]]; then
       for try in {1..3}; do
-        curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v{{ .KubernetesVersion }}/build/debs/10-kubeadm.conf \
-          |sed "s:/usr/bin:/opt/bin:g" > /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-        systemctl daemon-reload
-        break
+        if curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v{{ .KubernetesVersion }}/build/debs/10-kubeadm.conf \
+          |sed "s:/usr/bin:/opt/bin:g" > /etc/systemd/system/kubelet.service.d/10-kubeadm.conf; then
+         systemctl daemon-reload
+        exit 0
+       fi
       done
     fi
+    exit 1
 
 {{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
 - path: "/usr/local/bin/download-crictl"
