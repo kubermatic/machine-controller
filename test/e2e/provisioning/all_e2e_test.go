@@ -88,7 +88,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	}
 
 	// Vsphere only supports Ubuntu
-	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
+	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
 
 	// act
 	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),

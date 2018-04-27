@@ -20,9 +20,14 @@ write_files:
     set -xeuo pipefail
     mkdir -p /opt/bin
     if ! [[ -x /opt/bin/kubelet ]]; then
-      curl -L --fail -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.9.2/bin/linux/amd64/kubelet
-      chmod +x /opt/bin/kubelet
+      for try in {1..3}; do
+         if curl -L --fail -o /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.9.2/bin/linux/amd64/kubelet; then
+          chmod +x /opt/bin/kubelet
+          exit 0
+         fi
+      done
     fi
+    exit 1
 
 - path: "/usr/local/bin/download-kubeadm"
   permissions: "0777"
@@ -31,9 +36,14 @@ write_files:
     set -xeuo pipefail
     mkdir -p /opt/bin
     if ! [[ -x /opt/bin/kubeadm ]]; then
-      curl -L --fail -o /opt/bin/kubeadm https://storage.googleapis.com/kubernetes-release/release/v1.9.2/bin/linux/amd64/kubeadm
-      chmod +x /opt/bin/kubeadm
+      for try in {1..3}; do
+        if curl -L --fail -o /opt/bin/kubeadm https://storage.googleapis.com/kubernetes-release/release/v1.9.2/bin/linux/amd64/kubeadm; then
+          chmod +x /opt/bin/kubeadm
+          exit 0
+        fi
+      done
     fi
+    exit 1
 
 - path: "/usr/local/bin/download-cni"
   permissions: "0777"
@@ -43,8 +53,13 @@ write_files:
     mkdir -p /opt/cni/bin
     if ! [[ -x /opt/cni/bin/bridge ]]; then
       cd /opt/cni/bin/
-      curl -L --fail https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz|tar -xvz
+      for try in {1..3}; do
+        if curl -L --fail https://storage.googleapis.com/cni-plugins/cni-plugins-amd64-v0.6.0.tgz|tar -xvz; then
+          exit 0
+        fi
+      done
     fi
+    exit 1
 
 - path: "/usr/local/bin/download-kubelet-kubeadm-unitfile"
   permissions: "0777"
@@ -52,10 +67,15 @@ write_files:
     #!/bin/bash
     set -xeuo pipefail
     if ! [[ -f /etc/systemd/system/kubelet.service.d/10-kubeadm.conf ]]; then
-      curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v1.9.2/build/debs/10-kubeadm.conf \
-        |sed "s:/usr/bin:/opt/bin:g" > /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-      systemctl daemon-reload
+      for try in {1..3}; do
+        if curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v1.9.2/build/debs/10-kubeadm.conf \
+          |sed "s:/usr/bin:/opt/bin:g" > /etc/systemd/system/kubelet.service.d/10-kubeadm.conf; then
+         systemctl daemon-reload
+        exit 0
+       fi
+      done
     fi
+    exit 1
 - path: "/usr/local/bin/download-crictl"
   permissions: '0777'
   content: |
@@ -63,7 +83,10 @@ write_files:
     set -xeuo pipefail
     mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
     if ! [[ -x /opt/bin/crictl ]]; then
-      curl -L --fail https://github.com/kubernetes-incubator/cri-tools/releases/download/v0.2/crictl-v0.2-linux-amd64.tar.gz |tar -xzC /opt/bin
+      for try in {1..3}; do
+        curl -L --fail https://github.com/kubernetes-incubator/cri-tools/releases/download/v0.2/crictl-v0.2-linux-amd64.tar.gz |tar -xzC /opt/bin
+        break
+      done
     fi
 
 - path: "/etc/systemd/system/crictl-binary.service"
@@ -147,7 +170,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
   content: |
     [Service]
-    Environment="KUBELET_EXTRA_ARGS= --authentication-token-webhook=true \
+    Environment="KUBELET_EXTRA_ARGS= \
+      --authentication-token-webhook=true --hostname-override=node1 \
        --container-runtime=remote --container-runtime-endpoint=unix:///var/run/crio/crio.sock --cgroup-driver=systemd"
 
 - path: "/etc/systemd/system/kubelet.service.d/30-clusterdns.conf"

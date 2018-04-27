@@ -12,7 +12,7 @@ spec:
       - "<< YOUR_PUBLIC_KEY >>"
     cloudProvider: "vsphere"
     cloudProviderSpec:
-      templateVMName: ubuntu-template
+      templateVMName: '<< OS_NAME >>-template'
       username: '<< VSPHERE_USERNAME >>'
       vsphereURL: 'https://<< VSPHERE_ADDRESS >>'
       datacenter: 'Datacenter'
