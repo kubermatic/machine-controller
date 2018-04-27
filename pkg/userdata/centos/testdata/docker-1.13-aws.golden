@@ -60,7 +60,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
   content: |
     [Service]
-    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config --authentication-token-webhook=true"
+    Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config \
+      --authentication-token-webhook=true --hostname-override=node1"
 
 runcmd:
 - setenforce 0 || true

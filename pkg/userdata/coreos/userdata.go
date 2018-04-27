@@ -197,6 +197,7 @@ systemd:
           --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
           --cluster-domain=cluster.local \
           --authentication-token-webhook=true \
+          --hostname-override={{ .MachineSpec.Name }} \
           --network-plugin=cni \
           {{- if .CloudProvider }}
           --cloud-provider={{ .CloudProvider }} \
