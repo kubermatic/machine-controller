@@ -32,7 +32,8 @@ spec:
       backups: false
       ipv6: false
       private_networking: true
-      monitoring: true
+      # Monitoring must be turned off for CoreOS Container Linux
+      monitoring: false
       tags:
         - "machine-controller"
     # Can be 'ubuntu', 'coreos' or 'centos'

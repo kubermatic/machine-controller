@@ -261,8 +261,9 @@ func (c *Controller) updateMachineError(machine *machinev1alpha1.Machine, reason
 // and at the same time terminal error will be returned to the caller
 // otherwise it will return formatted error according to errMsg
 func (c *Controller) updateMachineErrorIfTerminalError(machine *machinev1alpha1.Machine, stReason machinev1alpha1.MachineStatusError, stMessage string, err error, errMsg string) error {
+	c.recorder.Eventf(machine, corev1.EventTypeWarning, string(stReason), stMessage)
 	if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
-		if _, errNested := c.updateMachineError(machine, machinev1alpha1.DeleteMachineError, stMessage); errNested != nil {
+		if _, errNested := c.updateMachineError(machine, stReason, stMessage); errNested != nil {
 			return fmt.Errorf("failed to update machine error after due to %v, terminal error = %v", errNested, stMessage)
 		}
 		return err
@@ -496,11 +497,13 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 
 			kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
 			if err != nil {
+				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateBootstrapKubeconfigFailed", "Creating bootstrap kubeconfig failed: %v", err)
 				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
 			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
 			if err != nil {
+				c.recorder.Eventf(machine, corev1.EventTypeWarning, "UserdataRenderingFailed", "Userdata rendering failed: %v", err)
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
