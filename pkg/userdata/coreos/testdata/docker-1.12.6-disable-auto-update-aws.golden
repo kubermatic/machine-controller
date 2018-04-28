@@ -72,6 +72,21 @@
           "verification": {}
         },
         "mode": 384
+      },
+      {
+        "filesystem": "root",
+        "group": {
+          "id": 0
+        },
+        "path": "/etc/ssh/sshd_config",
+        "user": {
+          "id": 0
+        },
+        "contents": {
+          "source": "data:,%23%20Use%20most%20defaults%20for%20sshd%20configuration.%0ASubsystem%20sftp%20internal-sftp%0AClientAliveInterval%20180%0AUseDNS%20no%0AUsePAM%20yes%0APrintLastLog%20no%20%23%20handled%20by%20PAM%0APrintMotd%20no%20%23%20handled%20by%20PAM%0APasswordAuthentication%20no%0AChallengeResponseAuthentication%20no%0A",
+          "verification": {}
+        },
+        "mode": 384
       }
     ]
   },

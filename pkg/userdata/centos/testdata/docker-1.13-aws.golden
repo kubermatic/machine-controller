@@ -1,6 +1,8 @@
 #cloud-config
 hostname: node1
 
+ssh_pwauth: no
+
 
 
 write_files:

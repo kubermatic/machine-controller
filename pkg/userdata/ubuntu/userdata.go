@@ -161,6 +161,8 @@ package_upgrade: true
 package_reboot_if_required: true
 {{- end }}
 
+ssh_pwauth: no
+
 ssh_authorized_keys:
 {{- range .ProviderConfig.SSHPublicKeys }}
 - "{{ . }}"

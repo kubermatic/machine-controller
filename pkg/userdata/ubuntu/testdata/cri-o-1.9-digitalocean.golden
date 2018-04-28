@@ -3,6 +3,8 @@ hostname: node1
 
 package_update: true
 
+ssh_pwauth: no
+
 ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 - "ssh-rsa CCCDDD"

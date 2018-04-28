@@ -158,7 +158,7 @@ func TestProvider_UserData(t *testing.T) {
 
 			userdata, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
 			if err != nil {
-				return
+				t.Fatal(err)
 			}
 
 			golden := filepath.Join("testdata", test.name+".golden")
