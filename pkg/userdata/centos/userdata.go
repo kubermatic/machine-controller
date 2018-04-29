@@ -159,6 +159,8 @@ package_upgrade: true
 package_reboot_if_required: true
 {{- end }}
 
+ssh_pwauth: no
+
 {{ if ne (len .ProviderConfig.SSHPublicKeys) 0 }}
 ssh_authorized_keys:
 {{- range .ProviderConfig.SSHPublicKeys }}
