@@ -374,8 +374,14 @@ func (c *Controller) syncHandler(key string) error {
 		if err != nil {
 			return err
 		}
-	} else {
-		c.recorder.Event(machine, corev1.EventTypeNormal, "NodeReady", "Node was found and is ready")
+	}
+
+	if nodeExistsAndIsReady {
+		// If we have an ready node, we should clear the error in case one was set.
+		// Useful when there was a network outage & a cloud-provider api outage at the same time
+		if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
+			return fmt.Errorf("failed to clear machine error: %v", err)
+		}
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
