@@ -406,6 +406,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	// we check against reserved tags in Validation method
 	allTags := c.Tags
+	if allTags == nil {
+		allTags = map[string]string{}
+	}
 	allTags[machineUIDMetaKey] = string(machine.UID)
 
 	serverOpts := osservers.CreateOpts{
