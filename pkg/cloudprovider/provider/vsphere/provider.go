@@ -43,6 +43,7 @@ type RawConfig struct {
 	VSphereURL     providerconfig.ConfigVarString `json:"vsphereURL"`
 	Datacenter     providerconfig.ConfigVarString `json:"datacenter"`
 	Cluster        providerconfig.ConfigVarString `json:"cluster"`
+	Folder         providerconfig.ConfigVarString `json:"folder"`
 	Datastore      providerconfig.ConfigVarString `json:"datastore"`
 	CPUs           int32                          `json:"cpus"`
 	MemoryMB       int64                          `json:"memoryMB"`
@@ -56,6 +57,7 @@ type Config struct {
 	VSphereURL     string
 	Datacenter     string
 	Cluster        string
+	Folder         string
 	Datastore      string
 	AllowInsecure  bool
 	CPUs           int32
@@ -143,6 +145,11 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 		return nil, nil, err
 	}
 
+	c.Folder, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Folder)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	c.Datastore, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datastore)
 	if err != nil {
 		return nil, nil, err
@@ -214,6 +221,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		config.TemplateVMName,
 		config.Datacenter,
 		config.Cluster,
+		config.Folder,
 		config.CPUs,
 		config.MemoryMB,
 		client,

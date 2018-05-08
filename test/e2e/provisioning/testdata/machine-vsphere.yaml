@@ -16,6 +16,7 @@ spec:
       username: '<< VSPHERE_USERNAME >>'
       vsphereURL: 'https://<< VSPHERE_ADDRESS >>'
       datacenter: 'Datacenter'
+      folder: '/Datacenter/vm/e2e-tests'
       password: << VSPHERE_PASSWORD >>
       cluster: "test-cluster"
       datastore: datastore1

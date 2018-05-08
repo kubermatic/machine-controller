@@ -33,7 +33,7 @@ const (
 
 var errSnapshotNotFound = errors.New("no snapshot with given name found")
 
-func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus int32, memoryMB int64, client *govmomi.Client, containerLinuxUserdata string) error {
+func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string, cpus int32, memoryMB int64, client *govmomi.Client, containerLinuxUserdata string) error {
 	f := find.NewFinder(client.Client, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -53,6 +53,22 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 	datacenterFolders, err := dc.Folders(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get datacenter folders: %v", err)
+	}
+
+	// Find the target folder, if its include in the provider config.
+	var targetVMFolderRefPtr *types.ManagedObjectReference
+	if folder != "" {
+		// If non-absolute folder name is used, e.g. 'duplicate-folder' it can match
+		// multiple folders and thus fail. It will also gladly match a folder from
+		// a different datacenter. It is therefore preferable to use absolute folder
+		// paths, e.g. '/Datacenter/vm/nested/folder'.
+		// The target folder must already exist.
+		targetVMFolder, folderErr := f.Folder(ctx, folder)
+		if folderErr != nil {
+			return fmt.Errorf("failed to get target folder: %v", folderErr)
+		}
+		targetVMFolderRef := targetVMFolder.Reference()
+		targetVMFolderRefPtr = &targetVMFolderRef
 	}
 
 	// Create snapshot of the template VM if not already snapshotted.
@@ -119,6 +135,7 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName string, cpus in
 		},
 		Location: types.VirtualMachineRelocateSpec{
 			Pool:         &resPoolRef,
+			Folder:       targetVMFolderRefPtr,
 			DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsCreateNewChildDiskBacking),
 		},
 		Snapshot: &snapshotRef,
