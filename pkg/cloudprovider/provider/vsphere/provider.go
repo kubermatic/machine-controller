@@ -108,6 +108,9 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 
 	rawConfig := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	c := Config{}
 	c.TemplateVMName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateVMName)
@@ -158,6 +161,10 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	config, _, err := p.getConfig(spec.ProviderConfig)
+	if err != nil {
+		return err
+	}
+
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
