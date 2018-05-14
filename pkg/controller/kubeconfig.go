@@ -17,6 +17,7 @@ const (
 	machineNameLabelKey                    = "machine.k8s.io/machine.name"
 	tokenIDKey                             = "token-id"
 	tokenSecretKey                         = "token-secret"
+	expirationKey                          = "expiration"
 	tokenFormatter                         = "%s.%s"
 )
 
@@ -64,7 +65,7 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 			"description":                    "bootstrap token for " + name,
 			tokenIDKey:                       tokenID,
 			tokenSecretKey:                   tokenSecret,
-			"expiration":                     metav1.Now().Add(24 * time.Hour).Format(time.RFC3339),
+			expirationKey:                    metav1.Now().Add(24 * time.Hour).Format(time.RFC3339),
 			"usage-bootstrap-authentication": "true",
 			"usage-bootstrap-signing":        "true",
 			"auth-extra-groups":              "system:bootstrappers:machine-controller:default-node-token",
@@ -83,15 +84,32 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (strin
 	if secret.StringData == nil {
 		secret.StringData = map[string]string{}
 	}
-	secret.StringData["expiration"] = metav1.Now().Add(24 * time.Hour).Format(time.RFC3339)
-	updatedSecret, err := c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Update(secret)
+	secret.StringData[expirationKey] = metav1.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	tokenID := secret.StringData[tokenIDKey]
+	tokenSecret := secret.StringData[tokenSecretKey]
+	token := fmt.Sprintf(tokenFormatter, tokenID, tokenSecret)
+
+	expBytes, ok := secret.Data["expiration"]
+	if !ok {
+		return "", fmt.Errorf("haven't found %s key in the secret's Data field", expirationKey)
+	}
+	expString := string(expBytes)
+	expVal := metav1.Now()
+	err := expVal.UnmarshalQueryParameter(expString)
 	if err != nil {
 		return "", err
-
 	}
-	tokenID := updatedSecret.StringData[tokenIDKey]
-	tokenSecret := updatedSecret.StringData[tokenSecretKey]
-	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
+	now := metav1.Now()
+	// expVal has to point to a time in the future otherwise we need to update expiration time
+	if now.Before(&expVal) {
+		return token, nil
+	}
+
+	_, err = c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Update(secret)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func (c *Controller) getSecretIfExists(name string) (*v1.Secret, error) {

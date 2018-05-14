@@ -83,10 +83,16 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secrets
   - events
   verbs:
   - create
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - list
 - apiGroups:
   - ""
   resources:
