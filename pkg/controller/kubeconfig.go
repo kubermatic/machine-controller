@@ -17,7 +17,7 @@ const (
 	machineNameLabelKey                    = "machine.k8s.io/machine.name"
 	tokenIDKey                             = "token-id"
 	tokenSecretKey                         = "token-secret"
-	tokenFormatter                         = "%s.s"
+	tokenFormatter                         = "%s.%s"
 )
 
 func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
