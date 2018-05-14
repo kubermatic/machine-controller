@@ -100,8 +100,8 @@ type controllerRunOptions struct {
 	// nodeLister holds a lister that knows how to list Nodes from a cache
 	nodeLister listerscorev1.NodeLister
 
-	// configMapLister holds a lister that knows how to list ConfigMaps from a cache
-	configMapLister listerscorev1.ConfigMapLister
+	// secreSystemNstLister knows hot to list Secrects that are inside kube-system namespace from a cache
+	secretSystemNsLister listerscorev1.SecretLister
 
 	// machineInformer holds a shared informer for Machines
 	machineInformer cache.SharedIndexInformer
@@ -176,6 +176,7 @@ func main() {
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
+	kubeSystemInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceSystem, nil)
 	defaultKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceDefault, nil)
 
 	kubeconfigProvider := clusterinfo.New(cfg, kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(), defaultKubeInformerFactory.Core().V1().Endpoints().Lister())
@@ -188,7 +189,7 @@ func main() {
 		leaderElectionClient: leaderElectionClient,
 		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
 		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
-		configMapLister:      kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
+		secretSystemNsLister: kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
 		machineInformer:      machineInformerFactory.Machine().V1alpha1().Machines().Informer(),
 		machineLister:        machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		kubeconfigProvider:   kubeconfigProvider,
@@ -199,8 +200,9 @@ func main() {
 	kubePublicKubeInformerFactory.Start(stopCh)
 	defaultKubeInformerFactory.Start(stopCh)
 	machineInformerFactory.Start(stopCh)
+	kubeSystemInformerFactory.Start(stopCh)
 
-	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh), defaultKubeInformerFactory.WaitForCacheSync(stopCh)} {
+	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh), defaultKubeInformerFactory.WaitForCacheSync(stopCh), kubeSystemInformerFactory.WaitForCacheSync(stopCh)} {
 		for key, synced := range syncsMap {
 			if !synced {
 				glog.Fatalf("unable to sync %s", key)
@@ -279,9 +281,9 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.machineClient,
 			runOptions.nodeInformer,
 			runOptions.nodeLister,
-			runOptions.configMapLister,
 			runOptions.machineInformer,
 			runOptions.machineLister,
+			runOptions.secretSystemNsLister,
 			runOptions.clusterDNSIPs,
 			controller.MetricsCollection{
 				Machines:            runOptions.metrics.Machines,
