@@ -403,6 +403,20 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	//TODO: Implement this
-	return "", "", nil
+	c, _, err := p.getConfig(spec.ProviderConfig)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	config = fmt.Sprintf(`
+[Global]
+server = "%s"
+user = "%s"
+password = "%s"
+insecure-flag = "%t" #set to 1 if the vCenter uses a self-signed cert
+datacenters = "%s"
+working-dir = "%s"
+datacenter = "%s"
+`, c.VSphereURL, c.Username, c.Password, c.AllowInsecure, c.Datacenter, c.Folder, c.Datacenter)
+	return config, "vsphere", nil
 }
