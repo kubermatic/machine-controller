@@ -84,7 +84,7 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (strin
 	if secret.StringData == nil {
 		secret.StringData = map[string]string{}
 	}
-	secret.StringData[expirationKey] = metav1.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	secret.StringData[expirationKey] = metav1.Now().Add(1 * time.Hour).Format(time.RFC3339)
 	tokenID := secret.StringData[tokenIDKey]
 	tokenSecret := secret.StringData[tokenSecretKey]
 	token := fmt.Sprintf(tokenFormatter, tokenID, tokenSecret)
@@ -100,6 +100,7 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (strin
 		return "", err
 	}
 	now := metav1.Now()
+	now.Add(15 * time.Minute)
 	// expVal has to point to a time in the future otherwise we need to update expiration time
 	if now.Before(&expVal) {
 		return token, nil
