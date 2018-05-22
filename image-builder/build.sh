@@ -64,7 +64,7 @@ TEMPDIR="$(mktemp -d)"
 TARGETFS="$TEMPDIR/targetfs"
 mkdir -p "$TARGETFS" "$SCRIPT_DIR/downloads"
 # on failure unmount target filesystem (if mounted) and delte the temporary directory
-trap "sudo mountpoint --quiet $TARGETFS && sudo umount $TARGETFS; rm -rf $TEMPDIR" EXIT SIGINT
+trap "sudo mountpoint --quiet $TARGETFS && sudo umount --recursive $TARGETFS; rm -rf $TEMPDIR" EXIT SIGINT
 
 get_coreos_image() {
   echo " * Downloading vanilla CoreOS image."
@@ -134,24 +134,44 @@ get_debian9_image() {
   mv "$TEMPDIR/debian-9-openstack-amd64.qcow2" "$SCRIPT_DIR/downloads/debian-9-openstack-amd64.qcow2"
 }
 
+mount_rootfs() {
+  local IMAGE="$1"
+  local FOLDER="$2"
+  case $TARGET_OS in
+    coreos)
+      echo "  * /"
+      sudo guestmount -a "$IMAGE" -m "/dev/sda9" "$TARGETFS"
+      echo "  * /usr"
+      sudo guestmount -a "$IMAGE" -m "/dev/sda3" --ro "$TARGETFS/usr"
+      echo "  * /usr/share/oem"
+      sudo guestmount -a "$IMAGE" -m "/dev/sda6" "$TARGETFS/usr/share/oem"
+      ;;
+    debian9|centos7)
+      echo "  * /"
+      sudo guestmount -a "$IMAGE" -m "/dev/sda1" "$TARGETFS"
+      ;;
+    *)
+      echo "mount_rootfs(): unknown OS \"$TARGET_OS\""
+      usage
+      exit 1
+  esac
+}
+
 case $TARGET_OS in
   coreos)
     CLEAN_IMAGE="$SCRIPT_DIR/downloads/coreos_production_vmware_image.original.vmdk"
-    ROOTFS_PARTITION="/dev/sda9"
     if [[ ! -f "$CLEAN_IMAGE" ]]; then
       get_coreos_image
     fi
     ;;
   centos7)
   CLEAN_IMAGE="$SCRIPT_DIR/downloads/CentOS-7-x86_64-GenericCloud.qcow2"
-    ROOTFS_PARTITION="/dev/sda1"
     if [[ ! -f "$CLEAN_IMAGE" ]]; then
       get_centos7_image
     fi
     ;;
   debian9)
     CLEAN_IMAGE="$SCRIPT_DIR/downloads/debian-9-openstack-amd64.qcow2"
-    ROOTFS_PARTITION="/dev/sda1"
     if [[ ! -f "$CLEAN_IMAGE" ]]; then
       get_debian9_image
     fi
@@ -166,7 +186,7 @@ echo " * Verifying/Downloading kubernetes"
 
 echo " * Mouting the image"
 cp "$CLEAN_IMAGE" "$TEMPDIR/work-in-progress-image"
-sudo guestmount -a "$TEMPDIR/work-in-progress-image" -m "$ROOTFS_PARTITION" "$TARGETFS"
+mount_rootfs "$TEMPDIR/work-in-progress-image" "$TARGETFS"
 
 echo " * Copying kubernetes binaries"
 sudo mkdir -p "$TARGETFS/opt/bin/"
@@ -175,7 +195,7 @@ sudo cp "$SCRIPT_DIR/downloads/kubectl-$K8S_RELEASE" "$TARGETFS/opt/bin/kubectl"
 sudo cp "$SCRIPT_DIR/downloads/kubelet-$K8S_RELEASE" "$TARGETFS/opt/bin/kubelet"
 
 echo " * Finalizing"
-sudo umount "$TARGETFS"
+sudo umount --recursive "$TARGETFS"
 EXTENSION="${CLEAN_IMAGE##*.}"
 if [[ "$EXTENSION" == "vmdk" ]]; then
   cp "$TEMPDIR/work-in-progress-image" "$SCRIPT_DIR/$TARGET_OS-output.vmdk"
