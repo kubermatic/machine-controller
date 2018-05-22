@@ -18,7 +18,7 @@ spec:
       datacenter: 'Datacenter'
       folder: '/Datacenter/vm/e2e-tests'
       password: << VSPHERE_PASSWORD >>
-      cluster: "test-cluster"
+      cluster: '<< VSPHERE_CLUSTER >>'
       datastore: datastore1
       allowInsecure: true
       cpus: 2
