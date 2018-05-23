@@ -15,5 +15,5 @@ groups:
     labels:
       severity: warning
     annotations:
-      description: "Average increase of unhandled errors in the machine controller sync loop is greater than 0.01."
+      description: "Machine Controller in {{ $labels.namespace }} has too many errors in its loop."
       summary: "Machine Controller has many errors"
