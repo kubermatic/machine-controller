@@ -33,7 +33,7 @@ const (
 
 var errSnapshotNotFound = errors.New("no snapshot with given name found")
 
-func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string, cpus int32, memoryMB int64, client *govmomi.Client, containerLinuxUserdata string) error {
+func createLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string, cpus int32, memoryMB int64, client *govmomi.Client, containerLinuxUserdata string) error {
 	f := find.NewFinder(client.Client, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -115,13 +115,13 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 			return err
 		}
 
-		var property []types.VAppPropertySpec
+		var propertySpecs []types.VAppPropertySpec
 		info := mvm.Config.VAppConfig.GetVmConfigInfo()
 		properties := info.Property
 		for _, item := range properties {
 			switch item.Id {
 			case "guestinfo.coreos.config.data":
-				property = append(property, types.VAppPropertySpec{
+				propertySpecs = append(propertySpecs, types.VAppPropertySpec{
 					ArrayUpdateSpec: types.ArrayUpdateSpec{
 						Operation: types.ArrayUpdateOperationEdit,
 					},
@@ -133,7 +133,7 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 				})
 				break
 			case "guestinfo.coreos.config.data.encoding":
-				property = append(property, types.VAppPropertySpec{
+				propertySpecs = append(propertySpecs, types.VAppPropertySpec{
 					ArrayUpdateSpec: types.ArrayUpdateSpec{
 						Operation: types.ArrayUpdateOperationEdit,
 					},
@@ -147,7 +147,7 @@ func CreateLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 			}
 		}
 
-		vAppAconfig = &types.VmConfigSpec{Property: property}
+		vAppAconfig = &types.VmConfigSpec{Property: propertySpecs}
 	}
 
 	diskUuidEnabled := true
