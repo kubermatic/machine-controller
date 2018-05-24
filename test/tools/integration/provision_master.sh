@@ -75,4 +75,4 @@ EOEXEC
 
 scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
   root@$ADDR:/root/.kube/config \
-  $GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig
+  $(go env GOPATH)/src/github.com/kubermatic/machine-controller/.kubeconfig
