@@ -82,9 +82,10 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	// test data
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
+	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
 	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
-	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 {
-		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
 	// Vsphere only supports Ubuntu
@@ -94,6 +95,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
 		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
 		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
+		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
 	}
 	runScenarios(t, excludeSelector, params, vs_manifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }
