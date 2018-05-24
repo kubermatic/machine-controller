@@ -9,7 +9,7 @@ TARGET_OS=""
 
 usage() {
   echo -e "usage:"
-  echo -e "\t$0 --target-os coreos|centos7|debian9 [--release K8S-RELEASE]"
+  echo -e "\t$0 --target-os coreos|centos7|debian9|ubuntu-xenial|ubuntu-bionic [--release K8S-RELEASE]"
 }
 
 while [ $# -gt 0 ]; do
@@ -134,6 +134,42 @@ get_debian9_image() {
   mv "$TEMPDIR/debian-9-openstack-amd64.qcow2" "$SCRIPT_DIR/downloads/debian-9-openstack-amd64.qcow2"
 }
 
+get_ubuntu_image() {
+  local UBUNTU_CLOUD_IMAGE_SIGNING_KEY_FINGERPRINT="D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81"
+  local RELEASE="$1"
+  local IMG_NAME
+  if [[ $RELEASE == "xenial" ]]; then
+    IMG_NAME="$RELEASE-server-cloudimg-amd64-disk1.vmdk"
+  else
+    IMG_NAME="$RELEASE-server-cloudimg-amd64.vmdk"
+  fi
+
+  echo " * Downloading vanilla Ubuntu image."
+  wget "https://cloud-images.ubuntu.com/$RELEASE/current/$IMG_NAME" -P "$TEMPDIR"
+
+  echo " * Verifying GPG signature"
+  wget --quiet "https://cloud-images.ubuntu.com/$RELEASE/current/SHA256SUMS" -O "$TEMPDIR/Ubuntu-SHA256SUMS"
+  wget --quiet "https://cloud-images.ubuntu.com/$RELEASE/current/SHA256SUMS.gpg" -O "$TEMPDIR/Ubuntu-SHA256SUMS.gpg"
+  gpg2 --quiet --recv-keys $UBUNTU_CLOUD_IMAGE_SIGNING_KEY_FINGERPRINT
+  gpg2 --quiet --verify "$TEMPDIR/Ubuntu-SHA256SUMS.gpg" "$TEMPDIR/Ubuntu-SHA256SUMS"
+
+  echo " * Verifying SHA256 digest"
+  EXPECTED_SHA256="$(grep "$IMG_NAME\$" < "$TEMPDIR/Ubuntu-SHA256SUMS" | cut -f1 -d ' ')"
+  CALCULATED_SHA256="$(sha256sum "$TEMPDIR/$IMG_NAME" | cut -f1 -d ' ')"
+  if [[ "$CALCULATED_SHA256" != "$EXPECTED_SHA256" ]]; then
+    echo " * SHA256 digest verification failed. '$CALCULATED_SHA256' != '$EXPECTED_SHA256'"
+    exit 1
+  fi
+
+  # This is needed because Ubuntu cloud images come in a Read-Only format
+  # that can only be used for linked-base VMs.
+  echo " * Converting to a read-write enabled image"
+  qemu-img convert -O vmdk "$TEMPDIR/$IMG_NAME" "$TEMPDIR/$IMG_NAME-rw"
+
+  echo " * Finalizing"
+  mv "$TEMPDIR/$IMG_NAME-rw" "$SCRIPT_DIR/downloads/$RELEASE-server-cloudimg-amd64.vmdk"
+}
+
 mount_rootfs() {
   local IMAGE="$1"
   local FOLDER="$2"
@@ -146,7 +182,7 @@ mount_rootfs() {
       echo "  * /usr/share/oem"
       sudo guestmount -a "$IMAGE" -m "/dev/sda6" "$TARGETFS/usr/share/oem"
       ;;
-    debian9|centos7)
+    debian9|centos7|ubuntu-*)
       echo "  * /"
       sudo guestmount -a "$IMAGE" -m "/dev/sda1" "$TARGETFS"
       ;;
@@ -174,6 +210,18 @@ case $TARGET_OS in
     CLEAN_IMAGE="$SCRIPT_DIR/downloads/debian-9-openstack-amd64.qcow2"
     if [[ ! -f "$CLEAN_IMAGE" ]]; then
       get_debian9_image
+    fi
+    ;;
+  ubuntu-xenial)
+    CLEAN_IMAGE="$SCRIPT_DIR/downloads/xenial-server-cloudimg-amd64.vmdk"
+    if [[ ! -f "$CLEAN_IMAGE" ]]; then
+      get_ubuntu_image xenial
+    fi
+    ;;
+  ubuntu-bionic)
+    CLEAN_IMAGE="$SCRIPT_DIR/downloads/bionic-server-cloudimg-amd64.vmdk"
+    if [[ ! -f "$CLEAN_IMAGE" ]]; then
+      get_ubuntu_image bionic
     fi
     ;;
   *)
