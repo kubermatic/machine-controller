@@ -32,28 +32,21 @@ var scenarios = []scenario{
 	},
 
 	{
-		name:                    "scenario 4 CentOS Docker 1.12",
-		osName:                  "centos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.12",
-	},
-
-	{
-		name:                    "scenario 5 CentOS Docker 1.13",
+		name:                    "scenario 4 CentOS Docker 1.13",
 		osName:                  "centos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
 	},
 
 	{
-		name:                    "scenario 6 CoreOS Docker 1.13",
+		name:                    "scenario 5 CoreOS Docker 1.13",
 		osName:                  "coreos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
 	},
 
 	{
-		name:                    "scenario 7 CoreOS Docker 17.03",
+		name:                    "scenario 6 CoreOS Docker 17.03",
 		osName:                  "coreos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "17.03",
