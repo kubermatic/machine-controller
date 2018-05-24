@@ -116,9 +116,11 @@ func createLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 		}
 
 		var propertySpecs []types.VAppPropertySpec
-		info := mvm.Config.VAppConfig.GetVmConfigInfo()
-		properties := info.Property
-		for _, item := range properties {
+		if mvm.Config.VAppConfig.GetVmConfigInfo() == nil {
+			return fmt.Errorf("no vm config found in template '%s'. Make sure you import the correct OVA with the appropriate coreos settings", vmImage)
+		}
+
+		for _, item := range mvm.Config.VAppConfig.GetVmConfigInfo().Property {
 			switch item.Id {
 			case "guestinfo.coreos.config.data":
 				propertySpecs = append(propertySpecs, types.VAppPropertySpec{
