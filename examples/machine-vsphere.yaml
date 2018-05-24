@@ -25,6 +25,7 @@ spec:
     cloudProviderSpec:
       templateVMName: ubuntu-template
       username: '<< VSPHERE_USERNAME >>'
+      # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
       vsphereURL: '<< VSPHERE_ADDRESS >>'
       datacenter: 'Datacenter'
       password:
