@@ -14,7 +14,7 @@ spec:
     cloudProviderSpec:
       templateVMName: '<< OS_NAME >>-template'
       username: '<< VSPHERE_USERNAME >>'
-      vsphereURL: 'https://<< VSPHERE_ADDRESS >>'
+      vsphereURL: '<< VSPHERE_ADDRESS >>'
       datacenter: 'Datacenter'
       folder: '/Datacenter/vm/e2e-tests'
       password: << VSPHERE_PASSWORD >>
