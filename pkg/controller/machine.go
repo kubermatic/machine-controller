@@ -136,7 +136,7 @@ func NewMachineController(
 		machinesLister:       machineLister,
 		secretSystemNsLister: secretSystemNsLister,
 
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
 
 		clusterDNSIPs:      clusterDNSIPs,
