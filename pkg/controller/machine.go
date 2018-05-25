@@ -78,9 +78,9 @@ type Controller struct {
 	kubeClient    kubernetes.Interface
 	machineClient machineclientset.Interface
 
-	nodesLister     listerscorev1.NodeLister
-	configMapLister listerscorev1.ConfigMapLister
-	machinesLister  machinelistersv1alpha1.MachineLister
+	nodesLister          listerscorev1.NodeLister
+	machinesLister       machinelistersv1alpha1.MachineLister
+	secretSystemNsLister listerscorev1.SecretLister
 
 	workqueue workqueue.RateLimitingInterface
 	recorder  record.EventRecorder
@@ -115,9 +115,9 @@ func NewMachineController(
 	machineClient machineclientset.Interface,
 	nodeInformer cache.SharedIndexInformer,
 	nodeLister listerscorev1.NodeLister,
-	configMapLister listerscorev1.ConfigMapLister,
 	machineInformer cache.SharedIndexInformer,
 	machineLister machinelistersv1alpha1.MachineLister,
+	secretSystemNsLister listerscorev1.SecretLister,
 	clusterDNSIPs []net.IP,
 	metrics MetricsCollection,
 	kubeconfigProvider KubeconfigProvider,
@@ -129,12 +129,12 @@ func NewMachineController(
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	controller := &Controller{
-		kubeClient:      kubeClient,
-		nodesLister:     nodeLister,
-		configMapLister: configMapLister,
+		kubeClient:  kubeClient,
+		nodesLister: nodeLister,
 
-		machineClient:  machineClient,
-		machinesLister: machineLister,
+		machineClient:        machineClient,
+		machinesLister:       machineLister,
+		secretSystemNsLister: secretSystemNsLister,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
 		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
