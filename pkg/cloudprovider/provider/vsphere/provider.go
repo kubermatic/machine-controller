@@ -176,6 +176,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
+	defer client.Logout(context.TODO())
 
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
@@ -211,13 +212,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
+	defer client.Logout(context.TODO())
 
 	var containerLinuxUserdata string
 	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
 		containerLinuxUserdata = userdata
 	}
 
-	if err = CreateLinkClonedVm(machine.Spec.Name,
+	if err = createLinkClonedVm(machine.Spec.Name,
 		config.TemplateVMName,
 		config.Datacenter,
 		config.Cluster,
@@ -290,6 +292,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error 
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
+	defer client.Logout(context.TODO())
 	finder := find.NewFinder(client.Client, true)
 
 	// We can't use getDatacenterFinder because we need the dc object to
@@ -347,6 +350,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
+	defer client.Logout(context.TODO())
 
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {

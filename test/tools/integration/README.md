@@ -14,7 +14,7 @@ creates a single-node-cluster (servertype: `cx11`) via `kubeadm` at
 
 ## Usage
 
-* `export HZ_TOKEN=<my_hetzner_cloud_token>`
+* `export HZ_E2E_TOKEN=<my_hetzner_cloud_token>`
 * `make provision` to create and provision the environment
 * Wait for the tests
 * `make destroy`
