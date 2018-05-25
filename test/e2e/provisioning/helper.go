@@ -32,28 +32,21 @@ var scenarios = []scenario{
 	},
 
 	{
-		name:                    "scenario 4 CentOS Docker 1.12",
-		osName:                  "centos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.12",
-	},
-
-	{
-		name:                    "scenario 5 CentOS Docker 1.13",
+		name:                    "scenario 4 CentOS Docker 1.13",
 		osName:                  "centos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
 	},
 
 	{
-		name:                    "scenario 6 CoreOS Docker 1.13",
+		name:                    "scenario 5 CoreOS Docker 1.13",
 		osName:                  "coreos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
 	},
 
 	{
-		name:                    "scenario 7 CoreOS Docker 17.03",
+		name:                    "scenario 6 CoreOS Docker 17.03",
 		osName:                  "coreos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "17.03",
@@ -130,7 +123,13 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 
-	err := verify(kubeConfig, manifestPath, scenarioParams, 60*time.Hour)
+	// the golang test runtime waits for individual subtests to complete before reporting the status.
+	// if one of them is blocking/waiting and the global timeout is reached the status will not be reported/visible.
+	//
+	// we decided to keep this time lower that the global timeout to prevent the following:
+	// the global timeout is set to 20 minutes and the verify tool waits up to 60 hours for a machine to show up.
+	// thus one faulty scenario prevents from showing the results for the whole group, which is confusing because it looks like all tests are broken.
+	err := verify(kubeConfig, manifestPath, scenarioParams, 15*time.Minute)
 	if err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}

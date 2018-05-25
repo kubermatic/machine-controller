@@ -219,7 +219,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		containerLinuxUserdata = userdata
 	}
 
-	if err = CreateLinkClonedVm(machine.Spec.Name,
+	if err = createLinkClonedVm(machine.Spec.Name,
 		config.TemplateVMName,
 		config.Datacenter,
 		config.Cluster,

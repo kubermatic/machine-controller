@@ -31,10 +31,6 @@ type packageCompatibilityMatrix struct {
 
 var dockerInstallCandidates = []packageCompatibilityMatrix{
 	{
-		versions: []string{"1.12", "1.12.6"},
-		pkg:      "docker-1.12.6",
-	},
-	{
 		versions: []string{"1.13", "1.13.1"},
 		pkg:      "docker-1.13.1",
 	},
