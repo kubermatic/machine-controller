@@ -100,7 +100,6 @@ func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams [
 			testScenario(it, testCase, cloudProvider, testParams, manifestPath)
 		})
 	}
-
 }
 
 func testScenario(t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string) {
