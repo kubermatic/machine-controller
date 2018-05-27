@@ -19,13 +19,13 @@ package generator
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/tools/imports"
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 
@@ -131,6 +131,7 @@ func assembleGolangFile(w io.Writer, f *File) {
 
 	if len(f.Imports) > 0 {
 		fmt.Fprint(w, "import (\n")
+		// TODO: sort imports like goimports does.
 		for i := range f.Imports {
 			if strings.Contains(i, "\"") {
 				// they included quotes, or are using the
@@ -158,13 +159,9 @@ func assembleGolangFile(w io.Writer, f *File) {
 	w.Write(f.Body.Bytes())
 }
 
-func importsWrapper(src []byte) ([]byte, error) {
-	return imports.Process("", src, nil)
-}
-
 func NewGolangFile() *DefaultFileType {
 	return &DefaultFileType{
-		Format:   importsWrapper,
+		Format:   format.Source,
 		Assemble: assembleGolangFile,
 	}
 }

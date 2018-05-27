@@ -12,10 +12,7 @@
 
 package unix
 
-import (
-	"strings"
-	"unsafe"
-)
+import "unsafe"
 
 // SockaddrDatalink implements the Sockaddr interface for AF_LINK type sockets.
 type SockaddrDatalink struct {
@@ -137,7 +134,14 @@ func setattrlistTimes(path string, times []Timespec, flags int) error {
 // Derive extattr namespace and attribute name
 
 func xattrnamespace(fullattr string) (ns int, attr string, err error) {
-	s := strings.IndexByte(fullattr, '.')
+	s := -1
+	for idx, val := range fullattr {
+		if val == '.' {
+			s = idx
+			break
+		}
+	}
+
 	if s == -1 {
 		return -1, "", ENOATTR
 	}
@@ -478,7 +482,6 @@ func Uname(uname *Utsname) error {
 //sys	Flock(fd int, how int) (err error)
 //sys	Fpathconf(fd int, name int) (val int, err error)
 //sys	Fstat(fd int, stat *Stat_t) (err error)
-//sys	Fstatat(fd int, path string, stat *Stat_t, flags int) (err error)
 //sys	Fstatfs(fd int, stat *Statfs_t) (err error)
 //sys	Fsync(fd int) (err error)
 //sys	Ftruncate(fd int, length int64) (err error)
