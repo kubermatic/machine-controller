@@ -28,13 +28,6 @@ type Image struct {
 
 	OSFlavor  string
 	OSVersion string
-
-	Protection ImageProtection
-}
-
-// ImageProtection represents the protection level of an image.
-type ImageProtection struct {
-	Delete bool
 }
 
 // ImageType specifies the type of an image.
@@ -55,7 +48,7 @@ type ImageStatus string
 const (
 	// ImageStatusCreating is the status when an image is being created.
 	ImageStatusCreating ImageStatus = "creating"
-	// ImageStatusAvailable is the status when an image is available.
+	// ImageStatusAvailable is the stats when an image is available.
 	ImageStatusAvailable = "available"
 )
 
@@ -198,33 +191,4 @@ func (c *ImageClient) Update(ctx context.Context, image *Image, opts ImageUpdate
 		return nil, resp, err
 	}
 	return ImageFromSchema(respBody.Image), resp, nil
-}
-
-// ImageChangeProtectionOpts specifies options for changing the resource protection level of an image.
-type ImageChangeProtectionOpts struct {
-	Delete *bool
-}
-
-// ChangeProtection changes the resource protection level of an image.
-func (c *ImageClient) ChangeProtection(ctx context.Context, image *Image, opts ImageChangeProtectionOpts) (*Action, *Response, error) {
-	reqBody := schema.ImageActionChangeProtectionRequest{
-		Delete: opts.Delete,
-	}
-	reqBodyData, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	path := fmt.Sprintf("/images/%d/actions/change_protection", image.ID)
-	req, err := c.client.NewRequest(ctx, "POST", path, bytes.NewReader(reqBodyData))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	respBody := schema.ImageActionChangeProtectionResponse{}
-	resp, err := c.client.Do(req, &respBody)
-	if err != nil {
-		return nil, resp, err
-	}
-	return ActionFromSchema(respBody.Action), resp, err
 }
