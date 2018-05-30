@@ -498,6 +498,8 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 		return instance.StatusUnknown, nil
 	case "PowerState/running":
 		return instance.StatusRunning, nil
+	case "PowerState/starting":
+		return instance.StatusCreating, nil
 	default:
 		glog.Warningf("unknown Azure power status %q", *powerStatus.Code)
 		return instance.StatusUnknown, nil
