@@ -96,8 +96,8 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 		Version:   to.StringPtr("latest"),
 	},
 	providerconfig.OperatingSystemUbuntu: compute.ImageReference{
-		Publisher: to.StringPtr("UbuntuServer"),
-		Offer:     to.StringPtr("Canonical"),
+		Publisher: to.StringPtr("Canonical"),
+		Offer:     to.StringPtr("UbuntuServer"),
 		Sku:       to.StringPtr("18.04-LTS"),
 		Version:   to.StringPtr("latest"),
 	},
