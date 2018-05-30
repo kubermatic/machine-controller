@@ -38,11 +38,12 @@ type rawConfig struct {
 	ClientID       providerconfig.ConfigVarString `json:"clientID"`
 	ClientSecret   providerconfig.ConfigVarString `json:"clientSecret"`
 
-	Location      providerconfig.ConfigVarString `json:"location"`
-	ResourceGroup providerconfig.ConfigVarString `json:"resourceGroup"`
-	VMSize        providerconfig.ConfigVarString `json:"vmSize"`
-	VNetName      providerconfig.ConfigVarString `json:"vnetName"`
-	SubnetName    providerconfig.ConfigVarString `json:"subnetName"`
+	Location       providerconfig.ConfigVarString `json:"location"`
+	ResourceGroup  providerconfig.ConfigVarString `json:"resourceGroup"`
+	VMSize         providerconfig.ConfigVarString `json:"vmSize"`
+	VNetName       providerconfig.ConfigVarString `json:"vnetName"`
+	SubnetName     providerconfig.ConfigVarString `json:"subnetName"`
+	RouteTableName providerconfig.ConfigVarString `json:"routeTableName"`
 }
 
 type config struct {
@@ -51,11 +52,12 @@ type config struct {
 	ClientID       string
 	ClientSecret   string
 
-	Location      string
-	ResourceGroup string
-	VMSize        string
-	VNetName      string
-	SubnetName    string
+	Location       string
+	ResourceGroup  string
+	VMSize         string
+	VNetName       string
+	SubnetName     string
+	RouteTableName string
 }
 
 type azureVM struct {
@@ -171,6 +173,11 @@ func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.C
 	c.SubnetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.SubnetName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"subnetName\" field, error = %v", err)
+	}
+
+	c.RouteTableName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.RouteTableName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"routeTableName\" field, error = %v", err)
 	}
 
 	return &c, &pconfig, nil

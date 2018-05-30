@@ -49,6 +49,7 @@ spec:
       vmSize: "Standard_B1ms"
       vnetName: "<< VNET_NAME >>"
       subnetName: "<< SUBNET_NAME >>"
+      routeTableName: "<< ROUTE_TABLE_NAME >>"
     operatingSystem: "coreos"
     operatingSystemSpec:
       distUpgradeOnBoot: false
