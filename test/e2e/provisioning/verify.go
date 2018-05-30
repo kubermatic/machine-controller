@@ -61,7 +61,7 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 			newMachine := &machinev1alpha1.Machine{}
 			manifestReader := strings.NewReader(manifest)
 			manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
-			err := manifestDecoder.Decode(newMachine)
+			err = manifestDecoder.Decode(newMachine)
 			if err != nil {
 				return err
 			}
@@ -138,8 +138,8 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		return err
 	}
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
-		err := assureNodeForMachine(machine, kubeClient, true)
-		if err == nil {
+		pollErr := assureNodeForMachine(machine, kubeClient, true)
+		if pollErr == nil {
 			return true, nil
 		}
 		return false, nil
@@ -152,8 +152,8 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	glog.Infof("waiting for status = %s to come \n", v1.NodeReady)
 	nodeName := machine.Spec.Name
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
-		nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
-		if err != nil {
+		nodes, pollErr := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
+		if pollErr != nil {
 			return false, nil
 		}
 
@@ -183,8 +183,8 @@ func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	}
 
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
-		err := assureNodeForMachine(machine, kubeClient, false)
-		if err == nil {
+		pollErr := assureNodeForMachine(machine, kubeClient, false)
+		if pollErr == nil {
 			return true, nil
 		}
 		return false, nil
