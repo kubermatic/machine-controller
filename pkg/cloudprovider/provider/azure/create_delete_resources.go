@@ -25,7 +25,7 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 		return fmt.Errorf("failed to list interfaces in resource group %q", c.ResourceGroup)
 	}
 
-	allInterfaces := make([]network.Interface, 0)
+	var allInterfaces []network.Interface
 
 	for {
 		allInterfaces = append(allInterfaces, list.Values()...)
@@ -66,7 +66,7 @@ func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID ty
 		return fmt.Errorf("failed to list public IP addresses in resource group %q", c.ResourceGroup)
 	}
 
-	allIPs := make([]network.PublicIPAddress, 0)
+	var allIPs []network.PublicIPAddress
 
 	for {
 		allIPs = append(allIPs, list.Values()...)
@@ -104,7 +104,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 		return err
 	}
 
-	allServers := make([]compute.VirtualMachine, 0)
+	var allServers []compute.VirtualMachine
 
 	for {
 		allServers = append(allServers, list.Values()...)
@@ -142,7 +142,7 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 		return err
 	}
 
-	allDisks := make([]compute.Disk, 0)
+	var allDisks []compute.Disk
 
 	for {
 		allDisks = append(allDisks, list.Values()...)

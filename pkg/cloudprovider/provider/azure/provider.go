@@ -177,7 +177,7 @@ func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.C
 }
 
 func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) ([]string, error) {
-	ipAddresses := make([]string, 0)
+	var ipAddresses []string
 
 	if vm.VirtualMachineProperties == nil {
 		return nil, fmt.Errorf("machine is missing properties")
@@ -219,7 +219,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 		return nil, fmt.Errorf("failed to get interface %q: %s", ifaceName, err.Error())
 	}
 
-	ipAddresses := make([]string, 0)
+	var ipAddresses []string
 
 	if netIf.IPConfigurations != nil {
 		for _, conf := range *netIf.IPConfigurations {
@@ -262,7 +262,7 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 		return nil, fmt.Errorf("IP %q has nil IPConfiguration", addrName)
 	}
 
-	ipAddresses := make([]string, 0)
+	var ipAddresses []string
 	if ip.IPConfiguration.PublicIPAddress != nil && ip.IPConfiguration.PublicIPAddress.IPAddress != nil {
 		ipAddresses = append(ipAddresses, *ip.IPConfiguration.PublicIPAddress.IPAddress)
 	}
@@ -421,7 +421,7 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 		return nil, err
 	}
 
-	allServers := make([]compute.VirtualMachine, 0)
+	var allServers []compute.VirtualMachine
 
 	for {
 		allServers = append(allServers, list.Values()...)
