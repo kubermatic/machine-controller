@@ -92,7 +92,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 	providerconfig.OperatingSystemCentOS: compute.ImageReference{
 		Publisher: to.StringPtr("OpenLogic"),
 		Offer:     to.StringPtr("CentOS"),
-		Sku:       to.StringPtr("7.4"),
+		Sku:       to.StringPtr("7-CI"), // https://docs.microsoft.com/en-us/azure/virtual-machines/linux/using-cloud-init
 		Version:   to.StringPtr("latest"),
 	},
 	providerconfig.OperatingSystemUbuntu: compute.ImageReference{
