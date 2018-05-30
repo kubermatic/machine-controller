@@ -8,6 +8,7 @@ spec:
   providerConfig:
     sshPublicKeys:
       - "<< YOUR_PUBLIC_KEY >>"
+      - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDKhrb9ob4PmORZplOauyxSYFWujX2949LNyy1PpilOXVb4x95yQL1UPjX6H3D0UEj8pGpLt70bnVUal2UiNRFTKtz/n5qavqAVa0EVKrLL//3tiAcyE4NSLuhwY4C8wM1SgsBJTJ0lpHORqdv+nyy0gdNGV1DzCWWh3tjxJdcBVC6WuGNzJXuK5gkbpxoWbaNZLwLCaosmaei/skfQeCfPRwAbVsNuI6TUfb6K98M0ULV2Lk554MoKm8C950pW/AAmC6LxUQzA5UvufCuliZmvm+IU2UT57xHRnpylcJi1dXetk1TK4NvN9KWjfZsMP4k5o5IklGuQKN5HwoO722okWEMNdBdgyhTUCDegqxZO3WImzJkcvVFc4QkO9By1usLtV9ddzmu+WTZSrKQrAqDFTOMXv1YPBD8nhJRj/ckdPgbpeT5gXy2c1qdO5G1ntzW6jFEJ2oKh6ulwsdSWOtCKxKNhUBG7vgwp1MiryhQ4z8ZEHvILWAV8GKN0+sha16qEfq8Ibu5M46yjRK/C0tV806AOx12DLBzbyMX+KtyB2crgAbSKJpPttEI7AveG7WDm6uP6Ta2EGp+djmIO4rVWAFf/vX64/K96cnGwIIJB07rnAKLhKtmK2tlCEtak15QtmZ3v/NejkdRaq0R4sdmUAPRIpAplTCL6MtauvAJWnw=="
     cloudProvider: "azure"
     cloudProviderSpec:
       tenantID: "<< AZURE_TENANT_ID >>"
