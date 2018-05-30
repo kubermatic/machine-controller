@@ -20,7 +20,6 @@ spec:
       vmSize: "Standard_B1ms"
       vnetName: "e2e-test-vnet"
       subnetName: "e2e-test-subnet"
-      bootDiagnosticsEnabled: true
     operatingSystem: "coreos"
     operatingSystemSpec:
       distUpgradeOnBoot: false

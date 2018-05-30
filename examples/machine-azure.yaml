@@ -49,7 +49,6 @@ spec:
       vmSize: "Standard_B1ms"
       vnetName: "<< VNET_NAME >>"
       subnetName: "<< SUBNET_NAME >>"
-      bootDiagnosticsEnabled: true
     operatingSystem: "coreos"
     operatingSystemSpec:
       distUpgradeOnBoot: false
