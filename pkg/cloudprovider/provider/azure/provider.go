@@ -98,8 +98,11 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 	providerconfig.OperatingSystemUbuntu: compute.ImageReference{
 		Publisher: to.StringPtr("Canonical"),
 		Offer:     to.StringPtr("UbuntuServer"),
-		Sku:       to.StringPtr("18.04-LTS"),
-		Version:   to.StringPtr("latest"),
+		// FIXME We'd like to use Ubuntu 18.04 eventually, but the docker's release
+		// deb repo for `bionic` is empty, and we use `$RELEASE` in userdata.
+		// Either Docker needs to fix their repo, or we need to hardcode `xenial`.
+		Sku:     to.StringPtr("16.04-LTS"),
+		Version: to.StringPtr("latest"),
 	},
 }
 
