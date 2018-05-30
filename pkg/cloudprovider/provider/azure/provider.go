@@ -533,7 +533,31 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
+	c, _, err := p.getConfig(spec.ProviderConfig)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	config = fmt.Sprintf(`
+{
+  "cloud": "AZUREPUBLICCLOUD",
+  "tenantId": "%s",
+  "subscriptionId": "%s",
+  "aadClientId": "%s",
+  "aadClientSecret": "%s",
+
+  "resourceGroup": "%s",
+  "location": "%s",
+  "vnetName": "%s",
+  "vnetResourceGroup": "%s",
+  "subnetName": "%s",
+  "routeTableName": "%s",
+
+  "useInstanceMetadata": true
+}`, c.TenantID, c.SubscriptionID, c.ClientID, c.ClientSecret,
+		c.ResourceGroup, c.Location, c.VNetName, c.ResourceGroup, c.SubnetName, c.RouteTableName)
+
+	return config, "azure", nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
