@@ -1,0 +1,34 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: << MACHINE_NAME >>
+spec:
+  metadata:
+    name: << NODE_NAME >>
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "azure"
+    cloudProviderSpec:
+      tenantID: "<< AZURE_TENANT_ID >>"
+      clientID: "<< AZURE_CLIENT_ID >>"
+      clientSecret: "<< AZURE_CLIENT_SECRET >>"
+      subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
+      location: "westeurope"
+      resourceGroup: "e2e-tests"
+      vmSize: "Standard_B1ms"
+      vnetName: "e2e-test-vnet"
+      subnetName: "e2e-test-subnet"
+      bootDiagnosticsEnabled: true
+    operatingSystem: "coreos"
+    operatingSystemSpec:
+      distUpgradeOnBoot: false
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.10.2"
+    containerRuntime:
+      # If you are using Ubuntu, you may choose 'cri-o' instead
+      name: "<< CONTAINER_RUNTIME >>"
+      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
+      version: "<< CONTAINER_RUNTIME_VERSION >>"
