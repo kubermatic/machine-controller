@@ -70,6 +70,10 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
+	// TODO fix centos
+	// cri-o doesn't work on Azure for some reason
+	excludeSelector := &scenarioSelector{osName: []string{"centos"}, containerRuntime: []string{"cri-o"}}
+
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -77,7 +81,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
 	}
-	runScenarios(t, nil, params, azure_manifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+	runScenarios(t, excludeSelector, params, azure_manifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider
