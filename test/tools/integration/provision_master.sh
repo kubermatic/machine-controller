@@ -42,17 +42,17 @@ if ! which kubelet; then
 EOF
   apt-get update
   apt-get install -y kubelet kubeadm kubectl
-  kubeadm init --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16
+  kubeadm init --apiserver-advertise-address=$ADDR --pod-network-cidr=192.168.0.0/16
 fi
 if ! ls \$HOME/.kube/config; then
   mkdir -p \$HOME/.kube
   cp -i /etc/kubernetes/admin.conf \$HOME/.kube/config
   kubectl taint nodes --all node-role.kubernetes.io/master-
 fi
-if ! ls kube-flannel.yml; then
-  curl -LO https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml
-  kubectl apply -f kube-flannel.yml
-fi
+
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
   kubectl apply -f machine-controller.yaml
