@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/metrics"
@@ -694,10 +695,18 @@ func (c *Controller) getNode(instance instance.Instance, provider providerconfig
 		return nil, false, err
 	}
 
-	providerID := fmt.Sprintf("%s:///%s", provider, instance.ID())
+	// We trim leading slashes in raw ID, since we always want three slashes in full ID
+	providerID := fmt.Sprintf("%s:///%s", provider, strings.TrimLeft(instance.ID(), "/"))
 	for _, node := range nodes {
-		if node.Spec.ProviderID == providerID {
-			return node.DeepCopy(), true, nil
+		if provider == providerconfig.CloudProviderAzure {
+			// Azure IDs are case-insensitive
+			if strings.EqualFold(node.Spec.ProviderID, providerID) {
+				return node.DeepCopy(), true, nil
+			}
+		} else {
+			if node.Spec.ProviderID == providerID {
+				return node.DeepCopy(), true, nil
+			}
 		}
 		for _, nodeAddress := range node.Status.Addresses {
 			for _, instanceAddress := range instance.Addresses() {
