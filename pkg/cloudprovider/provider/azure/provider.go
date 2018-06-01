@@ -301,7 +301,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+			Message: fmt.Sprintf("failed to parse MachineSpec, due to %v", err),
 		}
 	}
 
@@ -398,10 +398,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
-		}
+		return fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
 	// TODO: Disassociate and remove the resources in reverse order, to prevent
@@ -518,10 +515,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
-		}
+		return nil, fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
 	vm, err := getVMByUID(context.TODO(), config, machine.UID)
