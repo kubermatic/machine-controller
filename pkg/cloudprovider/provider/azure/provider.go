@@ -524,17 +524,17 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 
-		return nil, fmt.Errorf("Failed to find machine %q by its UID: %s", machine.UID, err)
+		return nil, fmt.Errorf("failed to find machine %q by its UID: %v", machine.UID, err)
 	}
 
 	ipAddresses, err := getVMIPAddresses(context.TODO(), config, vm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %s", vm.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", vm.Name, err)
 	}
 
 	status, err := getVMStatus(context.TODO(), config, machine.Spec.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve status for VM %q: %s", vm.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", vm.Name, err)
 	}
 
 	return &azureVM{vm: vm, ipAddresses: ipAddresses, status: status}, nil
