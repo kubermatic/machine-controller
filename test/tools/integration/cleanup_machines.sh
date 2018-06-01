@@ -14,7 +14,7 @@ ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no roo
 cat <<EOEXEC |ssh_exec
 set -ex
 kubectl delete machine --all
-for try in {1..10}; do
+for try in {1..30}; do
   if kubectl get machine 2>&1|grep -q  'No resources found.'; then exit 0; fi
   sleep 10s
 done
