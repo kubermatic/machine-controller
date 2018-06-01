@@ -27,13 +27,9 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 
 	var allInterfaces []network.Interface
 
-	for {
+	for list.NotDone() {
 		allInterfaces = append(allInterfaces, list.Values()...)
-		if list.NotDone() {
-			list.Next()
-		} else {
-			break
-		}
+		list.Next()
 	}
 
 	for _, iface := range allInterfaces {
@@ -68,13 +64,9 @@ func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID ty
 
 	var allIPs []network.PublicIPAddress
 
-	for {
+	for list.NotDone() {
 		allIPs = append(allIPs, list.Values()...)
-		if list.NotDone() {
-			list.Next()
-		} else {
-			break
-		}
+		list.Next()
 	}
 
 	for _, ip := range allIPs {
@@ -106,13 +98,9 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 
 	var allServers []compute.VirtualMachine
 
-	for {
+	for list.NotDone() {
 		allServers = append(allServers, list.Values()...)
-		if list.NotDone() {
-			list.Next()
-		} else {
-			break
-		}
+		list.Next()
 	}
 
 	for _, vm := range allServers {
@@ -144,13 +132,9 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 
 	var allDisks []compute.Disk
 
-	for {
+	for list.NotDone() {
 		allDisks = append(allDisks, list.Values()...)
-		if list.NotDone() {
-			list.Next()
-		} else {
-			break
-		}
+		list.Next()
 	}
 
 	for _, disk := range allDisks {
