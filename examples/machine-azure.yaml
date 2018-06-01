@@ -50,6 +50,7 @@ spec:
       vnetName: "<< VNET_NAME >>"
       subnetName: "<< SUBNET_NAME >>"
       routeTableName: "<< ROUTE_TABLE_NAME >>"
+      assignPublicIP: false
     operatingSystem: "coreos"
     operatingSystemSpec:
       distUpgradeOnBoot: false

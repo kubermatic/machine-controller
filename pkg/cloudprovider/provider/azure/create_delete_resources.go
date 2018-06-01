@@ -197,13 +197,18 @@ func createPublicIPAddress(ctx context.Context, ipName string, machineUID types.
 	return future.Result(ipClient)
 }
 
-func getPublicIPAddress(ctx context.Context, ipName string, c *config) (network.PublicIPAddress, error) {
+func getPublicIPAddress(ctx context.Context, ipName string, c *config) (*network.PublicIPAddress, error) {
 	ipClient, err := getIPClient(c)
 	if err != nil {
-		return network.PublicIPAddress{}, err
+		return nil, err
 	}
 
-	return ipClient.Get(ctx, c.ResourceGroup, ipName, "")
+	ip, err := ipClient.Get(ctx, c.ResourceGroup, ipName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ip, nil
 }
 
 func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
@@ -226,17 +231,20 @@ func createNetworkInterface(ctx context.Context, ifName string, machineUID types
 		return network.Interface{}, fmt.Errorf("failed to fetch subnet: %v", err)
 	}
 
-	glog.Infof("Creating public IP for interface %q", ifName)
-	ipName := ifName + "-pubip"
-	_, err = createPublicIPAddress(ctx, ipName, machineUID, config)
-	if err != nil {
-		return network.Interface{}, fmt.Errorf("failed to create public IP: %v", err)
-	}
+	var ip *network.PublicIPAddress
+	if config.AssignPublicIP {
+		glog.Infof("Creating public IP for interface %q", ifName)
+		ipName := ifName + "-pubip"
+		_, err = createPublicIPAddress(ctx, ipName, machineUID, config)
+		if err != nil {
+			return network.Interface{}, fmt.Errorf("failed to create public IP: %v", err)
+		}
 
-	glog.Infof("Fetching info for IP address %q", ipName)
-	ip, err := getPublicIPAddress(ctx, ipName, config)
-	if err != nil {
-		return network.Interface{}, fmt.Errorf("failed to fetch info about public IP %q: %v", ipName, err)
+		glog.Infof("Fetching info for IP address %q", ipName)
+		ip, err = getPublicIPAddress(ctx, ipName, config)
+		if err != nil {
+			return network.Interface{}, fmt.Errorf("failed to fetch info about public IP %q: %v", ipName, err)
+		}
 	}
 
 	ifSpec := network.Interface{
@@ -249,7 +257,7 @@ func createNetworkInterface(ctx context.Context, ifName string, machineUID types
 					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 						Subnet: &subnet,
 						PrivateIPAllocationMethod: network.Dynamic,
-						PublicIPAddress:           &ip,
+						PublicIPAddress:           ip,
 					},
 				},
 			},

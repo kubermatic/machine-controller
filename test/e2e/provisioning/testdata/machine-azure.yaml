@@ -21,6 +21,7 @@ spec:
       vnetName: "e2e-test-vnet"
       subnetName: "e2e-test-subnet"
       routeTableName: "e2e-test-routes"
+      assignPublicIP: false
     operatingSystem: "<< OS_NAME >>"
     operatingSystemSpec:
       distUpgradeOnBoot: false

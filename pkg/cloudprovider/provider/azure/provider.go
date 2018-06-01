@@ -44,6 +44,8 @@ type rawConfig struct {
 	VNetName       providerconfig.ConfigVarString `json:"vnetName"`
 	SubnetName     providerconfig.ConfigVarString `json:"subnetName"`
 	RouteTableName providerconfig.ConfigVarString `json:"routeTableName"`
+
+	AssignPublicIP providerconfig.ConfigVarBool `json:"assignPublicIP"`
 }
 
 type config struct {
@@ -58,6 +60,8 @@ type config struct {
 	VNetName       string
 	SubnetName     string
 	RouteTableName string
+
+	AssignPublicIP bool
 }
 
 type azureVM struct {
@@ -181,6 +185,11 @@ func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.C
 	c.RouteTableName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.RouteTableName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"routeTableName\" field, error = %v", err)
+	}
+
+	c.AssignPublicIP, err = p.configVarResolver.GetConfigVarBoolValue(rawCfg.AssignPublicIP)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %v", err)
 	}
 
 	return &c, &pconfig, nil
