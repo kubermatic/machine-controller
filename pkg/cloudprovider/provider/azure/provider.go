@@ -211,7 +211,7 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 	}
 
 	for n, iface := range *vm.NetworkProfile.NetworkInterfaces {
-		if iface.ID == nil {
+		if iface.ID == nil || len(*iface.ID) == 0 {
 			return nil, fmt.Errorf("interface %d has no ID", n)
 		}
 
@@ -247,7 +247,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 				name = *conf.Name
 			} else {
 				glog.Warning("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
-				if conf.ID == nil {
+				if conf.ID == nil || len(*conf.ID) == 0 {
 					return nil, fmt.Errorf("IP configuration of NIC %q was returned with no ID", ifaceName)
 				}
 				splitConfID := strings.Split(*conf.ID, "/")
