@@ -194,7 +194,7 @@ func createPublicIPAddress(ctx context.Context, ipName string, machineUID types.
 		return network.PublicIPAddress{}, fmt.Errorf("failed to retrieve public IP address creation result: %v", err)
 	}
 
-	return future.Result(ipClient)
+	return future.Result(*ipClient)
 }
 
 func getPublicIPAddress(ctx context.Context, ipName string, c *config) (*network.PublicIPAddress, error) {
@@ -275,7 +275,7 @@ func createNetworkInterface(ctx context.Context, ifName string, machineUID types
 		return network.Interface{}, fmt.Errorf("failed to get interface creation response: %v", err)
 	}
 
-	_, err = future.Result(ifClient)
+	_, err = future.Result(*ifClient)
 	if err != nil {
 		return network.Interface{}, fmt.Errorf("failed to get interface creation result: %v", err)
 	}

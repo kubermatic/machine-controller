@@ -371,7 +371,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("waiting for operation returned: %s", err.Error())
 	}
 
-	vm, err := future.Result(vmClient)
+	vm, err := future.Result(*vmClient)
 	if err != nil {
 		return nil, fmt.Errorf("decoding result: %s", err.Error())
 	}

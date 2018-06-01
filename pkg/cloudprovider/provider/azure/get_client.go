@@ -8,57 +8,57 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
-func getIPClient(c *config) (network.PublicIPAddressesClient, error) {
+func getIPClient(c *config) (*network.PublicIPAddressesClient, error) {
 	var err error
 	ipClient := network.NewPublicIPAddressesClient(c.SubscriptionID)
 	ipClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
-		return network.PublicIPAddressesClient{}, fmt.Errorf("failed to create authorizer: %s", err.Error())
+		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
 	}
 
-	return ipClient, nil
+	return &ipClient, nil
 }
 
-func getSubnetsClient(c *config) (network.SubnetsClient, error) {
+func getSubnetsClient(c *config) (*network.SubnetsClient, error) {
 	var err error
 	ipClient := network.NewSubnetsClient(c.SubscriptionID)
 	ipClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
-		return network.SubnetsClient{}, fmt.Errorf("failed to create authorizer: %s", err.Error())
+		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
 	}
 
-	return ipClient, nil
+	return &ipClient, nil
 }
 
-func getVMClient(c *config) (compute.VirtualMachinesClient, error) {
+func getVMClient(c *config) (*compute.VirtualMachinesClient, error) {
 	var err error
 	vmClient := compute.NewVirtualMachinesClient(c.SubscriptionID)
 	vmClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
-		return compute.VirtualMachinesClient{}, fmt.Errorf("failed to create authorizer: %s", err.Error())
+		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
 	}
 
-	return vmClient, nil
+	return &vmClient, nil
 }
 
-func getInterfacesClient(c *config) (network.InterfacesClient, error) {
+func getInterfacesClient(c *config) (*network.InterfacesClient, error) {
 	var err error
 	ifClient := network.NewInterfacesClient(c.SubscriptionID)
 	ifClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
-		return network.InterfacesClient{}, fmt.Errorf("failed to create authorizer: %s", err.Error())
+		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
 	}
 
-	return ifClient, err
+	return &ifClient, err
 }
 
-func getDisksClient(c *config) (compute.DisksClient, error) {
+func getDisksClient(c *config) (*compute.DisksClient, error) {
 	var err error
 	disksClient := compute.NewDisksClient(c.SubscriptionID)
 	disksClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
-		return compute.DisksClient{}, fmt.Errorf("failed to create authorizer: %s", err.Error())
+		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
 	}
 
-	return disksClient, err
+	return &disksClient, err
 }
