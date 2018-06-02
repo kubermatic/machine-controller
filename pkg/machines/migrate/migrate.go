@@ -15,7 +15,7 @@ const (
 	ContainerRuntimeInfoAnnotation = "machine-controller.kubermatic.io/container-runtime-info"
 )
 
-func MigrateMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstream.Machine, error) {
+func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstream.Machine, error) {
 	out := &machinev1alpha1upstream.Machine{}
 	out.ObjectMeta = in.ObjectMeta
 
