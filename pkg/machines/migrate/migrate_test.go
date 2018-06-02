@@ -45,7 +45,7 @@ func TestMigratingMachine(t *testing.T) {
 	}
 
 	for _, machine := range machines {
-		machine, err := migrateMachine(machine)
+		machine, err := MigrateMachine(machine)
 		fixtureFilePath := fmt.Sprintf("testdata/migrated/%s.yaml", machine.Name)
 		if err != nil {
 			t.Errorf("Failed to migrate machine: %v", err)

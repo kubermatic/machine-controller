@@ -6,8 +6,6 @@ import (
 
 	machinev1alpha1downstream "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	machinev1alpha1upstream "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -17,19 +15,7 @@ const (
 	ContainerRuntimeInfoAnnotation = "machine-controller.kubermatic.io/container-runtime-info"
 )
 
-//func Migrate(machine machineV1alpha1Common) (*machinev1alpha1upstream.Machine, error) {
-//	isDownstreamMachine := checkIfIsDownstreamMachine(machine)
-//	if isDownstreamMachine {
-//		return migrateMachine(machine)
-//	}
-//	return castMachine(machine)
-//}
-//
-//func castMachine(in machineV1alpha1Common) (*machinev1alpha1upstream.Machine, error) {
-//	return nil, nil
-//}
-
-func migrateMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstream.Machine, error) {
+func MigrateMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstream.Machine, error) {
 	out := &machinev1alpha1upstream.Machine{}
 	out.ObjectMeta = in.ObjectMeta
 
@@ -85,10 +71,4 @@ func migrateMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstr
 	out.Spec.ConfigSource = in.Spec.ConfigSource
 
 	return out, err
-}
-
-func checkIfIsDownstreamMachine(machine machineV1alpha1Common) bool {
-	_, valueFieldExists := machine.Spec.ProviderConfig["value"]
-	_, valueFromFieldExsists := machine.Spec.ProviderConfig["valueFrom"]
-	return valueFieldExists || valueFromFieldExsists
 }
