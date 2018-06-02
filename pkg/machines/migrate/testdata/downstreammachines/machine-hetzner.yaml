@@ -1,0 +1,28 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: machine1
+spec:
+  metadata:
+    name: node1
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "hetzner"
+    cloudProviderSpec:
+    # If empty, can be set via HZ_TOKEN env var
+      token: "token"
+      serverType: "cx11"
+      datacenter: ""
+      location: "fsn1"
+    # Can be 'ubuntu', 'coreos' or 'centos'
+    operatingSystem: "ubuntu"
+    operatingSystemSpec:
+      distUpgradeOnBoot: false
+  roles:
+  - "Node"
+  versions:
+    kubelet: "1.9.6"
+    # Must be 'docker' if you don't use Ubuntu
+    containerRuntime:
+      name: "cri-o"

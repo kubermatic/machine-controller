@@ -1,0 +1,53 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: machine1
+spec:
+  metadata:
+    name: node1
+    labels:
+      foo: "bar"
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "openstack"
+    cloudProviderSpec:
+    # If empty, ca be set via OS_AUTH_URL env var
+      identityEndpoint: "identityEndpoint"
+    # If empty, ca be set via OS_USER_NAME env var
+      username: "username"
+    # If empty, ca be set via OS_PASSWORD env var
+      password: "pass"
+    # If empty, ca be set via OS_DOMAIN_NAME env var
+      domainName: "domain"
+    # If empty, ca be set via OS_TENANT_NAME env var
+      tenantName: "tenant"
+      image: "Ubuntu 16.04 amd64"
+      flavor: "m1.small"
+      securityGroups: []
+      # The machine won't get a floating ip if you leave this empty
+      floatingIpPool: "ext-net"
+      # Only required if there is more than one AZ to choose from
+      availabilityZone: ""
+      # Only required if there is more than one region to choose from
+      region: ""
+      # Only required if there is more than one network available
+      network: ""
+      # Only required if the network has more than one subnet
+      subnet: ""
+      # the list of tags you would like to attach to the instance
+      tags:
+        tagKey: tagValue
+    # Can be 'ubuntu', 'coreos' or 'centos'
+    operatingSystem: "ubuntu"
+    operatingSystemSpec:
+      distUpgradeOnBoot: true
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.9.6"
+    containerRuntime:
+      # If you are using Ubuntu, you may choose 'cri-o' instead
+      name: "docker"
+      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
+      version: "1.13"

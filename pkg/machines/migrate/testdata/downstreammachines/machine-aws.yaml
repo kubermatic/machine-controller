@@ -1,0 +1,38 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: machine1
+spec:
+  metadata:
+    name: node1
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "aws"
+    cloudProviderSpec:
+    # If empty, can be set via AWS_ACCESS_KEY_ID env var
+      accessKeyId: "val"
+    # If empty, can be set via AWS_SECRET_ACCESS_KEY env var
+      secretAccessKey: "val"
+      region: "eu-central-1"
+      availabilityZone: "eu-central-1a"
+      vpcId: "vpc-819f62e9"
+      subnetId: "subnet-2bff4f43"
+      instanceType: "t2.micro"
+      diskSize: 50
+      diskType: "gp2"
+      tags:
+        "KubernetesCluster": "6qsm86c2d"
+    # Can be 'ubuntu', 'coreos' or 'centos'
+    operatingSystem: "coreos"
+    operatingSystemSpec:
+      disableAutoUpdate: true
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.9.6"
+    containerRuntime:
+      # If you are using Ubuntu, you may choose 'cri-o' instead
+      name: "docker"
+      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
+      version: "1.13"

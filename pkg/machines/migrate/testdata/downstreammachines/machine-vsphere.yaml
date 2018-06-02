@@ -1,0 +1,37 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: machine1
+spec:
+  metadata:
+    name: node1
+    labels:
+      foo: "bar"
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "vsphere"
+    cloudProviderSpec:
+      templateVMName: ubuntu-template
+      username: '<< VSPHERE_USERNAME >>'
+      # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
+      vsphereURL: '<< VSPHERE_ADDRESS >>'
+      datacenter: 'Datacenter'
+      password: "vpshere-pass"
+      cluster: "test-cluster"
+      datastore: datastore1
+      allowInsecure: true
+      cpus: 2
+      MemoryMB: 2048
+    operatingSystem: "ubuntu"
+    operatingSystemSpec:
+      distUpgradeOnBoot: false
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.9.6"
+    containerRuntime:
+      # If you are using Ubuntu, you may choose 'cri-o' instead
+      name: "docker"
+      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
+      version: "1.13"
