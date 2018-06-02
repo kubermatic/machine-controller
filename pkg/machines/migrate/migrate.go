@@ -11,10 +11,6 @@ import (
 	machinev1alpha1upstream "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-const (
-	ContainerRuntimeInfoAnnotation = "machine-controller.kubermatic.io/container-runtime-info"
-)
-
 func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstream.Machine, error) {
 	out := &machinev1alpha1upstream.Machine{}
 	out.ObjectMeta = in.ObjectMeta
@@ -37,6 +33,7 @@ func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1
 	if err != nil {
 		return nil, err
 	}
+
 	out.Spec.ProviderConfig = machinev1alpha1upstream.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 
 	for _, inRole := range in.Spec.Roles {
@@ -49,26 +46,44 @@ func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1
 	}
 
 	// This currently results in in.Spec.Versions.ContainerRuntime being dropped,
-	// because it does not exist in the upstream type
-	// We work around this by writing it to an annotation
-	// Upstream PR: https://github.com/kubernetes-sigs/cluster-api/pull/270
+	// because it was removed from the upstream type in
+	// https://github.com/kubernetes-sigs/cluster-api/pull/240
+	// To work around this, we put it into the providerConfig
 	inMachineVersionJSON, err := json.Marshal(in.Spec.Versions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal downstreammachine version: %v", err)
 	}
-	inContainerRuntimeInfoJSON, err := json.Marshal(in.Spec.Versions.ContainerRuntime)
-	if err != nil {
-		return nil, err
-	}
-	if out.ObjectMeta.Annotations == nil {
-		out.ObjectMeta.Annotations = map[string]string{}
-	}
-	out.ObjectMeta.Annotations[ContainerRuntimeInfoAnnotation] = string(inContainerRuntimeInfoJSON)
 	if err = json.Unmarshal(inMachineVersionJSON, &out.Spec.Versions); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal downstreammachine version: %v", err)
+	}
+
+	providerConfigMap, err := addContainerRuntimeInfoToProviderConfig(*out.Spec.ProviderConfig.Value,
+		in.Spec.Versions.ContainerRuntime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add containerRuntimeInfo to providerConfig: %v", err)
+	}
+	out.Spec.ProviderConfig.Value.Raw, err = json.Marshal(providerConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshall providerconfig after adding containerRuntimeInfo: %v", err)
 	}
 
 	out.Spec.ConfigSource = in.Spec.ConfigSource
 
 	return out, err
+}
+
+func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExtension, containerRuntimeInfo machinev1alpha1downstream.ContainerRuntimeInfo) (map[string]interface{}, error) {
+	providerConfigMap := map[string]interface{}{}
+	if err := json.Unmarshal(providerConfigValue.Raw, &providerConfigMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshall provider config into map: %v", err)
+	}
+	if val, ok := providerConfigMap["operatingSystemSpec"]; ok {
+		if valMap, ok := val.(map[string]interface{}); ok {
+			valMap["containerRuntimeInfo"] = containerRuntimeInfo
+			providerConfigMap["operatingSystemSpec"] = valMap
+			return providerConfigMap, nil
+		}
+	}
+	providerConfigMap["operatingSystemSpec"] = map[string]machinev1alpha1downstream.ContainerRuntimeInfo{"containerRuntimeInfo": containerRuntimeInfo}
+	return providerConfigMap, nil
 }

@@ -1,6 +1,4 @@
 metadata:
-  annotations:
-    machine-controller.kubermatic.io/container-runtime-info: '{"name":"docker","version":"1.13"}'
   creationTimestamp: null
   name: machine-aws
 spec:
@@ -25,6 +23,9 @@ spec:
         vpcId: vpc-819f62e9
       operatingSystem: coreos
       operatingSystemSpec:
+        containerRuntimeInfo:
+          name: docker
+          version: "1.13"
         disableAutoUpdate: true
       sshPublicKeys:
       - << YOUR_PUBLIC_KEY >>

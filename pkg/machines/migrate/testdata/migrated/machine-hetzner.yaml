@@ -1,6 +1,4 @@
 metadata:
-  annotations:
-    machine-controller.kubermatic.io/container-runtime-info: '{"name":"cri-o","version":""}'
   creationTimestamp: null
   name: machine-hetzner
 spec:
@@ -18,6 +16,9 @@ spec:
         token: token
       operatingSystem: ubuntu
       operatingSystemSpec:
+        containerRuntimeInfo:
+          name: cri-o
+          version: ""
         distUpgradeOnBoot: false
       sshPublicKeys:
       - << YOUR_PUBLIC_KEY >>
