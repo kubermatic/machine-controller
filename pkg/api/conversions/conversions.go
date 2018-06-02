@@ -14,6 +14,7 @@ import (
 func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstream.Machine, error) {
 	out := &machinev1alpha1upstream.Machine{}
 	out.ObjectMeta = in.ObjectMeta
+	out.ObjectMeta.Namespace = "kube-system"
 
 	// sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineStatus and
 	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former

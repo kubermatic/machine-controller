@@ -1,6 +1,7 @@
 metadata:
   creationTimestamp: null
   name: machine-aws
+  namespace: kube-system
 spec:
   metadata:
     creationTimestamp: null

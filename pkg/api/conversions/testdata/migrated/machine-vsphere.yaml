@@ -1,6 +1,7 @@
 metadata:
   creationTimestamp: null
   name: machine-vsphere
+  namespace: kube-system
 spec:
   metadata:
     creationTimestamp: null

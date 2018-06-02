@@ -1,6 +1,7 @@
 metadata:
   creationTimestamp: null
   name: machine-hetzner
+  namespace: kube-system
 spec:
   metadata:
     creationTimestamp: null
