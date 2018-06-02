@@ -13,6 +13,10 @@ import (
 	machinev1alpha1upstream "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
+const (
+	ContainerRuntimeInfoAnnotation = "machine-controller.kubermatic.io/container-runtime-info"
+)
+
 type machineV1alpha1Common struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -103,7 +107,26 @@ func migrateMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstr
 			out.Spec.Roles = append(out.Spec.Roles, clustercommon.NodeRole)
 		}
 	}
-	out.Spec.Versions = in.Spec.Versions
+
+	// This currently results in in.Spec.Versions.ContainerRuntime being dropped,
+	// because it does not exist in the upstream type
+	// We work around this by writing it to an annotation
+	inMachineVersionJSON, err := json.Marshal(in.Spec.Versions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal downstreammachine version: %v", err)
+	}
+	inContainerRuntimeInfoJSON, err := json.Marshal(in.Spec.Versions.ContainerRuntime)
+	if err != nil {
+		return nil, err
+	}
+	if out.ObjectMeta.Annotations == nil {
+		out.ObjectMeta.Annotations = map[string]string{}
+	}
+	out.ObjectMeta.Annotations[ContainerRuntimeInfoAnnotation] = string(inContainerRuntimeInfoJSON)
+	if err = json.Unmarshal(inMachineVersionJSON, &out.Spec.Versions); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal downstreammachine version: %v", err)
+	}
+
 	out.Spec.ConfigSource = in.Spec.ConfigSource
 
 	return out, err

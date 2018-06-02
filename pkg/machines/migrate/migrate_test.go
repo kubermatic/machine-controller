@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -17,7 +18,7 @@ func getDownstreamTestMachines() (machines []machinev1alpha1downstream.Machine, 
 	}
 	for _, file := range files {
 		newMachine := &machinev1alpha1downstream.Machine{}
-		fileContent, err := ioutil.ReadFile(file.Name())
+		fileContent, err := ioutil.ReadFile(fmt.Sprintf("testdata/downstreammachines/%s", file.Name()))
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +42,7 @@ func TestMigratingMachine(t *testing.T) {
 	for _, machine := range machines {
 		_, err := migrateMachine(machine)
 		if err != nil {
-			t.Errorf("Failed to migrate machine: %v")
+			t.Errorf("Failed to migrate machine: %v", err)
 		}
 	}
 }
