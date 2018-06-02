@@ -94,7 +94,15 @@ func migrateMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstr
 		return nil, err
 	}
 	out.Spec.ProviderConfig = machinev1alpha1upstream.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
-	out.Spec.Roles = in.Spec.Roles
+
+	for _, inRole := range in.Spec.Roles {
+		if inRole == machinev1alpha1downstream.MasterRole {
+			out.Spec.Roles = append(out.Spec.Roles, clustercommon.MasterRole)
+		}
+		if inRole == machinev1alpha1downstream.NodeRole {
+			out.Spec.Roles = append(out.Spec.Roles, clustercommon.NodeRole)
+		}
+	}
 	out.Spec.Versions = in.Spec.Versions
 	out.Spec.ConfigSource = in.Spec.ConfigSource
 
