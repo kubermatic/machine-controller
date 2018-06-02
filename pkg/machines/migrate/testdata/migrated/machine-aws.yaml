@@ -1,0 +1,37 @@
+metadata:
+  annotations:
+    machine-controller.kubermatic.io/container-runtime-info: '{"name":"docker","version":"1.13"}'
+  creationTimestamp: null
+  name: machine-aws
+spec:
+  metadata:
+    creationTimestamp: null
+    name: node1
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: aws
+      cloudProviderSpec:
+        accessKeyId: val
+        availabilityZone: eu-central-1a
+        diskSize: 50
+        diskType: gp2
+        instanceType: t2.micro
+        region: eu-central-1
+        secretAccessKey: val
+        subnetId: subnet-2bff4f43
+        tags:
+          KubernetesCluster: 6qsm86c2d
+        vpcId: vpc-819f62e9
+      operatingSystem: coreos
+      operatingSystemSpec:
+        disableAutoUpdate: true
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  roles:
+  - Node
+  versions:
+    kubelet: v1.9.6
+status:
+  lastUpdated: null
+  providerStatus: null

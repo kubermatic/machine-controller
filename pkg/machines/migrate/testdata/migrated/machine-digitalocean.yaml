@@ -1,0 +1,35 @@
+metadata:
+  annotations:
+    machine-controller.kubermatic.io/container-runtime-info: '{"name":"docker","version":"1.13"}'
+  creationTimestamp: null
+  name: machine-digitalocean
+spec:
+  metadata:
+    creationTimestamp: null
+    name: node1
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: digitalocean
+      cloudProviderSpec:
+        backups: false
+        ipv6: false
+        monitoring: false
+        private_networking: true
+        region: fra1
+        size: 2gb
+        tags:
+        - machine-controller
+        token: token
+      operatingSystem: coreos
+      operatingSystemSpec:
+        disableAutoUpdate: true
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  roles:
+  - Node
+  versions:
+    kubelet: v1.9.6
+status:
+  lastUpdated: null
+  providerStatus: null

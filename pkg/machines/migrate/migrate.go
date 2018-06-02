@@ -111,6 +111,7 @@ func migrateMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstr
 	// This currently results in in.Spec.Versions.ContainerRuntime being dropped,
 	// because it does not exist in the upstream type
 	// We work around this by writing it to an annotation
+	// Upstream PR: https://github.com/kubernetes-sigs/cluster-api/pull/270
 	inMachineVersionJSON, err := json.Marshal(in.Spec.Versions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal downstreammachine version: %v", err)

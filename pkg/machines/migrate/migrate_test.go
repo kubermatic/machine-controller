@@ -2,14 +2,19 @@ package migrate
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"testing"
 
+	"github.com/ghodss/yaml"
+
 	machinev1alpha1downstream "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 
-	"k8s.io/apimachinery/pkg/util/yaml"
+	kyaml "k8s.io/apimachinery/pkg/util/yaml"
 )
+
+var update = flag.Bool("update", false, "update .golden files")
 
 func getDownstreamTestMachines() (machines []machinev1alpha1downstream.Machine, err error) {
 	files, err := ioutil.ReadDir("testdata/downstreammachines")
@@ -23,7 +28,7 @@ func getDownstreamTestMachines() (machines []machinev1alpha1downstream.Machine, 
 			return nil, err
 		}
 		fileReader := bytes.NewReader(fileContent)
-		fileDecoder := yaml.NewYAMLToJSONDecoder(fileReader)
+		fileDecoder := kyaml.NewYAMLToJSONDecoder(fileReader)
 		if err = fileDecoder.Decode(newMachine); err != nil {
 			return nil, err
 		}
@@ -40,9 +45,27 @@ func TestMigratingMachine(t *testing.T) {
 	}
 
 	for _, machine := range machines {
-		_, err := migrateMachine(machine)
+		machine, err := migrateMachine(machine)
+		fixtureFilePath := fmt.Sprintf("testdata/migrated/%s.yaml", machine.Name)
 		if err != nil {
 			t.Errorf("Failed to migrate machine: %v", err)
+		}
+		machineRaw, err := yaml.Marshal(machine)
+		if err != nil {
+			t.Errorf("Failed to marshal machine: %v", err)
+		}
+		if *update {
+			if err = ioutil.WriteFile(fixtureFilePath, machineRaw, 0644); err != nil {
+				t.Fatalf("Failed to write updated test fixture: %v", err)
+			}
+		}
+		expected, err := ioutil.ReadFile(fixtureFilePath)
+		if err != nil {
+			t.Fatalf("Failed to read fixture: %v", err)
+		}
+		if string(machineRaw) != string(expected) {
+			t.Errorf("Converted machine did not mach fixture: converted:\n%s\nfixture:\n%s",
+				string(machineRaw), string(expected))
 		}
 	}
 }
