@@ -17,52 +17,6 @@ const (
 	ContainerRuntimeInfoAnnotation = "machine-controller.kubermatic.io/container-runtime-info"
 )
 
-type machineV1alpha1Common struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   machineSpecV1alpha1Common             `json:"spec,omitempty"`
-	Status machinev1alpha1upstream.MachineStatus `json:"status,omitempty"`
-}
-
-type machineSpecV1alpha1Common struct {
-	// This ObjectMeta will autopopulate the Node created. Use this to
-	// indicate what labels, annotations, name prefix, etc., should be used
-	// when creating the Node.
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// The full, authoritative list of taints to apply to the corresponding
-	// Node. This list will overwrite any modifications made to the Node on
-	// an ongoing basis.
-	// +optional
-	Taints []corev1.Taint `json:"taints,omitempty"`
-
-	// Provider-specific configuration to use during node creation.
-	// +optional
-	ProviderConfig map[string]interface{} `json:"providerConfig"`
-
-	// A list of roles for this Machine to use.
-	Roles []clustercommon.MachineRole `json:"roles,omitempty"`
-
-	// Versions of key software to use. This field is optional at cluster
-	// creation time, and omitting the field indicates that the cluster
-	// installation tool should select defaults for the user. These
-	// defaults may differ based on the cluster installer, but the tool
-	// should populate the values it uses when persisting Machine objects.
-	// A Machine spec missing this field at runtime is invalid.
-	// +optional
-	Versions machinev1alpha1upstream.MachineVersionInfo `json:"versions,omitempty"`
-
-	// To populate in the associated Node for dynamic kubelet config. This
-	// field already exists in Node, so any updates to it in the Machine
-	// spec will be automatially copied to the linked NodeRef from the
-	// status. The rest of dynamic kubelet config support should then work
-	// as-is.
-	// +optional
-	ConfigSource *corev1.NodeConfigSource `json:"configSource,omitempty"`
-}
-
 //func Migrate(machine machineV1alpha1Common) (*machinev1alpha1upstream.Machine, error) {
 //	isDownstreamMachine := checkIfIsDownstreamMachine(machine)
 //	if isDownstreamMachine {
