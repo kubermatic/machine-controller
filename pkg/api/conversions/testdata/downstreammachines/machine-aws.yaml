@@ -2,6 +2,8 @@ apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
   name: machine-aws
+  finalizers:
+  - machine-delete-finalizer
 spec:
   metadata:
     name: node1

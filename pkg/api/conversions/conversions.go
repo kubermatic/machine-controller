@@ -46,6 +46,8 @@ func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1
 		}
 	}
 
+	out.Finalizers = in.Finalizers
+
 	// This currently results in in.Spec.Versions.ContainerRuntime being dropped,
 	// because it was removed from the upstream type in
 	// https://github.com/kubernetes-sigs/cluster-api/pull/240

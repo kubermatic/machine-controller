@@ -9,6 +9,7 @@ import (
 
 	conversions "github.com/kubermatic/machine-controller/pkg/api/conversions"
 	downstreammachineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
+	"github.com/kubermatic/machine-controller/pkg/controller"
 	downstreammachines "github.com/kubermatic/machine-controller/pkg/machines"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -17,6 +18,7 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -91,10 +93,21 @@ func migrateMachines(downstreamClient downstreammachineclientset.Interface,
 		if _, err := clusterv1alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine); err != nil {
 			return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
 		}
-		//TODO: What about the finalizer?
+
+		downstreamMachine, err := downstreamClient.MachineV1alpha1().Machines().Get(convertedClusterv1alpha1Machine.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get downstream machine %s to remove finalizer: %v", convertedClusterv1alpha1Machine.Name, err)
+		}
+		finalizers := sets.NewString(downstreamMachine.Finalizers...)
+		finalizers.Delete(controller.FinalizerDeleteInstance)
+		downstreamMachine.Finalizers = finalizers.List()
+		if _, err := downstreamClient.MachineV1alpha1().Machines().Update(downstreamMachine); err != nil {
+			return fmt.Errorf("failed to update downstream machine %s after removing finalizer: %v", convertedClusterv1alpha1Machine.Name, err)
+		}
 		if err := downstreamClient.MachineV1alpha1().Machines().Delete(convertedClusterv1alpha1Machine.Name, nil); err != nil {
 			return fmt.Errorf("failed to delete machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
 		}
+
 		if err = wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
 			return isDownstreamMachineDeleted(convertedClusterv1alpha1Machine.Name, downstreamClient)
 		}); err != nil {
