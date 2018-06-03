@@ -17,6 +17,7 @@ func TestMigrateMachines(t *testing.T) {
 	testcases := []struct {
 		DownStreamMachine *machinev1alpha1downstream.Machine
 		Node              *corev1.Node
+		ErrExpected       bool
 	}{
 		{
 			DownStreamMachine: &machinev1alpha1downstream.Machine{
@@ -25,14 +26,31 @@ func TestMigrateMachines(t *testing.T) {
 			},
 			Node: &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}},
 		},
+		// We currently fail if no corresponding node exists. Is this desired?
+		{
+			DownStreamMachine: &machinev1alpha1downstream.Machine{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-machine"},
+				Spec:       machinev1alpha1downstream.MachineSpec{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}},
+			},
+			ErrExpected: true,
+		},
 	}
 
 	for _, testCase := range testcases {
 		downstreamFake := fakedownstreammachineclientset.NewSimpleClientset(testCase.DownStreamMachine)
 		clusterV1alpha1Fake := fakeclusterv1alpha1clientset.NewSimpleClientset()
-		kubeFake := fakekube.NewSimpleClientset(testCase.Node)
+		var kubeFake *fakekube.Clientset
+		if testCase.Node != nil {
+			kubeFake = fakekube.NewSimpleClientset(testCase.Node)
+		} else {
+			kubeFake = fakekube.NewSimpleClientset()
+		}
 
-		if err := migrateMachines(kubeFake, downstreamFake, clusterV1alpha1Fake); err != nil {
+		err := migrateMachines(kubeFake, downstreamFake, clusterV1alpha1Fake)
+		if err != nil {
+			if testCase.ErrExpected {
+				continue
+			}
 			t.Fatalf("migrateMachines failed: %v", err)
 		}
 
