@@ -1084,14 +1084,16 @@
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
     "pkg/client/clientset_generated/clientset",
+    "pkg/client/clientset_generated/clientset/fake",
     "pkg/client/clientset_generated/clientset/scheme",
-    "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1"
+    "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1",
+    "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1/fake"
   ]
   revision = "1b8d698cf3bfd837a8326944f4e3caa45e844ccd"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "53fff8d0d7f7bb1464987490006110c9c73ed74b355b378770e25ad04d4b159c"
+  inputs-digest = "c7a32e9f68c5b60a051030c12417f680478e320bf3abf424ec20d3a4a7a242b3"
   solver-name = "gps-cdcl"
   solver-version = 1
