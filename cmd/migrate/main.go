@@ -20,8 +20,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 )
 
 var (
@@ -41,13 +43,15 @@ func main() {
 
 	apiExtClient := apiextclient.NewForConfigOrDie(cfg)
 	clusterv1alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(cfg)
+	kubeClient := kubernetes.NewForConfigOrDie(cfg)
 
-	if err = migrateIfNecesary(apiExtClient, clusterv1alpha1Client, cfg); err != nil {
+	if err = migrateIfNecesary(kubeClient, apiExtClient, clusterv1alpha1Client, cfg); err != nil {
 		glog.Fatalf("Failed to migrate: %v", err)
 	}
 }
 
-func migrateIfNecesary(apiextClient apiextclient.Interface,
+func migrateIfNecesary(kubeClient kubernetes.Interface,
+	apiextClient apiextclient.Interface,
 	clusterv1alpha1Client clusterv1alpha1clientset.Interface,
 	config *restclient.Config) error {
 
@@ -64,7 +68,7 @@ func migrateIfNecesary(apiextClient apiextclient.Interface,
 		return fmt.Errorf("failed to create downstream machine client: %v", err)
 	}
 
-	if err = migrateMachines(downstreamClient, clusterv1alpha1Client); err != nil {
+	if err = migrateMachines(kubeClient, downstreamClient, clusterv1alpha1Client); err != nil {
 		return fmt.Errorf("failed to migrate machines: %v", err)
 	}
 	if err = apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(downstreammachines.CRDName, nil); err != nil {
@@ -74,7 +78,8 @@ func migrateIfNecesary(apiextClient apiextclient.Interface,
 	return nil
 }
 
-func migrateMachines(downstreamClient downstreammachineclientset.Interface,
+func migrateMachines(kubeClient kubernetes.Interface,
+	downstreamClient downstreammachineclientset.Interface,
 	clusterv1alpha1Client clusterv1alpha1clientset.Interface) error {
 
 	// Get downstreamMachines
@@ -83,32 +88,53 @@ func migrateMachines(downstreamClient downstreammachineclientset.Interface,
 		return fmt.Errorf("failed to list downstream machines: %v", err)
 	}
 
-	// Convert them all
-	var convertedClusterv1alpha1Machines []*clusterv1alpha1.Machine
+	// Convert the machine, create the new machine, delete the old one, wait for it to be absent
+	// We do this in one loop to avoid ending up having all machines in  both the new and the old format if deletion
+	// failes for whatever reason
 	for _, downstreamMachine := range downstreamMachines.Items {
-		clusterv1alpha1Machine, err := conversions.ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(downstreamMachine)
+		convertedClusterv1alpha1Machine, err := conversions.ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(downstreamMachine)
 		if err != nil {
 			return fmt.Errorf("failed to convert machine %s: %v", downstreamMachine.Name, err)
 		}
-		convertedClusterv1alpha1Machines = append(convertedClusterv1alpha1Machines, clusterv1alpha1Machine)
-	}
 
-	// Create the new machine, delete the old one, wait for it to be absent
-	// We do this in one loop to avoid ending up having all machines in  both the new and the old format if deletion
-	// failes for whatever reason
-	for _, convertedClusterv1alpha1Machine := range convertedClusterv1alpha1Machines {
-		if _, err := clusterv1alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine); err != nil {
+		createdClusterV1alpha1Machine, err := clusterv1alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
+		if err != nil {
 			return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
 		}
 
-		downstreamMachine, err := downstreamClient.MachineV1alpha1().Machines().Get(convertedClusterv1alpha1Machine.Name, metav1.GetOptions{})
+		node, err := kubeClient.CoreV1().Nodes().Get(convertedClusterv1alpha1Machine.Spec.Name, metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to get downstream machine %s to remove finalizer: %v", convertedClusterv1alpha1Machine.Name, err)
+			return fmt.Errorf("Failed to get node %s for machine %s: %v", convertedClusterv1alpha1Machine.Spec.Name, convertedClusterv1alpha1Machine.Name, err)
 		}
+		for idx, ownerRef := range node.OwnerReferences {
+			if ownerRef.UID == downstreamMachine.UID {
+				node.OwnerReferences = append(node.OwnerReferences[:idx], node.OwnerReferences[idx+1:]...)
+				break
+			}
+		}
+		gv := clusterv1alpha1.SchemeGroupVersion
+		node.OwnerReferences = append(node.OwnerReferences,
+			*metav1.NewControllerRef(createdClusterV1alpha1Machine, gv.WithKind("Machine")))
+
+		// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
+		if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			node, err := kubeClient.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			node.OwnerReferences = node.OwnerReferences
+			if _, err := kubeClient.CoreV1().Nodes().Update(node); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return fmt.Errorf("failed to update OwnerRef on node %s: %v", node.Name, err)
+		}
+
 		finalizers := sets.NewString(downstreamMachine.Finalizers...)
 		finalizers.Delete(controller.FinalizerDeleteInstance)
 		downstreamMachine.Finalizers = finalizers.List()
-		if _, err := downstreamClient.MachineV1alpha1().Machines().Update(downstreamMachine); err != nil {
+		if _, err := downstreamClient.MachineV1alpha1().Machines().Update(&downstreamMachine); err != nil {
 			return fmt.Errorf("failed to update downstream machine %s after removing finalizer: %v", convertedClusterv1alpha1Machine.Name, err)
 		}
 		if err := downstreamClient.MachineV1alpha1().Machines().Delete(convertedClusterv1alpha1Machine.Name, nil); err != nil {
