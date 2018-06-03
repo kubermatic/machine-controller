@@ -78,6 +78,10 @@ func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExte
 	if err := json.Unmarshal(providerConfigValue.Raw, &providerConfigMap); err != nil {
 		return nil, fmt.Errorf("failed to unmarshall provider config into map: %v", err)
 	}
+	// The JSON unmarshall makes the map a null pointer if providerConfigValue.Raw is empty
+	if providerConfigMap == nil {
+		providerConfigMap = map[string]interface{}{}
+	}
 	if val, ok := providerConfigMap["operatingSystemSpec"]; ok {
 		if valMap, ok := val.(map[string]interface{}); ok {
 			valMap["containerRuntimeInfo"] = containerRuntimeInfo

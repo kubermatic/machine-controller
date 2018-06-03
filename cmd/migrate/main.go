@@ -59,7 +59,7 @@ func migrateIfNecesary(apiextClient apiextclient.Interface,
 
 	downstreamClient, err := downstreammachineclientset.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to create downstream machine client: %v")
+		return fmt.Errorf("failed to create downstream machine client: %v", err)
 	}
 
 	return migrateMachines(downstreamClient, clusterv1alpha1Client)
