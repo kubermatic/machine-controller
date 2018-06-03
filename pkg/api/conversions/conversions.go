@@ -8,11 +8,11 @@ import (
 
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	machinev1alpha1upstream "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1downstream.Machine) (*machinev1alpha1upstream.Machine, error) {
-	out := &machinev1alpha1upstream.Machine{}
+func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1downstream.Machine) (*clusterv1alpha1.Machine, error) {
+	out := &clusterv1alpha1.Machine{}
 	out.ObjectMeta = in.ObjectMeta
 	out.ObjectMeta.Namespace = "kube-system"
 
@@ -35,7 +35,7 @@ func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1
 		return nil, err
 	}
 
-	out.Spec.ProviderConfig = machinev1alpha1upstream.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
+	out.Spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 
 	for _, inRole := range in.Spec.Roles {
 		if inRole == machinev1alpha1downstream.MasterRole {
