@@ -64,7 +64,14 @@ func migrateIfNecesary(apiextClient apiextclient.Interface,
 		return fmt.Errorf("failed to create downstream machine client: %v", err)
 	}
 
-	return migrateMachines(downstreamClient, clusterv1alpha1Client)
+	if err = migrateMachines(downstreamClient, clusterv1alpha1Client); err != nil {
+		return fmt.Errorf("failed to migrate machines: %v", err)
+	}
+	if err = apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(downstreammachines.CRDName, nil); err != nil {
+		return fmt.Errorf("failed to delete downstream crd: %v", err)
+	}
+
+	return nil
 }
 
 func migrateMachines(downstreamClient downstreammachineclientset.Interface,
