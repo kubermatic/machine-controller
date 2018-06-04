@@ -19,7 +19,8 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - run: apk update && apk add git && go get -u github.com/golang/dep/cmd/dep
+      # We need mercurial for bitbucket.org/ww/goautoneg, otherwise dep hangs forever
+      - run: apk update && apk add git mercurial && go get -u github.com/golang/dep/cmd/dep
       - run: dep status
 
   test:
