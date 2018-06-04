@@ -405,22 +405,22 @@ func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance)
 	// orphaned NICs, IPs and disks in case the operation is interrupted in the middle.
 	glog.Infof("deleting VM %q", machine.Name)
 	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return fmt.Errorf("failed to remove public IP addresses of machine %q: %s", machine.Name, err)
+		return fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
 	}
 
 	glog.Infof("deleting disks of VM %q", machine.Name)
 	if err = deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return fmt.Errorf("failed to remove disks of machine %q: %s", machine.Name, err)
+		return fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
 	}
 
 	glog.Infof("deleting network interfaces of VM %q", machine.Name)
 	if err = deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return fmt.Errorf("failed to remove network interfaces of machine %q: %s", machine.Name, err)
+		return fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
 	}
 
 	glog.Infof("deleting public IP addresses of VM %q", machine.Name)
 	if err = deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return fmt.Errorf("failed to remove public IP addresses of machine %q: %s", machine.Name, err)
+		return fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
 	}
 
 	return nil
