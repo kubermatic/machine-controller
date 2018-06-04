@@ -8,6 +8,30 @@
   revision = "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 
 [[projects]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  packages = [
+    "services/compute/mgmt/2018-04-01/compute",
+    "services/network/mgmt/2018-04-01/network",
+    "version"
+  ]
+  revision = "4650843026a7fdec254a8d9cf893693a254edd0b"
+  version = "v16.2.1"
+
+[[projects]]
+  name = "github.com/Azure/go-autorest"
+  packages = [
+    "autorest",
+    "autorest/adal",
+    "autorest/azure",
+    "autorest/azure/auth",
+    "autorest/date",
+    "autorest/to",
+    "autorest/validation"
+  ]
+  revision = "9157a90cf06a2f000b8a67181e1dd501cdb5753e"
+  version = "v10.8.2"
+
+[[projects]]
   name = "github.com/Masterminds/semver"
   packages = ["."]
   revision = "15d8430ab86497c5c0da827b748823945e1cf1e1"
@@ -159,6 +183,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   name = "github.com/digitalocean/godo"
   packages = [
     ".",
@@ -193,6 +223,12 @@
   packages = ["."]
   revision = "afac545df32f2287a079e2dfb7ba2745a643747e"
   version = "v3.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/dimchansky/utfbom"
+  packages = ["."]
+  revision = "6c6132ff69f0f6c088739067407b5d32c52e1d0f"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -561,6 +597,8 @@
     "ed25519/internal/edwards25519",
     "internal/chacha20",
     "pbkdf2",
+    "pkcs12",
+    "pkcs12/internal/rc2",
     "poly1305",
     "scrypt",
     "ssh",
@@ -1095,6 +1133,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b433a5077fb90a5365a0a8ac6f86283ffee0011dfd1647f82b03f0a7b6ee3269"
+  inputs-digest = "a53d5213f622611012c37f7dab09a3805cecafaf6493c4c00a878282e0777929"
   solver-name = "gps-cdcl"
   solver-version = 1

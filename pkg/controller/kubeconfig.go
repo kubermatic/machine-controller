@@ -61,14 +61,14 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 			Labels: map[string]string{machineNameLabelKey: name},
 		},
 		Type: secretTypeBootstrapToken,
-		StringData: map[string]string{
-			"description":                    "bootstrap token for " + name,
-			tokenIDKey:                       tokenID,
-			tokenSecretKey:                   tokenSecret,
-			expirationKey:                    metav1.Now().Add(24 * time.Hour).Format(time.RFC3339),
-			"usage-bootstrap-authentication": "true",
-			"usage-bootstrap-signing":        "true",
-			"auth-extra-groups":              "system:bootstrappers:machine-controller:default-node-token",
+		Data: map[string][]byte{
+			"description":                    []byte("bootstrap token for " + name),
+			tokenIDKey:                       []byte(tokenID),
+			tokenSecretKey:                   []byte(tokenSecret),
+			expirationKey:                    []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339)),
+			"usage-bootstrap-authentication": []byte("true"),
+			"usage-bootstrap-signing":        []byte("true"),
+			"auth-extra-groups":              []byte("system:bootstrappers:machine-controller:default-node-token"),
 		},
 	}
 
@@ -81,28 +81,23 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 }
 
 func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (string, error) {
-	if secret.StringData == nil {
-		secret.StringData = map[string]string{}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
 	}
-	secret.StringData[expirationKey] = metav1.Now().Add(1 * time.Hour).Format(time.RFC3339)
-	tokenID := secret.StringData[tokenIDKey]
-	tokenSecret := secret.StringData[tokenSecretKey]
+	secret.Data[expirationKey] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
+	tokenID := string(secret.Data[tokenIDKey])
+	tokenSecret := string(secret.Data[tokenSecretKey])
 	token := fmt.Sprintf(tokenFormatter, tokenID, tokenSecret)
 
-	expBytes, ok := secret.Data["expiration"]
-	if !ok {
-		return "", fmt.Errorf("haven't found %s key in the secret's Data field", expirationKey)
-	}
-	expString := string(expBytes)
-	expVal := metav1.Now()
-	err := expVal.UnmarshalQueryParameter(expString)
+	expirationTime, err := time.Parse(time.RFC3339, string(secret.Data["expiration"]))
 	if err != nil {
 		return "", err
 	}
-	now := metav1.Now()
-	now.Add(15 * time.Minute)
-	// expVal has to point to a time in the future otherwise we need to update expiration time
-	if now.Before(&expVal) {
+
+	//If the token is close to expire, reset it's expiration time
+	if expirationTime.Sub(time.Now()).Minutes() < 30 {
+		secret.Data["expiration"] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
+	} else {
 		return token, nil
 	}
 

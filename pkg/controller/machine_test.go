@@ -93,7 +93,7 @@ func TestController_GetNode(t *testing.T) {
 		resNode  *corev1.Node
 		exists   bool
 		err      error
-		provider string
+		provider providerconfig.CloudProvider
 	}{
 		{
 			name:     "node not found - no nodeList",

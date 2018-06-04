@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/metrics"
@@ -138,7 +139,7 @@ func NewMachineController(
 		machinesLister:       machineLister,
 		secretSystemNsLister: secretSystemNsLister,
 
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(2*time.Second, 10*time.Second, 5), "Machines"),
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
 
 		clusterDNSIPs:      clusterDNSIPs,
@@ -545,7 +546,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 }
 
 func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *machinev1alpha1.Machine, providerConfig *providerconfig.Config) error {
-	node, exists, err := c.getNode(providerInstance, string(providerConfig.CloudProvider))
+	node, exists, err := c.getNode(providerInstance, providerConfig.CloudProvider)
 	if err != nil {
 		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
 	}
@@ -687,7 +688,7 @@ func parseContainerRuntime(s string) (runtime, version string, err error) {
 	return "", "", fmt.Errorf("invalid format. Expected 'runtime://version'")
 }
 
-func (c *Controller) getNode(instance instance.Instance, provider string) (node *corev1.Node, exists bool, err error) {
+func (c *Controller) getNode(instance instance.Instance, provider providerconfig.CloudProvider) (node *corev1.Node, exists bool, err error) {
 	if instance == nil {
 		return nil, false, fmt.Errorf("getNode called with nil provider instance!")
 	}
@@ -696,10 +697,18 @@ func (c *Controller) getNode(instance instance.Instance, provider string) (node 
 		return nil, false, err
 	}
 
-	providerID := fmt.Sprintf("%s:///%s", provider, instance.ID())
+	// We trim leading slashes in raw ID, since we always want three slashes in full ID
+	providerID := fmt.Sprintf("%s:///%s", provider, strings.TrimLeft(instance.ID(), "/"))
 	for _, node := range nodes {
-		if node.Spec.ProviderID == providerID {
-			return node.DeepCopy(), true, nil
+		if provider == providerconfig.CloudProviderAzure {
+			// Azure IDs are case-insensitive
+			if strings.EqualFold(node.Spec.ProviderID, providerID) {
+				return node.DeepCopy(), true, nil
+			}
+		} else {
+			if node.Spec.ProviderID == providerID {
+				return node.DeepCopy(), true, nil
+			}
 		}
 		for _, nodeAddress := range node.Status.Addresses {
 			for _, instanceAddress := range instance.Addresses() {

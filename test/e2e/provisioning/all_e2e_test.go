@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	do_manifest  = "./testdata/machine-digitalocean.yaml"
-	aws_manifest = "./testdata/machine-aws.yaml"
-	hz_manifest  = "./testdata/machine-hetzner.yaml"
-	vs_manifest  = "./testdata/machine-vsphere.yaml"
+	do_manifest    = "./testdata/machine-digitalocean.yaml"
+	aws_manifest   = "./testdata/machine-aws.yaml"
+	azure_manifest = "./testdata/machine-azure.yaml"
+	hz_manifest    = "./testdata/machine-hetzner.yaml"
+	vs_manifest    = "./testdata/machine-vsphere.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -53,6 +54,34 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
 	}
 	runScenarios(t, nil, params, aws_manifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+}
+
+// TestAzureProvisioningE2E - a test suite that exercises Azure provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestAzureProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	azureTenantID := os.Getenv("AZURE_E2E_TESTS_TENANT_ID")
+	azureSubscriptionID := os.Getenv("AZURE_E2E_TESTS_SUBSCRIPTION_ID")
+	azureClientID := os.Getenv("AZURE_E2E_TESTS_CLIENT_ID")
+	azureClientSecret := os.Getenv("AZURE_E2E_TESTS_CLIENT_SECRET")
+	if len(azureTenantID) == 0 || len(azureSubscriptionID) == 0 || len(azureClientID) == 0 || len(azureClientSecret) == 0 {
+		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
+	}
+
+	// TODO fix centos
+	// cri-o doesn't work on Azure for some reason
+	excludeSelector := &scenarioSelector{osName: []string{"centos"}, containerRuntime: []string{"cri-o"}}
+
+	// act
+	params := []string{
+		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
+		fmt.Sprintf("<< AZURE_SUBSCRIPTION_ID >>=%s", azureSubscriptionID),
+		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
+		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
+	}
+	runScenarios(t, excludeSelector, params, azure_manifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider

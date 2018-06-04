@@ -77,3 +77,11 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 [[constraint]]
   name = "github.com/hetznercloud/hcloud-go"
   version = "v1.3.*"
+
+[[constraint]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  version = "16.2.*"
+
+[[constraint]]
+  name = "github.com/Azure/go-autorest"
+  version = "10.8.*"
