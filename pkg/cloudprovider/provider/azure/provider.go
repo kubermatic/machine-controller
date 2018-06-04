@@ -219,7 +219,7 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
 		addrs, err := getNICIPAddresses(ctx, c, ifaceName)
 		if vm.NetworkProfile.NetworkInterfaces == nil {
-			return nil, fmt.Errorf("failed to get addresses for interface %q: %s", ifaceName, err)
+			return nil, fmt.Errorf("failed to get addresses for interface %q: %v", ifaceName, err)
 		}
 		ipAddresses = append(ipAddresses, addrs...)
 	}
@@ -235,7 +235,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 
 	netIf, err := ifClient.Get(ctx, c.ResourceGroup, ifaceName, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get interface %q: %s", ifaceName, err.Error())
+		return nil, fmt.Errorf("failed to get interface %q: %v", ifaceName, err.Error())
 	}
 
 	var ipAddresses []string
@@ -256,7 +256,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 
 			addrStrings, err := getIPAddressStrings(ctx, c, name)
 			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %s", name, err)
+				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
 			}
 
 			ipAddresses = append(ipAddresses, addrStrings...)
@@ -274,7 +274,7 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 
 	ip, err := ipClient.Get(ctx, c.ResourceGroup, addrName, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get IP %q: %s", addrName, err)
+		return nil, fmt.Errorf("failed to get IP %q: %v", addrName, err)
 	}
 
 	if ip.IPConfiguration == nil {
@@ -363,33 +363,33 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	glog.Infof("Creating machine %q", machine.Spec.Name)
 	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Spec.Name, vmSpec)
 	if err != nil {
-		return nil, fmt.Errorf("trying to create a VM: %s", err)
+		return nil, fmt.Errorf("trying to create a VM: %v", err)
 	}
 
 	err = future.WaitForCompletion(context.TODO(), vmClient.Client)
 	if err != nil {
-		return nil, fmt.Errorf("waiting for operation returned: %s", err.Error())
+		return nil, fmt.Errorf("waiting for operation returned: %v", err.Error())
 	}
 
 	vm, err := future.Result(*vmClient)
 	if err != nil {
-		return nil, fmt.Errorf("decoding result: %s", err.Error())
+		return nil, fmt.Errorf("decoding result: %v", err.Error())
 	}
 
 	// get the actual VM object filled in with additional data
 	vm, err = vmClient.Get(context.TODO(), config.ResourceGroup, machine.Spec.Name, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %s", machine.Spec.Name, err)
+		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %v", machine.Spec.Name, err)
 	}
 
 	ipAddresses, err := getVMIPAddresses(context.TODO(), config, &vm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %s", machine.Spec.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", machine.Spec.Name, err.Error())
 	}
 
 	status, err := getVMStatus(context.TODO(), config, machine.Spec.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve status for VM %q: %s", machine.Spec.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Spec.Name, err.Error())
 	}
 
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
@@ -405,7 +405,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, instance instance.Instance)
 	// orphaned NICs, IPs and disks in case the operation is interrupted in the middle.
 	glog.Infof("deleting VM %q", machine.Name)
 	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
+		return fmt.Errorf("Is failed to remove public IP addresses of machine %q: %v", machine.Name, err)
 	}
 
 	glog.Infof("deleting disks of VM %q", machine.Name)
@@ -461,7 +461,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 
 	iv, err := vmClient.InstanceView(ctx, c.ResourceGroup, vmName)
 	if err != nil {
-		return instance.StatusUnknown, fmt.Errorf("failed to get instance view for machine %q: %s", vmName, err)
+		return instance.StatusUnknown, fmt.Errorf("failed to get instance view for machine %q: %v", vmName, err)
 	}
 
 	if iv.Statuses == nil {
@@ -604,12 +604,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	vmClient, err := getVMClient(c)
 	if err != nil {
-		return fmt.Errorf("failed to (create) vm client: %s", err.Error())
+		return fmt.Errorf("failed to (create) vm client: %v", err.Error())
 	}
 
 	_, err = vmClient.ListAll(context.TODO())
 	if err != nil {
-		return fmt.Errorf("failed to list all: %s", err.Error())
+		return fmt.Errorf("failed to list all: %v", err.Error())
 	}
 
 	return nil
