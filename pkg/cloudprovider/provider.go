@@ -5,6 +5,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
@@ -31,6 +32,9 @@ var (
 		},
 		providerconfig.CloudProviderVsphere: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
 			return vsphere.New(cvr)
+		},
+		providerconfig.CloudProviderAzure: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return azure.New(cvr)
 		},
 	}
 )
