@@ -6,6 +6,7 @@ import (
 
 	machinev1alpha1downstream "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -14,6 +15,12 @@ import (
 func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1downstream.Machine) (*clusterv1alpha1.Machine, error) {
 	out := &clusterv1alpha1.Machine{}
 	out.ObjectMeta = in.ObjectMeta
+	out.Spec.ObjectMeta = in.Spec.ObjectMeta
+	out.SelfLink = ""
+	out.UID = ""
+	out.ResourceVersion = ""
+	out.Generation = 0
+	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = "kube-system"
 
 	// sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineStatus and
