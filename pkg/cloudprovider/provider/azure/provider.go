@@ -74,16 +74,16 @@ func (vm *azureVM) Addresses() []string {
 	return vm.ipAddresses
 }
 
-func (p *azureVM) ID() string {
-	return *p.vm.ID
+func (vm *azureVM) ID() string {
+	return *vm.vm.ID
 }
 
-func (p *azureVM) Name() string {
-	return *p.vm.Name
+func (vm *azureVM) Name() string {
+	return *vm.vm.Name
 }
 
-func (p *azureVM) Status() instance.Status {
-	return p.status
+func (vm *azureVM) Status() instance.Status {
+	return vm.status
 }
 
 var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
