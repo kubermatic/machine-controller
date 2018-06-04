@@ -1,0 +1,291 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: machines.cluster.k8s.io
+spec:
+  group: cluster.k8s.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: Machine
+    plural: machines
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller:kubelet-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:node-bootstrapper
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:bootstrappers:machine-controller:default-node-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller:node-autoapprove-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:certificates.k8s.io:certificatesigningrequests:nodeclient
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:bootstrappers:machine-controller:default-node-token
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: machine-controller
+  namespace: kube-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - update
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - machine-controller-ssh-key
+  - machine-controller-hetzner
+  - machine-controller-digitalocean
+  - machine-controller-openstack
+  - machine-controller-aws
+  - machine-controller-vsphere
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - machine-controller
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  resourceNames:
+  - machine-controller
+  verbs:
+  - "*"
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: machine-controller
+  namespace: kube-public
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: machine-controller
+  namespace: default
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: machine-controller
+subjects:
+- kind: ServiceAccount
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller
+  namespace: kube-public
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: machine-controller
+subjects:
+- kind: ServiceAccount
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: machine-controller
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: machine-controller
+subjects:
+- kind: ServiceAccount
+  name: machine-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: machine-controller
+rules:
+## Required for migration
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - "customresourcedefinitions"
+  verbs:
+  - "get"
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - "customresourcedefinitions"
+  resourceNames:
+  - "machines.machine.k8s.io"
+  verbs:
+  - "delete"
+- apiGroups:
+  - "machine.k8s.io"
+  resources:
+  - "machines"
+  verbs:
+  - "*"
+## End required for migration
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - "customresourcedefinitions"
+  resourceNames:
+  - "machines.cluster.k8s.io"
+  verbs:
+  - "*"
+- apiGroups:
+  - "cluster.k8s.io"
+  resources:
+  - "machines"
+  verbs:
+  - "*"
+- apiGroups:
+  - ""
+  resources:
+  - "nodes"
+  verbs:
+  - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: machine-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: machine-controller
+subjects:
+  - kind: ServiceAccount
+    name: machine-controller
+    namespace: kube-system
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: machine-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: machine-controller
+  template:
+    metadata:
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "8085"
+        "prometheus.io/path": "/metrics"
+      labels:
+        app: machine-controller
+    spec:
+      serviceAccountName: machine-controller
+      initContainers:
+        - image: kubermatic/machine-migrator:latest
+          name: machine-migrator
+          command:
+            - /usr/local/bin/migrator
+            - -logtostderr
+            - -v=6
+      containers:
+        - image: kubermatic/machine-controller:latest
+          imagePullPolicy: IfNotPresent
+          name: machine-controller
+          command:
+            - /usr/local/bin/machine-controller
+            - -logtostderr
+            - -v=6
+            - -cluster-dns=10.10.10.10
+            - -internal-listen-address=0.0.0.0:8085
+          ports:
+          - containerPort: 8085
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8085
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8085
+            periodSeconds: 5

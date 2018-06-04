@@ -10,7 +10,7 @@ REGISTRY_NAMESPACE ?= kubermatic
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
-IMAGE_NAME_MIGRATOR =$(REGISTRY)/$(REGISTRY_NAMESPACE)/migrator:$(IMAGE_TAG)
+IMAGE_NAME_MIGRATOR =$(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-migrator:$(IMAGE_TAG)
 
 
 vendor: Gopkg.lock Gopkg.toml

@@ -34,7 +34,7 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - run: apk update && apk add make bash && make machine-controller
+      - run: apk update && apk add make bash && make machine-controller && make migrator
       - save_cache:
           key: machine-controller-{{ .Revision }}
           paths:
@@ -92,7 +92,8 @@ jobs:
           set -e
           export GIT_TAG=$CIRCLE_TAG
           docker login -u "${DOCKERHUB_USER}" -p "${DOCKERHUB_PASS}"
-          make docker-image-nodep
+          make docker-image
+          make docker-image-migrator
 
 workflows:
   version: 2
