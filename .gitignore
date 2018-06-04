@@ -10,3 +10,4 @@ terraform
 terraform-provider-hcloud
 .kubeconfig
 main
+migrator
