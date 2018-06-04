@@ -112,9 +112,9 @@ func migrateMachines(kubeClient kubernetes.Interface,
 				break
 			}
 		}
+		newOwnerRef := node.OwnerReferences
 		gv := clusterv1alpha1.SchemeGroupVersion
-		node.OwnerReferences = append(node.OwnerReferences,
-			*metav1.NewControllerRef(createdClusterV1alpha1Machine, gv.WithKind("Machine")))
+		newOwnerRef = append(newOwnerRef, *metav1.NewControllerRef(createdClusterV1alpha1Machine, gv.WithKind("Machine")))
 
 		// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
 		if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -122,7 +122,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			if err != nil {
 				return err
 			}
-			node.OwnerReferences = node.OwnerReferences
+			node.OwnerReferences = newOwnerRef
 			if _, err := kubeClient.CoreV1().Nodes().Update(node); err != nil {
 				return err
 			}

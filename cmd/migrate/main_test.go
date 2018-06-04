@@ -69,5 +69,18 @@ func TestMigrateMachines(t *testing.T) {
 		if len(existingUpstreamMachines.Items) != 1 {
 			t.Errorf("len(existingUpstreamMachines) should be 1, was %v", len(existingUpstreamMachines.Items))
 		}
+
+		node, err := kubeFake.CoreV1().Nodes().Get(existingUpstreamMachines.Items[0].Spec.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Failed to get node: %v", err)
+		}
+		if len(node.OwnerReferences) != 1 {
+			t.Fatalf("Expected len(nodeOwnerRefernces) to be 1 but was %v", len(node.OwnerReferences))
+		}
+
+		if node.OwnerReferences[0].UID != existingUpstreamMachines.Items[0].UID {
+			t.Fatalf("Epected node owner ref to match new machine owner ref!")
+		}
 	}
+
 }
