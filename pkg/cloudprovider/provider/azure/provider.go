@@ -32,7 +32,8 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-type rawConfig struct {
+// RawConfig is a direct representation of an Azure machine object's configuration
+type RawConfig struct {
 	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID"`
 	TenantID       providerconfig.ConfigVarString `json:"tenantID"`
 	ClientID       providerconfig.ConfigVarString `json:"clientID"`
@@ -132,7 +133,7 @@ func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.C
 	if err != nil {
 		return nil, nil, err
 	}
-	rawCfg := rawConfig{}
+	rawCfg := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawCfg)
 	if err != nil {
 		return nil, nil, err
