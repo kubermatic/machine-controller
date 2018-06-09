@@ -28,8 +28,8 @@ write_files:
           exit 0
          fi
       done
+      exit 1
     fi
-    exit 1
 
 - path: "/usr/local/bin/download-kubeadm"
   permissions: "0777"
@@ -44,8 +44,8 @@ write_files:
           exit 0
         fi
       done
+      exit 1
     fi
-    exit 1
 
 - path: "/usr/local/bin/download-cni"
   permissions: "0777"
@@ -60,8 +60,8 @@ write_files:
           exit 0
         fi
       done
+      exit 1
     fi
-    exit 1
 
 - path: "/usr/local/bin/download-kubelet-kubeadm-unitfile"
   permissions: "0777"
@@ -76,8 +76,8 @@ write_files:
         exit 0
        fi
       done
+      exit 1
     fi
-    exit 1
 - path: "/usr/local/bin/download-crictl"
   permissions: '0777'
   content: |
