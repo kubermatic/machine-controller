@@ -179,6 +179,55 @@ func createLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 	_, err = clonedVmTask.WaitForResult(ctx, nil)
 	return err
 }
+
+func setNetworkForVM(ctx context.Context, vm *object.VirtualMachine, netName string) error {
+	newNet, err := getNetworkFromVM(ctx, vm, netName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getNetworkBackingInfoFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (*types.VirtualEthernetCardNetworkBackingInfo, error) {
+	devices, err := vm.Device(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get devices for vm, see: %s", err)
+	}
+
+	for _, device := range devices {
+		ethDevice, ok := device.(types.BaseVirtualEthernetCard)
+		if !ok {
+			continue
+		}
+
+		ethCard := ethDevice.GetVirtualEthernetCard()
+
+		if ethDevice.DeviceInfo.GetDescription().Label == netName {
+			return ethCard.Backing.GetVirtualDeviceBackingInfo().(types.VirtualEthernetCardNetworkBackingInfo), nil
+		}
+	}
+
+	return nil, fmt.Errorf("no networkbacking with the name %s found", netName)
+}
+
+func getNetworkFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (*types.ManagedObjectReference, error) {
+	cfg, err := vm.QueryConfigTarget(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get query config for vm, see: %v", err)
+	}
+
+	for _, net := range cfg.Network {
+		summary := net.Network.GetNetworkSummary()
+
+		if summary.Accessible && summary.Name == netName {
+			return summary.Network, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no accessible network with the name %s found", netName)
+}
+
 func createSnapshot(ctx context.Context, vm *object.VirtualMachine, snapshotName string, snapshotDesc string) (object.Reference, error) {
 	task, err := vm.CreateSnapshot(ctx, snapshotName, snapshotDesc, false, false)
 	if err != nil {
