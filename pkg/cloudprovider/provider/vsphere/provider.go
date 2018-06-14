@@ -37,31 +37,35 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
 }
 
 type RawConfig struct {
-	TemplateVMName providerconfig.ConfigVarString `json:"templateVMName"`
-	Username       providerconfig.ConfigVarString `json:"username"`
-	Password       providerconfig.ConfigVarString `json:"password"`
-	VSphereURL     providerconfig.ConfigVarString `json:"vsphereURL"`
-	Datacenter     providerconfig.ConfigVarString `json:"datacenter"`
-	Cluster        providerconfig.ConfigVarString `json:"cluster"`
-	Folder         providerconfig.ConfigVarString `json:"folder"`
-	Datastore      providerconfig.ConfigVarString `json:"datastore"`
-	CPUs           int32                          `json:"cpus"`
-	MemoryMB       int64                          `json:"memoryMB"`
-	AllowInsecure  providerconfig.ConfigVarBool   `json:"allowInsecure"`
+	TemplateVMName  providerconfig.ConfigVarString `json:"templateVMName"`
+	TemplateNetName providerconfig.ConfigVarString `json:"templateNetName"`
+	VMNetName       providerconfig.ConfigVarString `json:"vmNetName"`
+	Username        providerconfig.ConfigVarString `json:"username"`
+	Password        providerconfig.ConfigVarString `json:"password"`
+	VSphereURL      providerconfig.ConfigVarString `json:"vsphereURL"`
+	Datacenter      providerconfig.ConfigVarString `json:"datacenter"`
+	Cluster         providerconfig.ConfigVarString `json:"cluster"`
+	Folder          providerconfig.ConfigVarString `json:"folder"`
+	Datastore       providerconfig.ConfigVarString `json:"datastore"`
+	CPUs            int32                          `json:"cpus"`
+	MemoryMB        int64                          `json:"memoryMB"`
+	AllowInsecure   providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 
 type Config struct {
-	TemplateVMName string
-	Username       string
-	Password       string
-	VSphereURL     string
-	Datacenter     string
-	Cluster        string
-	Folder         string
-	Datastore      string
-	AllowInsecure  bool
-	CPUs           int32
-	MemoryMB       int64
+	TemplateVMName  string
+	TemplateNetName string
+	VMNetName       string
+	Username        string
+	Password        string
+	VSphereURL      string
+	Datacenter      string
+	Cluster         string
+	Folder          string
+	Datastore       string
+	AllowInsecure   bool
+	CPUs            int32
+	MemoryMB        int64
 }
 
 type VSphereServer struct {
@@ -116,6 +120,16 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 
 	c := Config{}
 	c.TemplateVMName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateVMName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.TemplateNetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateNetName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.VMNetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VMNetName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -239,6 +253,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object: %v", err)
 	}
+
+	// Map networks
+	updateNetworkForVM(context.TODO(), virtualMachine, config.TemplateNetName, config.VMNetName)
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
 		localUserdataIsoFilePath, err := generateLocalUserdataIso(userdata, machine.Spec.Name)

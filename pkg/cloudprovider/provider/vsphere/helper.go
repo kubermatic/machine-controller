@@ -180,8 +180,31 @@ func createLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 	return err
 }
 
-func setNetworkForVM(ctx context.Context, vm *object.VirtualMachine, netName string) error {
-	newNet, err := getNetworkFromVM(ctx, vm, netName)
+func updateNetworkForVM(ctx context.Context, vm *object.VirtualMachine, currentNetName string, newNetName string) error {
+	newNet, err := getNetworkFromVM(ctx, vm, newNetName)
+	if err != nil {
+		return err
+	}
+
+	netDev, currentBacking, err := getNetworkDeviceAndBackingFromVM(ctx, vm, currentNetName)
+	if err != nil {
+		return err
+	}
+
+	currentBacking.DeviceName = newNetName
+	currentBacking.Network = newNet
+	deviceConfigSpec := &types.VirtualDeviceConfigSpec{Device: netDev}
+
+	vmConfigSpec := types.VirtualMachineConfigSpec{
+		DeviceChange: []types.BaseVirtualDeviceConfigSpec{deviceConfigSpec},
+	}
+
+	t, err := vm.Reconfigure(ctx, vmConfigSpec)
+	if err != nil {
+		return err
+	}
+
+	err = t.Wait(ctx)
 	if err != nil {
 		return err
 	}
@@ -189,10 +212,10 @@ func setNetworkForVM(ctx context.Context, vm *object.VirtualMachine, netName str
 	return nil
 }
 
-func getNetworkBackingInfoFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (*types.VirtualEthernetCardNetworkBackingInfo, error) {
+func getNetworkDeviceAndBackingFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (types.BaseVirtualDevice, *types.VirtualEthernetCardNetworkBackingInfo, error) {
 	devices, err := vm.Device(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get devices for vm, see: %s", err)
+		return nil, nil, fmt.Errorf("couldn't get devices for vm, see: %s", err)
 	}
 
 	for _, device := range devices {
@@ -203,12 +226,12 @@ func getNetworkBackingInfoFromVM(ctx context.Context, vm *object.VirtualMachine,
 
 		ethCard := ethDevice.GetVirtualEthernetCard()
 
-		if ethDevice.DeviceInfo.GetDescription().Label == netName {
-			return ethCard.Backing.GetVirtualDeviceBackingInfo().(types.VirtualEthernetCardNetworkBackingInfo), nil
+		if ethCard.DeviceInfo.GetDescription().Label == netName {
+			return device, ethCard.Backing.(*types.VirtualEthernetCardNetworkBackingInfo), nil
 		}
 	}
 
-	return nil, fmt.Errorf("no networkbacking with the name %s found", netName)
+	return nil, nil, fmt.Errorf("no networkbacking with the name %s found", netName)
 }
 
 func getNetworkFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (*types.ManagedObjectReference, error) {
