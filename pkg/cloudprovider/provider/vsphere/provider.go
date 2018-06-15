@@ -255,7 +255,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	}
 
 	// Map networks
-	updateNetworkForVM(context.TODO(), virtualMachine, config.TemplateNetName, config.VMNetName)
+	err = updateNetworkForVM(context.TODO(), virtualMachine, config.TemplateNetName, config.VMNetName)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't set network for vm: %v", err)
+	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
 		localUserdataIsoFilePath, err := generateLocalUserdataIso(userdata, machine.Spec.Name)

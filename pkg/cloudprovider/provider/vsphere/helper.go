@@ -191,20 +191,11 @@ func updateNetworkForVM(ctx context.Context, vm *object.VirtualMachine, currentN
 		return err
 	}
 
+	glog.V(6).Infof("changing network `%s` to `%s` for vm `%s`", currentBacking.DeviceName, newNetName, vm.Name())
 	currentBacking.DeviceName = newNetName
 	currentBacking.Network = newNet
-	deviceConfigSpec := &types.VirtualDeviceConfigSpec{Device: netDev}
 
-	vmConfigSpec := types.VirtualMachineConfigSpec{
-		DeviceChange: []types.BaseVirtualDeviceConfigSpec{deviceConfigSpec},
-	}
-
-	t, err := vm.Reconfigure(ctx, vmConfigSpec)
-	if err != nil {
-		return err
-	}
-
-	err = t.Wait(ctx)
+	err = vm.EditDevice(ctx, netDev)
 	if err != nil {
 		return err
 	}
@@ -218,6 +209,8 @@ func getNetworkDeviceAndBackingFromVM(ctx context.Context, vm *object.VirtualMac
 		return nil, nil, fmt.Errorf("couldn't get devices for vm, see: %s", err)
 	}
 
+	var availableBackings []string
+
 	for _, device := range devices {
 		ethDevice, ok := device.(types.BaseVirtualEthernetCard)
 		if !ok {
@@ -225,13 +218,16 @@ func getNetworkDeviceAndBackingFromVM(ctx context.Context, vm *object.VirtualMac
 		}
 
 		ethCard := ethDevice.GetVirtualEthernetCard()
+		ethBacking := ethCard.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
 
-		if ethCard.DeviceInfo.GetDescription().Label == netName {
-			return device, ethCard.Backing.(*types.VirtualEthernetCardNetworkBackingInfo), nil
+		if ethBacking.DeviceName == netName {
+			return device, ethBacking, nil
 		}
+
+		availableBackings = append(availableBackings, ethBacking.DeviceName)
 	}
 
-	return nil, nil, fmt.Errorf("no networkbacking with the name %s found", netName)
+	return nil, nil, fmt.Errorf("no networkbacking with the name %s found (available are: %v)", netName, availableBackings)
 }
 
 func getNetworkFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (*types.ManagedObjectReference, error) {
@@ -391,8 +387,19 @@ func generateLocalUserdataIso(userdata, name string) (string, error) {
 		return "", fmt.Errorf("failed to locally write metadata file to %s: %v", userdataFilePath, err)
 	}
 
-	command := "genisoimage"
-	args := []string{"-o", isoFilePath, "-volid", "cidata", "-joliet", "-rock", userdataDir}
+	var command string
+	var args []string
+
+	if _, err := exec.LookPath("genisoimage"); err == nil {
+		command = "genisoimage"
+		args = []string{"-o", isoFilePath, "-volid", "cidata", "-joliet", "-rock", userdataDir}
+	} else if _, err := exec.LookPath("mkisofs"); err == nil {
+		command = "mkisofs"
+		args = []string{"-o", isoFilePath, "-V", "cidata", "-J", "-R", userdataDir}
+	} else {
+		return "", errors.New("system is missing genisoimage or mkisofs, can't generate userdata iso without it.")
+	}
+
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
