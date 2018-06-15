@@ -110,7 +110,7 @@ datacenter = "Datacenter"
   "cloudProviderSpec": {
     "allowInsecure": false,
     "datacenter": "Datacenter",
-		"folder": "/Datacenter/vm/custom-folder",
+    "folder": "/Datacenter/vm/custom-folder",
     "datastore": "datastore1",
     "password": "password",
     "username": "user",
