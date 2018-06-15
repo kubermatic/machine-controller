@@ -408,15 +408,38 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
+	var vsphereHost, vspherePort string
+	vsphereURLWithoutProto := strings.TrimLeft(c.VSphereURL, "https://")
+	vsphereUrlWithoutProtoSplitted := strings.Split(vsphereURLWithoutProto, ":")
+	if len(vsphereUrlWithoutProtoSplitted) > 2 {
+		return config, name, fmt.Errorf("splitting the vsphere url '%s' by ':' returned a slice with len > 2!", vsphereURLWithoutProto)
+	}
+	vsphereHost = vsphereUrlWithoutProtoSplitted[0]
+	if len(vsphereUrlWithoutProtoSplitted) == 1 {
+		vspherePort = "443"
+	}
+	if len(vsphereUrlWithoutProtoSplitted) == 2 {
+		vspherePort = vsphereUrlWithoutProtoSplitted[1]
+	}
+
+	var insecureFlag string
+	if c.AllowInsecure {
+		insecureFlag = "1"
+	} else {
+		insecureFlag = "0"
+	}
+
+	workingDir := fmt.Sprintf("/%s/vm", c.Datacenter)
+
 	config = fmt.Sprintf(`
 [Global]
 server = "%s"
+port = "%s"
 user = "%s"
 password = "%s"
-insecure-flag = "%t" #set to 1 if the vCenter uses a self-signed cert
-datacenters = "%s"
+insecure-flag = "%s" #set to 1 if the vCenter uses a self-signed cert
+datastore = "%s"
 working-dir = "%s"
-datacenter = "%s"
-`, c.VSphereURL, c.Username, c.Password, c.AllowInsecure, c.Datacenter, c.Folder, c.Datacenter)
+datacenter = "%s"`, vsphereHost, vspherePort, c.Username, c.Password, insecureFlag, c.Datastore, workingDir, c.Datacenter)
 	return config, "vsphere", nil
 }
