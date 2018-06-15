@@ -105,6 +105,30 @@ working-dir = "/Datacenter/vm"
 datacenter = "Datacenter"
 `,
 		},
+		{providerConfig: []byte(`
+{
+  "cloudProviderSpec": {
+    "allowInsecure": false,
+    "datacenter": "Datacenter",
+		"folder": "/Datacenter/vm/custom-folder",
+    "datastore": "datastore1",
+    "password": "password",
+    "username": "user",
+    "vsphereURL": "your-vcenter"
+  }
+}`),
+			expected: `
+[Global]
+server = "your-vcenter"
+port = "443"
+user = "user"
+password = "password"
+insecure-flag = "0" #set to 1 if the vCenter uses a self-signed cert
+datastore = "datastore1"
+working-dir = "/Datacenter/vm/custom-folder"
+datacenter = "Datacenter"
+`,
+		},
 	}
 
 	p := provider{}

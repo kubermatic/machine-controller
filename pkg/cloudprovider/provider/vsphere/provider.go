@@ -429,7 +429,11 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		insecureFlag = "0"
 	}
 
-	workingDir := fmt.Sprintf("/%s/vm", c.Datacenter)
+	workingDir := c.Folder
+	// Default to basedir
+	if workingDir == "" {
+		workingDir = fmt.Sprintf("/%s/vm", c.Datacenter)
+	}
 
 	config = fmt.Sprintf(`
 [Global]
