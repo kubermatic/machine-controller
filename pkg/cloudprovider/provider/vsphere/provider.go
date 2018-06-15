@@ -440,6 +440,7 @@ password = "%s"
 insecure-flag = "%s" #set to 1 if the vCenter uses a self-signed cert
 datastore = "%s"
 working-dir = "%s"
-datacenter = "%s"`, vsphereHost, vspherePort, c.Username, c.Password, insecureFlag, c.Datastore, workingDir, c.Datacenter)
+datacenter = "%s"
+`, vsphereHost, vspherePort, c.Username, c.Password, insecureFlag, c.Datastore, workingDir, c.Datacenter)
 	return config, "vsphere", nil
 }

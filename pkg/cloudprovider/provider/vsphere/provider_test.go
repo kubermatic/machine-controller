@@ -33,7 +33,8 @@ password = "password"
 insecure-flag = "1" #set to 1 if the vCenter uses a self-signed cert
 datastore = "datastore1"
 working-dir = "/Datacenter/vm"
-datacenter = "Datacenter"`,
+datacenter = "Datacenter"
+`,
 		},
 		{providerConfig: []byte(`
 {
@@ -55,7 +56,8 @@ password = "password"
 insecure-flag = "1" #set to 1 if the vCenter uses a self-signed cert
 datastore = "datastore1"
 working-dir = "/Datacenter/vm"
-datacenter = "Datacenter"`,
+datacenter = "Datacenter"
+`,
 		},
 		{providerConfig: []byte(`
 {
@@ -77,7 +79,8 @@ password = "password"
 insecure-flag = "0" #set to 1 if the vCenter uses a self-signed cert
 datastore = "datastore1"
 working-dir = "/Datacenter/vm"
-datacenter = "Datacenter"`,
+datacenter = "Datacenter"
+`,
 		},
 		{providerConfig: []byte(`
 {
@@ -99,7 +102,8 @@ password = "password"
 insecure-flag = "0" #set to 1 if the vCenter uses a self-signed cert
 datastore = "datastore1"
 working-dir = "/Datacenter/vm"
-datacenter = "Datacenter"`,
+datacenter = "Datacenter"
+`,
 		},
 	}
 
