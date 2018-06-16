@@ -1,60 +1,47 @@
-package main
+package controller
 
 import (
-	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/kit/metrics/prometheus"
-	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 )
-
-// MachineControllerMetrics is a struct of all metrics used in
-// the machine controller.
-type MachineControllerMetrics struct {
-	Machines            metrics.Gauge
-	Nodes               metrics.Gauge
-	Workers             metrics.Gauge
-	Errors              metrics.Counter
-	ControllerOperation metrics.Histogram
-	NodeJoinDuration    metrics.Histogram
-}
 
 // NewMachineControllerMetrics creates new MachineControllerMetrics
 // with default values initialized, so metrics always show up.
-func NewMachineControllerMetrics() *MachineControllerMetrics {
+func NewMachineControllerMetrics() *MetricsCollection {
 	namespace := "machine"
 	subsystem := "controller"
 
-	cm := &MachineControllerMetrics{
-		Machines: prometheus.NewGaugeFrom(prom.GaugeOpts{
+	cm := &MetricsCollection{
+		Machines: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "machines",
 			Help:      "The number of machines",
-		}, []string{}),
-		Workers: prometheus.NewGaugeFrom(prom.GaugeOpts{
+		}),
+		Workers: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "workers",
 			Help:      "The number of running machine controller workers",
-		}, []string{}),
-		Nodes: prometheus.NewGaugeFrom(prom.GaugeOpts{
+		}),
+		Nodes: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "nodes",
 			Help:      "The number of nodes created by a machine",
-		}, []string{}),
-		Errors: prometheus.NewCounterFrom(prom.CounterOpts{
+		}),
+		Errors: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "errors_total",
 			Help:      "The total number or unexpected errors the controller encountered",
-		}, []string{}),
-		ControllerOperation: prometheus.NewHistogramFrom(prom.HistogramOpts{
+		}),
+		ControllerOperation: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "controller_operation_duration_seconds",
 			Help:      "The duration it takes to execute an operation",
 		}, []string{"operation"}),
-		NodeJoinDuration: prometheus.NewHistogramFrom(prom.HistogramOpts{
+		NodeJoinDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "node_join_duration_seconds",
