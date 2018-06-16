@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-test/deep"
 	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
+	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
@@ -17,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -172,6 +174,57 @@ func TestController_GetNode(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
+	tests := []struct {
+		cloudProviderSpec string
+		finalizerExpected bool
+	}{
+		{
+			cloudProviderSpec: `{"passValidation": true}`,
+			finalizerExpected: true,
+		},
+		{
+			cloudProviderSpec: `{"passValidation": false}`,
+			finalizerExpected: false,
+		},
+	}
+	for _, test := range tests {
+		providerConfig := fmt.Sprintf(`{"cloudProvider": "fake", "cloudProviderSpec": %s}`,
+			test.cloudProviderSpec)
+		t.Logf("Testing providerconfig \n%s", providerConfig)
+		machine := v1alpha1.Machine{}
+		machine.Name = "testmachine"
+		machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
+
+		client := machinefake.NewSimpleClientset(runtime.Object(&machine))
+		machineInformerFactory := machineinformers.NewSharedInformerFactory(client, 10*time.Millisecond)
+
+		stopChannel := make(chan struct{})
+		defer close(stopChannel)
+
+		controller := Controller{machinesLister: machineInformerFactory.Machine().V1alpha1().Machines().Lister()}
+		machineInformerFactory.Start(stopChannel)
+		machineInformerFactory.WaitForCacheSync(stopChannel)
+
+		// Just ignore errors here, the controller throws one if validation fails
+		// but we just wannt to ensure there is no finalizer in that case
+		err := controller.syncHandler("testmachine")
+		if err != nil {
+			// This is only for test debugging purposes
+			t.Logf("Sync handler error: %v", err)
+		}
+		syncedMachine, err := client.Machine().Machines().Get("testmachine", metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Failed to get machine: %v", err)
+		}
+		hasFinalizer := sets.NewString(syncedMachine.Finalizers...).Has(finalizerDeleteInstance)
+		if hasFinalizer != test.finalizerExpected {
+			t.Errorf("Finalizer expected: %v, but was:%v", test.finalizerExpected, hasFinalizer)
+		}
+	}
+
 }
 
 func TestController_defaultContainerRuntime(t *testing.T) {
