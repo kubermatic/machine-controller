@@ -415,7 +415,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 
 	url, err := url.Parse(passedURL)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to parse '%s' as url: %v", c.VSphereURL, err)
+		return "", "", fmt.Errorf("failed to parse '%s' as url: %v", passedURL, err)
 	}
 	port := "443"
 	if url.Port() != "" {
