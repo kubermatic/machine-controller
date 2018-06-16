@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
@@ -40,6 +39,7 @@ import (
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
+	"github.com/prometheus/client_golang/prometheus"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -87,7 +87,7 @@ type Controller struct {
 	recorder  record.EventRecorder
 
 	clusterDNSIPs      []net.IP
-	metrics            MetricsCollection
+	metrics            *MetricsCollection
 	kubeconfigProvider KubeconfigProvider
 
 	validationCache map[string]bool
@@ -102,12 +102,12 @@ type KubeconfigProvider interface {
 // MetricsCollection is a struct of all metrics used in
 // this controller.
 type MetricsCollection struct {
-	Machines            metrics.Gauge
-	Nodes               metrics.Gauge
-	Workers             metrics.Gauge
-	Errors              metrics.Counter
-	ControllerOperation metrics.Histogram
-	NodeJoinDuration    metrics.Histogram
+	Machines            prometheus.Gauge
+	Nodes               prometheus.Gauge
+	Workers             prometheus.Gauge
+	Errors              prometheus.Counter
+	ControllerOperation *prometheus.HistogramVec
+	NodeJoinDuration    *prometheus.HistogramVec
 }
 
 // NewMachineController returns a new machine controller
@@ -120,7 +120,7 @@ func NewMachineController(
 	machineLister machinelistersv1alpha1.MachineLister,
 	secretSystemNsLister listerscorev1.SecretLister,
 	clusterDNSIPs []net.IP,
-	metrics MetricsCollection,
+	metrics *MetricsCollection,
 	kubeconfigProvider KubeconfigProvider,
 	name string) *Controller {
 
@@ -274,25 +274,25 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *machinev1alpha1.
 
 func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) (instance.Instance, error) {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "get-cloud-instance").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "get-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Get(machine)
 }
 
 func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, instance instance.Instance) error {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "delete-cloud-instance").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "delete-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Delete(machine, instance)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "create-cloud-instance").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "create-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Create(machine, userdata)
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "validate-machine").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "validate-machine"}).Observe(time.Since(start).Seconds())
 	return prov.Validate(machine.Spec)
 }
 
@@ -559,7 +559,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 			}
 			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
 			c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeMatched", "Successfully matched machine to node %s", node.Name)
-			c.metrics.NodeJoinDuration.Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
+			c.metrics.NodeJoinDuration.WithLabelValues().Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
