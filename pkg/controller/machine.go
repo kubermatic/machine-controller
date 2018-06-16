@@ -507,17 +507,11 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
-			// Set the finalizer
-			if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
-				finalizers := sets.NewString(machine.Finalizers...)
-				finalizers.Insert(finalizerDeleteInstance)
-				machine.Finalizers = finalizers.List()
-				if machine, err = c.updateMachine(machine); err != nil {
-					return fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
-				}
-				glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
+			// We will create the instance, so ensure finalizer is there
+			machine, err = c.ensureDeleteFinalizerExists(machine)
+			if err != nil {
+				return err
 			}
-
 			// Create the instance
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
@@ -541,6 +535,11 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 
 		// case 2.3: transient error was returned, requeue the request and try again in the future
 		return fmt.Errorf("failed to get instance from provider: %v", err)
+	}
+	// Instance exists, so ensure finalizer does as well
+	machine, err = c.ensureDeleteFinalizerExists(machine)
+	if err != nil {
+		return err
 	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
@@ -896,4 +895,17 @@ func (c *Controller) updateNodesMetric() {
 func (c *Controller) updateMetrics() {
 	c.updateMachinesMetric()
 	c.updateNodesMetric()
+}
+
+func (c *Controller) ensureDeleteFinalizerExists(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
+	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+		finalizers := sets.NewString(machine.Finalizers...)
+		finalizers.Insert(finalizerDeleteInstance)
+		machine.Finalizers = finalizers.List()
+		if _, err := c.updateMachine(machine); err != nil {
+			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
+		}
+		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
+	}
+	return machine, nil
 }
