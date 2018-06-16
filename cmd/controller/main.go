@@ -89,7 +89,7 @@ type controllerRunOptions struct {
 	clusterDNSIPs []net.IP
 
 	// metrics a struct that holds all metrics we want to collect
-	metrics *MachineControllerMetrics
+	metrics *controller.MetricsCollection
 
 	// leaderElectionClient holds a client that is used by the leader election library
 	leaderElectionClient *kubernetes.Clientset
@@ -184,7 +184,7 @@ func main() {
 		kubeClient:           kubeClient,
 		extClient:            extClient,
 		machineClient:        machineClient,
-		metrics:              NewMachineControllerMetrics(),
+		metrics:              controller.NewMachineControllerMetrics(),
 		clusterDNSIPs:        ips,
 		leaderElectionClient: leaderElectionClient,
 		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
@@ -285,14 +285,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.machineLister,
 			runOptions.secretSystemNsLister,
 			runOptions.clusterDNSIPs,
-			controller.MetricsCollection{
-				Machines:            runOptions.metrics.Machines,
-				Workers:             runOptions.metrics.Workers,
-				Errors:              runOptions.metrics.Errors,
-				Nodes:               runOptions.metrics.Nodes,
-				ControllerOperation: runOptions.metrics.ControllerOperation,
-				NodeJoinDuration:    runOptions.metrics.NodeJoinDuration,
-			},
+			runOptions.metrics,
 			runOptions.kubeconfigProvider,
 			runOptions.name,
 		)

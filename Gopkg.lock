@@ -181,16 +181,6 @@
   version = "v1.36.0"
 
 [[projects]]
-  name = "github.com/go-kit/kit"
-  packages = [
-    "metrics",
-    "metrics/internal/lv",
-    "metrics/prometheus"
-  ]
-  revision = "4dc7be5d2d12881735283bcab7352178e190fc71"
-  version = "v0.6.0"
-
-[[projects]]
   name = "github.com/go-test/deep"
   packages = ["."]
   revision = "6592d9cc0a499ad2d5f574fde80a2b5c5cc3b4f5"
@@ -863,6 +853,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a53d5213f622611012c37f7dab09a3805cecafaf6493c4c00a878282e0777929"
+  inputs-digest = "81769b653633721d43ebe5e7d954ce54f08f7ae1d265dbbe013199cb498cb523"
   solver-name = "gps-cdcl"
   solver-version = 1
