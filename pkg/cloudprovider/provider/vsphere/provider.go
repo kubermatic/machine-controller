@@ -409,6 +409,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	}
 
 	passedURL := c.VSphereURL
+	// Required because url.Parse returns an empty string for the hostname if there was no schema
 	if !strings.HasPrefix(passedURL, "https://") {
 		passedURL = "https://" + passedURL
 	}
