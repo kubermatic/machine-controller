@@ -179,63 +179,67 @@ func TestController_GetNode(t *testing.T) {
 
 func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 	tests := []struct {
+		name              string
 		cloudProviderSpec string
 		finalizerExpected bool
 		err               string
 	}{
 		{
+			name:              "Finalizer gets added on sucessfull validation",
 			cloudProviderSpec: `{"passValidation": true}`,
 			finalizerExpected: true,
 		},
 		{
+			name:              "Finalizer does not get added on failed validation",
 			cloudProviderSpec: `{"passValidation": false}`,
 			err:               "invalid provider config: failing validation as requested",
 			finalizerExpected: false,
 		},
 	}
 	for _, test := range tests {
-		providerConfig := fmt.Sprintf(`{"cloudProvider": "fake", "operatingSystem": "coreos",
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			providerConfig := fmt.Sprintf(`{"cloudProvider": "fake", "operatingSystem": "coreos",
 		"cloudProviderSpec": %s}`, test.cloudProviderSpec)
-		machine := v1alpha1.Machine{}
-		machine.Name = "testmachine"
-		machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
+			machine := v1alpha1.Machine{}
+			machine.Name = "testmachine"
+			machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
 
-		client := machinefake.NewSimpleClientset(runtime.Object(&machine))
-		kubeclient := kubefake.NewSimpleClientset()
-		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclient, 10*time.Millisecond)
-		machineInformerFactory := machineinformers.NewSharedInformerFactory(client, 10*time.Millisecond)
+			client := machinefake.NewSimpleClientset(runtime.Object(&machine))
+			kubeclient := kubefake.NewSimpleClientset()
+			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclient, 10*time.Millisecond)
+			machineInformerFactory := machineinformers.NewSharedInformerFactory(client, 10*time.Millisecond)
 
-		stopChannel := make(chan struct{})
-		defer close(stopChannel)
+			stopChannel := make(chan struct{})
+			defer close(stopChannel)
 
-		controller := Controller{
-			machineClient:   client,
-			machinesLister:  machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
-			metrics:         NewMachineControllerMetrics(),
-			nodesLister:     kubeInformerFactory.Core().V1().Nodes().Lister(),
-			recorder:        &record.FakeRecorder{},
-			validationCache: map[string]bool{},
-		}
-		machineInformerFactory.Start(stopChannel)
-		machineInformerFactory.WaitForCacheSync(stopChannel)
-		kubeInformerFactory.Start(stopChannel)
-		kubeInformerFactory.WaitForCacheSync(stopChannel)
+			controller := Controller{
+				machineClient:   client,
+				machinesLister:  machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+				metrics:         NewMachineControllerMetrics(),
+				nodesLister:     kubeInformerFactory.Core().V1().Nodes().Lister(),
+				recorder:        &record.FakeRecorder{},
+				validationCache: map[string]bool{},
+			}
+			machineInformerFactory.Start(stopChannel)
+			machineInformerFactory.WaitForCacheSync(stopChannel)
+			kubeInformerFactory.Start(stopChannel)
+			kubeInformerFactory.WaitForCacheSync(stopChannel)
 
-		// Just ignore errors here, the controller throws one if validation fails
-		// but we just wannt to ensure there is no finalizer in that case
-		err := controller.syncHandler("testmachine")
-		if err != nil && err.Error() != test.err {
-			t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
-		}
-		machineInformerFactory.WaitForCacheSync(stopChannel)
-		syncedMachine, err := client.Machine().Machines().Get("testmachine", metav1.GetOptions{})
-		if err != nil {
-			t.Errorf("Failed to get machine: %v", err)
-		}
-		hasFinalizer := sets.NewString(syncedMachine.Finalizers...).Has(finalizerDeleteInstance)
-		if hasFinalizer != test.finalizerExpected {
-			t.Errorf("Finalizer expected: %v, but was:%v", test.finalizerExpected, hasFinalizer)
-		}
+			err := controller.syncHandler("testmachine")
+			if err != nil && err.Error() != test.err {
+				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
+			}
+			machineInformerFactory.WaitForCacheSync(stopChannel)
+			syncedMachine, err := client.Machine().Machines().Get("testmachine", metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Failed to get machine: %v", err)
+			}
+			hasFinalizer := sets.NewString(syncedMachine.Finalizers...).Has(finalizerDeleteInstance)
+			if hasFinalizer != test.finalizerExpected {
+				t.Errorf("Finalizer expected: %v, but was:%v", test.finalizerExpected, hasFinalizer)
+			}
+		})
 	}
 
 }
