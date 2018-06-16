@@ -129,6 +129,13 @@ func NewMachineController(
 	eventBroadcaster.StartLogging(glog.V(4).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
+	prometheus.MustRegister(metrics.ControllerOperation)
+	prometheus.MustRegister(metrics.Errors)
+	prometheus.MustRegister(metrics.Machines)
+	prometheus.MustRegister(metrics.Nodes)
+	prometheus.MustRegister(metrics.NodeJoinDuration)
+	prometheus.MustRegister(metrics.Workers)
+
 	controller := &Controller{
 		kubeClient:  kubeClient,
 		nodesLister: nodeLister,
