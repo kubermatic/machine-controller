@@ -115,32 +115,34 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		}
 
 		node, err := kubeClient.CoreV1().Nodes().Get(convertedClusterv1alpha1Machine.Spec.Name, metav1.GetOptions{})
-		if err != nil {
+		if err != nil && !kerrors.IsNotFound(err) {
 			return fmt.Errorf("Failed to get node %s for machine %s: %v", convertedClusterv1alpha1Machine.Spec.Name, convertedClusterv1alpha1Machine.Name, err)
 		}
-		for idx, ownerRef := range node.OwnerReferences {
-			if ownerRef.UID == downstreamMachine.UID {
-				node.OwnerReferences = append(node.OwnerReferences[:idx], node.OwnerReferences[idx+1:]...)
-				break
+		if err == nil {
+			for idx, ownerRef := range node.OwnerReferences {
+				if ownerRef.UID == downstreamMachine.UID {
+					node.OwnerReferences = append(node.OwnerReferences[:idx], node.OwnerReferences[idx+1:]...)
+					break
+				}
 			}
-		}
-		newOwnerRef := node.OwnerReferences
-		gv := clusterv1alpha1.SchemeGroupVersion
-		newOwnerRef = append(newOwnerRef, *metav1.NewControllerRef(createdClusterV1alpha1Machine, gv.WithKind("Machine")))
+			newOwnerRef := node.OwnerReferences
+			gv := clusterv1alpha1.SchemeGroupVersion
+			newOwnerRef = append(newOwnerRef, *metav1.NewControllerRef(createdClusterV1alpha1Machine, gv.WithKind("Machine")))
 
-		// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
-		if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			node, err := kubeClient.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
-			if err != nil {
-				return err
+			// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
+			if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				node, err := kubeClient.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				node.OwnerReferences = newOwnerRef
+				if _, err := kubeClient.CoreV1().Nodes().Update(node); err != nil {
+					return err
+				}
+				return nil
+			}); err != nil {
+				return fmt.Errorf("failed to update OwnerRef on node %s: %v", node.Name, err)
 			}
-			node.OwnerReferences = newOwnerRef
-			if _, err := kubeClient.CoreV1().Nodes().Update(node); err != nil {
-				return err
-			}
-			return nil
-		}); err != nil {
-			return fmt.Errorf("failed to update OwnerRef on node %s: %v", node.Name, err)
 		}
 
 		downstreamMachine.Finalizers = []string{}

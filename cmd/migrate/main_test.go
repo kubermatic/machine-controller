@@ -26,13 +26,13 @@ func TestMigrateMachines(t *testing.T) {
 			},
 			Node: &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}},
 		},
-		// We currently fail if no corresponding node exists. Is this desired?
+		// We do not require a corresponding node to exist
 		{
 			DownStreamMachine: &machinev1alpha1downstream.Machine{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-machine"},
 				Spec:       machinev1alpha1downstream.MachineSpec{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}},
 			},
-			ErrExpected: true,
+			ErrExpected: false,
 		},
 	}
 
@@ -70,16 +70,18 @@ func TestMigrateMachines(t *testing.T) {
 			t.Errorf("len(existingUpstreamMachines) should be 1, was %v", len(existingUpstreamMachines.Items))
 		}
 
-		node, err := kubeFake.CoreV1().Nodes().Get(existingUpstreamMachines.Items[0].Spec.Name, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Failed to get node: %v", err)
-		}
-		if len(node.OwnerReferences) != 1 {
-			t.Fatalf("Expected len(nodeOwnerRefernces) to be 1 but was %v", len(node.OwnerReferences))
-		}
+		if testCase.Node != nil {
+			node, err := kubeFake.CoreV1().Nodes().Get(existingUpstreamMachines.Items[0].Spec.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to get node: %v", err)
+			}
+			if len(node.OwnerReferences) != 1 {
+				t.Fatalf("Expected len(nodeOwnerRefernces) to be 1 but was %v", len(node.OwnerReferences))
+			}
 
-		if node.OwnerReferences[0].UID != existingUpstreamMachines.Items[0].UID {
-			t.Fatalf("Epected node owner ref to match new machine owner ref!")
+			if node.OwnerReferences[0].UID != existingUpstreamMachines.Items[0].UID {
+				t.Fatalf("Epected node owner ref to match new machine owner ref!")
+			}
 		}
 	}
 
