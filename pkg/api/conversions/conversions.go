@@ -22,6 +22,7 @@ func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1
 	out.Generation = 0
 	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = "kube-system"
+	out.Finalizers = in.Finalizers
 
 	// sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineStatus and
 	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former
@@ -52,8 +53,6 @@ func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1
 			out.Spec.Roles = append(out.Spec.Roles, clustercommon.NodeRole)
 		}
 	}
-
-	out.Finalizers = in.Finalizers
 
 	// This currently results in in.Spec.Versions.ContainerRuntime being dropped,
 	// because it was removed from the upstream type in
