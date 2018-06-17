@@ -97,6 +97,6 @@ func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExte
 			return providerConfigMap, nil
 		}
 	}
-	providerConfigMap["operatingSystemSpec"] = map[string]machinev1alpha1downstream.ContainerRuntimeInfo{"containerRuntimeInfo": containerRuntimeInfo}
+	providerConfigMap["containerRuntimeInfo"] = containerRuntimeInfo
 	return providerConfigMap, nil
 }
