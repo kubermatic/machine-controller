@@ -336,12 +336,17 @@ func normalizeAbsPath(path string) string {
 // base could be a directory or a full file path
 func normalizePaths(refPath, base string) string {
 	refURL, _ := url.Parse(refPath)
-	if path.IsAbs(refURL.Path) {
+	if path.IsAbs(refURL.Path) || filepath.IsAbs(refPath) {
 		// refPath is actually absolute
 		if refURL.Host != "" {
 			return refPath
 		}
-		return filepath.FromSlash(refPath)
+		parts := strings.Split(refPath, "#")
+		result := filepath.FromSlash(parts[0])
+		if len(parts) == 2 {
+			result += "#" + parts[1]
+		}
+		return result
 	}
 
 	// relative refPath
@@ -388,6 +393,7 @@ func (r *schemaLoader) resolveRef(ref *Ref, target interface{}, basePath string)
 		return nil
 	}
 
+	var res interface{}
 	var data interface{}
 	var err error
 	// Resolve against the root if it isn't nil, and if ref is pointing at the root, or has a fragment only which means
@@ -410,7 +416,6 @@ func (r *schemaLoader) resolveRef(ref *Ref, target interface{}, basePath string)
 		}
 	}
 
-	var res interface{}
 	res = data
 	if ref.String() != "" {
 		res, _, err = ref.GetPointer().Get(data)
@@ -421,6 +426,7 @@ func (r *schemaLoader) resolveRef(ref *Ref, target interface{}, basePath string)
 	if err := swag.DynamicJSONToStruct(res, target); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -429,9 +435,11 @@ func (r *schemaLoader) load(refURL *url.URL) (interface{}, url.URL, bool, error)
 	toFetch := *refURL
 	toFetch.Fragment = ""
 
-	data, fromCache := r.cache.Get(toFetch.String())
+	normalized := normalizeAbsPath(toFetch.String())
+
+	data, fromCache := r.cache.Get(normalized)
 	if !fromCache {
-		b, err := r.loadDoc(toFetch.String())
+		b, err := r.loadDoc(normalized)
 		if err != nil {
 			return nil, url.URL{}, false, err
 		}
@@ -439,7 +447,7 @@ func (r *schemaLoader) load(refURL *url.URL) (interface{}, url.URL, bool, error)
 		if err := json.Unmarshal(b, &data); err != nil {
 			return nil, url.URL{}, false, err
 		}
-		r.cache.Set(toFetch.String(), data)
+		r.cache.Set(normalized, data)
 	}
 
 	return data, toFetch, fromCache, nil
@@ -483,7 +491,7 @@ func ExpandSpec(spec *Swagger, options *ExpandOptions) error {
 		for key, definition := range spec.Definitions {
 			var def *Schema
 			var err error
-			if def, err = expandSchema(definition, []string{fmt.Sprintf("#/defintions/%s", key)}, resolver, specBasePath); shouldStopOnError(err, resolver.options) {
+			if def, err = expandSchema(definition, []string{fmt.Sprintf("#/definitions/%s", key)}, resolver, specBasePath); shouldStopOnError(err, resolver.options) {
 				return err
 			}
 			if def != nil {
@@ -616,6 +624,10 @@ func basePathFromSchemaID(oldBasePath, id string) string {
 	return u.String()
 }
 
+func isCircular(ref *Ref, basePath string, parentRefs ...string) bool {
+	return basePath != "" && swag.ContainsStringsCI(parentRefs, ref.String())
+}
+
 func expandSchema(target Schema, parentRefs []string, resolver *schemaLoader, basePath string) (*Schema, error) {
 	if target.Ref.String() == "" && target.Ref.IsRoot() {
 		// normalizing is important
@@ -651,20 +663,28 @@ func expandSchema(target Schema, parentRefs []string, resolver *schemaLoader, ba
 
 		/* this means there is a circle in the recursion tree */
 		/* return the Ref */
-		if basePath != "" && swag.ContainsStringsCI(parentRefs, normalizedRef.String()) {
+		if isCircular(normalizedRef, basePath, parentRefs...) {
 			target.Ref = *normalizedRef
 			return &target, nil
 		}
 
 		debugLog("\nbasePath: %s", basePath)
-		b, _ := json.Marshal(target)
-		debugLog("calling Resolve with target: %s", string(b))
+		if Debug {
+			b, _ := json.Marshal(target)
+			debugLog("calling Resolve with target: %s", string(b))
+		}
 		if err := resolver.Resolve(&target.Ref, &t, basePath); shouldStopOnError(err, resolver.options) {
 			return nil, err
 		}
 
 		if t != nil {
 			parentRefs = append(parentRefs, normalizedRef.String())
+			var err error
+			resolver, err = transitiveResolver(basePath, target.Ref, resolver)
+			if shouldStopOnError(err, resolver.options) {
+				return nil, err
+			}
+
 			return expandSchema(*t, parentRefs, resolver, normalizedBasePath)
 		}
 	}
@@ -768,17 +788,48 @@ func expandSchema(target Schema, parentRefs []string, resolver *schemaLoader, ba
 	return &target, nil
 }
 
+func derefPathItem(pathItem *PathItem, parentRefs []string, resolver *schemaLoader, basePath string) error {
+	curRef := pathItem.Ref.String()
+	if curRef != "" {
+		normalizedRef := normalizeFileRef(&pathItem.Ref, basePath)
+		normalizedBasePath := normalizedRef.RemoteURI()
+
+		if isCircular(normalizedRef, basePath, parentRefs...) {
+			return nil
+		}
+
+		if err := resolver.Resolve(&pathItem.Ref, pathItem, basePath); shouldStopOnError(err, resolver.options) {
+			return err
+		}
+
+		if pathItem.Ref.String() != "" && pathItem.Ref.String() != curRef && basePath != normalizedBasePath {
+			parentRefs = append(parentRefs, normalizedRef.String())
+			return derefPathItem(pathItem, parentRefs, resolver, normalizedBasePath)
+		}
+	}
+
+	return nil
+}
+
 func expandPathItem(pathItem *PathItem, resolver *schemaLoader, basePath string) error {
 	if pathItem == nil {
 		return nil
 	}
 
+	parentRefs := []string{}
+	if err := derefPathItem(pathItem, parentRefs, resolver, basePath); shouldStopOnError(err, resolver.options) {
+		return err
+	}
 	if pathItem.Ref.String() != "" {
-		if err := resolver.Resolve(&pathItem.Ref, &pathItem, basePath); err != nil {
+		var err error
+		resolver, err = transitiveResolver(basePath, pathItem.Ref, resolver)
+		if shouldStopOnError(err, resolver.options) {
 			return err
 		}
-		pathItem.Ref = Ref{}
 	}
+	pathItem.Ref = Ref{}
+
+	parentRefs = parentRefs[0:]
 
 	for idx := range pathItem.Parameters {
 		if err := expandParameter(&(pathItem.Parameters[idx]), resolver, basePath); shouldStopOnError(err, resolver.options) {
@@ -836,6 +887,28 @@ func expandOperation(op *Operation, resolver *schemaLoader, basePath string) err
 	return nil
 }
 
+func transitiveResolver(basePath string, ref Ref, resolver *schemaLoader) (*schemaLoader, error) {
+	if ref.IsRoot() || ref.HasFragmentOnly {
+		return resolver, nil
+	}
+
+	baseRef, _ := NewRef(basePath)
+	currentRef := normalizeFileRef(&ref, basePath)
+	// Set a new root to resolve against
+	if !strings.HasPrefix(currentRef.String(), baseRef.String()) {
+		rootURL := currentRef.GetURL()
+		rootURL.Fragment = ""
+		root, _ := resolver.cache.Get(rootURL.String())
+		var err error
+		resolver, err = defaultSchemaLoader(root, resolver.options, resolver.cache)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resolver, nil
+}
+
 // ExpandResponse expands a response based on a basepath
 // This is the exported version of expandResponse
 // all refs inside response will be resolved relative to basePath
@@ -851,36 +924,58 @@ func ExpandResponse(response *Response, basePath string) error {
 	return expandResponse(response, resolver, basePath)
 }
 
+func derefResponse(response *Response, parentRefs []string, resolver *schemaLoader, basePath string) error {
+	curRef := response.Ref.String()
+	if curRef != "" {
+		/* Here the resolution scope is changed because a $ref was encountered */
+		normalizedRef := normalizeFileRef(&response.Ref, basePath)
+		normalizedBasePath := normalizedRef.RemoteURI()
+
+		if isCircular(normalizedRef, basePath, parentRefs...) {
+			return nil
+		}
+
+		if err := resolver.Resolve(&response.Ref, response, basePath); shouldStopOnError(err, resolver.options) {
+			return err
+		}
+
+		if response.Ref.String() != "" && response.Ref.String() != curRef && basePath != normalizedBasePath {
+			parentRefs = append(parentRefs, normalizedRef.String())
+			return derefResponse(response, parentRefs, resolver, normalizedBasePath)
+		}
+	}
+
+	return nil
+}
+
 func expandResponse(response *Response, resolver *schemaLoader, basePath string) error {
 	if response == nil {
 		return nil
 	}
 
-	var parentRefs []string
-
-	if response.Ref.String() != "" {
-		parentRefs = append(parentRefs, response.Ref.String())
-		sch := new(Schema)
-		b, _ := response.MarshalJSON()
-		json.Unmarshal(b, sch)
-		s, _ := expandSchema(*sch, parentRefs, resolver, basePath)
-		// if err := resolver.Resolve(&response.Ref, response, basePath); shouldStopOnError(err, resolver.options) {
-		// 	return err
-		// }
-		b, _ = s.MarshalJSON()
-		json.Unmarshal(b, response)
-		response.Ref = Ref{}
+	parentRefs := []string{}
+	if err := derefResponse(response, parentRefs, resolver, basePath); shouldStopOnError(err, resolver.options) {
+		return err
 	}
+	if response.Ref.String() != "" {
+		var err error
+		resolver, err = transitiveResolver(basePath, response.Ref, resolver)
+		if shouldStopOnError(err, resolver.options) {
+			return err
+		}
+	}
+	response.Ref = Ref{}
 
+	parentRefs = parentRefs[0:]
 	if !resolver.options.SkipSchemas && response.Schema != nil {
 		parentRefs = append(parentRefs, response.Schema.Ref.String())
-		debugLog("response ref: %s", response.Schema.Ref)
 		s, err := expandSchema(*response.Schema, parentRefs, resolver, basePath)
 		if shouldStopOnError(err, resolver.options) {
 			return err
 		}
 		*response.Schema = *s
 	}
+
 	return nil
 }
 
@@ -899,20 +994,48 @@ func ExpandParameter(parameter *Parameter, basePath string) error {
 	return expandParameter(parameter, resolver, basePath)
 }
 
+func derefParameter(parameter *Parameter, parentRefs []string, resolver *schemaLoader, basePath string) error {
+	curRef := parameter.Ref.String()
+	if curRef != "" {
+		normalizedRef := normalizeFileRef(&parameter.Ref, basePath)
+		normalizedBasePath := normalizedRef.RemoteURI()
+
+		if isCircular(normalizedRef, basePath, parentRefs...) {
+			return nil
+		}
+
+		if err := resolver.Resolve(&parameter.Ref, parameter, basePath); shouldStopOnError(err, resolver.options) {
+			return err
+		}
+
+		if parameter.Ref.String() != "" && parameter.Ref.String() != curRef && basePath != normalizedBasePath {
+			parentRefs = append(parentRefs, normalizedRef.String())
+			return derefParameter(parameter, parentRefs, resolver, normalizedBasePath)
+		}
+	}
+
+	return nil
+}
+
 func expandParameter(parameter *Parameter, resolver *schemaLoader, basePath string) error {
 	if parameter == nil {
 		return nil
 	}
 
-	var parentRefs []string
-
+	parentRefs := []string{}
+	if err := derefParameter(parameter, parentRefs, resolver, basePath); shouldStopOnError(err, resolver.options) {
+		return err
+	}
 	if parameter.Ref.String() != "" {
-		parentRefs = append(parentRefs, parameter.Ref.String())
-		if err := resolver.Resolve(&parameter.Ref, parameter, basePath); shouldStopOnError(err, resolver.options) {
+		var err error
+		resolver, err = transitiveResolver(basePath, parameter.Ref, resolver)
+		if shouldStopOnError(err, resolver.options) {
 			return err
 		}
-		parameter.Ref = Ref{}
 	}
+	parameter.Ref = Ref{}
+
+	parentRefs = parentRefs[0:]
 	if !resolver.options.SkipSchemas && parameter.Schema != nil {
 		parentRefs = append(parentRefs, parameter.Schema.Ref.String())
 		s, err := expandSchema(*parameter.Schema, parentRefs, resolver, basePath)
