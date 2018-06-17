@@ -64,6 +64,11 @@ func migrateIfNecesary(kubeClient kubernetes.Interface,
 		return fmt.Errorf("failed to get crds: %v", err)
 	}
 
+	_, err = apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get("machines.cluster.k8s.io", metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("error when checking for existence of 'machines.cluster.k8s.io' crd: %v", err)
+	}
+
 	downstreamClient, err := downstreammachineclientset.NewForConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to create downstream machine client: %v", err)
