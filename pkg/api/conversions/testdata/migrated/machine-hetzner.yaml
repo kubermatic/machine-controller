@@ -1,0 +1,32 @@
+metadata:
+  creationTimestamp: null
+  name: machine-hetzner
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+    name: node1
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: hetzner
+      cloudProviderSpec:
+        datacenter: ""
+        location: fsn1
+        serverType: cx11
+        token: token
+      operatingSystem: ubuntu
+      operatingSystemSpec:
+        containerRuntimeInfo:
+          name: cri-o
+          version: ""
+        distUpgradeOnBoot: false
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  roles:
+  - Node
+  versions:
+    kubelet: 1.9.6
+status:
+  lastUpdated: null
+  providerStatus: null
