@@ -90,13 +90,6 @@ func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExte
 	if providerConfigMap == nil {
 		providerConfigMap = map[string]interface{}{}
 	}
-	if val, ok := providerConfigMap["operatingSystemSpec"]; ok {
-		if valMap, ok := val.(map[string]interface{}); ok {
-			valMap["containerRuntimeInfo"] = containerRuntimeInfo
-			providerConfigMap["operatingSystemSpec"] = valMap
-			return providerConfigMap, nil
-		}
-	}
 	providerConfigMap["containerRuntimeInfo"] = containerRuntimeInfo
 	return providerConfigMap, nil
 }

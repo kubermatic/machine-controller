@@ -28,11 +28,11 @@ spec:
           tagKey: tagValue
         tenantName: tenant
         username: username
+      containerRuntimeInfo:
+        name: docker
+        version: "1.13"
       operatingSystem: ubuntu
       operatingSystemSpec:
-        containerRuntimeInfo:
-          name: docker
-          version: "1.13"
         distUpgradeOnBoot: true
       sshPublicKeys:
       - << YOUR_PUBLIC_KEY >>
