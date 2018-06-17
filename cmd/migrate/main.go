@@ -58,6 +58,7 @@ func migrateIfNecesary(kubeClient kubernetes.Interface,
 	_, err := apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(downstreammachines.CRDName, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
+			glog.Infof("Old crd not present, nothing to do...")
 			return nil
 		}
 		return fmt.Errorf("failed to get crds: %v", err)
