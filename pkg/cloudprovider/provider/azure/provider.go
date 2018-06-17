@@ -32,7 +32,8 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-type rawConfig struct {
+// RawConfig is a direct representation of an Azure machine object's configuration
+type RawConfig struct {
 	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID"`
 	TenantID       providerconfig.ConfigVarString `json:"tenantID"`
 	ClientID       providerconfig.ConfigVarString `json:"clientID"`
@@ -46,6 +47,7 @@ type rawConfig struct {
 	RouteTableName providerconfig.ConfigVarString `json:"routeTableName"`
 
 	AssignPublicIP providerconfig.ConfigVarBool `json:"assignPublicIP"`
+	Tags           map[string]string            `json:"tags"`
 }
 
 type config struct {
@@ -62,6 +64,7 @@ type config struct {
 	RouteTableName string
 
 	AssignPublicIP bool
+	Tags           map[string]string
 }
 
 type azureVM struct {
@@ -130,7 +133,7 @@ func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.C
 	if err != nil {
 		return nil, nil, err
 	}
-	rawCfg := rawConfig{}
+	rawCfg := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawCfg)
 	if err != nil {
 		return nil, nil, err
@@ -191,6 +194,8 @@ func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.C
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %v", err)
 	}
+
+	c.Tags = rawCfg.Tags
 
 	return &c, &pconfig, nil
 }
@@ -327,6 +332,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
 	}
 
+	tags := make(map[string]*string, len(config.Tags)+1)
+	for k, v := range config.Tags {
+		tags[k] = to.StringPtr(v)
+	}
+	tags[machineUIDTag] = to.StringPtr(string(machine.UID))
+
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
@@ -357,7 +368,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 			},
 			StorageProfile: &compute.StorageProfile{ImageReference: osRef},
 		},
-		Tags: map[string]*string{machineUIDTag: to.StringPtr(string(machine.UID))},
+		Tags: tags,
 	}
 
 	glog.Infof("Creating machine %q", machine.Spec.Name)

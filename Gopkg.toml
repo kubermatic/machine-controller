@@ -67,10 +67,6 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
   branch = "master"
 
 [[constraint]]
-  name = "github.com/go-kit/kit"
-  version = "v0.6.*"
-
-[[constraint]]
   name = "github.com/prometheus/client_golang"
   version = "v0.8.*"
 

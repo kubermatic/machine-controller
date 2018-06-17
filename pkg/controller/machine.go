@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
@@ -40,6 +39,7 @@ import (
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
+	"github.com/prometheus/client_golang/prometheus"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -89,7 +89,7 @@ type Controller struct {
 	recorder  record.EventRecorder
 
 	clusterDNSIPs      []net.IP
-	metrics            MetricsCollection
+	metrics            *MetricsCollection
 	kubeconfigProvider KubeconfigProvider
 
 	validationCache map[string]bool
@@ -104,12 +104,12 @@ type KubeconfigProvider interface {
 // MetricsCollection is a struct of all metrics used in
 // this controller.
 type MetricsCollection struct {
-	Machines            metrics.Gauge
-	Nodes               metrics.Gauge
-	Workers             metrics.Gauge
-	Errors              metrics.Counter
-	ControllerOperation metrics.Histogram
-	NodeJoinDuration    metrics.Histogram
+	Machines            prometheus.Gauge
+	Nodes               prometheus.Gauge
+	Workers             prometheus.Gauge
+	Errors              prometheus.Counter
+	ControllerOperation *prometheus.HistogramVec
+	NodeJoinDuration    *prometheus.HistogramVec
 }
 
 // NewMachineController returns a new machine controller
@@ -122,7 +122,7 @@ func NewMachineController(
 	machineLister machinelistersv1alpha1.MachineLister,
 	secretSystemNsLister listerscorev1.SecretLister,
 	clusterDNSIPs []net.IP,
-	metrics MetricsCollection,
+	metrics *MetricsCollection,
 	kubeconfigProvider KubeconfigProvider,
 	name string) *Controller {
 
@@ -130,6 +130,13 @@ func NewMachineController(
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.V(4).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+
+	prometheus.MustRegister(metrics.ControllerOperation)
+	prometheus.MustRegister(metrics.Errors)
+	prometheus.MustRegister(metrics.Machines)
+	prometheus.MustRegister(metrics.Nodes)
+	prometheus.MustRegister(metrics.NodeJoinDuration)
+	prometheus.MustRegister(metrics.Workers)
 
 	controller := &Controller{
 		kubeClient:  kubeClient,
@@ -276,25 +283,25 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *machinev1alpha1.
 
 func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) (instance.Instance, error) {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "get-cloud-instance").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "get-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Get(machine)
 }
 
 func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, instance instance.Instance) error {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "delete-cloud-instance").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "delete-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Delete(machine, instance)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "create-cloud-instance").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "create-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Create(machine, userdata)
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
 	start := time.Now()
-	defer c.metrics.ControllerOperation.With("operation", "validate-machine").Observe(time.Since(start).Seconds())
+	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "validate-machine"}).Observe(time.Since(start).Seconds())
 	return prov.Validate(machine.Spec)
 }
 
@@ -344,20 +351,6 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// step 3: essentially creates an instance for the given machine
-	//
-	// case 3.1: first let's create the delete finalizer before actually creating the instance.
-	// otherwise the machine gets created at the cloud provider and the machine resource gets deleted meanwhile
-	// which causes a orphaned instance
-	if !sets.NewString(machine.Finalizers...).Has(FinalizerDeleteInstance) {
-		finalizers := sets.NewString(machine.Finalizers...)
-		finalizers.Insert(FinalizerDeleteInstance)
-		machine.Finalizers = finalizers.List()
-		if machine, err = c.updateMachine(machine); err != nil {
-			return fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
-		}
-		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
-	}
-
 	userdataProvider, err := userdata.ForOS(providerConfig.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
@@ -516,6 +509,12 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
+			// We will create the instance, so ensure finalizer is there
+			machine, err = c.ensureDeleteFinalizerExists(machine)
+			if err != nil {
+				return err
+			}
+			// Create the instance
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
@@ -539,6 +538,11 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 		// case 2.3: transient error was returned, requeue the request and try again in the future
 		return fmt.Errorf("failed to get instance from provider: %v", err)
 	}
+	// Instance exists, so ensure finalizer does as well
+	machine, err = c.ensureDeleteFinalizerExists(machine)
+	if err != nil {
+		return err
+	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
 	c.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", "Found instance at cloud provider")
@@ -561,7 +565,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 			}
 			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
 			c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeMatched", "Successfully matched machine to node %s", node.Name)
-			c.metrics.NodeJoinDuration.Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
+			c.metrics.NodeJoinDuration.WithLabelValues().Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
@@ -893,4 +897,17 @@ func (c *Controller) updateNodesMetric() {
 func (c *Controller) updateMetrics() {
 	c.updateMachinesMetric()
 	c.updateNodesMetric()
+}
+
+func (c *Controller) ensureDeleteFinalizerExists(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
+	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+		finalizers := sets.NewString(machine.Finalizers...)
+		finalizers.Insert(finalizerDeleteInstance)
+		machine.Finalizers = finalizers.List()
+		if _, err := c.updateMachine(machine); err != nil {
+			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
+		}
+		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
+	}
+	return machine, nil
 }

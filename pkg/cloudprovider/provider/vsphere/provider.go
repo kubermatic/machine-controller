@@ -403,6 +403,49 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	//TODO: Implement this
-	return "", "", nil
+	c, _, err := p.getConfig(spec.ProviderConfig)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	passedURL := c.VSphereURL
+	// Required because url.Parse returns an empty string for the hostname if there was no schema
+	if !strings.HasPrefix(passedURL, "https://") {
+		passedURL = "https://" + passedURL
+	}
+
+	url, err := url.Parse(passedURL)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse '%s' as url: %v", passedURL, err)
+	}
+	port := "443"
+	if url.Port() != "" {
+		port = url.Port()
+	}
+
+	var insecureFlag string
+	if c.AllowInsecure {
+		insecureFlag = "1"
+	} else {
+		insecureFlag = "0"
+	}
+
+	workingDir := c.Folder
+	// Default to basedir
+	if workingDir == "" {
+		workingDir = fmt.Sprintf("/%s/vm", c.Datacenter)
+	}
+
+	config = fmt.Sprintf(`
+[Global]
+server = "%s"
+port = "%s"
+user = "%s"
+password = "%s"
+insecure-flag = "%s" #set to 1 if the vCenter uses a self-signed cert
+datastore = "%s"
+working-dir = "%s"
+datacenter = "%s"
+`, url.Hostname(), port, c.Username, c.Password, insecureFlag, c.Datastore, workingDir, c.Datacenter)
+	return config, "vsphere", nil
 }

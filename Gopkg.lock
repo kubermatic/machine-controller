@@ -243,40 +243,6 @@
   version = "v1.32.0"
 
 [[projects]]
-  name = "github.com/go-kit/kit"
-  packages = [
-    "metrics",
-    "metrics/internal/lv",
-    "metrics/prometheus"
-  ]
-  revision = "4dc7be5d2d12881735283bcab7352178e190fc71"
-  version = "v0.6.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/jsonpointer"
-  packages = ["."]
-  revision = "779f45308c19820f1a69e9a4cd965f496e0da10f"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/jsonreference"
-  packages = ["."]
-  revision = "36d33bfe519efae5632669801b180bf1a245da3b"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/spec"
-  packages = ["."]
-  revision = "e5cac0107f33264c59bcfe43d12a0e19eba644f0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/go-openapi/swag"
-  packages = ["."]
-  revision = "84f4bee7c0a6db40e3166044c7983c1c32125429"
-
-[[projects]]
   name = "github.com/go-test/deep"
   packages = ["."]
   revision = "6592d9cc0a499ad2d5f574fde80a2b5c5cc3b4f5"
@@ -1133,6 +1099,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0c0d796cf113ab065072997044f51f355f1c6311db6ff6b0939ac767ce6ab2ed"
+  inputs-digest = "81769b653633721d43ebe5e7d954ce54f08f7ae1d265dbbe013199cb498cb523"
   solver-name = "gps-cdcl"
   solver-version = 1
