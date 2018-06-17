@@ -98,9 +98,17 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			return fmt.Errorf("failed to convert machine %s: %v", downstreamMachine.Name, err)
 		}
 
-		createdClusterV1alpha1Machine, err := clusterv1alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
-		if err != nil {
-			return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
+		// Do a get first to cover the case the new machine was already created but then something went wrong
+		createdClusterV1alpha1Machine, err := clusterv1alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Get(convertedClusterv1alpha1Machine.Name,
+			metav1.GetOptions{})
+		if err != nil && kerrors.IsNotFound(err) {
+			createdClusterV1alpha1Machine, err = clusterv1alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
+			if err != nil {
+				return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
+			}
+		}
+		if err != nil && !kerrors.IsNotFound(err) {
+			return fmt.Errorf("failed to check if converted machine %s already exists: %v", convertedClusterv1alpha1Machine.Name, err)
 		}
 
 		node, err := kubeClient.CoreV1().Nodes().Get(convertedClusterv1alpha1Machine.Spec.Name, metav1.GetOptions{})
