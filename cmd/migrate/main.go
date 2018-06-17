@@ -9,7 +9,6 @@ import (
 
 	conversions "github.com/kubermatic/machine-controller/pkg/api/conversions"
 	downstreammachineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
-	"github.com/kubermatic/machine-controller/pkg/controller"
 	downstreammachines "github.com/kubermatic/machine-controller/pkg/machines"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -18,7 +17,6 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -145,9 +143,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			return fmt.Errorf("failed to update OwnerRef on node %s: %v", node.Name, err)
 		}
 
-		finalizers := sets.NewString(downstreamMachine.Finalizers...)
-		finalizers.Delete(controller.FinalizerDeleteInstance)
-		downstreamMachine.Finalizers = finalizers.List()
+		downstreamMachine.Finalizers = []string{}
 		if _, err := downstreamClient.MachineV1alpha1().Machines().Update(&downstreamMachine); err != nil {
 			return fmt.Errorf("failed to update downstream machine %s after removing finalizer: %v", convertedClusterv1alpha1Machine.Name, err)
 		}
