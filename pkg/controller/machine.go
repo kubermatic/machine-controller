@@ -900,9 +900,9 @@ func (c *Controller) updateMetrics() {
 }
 
 func (c *Controller) ensureDeleteFinalizerExists(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
-	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+	if !sets.NewString(machine.Finalizers...).Has(FinalizerDeleteInstance) {
 		finalizers := sets.NewString(machine.Finalizers...)
-		finalizers.Insert(finalizerDeleteInstance)
+		finalizers.Insert(FinalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
 		if _, err := c.updateMachine(machine); err != nil {
 			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
