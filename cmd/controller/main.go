@@ -347,22 +347,22 @@ func readinessChecks(kubeconfigProvider controller.KubeconfigProvider) map[strin
 		"valid-info-kubeconfig": func() error {
 			cm, err := kubeconfigProvider.GetKubeconfig()
 			if err != nil {
-				glog.V(2).Infof("unable to get kubeconfig: %v", err)
+				glog.V(2).Infof("[healthcheck] Unable to get kubeconfig: %v", err)
 				return err
 			}
 			if len(cm.Clusters) != 1 {
-				err := errors.New("invalid kubeconfig: no clusters found")
+				err := errors.New("[healthcheck] Invalid kubeconfig: no clusters found")
 				glog.V(2).Info(err)
 				return err
 			}
 			for name, c := range cm.Clusters {
 				if len(c.CertificateAuthorityData) == 0 {
-					err := fmt.Errorf("invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.['%s']", name)
+					err := fmt.Errorf("[healthcheck] Invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.['%s']", name)
 					glog.V(2).Info(err)
 					return err
 				}
 				if len(c.Server) == 0 {
-					err := fmt.Errorf("invalid kubeconfig: no server was specified for kuberconfig.clusters.['%s']", name)
+					err := fmt.Errorf("[healthcheck] Invalid kubeconfig: no server was specified for kuberconfig.clusters.['%s']", name)
 					glog.V(2).Info(err)
 					return err
 				}
