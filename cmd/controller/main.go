@@ -347,6 +347,7 @@ func readinessChecks(kubeconfigProvider controller.KubeconfigProvider) map[strin
 		"valid-info-kubeconfig": func() error {
 			cm, err := kubeconfigProvider.GetKubeconfig()
 			if err != nil {
+				glog.V(2).Infof("unable to get kubeconfig: %v", err)
 				return err
 			}
 			if len(cm.Clusters) != 1 {
