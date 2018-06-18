@@ -3,6 +3,7 @@ package vsphere
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -29,6 +30,11 @@ import (
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
+}
+
+type netDeviceAndBackingInfo struct {
+	device      *types.BaseVirtualDevice
+	backingInfo *types.VirtualEthernetCardNetworkBackingInfo
 }
 
 // New returns a VSphere provider
@@ -103,7 +109,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	}
 
 	// default templatenetname to first network of template if none specific was given.
-	if cfg.TemplateNetName == "" {
+	if cfg.TemplateNetName == "" && cfg.VMNetName != "" {
 		ctx := context.TODO()
 		client, err := getClient(cfg.Username, cfg.Password, cfg.VSphereURL, cfg.AllowInsecure)
 		if err != nil {
@@ -121,15 +127,17 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			return spec, changed, err
 		}
 
-		_, eth, err := getNetworkDeviceAndBackingFromVM(ctx, templateVm, "")
+		availableData, err := getNetworkDevicesAndBackingsFromVM(ctx, templateVm, "")
 		if err != nil {
 			return spec, changed, err
 		}
-
-		if eth != nil && eth.DeviceName != "" {
-			rawCfg.TemplateNetName.Value = eth.DeviceName
-			changed = true
+		if len(availableData) == 0 {
+			return spec, changed, errors.New("found no network adapter in template vm")
 		}
+
+		eth := availableData[0].backingInfo
+		rawCfg.TemplateNetName.Value = eth.DeviceName
+		changed = true
 	}
 
 	spec.ProviderConfig, err = setProviderConfig(*rawCfg, spec.ProviderConfig)
@@ -252,6 +260,10 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return err
 	}
 
+	if config.VMNetName != "" && config.TemplateNetName == "" {
+		return errors.New("specified target network (VMNetName) in cluster, but no source network (TemplateNetName) in machine")
+	}
+
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
@@ -272,6 +284,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

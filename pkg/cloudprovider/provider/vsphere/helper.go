@@ -186,16 +186,22 @@ func updateNetworkForVM(ctx context.Context, vm *object.VirtualMachine, currentN
 		return err
 	}
 
-	netDev, currentBacking, err := getNetworkDeviceAndBackingFromVM(ctx, vm, currentNetName)
+	availableData, err := getNetworkDevicesAndBackingsFromVM(ctx, vm, currentNetName)
 	if err != nil {
 		return err
 	}
+	if len(availableData) == 0 {
+		return errors.New("found no matching network adapter")
+	}
+
+	netDev := availableData[0].device
+	currentBacking := availableData[0].backingInfo
 
 	glog.V(6).Infof("changing network `%s` to `%s` for vm `%s`", currentBacking.DeviceName, newNetName, vm.Name())
 	currentBacking.DeviceName = newNetName
 	currentBacking.Network = newNet
 
-	err = vm.EditDevice(ctx, netDev)
+	err = vm.EditDevice(ctx, *netDev)
 	if err != nil {
 		return err
 	}
@@ -203,15 +209,16 @@ func updateNetworkForVM(ctx context.Context, vm *object.VirtualMachine, currentN
 	return nil
 }
 
-func getNetworkDeviceAndBackingFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (types.BaseVirtualDevice, *types.VirtualEthernetCardNetworkBackingInfo, error) {
+func getNetworkDevicesAndBackingsFromVM(ctx context.Context, vm *object.VirtualMachine, netNameFilter string) ([]netDeviceAndBackingInfo, error) {
 	devices, err := vm.Device(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't get devices for vm, see: %s", err)
+		return nil, fmt.Errorf("couldn't get devices for vm, see: %s", err)
 	}
 
 	var availableBackings []string
+	var availableData []netDeviceAndBackingInfo
 
-	for _, device := range devices {
+	for i, device := range devices {
 		ethDevice, ok := device.(types.BaseVirtualEthernetCard)
 		if !ok {
 			continue
@@ -220,15 +227,15 @@ func getNetworkDeviceAndBackingFromVM(ctx context.Context, vm *object.VirtualMac
 		ethCard := ethDevice.GetVirtualEthernetCard()
 		ethBacking := ethCard.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
 
-		// if no network name is specified the first will be returned.
-		if netName == "" || ethBacking.DeviceName == netName {
-			return device, ethBacking, nil
+		if netNameFilter == "" || ethBacking.DeviceName == netNameFilter {
+			data := netDeviceAndBackingInfo{device: &devices[i], backingInfo: ethBacking}
+			availableData = append(availableData, data)
 		}
 
 		availableBackings = append(availableBackings, ethBacking.DeviceName)
 	}
 
-	return nil, nil, fmt.Errorf("no networkbacking with the name %s found (available are: %v)", netName, availableBackings)
+	return availableData, nil
 }
 
 func getNetworkFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (*types.ManagedObjectReference, error) {
