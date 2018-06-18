@@ -2,9 +2,10 @@ package health
 
 import (
 	"github.com/heptiolabs/healthcheck"
+	"github.com/golang/glog"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"github.com/golang/glog"
 )
 
 func ApiserverReachable(client kubernetes.Interface) healthcheck.Check {
