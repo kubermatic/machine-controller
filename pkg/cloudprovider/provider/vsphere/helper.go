@@ -220,7 +220,8 @@ func getNetworkDeviceAndBackingFromVM(ctx context.Context, vm *object.VirtualMac
 		ethCard := ethDevice.GetVirtualEthernetCard()
 		ethBacking := ethCard.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
 
-		if ethBacking.DeviceName == netName {
+		// if no network name is specified the first will be returned.
+		if netName == "" || ethBacking.DeviceName == netName {
 			return device, ethBacking, nil
 		}
 

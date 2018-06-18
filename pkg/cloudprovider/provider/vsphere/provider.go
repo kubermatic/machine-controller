@@ -92,7 +92,73 @@ func (vsphereServer VSphereServer) Status() instance.Status {
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
-	return spec, false, nil
+	changed := false
+
+	cfg, _, rawCfg, err := p.getConfig(spec.ProviderConfig)
+	if err != nil {
+		return spec, changed, cloudprovidererrors.TerminalError{
+			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
+	}
+
+	// default templatenetname to first network of template if none specific was given.
+	if cfg.TemplateNetName == "" {
+		ctx := context.TODO()
+		client, err := getClient(cfg.Username, cfg.Password, cfg.VSphereURL, cfg.AllowInsecure)
+		if err != nil {
+			return spec, changed, fmt.Errorf("failed to get vsphere client: '%v'", err)
+		}
+		defer client.Logout(ctx)
+
+		finder, err := getDatacenterFinder(cfg.Datacenter, client)
+		if err != nil {
+			return spec, changed, err
+		}
+
+		templateVm, err := finder.VirtualMachine(ctx, cfg.TemplateVMName)
+		if err != nil {
+			return spec, changed, err
+		}
+
+		_, eth, err := getNetworkDeviceAndBackingFromVM(ctx, templateVm, "")
+		if err != nil {
+			return spec, changed, err
+		}
+
+		if eth != nil && eth.DeviceName != "" {
+			rawCfg.TemplateNetName.Value = eth.DeviceName
+			changed = true
+		}
+	}
+
+	spec.ProviderConfig, err = setProviderConfig(*rawCfg, spec.ProviderConfig)
+	if err != nil {
+		return spec, changed, fmt.Errorf("error marshaling providerconfig: %s", err)
+	}
+
+	return spec, changed, nil
+}
+
+func setProviderConfig(rawConfig RawConfig, s runtime.RawExtension) (runtime.RawExtension, error) {
+	pconfig := providerconfig.Config{}
+	err := json.Unmarshal(s.Raw, &pconfig)
+	if err != nil {
+		return s, err
+	}
+
+	rawCloudProviderSpec, err := json.Marshal(rawConfig)
+	if err != nil {
+		return s, err
+	}
+
+	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
+	rawPconfig, err := json.Marshal(pconfig)
+	if err != nil {
+		return s, err
+	}
+
+	return runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
 func getClient(username, password, address string, allowInsecure bool) (*govmomi.Client, error) {
@@ -105,83 +171,83 @@ func getClient(username, password, address string, allowInsecure bool) (*govmomi
 	return govmomi.NewClient(context.TODO(), clientUrl, allowInsecure)
 }
 
-func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, *RawConfig, error) {
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Raw, &pconfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	rawConfig := RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c := Config{}
 	c.TemplateVMName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateVMName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.TemplateNetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateNetName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.VMNetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VMNetName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Username, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Username)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Password, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Password)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.VSphereURL, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VSphereURL)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Datacenter, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datacenter)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Cluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Cluster)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Folder, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Folder)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.Datastore, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datastore)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.AllowInsecure)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c.CPUs = rawConfig.CPUs
 	c.MemoryMB = rawConfig.MemoryMB
 
-	return &c, &pconfig, nil
+	return &c, &pconfig, &rawConfig, nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	config, _, err := p.getConfig(spec.ProviderConfig)
+	config, _, _, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return err
 	}
@@ -217,7 +283,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, pc, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -255,9 +321,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 	}
 
 	// Map networks
-	err = updateNetworkForVM(context.TODO(), virtualMachine, config.TemplateNetName, config.VMNetName)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't set network for vm: %v", err)
+	if config.VMNetName != "" {
+		err = updateNetworkForVM(context.TODO(), virtualMachine, config.TemplateNetName, config.VMNetName)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't set network for vm: %v", err)
+		}
 	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
@@ -303,7 +371,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error {
-	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, pc, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -361,7 +429,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ instance.Instance) error 
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -423,7 +491,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, err := p.getConfig(spec.ProviderConfig)
+	c, _, _, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
