@@ -545,7 +545,8 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
-	c.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", "Found instance at cloud provider")
+	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", providerInstance.Addresses())
+	c.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", eventMessage)
 	return c.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
 }
 
