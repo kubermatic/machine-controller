@@ -114,7 +114,8 @@ func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.C
 	}
 	c.DomainName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"domainName\" field, error = %v", err)
+		glog.V(0).Infof("[warning] could not get the value of the \"domainName\" field, this means instance %s",
+			"creation will fail when using identity v3 api...")
 	}
 	c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
 	if err != nil {
