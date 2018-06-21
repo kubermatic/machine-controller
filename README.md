@@ -94,16 +94,17 @@ locally, the following steps are required:
 Now you can either
 
 * Run the tests for all providers via
-  `go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER` to run all e2e tests
+  `go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER`
 * Check `test/e2e/provisioning/all_e2e_test.go` for the available tests, then run only a specific one via
   `go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER -run $TESTNAME`
 
 __Note:__ All e2e tests require corresponding credentials to be present, check
- `test/e2e/provisioning/all_e2e_test.go` for details
+ [`test/e2e/provisioning/all_e2e_test.go`](test/e2e/provisioning/all_e2e_test.go) for details
 
 __Note:__ After finishing testing, pleae clean up after yourself:
 
 * Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
 * Execute `make -C test/tools/integration destroy` to clean up the test control plane
 
-You can also insert your ssh key into the created instances by editing the manifests in `test/e2e/provisioning/testdata/`
+You can also insert your ssh key into the created instances by editing the manifests in
+[`test/e2e/provisioning/testdata/`](test/e2e/provisioning/testdata)
