@@ -1,0 +1,31 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: << MACHINE_NAME >>
+spec:
+  metadata:
+    name: << NODE_NAME >>
+    labels:
+      foo: "bar"
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "openstack"
+    cloudProviderSpec:
+      identityEndpoint: "<< IDENTITY_ENDPOINT >>"
+      username: "<< USERNAME >>"
+      password: "<< PASSWORD >>"
+      tenantName: "<< TENANT_NAME >>"
+      image: "<< OS_NAME >>"
+      flavor: "m1.small"
+      floatingIpPool: ""
+    operatingSystem: "<< OS_NAME >>"
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.10.3"
+    containerRuntime:
+      # If you are using Ubuntu, you may choose 'cri-o' instead
+      name: "<< CONTAINER_RUNTIME >>"
+      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
+      version: "<< CONTAINER_RUNTIME_VERSION >>"
