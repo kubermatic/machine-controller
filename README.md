@@ -105,3 +105,5 @@ __Note:__ After finishing testing, pleae clean up after yourself:
 
 * Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
 * Execute `make -C test/tools/integration destroy` to clean up the test control plane
+
+You can also insert your ssh key into the created instances by editing the manifests in `test/e2e/provisioning/testdata/`
