@@ -108,7 +108,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
-	// default templatenetname to first network of template if none specific was given.
+	// default templatenetname to network of template if none specific was given and only one adapter exists.
 	if cfg.TemplateNetName == "" && cfg.VMNetName != "" {
 		ctx := context.TODO()
 		client, err := getClient(cfg.Username, cfg.Password, cfg.VSphereURL, cfg.AllowInsecure)
@@ -127,17 +127,20 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			return spec, changed, err
 		}
 
-		availableData, err := getNetworkDevicesAndBackingsFromVM(ctx, templateVm, "")
+		availableNetworkDevices, err := getNetworkDevicesAndBackingsFromVM(ctx, templateVm, "")
 		if err != nil {
 			return spec, changed, err
 		}
-		if len(availableData) == 0 {
-			return spec, changed, errors.New("found no network adapter in template vm")
-		}
 
-		eth := availableData[0].backingInfo
-		rawCfg.TemplateNetName.Value = eth.DeviceName
-		changed = true
+		if len(availableNetworkDevices) == 0 {
+			glog.V(6).Infof("found no network adapter to default to in template vm %s", cfg.TemplateVMName)
+		} else if len(availableNetworkDevices) > 1 {
+			glog.V(6).Infof("found multiple network adapters in template vm %s but no explicit template net name is specified in the cluster", cfg.TemplateVMName)
+		} else {
+			eth := availableNetworkDevices[0].backingInfo
+			rawCfg.TemplateNetName.Value = eth.DeviceName
+			changed = true
+		}
 	}
 
 	spec.ProviderConfig, err = setProviderConfig(*rawCfg, spec.ProviderConfig)
