@@ -53,10 +53,14 @@ if ! ls kube-flannel.yml; then
   curl -LO https://raw.githubusercontent.com/coreos/flannel/v0.10.0/Documentation/kube-flannel.yml
   kubectl apply -f kube-flannel.yml
 fi
-if ! ls machine-controller-deployed; then
+if ! ls machine-controller-deployed && [[ -z "\$1" ]]; then
   docker build -t kubermatic/machine-controller:latest .
   kubectl apply -f machine-controller.yaml
   touch machine-controller-deployed
+fi
+
+if [[ -e "\$1" ]]; then
+  exit 0
 fi
 
 for try in {1..10}; do
