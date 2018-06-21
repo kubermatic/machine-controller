@@ -25,10 +25,10 @@ var scenarios = []scenario{
 	},
 
 	{
-		name:                    "scenario 3 Ubuntu CRI-O 1.10",
+		name:                    "scenario 3 Ubuntu CRI-O 1.9",
 		osName:                  "ubuntu",
 		containerRuntime:        "cri-o",
-		containerRuntimeVersion: "1.10",
+		containerRuntimeVersion: "1.9",
 	},
 
 	{
