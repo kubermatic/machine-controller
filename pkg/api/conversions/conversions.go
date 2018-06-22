@@ -12,8 +12,7 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1alpha1downstream.Machine) (*clusterv1alpha1.Machine, error) {
-	out := &clusterv1alpha1.Machine{}
+func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1alpha1downstream.Machine, out *clusterv1alpha1.Machine) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
 	out.SelfLink = ""
@@ -29,10 +28,10 @@ func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1
 	// only has one additional field, so we cast by serializing and deserializing
 	inStatusJSON, err := json.Marshal(in.Status)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal downstreammachine status: %v", err)
+		return fmt.Errorf("failed to marshal downstreammachine status: %v", err)
 	}
 	if err = json.Unmarshal(inStatusJSON, &out.Status); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal downstreammachine status: %v", err)
+		return fmt.Errorf("failed to unmarshal downstreammachine status: %v", err)
 	}
 
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
@@ -40,7 +39,7 @@ func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1
 
 	providerConfigRaw, err := json.Marshal(in.Spec.ProviderConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	out.Spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
@@ -60,21 +59,21 @@ func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1
 	// To work around this, we put it into the providerConfig
 	inMachineVersionJSON, err := json.Marshal(in.Spec.Versions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal downstreammachine version: %v", err)
+		return fmt.Errorf("failed to marshal downstreammachine version: %v", err)
 	}
 	if err = json.Unmarshal(inMachineVersionJSON, &out.Spec.Versions); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal downstreammachine version: %v", err)
+		return fmt.Errorf("failed to unmarshal downstreammachine version: %v", err)
 	}
 
 	out.Spec.ProviderConfig.Value.Raw, err = addContainerRuntimeInfoToProviderConfig(*out.Spec.ProviderConfig.Value,
 		in.Spec.Versions.ContainerRuntime)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add containerRuntimeInfo to providerConfig: %v", err)
+		return fmt.Errorf("failed to add containerRuntimeInfo to providerConfig: %v", err)
 	}
 
 	out.Spec.ConfigSource = in.Spec.ConfigSource
 
-	return out, err
+	return nil
 }
 
 func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExtension, containerRuntimeInfo machinev1alpha1downstream.ContainerRuntimeInfo) ([]byte, error) {
