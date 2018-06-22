@@ -15,9 +15,31 @@ const (
 	azure_manifest = "./testdata/machine-azure.yaml"
 	hz_manifest    = "./testdata/machine-hetzner.yaml"
 	vs_manifest    = "./testdata/machine-vsphere.yaml"
+	os_manifest    = "./testdata/machine-openstack.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
+
+func TestOpenstackProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	osAuthUrl := os.Getenv("OS_AUTH_URL")
+	osTenantID := os.Getenv("OS_TENANT_ID")
+	osUsername := os.Getenv("OS_USERNAME")
+	osPassword := os.Getenv("OS_PASSWORD")
+
+	if osAuthUrl == "" || osTenantID == "" || osUsername == "" || osPassword == "" {
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_TENANT_ID, OS_USERNAME and OS_PASSOWRD must be set!")
+	}
+
+	params := []string{}
+	params = append(params, fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl))
+	params = append(params, fmt.Sprintf("<< TENANT_NAME >>=%s", osTenantID))
+	params = append(params, fmt.Sprintf("<< USERNAME >>=%s", osUsername))
+	params = append(params, fmt.Sprintf("<< PASSWORD >>=%s", osPassword))
+
+	runScenarios(t, nil, params, os_manifest, fmt.Sprintf("os-%s", *testRunIdentifier))
+}
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.

@@ -84,19 +84,18 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (strin
 	if secret.Data == nil {
 		secret.Data = map[string][]byte{}
 	}
-	secret.Data[expirationKey] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
 	tokenID := string(secret.Data[tokenIDKey])
 	tokenSecret := string(secret.Data[tokenSecretKey])
 	token := fmt.Sprintf(tokenFormatter, tokenID, tokenSecret)
 
-	expirationTime, err := time.Parse(time.RFC3339, string(secret.Data["expiration"]))
+	expirationTime, err := time.Parse(time.RFC3339, string(secret.Data[expirationKey]))
 	if err != nil {
 		return "", err
 	}
 
 	//If the token is close to expire, reset it's expiration time
 	if expirationTime.Sub(time.Now()).Minutes() < 30 {
-		secret.Data["expiration"] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
+		secret.Data[expirationKey] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
 	} else {
 		return token, nil
 	}

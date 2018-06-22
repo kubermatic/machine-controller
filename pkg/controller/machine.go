@@ -507,16 +507,16 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
-			// We will create the instance, so ensure finalizer is there
-			machine, err = c.ensureDeleteFinalizerExists(machine)
-			if err != nil {
-				return err
-			}
 			// Create the instance
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.CreateMachineError, message, err, "failed to create machine at cloudprover")
+			}
+			// We created the instance, so ensure finalizer is there
+			machine, err = c.ensureDeleteFinalizerExists(machine)
+			if err != nil {
+				return err
 			}
 			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			// remove error message in case it was set
