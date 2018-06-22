@@ -45,7 +45,7 @@ func TestMigratingMachine(t *testing.T) {
 	}
 
 	for _, machine := range machines {
-		machine, err := ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(machine)
+		machine, err := Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(&machine)
 		fixtureFilePath := fmt.Sprintf("testdata/migrated/%s.yaml", machine.Name)
 		if err != nil {
 			t.Errorf("Failed to migrate machine: %v", err)

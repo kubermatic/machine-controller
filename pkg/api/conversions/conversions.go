@@ -12,7 +12,7 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-func ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(in machinev1alpha1downstream.Machine) (*clusterv1alpha1.Machine, error) {
+func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1alpha1downstream.Machine) (*clusterv1alpha1.Machine, error) {
 	out := &clusterv1alpha1.Machine{}
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
