@@ -66,14 +66,10 @@ func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1
 		return nil, fmt.Errorf("failed to unmarshal downstreammachine version: %v", err)
 	}
 
-	providerConfigMap, err := addContainerRuntimeInfoToProviderConfig(*out.Spec.ProviderConfig.Value,
+	out.Spec.ProviderConfig.Value.Raw, err = addContainerRuntimeInfoToProviderConfig(*out.Spec.ProviderConfig.Value,
 		in.Spec.Versions.ContainerRuntime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add containerRuntimeInfo to providerConfig: %v", err)
-	}
-	out.Spec.ProviderConfig.Value.Raw, err = json.Marshal(providerConfigMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshall providerconfig after adding containerRuntimeInfo: %v", err)
 	}
 
 	out.Spec.ConfigSource = in.Spec.ConfigSource
@@ -81,7 +77,7 @@ func Convert_v1alpha1_DownStreamMachine_To_v1alpha1_ClusterMachine(in *machinev1
 	return out, err
 }
 
-func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExtension, containerRuntimeInfo machinev1alpha1downstream.ContainerRuntimeInfo) (map[string]interface{}, error) {
+func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExtension, containerRuntimeInfo machinev1alpha1downstream.ContainerRuntimeInfo) ([]byte, error) {
 	providerConfigMap := map[string]interface{}{}
 	if err := json.Unmarshal(providerConfigValue.Raw, &providerConfigMap); err != nil {
 		return nil, fmt.Errorf("failed to unmarshall provider config into map: %v", err)
@@ -91,5 +87,5 @@ func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExte
 		providerConfigMap = map[string]interface{}{}
 	}
 	providerConfigMap["containerRuntimeInfo"] = containerRuntimeInfo
-	return providerConfigMap, nil
+	return json.Marshal(providerConfigMap)
 }
