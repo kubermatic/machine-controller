@@ -235,6 +235,11 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 			if len(test.expectedActions) != len(fakeMachineClient.Actions()) {
 				t.Fatalf("unexpected actions %#v", fakeMachineClient.Actions())
 			}
+			for index, action := range fakeMachineClient.Actions() {
+				if !action.Matches(test.expectedActions[index], "machines") {
+					t.Fatalf("unexpected action %#v", action)
+				}
+			}
 
 			syncedMachine, err := fakeMachineClient.Machine().Machines().Get("testmachine", metav1.GetOptions{})
 			if err != nil {
