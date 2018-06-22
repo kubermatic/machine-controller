@@ -61,5 +61,6 @@ test-unit-docker:
 test-unit: vendor
 			go test ./...
 
-test-e2e:
-	go test -tags=e2e -parallel 24 -v -identifier $(USER) -timeout 20m  ./test/e2e/...
+e2e-cluster:
+	make -C test/tools/integration apply
+	./test/tools/integration/provision_master.sh do-not-deploy-machine-controller
