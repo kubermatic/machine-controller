@@ -184,7 +184,10 @@ systemd:
           --volume etc-kubernetes,kind=host,source=/etc/kubernetes \
           --mount volume=etc-kubernetes,target=/etc/kubernetes \
           --volume var-log,kind=host,source=/var/log \
-          --mount volume=var-log,target=/var/log"
+          --mount volume=var-log,target=/var/log \
+          --volume var-lib-calico,kind=host,source=/var/lib/calico \
+          --mount volume=var-lib-calico,target=/var/lib/calico"
+        ExecStartPre=/bin/mkdir -p /var/lib/calico
         ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
         ExecStartPre=/bin/mkdir -p /etc/cni/net.d
         ExecStartPre=/bin/mkdir -p /opt/cni/bin
