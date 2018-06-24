@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-test/deep"
 	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
-	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
+	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
@@ -183,17 +184,20 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 		cloudProviderSpec string
 		finalizerExpected bool
 		err               string
+		expectedActions   []string
 	}{
 		{
 			name:              "Finalizer gets added on sucessfull validation",
 			cloudProviderSpec: `{"passValidation": true}`,
 			finalizerExpected: true,
+			expectedActions:   []string{"update", "update", "update"},
 		},
 		{
 			name:              "Finalizer does not get added on failed validation",
 			cloudProviderSpec: `{"passValidation": false}`,
 			err:               "invalid provider config: failing validation as requested",
 			finalizerExpected: false,
+			expectedActions:   []string{"update", "update", "update"},
 		},
 	}
 	for _, test := range tests {
@@ -201,37 +205,43 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 			t.Parallel()
 			providerConfig := fmt.Sprintf(`{"cloudProvider": "fake", "operatingSystem": "coreos",
 		"cloudProviderSpec": %s}`, test.cloudProviderSpec)
-			machine := v1alpha1.Machine{}
+			machine := &v1alpha1.Machine{}
 			machine.Name = "testmachine"
 			machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
 
-			client := machinefake.NewSimpleClientset(runtime.Object(&machine))
-			kubeclient := kubefake.NewSimpleClientset()
-			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclient, 10*time.Millisecond)
-			machineInformerFactory := machineinformers.NewSharedInformerFactory(client, 10*time.Millisecond)
-
-			stopChannel := make(chan struct{})
-			defer close(stopChannel)
+			fakeMachineClient := machinefake.NewSimpleClientset(runtime.Object(machine))
+			machineIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+			err := machineIndexer.Add(machine)
+			if err != nil {
+				t.Fatal(err)
+			}
+			machineLister := machinelistersv1alpha1.NewMachineLister(machineIndexer)
+			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+			nodeLister := listerscorev1.NewNodeLister(nodeIndexer)
 
 			controller := Controller{
-				machineClient:   client,
-				machinesLister:  machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+				machineClient:   fakeMachineClient,
+				machinesLister:  machineLister,
 				metrics:         NewMachineControllerMetrics(),
-				nodesLister:     kubeInformerFactory.Core().V1().Nodes().Lister(),
+				nodesLister:     nodeLister,
 				recorder:        &record.FakeRecorder{},
 				validationCache: map[string]bool{},
 			}
-			machineInformerFactory.Start(stopChannel)
-			machineInformerFactory.WaitForCacheSync(stopChannel)
-			kubeInformerFactory.Start(stopChannel)
-			kubeInformerFactory.WaitForCacheSync(stopChannel)
 
-			err := controller.syncHandler("testmachine")
+			err = controller.syncHandler("testmachine")
 			if err != nil && err.Error() != test.err {
 				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
 			}
-			machineInformerFactory.WaitForCacheSync(stopChannel)
-			syncedMachine, err := client.Machine().Machines().Get("testmachine", metav1.GetOptions{})
+			if len(test.expectedActions) != len(fakeMachineClient.Actions()) {
+				t.Fatalf("unexpected actions %#v", fakeMachineClient.Actions())
+			}
+			for index, action := range fakeMachineClient.Actions() {
+				if !action.Matches(test.expectedActions[index], "machines") {
+					t.Fatalf("unexpected action %#v", action)
+				}
+			}
+
+			syncedMachine, err := fakeMachineClient.Machine().Machines().Get("testmachine", metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Failed to get machine: %v", err)
 			}
