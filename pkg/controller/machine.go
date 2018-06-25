@@ -371,9 +371,8 @@ func (c *Controller) syncHandler(key string) error {
 			machine.Status.NodeRef = nil
 			_, err = c.updateMachine(machine)
 			return err
-		} else {
-			return fmt.Errorf("failed to check if node for machine exists: '%s'", err)
 		}
+		return fmt.Errorf("failed to check if node for machine exists: '%s'", err)
 	}
 
 	if c.nodeIsReady(node) {
@@ -622,7 +621,7 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 		if err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
-		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTainsUpdated", "Sucecssfully updated labels/annotations/taints")
+		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTaintsUpdated", "Successfully updated labels/annotations/taints")
 		glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
 	}
 
