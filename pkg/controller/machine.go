@@ -224,26 +224,23 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
-func (c *Controller) doesNodeForMachineExistAndIsReady(machine *machinev1alpha1.Machine) (*corev1.Node, bool, error) {
-	if machine.Status.NodeRef != nil {
-		listerNode, err := c.nodesLister.Get(machine.Status.NodeRef.Name)
-		if err != nil {
-			if kerrors.IsNotFound(err) {
-				return nil, false, nil
-			}
-			return nil, false, err
-		}
-		node := listerNode.DeepCopy()
-		for _, condition := range node.Status.Conditions {
-			if condition.Type == corev1.NodeReady {
-				if condition.Status == corev1.ConditionTrue {
-					return node, true, nil
-				}
+func (c *Controller) nodeIsReady(node *corev1.Node) bool {
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady {
+			if condition.Status == corev1.ConditionTrue {
+				return true
 			}
 		}
 	}
+	return false
+}
 
-	return nil, false, nil
+func (c *Controller) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.Node, error) {
+	listerNode, err := c.nodesLister.Get(nodeRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	return listerNode.DeepCopy(), nil
 }
 
 func (c *Controller) updateMachine(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
@@ -361,24 +358,25 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
-	node, nodeExistsAndIsReady, err := c.doesNodeForMachineExistAndIsReady(machine)
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			node = nil
-			nodeExistsAndIsReady = false
-		} else {
-			return fmt.Errorf("failed to check if node for machine exists and is ready: '%s'", err)
-		}
-	}
-	if !nodeExistsAndIsReady {
+	if machine.Status.NodeRef == nil {
 		glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
-		err = c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
-		if err != nil {
+		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
+	}
+
+	node, err := c.getNodeByNodeRef(machine.Status.NodeRef)
+	if err != nil {
+		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
+		if kerrors.IsNotFound(err) {
+			glog.V(4).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
+			machine.Status.NodeRef = nil
+			_, err = c.updateMachine(machine)
 			return err
+		} else {
+			return fmt.Errorf("failed to check if node for machine exists: '%s'", err)
 		}
 	}
 
-	if nodeExistsAndIsReady {
+	if c.nodeIsReady(node) {
 		// If we have an ready node, we should clear the error in case one was set.
 		// Useful when there was a network outage & a cloud-provider api outage at the same time
 		if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
@@ -387,11 +385,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
-	if node != nil {
-		return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
-	}
-
-	return nil
+	return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
 }
 
 func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machine) error {
