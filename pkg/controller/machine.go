@@ -228,6 +228,9 @@ func (c *Controller) doesNodeForMachineExistAndIsReady(machine *machinev1alpha1.
 	if machine.Status.NodeRef != nil {
 		listerNode, err := c.nodesLister.Get(machine.Status.NodeRef.Name)
 		if err != nil {
+			if kerrors.IsNotFound(err) {
+				return nil, false, nil
+			}
 			return nil, false, err
 		}
 		node := listerNode.DeepCopy()
@@ -360,7 +363,12 @@ func (c *Controller) syncHandler(key string) error {
 	// case 3.2: creates an instance if there is no node associated with the given machine
 	node, nodeExistsAndIsReady, err := c.doesNodeForMachineExistAndIsReady(machine)
 	if err != nil {
-		return fmt.Errorf("failed to check if node for machine exists ans is ready: '%s'", err)
+		if kerrors.IsNotFound(err) {
+			node = nil
+			nodeExistsAndIsReady = false
+		} else {
+			return fmt.Errorf("failed to check if node for machine exists and is ready: '%s'", err)
+		}
 	}
 	if !nodeExistsAndIsReady {
 		glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
