@@ -224,23 +224,23 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
-func (c *Controller) doesNodeForMachineExistAndIsReady(machine *machinev1alpha1.Machine) (*corev1.Node, bool, error) {
-	if machine.Status.NodeRef != nil {
-		listerNode, err := c.nodesLister.Get(machine.Status.NodeRef.Name)
-		if err != nil {
-			return nil, false, err
-		}
-		node := listerNode.DeepCopy()
-		for _, condition := range node.Status.Conditions {
-			if condition.Type == corev1.NodeReady {
-				if condition.Status == corev1.ConditionTrue {
-					return node, true, nil
-				}
+func (c *Controller) nodeIsReady(node *corev1.Node) bool {
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady {
+			if condition.Status == corev1.ConditionTrue {
+				return true
 			}
 		}
 	}
+	return false
+}
 
-	return nil, false, nil
+func (c *Controller) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.Node, error) {
+	listerNode, err := c.nodesLister.Get(nodeRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	return listerNode.DeepCopy(), nil
 }
 
 func (c *Controller) updateMachine(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
@@ -358,32 +358,35 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
-	node, nodeExistsAndIsReady, err := c.doesNodeForMachineExistAndIsReady(machine)
-	if err != nil {
-		return fmt.Errorf("failed to check if node for machine exists ans is ready: '%s'", err)
-	}
-	if !nodeExistsAndIsReady {
-		glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
-		err = c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
-		if err != nil {
-			return err
-		}
+	if machine.Status.NodeRef == nil {
+		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
 	}
 
-	if nodeExistsAndIsReady {
+	node, err := c.getNodeByNodeRef(machine.Status.NodeRef)
+	if err != nil {
+		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
+		if kerrors.IsNotFound(err) {
+			glog.V(4).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
+			machine.Status.NodeRef = nil
+			_, err = c.updateMachine(machine)
+			return err
+		}
+		return fmt.Errorf("failed to check if node for machine exists: '%s'", err)
+	}
+
+	if c.nodeIsReady(node) {
 		// If we have an ready node, we should clear the error in case one was set.
 		// Useful when there was a network outage & a cloud-provider api outage at the same time
 		if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
 			return fmt.Errorf("failed to clear machine error: %v", err)
 		}
+	} else {
+		// Node is not ready anymore? Maybe it got deleted
+		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
-	if node != nil {
-		return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
-	}
-
-	return nil
+	return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
 }
 
 func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machine) error {
@@ -449,6 +452,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 }
 
 func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *machinev1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
+	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 	// case 1: validate the machine spec before getting the instance from cloud provider.
 	// even though this is a little bit premature and inefficient, it helps us detect invalid specification
 	defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
@@ -620,7 +624,7 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 		if err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
-		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTainsUpdated", "Sucecssfully updated labels/annotations/taints")
+		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTaintsUpdated", "Successfully updated labels/annotations/taints")
 		glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
 	}
 
