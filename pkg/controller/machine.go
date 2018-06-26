@@ -359,7 +359,6 @@ func (c *Controller) syncHandler(key string) error {
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
 	if machine.Status.NodeRef == nil {
-		glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
 	}
 
@@ -381,6 +380,9 @@ func (c *Controller) syncHandler(key string) error {
 		if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
 			return fmt.Errorf("failed to clear machine error: %v", err)
 		}
+	} else {
+		// Node is not ready anymore? Maybe it got deleted
+		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
@@ -450,6 +452,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 }
 
 func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *machinev1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
+	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 	// case 1: validate the machine spec before getting the instance from cloud provider.
 	// even though this is a little bit premature and inefficient, it helps us detect invalid specification
 	defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
