@@ -353,9 +353,16 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
 	}
-	if machine, err = c.defaultContainerRuntime(machine, userdataProvider); err != nil {
-		return fmt.Errorf("failed to default the container runtime version: %v", err)
+
+	// We use a new variable here to be able to put the Event on the machine even thought
+	// c.defaultContainerRuntime returns a nil pointer for the machine in case of an error
+	machineWithDefaultedContainerRuntime, err := c.defaultContainerRuntime(machine, userdataProvider)
+	if err != nil {
+		errorMessage := fmt.Sprintf("failed to default the container runtime version: %v", err)
+		c.recorder.Event(machine, corev1.EventTypeWarning, "ContainerRuntimeDefaultingFailed", errorMessage)
+		return errors.New(errorMessage)
 	}
+	machine = machineWithDefaultedContainerRuntime
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
 	if machine.Status.NodeRef == nil {

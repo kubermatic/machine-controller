@@ -28,12 +28,13 @@ var scenarios = []scenario{
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.10.5",
 	},
-	{
-		name:              "Ubuntu Docker Kubernetes v1.11.0",
-		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.11.0",
-	},
+	// TODO: Implement kube 1.11 support for Ubuntu
+	//{
+	//	name:              "Ubuntu Docker Kubernetes v1.11.0",
+	//	osName:            "ubuntu",
+	//	containerRuntime:  "docker",
+	//	kubernetesVersion: "1.11.0",
+	//},
 	{
 		name:              "Ubuntu CRI-O Kubernetes v1.8.13",
 		osName:            "ubuntu",
@@ -52,19 +53,21 @@ var scenarios = []scenario{
 		containerRuntime:  "cri-o",
 		kubernetesVersion: "1.10.5",
 	},
-	{
-		name:              "Ubuntu CRI-O Kubernetes v1.11.0",
-		osName:            "ubuntu",
-		containerRuntime:  "cri-o",
-		kubernetesVersion: "1.11.0",
-	},
+	// TODO: Implement kube 1.11 support for Ubuntu
+	//{
+	//	name:              "Ubuntu CRI-O Kubernetes v1.11.0",
+	//	osName:            "ubuntu",
+	//	containerRuntime:  "cri-o",
+	//	kubernetesVersion: "1.11.0",
+	//},
 
-	{
-		name:              "CentOS Docker Kubernetes v1.8.13",
-		osName:            "centos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.8.13",
-	},
+	// With CentOS and K8s 1.8 there is some package dependency issue that prevents installation
+	//	{
+	//		name:              "CentOS Docker Kubernetes v1.8.13",
+	//		osName:            "centos",
+	//		containerRuntime:  "docker",
+	//		kubernetesVersion: "1.8.13",
+	//	},
 	{
 		name:              "CentOS Docker Kubernetes v1.9.8",
 		osName:            "centos",
@@ -77,12 +80,13 @@ var scenarios = []scenario{
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.10.5",
 	},
-	{
-		name:              "CentOS Docker Kubernetes v1.11.0",
-		osName:            "centos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.11.0",
-	},
+	// TODO: Implement kube 1.11 support for CentOS
+	//{
+	//	name:              "CentOS Docker Kubernetes v1.11.0",
+	//	osName:            "centos",
+	//	containerRuntime:  "docker",
+	//	kubernetesVersion: "1.11.0",
+	//},
 
 	{
 		name:              "Coreos Docker Kubernetes v1.8.13",

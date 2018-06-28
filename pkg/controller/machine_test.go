@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -320,9 +319,9 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 		},
 		{
 			name:  "v1.8.5 ubuntu - no available cri-o version",
-			err:   errors.New("no supported versions available for 'cri-o'"),
+			err:   nil,
 			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{},
+			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: "1.8"},
 			machine: &v1alpha1.Machine{
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
