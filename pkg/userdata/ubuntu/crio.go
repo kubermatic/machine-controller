@@ -6,11 +6,6 @@ import (
 
 var crioInstallCandidates = []installCandidate{
 	{
-		versions:   []string{"1.8"},
-		pkg:        "cri-o-1.8",
-		pkgVersion: "",
-	},
-	{
 		versions:   []string{"1.9"},
 		pkg:        "cri-o-1.9",
 		pkgVersion: "",
