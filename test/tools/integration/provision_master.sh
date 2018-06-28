@@ -54,7 +54,7 @@ if ! ls kube-flannel.yml; then
   kubectl apply -f kube-flannel.yml
 fi
 
-if [[ -e "\$1" ]]; then
+if [[ -e "$1" ]]; then
   exit 0
 fi
 if ! ls machine-controller-deployed; then
