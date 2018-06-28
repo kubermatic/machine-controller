@@ -11,62 +11,55 @@ import (
 
 var scenarios = []scenario{
 	{
-		name:                    "scenario 1 Ubuntu Docker 1.13",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-		kubernetesVersion:       "1.9.6",
+		name:              "Ubuntu Docker Kubernetes v1.8.13",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.8.13",
 	},
 
 	{
-		name:                    "scenario 2 Ubuntu Docker 17.03",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
-		kubernetesVersion:       "1.9.6",
+		name:              "Ubuntu Docker Kubernetes v1.10.3",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.3",
 	},
 
 	{
-		name:                    "scenario 3 Ubuntu CRI-O 1.9",
-		osName:                  "ubuntu",
-		containerRuntime:        "cri-o",
-		containerRuntimeVersion: "1.9",
-		kubernetesVersion:       "1.9.6",
+		name:              "Ubuntu CRI-O Kubernetes v1.9.6",
+		osName:            "ubuntu",
+		containerRuntime:  "cri-o",
+		kubernetesVersion: "1.9.6",
 	},
 
 	{
-		name:                    "scenario 4 CentOS Docker 1.13",
-		osName:                  "centos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-		kubernetesVersion:       "1.9.6",
+		name:              "CentOS Docker Kubernetes v1.9.6",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.9.6",
 	},
 
 	{
-		name:                    "scenario 5 CoreOS Docker 1.13",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
-		kubernetesVersion:       "1.9.6",
+		name:              "CoreOS Docker Kubernetes v1.9.6",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.9.6",
 	},
 
 	{
-		name:                    "scenario 6 CoreOS Docker 17.03",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
-		kubernetesVersion:       "1.9.6",
+		name:              "CoreOS Docker Kubernetes v1.11.0",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.3",
 	},
 }
 
 type scenario struct {
 	// name holds short description of the test scenario, it is also used to create machines and nodes names
 	// so please don't put "strange" characters there
-	name                    string
-	osName                  string
-	containerRuntime        string
-	containerRuntimeVersion string
-	kubernetesVersion       string
+	name              string
+	osName            string
+	containerRuntime  string
+	kubernetesVersion string
 }
 
 type scenarioSelector struct {
@@ -122,7 +115,6 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", kubernetesCompliantName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBERNETES_VERSION >>=%s", testCase.kubernetesVersion))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", os.Getenv("E2E_SSH_PUBKEY")))
 

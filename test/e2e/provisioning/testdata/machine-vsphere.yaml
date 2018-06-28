@@ -34,5 +34,3 @@ spec:
     containerRuntime:
       # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "<< CONTAINER_RUNTIME >>"
-      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
-      version: "<< CONTAINER_RUNTIME_VERSION >>"

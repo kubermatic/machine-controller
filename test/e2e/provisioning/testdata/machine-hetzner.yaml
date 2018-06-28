@@ -25,4 +25,3 @@ spec:
     # Must be 'docker' if you don't use Ubuntu
     containerRuntime:
       name: "<< CONTAINER_RUNTIME >>"
-      version: "<< CONTAINER_RUNTIME_VERSION >>"
