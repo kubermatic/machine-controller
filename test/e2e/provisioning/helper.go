@@ -16,40 +16,97 @@ var scenarios = []scenario{
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.8.13",
 	},
-
 	{
-		name:              "Ubuntu Docker Kubernetes v1.10.3",
+		name:              "Ubuntu Docker Kubernetes v1.9.8",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.10.3",
+		kubernetesVersion: "1.9.8",
 	},
-
 	{
-		name:              "Ubuntu CRI-O Kubernetes v1.9.6",
+		name:              "Ubuntu Docker Kubernetes v1.10.5",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	},
+	{
+		name:              "Ubuntu Docker Kubernetes v1.11.0",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.11.0",
+	},
+	{
+		name:              "Ubuntu CRI-O Kubernetes v1.8.13",
 		osName:            "ubuntu",
 		containerRuntime:  "cri-o",
-		kubernetesVersion: "1.9.6",
+		kubernetesVersion: "1.8.13",
+	},
+	{
+		name:              "Ubuntu CRI-O Kubernetes v1.9.8",
+		osName:            "ubuntu",
+		containerRuntime:  "cri-o",
+		kubernetesVersion: "1.9.8",
+	},
+	{
+		name:              "Ubuntu CRI-O Kubernetes v1.10.5",
+		osName:            "ubuntu",
+		containerRuntime:  "cri-o",
+		kubernetesVersion: "1.10.5",
+	},
+	{
+		name:              "Ubuntu CRI-O Kubernetes v1.11.0",
+		osName:            "ubuntu",
+		containerRuntime:  "cri-o",
+		kubernetesVersion: "1.11.0",
 	},
 
 	{
-		name:              "CentOS Docker Kubernetes v1.9.6",
+		name:              "CentOS Docker Kubernetes v1.8.13",
 		osName:            "centos",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.9.6",
+		kubernetesVersion: "1.8.13",
+	},
+	{
+		name:              "CentOS Docker Kubernetes v1.9.8",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.9.8",
+	},
+	{
+		name:              "CentOS Docker Kubernetes v1.10.5",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	},
+	{
+		name:              "CentOS Docker Kubernetes v1.11.0",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.11.0",
 	},
 
 	{
-		name:              "CoreOS Docker Kubernetes v1.9.6",
+		name:              "Coreos Docker Kubernetes v1.8.13",
 		osName:            "coreos",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.9.6",
+		kubernetesVersion: "1.8.13",
 	},
-
 	{
-		name:              "CoreOS Docker Kubernetes v1.11.0",
+		name:              "Coreos Docker Kubernetes v1.9.8",
 		osName:            "coreos",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.10.3",
+		kubernetesVersion: "1.9.8",
+	},
+	{
+		name:              "Coreos Docker Kubernetes v1.10.5",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	},
+	{
+		name:              "Coreos Docker Kubernetes v1.11.0",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.11.0",
 	},
 }
 
