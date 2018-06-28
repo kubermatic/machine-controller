@@ -61,7 +61,9 @@ import (
 )
 
 const (
-	finalizerDeleteInstance = "machine-delete-finalizer"
+	// FinalizerDeleteInstance is used to ensure the instance gets deleted at the cloud provider
+	// before the machine gets deleted
+	FinalizerDeleteInstance = "machine-delete-finalizer"
 
 	metricsUpdatePeriod     = 10 * time.Second
 	deletionRetryWaitPeriod = 10 * time.Second
@@ -344,7 +346,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// step 2: check if a user requested to delete the machine
-	if machine.DeletionTimestamp != nil && sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+	if machine.DeletionTimestamp != nil && sets.NewString(machine.Finalizers...).Has(FinalizerDeleteInstance) {
 		return c.deleteMachineAndProviderInstance(prov, machine)
 	}
 
@@ -394,7 +396,7 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machin
 	glog.V(4).Infof("Removing finalizers from machine machine %s", machine.Name)
 
 	finalizers := sets.NewString(machine.Finalizers...)
-	finalizers.Delete(finalizerDeleteInstance)
+	finalizers.Delete(FinalizerDeleteInstance)
 	machine.Finalizers = finalizers.List()
 	if machine, err = c.updateMachine(machine); err != nil {
 		return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
@@ -903,9 +905,9 @@ func (c *Controller) updateMetrics() {
 }
 
 func (c *Controller) ensureDeleteFinalizerExists(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {
-	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+	if !sets.NewString(machine.Finalizers...).Has(FinalizerDeleteInstance) {
 		finalizers := sets.NewString(machine.Finalizers...)
-		finalizers.Insert(finalizerDeleteInstance)
+		finalizers.Insert(FinalizerDeleteInstance)
 		machine.Finalizers = finalizers.List()
 		if _, err := c.updateMachine(machine); err != nil {
 			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)

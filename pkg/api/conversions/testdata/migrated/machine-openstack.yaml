@@ -1,0 +1,45 @@
+metadata:
+  creationTimestamp: null
+  name: machine-openstack
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+    labels:
+      foo: bar
+    name: node1
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: openstack
+      cloudProviderSpec:
+        availabilityZone: ""
+        domainName: domain
+        flavor: m1.small
+        floatingIpPool: ext-net
+        identityEndpoint: identityEndpoint
+        image: Ubuntu 16.04 amd64
+        network: ""
+        password: pass
+        region: ""
+        securityGroups: []
+        subnet: ""
+        tags:
+          tagKey: tagValue
+        tenantName: tenant
+        username: username
+      containerRuntimeInfo:
+        name: docker
+        version: "1.13"
+      operatingSystem: ubuntu
+      operatingSystemSpec:
+        distUpgradeOnBoot: true
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  roles:
+  - Node
+  versions:
+    kubelet: v1.9.6
+status:
+  lastUpdated: null
+  providerStatus: null
