@@ -15,6 +15,7 @@ var scenarios = []scenario{
 		osName:                  "ubuntu",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
+		kubernetesVersion:       "1.9.6",
 	},
 
 	{
@@ -22,6 +23,7 @@ var scenarios = []scenario{
 		osName:                  "ubuntu",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "17.03",
+		kubernetesVersion:       "1.9.6",
 	},
 
 	{
@@ -29,6 +31,7 @@ var scenarios = []scenario{
 		osName:                  "ubuntu",
 		containerRuntime:        "cri-o",
 		containerRuntimeVersion: "1.9",
+		kubernetesVersion:       "1.9.6",
 	},
 
 	{
@@ -36,6 +39,7 @@ var scenarios = []scenario{
 		osName:                  "centos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
+		kubernetesVersion:       "1.9.6",
 	},
 
 	{
@@ -43,6 +47,7 @@ var scenarios = []scenario{
 		osName:                  "coreos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "1.13",
+		kubernetesVersion:       "1.9.6",
 	},
 
 	{
@@ -50,6 +55,7 @@ var scenarios = []scenario{
 		osName:                  "coreos",
 		containerRuntime:        "docker",
 		containerRuntimeVersion: "17.03",
+		kubernetesVersion:       "1.9.6",
 	},
 }
 
@@ -60,6 +66,7 @@ type scenario struct {
 	osName                  string
 	containerRuntime        string
 	containerRuntimeVersion string
+	kubernetesVersion       string
 }
 
 type scenarioSelector struct {
@@ -116,6 +123,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBERNETES_VERSION >>=%s", testCase.kubernetesVersion))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", os.Getenv("E2E_SSH_PUBKEY")))
 
 	gopath := os.Getenv("GOPATH")

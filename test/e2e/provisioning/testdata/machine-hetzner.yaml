@@ -21,7 +21,7 @@ spec:
   roles:
   - "Node"
   versions:
-    kubelet: "1.9.6"
+    kubelet: "<< KUBERNETES_VERSION >>"
     # Must be 'docker' if you don't use Ubuntu
     containerRuntime:
       name: "<< CONTAINER_RUNTIME >>"
