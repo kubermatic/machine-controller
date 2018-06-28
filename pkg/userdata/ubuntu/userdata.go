@@ -69,6 +69,13 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		return "", fmt.Errorf("invalid kubelet version: %v", err)
 	}
 
+	var kubeadmDropInFilename string
+	if kubeletVersion.Minor() > 8 {
+		kubeadmDropInFilename = "10-kubeadm.conf"
+	} else {
+		kubeadmDropInFilename = "kubeadm-10.conf"
+	}
+
 	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get cloud config: %v", err)
@@ -115,33 +122,35 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 	}
 
 	data := struct {
-		MachineSpec         machinesv1alpha1.MachineSpec
-		ProviderConfig      *providerconfig.Config
-		OSConfig            *Config
-		BoostrapToken       string
-		CloudProvider       string
-		CloudConfig         string
-		CRAptPackage        string
-		CRAptPackageVersion string
-		KubernetesVersion   string
-		ClusterDNSIPs       []net.IP
-		KubeadmCACertHash   string
-		CrictlVersion       string
-		ServerAddr          string
+		MachineSpec           machinesv1alpha1.MachineSpec
+		ProviderConfig        *providerconfig.Config
+		OSConfig              *Config
+		BoostrapToken         string
+		CloudProvider         string
+		CloudConfig           string
+		CRAptPackage          string
+		CRAptPackageVersion   string
+		KubernetesVersion     string
+		KubeadmDropInFilename string
+		ClusterDNSIPs         []net.IP
+		KubeadmCACertHash     string
+		CrictlVersion         string
+		ServerAddr            string
 	}{
-		MachineSpec:         spec,
-		ProviderConfig:      pconfig,
-		OSConfig:            osConfig,
-		BoostrapToken:       bootstrapToken,
-		CloudProvider:       cpName,
-		CloudConfig:         cpConfig,
-		CRAptPackage:        crPkg,
-		CRAptPackageVersion: crPkgVersion,
-		KubernetesVersion:   kubeletVersion.String(),
-		ClusterDNSIPs:       clusterDNSIPs,
-		KubeadmCACertHash:   kubeadmCACertHash,
-		CrictlVersion:       crictlVersion,
-		ServerAddr:          serverAddr,
+		MachineSpec:           spec,
+		ProviderConfig:        pconfig,
+		OSConfig:              osConfig,
+		BoostrapToken:         bootstrapToken,
+		CloudProvider:         cpName,
+		CloudConfig:           cpConfig,
+		CRAptPackage:          crPkg,
+		CRAptPackageVersion:   crPkgVersion,
+		KubernetesVersion:     kubeletVersion.String(),
+		KubeadmDropInFilename: kubeadmDropInFilename,
+		ClusterDNSIPs:         clusterDNSIPs,
+		KubeadmCACertHash:     kubeadmCACertHash,
+		CrictlVersion:         crictlVersion,
+		ServerAddr:            serverAddr,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -229,7 +238,7 @@ write_files:
     set -xeuo pipefail
     if ! [[ -f /etc/systemd/system/kubelet.service.d/10-kubeadm.conf ]]; then
       for try in {1..3}; do
-        if curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v{{ .KubernetesVersion }}/build/debs/10-kubeadm.conf \
+        if curl -L --fail https://raw.githubusercontent.com/kubernetes/kubernetes/v{{ .KubernetesVersion }}/build/debs/{{ .KubeadmDropInFilename }} \
           |sed "s:/usr/bin:/opt/bin:g" > /etc/systemd/system/kubelet.service.d/10-kubeadm.conf; then
          systemctl daemon-reload
         exit 0

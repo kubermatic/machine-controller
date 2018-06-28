@@ -54,7 +54,7 @@ if ! ls kube-flannel.yml; then
   kubectl apply -f kube-flannel.yml
 fi
 
-if [[ -e "\$1" ]]; then
+if [[ "${1:-deploy_machine_controller}"  == "do-not-deploy-machine-controller" ]]; then
   exit 0
 fi
 if ! ls machine-controller-deployed; then
