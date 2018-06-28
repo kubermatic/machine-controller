@@ -22,11 +22,8 @@ type SecGroup struct {
 	// traffic entering and leaving the group.
 	Rules []rules.SecGroupRule `json:"security_group_rules"`
 
-	// TenantID is the project owner of the security group.
+	// Owner of the security group.
 	TenantID string `json:"tenant_id"`
-
-	// ProjectID is the project owner of the security group.
-	ProjectID string `json:"project_id"`
 }
 
 // SecGroupPage is the page returned by a pager when traversing over a

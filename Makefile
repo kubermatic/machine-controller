@@ -10,6 +10,7 @@ REGISTRY_NAMESPACE ?= kubermatic
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
+IMAGE_NAME_MIGRATOR =$(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-migrator:$(IMAGE_TAG)
 
 
 vendor: Gopkg.lock Gopkg.toml
@@ -30,14 +31,14 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 		-o machine-controller \
 		github.com/kubermatic/machine-controller/cmd/controller
 
-docker-image: machine-controller
-	make docker-image-nodep
+migrator: $(shell find cmd pkg -name '*.go') vendor
+	go build \
+		-ldflags '-s -w' \
+		-o migrator \
+		github.com/kubermatic/machine-controller/cmd/migrate
 
-# This target exists because in our CI
-# we do not want to restore the vendor
-# folder for the push step, but we know
-# for sure it is not required there
-docker-image-nodep:
+
+docker-image: machine-controller
 	docker build -t $(IMAGE_NAME) .
 	docker push $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
@@ -48,6 +49,20 @@ docker-image-nodep:
 		docker build -t $(IMAGE_NAME) . ;\
 		docker push $(IMAGE_NAME) ;\
 	fi
+
+docker-image-migrator:
+	docker build -t $(IMAGE_NAME_MIGRATOR) -f Dockerfile.migrator .
+	docker push $(IMAGE_NAME_MIGRATOR)
+	if [[ -n "$(GIT_TAG)" ]]; then \
+		$(eval IMAGE_TAG = $(GIT_TAG)) \
+		docker build -t $(IMAGE_NAME_MIGRATOR) -f Dockerfile.migrator . && \
+		docker push $(IMAGE_NAME_MIGRATOR) && \
+		$(eval IMAGE_TAG = latest) \
+		docker build -t $(IMAGE_NAME_MIGRATOR) -f Dockerfile.migrator . ;\
+		docker push $(IMAGE_NAME_MIGRATOR) ;\
+	fi
+
+
 
 test-unit-docker:
 		@docker run --rm \

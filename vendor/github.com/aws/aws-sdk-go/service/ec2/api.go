@@ -17,7 +17,7 @@ const opAcceptReservedInstancesExchangeQuote = "AcceptReservedInstancesExchangeQ
 
 // AcceptReservedInstancesExchangeQuoteRequest generates a "aws/request.Request" representing the
 // client's request for the AcceptReservedInstancesExchangeQuote operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -92,7 +92,7 @@ const opAcceptVpcEndpointConnections = "AcceptVpcEndpointConnections"
 
 // AcceptVpcEndpointConnectionsRequest generates a "aws/request.Request" representing the
 // client's request for the AcceptVpcEndpointConnections operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -167,7 +167,7 @@ const opAcceptVpcPeeringConnection = "AcceptVpcPeeringConnection"
 
 // AcceptVpcPeeringConnectionRequest generates a "aws/request.Request" representing the
 // client's request for the AcceptVpcPeeringConnection operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -247,7 +247,7 @@ const opAllocateAddress = "AllocateAddress"
 
 // AllocateAddressRequest generates a "aws/request.Request" representing the
 // client's request for the AllocateAddress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -333,7 +333,7 @@ const opAllocateHosts = "AllocateHosts"
 
 // AllocateHostsRequest generates a "aws/request.Request" representing the
 // client's request for the AllocateHosts operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -409,7 +409,7 @@ const opAssignIpv6Addresses = "AssignIpv6Addresses"
 
 // AssignIpv6AddressesRequest generates a "aws/request.Request" representing the
 // client's request for the AssignIpv6Addresses operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -490,7 +490,7 @@ const opAssignPrivateIpAddresses = "AssignPrivateIpAddresses"
 
 // AssignPrivateIpAddressesRequest generates a "aws/request.Request" representing the
 // client's request for the AssignPrivateIpAddresses operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -576,7 +576,7 @@ const opAssociateAddress = "AssociateAddress"
 
 // AssociateAddressRequest generates a "aws/request.Request" representing the
 // client's request for the AssociateAddress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -673,7 +673,7 @@ const opAssociateDhcpOptions = "AssociateDhcpOptions"
 
 // AssociateDhcpOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the AssociateDhcpOptions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -760,7 +760,7 @@ const opAssociateIamInstanceProfile = "AssociateIamInstanceProfile"
 
 // AssociateIamInstanceProfileRequest generates a "aws/request.Request" representing the
 // client's request for the AssociateIamInstanceProfile operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -835,7 +835,7 @@ const opAssociateRouteTable = "AssociateRouteTable"
 
 // AssociateRouteTableRequest generates a "aws/request.Request" representing the
 // client's request for the AssociateRouteTable operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -916,7 +916,7 @@ const opAssociateSubnetCidrBlock = "AssociateSubnetCidrBlock"
 
 // AssociateSubnetCidrBlockRequest generates a "aws/request.Request" representing the
 // client's request for the AssociateSubnetCidrBlock operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -992,7 +992,7 @@ const opAssociateVpcCidrBlock = "AssociateVpcCidrBlock"
 
 // AssociateVpcCidrBlockRequest generates a "aws/request.Request" representing the
 // client's request for the AssociateVpcCidrBlock operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1072,7 +1072,7 @@ const opAttachClassicLinkVpc = "AttachClassicLinkVpc"
 
 // AttachClassicLinkVpcRequest generates a "aws/request.Request" representing the
 // client's request for the AttachClassicLinkVpc operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1157,7 +1157,7 @@ const opAttachInternetGateway = "AttachInternetGateway"
 
 // AttachInternetGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the AttachInternetGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1235,7 +1235,7 @@ const opAttachNetworkInterface = "AttachNetworkInterface"
 
 // AttachNetworkInterfaceRequest generates a "aws/request.Request" representing the
 // client's request for the AttachNetworkInterface operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1309,7 +1309,7 @@ const opAttachVolume = "AttachVolume"
 
 // AttachVolumeRequest generates a "aws/request.Request" representing the
 // client's request for the AttachVolume operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1412,7 +1412,7 @@ const opAttachVpnGateway = "AttachVpnGateway"
 
 // AttachVpnGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the AttachVpnGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1490,7 +1490,7 @@ const opAuthorizeSecurityGroupEgress = "AuthorizeSecurityGroupEgress"
 
 // AuthorizeSecurityGroupEgressRequest generates a "aws/request.Request" representing the
 // client's request for the AuthorizeSecurityGroupEgress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1583,7 +1583,7 @@ const opAuthorizeSecurityGroupIngress = "AuthorizeSecurityGroupIngress"
 
 // AuthorizeSecurityGroupIngressRequest generates a "aws/request.Request" representing the
 // client's request for the AuthorizeSecurityGroupIngress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1677,7 +1677,7 @@ const opBundleInstance = "BundleInstance"
 
 // BundleInstanceRequest generates a "aws/request.Request" representing the
 // client's request for the BundleInstance operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1759,7 +1759,7 @@ const opCancelBundleTask = "CancelBundleTask"
 
 // CancelBundleTaskRequest generates a "aws/request.Request" representing the
 // client's request for the CancelBundleTask operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1833,7 +1833,7 @@ const opCancelConversionTask = "CancelConversionTask"
 
 // CancelConversionTaskRequest generates a "aws/request.Request" representing the
 // client's request for the CancelConversionTask operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1916,7 +1916,7 @@ const opCancelExportTask = "CancelExportTask"
 
 // CancelExportTaskRequest generates a "aws/request.Request" representing the
 // client's request for the CancelExportTask operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -1995,7 +1995,7 @@ const opCancelImportTask = "CancelImportTask"
 
 // CancelImportTaskRequest generates a "aws/request.Request" representing the
 // client's request for the CancelImportTask operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2069,7 +2069,7 @@ const opCancelReservedInstancesListing = "CancelReservedInstancesListing"
 
 // CancelReservedInstancesListingRequest generates a "aws/request.Request" representing the
 // client's request for the CancelReservedInstancesListing operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2147,7 +2147,7 @@ const opCancelSpotFleetRequests = "CancelSpotFleetRequests"
 
 // CancelSpotFleetRequestsRequest generates a "aws/request.Request" representing the
 // client's request for the CancelSpotFleetRequests operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2228,7 +2228,7 @@ const opCancelSpotInstanceRequests = "CancelSpotInstanceRequests"
 
 // CancelSpotInstanceRequestsRequest generates a "aws/request.Request" representing the
 // client's request for the CancelSpotInstanceRequests operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2309,7 +2309,7 @@ const opConfirmProductInstance = "ConfirmProductInstance"
 
 // ConfirmProductInstanceRequest generates a "aws/request.Request" representing the
 // client's request for the ConfirmProductInstance operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2385,7 +2385,7 @@ const opCopyFpgaImage = "CopyFpgaImage"
 
 // CopyFpgaImageRequest generates a "aws/request.Request" representing the
 // client's request for the CopyFpgaImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2459,7 +2459,7 @@ const opCopyImage = "CopyImage"
 
 // CopyImageRequest generates a "aws/request.Request" representing the
 // client's request for the CopyImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2539,7 +2539,7 @@ const opCopySnapshot = "CopySnapshot"
 
 // CopySnapshotRequest generates a "aws/request.Request" representing the
 // client's request for the CopySnapshot operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2632,7 +2632,7 @@ const opCreateCustomerGateway = "CreateCustomerGateway"
 
 // CreateCustomerGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the CreateCustomerGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2730,7 +2730,7 @@ const opCreateDefaultSubnet = "CreateDefaultSubnet"
 
 // CreateDefaultSubnetRequest generates a "aws/request.Request" representing the
 // client's request for the CreateDefaultSubnet operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2808,7 +2808,7 @@ const opCreateDefaultVpc = "CreateDefaultVpc"
 
 // CreateDefaultVpcRequest generates a "aws/request.Request" representing the
 // client's request for the CreateDefaultVpc operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -2894,7 +2894,7 @@ const opCreateDhcpOptions = "CreateDhcpOptions"
 
 // CreateDhcpOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the CreateDhcpOptions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3007,7 +3007,7 @@ const opCreateEgressOnlyInternetGateway = "CreateEgressOnlyInternetGateway"
 
 // CreateEgressOnlyInternetGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the CreateEgressOnlyInternetGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3084,7 +3084,7 @@ const opCreateFlowLogs = "CreateFlowLogs"
 
 // CreateFlowLogsRequest generates a "aws/request.Request" representing the
 // client's request for the CreateFlowLogs operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3135,9 +3135,6 @@ func (c *EC2) CreateFlowLogsRequest(input *CreateFlowLogsInput) (req *request.Re
 // In your request, you must also specify an IAM role that has permission to
 // publish logs to CloudWatch Logs.
 //
-// For more information, see VPC Flow Logs (http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html)
-// in the Amazon Virtual Private Cloud User Guide.
-//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -3170,7 +3167,7 @@ const opCreateFpgaImage = "CreateFpgaImage"
 
 // CreateFpgaImageRequest generates a "aws/request.Request" representing the
 // client's request for the CreateFpgaImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3251,7 +3248,7 @@ const opCreateImage = "CreateImage"
 
 // CreateImageRequest generates a "aws/request.Request" representing the
 // client's request for the CreateImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3334,7 +3331,7 @@ const opCreateInstanceExportTask = "CreateInstanceExportTask"
 
 // CreateInstanceExportTaskRequest generates a "aws/request.Request" representing the
 // client's request for the CreateInstanceExportTask operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3413,7 +3410,7 @@ const opCreateInternetGateway = "CreateInternetGateway"
 
 // CreateInternetGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the CreateInternetGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3491,7 +3488,7 @@ const opCreateKeyPair = "CreateKeyPair"
 
 // CreateKeyPairRequest generates a "aws/request.Request" representing the
 // client's request for the CreateKeyPair operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3577,7 +3574,7 @@ const opCreateLaunchTemplate = "CreateLaunchTemplate"
 
 // CreateLaunchTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the CreateLaunchTemplate operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3653,7 +3650,7 @@ const opCreateLaunchTemplateVersion = "CreateLaunchTemplateVersion"
 
 // CreateLaunchTemplateVersionRequest generates a "aws/request.Request" representing the
 // client's request for the CreateLaunchTemplateVersion operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3731,7 +3728,7 @@ const opCreateNatGateway = "CreateNatGateway"
 
 // CreateNatGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the CreateNatGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3810,7 +3807,7 @@ const opCreateNetworkAcl = "CreateNetworkAcl"
 
 // CreateNetworkAclRequest generates a "aws/request.Request" representing the
 // client's request for the CreateNetworkAcl operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3888,7 +3885,7 @@ const opCreateNetworkAclEntry = "CreateNetworkAclEntry"
 
 // CreateNetworkAclEntryRequest generates a "aws/request.Request" representing the
 // client's request for the CreateNetworkAclEntry operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -3980,7 +3977,7 @@ const opCreateNetworkInterface = "CreateNetworkInterface"
 
 // CreateNetworkInterfaceRequest generates a "aws/request.Request" representing the
 // client's request for the CreateNetworkInterface operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4058,7 +4055,7 @@ const opCreateNetworkInterfacePermission = "CreateNetworkInterfacePermission"
 
 // CreateNetworkInterfacePermissionRequest generates a "aws/request.Request" representing the
 // client's request for the CreateNetworkInterfacePermission operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4136,7 +4133,7 @@ const opCreatePlacementGroup = "CreatePlacementGroup"
 
 // CreatePlacementGroupRequest generates a "aws/request.Request" representing the
 // client's request for the CreatePlacementGroup operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4220,7 +4217,7 @@ const opCreateReservedInstancesListing = "CreateReservedInstancesListing"
 
 // CreateReservedInstancesListingRequest generates a "aws/request.Request" representing the
 // client's request for the CreateReservedInstancesListing operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4317,7 +4314,7 @@ const opCreateRoute = "CreateRoute"
 
 // CreateRouteRequest generates a "aws/request.Request" representing the
 // client's request for the CreateRoute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4410,7 +4407,7 @@ const opCreateRouteTable = "CreateRouteTable"
 
 // CreateRouteTableRequest generates a "aws/request.Request" representing the
 // client's request for the CreateRouteTable operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4488,7 +4485,7 @@ const opCreateSecurityGroup = "CreateSecurityGroup"
 
 // CreateSecurityGroupRequest generates a "aws/request.Request" representing the
 // client's request for the CreateSecurityGroup operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4588,7 +4585,7 @@ const opCreateSnapshot = "CreateSnapshot"
 
 // CreateSnapshotRequest generates a "aws/request.Request" representing the
 // client's request for the CreateSnapshot operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4653,9 +4650,6 @@ func (c *EC2) CreateSnapshotRequest(input *CreateSnapshotInput) (req *request.Re
 // encrypted. Your encrypted volumes and any associated snapshots always remain
 // protected.
 //
-// You can tag your snapshots during creation. For more information, see Tagging
-// Your Amazon EC2 Resources (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html).
-//
 // For more information, see Amazon Elastic Block Store (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AmazonEBS.html)
 // and Amazon EBS Encryption (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
@@ -4692,7 +4686,7 @@ const opCreateSpotDatafeedSubscription = "CreateSpotDatafeedSubscription"
 
 // CreateSpotDatafeedSubscriptionRequest generates a "aws/request.Request" representing the
 // client's request for the CreateSpotDatafeedSubscription operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4769,7 +4763,7 @@ const opCreateSubnet = "CreateSubnet"
 
 // CreateSubnetRequest generates a "aws/request.Request" representing the
 // client's request for the CreateSubnet operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4869,7 +4863,7 @@ const opCreateTags = "CreateTags"
 
 // CreateTagsRequest generates a "aws/request.Request" representing the
 // client's request for the CreateTags operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -4953,7 +4947,7 @@ const opCreateVolume = "CreateVolume"
 
 // CreateVolumeRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVolume operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5045,7 +5039,7 @@ const opCreateVpc = "CreateVpc"
 
 // CreateVpcRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpc operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5137,7 +5131,7 @@ const opCreateVpcEndpoint = "CreateVpcEndpoint"
 
 // CreateVpcEndpointRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpcEndpoint operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5227,7 +5221,7 @@ const opCreateVpcEndpointConnectionNotification = "CreateVpcEndpointConnectionNo
 
 // CreateVpcEndpointConnectionNotificationRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpcEndpointConnectionNotification operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5307,7 +5301,7 @@ const opCreateVpcEndpointServiceConfiguration = "CreateVpcEndpointServiceConfigu
 
 // CreateVpcEndpointServiceConfigurationRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpcEndpointServiceConfiguration operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5388,7 +5382,7 @@ const opCreateVpcPeeringConnection = "CreateVpcPeeringConnection"
 
 // CreateVpcPeeringConnectionRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpcPeeringConnection operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5477,7 +5471,7 @@ const opCreateVpnConnection = "CreateVpnConnection"
 
 // CreateVpnConnectionRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpnConnection operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5569,7 +5563,7 @@ const opCreateVpnConnectionRoute = "CreateVpnConnectionRoute"
 
 // CreateVpnConnectionRouteRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpnConnectionRoute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5652,7 +5646,7 @@ const opCreateVpnGateway = "CreateVpnGateway"
 
 // CreateVpnGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVpnGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5732,7 +5726,7 @@ const opDeleteCustomerGateway = "DeleteCustomerGateway"
 
 // DeleteCustomerGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteCustomerGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5809,7 +5803,7 @@ const opDeleteDhcpOptions = "DeleteDhcpOptions"
 
 // DeleteDhcpOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteDhcpOptions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5888,7 +5882,7 @@ const opDeleteEgressOnlyInternetGateway = "DeleteEgressOnlyInternetGateway"
 
 // DeleteEgressOnlyInternetGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteEgressOnlyInternetGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -5962,7 +5956,7 @@ const opDeleteFlowLogs = "DeleteFlowLogs"
 
 // DeleteFlowLogsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteFlowLogs operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6036,7 +6030,7 @@ const opDeleteFpgaImage = "DeleteFpgaImage"
 
 // DeleteFpgaImageRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteFpgaImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6110,7 +6104,7 @@ const opDeleteInternetGateway = "DeleteInternetGateway"
 
 // DeleteInternetGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteInternetGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6187,7 +6181,7 @@ const opDeleteKeyPair = "DeleteKeyPair"
 
 // DeleteKeyPairRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteKeyPair operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6263,7 +6257,7 @@ const opDeleteLaunchTemplate = "DeleteLaunchTemplate"
 
 // DeleteLaunchTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteLaunchTemplate operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6338,7 +6332,7 @@ const opDeleteLaunchTemplateVersions = "DeleteLaunchTemplateVersions"
 
 // DeleteLaunchTemplateVersionsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteLaunchTemplateVersions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6415,7 +6409,7 @@ const opDeleteNatGateway = "DeleteNatGateway"
 
 // DeleteNatGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteNatGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6491,7 +6485,7 @@ const opDeleteNetworkAcl = "DeleteNetworkAcl"
 
 // DeleteNetworkAclRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteNetworkAcl operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6568,7 +6562,7 @@ const opDeleteNetworkAclEntry = "DeleteNetworkAclEntry"
 
 // DeleteNetworkAclEntryRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteNetworkAclEntry operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6645,7 +6639,7 @@ const opDeleteNetworkInterface = "DeleteNetworkInterface"
 
 // DeleteNetworkInterfaceRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteNetworkInterface operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6722,7 +6716,7 @@ const opDeleteNetworkInterfacePermission = "DeleteNetworkInterfacePermission"
 
 // DeleteNetworkInterfacePermissionRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteNetworkInterfacePermission operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6799,7 +6793,7 @@ const opDeletePlacementGroup = "DeletePlacementGroup"
 
 // DeletePlacementGroupRequest generates a "aws/request.Request" representing the
 // client's request for the DeletePlacementGroup operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6878,7 +6872,7 @@ const opDeleteRoute = "DeleteRoute"
 
 // DeleteRouteRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteRoute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -6954,7 +6948,7 @@ const opDeleteRouteTable = "DeleteRouteTable"
 
 // DeleteRouteTableRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteRouteTable operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7032,7 +7026,7 @@ const opDeleteSecurityGroup = "DeleteSecurityGroup"
 
 // DeleteSecurityGroupRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteSecurityGroup operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7112,7 +7106,7 @@ const opDeleteSnapshot = "DeleteSnapshot"
 
 // DeleteSnapshotRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteSnapshot operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7202,7 +7196,7 @@ const opDeleteSpotDatafeedSubscription = "DeleteSpotDatafeedSubscription"
 
 // DeleteSpotDatafeedSubscriptionRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteSpotDatafeedSubscription operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7278,7 +7272,7 @@ const opDeleteSubnet = "DeleteSubnet"
 
 // DeleteSubnetRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteSubnet operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7355,7 +7349,7 @@ const opDeleteTags = "DeleteTags"
 
 // DeleteTagsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteTags operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7435,7 +7429,7 @@ const opDeleteVolume = "DeleteVolume"
 
 // DeleteVolumeRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVolume operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7517,7 +7511,7 @@ const opDeleteVpc = "DeleteVpc"
 
 // DeleteVpcRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpc operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7597,7 +7591,7 @@ const opDeleteVpcEndpointConnectionNotifications = "DeleteVpcEndpointConnectionN
 
 // DeleteVpcEndpointConnectionNotificationsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpcEndpointConnectionNotifications operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7671,7 +7665,7 @@ const opDeleteVpcEndpointServiceConfigurations = "DeleteVpcEndpointServiceConfig
 
 // DeleteVpcEndpointServiceConfigurationsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpcEndpointServiceConfigurations operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7748,7 +7742,7 @@ const opDeleteVpcEndpoints = "DeleteVpcEndpoints"
 
 // DeleteVpcEndpointsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpcEndpoints operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7825,7 +7819,7 @@ const opDeleteVpcPeeringConnection = "DeleteVpcPeeringConnection"
 
 // DeleteVpcPeeringConnectionRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpcPeeringConnection operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7868,8 +7862,7 @@ func (c *EC2) DeleteVpcPeeringConnectionRequest(input *DeleteVpcPeeringConnectio
 // Deletes a VPC peering connection. Either the owner of the requester VPC or
 // the owner of the accepter VPC can delete the VPC peering connection if it's
 // in the active state. The owner of the requester VPC can delete a VPC peering
-// connection in the pending-acceptance state. You cannot delete a VPC peering
-// connection that's in the failed state.
+// connection in the pending-acceptance state.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -7903,7 +7896,7 @@ const opDeleteVpnConnection = "DeleteVpnConnection"
 
 // DeleteVpnConnectionRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpnConnection operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -7988,7 +7981,7 @@ const opDeleteVpnConnectionRoute = "DeleteVpnConnectionRoute"
 
 // DeleteVpnConnectionRouteRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpnConnectionRoute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8067,7 +8060,7 @@ const opDeleteVpnGateway = "DeleteVpnGateway"
 
 // DeleteVpnGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVpnGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8147,7 +8140,7 @@ const opDeregisterImage = "DeregisterImage"
 
 // DeregisterImageRequest generates a "aws/request.Request" representing the
 // client's request for the DeregisterImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8231,7 +8224,7 @@ const opDescribeAccountAttributes = "DescribeAccountAttributes"
 
 // DescribeAccountAttributesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeAccountAttributes operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8279,7 +8272,7 @@ func (c *EC2) DescribeAccountAttributesRequest(input *DescribeAccountAttributesI
 //
 //    * default-vpc: The ID of the default VPC for your account, or none.
 //
-//    * max-instances: The maximum number of On-Demand Instances that you can
+//    * max-instances: The maximum number of On-Demand instances that you can
 //    run.
 //
 //    * vpc-max-security-groups-per-interface: The maximum number of security
@@ -8323,7 +8316,7 @@ const opDescribeAddresses = "DescribeAddresses"
 
 // DescribeAddressesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeAddresses operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8401,7 +8394,7 @@ const opDescribeAggregateIdFormat = "DescribeAggregateIdFormat"
 
 // DescribeAggregateIdFormatRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeAggregateIdFormat operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8450,12 +8443,12 @@ func (c *EC2) DescribeAggregateIdFormatRequest(input *DescribeAggregateIdFormatI
 // IDs.
 //
 // The following resource types support longer IDs: bundle | conversion-task
-// | customer-gateway | dhcp-options | elastic-ip-allocation | elastic-ip-association
-// | export-task | flow-log | image | import-task | instance | internet-gateway
-// | network-acl | network-acl-association | network-interface | network-interface-attachment
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
 // | prefix-list | reservation | route-table | route-table-association | security-group
 // | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
-// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway.
+// | vpc-peering-connection.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -8489,7 +8482,7 @@ const opDescribeAvailabilityZones = "DescribeAvailabilityZones"
 
 // DescribeAvailabilityZonesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeAvailabilityZones operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8569,7 +8562,7 @@ const opDescribeBundleTasks = "DescribeBundleTasks"
 
 // DescribeBundleTasksRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeBundleTasks operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8648,7 +8641,7 @@ const opDescribeClassicLinkInstances = "DescribeClassicLinkInstances"
 
 // DescribeClassicLinkInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeClassicLinkInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8725,7 +8718,7 @@ const opDescribeConversionTasks = "DescribeConversionTasks"
 
 // DescribeConversionTasksRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeConversionTasks operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8803,7 +8796,7 @@ const opDescribeCustomerGateways = "DescribeCustomerGateways"
 
 // DescribeCustomerGatewaysRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeCustomerGateways operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8881,7 +8874,7 @@ const opDescribeDhcpOptions = "DescribeDhcpOptions"
 
 // DescribeDhcpOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeDhcpOptions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -8958,7 +8951,7 @@ const opDescribeEgressOnlyInternetGateways = "DescribeEgressOnlyInternetGateways
 
 // DescribeEgressOnlyInternetGatewaysRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeEgressOnlyInternetGateways operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9032,7 +9025,7 @@ const opDescribeElasticGpus = "DescribeElasticGpus"
 
 // DescribeElasticGpusRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeElasticGpus operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9107,7 +9100,7 @@ const opDescribeExportTasks = "DescribeExportTasks"
 
 // DescribeExportTasksRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeExportTasks operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9181,7 +9174,7 @@ const opDescribeFlowLogs = "DescribeFlowLogs"
 
 // DescribeFlowLogsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeFlowLogs operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9257,7 +9250,7 @@ const opDescribeFpgaImageAttribute = "DescribeFpgaImageAttribute"
 
 // DescribeFpgaImageAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeFpgaImageAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9331,7 +9324,7 @@ const opDescribeFpgaImages = "DescribeFpgaImages"
 
 // DescribeFpgaImagesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeFpgaImages operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9407,7 +9400,7 @@ const opDescribeHostReservationOfferings = "DescribeHostReservationOfferings"
 
 // DescribeHostReservationOfferingsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeHostReservationOfferings operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9489,7 +9482,7 @@ const opDescribeHostReservations = "DescribeHostReservations"
 
 // DescribeHostReservationsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeHostReservations operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9564,7 +9557,7 @@ const opDescribeHosts = "DescribeHosts"
 
 // DescribeHostsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeHosts operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9642,7 +9635,7 @@ const opDescribeIamInstanceProfileAssociations = "DescribeIamInstanceProfileAsso
 
 // DescribeIamInstanceProfileAssociationsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeIamInstanceProfileAssociations operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9716,7 +9709,7 @@ const opDescribeIdFormat = "DescribeIdFormat"
 
 // DescribeIdFormatRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeIdFormat operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9762,12 +9755,12 @@ func (c *EC2) DescribeIdFormatRequest(input *DescribeIdFormatInput) (req *reques
 // be modified; it does not return information about other resource types.
 //
 // The following resource types support longer IDs: bundle | conversion-task
-// | customer-gateway | dhcp-options | elastic-ip-allocation | elastic-ip-association
-// | export-task | flow-log | image | import-task | instance | internet-gateway
-// | network-acl | network-acl-association | network-interface | network-interface-attachment
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
 // | prefix-list | reservation | route-table | route-table-association | security-group
 // | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
-// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway.
+// | vpc-peering-connection.
 //
 // These settings apply to the IAM user who makes the request; they do not apply
 // to the entire AWS account. By default, an IAM user defaults to the same settings
@@ -9808,7 +9801,7 @@ const opDescribeIdentityIdFormat = "DescribeIdentityIdFormat"
 
 // DescribeIdentityIdFormatRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeIdentityIdFormat operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9856,12 +9849,12 @@ func (c *EC2) DescribeIdentityIdFormatRequest(input *DescribeIdentityIdFormatInp
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // The following resource types support longer IDs: bundle | conversion-task
-// | customer-gateway | dhcp-options | elastic-ip-allocation | elastic-ip-association
-// | export-task | flow-log | image | import-task | instance | internet-gateway
-// | network-acl | network-acl-association | network-interface | network-interface-attachment
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
 // | prefix-list | reservation | route-table | route-table-association | security-group
 // | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
-// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway.
+// | vpc-peering-connection.
 //
 // These settings apply to the principal specified in the request. They do not
 // apply to the principal that makes the request.
@@ -9898,7 +9891,7 @@ const opDescribeImageAttribute = "DescribeImageAttribute"
 
 // DescribeImageAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeImageAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -9973,7 +9966,7 @@ const opDescribeImages = "DescribeImages"
 
 // DescribeImagesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeImages operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10053,7 +10046,7 @@ const opDescribeImportImageTasks = "DescribeImportImageTasks"
 
 // DescribeImportImageTasksRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeImportImageTasks operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10128,7 +10121,7 @@ const opDescribeImportSnapshotTasks = "DescribeImportSnapshotTasks"
 
 // DescribeImportSnapshotTasksRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeImportSnapshotTasks operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10202,7 +10195,7 @@ const opDescribeInstanceAttribute = "DescribeInstanceAttribute"
 
 // DescribeInstanceAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeInstanceAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10280,7 +10273,7 @@ const opDescribeInstanceCreditSpecifications = "DescribeInstanceCreditSpecificat
 
 // DescribeInstanceCreditSpecificationsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeInstanceCreditSpecifications operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10372,7 +10365,7 @@ const opDescribeInstanceStatus = "DescribeInstanceStatus"
 
 // DescribeInstanceStatusRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeInstanceStatus operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10523,7 +10516,7 @@ const opDescribeInstances = "DescribeInstances"
 
 // DescribeInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10668,7 +10661,7 @@ const opDescribeInternetGateways = "DescribeInternetGateways"
 
 // DescribeInternetGatewaysRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeInternetGateways operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10742,7 +10735,7 @@ const opDescribeKeyPairs = "DescribeKeyPairs"
 
 // DescribeKeyPairsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeKeyPairs operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10819,7 +10812,7 @@ const opDescribeLaunchTemplateVersions = "DescribeLaunchTemplateVersions"
 
 // DescribeLaunchTemplateVersionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeLaunchTemplateVersions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10894,7 +10887,7 @@ const opDescribeLaunchTemplates = "DescribeLaunchTemplates"
 
 // DescribeLaunchTemplatesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeLaunchTemplates operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -10968,7 +10961,7 @@ const opDescribeMovingAddresses = "DescribeMovingAddresses"
 
 // DescribeMovingAddressesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeMovingAddresses operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11044,7 +11037,7 @@ const opDescribeNatGateways = "DescribeNatGateways"
 
 // DescribeNatGatewaysRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeNatGateways operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11174,7 +11167,7 @@ const opDescribeNetworkAcls = "DescribeNetworkAcls"
 
 // DescribeNetworkAclsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeNetworkAcls operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11251,7 +11244,7 @@ const opDescribeNetworkInterfaceAttribute = "DescribeNetworkInterfaceAttribute"
 
 // DescribeNetworkInterfaceAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeNetworkInterfaceAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11326,7 +11319,7 @@ const opDescribeNetworkInterfacePermissions = "DescribeNetworkInterfacePermissio
 
 // DescribeNetworkInterfacePermissionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeNetworkInterfacePermissions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11400,7 +11393,7 @@ const opDescribeNetworkInterfaces = "DescribeNetworkInterfaces"
 
 // DescribeNetworkInterfacesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeNetworkInterfaces operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11474,7 +11467,7 @@ const opDescribePlacementGroups = "DescribePlacementGroups"
 
 // DescribePlacementGroupsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribePlacementGroups operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11550,7 +11543,7 @@ const opDescribePrefixLists = "DescribePrefixLists"
 
 // DescribePrefixListsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribePrefixLists operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11628,7 +11621,7 @@ const opDescribePrincipalIdFormat = "DescribePrincipalIdFormat"
 
 // DescribePrincipalIdFormatRequest generates a "aws/request.Request" representing the
 // client's request for the DescribePrincipalIdFormat operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11677,12 +11670,12 @@ func (c *EC2) DescribePrincipalIdFormatRequest(input *DescribePrincipalIdFormatI
 // the default ID settings.
 //
 // The following resource types support longer IDs: bundle | conversion-task
-// | customer-gateway | dhcp-options | elastic-ip-allocation | elastic-ip-association
-// | export-task | flow-log | image | import-task | instance | internet-gateway
-// | network-acl | network-acl-association | network-interface | network-interface-attachment
+// | dhcp-options | elastic-ip-allocation | elastic-ip-association | export-task
+// | flow-log | image | import-task | instance | internet-gateway | network-acl
+// | network-acl-association | network-interface | network-interface-attachment
 // | prefix-list | reservation | route-table | route-table-association | security-group
 // | snapshot | subnet | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
-// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway.
+// | vpc-peering-connection.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -11716,7 +11709,7 @@ const opDescribeRegions = "DescribeRegions"
 
 // DescribeRegionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeRegions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11793,7 +11786,7 @@ const opDescribeReservedInstances = "DescribeReservedInstances"
 
 // DescribeReservedInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeReservedInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11870,7 +11863,7 @@ const opDescribeReservedInstancesListings = "DescribeReservedInstancesListings"
 
 // DescribeReservedInstancesListingsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeReservedInstancesListings operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -11965,7 +11958,7 @@ const opDescribeReservedInstancesModifications = "DescribeReservedInstancesModif
 
 // DescribeReservedInstancesModificationsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeReservedInstancesModifications operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12101,7 +12094,7 @@ const opDescribeReservedInstancesOfferings = "DescribeReservedInstancesOfferings
 
 // DescribeReservedInstancesOfferingsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeReservedInstancesOfferings operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12242,7 +12235,7 @@ const opDescribeRouteTables = "DescribeRouteTables"
 
 // DescribeRouteTablesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeRouteTables operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12324,7 +12317,7 @@ const opDescribeScheduledInstanceAvailability = "DescribeScheduledInstanceAvaila
 
 // DescribeScheduledInstanceAvailabilityRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeScheduledInstanceAvailability operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12406,7 +12399,7 @@ const opDescribeScheduledInstances = "DescribeScheduledInstances"
 
 // DescribeScheduledInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeScheduledInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12480,7 +12473,7 @@ const opDescribeSecurityGroupReferences = "DescribeSecurityGroupReferences"
 
 // DescribeSecurityGroupReferencesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSecurityGroupReferences operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12555,7 +12548,7 @@ const opDescribeSecurityGroups = "DescribeSecurityGroups"
 
 // DescribeSecurityGroupsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSecurityGroups operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12636,7 +12629,7 @@ const opDescribeSnapshotAttribute = "DescribeSnapshotAttribute"
 
 // DescribeSnapshotAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSnapshotAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12714,7 +12707,7 @@ const opDescribeSnapshots = "DescribeSnapshots"
 
 // DescribeSnapshotsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSnapshots operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12889,7 +12882,7 @@ const opDescribeSpotDatafeedSubscription = "DescribeSpotDatafeedSubscription"
 
 // DescribeSpotDatafeedSubscriptionRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSpotDatafeedSubscription operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -12965,7 +12958,7 @@ const opDescribeSpotFleetInstances = "DescribeSpotFleetInstances"
 
 // DescribeSpotFleetInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSpotFleetInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13039,7 +13032,7 @@ const opDescribeSpotFleetRequestHistory = "DescribeSpotFleetRequestHistory"
 
 // DescribeSpotFleetRequestHistoryRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSpotFleetRequestHistory operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13118,7 +13111,7 @@ const opDescribeSpotFleetRequests = "DescribeSpotFleetRequests"
 
 // DescribeSpotFleetRequestsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSpotFleetRequests operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13251,7 +13244,7 @@ const opDescribeSpotInstanceRequests = "DescribeSpotInstanceRequests"
 
 // DescribeSpotInstanceRequestsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSpotInstanceRequests operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13338,7 +13331,7 @@ const opDescribeSpotPriceHistory = "DescribeSpotPriceHistory"
 
 // DescribeSpotPriceHistoryRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSpotPriceHistory operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13475,7 +13468,7 @@ const opDescribeStaleSecurityGroups = "DescribeStaleSecurityGroups"
 
 // DescribeStaleSecurityGroupsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeStaleSecurityGroups operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13552,7 +13545,7 @@ const opDescribeSubnets = "DescribeSubnets"
 
 // DescribeSubnetsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeSubnets operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13629,7 +13622,7 @@ const opDescribeTags = "DescribeTags"
 
 // DescribeTagsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeTags operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13762,7 +13755,7 @@ const opDescribeVolumeAttribute = "DescribeVolumeAttribute"
 
 // DescribeVolumeAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVolumeAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -13840,7 +13833,7 @@ const opDescribeVolumeStatus = "DescribeVolumeStatus"
 
 // DescribeVolumeStatusRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVolumeStatus operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14004,7 +13997,7 @@ const opDescribeVolumes = "DescribeVolumes"
 
 // DescribeVolumesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVolumes operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14144,7 +14137,7 @@ const opDescribeVolumesModifications = "DescribeVolumesModifications"
 
 // DescribeVolumesModificationsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVolumesModifications operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14230,7 +14223,7 @@ const opDescribeVpcAttribute = "DescribeVpcAttribute"
 
 // DescribeVpcAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14305,7 +14298,7 @@ const opDescribeVpcClassicLink = "DescribeVpcClassicLink"
 
 // DescribeVpcClassicLinkRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcClassicLink operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14379,7 +14372,7 @@ const opDescribeVpcClassicLinkDnsSupport = "DescribeVpcClassicLinkDnsSupport"
 
 // DescribeVpcClassicLinkDnsSupportRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcClassicLinkDnsSupport operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14459,7 +14452,7 @@ const opDescribeVpcEndpointConnectionNotifications = "DescribeVpcEndpointConnect
 
 // DescribeVpcEndpointConnectionNotificationsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcEndpointConnectionNotifications operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14534,7 +14527,7 @@ const opDescribeVpcEndpointConnections = "DescribeVpcEndpointConnections"
 
 // DescribeVpcEndpointConnectionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcEndpointConnections operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14609,7 +14602,7 @@ const opDescribeVpcEndpointServiceConfigurations = "DescribeVpcEndpointServiceCo
 
 // DescribeVpcEndpointServiceConfigurationsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcEndpointServiceConfigurations operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14683,7 +14676,7 @@ const opDescribeVpcEndpointServicePermissions = "DescribeVpcEndpointServicePermi
 
 // DescribeVpcEndpointServicePermissionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcEndpointServicePermissions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14758,7 +14751,7 @@ const opDescribeVpcEndpointServices = "DescribeVpcEndpointServices"
 
 // DescribeVpcEndpointServicesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcEndpointServices operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14832,7 +14825,7 @@ const opDescribeVpcEndpoints = "DescribeVpcEndpoints"
 
 // DescribeVpcEndpointsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcEndpoints operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14906,7 +14899,7 @@ const opDescribeVpcPeeringConnections = "DescribeVpcPeeringConnections"
 
 // DescribeVpcPeeringConnectionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcPeeringConnections operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -14980,7 +14973,7 @@ const opDescribeVpcs = "DescribeVpcs"
 
 // DescribeVpcsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpcs operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15054,7 +15047,7 @@ const opDescribeVpnConnections = "DescribeVpnConnections"
 
 // DescribeVpnConnectionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpnConnections operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15132,7 +15125,7 @@ const opDescribeVpnGateways = "DescribeVpnGateways"
 
 // DescribeVpnGatewaysRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVpnGateways operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15210,7 +15203,7 @@ const opDetachClassicLinkVpc = "DetachClassicLinkVpc"
 
 // DetachClassicLinkVpcRequest generates a "aws/request.Request" representing the
 // client's request for the DetachClassicLinkVpc operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15286,7 +15279,7 @@ const opDetachInternetGateway = "DetachInternetGateway"
 
 // DetachInternetGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the DetachInternetGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15364,7 +15357,7 @@ const opDetachNetworkInterface = "DetachNetworkInterface"
 
 // DetachNetworkInterfaceRequest generates a "aws/request.Request" representing the
 // client's request for the DetachNetworkInterface operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15440,7 +15433,7 @@ const opDetachVolume = "DetachVolume"
 
 // DetachVolumeRequest generates a "aws/request.Request" representing the
 // client's request for the DetachVolume operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15527,7 +15520,7 @@ const opDetachVpnGateway = "DetachVpnGateway"
 
 // DetachVpnGatewayRequest generates a "aws/request.Request" representing the
 // client's request for the DetachVpnGateway operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15610,7 +15603,7 @@ const opDisableVgwRoutePropagation = "DisableVgwRoutePropagation"
 
 // DisableVgwRoutePropagationRequest generates a "aws/request.Request" representing the
 // client's request for the DisableVgwRoutePropagation operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15687,7 +15680,7 @@ const opDisableVpcClassicLink = "DisableVpcClassicLink"
 
 // DisableVpcClassicLinkRequest generates a "aws/request.Request" representing the
 // client's request for the DisableVpcClassicLink operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15762,7 +15755,7 @@ const opDisableVpcClassicLinkDnsSupport = "DisableVpcClassicLinkDnsSupport"
 
 // DisableVpcClassicLinkDnsSupportRequest generates a "aws/request.Request" representing the
 // client's request for the DisableVpcClassicLinkDnsSupport operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15840,7 +15833,7 @@ const opDisassociateAddress = "DisassociateAddress"
 
 // DisassociateAddressRequest generates a "aws/request.Request" representing the
 // client's request for the DisassociateAddress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -15924,7 +15917,7 @@ const opDisassociateIamInstanceProfile = "DisassociateIamInstanceProfile"
 
 // DisassociateIamInstanceProfileRequest generates a "aws/request.Request" representing the
 // client's request for the DisassociateIamInstanceProfile operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16000,7 +15993,7 @@ const opDisassociateRouteTable = "DisassociateRouteTable"
 
 // DisassociateRouteTableRequest generates a "aws/request.Request" representing the
 // client's request for the DisassociateRouteTable operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16081,7 +16074,7 @@ const opDisassociateSubnetCidrBlock = "DisassociateSubnetCidrBlock"
 
 // DisassociateSubnetCidrBlockRequest generates a "aws/request.Request" representing the
 // client's request for the DisassociateSubnetCidrBlock operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16157,7 +16150,7 @@ const opDisassociateVpcCidrBlock = "DisassociateVpcCidrBlock"
 
 // DisassociateVpcCidrBlockRequest generates a "aws/request.Request" representing the
 // client's request for the DisassociateVpcCidrBlock operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16237,7 +16230,7 @@ const opEnableVgwRoutePropagation = "EnableVgwRoutePropagation"
 
 // EnableVgwRoutePropagationRequest generates a "aws/request.Request" representing the
 // client's request for the EnableVgwRoutePropagation operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16314,7 +16307,7 @@ const opEnableVolumeIO = "EnableVolumeIO"
 
 // EnableVolumeIORequest generates a "aws/request.Request" representing the
 // client's request for the EnableVolumeIO operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16391,7 +16384,7 @@ const opEnableVpcClassicLink = "EnableVpcClassicLink"
 
 // EnableVpcClassicLinkRequest generates a "aws/request.Request" representing the
 // client's request for the EnableVpcClassicLink operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16471,7 +16464,7 @@ const opEnableVpcClassicLinkDnsSupport = "EnableVpcClassicLinkDnsSupport"
 
 // EnableVpcClassicLinkDnsSupportRequest generates a "aws/request.Request" representing the
 // client's request for the EnableVpcClassicLinkDnsSupport operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16551,7 +16544,7 @@ const opGetConsoleOutput = "GetConsoleOutput"
 
 // GetConsoleOutputRequest generates a "aws/request.Request" representing the
 // client's request for the GetConsoleOutput operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16642,7 +16635,7 @@ const opGetConsoleScreenshot = "GetConsoleScreenshot"
 
 // GetConsoleScreenshotRequest generates a "aws/request.Request" representing the
 // client's request for the GetConsoleScreenshot operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16718,7 +16711,7 @@ const opGetHostReservationPurchasePreview = "GetHostReservationPurchasePreview"
 
 // GetHostReservationPurchasePreviewRequest generates a "aws/request.Request" representing the
 // client's request for the GetHostReservationPurchasePreview operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16797,7 +16790,7 @@ const opGetLaunchTemplateData = "GetLaunchTemplateData"
 
 // GetLaunchTemplateDataRequest generates a "aws/request.Request" representing the
 // client's request for the GetLaunchTemplateData operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16872,7 +16865,7 @@ const opGetPasswordData = "GetPasswordData"
 
 // GetPasswordDataRequest generates a "aws/request.Request" representing the
 // client's request for the GetPasswordData operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -16963,7 +16956,7 @@ const opGetReservedInstancesExchangeQuote = "GetReservedInstancesExchangeQuote"
 
 // GetReservedInstancesExchangeQuoteRequest generates a "aws/request.Request" representing the
 // client's request for the GetReservedInstancesExchangeQuote operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17040,7 +17033,7 @@ const opImportImage = "ImportImage"
 
 // ImportImageRequest generates a "aws/request.Request" representing the
 // client's request for the ImportImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17117,7 +17110,7 @@ const opImportInstance = "ImportInstance"
 
 // ImportInstanceRequest generates a "aws/request.Request" representing the
 // client's request for the ImportInstance operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17197,7 +17190,7 @@ const opImportKeyPair = "ImportKeyPair"
 
 // ImportKeyPairRequest generates a "aws/request.Request" representing the
 // client's request for the ImportKeyPair operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17278,7 +17271,7 @@ const opImportSnapshot = "ImportSnapshot"
 
 // ImportSnapshotRequest generates a "aws/request.Request" representing the
 // client's request for the ImportSnapshot operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17352,7 +17345,7 @@ const opImportVolume = "ImportVolume"
 
 // ImportVolumeRequest generates a "aws/request.Request" representing the
 // client's request for the ImportVolume operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17430,7 +17423,7 @@ const opModifyFpgaImageAttribute = "ModifyFpgaImageAttribute"
 
 // ModifyFpgaImageAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyFpgaImageAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17504,7 +17497,7 @@ const opModifyHosts = "ModifyHosts"
 
 // ModifyHostsRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyHosts operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17584,7 +17577,7 @@ const opModifyIdFormat = "ModifyIdFormat"
 
 // ModifyIdFormatRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyIdFormat operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17632,12 +17625,12 @@ func (c *EC2) ModifyIdFormatRequest(input *ModifyIdFormatInput) (req *request.Re
 //
 // This request can only be used to modify longer ID settings for resource types
 // that are within the opt-in period. Resources currently in their opt-in period
-// include: bundle | conversion-task | customer-gateway | dhcp-options | elastic-ip-allocation
+// include: bundle | conversion-task | dhcp-options | elastic-ip-allocation
 // | elastic-ip-association | export-task | flow-log | image | import-task |
 // internet-gateway | network-acl | network-acl-association | network-interface
 // | network-interface-attachment | prefix-list | route-table | route-table-association
 // | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
-// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway.
+// | vpc-peering-connection.
 //
 // This setting applies to the IAM user who makes the request; it does not apply
 // to the entire AWS account. By default, an IAM user defaults to the same settings
@@ -17682,7 +17675,7 @@ const opModifyIdentityIdFormat = "ModifyIdentityIdFormat"
 
 // ModifyIdentityIdFormatRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyIdentityIdFormat operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17731,12 +17724,12 @@ func (c *EC2) ModifyIdentityIdFormatRequest(input *ModifyIdentityIdFormatInput) 
 //
 // This request can only be used to modify longer ID settings for resource types
 // that are within the opt-in period. Resources currently in their opt-in period
-// include: bundle | conversion-task | customer-gateway | dhcp-options | elastic-ip-allocation
+// include: bundle | conversion-task | dhcp-options | elastic-ip-allocation
 // | elastic-ip-association | export-task | flow-log | image | import-task |
 // internet-gateway | network-acl | network-acl-association | network-interface
 // | network-interface-attachment | prefix-list | route-table | route-table-association
 // | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
-// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway.
+// | vpc-peering-connection..
 //
 // For more information, see Resource IDs (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/resource-ids.html)
 // in the Amazon Elastic Compute Cloud User Guide.
@@ -17780,7 +17773,7 @@ const opModifyImageAttribute = "ModifyImageAttribute"
 
 // ModifyImageAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyImageAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17865,7 +17858,7 @@ const opModifyInstanceAttribute = "ModifyInstanceAttribute"
 
 // ModifyInstanceAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyInstanceAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -17910,12 +17903,6 @@ func (c *EC2) ModifyInstanceAttributeRequest(input *ModifyInstanceAttributeInput
 // Modifies the specified attribute of the specified instance. You can specify
 // only one attribute at a time.
 //
-// Note: Using this action to change the security groups associated with an
-// elastic network interface (ENI) attached to an instance in a VPC can result
-// in an error if the instance has more than one ENI. To change the security
-// groups associated with an ENI attached to an instance that has multiple ENIs,
-// we recommend that you use the ModifyNetworkInterfaceAttribute action.
-//
 // To modify some attributes, the instance must be stopped. For more information,
 // see Modifying Attributes of a Stopped Instance (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_ChangingAttributesWhileInstanceStopped.html)
 // in the Amazon Elastic Compute Cloud User Guide.
@@ -17952,7 +17939,7 @@ const opModifyInstanceCreditSpecification = "ModifyInstanceCreditSpecification"
 
 // ModifyInstanceCreditSpecificationRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyInstanceCreditSpecification operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18030,7 +18017,7 @@ const opModifyInstancePlacement = "ModifyInstancePlacement"
 
 // ModifyInstancePlacementRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyInstancePlacement operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18070,28 +18057,25 @@ func (c *EC2) ModifyInstancePlacementRequest(input *ModifyInstancePlacementInput
 
 // ModifyInstancePlacement API operation for Amazon Elastic Compute Cloud.
 //
-// Modifies the placement attributes for a specified instance. You can do the
-// following:
+// Set the instance affinity value for a specific stopped instance and modify
+// the instance tenancy setting.
 //
-//    * Modify the affinity between an instance and a Dedicated Host (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/dedicated-hosts-overview.html).
-//    When affinity is set to host and the instance is not associated with a
-//    specific Dedicated Host, the next time the instance is launched, it is
-//    automatically associated with the host on which it lands. If the instance
-//    is restarted or rebooted, this relationship persists.
+// Instance affinity is disabled by default. When instance affinity is host
+// and it is not associated with a specific Dedicated Host, the next time it
+// is launched it will automatically be associated with the host it lands on.
+// This relationship will persist if the instance is stopped/started, or rebooted.
 //
-//    * Change the Dedicated Host with which an instance is associated.
+// You can modify the host ID associated with a stopped instance. If a stopped
+// instance has a new host ID association, the instance will target that host
+// when restarted.
 //
-//    * Change the instance tenancy of an instance from host to dedicated, or
-//    from dedicated to host.
+// You can modify the tenancy of a stopped instance with a tenancy of host or
+// dedicated.
 //
-//    * Move an instance to or from a placement group (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html).
-//
-// At least one attribute for affinity, host ID, tenancy, or placement group
-// name must be specified in the request. Affinity and tenancy can be modified
-// in the same request.
-//
-// To modify the host ID, tenancy, or placement group for an instance, the instance
-// must be in the stopped state.
+// Affinity, hostID, and tenancy are not required parameters, but at least one
+// of them must be specified in the request. Affinity and tenancy can be modified
+// in the same request, but tenancy can only be modified on instances that are
+// stopped.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -18125,7 +18109,7 @@ const opModifyLaunchTemplate = "ModifyLaunchTemplate"
 
 // ModifyLaunchTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyLaunchTemplate operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18201,7 +18185,7 @@ const opModifyNetworkInterfaceAttribute = "ModifyNetworkInterfaceAttribute"
 
 // ModifyNetworkInterfaceAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyNetworkInterfaceAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18278,7 +18262,7 @@ const opModifyReservedInstances = "ModifyReservedInstances"
 
 // ModifyReservedInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyReservedInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18358,7 +18342,7 @@ const opModifySnapshotAttribute = "ModifySnapshotAttribute"
 
 // ModifySnapshotAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifySnapshotAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18446,7 +18430,7 @@ const opModifySpotFleetRequest = "ModifySpotFleetRequest"
 
 // ModifySpotFleetRequestRequest generates a "aws/request.Request" representing the
 // client's request for the ModifySpotFleetRequest operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18542,7 +18526,7 @@ const opModifySubnetAttribute = "ModifySubnetAttribute"
 
 // ModifySubnetAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifySubnetAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18618,7 +18602,7 @@ const opModifyVolume = "ModifyVolume"
 
 // ModifyVolumeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVolume operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18724,7 +18708,7 @@ const opModifyVolumeAttribute = "ModifyVolumeAttribute"
 
 // ModifyVolumeAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVolumeAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18809,7 +18793,7 @@ const opModifyVpcAttribute = "ModifyVpcAttribute"
 
 // ModifyVpcAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVpcAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18885,7 +18869,7 @@ const opModifyVpcEndpoint = "ModifyVpcEndpoint"
 
 // ModifyVpcEndpointRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVpcEndpoint operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -18962,7 +18946,7 @@ const opModifyVpcEndpointConnectionNotification = "ModifyVpcEndpointConnectionNo
 
 // ModifyVpcEndpointConnectionNotificationRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVpcEndpointConnectionNotification operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19038,7 +19022,7 @@ const opModifyVpcEndpointServiceConfiguration = "ModifyVpcEndpointServiceConfigu
 
 // ModifyVpcEndpointServiceConfigurationRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVpcEndpointServiceConfiguration operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19115,7 +19099,7 @@ const opModifyVpcEndpointServicePermissions = "ModifyVpcEndpointServicePermissio
 
 // ModifyVpcEndpointServicePermissionsRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVpcEndpointServicePermissions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19191,7 +19175,7 @@ const opModifyVpcPeeringConnectionOptions = "ModifyVpcPeeringConnectionOptions"
 
 // ModifyVpcPeeringConnectionOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVpcPeeringConnectionOptions operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19241,7 +19225,7 @@ func (c *EC2) ModifyVpcPeeringConnectionOptionsRequest(input *ModifyVpcPeeringCo
 //    * Enable/disable communication over the peering connection between instances
 //    in your VPC and an EC2-Classic instance that's linked to the peer VPC.
 //
-//    * Enable/disable the ability to resolve public DNS hostnames to private
+//    * Enable/disable a local VPC to resolve public DNS hostnames to private
 //    IP addresses when queried from instances in the peer VPC.
 //
 // If the peered VPCs are in different accounts, each owner must initiate a
@@ -19284,7 +19268,7 @@ const opModifyVpcTenancy = "ModifyVpcTenancy"
 
 // ModifyVpcTenancyRequest generates a "aws/request.Request" representing the
 // client's request for the ModifyVpcTenancy operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19367,7 +19351,7 @@ const opMonitorInstances = "MonitorInstances"
 
 // MonitorInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the MonitorInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19446,7 +19430,7 @@ const opMoveAddressToVpc = "MoveAddressToVpc"
 
 // MoveAddressToVpcRequest generates a "aws/request.Request" representing the
 // client's request for the MoveAddressToVpc operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19526,7 +19510,7 @@ const opPurchaseHostReservation = "PurchaseHostReservation"
 
 // PurchaseHostReservationRequest generates a "aws/request.Request" representing the
 // client's request for the PurchaseHostReservation operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19603,7 +19587,7 @@ const opPurchaseReservedInstancesOffering = "PurchaseReservedInstancesOffering"
 
 // PurchaseReservedInstancesOfferingRequest generates a "aws/request.Request" representing the
 // client's request for the PurchaseReservedInstancesOffering operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19686,7 +19670,7 @@ const opPurchaseScheduledInstances = "PurchaseScheduledInstances"
 
 // PurchaseScheduledInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the PurchaseScheduledInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19769,7 +19753,7 @@ const opRebootInstances = "RebootInstances"
 
 // RebootInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the RebootInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19855,7 +19839,7 @@ const opRegisterImage = "RegisterImage"
 
 // RegisterImageRequest generates a "aws/request.Request" representing the
 // client's request for the RegisterImage operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -19957,7 +19941,7 @@ const opRejectVpcEndpointConnections = "RejectVpcEndpointConnections"
 
 // RejectVpcEndpointConnectionsRequest generates a "aws/request.Request" representing the
 // client's request for the RejectVpcEndpointConnections operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20032,7 +20016,7 @@ const opRejectVpcPeeringConnection = "RejectVpcPeeringConnection"
 
 // RejectVpcPeeringConnectionRequest generates a "aws/request.Request" representing the
 // client's request for the RejectVpcPeeringConnection operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20110,7 +20094,7 @@ const opReleaseAddress = "ReleaseAddress"
 
 // ReleaseAddressRequest generates a "aws/request.Request" representing the
 // client's request for the ReleaseAddress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20203,7 +20187,7 @@ const opReleaseHosts = "ReleaseHosts"
 
 // ReleaseHostsRequest generates a "aws/request.Request" representing the
 // client's request for the ReleaseHosts operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20288,7 +20272,7 @@ const opReplaceIamInstanceProfileAssociation = "ReplaceIamInstanceProfileAssocia
 
 // ReplaceIamInstanceProfileAssociationRequest generates a "aws/request.Request" representing the
 // client's request for the ReplaceIamInstanceProfileAssociation operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20367,7 +20351,7 @@ const opReplaceNetworkAclAssociation = "ReplaceNetworkAclAssociation"
 
 // ReplaceNetworkAclAssociationRequest generates a "aws/request.Request" representing the
 // client's request for the ReplaceNetworkAclAssociation operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20446,7 +20430,7 @@ const opReplaceNetworkAclEntry = "ReplaceNetworkAclEntry"
 
 // ReplaceNetworkAclEntryRequest generates a "aws/request.Request" representing the
 // client's request for the ReplaceNetworkAclEntry operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20524,7 +20508,7 @@ const opReplaceRoute = "ReplaceRoute"
 
 // ReplaceRouteRequest generates a "aws/request.Request" representing the
 // client's request for the ReplaceRoute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20606,7 +20590,7 @@ const opReplaceRouteTableAssociation = "ReplaceRouteTableAssociation"
 
 // ReplaceRouteTableAssociationRequest generates a "aws/request.Request" representing the
 // client's request for the ReplaceRouteTableAssociation operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20688,7 +20672,7 @@ const opReportInstanceStatus = "ReportInstanceStatus"
 
 // ReportInstanceStatusRequest generates a "aws/request.Request" representing the
 // client's request for the ReportInstanceStatus operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20770,7 +20754,7 @@ const opRequestSpotFleet = "RequestSpotFleet"
 
 // RequestSpotFleetRequest generates a "aws/request.Request" representing the
 // client's request for the RequestSpotFleet operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20863,7 +20847,7 @@ const opRequestSpotInstances = "RequestSpotInstances"
 
 // RequestSpotInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the RequestSpotInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -20940,7 +20924,7 @@ const opResetFpgaImageAttribute = "ResetFpgaImageAttribute"
 
 // ResetFpgaImageAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ResetFpgaImageAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21015,7 +20999,7 @@ const opResetImageAttribute = "ResetImageAttribute"
 
 // ResetImageAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ResetImageAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21093,7 +21077,7 @@ const opResetInstanceAttribute = "ResetInstanceAttribute"
 
 // ResetInstanceAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ResetInstanceAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21177,7 +21161,7 @@ const opResetNetworkInterfaceAttribute = "ResetNetworkInterfaceAttribute"
 
 // ResetNetworkInterfaceAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ResetNetworkInterfaceAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21254,7 +21238,7 @@ const opResetSnapshotAttribute = "ResetSnapshotAttribute"
 
 // ResetSnapshotAttributeRequest generates a "aws/request.Request" representing the
 // client's request for the ResetSnapshotAttribute operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21334,7 +21318,7 @@ const opRestoreAddressToClassic = "RestoreAddressToClassic"
 
 // RestoreAddressToClassicRequest generates a "aws/request.Request" representing the
 // client's request for the RestoreAddressToClassic operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21411,7 +21395,7 @@ const opRevokeSecurityGroupEgress = "RevokeSecurityGroupEgress"
 
 // RevokeSecurityGroupEgressRequest generates a "aws/request.Request" representing the
 // client's request for the RevokeSecurityGroupEgress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21499,7 +21483,7 @@ const opRevokeSecurityGroupIngress = "RevokeSecurityGroupIngress"
 
 // RevokeSecurityGroupIngressRequest generates a "aws/request.Request" representing the
 // client's request for the RevokeSecurityGroupIngress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21590,7 +21574,7 @@ const opRunInstances = "RunInstances"
 
 // RunInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the RunInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21717,7 +21701,7 @@ const opRunScheduledInstances = "RunScheduledInstances"
 
 // RunScheduledInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the RunScheduledInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21801,7 +21785,7 @@ const opStartInstances = "StartInstances"
 
 // StartInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the StartInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -21897,7 +21881,7 @@ const opStopInstances = "StopInstances"
 
 // StopInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the StopInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -22003,7 +21987,7 @@ const opTerminateInstances = "TerminateInstances"
 
 // TerminateInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the TerminateInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -22101,7 +22085,7 @@ const opUnassignIpv6Addresses = "UnassignIpv6Addresses"
 
 // UnassignIpv6AddressesRequest generates a "aws/request.Request" representing the
 // client's request for the UnassignIpv6Addresses operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -22175,7 +22159,7 @@ const opUnassignPrivateIpAddresses = "UnassignPrivateIpAddresses"
 
 // UnassignPrivateIpAddressesRequest generates a "aws/request.Request" representing the
 // client's request for the UnassignPrivateIpAddresses operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -22251,7 +22235,7 @@ const opUnmonitorInstances = "UnmonitorInstances"
 
 // UnmonitorInstancesRequest generates a "aws/request.Request" representing the
 // client's request for the UnmonitorInstances operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -22327,7 +22311,7 @@ const opUpdateSecurityGroupRuleDescriptionsEgress = "UpdateSecurityGroupRuleDesc
 
 // UpdateSecurityGroupRuleDescriptionsEgressRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateSecurityGroupRuleDescriptionsEgress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -22407,7 +22391,7 @@ const opUpdateSecurityGroupRuleDescriptionsIngress = "UpdateSecurityGroupRuleDes
 
 // UpdateSecurityGroupRuleDescriptionsIngressRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateSecurityGroupRuleDescriptionsIngress operation. The "output" return
-// value will be populated with the request's response once the request completes
+// value will be populated with the request's response once the request complets
 // successfuly.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
@@ -24383,7 +24367,7 @@ func (s *AttributeBooleanValue) SetValue(v bool) *AttributeBooleanValue {
 type AttributeValue struct {
 	_ struct{} `type:"structure"`
 
-	// The attribute value. The value is case-sensitive.
+	// The attribute value. Note that the value is case-sensitive.
 	Value *string `locationName:"value" type:"string"`
 }
 
@@ -26428,34 +26412,14 @@ type CopyImageInput struct {
 	// in the Amazon Elastic Compute Cloud User Guide.
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// An identifier for the AWS Key Management Service (AWS KMS) customer master
-	// key (CMK) to use when creating the encrypted volume. This parameter is only
-	// required if you want to use a non-default CMK; if this parameter is not specified,
-	// the default CMK for EBS is used. If a KmsKeyId is specified, the Encrypted
-	// flag must also be set.
-	//
-	// The CMK identifier may be provided in any of the following formats:
-	//
-	//    * Key ID
-	//
-	//    * Key alias, in the form alias/ExampleAlias
-	//
-	//    * ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed
-	//    by the region of the CMK, the AWS account ID of the CMK owner, the key
-	//    namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
-	//
-	//
-	//    * ARN using key alias. The alias ARN contains the arn:aws:kms namespace,
-	//    followed by the region of the CMK, the AWS account ID of the CMK owner,
-	//    the alias namespace, and then the CMK alias. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
-	//
-	//
-	// AWS parses KmsKeyId asynchronously, meaning that the action you call may
-	// appear to complete even though you provided an invalid identifier. This action
-	// will eventually report failure.
-	//
+	// The full ARN of the AWS Key Management Service (AWS KMS) CMK to use when
+	// encrypting the snapshots of an image during a copy operation. This parameter
+	// is only required if you want to use a non-default CMK; if this parameter
+	// is not specified, the default CMK for EBS is used. The ARN contains the arn:aws:kms
+	// namespace, followed by the region of the CMK, the AWS account ID of the CMK
+	// owner, the key namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
 	// The specified CMK must exist in the region that the snapshot is being copied
-	// to.
+	// to. If a KmsKeyId is specified, the Encrypted flag must also be set.
 	KmsKeyId *string `locationName:"kmsKeyId" type:"string"`
 
 	// The name of the new AMI in the destination region.
@@ -26607,43 +26571,25 @@ type CopySnapshotInput struct {
 	// the Amazon Elastic Compute Cloud User Guide.
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// An identifier for the AWS Key Management Service (AWS KMS) customer master
-	// key (CMK) to use when creating the encrypted volume. This parameter is only
-	// required if you want to use a non-default CMK; if this parameter is not specified,
-	// the default CMK for EBS is used. If a KmsKeyId is specified, the Encrypted
-	// flag must also be set.
-	//
-	// The CMK identifier may be provided in any of the following formats:
-	//
-	//    * Key ID
-	//
-	//    * Key alias
-	//
-	//    * ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed
-	//    by the region of the CMK, the AWS account ID of the CMK owner, the key
-	//    namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
-	//
-	//
-	//    * ARN using key alias. The alias ARN contains the arn:aws:kms namespace,
-	//    followed by the region of the CMK, the AWS account ID of the CMK owner,
-	//    the alias namespace, and then the CMK alias. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
-	//
-	//
-	// AWS parses KmsKeyId asynchronously, meaning that the action you call may
-	// appear to complete even though you provided an invalid identifier. The action
-	// will eventually fail.
+	// The full ARN of the AWS Key Management Service (AWS KMS) CMK to use when
+	// creating the snapshot copy. This parameter is only required if you want to
+	// use a non-default CMK; if this parameter is not specified, the default CMK
+	// for EBS is used. The ARN contains the arn:aws:kms namespace, followed by
+	// the region of the CMK, the AWS account ID of the CMK owner, the key namespace,
+	// and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	// The specified CMK must exist in the region that the snapshot is being copied
+	// to. If a KmsKeyId is specified, the Encrypted flag must also be set.
 	KmsKeyId *string `locationName:"kmsKeyId" type:"string"`
 
-	// When you copy an encrypted source snapshot using the Amazon EC2 Query API,
-	// you must supply a pre-signed URL. This parameter is optional for unencrypted
-	// snapshots. For more information, see Query Requests (http://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html).
-	//
-	// The PresignedUrl should use the snapshot source endpoint, the CopySnapshot
-	// action, and include the SourceRegion, SourceSnapshotId, and DestinationRegion
-	// parameters. The PresignedUrl must be signed using AWS Signature Version 4.
-	// Because EBS snapshots are stored in Amazon S3, the signing algorithm for
-	// this parameter uses the same logic that is described in Authenticating Requests
-	// by Using Query Parameters (AWS Signature Version 4) (http://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html)
+	// The pre-signed URL that facilitates copying an encrypted snapshot. This parameter
+	// is only required when copying an encrypted snapshot with the Amazon EC2 Query
+	// API; it is available as an optional parameter in all other cases. The PresignedUrl
+	// should use the snapshot source endpoint, the CopySnapshot action, and include
+	// the SourceRegion, SourceSnapshotId, and DestinationRegion parameters. The
+	// PresignedUrl must be signed using AWS Signature Version 4. Because EBS snapshots
+	// are stored in Amazon S3, the signing algorithm for this parameter uses the
+	// same logic that is described in Authenticating Requests by Using Query Parameters
+	// (AWS Signature Version 4) (http://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html)
 	// in the Amazon Simple Storage Service API Reference. An invalid or improperly
 	// signed PresignedUrl will cause the copy operation to fail asynchronously,
 	// and the snapshot will move to an error state.
@@ -29191,9 +29137,6 @@ type CreateSnapshotInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `locationName:"dryRun" type:"boolean"`
 
-	// The tags to apply to the snapshot during creation.
-	TagSpecifications []*TagSpecification `locationName:"TagSpecification" locationNameList:"item" type:"list"`
-
 	// The ID of the EBS volume.
 	//
 	// VolumeId is a required field
@@ -29232,12 +29175,6 @@ func (s *CreateSnapshotInput) SetDescription(v string) *CreateSnapshotInput {
 // SetDryRun sets the DryRun field's value.
 func (s *CreateSnapshotInput) SetDryRun(v bool) *CreateSnapshotInput {
 	s.DryRun = &v
-	return s
-}
-
-// SetTagSpecifications sets the TagSpecifications field's value.
-func (s *CreateSnapshotInput) SetTagSpecifications(v []*TagSpecification) *CreateSnapshotInput {
-	s.TagSpecifications = v
 	return s
 }
 
@@ -29548,38 +29485,20 @@ type CreateVolumeInput struct {
 	// in the Amazon Elastic Compute Cloud User Guide.
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// The number of I/O operations per second (IOPS) to provision for the volume,
-	// with a maximum ratio of 50 IOPS/GiB. Range is 100 to 32000 IOPS for volumes
-	// in most regions. For exceptions, see Amazon EBS Volume Types (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html).
+	// Only valid for Provisioned IOPS SSD volumes. The number of I/O operations
+	// per second (IOPS) to provision for the volume, with a maximum ratio of 50
+	// IOPS/GiB.
 	//
-	// This parameter is valid only for Provisioned IOPS SSD (io1) volumes.
+	// Constraint: Range is 100 to 20000 for Provisioned IOPS SSD volumes
 	Iops *int64 `type:"integer"`
 
-	// An identifier for the AWS Key Management Service (AWS KMS) customer master
+	// The full ARN of the AWS Key Management Service (AWS KMS) customer master
 	// key (CMK) to use when creating the encrypted volume. This parameter is only
 	// required if you want to use a non-default CMK; if this parameter is not specified,
-	// the default CMK for EBS is used. If a KmsKeyId is specified, the Encrypted
-	// flag must also be set.
-	//
-	// The CMK identifier may be provided in any of the following formats:
-	//
-	//    * Key ID
-	//
-	//    * Key alias
-	//
-	//    * ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed
-	//    by the region of the CMK, the AWS account ID of the CMK owner, the key
-	//    namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
-	//
-	//
-	//    * ARN using key alias. The alias ARN contains the arn:aws:kms namespace,
-	//    followed by the region of the CMK, the AWS account ID of the CMK owner,
-	//    the alias namespace, and then the CMK alias. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
-	//
-	//
-	// AWS parses KmsKeyId asynchronously, meaning that the action you call may
-	// appear to complete even though you provided an invalid identifier. The action
-	// will eventually fail.
+	// the default CMK for EBS is used. The ARN contains the arn:aws:kms namespace,
+	// followed by the region of the CMK, the AWS account ID of the CMK owner, the
+	// key namespace, and then the CMK ID. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	// If a KmsKeyId is specified, the Encrypted flag must also be set.
 	KmsKeyId *string `type:"string"`
 
 	// The size of the volume, in GiBs.
@@ -29602,10 +29521,7 @@ type CreateVolumeInput struct {
 	// IOPS SSD, st1 for Throughput Optimized HDD, sc1 for Cold HDD, or standard
 	// for Magnetic volumes.
 	//
-	// Defaults: If no volume type is specified, the default is standard in us-east-1,
-	// eu-west-1, eu-central-1, us-west-2, us-west-1, sa-east-1, ap-northeast-1,
-	// ap-northeast-2, ap-southeast-1, ap-southeast-2, ap-south-1, us-gov-west-1,
-	// and cn-north-1. In all other regions, EBS defaults to gp2.
+	// Default: standard
 	VolumeType *string `type:"string" enum:"VolumeType"`
 }
 
@@ -32359,14 +32275,12 @@ type DeleteTagsInput struct {
 	// Resources is a required field
 	Resources []*string `locationName:"resourceId" type:"list" required:"true"`
 
-	// One or more tags to delete. Specify a tag key and an optional tag value to
-	// delete specific tags. If you specify a tag key without a tag value, we delete
-	// any tag with this key regardless of its value. If you specify a tag key with
-	// an empty string as the tag value, we delete the tag only if its value is
-	// an empty string.
-	//
-	// If you omit this parameter, we delete all user-defined tags for the specified
-	// resources. We do not delete AWS-generated tags (tags that have the aws: prefix).
+	// One or more tags to delete. If you omit this parameter, we delete all tags
+	// for the specified resources. Specify a tag key and an optional tag value
+	// to delete specific tags. If you specify a tag key without a tag value, we
+	// delete any tag with this key regardless of its value. If you specify a tag
+	// key with an empty string as the tag value, we delete the tag only if its
+	// value is an empty string.
 	Tags []*Tag `locationName:"tag" locationNameList:"item" type:"list"`
 }
 
@@ -33319,9 +33233,9 @@ type DescribeAggregateIdFormatOutput struct {
 	// Information about each resource's ID format.
 	Statuses []*IdFormat `locationName:"statusSet" locationNameList:"item" type:"list"`
 
-	// Indicates whether all resource types in the region are configured to use
-	// longer IDs. This value is only true if all users are configured to use longer
-	// IDs for all resources types in the region.
+	// Indicates whether all resrouces types in the region are configured to use
+	// longer IDs. This value will only be true if all users are configured to use
+	// longer IDs for all resources types in the region.
 	UseLongIdsAggregated *bool `locationName:"useLongIdsAggregated" type:"boolean"`
 }
 
@@ -34708,21 +34622,21 @@ type DescribeHostsInput struct {
 
 	// One or more filters.
 	//
-	//    * auto-placement - Whether auto-placement is enabled or disabled (on |
-	//    off).
-	//
-	//    * availability-zone - The Availability Zone of the host.
-	//
-	//    * client-token - The idempotency token you provided when you allocated
-	//    the host.
-	//
-	//    * host-reservation-id - The ID of the reservation assigned to this host.
-	//
 	//    * instance-type - The instance type size that the Dedicated Host is configured
 	//    to support.
 	//
-	//    * state - The allocation state of the Dedicated Host (available | under-assessment
+	//    * auto-placement - Whether auto-placement is enabled or disabled (on |
+	//    off).
+	//
+	//    * host-reservation-id - The ID of the reservation assigned to this host.
+	//
+	//    * client-token - The idempotency token you provided when you launched
+	//    the instance
+	//
+	//    * state- The allocation state of the Dedicated Host (available | under-assessment
 	//    | permanent-failure | released | released-permanent-failure).
+	//
+	//    * availability-zone - The Availability Zone of the host.
 	Filter []*Filter `locationName:"filter" locationNameList:"Filter" type:"list"`
 
 	// The IDs of the Dedicated Hosts. The IDs are used for targeted instance launches.
@@ -34916,13 +34830,12 @@ func (s *DescribeIamInstanceProfileAssociationsOutput) SetNextToken(v string) *D
 type DescribeIdFormatInput struct {
 	_ struct{} `type:"structure"`
 
-	// The type of resource: bundle | conversion-task | customer-gateway | dhcp-options
-	// | elastic-ip-allocation | elastic-ip-association | export-task | flow-log
-	// | image | import-task | instance | internet-gateway | network-acl | network-acl-association
-	// | network-interface | network-interface-attachment | prefix-list | reservation
-	// | route-table | route-table-association | security-group | snapshot | subnet
-	// | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
-	// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// instance | internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | reservation | route-table
+	// | route-table-association | security-group | snapshot | subnet | subnet-cidr-block-association
+	// | volume | vpc | vpc-cidr-block-association | vpc-peering-connection
 	Resource *string `type:"string"`
 }
 
@@ -34976,13 +34889,12 @@ type DescribeIdentityIdFormatInput struct {
 	// PrincipalArn is a required field
 	PrincipalArn *string `locationName:"principalArn" type:"string" required:"true"`
 
-	// The type of resource: bundle | conversion-task | customer-gateway | dhcp-options
-	// | elastic-ip-allocation | elastic-ip-association | export-task | flow-log
-	// | image | import-task | instance | internet-gateway | network-acl | network-acl-association
-	// | network-interface | network-interface-attachment | prefix-list | reservation
-	// | route-table | route-table-association | security-group | snapshot | subnet
-	// | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
-	// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// instance | internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | reservation | route-table
+	// | route-table-association | security-group | snapshot | subnet | subnet-cidr-block-association
+	// | volume | vpc | vpc-cidr-block-association | vpc-peering-connection
 	Resource *string `locationName:"resource" type:"string"`
 }
 
@@ -37794,13 +37706,12 @@ type DescribePrincipalIdFormatInput struct {
 	// The token to request the next page of results.
 	NextToken *string `type:"string"`
 
-	// The type of resource: bundle | conversion-task | customer-gateway | dhcp-options
-	// | elastic-ip-allocation | elastic-ip-association | export-task | flow-log
-	// | image | import-task | instance | internet-gateway | network-acl | network-acl-association
-	// | network-interface | network-interface-attachment | prefix-list | reservation
-	// | route-table | route-table-association | security-group | snapshot | subnet
-	// | subnet-cidr-block-association | volume | vpc | vpc-cidr-block-association
-	// | vpc-endpoint | vpc-peering-connection | vpn-connection | vpn-gateway
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// instance | internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | reservation | route-table
+	// | route-table-association | security-group | snapshot | subnet | subnet-cidr-block-association
+	// | volume | vpc | vpc-cidr-block-association | vpc-peering-connection
 	Resources []*string `locationName:"Resource" locationNameList:"item" type:"list"`
 }
 
@@ -39933,9 +39844,7 @@ type DescribeSpotInstanceRequestsInput struct {
 	//    for General Purpose SSD, io1 for Provisioned IOPS SSD, st1 for Throughput
 	//    Optimized HDD, sc1for Cold HDD, or standard for Magnetic.
 	//
-	//    * launch.group-id - The ID of the security group for the instance.
-	//
-	//    * launch.group-name - The name of the security group for the instance.
+	//    * launch.group-id - The security group for the instance.
 	//
 	//    * launch.image-id - The ID of the AMI.
 	//
@@ -40196,8 +40105,8 @@ func (s *DescribeSpotPriceHistoryInput) SetStartTime(v time.Time) *DescribeSpotP
 type DescribeSpotPriceHistoryOutput struct {
 	_ struct{} `type:"structure"`
 
-	// The token required to retrieve the next set of results. This value is null
-	// or an empty string when there are no more results to return.
+	// The token required to retrieve the next set of results. This value is an
+	// empty string when there are no more results to return.
 	NextToken *string `locationName:"nextToken" type:"string"`
 
 	// The historical Spot prices.
@@ -40817,7 +40726,8 @@ type DescribeVolumesInput struct {
 	//    * attachment.instance-id - The ID of the instance the volume is attached
 	//    to.
 	//
-	//    * attachment.status - The attachment state (attaching | attached | detaching).
+	//    * attachment.status - The attachment state (attaching | attached | detaching
+	//    | detached).
 	//
 	//    * availability-zone - The Availability Zone in which the volume was created.
 	//
@@ -43750,8 +43660,7 @@ type EbsBlockDevice struct {
 	// it is not used in requests to create gp2, st1, sc1, or standard volumes.
 	Iops *int64 `locationName:"iops" type:"integer"`
 
-	// Identifier (key ID, key alias, ID ARN, or alias ARN) for a user-managed CMK
-	// under which the EBS volume is encrypted.
+	// ID for a user-managed CMK under which the EBS volume is encrypted.
 	//
 	// Note: This parameter is only supported on BlockDeviceMapping objects called
 	// by RunInstances (http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_RunInstances.html),
@@ -44692,30 +44601,8 @@ func (s *ExportToS3TaskSpecification) SetS3Prefix(v string) *ExportToS3TaskSpeci
 }
 
 // A filter name and value pair that is used to return a more specific list
-// of results from a describe operation. Filters can be used to match a set
-// of resources by specific criteria, such as tags, attributes, or IDs. The
-// filters supported by a describe operation are documented with the describe
-// operation. For example:
-//
-//    * DescribeAvailabilityZones
-//
-//    * DescribeImages
-//
-//    * DescribeInstances
-//
-//    * DescribeKeyPairs
-//
-//    * DescribeSecurityGroups
-//
-//    * DescribeSnapshots
-//
-//    * DescribeSubnets
-//
-//    * DescribeTags
-//
-//    * DescribeVolumes
-//
-//    * DescribeVpcs
+// of results. Filters can be used to match a set of resources by various criteria,
+// such as tags, attributes, or IDs.
 type Filter struct {
 	_ struct{} `type:"structure"`
 
@@ -45871,9 +45758,6 @@ func (s *HistoryRecord) SetTimestamp(v time.Time) *HistoryRecord {
 type Host struct {
 	_ struct{} `type:"structure"`
 
-	// The time that the Dedicated Host was allocated.
-	AllocationTime *time.Time `locationName:"allocationTime" type:"timestamp" timestampFormat:"iso8601"`
-
 	// Whether auto-placement is on or off.
 	AutoPlacement *string `locationName:"autoPlacement" type:"string" enum:"AutoPlacement"`
 
@@ -45901,9 +45785,6 @@ type Host struct {
 	// The IDs and instance type that are currently running on the Dedicated Host.
 	Instances []*HostInstance `locationName:"instances" locationNameList:"item" type:"list"`
 
-	// The time that the Dedicated Host was released.
-	ReleaseTime *time.Time `locationName:"releaseTime" type:"timestamp" timestampFormat:"iso8601"`
-
 	// The Dedicated Host's state.
 	State *string `locationName:"state" type:"string" enum:"AllocationState"`
 }
@@ -45916,12 +45797,6 @@ func (s Host) String() string {
 // GoString returns the string representation
 func (s Host) GoString() string {
 	return s.String()
-}
-
-// SetAllocationTime sets the AllocationTime field's value.
-func (s *Host) SetAllocationTime(v time.Time) *Host {
-	s.AllocationTime = &v
-	return s
 }
 
 // SetAutoPlacement sets the AutoPlacement field's value.
@@ -45969,12 +45844,6 @@ func (s *Host) SetHostReservationId(v string) *Host {
 // SetInstances sets the Instances field's value.
 func (s *Host) SetInstances(v []*HostInstance) *Host {
 	s.Instances = v
-	return s
-}
-
-// SetReleaseTime sets the ReleaseTime field's value.
-func (s *Host) SetReleaseTime(v time.Time) *Host {
-	s.ReleaseTime = &v
 	return s
 }
 
@@ -47259,7 +47128,7 @@ type ImportInstanceLaunchSpecification struct {
 	InstanceInitiatedShutdownBehavior *string `locationName:"instanceInitiatedShutdownBehavior" type:"string" enum:"ShutdownBehavior"`
 
 	// The instance type. For more information about the instance types that you
-	// can import, see Instance Types (http://docs.aws.amazon.com/vm-import/latest/userguide/vmie_prereqs.html#vmimport-instance-types)
+	// can import, see Instance Types (http://docs.aws.amazon.com/vm-import/latest/userguide/vmimport-image-import.html#vmimport-instance-types)
 	// in the VM Import/Export User Guide.
 	InstanceType *string `locationName:"instanceType" type:"string" enum:"InstanceType"`
 
@@ -51810,13 +51679,12 @@ func (s *ModifyHostsOutput) SetUnsuccessful(v []*UnsuccessfulItem) *ModifyHostsO
 type ModifyIdFormatInput struct {
 	_ struct{} `type:"structure"`
 
-	// The type of resource: bundle | conversion-task | customer-gateway | dhcp-options
-	// | elastic-ip-allocation | elastic-ip-association | export-task | flow-log
-	// | image | import-task | internet-gateway | network-acl | network-acl-association
-	// | network-interface | network-interface-attachment | prefix-list | route-table
-	// | route-table-association | security-group | subnet | subnet-cidr-block-association
-	// | vpc | vpc-cidr-block-association | vpc-endpoint | vpc-peering-connection
-	// | vpn-connection | vpn-gateway.
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | route-table | route-table-association
+	// | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
+	// | vpc-peering-connection.
 	//
 	// Alternatively, use the all-current option to include all resource types that
 	// are currently within their opt-in period for longer IDs.
@@ -51893,13 +51761,12 @@ type ModifyIdentityIdFormatInput struct {
 	// PrincipalArn is a required field
 	PrincipalArn *string `locationName:"principalArn" type:"string" required:"true"`
 
-	// The type of resource: bundle | conversion-task | customer-gateway | dhcp-options
-	// | elastic-ip-allocation | elastic-ip-association | export-task | flow-log
-	// | image | import-task | internet-gateway | network-acl | network-acl-association
-	// | network-interface | network-interface-attachment | prefix-list | route-table
-	// | route-table-association | security-group | subnet | subnet-cidr-block-association
-	// | vpc | vpc-cidr-block-association | vpc-endpoint | vpc-peering-connection
-	// | vpn-connection | vpn-gateway.
+	// The type of resource: bundle | conversion-task | dhcp-options | elastic-ip-allocation
+	// | elastic-ip-association | export-task | flow-log | image | import-task |
+	// internet-gateway | network-acl | network-acl-association | network-interface
+	// | network-interface-attachment | prefix-list | route-table | route-table-association
+	// | security-group | subnet | subnet-cidr-block-association | vpc | vpc-cidr-block-association
+	// | vpc-peering-connection.
 	//
 	// Alternatively, use the all-current option to include all resource types that
 	// are currently within their opt-in period for longer IDs.
@@ -52446,17 +52313,10 @@ func (s *ModifyInstanceCreditSpecificationOutput) SetUnsuccessfulInstanceCreditS
 type ModifyInstancePlacementInput struct {
 	_ struct{} `type:"structure"`
 
-	// The affinity setting for the instance.
+	// The new affinity setting for the instance.
 	Affinity *string `locationName:"affinity" type:"string" enum:"Affinity"`
 
-	// The name of the placement group in which to place the instance. For spread
-	// placement groups, the instance must have a tenancy of default. For cluster
-	// placement groups, the instance must have a tenancy of default or dedicated.
-	//
-	// To remove an instance from a placement group, specify an empty string ("").
-	GroupName *string `type:"string"`
-
-	// The ID of the Dedicated Host with which to associate the instance.
+	// The ID of the Dedicated Host that the instance will have affinity with.
 	HostId *string `locationName:"hostId" type:"string"`
 
 	// The ID of the instance that you are modifying.
@@ -52464,7 +52324,7 @@ type ModifyInstancePlacementInput struct {
 	// InstanceId is a required field
 	InstanceId *string `locationName:"instanceId" type:"string" required:"true"`
 
-	// The tenancy for the instance.
+	// The tenancy of the instance that you are modifying.
 	Tenancy *string `locationName:"tenancy" type:"string" enum:"HostTenancy"`
 }
 
@@ -52494,12 +52354,6 @@ func (s *ModifyInstancePlacementInput) Validate() error {
 // SetAffinity sets the Affinity field's value.
 func (s *ModifyInstancePlacementInput) SetAffinity(v string) *ModifyInstancePlacementInput {
 	s.Affinity = &v
-	return s
-}
-
-// SetGroupName sets the GroupName field's value.
-func (s *ModifyInstancePlacementInput) SetGroupName(v string) *ModifyInstancePlacementInput {
-	s.GroupName = &v
 	return s
 }
 
@@ -53218,8 +53072,6 @@ type ModifyVolumeInput struct {
 	// Default: If no size is specified, the existing size is retained.
 	Size *int64 `type:"integer"`
 
-	// The ID of the volume.
-	//
 	// VolumeId is a required field
 	VolumeId *string `type:"string" required:"true"`
 
@@ -55284,8 +55136,8 @@ func (s *PciId) SetVendorId(v string) *PciId {
 type PeeringConnectionOptions struct {
 	_ struct{} `type:"structure"`
 
-	// If true, the public DNS hostnames of instances in the specified VPC resolve
-	// to private IP addresses when queried from instances in the peer VPC.
+	// If true, enables a local VPC to resolve public DNS hostnames to private IP
+	// addresses when queried from instances in the peer VPC.
 	AllowDnsResolutionFromRemoteVpc *bool `locationName:"allowDnsResolutionFromRemoteVpc" type:"boolean"`
 
 	// If true, enables outbound communication from an EC2-Classic instance that's
@@ -66112,7 +65964,7 @@ type Volume struct {
 	// performance, I/O credits, and bursting, see Amazon EBS Volume Types (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
 	// in the Amazon Elastic Compute Cloud User Guide.
 	//
-	// Constraint: Range is 100-32000 IOPS for io1 volumes and 100-10000 IOPS for
+	// Constraint: Range is 100-20000 IOPS for io1 volumes and 100-10000 IOPS for
 	// gp2 volumes.
 	//
 	// Condition: This parameter is required for requests to create io1 volumes;
@@ -68767,9 +68619,6 @@ const (
 const (
 	// NetworkInterfaceStatusAvailable is a NetworkInterfaceStatus enum value
 	NetworkInterfaceStatusAvailable = "available"
-
-	// NetworkInterfaceStatusAssociated is a NetworkInterfaceStatus enum value
-	NetworkInterfaceStatusAssociated = "associated"
 
 	// NetworkInterfaceStatusAttaching is a NetworkInterfaceStatus enum value
 	NetworkInterfaceStatusAttaching = "attaching"

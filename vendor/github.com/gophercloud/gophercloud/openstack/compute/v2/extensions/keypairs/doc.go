@@ -58,7 +58,7 @@ Example to Create a Server With a Key Pair
 		FlavorRef: "flavor-uuid",
 	}
 
-	createOpts := keypairs.CreateOptsExt{
+	createOpts := keypairs.CreateOpts{
 		CreateOptsBuilder: serverCreateOpts,
 		KeyName:           "keypair-name",
 	}

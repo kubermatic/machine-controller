@@ -21,7 +21,6 @@ type ListOpts struct {
 	Name         string `q:"name"`
 	AdminStateUp *bool  `q:"admin_state_up"`
 	TenantID     string `q:"tenant_id"`
-	ProjectID    string `q:"project_id"`
 	Shared       *bool  `q:"shared"`
 	ID           string `q:"id"`
 	Marker       string `q:"marker"`
@@ -71,7 +70,6 @@ type CreateOpts struct {
 	Name                  string   `json:"name,omitempty"`
 	Shared                *bool    `json:"shared,omitempty"`
 	TenantID              string   `json:"tenant_id,omitempty"`
-	ProjectID             string   `json:"project_id,omitempty"`
 	AvailabilityZoneHints []string `json:"availability_zone_hints,omitempty"`
 }
 
