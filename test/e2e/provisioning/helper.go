@@ -11,55 +11,106 @@ import (
 
 var scenarios = []scenario{
 	{
-		name:                    "scenario 1 Ubuntu Docker 1.13",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
+		name:              "Ubuntu Docker Kubernetes v1.8.13",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.8.13",
+	},
+	{
+		name:              "Ubuntu Docker Kubernetes v1.9.8",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.9.8",
+	},
+	{
+		name:              "Ubuntu Docker Kubernetes v1.10.5",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	},
+	{
+		name:              "Ubuntu Docker Kubernetes v1.11.0",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.11.0",
+	},
+	{
+		name:              "Ubuntu CRI-O Kubernetes v1.9.8",
+		osName:            "ubuntu",
+		containerRuntime:  "cri-o",
+		kubernetesVersion: "1.9.8",
+	},
+	{
+		name:              "Ubuntu CRI-O Kubernetes v1.10.5",
+		osName:            "ubuntu",
+		containerRuntime:  "cri-o",
+		kubernetesVersion: "1.10.5",
+	},
+	{
+		name:              "Ubuntu CRI-O Kubernetes v1.11.0",
+		osName:            "ubuntu",
+		containerRuntime:  "cri-o",
+		kubernetesVersion: "1.11.0",
 	},
 
 	{
-		name:                    "scenario 2 Ubuntu Docker 17.03",
-		osName:                  "ubuntu",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
+		name:              "CentOS Docker Kubernetes v1.8.13",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.8.13",
+	},
+	{
+		name:              "CentOS Docker Kubernetes v1.9.8",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.9.8",
+	},
+	{
+		name:              "CentOS Docker Kubernetes v1.10.5",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	},
+	{
+		name:              "CentOS Docker Kubernetes v1.11.0",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.11.0",
 	},
 
 	{
-		name:                    "scenario 3 Ubuntu CRI-O 1.9",
-		osName:                  "ubuntu",
-		containerRuntime:        "cri-o",
-		containerRuntimeVersion: "1.9",
+		name:              "Coreos Docker Kubernetes v1.8.13",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.8.13",
 	},
-
 	{
-		name:                    "scenario 4 CentOS Docker 1.13",
-		osName:                  "centos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
+		name:              "Coreos Docker Kubernetes v1.9.8",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.9.8",
 	},
-
 	{
-		name:                    "scenario 5 CoreOS Docker 1.13",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "1.13",
+		name:              "Coreos Docker Kubernetes v1.10.5",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
 	},
-
 	{
-		name:                    "scenario 6 CoreOS Docker 17.03",
-		osName:                  "coreos",
-		containerRuntime:        "docker",
-		containerRuntimeVersion: "17.03",
+		name:              "Coreos Docker Kubernetes v1.11.0",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.11.0",
 	},
 }
 
 type scenario struct {
 	// name holds short description of the test scenario, it is also used to create machines and nodes names
 	// so please don't put "strange" characters there
-	name                    string
-	osName                  string
-	containerRuntime        string
-	containerRuntimeVersion string
+	name              string
+	osName            string
+	containerRuntime  string
+	kubernetesVersion string
 }
 
 type scenarioSelector struct {
@@ -115,7 +166,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", kubernetesCompliantName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME_VERSION >>=%s", testCase.containerRuntimeVersion))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBERNETES_VERSION >>=%s", testCase.kubernetesVersion))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", os.Getenv("E2E_SSH_PUBKEY")))
 
 	gopath := os.Getenv("GOPATH")
@@ -129,7 +180,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// we decided to keep this time lower that the global timeout to prevent the following:
 	// the global timeout is set to 20 minutes and the verify tool waits up to 60 hours for a machine to show up.
 	// thus one faulty scenario prevents from showing the results for the whole group, which is confusing because it looks like all tests are broken.
-	err := verify(kubeConfig, manifestPath, scenarioParams, 15*time.Minute)
+	err := verify(kubeConfig, manifestPath, scenarioParams, 25*time.Minute)
 	if err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}

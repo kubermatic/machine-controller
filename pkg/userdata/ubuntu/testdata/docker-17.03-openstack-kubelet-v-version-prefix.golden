@@ -140,6 +140,7 @@ write_files:
     RemainAfterExit=true
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
     ExecStartPre=/sbin/modprobe br_netfilter
+    ExecStartPre=/sbin/sysctl --system
     ExecStart=/opt/bin/kubeadm join \
       --token my-token \
       --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
@@ -185,6 +186,10 @@ runcmd:
 
 apt:
   sources:
+    # We always add this because kubeadm 1.11+ requires crictl to not fail
+    #  and we get that from the project atomic repo
+    cri-o:
+      source: "ppa:projectatomic/ppa"
     docker:
       source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
       key: |

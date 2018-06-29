@@ -238,4 +238,9 @@ packages:
 - nfs-utils
 - bash-completion # Have mercy for the poor operators
 - sudo
+{{- if semverCompare "=1.8.X" .KubeletVersion }}
+# There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
+# specified, installation of the kube packages fails
+- kubernetes-cni-0.5.1-1
+{{- end }}
 `

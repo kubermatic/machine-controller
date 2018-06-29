@@ -59,7 +59,8 @@ test-unit-docker:
 			make test-unit
 
 test-unit: vendor
-			go test ./...
+			@#The `-race` flag requires CGO
+			CGO_ENABLED=1 go test -race ./...
 
 e2e-cluster:
 	make -C test/tools/integration apply

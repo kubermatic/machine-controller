@@ -19,8 +19,6 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
-const crictlVersion = "v0.2"
-
 type Provider struct{}
 
 type Config struct {
@@ -134,7 +132,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		KubeadmDropInFilename string
 		ClusterDNSIPs         []net.IP
 		KubeadmCACertHash     string
-		CrictlVersion         string
 		ServerAddr            string
 	}{
 		MachineSpec:           spec,
@@ -149,7 +146,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		KubeadmDropInFilename: kubeadmDropInFilename,
 		ClusterDNSIPs:         clusterDNSIPs,
 		KubeadmCACertHash:     kubeadmCACertHash,
-		CrictlVersion:         crictlVersion,
 		ServerAddr:            serverAddr,
 	}
 	b := &bytes.Buffer{}
@@ -248,29 +244,9 @@ write_files:
     fi
 
 {{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
-- path: "/usr/local/bin/download-crictl"
-  permissions: '0777'
-  content: |
-    #!/bin/bash
-    set -xeuo pipefail
-    mkdir -p /opt/bin /opt/cni/bin /etc/cni/net.d /var/run/kubernetes /var/lib/kubelet /etc/kubernetes/manifests /var/log/containers
-    if ! [[ -x /opt/bin/crictl ]]; then
-      for try in {1..3}; do
-        curl -L --fail https://github.com/kubernetes-incubator/cri-tools/releases/download/{{ .CrictlVersion }}/crictl-{{ .CrictlVersion }}-linux-amd64.tar.gz |tar -xzC /opt/bin
-        break
-      done
-    fi
-
-- path: "/etc/systemd/system/crictl-binary.service"
-  content: |
-    [Unit]
-    Requires=network-online.target
-    After=network-online.target
-
-    [Service]
-    Type=oneshot
-    RemainAfterExit=true
-    ExecStart=/usr/local/bin/download-crictl
+- path: /etc/sysctl.d/10-ipv4-forward.conf
+  permissions: '0644'
+  content: net.ipv4.ip_forward=1
 {{- end }}
 
 
@@ -336,6 +312,7 @@ write_files:
     RemainAfterExit=true
     Environment="PATH=/sbin:/bin:/usr/sbin:/usr/bin:/opt/bin"
     ExecStartPre=/sbin/modprobe br_netfilter
+    ExecStartPre=/sbin/sysctl --system
     ExecStart=/opt/bin/kubeadm join \
 {{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
       --cri-socket /var/run/crio/crio.sock \
@@ -396,10 +373,10 @@ runcmd:
 
 apt:
   sources:
-{{- if eq .MachineSpec.Versions.ContainerRuntime.Name "cri-o" }}
+    # We always add this because kubeadm 1.11+ requires crictl to not fail
+    #  and we get that from the project atomic repo
     cri-o:
       source: "ppa:projectatomic/ppa"
-{{- end }}
 {{- if eq .MachineSpec.Versions.ContainerRuntime.Name "docker" }}
     docker:
       source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
@@ -497,4 +474,10 @@ packages:
 {{- else }}
 - "{{ .CRAptPackage }}"
 {{- end }}{{ end }}
+{{- if semverCompare ">=1.11.X" .KubernetesVersion }}
+# Kubeadm 1.11 errors out on preflight checks if there is no "crictl" binary
+# Earlier versions of kubeadm fail when using Docker and crictl is available thought
+# hence only install on k8s 1.11+
+- cri-tools-1.10
+{{- end }}
 `
