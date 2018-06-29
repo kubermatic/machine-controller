@@ -93,9 +93,9 @@ locally, the following steps are required:
 Now you can either
 
 * Run the tests for all providers via
-  `go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER`
+  `go test -race -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER`
 * Check `test/e2e/provisioning/all_e2e_test.go` for the available tests, then run only a specific one via
-  `go test -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER -run $TESTNAME`
+  `go test -race -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER -run $TESTNAME`
 
 __Note:__ All e2e tests require corresponding credentials to be present, check
  [`test/e2e/provisioning/all_e2e_test.go`](test/e2e/provisioning/all_e2e_test.go) for details
