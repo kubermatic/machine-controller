@@ -79,6 +79,11 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 	}
 	kubeletVersion := semverKubeletVersion.String()
 
+	var isKube18 bool
+	if semverKubeletVersion.Minor() == 8 {
+		isKube18 = true
+	}
+
 	dockerPackageName, err := getDockerPackageName(spec.Versions.ContainerRuntime.Version)
 	if err != nil {
 		return "", fmt.Errorf("error getting Docker package name: '%v'", err)
@@ -126,6 +131,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		ClusterDNSIPs     []net.IP
 		KubeadmCACertHash string
 		ServerAddr        string
+		IsKube18          bool
 	}{
 		MachineSpec:       spec,
 		ProviderConfig:    pconfig,
@@ -138,6 +144,7 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		ClusterDNSIPs:     clusterDNSIPs,
 		KubeadmCACertHash: kubeadmCACertHash,
 		ServerAddr:        serverAddr,
+		IsKube18:          isKube18,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -238,4 +245,9 @@ packages:
 - nfs-utils
 - bash-completion # Have mercy for the poor operators
 - sudo
+{{- if .IsKube18 }}
+# There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
+# specified, installation of the kube packages fails
+- kubernetes-cni-0.5.1-1
+{{- end }}
 `

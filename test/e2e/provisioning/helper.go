@@ -53,13 +53,12 @@ var scenarios = []scenario{
 		kubernetesVersion: "1.11.0",
 	},
 
-	// With CentOS and K8s 1.8 there is some package dependency issue that prevents installation
-	//	{
-	//		name:              "CentOS Docker Kubernetes v1.8.13",
-	//		osName:            "centos",
-	//		containerRuntime:  "docker",
-	//		kubernetesVersion: "1.8.13",
-	//	},
+	{
+		name:              "CentOS Docker Kubernetes v1.8.13",
+		osName:            "centos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.8.13",
+	},
 	{
 		name:              "CentOS Docker Kubernetes v1.9.8",
 		osName:            "centos",
