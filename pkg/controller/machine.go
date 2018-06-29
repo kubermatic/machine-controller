@@ -22,6 +22,7 @@ import (
 	"net"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -90,7 +91,8 @@ type Controller struct {
 	metrics            *MetricsCollection
 	kubeconfigProvider KubeconfigProvider
 
-	validationCache map[string]bool
+	validationCache      map[string]bool
+	validationCacheMutex sync.Mutex
 
 	name string
 }
@@ -486,7 +488,9 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			return fmt.Errorf("invalid provider config: %v", err)
 		}
 		c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSucceeded", "Validation succeeded")
+		c.validationCacheMutex.Lock()
 		c.validationCache[cacheKey] = true
+		c.validationCacheMutex.Unlock()
 	} else {
 		glog.V(6).Infof("Skipping validation as the machine was already successfully validated before")
 	}
@@ -496,7 +500,9 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	if err != nil {
 		//First invalidate the validation cache to make sure we run the validation on the next sync.
 		//This might happen in case the user invalidates his provider credentials...
+		c.validationCacheMutex.Lock()
 		c.validationCache[cacheKey] = false
+		c.validationCacheMutex.Unlock()
 
 		// case 2.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
