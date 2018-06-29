@@ -1,6 +1,6 @@
 defaults: &defaults
   docker:
-    - image: golang:1.10.1-alpine
+    - image: golang:1.10.3
   working_directory: /go/src/github.com/kubermatic/machine-controller
 
 version: 2
@@ -19,7 +19,7 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - run: apk update && apk add git && go get -u github.com/golang/dep/cmd/dep
+      - run: go get -u github.com/golang/dep/cmd/dep
       - run: dep status
 
   test:
@@ -34,7 +34,7 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
-      - run: apk update && apk add make bash && make machine-controller
+      - run: make machine-controller
       - save_cache:
           key: machine-controller-{{ .Revision }}
           paths:
@@ -47,7 +47,7 @@ jobs:
       - run:
           name: Install dependencies
           command: >-
-              apk update && apk add make bash git openssh-client jq rsync curl &&
+              apt update && apt install -y jq rsync unzip &&
               curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl &&
               chmod +x kubectl &&
               mv kubectl /usr/local/bin
@@ -87,7 +87,6 @@ jobs:
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - setup_remote_docker
-      - run: apk update && apk add make bash git
       - run: |
           set -e
           export GIT_TAG=$CIRCLE_TAG
