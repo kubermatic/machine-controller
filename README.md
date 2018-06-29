@@ -93,7 +93,7 @@ locally, the following steps are required:
 Now you can either
 
 * Run the tests for all providers via
-  `go test -race -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER`
+  `go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier $USER`
 * Check `test/e2e/provisioning/all_e2e_test.go` for the available tests, then run only a specific one via
   `go test -race -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER -run $TESTNAME`
 

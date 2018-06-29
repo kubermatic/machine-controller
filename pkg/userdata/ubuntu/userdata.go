@@ -74,11 +74,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		kubeadmDropInFilename = "kubeadm-10.conf"
 	}
 
-	var requireCRITools bool
-	if kubeletVersion.Minor() > 10 {
-		requireCRITools = true
-	}
-
 	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get cloud config: %v", err)
@@ -137,7 +132,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		KubeadmDropInFilename string
 		ClusterDNSIPs         []net.IP
 		KubeadmCACertHash     string
-		RequireCRITools       bool
 		ServerAddr            string
 	}{
 		MachineSpec:           spec,
@@ -152,7 +146,6 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		KubeadmDropInFilename: kubeadmDropInFilename,
 		ClusterDNSIPs:         clusterDNSIPs,
 		KubeadmCACertHash:     kubeadmCACertHash,
-		RequireCRITools:       requireCRITools,
 		ServerAddr:            serverAddr,
 	}
 	b := &bytes.Buffer{}
@@ -481,7 +474,10 @@ packages:
 {{- else }}
 - "{{ .CRAptPackage }}"
 {{- end }}{{ end }}
-{{- if .RequireCRITools }}
+{{- if semverCompare ">=1.11.X" .KubernetesVersion }}
+# Kubeadm 1.11 errors out on preflight checks if there is no "crictl" binary
+# Earlier versions of kubeadm fail when using Docker and crictl is available thought
+# hence only install on k8s 1.11+
 - cri-tools-1.10
 {{- end }}
 `
