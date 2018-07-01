@@ -87,6 +87,7 @@ jobs:
       - restore_cache:
           key: machine-controller-{{ .Revision }}
       - setup_remote_docker
+      - run: apk update && apk add make bash git
       - run: |
           set -e
           export GIT_TAG=$CIRCLE_TAG
