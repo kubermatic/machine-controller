@@ -222,7 +222,7 @@ write_files:
   content: |
     [Service]
     Environment="KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-config{{ end}} \
-      --authentication-token-webhook=true --hostname-override={{ .MachineSpec.Name }}"
+      --authentication-token-webhook=true --hostname-override={{ .MachineSpec.Name }} --read-only-port 0"
 
 runcmd:
 - setenforce 0 || true
