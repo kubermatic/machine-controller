@@ -150,7 +150,7 @@ write_files:
   content: |
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config \
-      --authentication-token-webhook=true --hostname-override=node1 \
+      --authentication-token-webhook=true --hostname-override=node1 --read-only-port 0 \
       "
 
 - path: "/etc/systemd/system/kubelet.service.d/30-clusterdns.conf"

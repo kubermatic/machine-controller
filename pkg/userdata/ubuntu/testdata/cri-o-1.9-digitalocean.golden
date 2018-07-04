@@ -154,7 +154,7 @@ write_files:
   content: |
     [Service]
     Environment="KUBELET_EXTRA_ARGS= \
-      --authentication-token-webhook=true --hostname-override=node1 \
+      --authentication-token-webhook=true --hostname-override=node1 --read-only-port 0 \
        --container-runtime=remote --container-runtime-endpoint=unix:///var/run/crio/crio.sock --cgroup-driver=systemd"
 
 - path: "/etc/systemd/system/kubelet.service.d/30-clusterdns.conf"
