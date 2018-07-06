@@ -213,6 +213,10 @@ write_files:
     Type=oneshot
     RemainAfterExit=true
     ExecStartPre=/usr/sbin/modprobe br_netfilter
+    # This is required because it contains an empty KUBELET_EXTRA_ARGS= variable which has precedence over the one
+    # defined in /etc/systemd/system/kubelet.service.d/20-extra.conf
+    # We remove it here as /etc/systemd/system/kubelet.service comes from the package
+    ExecStartPre=/usr/bin/rm -f /etc/sysconfig/kubelet
     ExecStart=/usr/bin/kubeadm join \
       --token {{ .BoostrapToken }} \
       --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
