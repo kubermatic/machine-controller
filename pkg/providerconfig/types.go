@@ -39,6 +39,18 @@ const (
 	CloudProviderFake         CloudProvider = "fake"
 )
 
+// DNSConfig contains a machine's DNS configuration
+type DNSConfig struct {
+	Servers []string `json:"servers"`
+}
+
+// NetworkConfig contains a machine's static network configuration
+type NetworkConfig struct {
+	CIDR    string    `json:"cidr"`
+	Gateway string    `json:"gateway"`
+	DNS     DNSConfig `json:"dns"`
+}
+
 type Config struct {
 	SSHPublicKeys []string `json:"sshPublicKeys"`
 
@@ -47,6 +59,9 @@ type Config struct {
 
 	OperatingSystem     OperatingSystem      `json:"operatingSystem"`
 	OperatingSystemSpec runtime.RawExtension `json:"operatingSystemSpec"`
+
+	// +optional
+	Network *NetworkConfig `json:"network,omitempty"`
 }
 
 // We can not use v1.SecretKeySelector because it is not cross namespace
