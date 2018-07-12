@@ -76,8 +76,8 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
   name = "github.com/Azure/azure-sdk-for-go"
-  version = "16.2.*"
+  version = "18.*"
 
 [[constraint]]
   name = "github.com/Azure/go-autorest"
-  version = "10.8.*"
+  version = "10.12.*"
