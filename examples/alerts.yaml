@@ -7,13 +7,18 @@ groups:
     labels:
       severity: critical
     annotations:
-      description: "Machine Controller in namespace {{ $labels.namespace }} is down for more than 5 minutes."
-      summary: "Machine Controller is down"
+      message: "Machine Controller in namespace {{ $labels.namespace }} is down for more than 5 minutes."
   - alert: MachineControllerTooManyErrors
     expr: sum(rate(machine_controller_errors_total[5m])) by (namespace) > 0.01
     for: 10m
     labels:
       severity: warning
     annotations:
-      description: "Machine Controller in {{ $labels.namespace }} has too many errors in its loop."
-      summary: "Machine Controller has many errors"
+      message: "Machine Controller in {{ $labels.namespace }} has too many errors in its loop."
+  - alert: MachineControllerDeleting
+    expr: machine_controller_machine_deleted > 0
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      message: "Unable to delete machine {{ $labels.machine }}"
