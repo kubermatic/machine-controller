@@ -96,22 +96,22 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "cri-o-1.9-digitalocean",
+			name: "docker-1.13-kubelet-1.11-aws",
 			providerConfig: &providerconfig.Config{
-				CloudProvider: "digitalocean",
+				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
 			spec: machinesv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: machinesv1alpha1.MachineVersionInfo{
 					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "cri-o",
-						Version: "1.9",
+						Name:    "docker",
+						Version: "1.13.1",
 					},
-					Kubelet: "1.9.2",
+					Kubelet: "1.11.0",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			ccProvider:       &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
 			osConfig:         &Config{DistUpgradeOnBoot: false},

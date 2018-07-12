@@ -12,9 +12,9 @@ spec:
     cloudProviderSpec:
       accessKeyId: << AWS_ACCESS_KEY_ID >>
       secretAccessKey: << AWS_SECRET_ACCESS_KEY >>
-      region: "eu-west-2"
-      availabilityZone: "eu-west-2a"
-      vpcId: "vpc-40827629"
+      region: "eu-central-1"
+      availabilityZone: "eu-central-1a"
+      vpcId: "vpc-819f62e9"
       instanceType: "t2.medium"
       diskSize: 50
       diskType: "gp2"
@@ -31,5 +31,4 @@ spec:
   versions:
     kubelet: "<< KUBERNETES_VERSION >>"
     containerRuntime:
-      # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "<< CONTAINER_RUNTIME >>"

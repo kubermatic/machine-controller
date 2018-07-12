@@ -9,10 +9,10 @@ Having a machine like the following:
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
-  name: machine-crio
+  name: machine-docker
 spec:
   metadata:
-    name: node-crio
+    name: node-docker
   providerConfig:
     sshPublicKeys:
      - "some-ssh-pub-key"
@@ -35,20 +35,20 @@ spec:
   versions:
     kubelet: "1.9.2"
     containerRuntime:
-      name: "cri-o"
+      name: "docker"
       version: ""
 ```
 
-The machine-controller would default to cri-o in version 1.9 as it is the supported version for kubernetes 1.9:
+The machine-controller would default to Docker in version 1.13.1 as it is the supported version for kubernetes 1.9:
 
 ```yaml
 apiVersion: "machine.k8s.io/v1alpha1"
 kind: Machine
 metadata:
-  name: machine-crio
+  name: machine-docker
 spec:
   metadata:
-    name: node-crio
+    name: node-docker
   providerConfig:
     sshPublicKeys:
      - "some-ssh-pub-key"
@@ -71,8 +71,8 @@ spec:
   versions:
     kubelet: "1.9.2"
     containerRuntime:
-      name: "cri-o"
-      version: "1.9"
+      name: "docker"
+      version: "1.13.1"
 ``` 
 
 ## Available runtimes
@@ -92,17 +92,16 @@ spec:
 - 17.09 / 17.09.1
 - 17.12 / 17.12.0
 
-#### CRI-O
-- 1.9 / 1.9.1
-
 ### Container Linux
 
-### Docker
+#### Docker
 The different docker version are supported via the torcx flag describe in https://coreos.com/blog/toward-docker-17-in-container-linux
 
 - 17.09 / 17.09.1
 - 1.12 / 1.12.6
 
-### CRI-O
+### CentOS
 
-Not supported at this moment
+#### Docker
+
+- 1.13 / 1.13.1

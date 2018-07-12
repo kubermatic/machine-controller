@@ -1,0 +1,104 @@
+#cloud-config
+hostname: node1
+
+ssh_pwauth: no
+
+
+
+write_files:
+- path: "/etc/sysctl.d/k8s.conf"
+  content: |
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.bridge.bridge-nf-call-iptables = 1
+
+- path: "/etc/yum.repos.d/kubernetes.repo"
+  content: |
+    [kubernetes]
+    name=Kubernetes
+    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+    enabled=1
+    gpgcheck=1
+    repo_gpgcheck=1
+    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+- path: /etc/sysconfig/selinux
+  content: |
+    # This file controls the state of SELinux on the system.
+    # SELINUX= can take one of these three values:
+    #     enforcing - SELinux security policy is enforced.
+    #     permissive - SELinux prints warnings instead of enforcing.
+    #     disabled - No SELinux policy is loaded.
+    SELINUX=permissive
+    # SELINUXTYPE= can take one of three two values:
+    #     targeted - Targeted processes are protected,
+    #     minimum - Modification of targeted policy. Only selected processes are protected.
+    #     mls - Multi Level Security protection.
+    SELINUXTYPE=targeted
+
+
+- path: "/etc/sysconfig/kubelet-overwrite"
+  content: |
+    KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config \
+      --authentication-token-webhook=true --hostname-override=node1 --read-only-port 0 \
+      --cluster-dns= --cluster-domain=cluster.local
+
+
+
+- path: "/etc/kubernetes/cloud-config"
+  content: |
+    {aws-config:true}
+
+- path: "/usr/local/bin/setup"
+  permissions: "0777"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    setenforce 0 || true
+    sysctl --system
+
+    # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
+    # specified, installation of the kube packages fails
+    export CNI_PKG=''
+
+    yum install -y docker-1.13.1 \
+      kubelet-1.11.0 \
+      kubeadm-1.11.0 \
+      ebtables \
+      ethtool \
+      nfs-utils \
+      bash-completion \
+      sudo \
+      ${CNI_PKG}
+
+    cp /etc/sysconfig/kubelet-overwrite /etc/sysconfig/kubelet
+
+    systemctl enable docker && systemctl start docker
+    systemctl enable kubelet && systemctl start kubelet
+
+    kubeadm join \
+      --token my-token \
+      --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
+      server:443
+
+- path: "/usr/local/bin/supervise.sh"
+  permissions: "0777"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    while ! "$@"; do
+      sleep 1
+    done
+
+- path: "/etc/systemd/system/setup.service"
+  content: |
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/usr/local/bin/supervise.sh /usr/local/bin/setup
+
+runcmd:
+- systemctl start setup

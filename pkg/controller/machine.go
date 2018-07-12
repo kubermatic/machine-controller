@@ -35,7 +35,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime/crio"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime/docker"
 	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -66,7 +65,6 @@ const (
 
 	metricsUpdatePeriod     = 10 * time.Second
 	deletionRetryWaitPeriod = 10 * time.Second
-	initialDeleteWaitPeriod = 5 * time.Second
 
 	machineKind = "Machine"
 
@@ -346,8 +344,13 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// step 2: check if a user requested to delete the machine
-	if machine.DeletionTimestamp != nil && sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
-		return c.deleteMachineAndProviderInstance(prov, machine)
+	if machine.DeletionTimestamp != nil {
+		if err := c.deleteMachineAndProviderInstance(prov, machine); err != nil {
+			return err
+		}
+		// Always requeue!
+		c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
+		return nil
 	}
 
 	// step 3: essentially creates an instance for the given machine
@@ -415,7 +418,6 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machin
 
 // deleteMachineAndProviderInstance makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
-
 	// step 1: get the provider instance.
 	providerInstance, err := c.getProviderInstance(prov, machine)
 	if err != nil {
@@ -433,7 +435,6 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 	// step 2.1: Check if its in deleting state - if so, the provider normally does some own cleanup. We wait until the instance is completely gone.
 	if instance.StatusDeleting == providerInstance.Status() {
 		glog.V(4).Infof("deletion of instance %s got triggered. Waiting until it fully disappears", providerInstance.ID())
-		c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
 		return nil
 	}
 
@@ -455,8 +456,6 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 		return fmt.Errorf("failed to update machine after removing the delete error: %v", err)
 	}
 
-	// step 4: put machine back into the queue as we just triggered the deletion
-	c.workqueue.AddAfter(machine.Name, initialDeleteWaitPeriod)
 	return nil
 }
 
@@ -697,7 +696,7 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 }
 
 var (
-	containerRuntime = regexp.MustCompile(`(docker|cri-o)://(.*)`)
+	containerRuntime = regexp.MustCompile(`(docker)://(.*)`)
 )
 
 func parseContainerRuntime(s string) (runtime, version string, err error) {
@@ -765,13 +764,8 @@ func (c *Controller) defaultContainerRuntime(machine *machinev1alpha1.Machine, p
 			if err != nil {
 				return nil, fmt.Errorf("failed to get a officially supported docker version for the given kubelet version: %v", err)
 			}
-		case containerruntime.CRIO:
-			defaultVersions, err = crio.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get a officially supported cri-o version for the given kubelet version: %v", err)
-			}
 		default:
-			return nil, fmt.Errorf("invalid container runtime. Supported: '%s', '%s' ", containerruntime.Docker, containerruntime.CRIO)
+			return nil, fmt.Errorf("invalid container runtime. Supported: '%s'", containerruntime.Docker)
 		}
 
 		providerSupportedVersions := prov.SupportedContainerRuntimes()
