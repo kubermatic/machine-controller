@@ -54,6 +54,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -220,6 +221,14 @@ func main() {
 	ctx, ctxDone := context.WithCancel(context.Background())
 	var g run.Group
 	{
+		prometheus.MustRegister(controller.NewMachineCollector(
+			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+		))
+
+		prometheus.MustRegister(controller.NewNodeController(
+			kubeInformerFactory.Core().V1().Nodes().Lister(),
+		))
+
 		s := createUtilHttpServer(kubeClient, kubeconfigProvider)
 		g.Add(func() error {
 			return s.ListenAndServe()
