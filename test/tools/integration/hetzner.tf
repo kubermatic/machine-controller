@@ -10,6 +10,6 @@ resource "hcloud_ssh_key" "default" {
 resource "hcloud_server" "machine-controller-test" {
   name = "${var.hcloud_test_server_name}"
   image = "ubuntu-16.04"
-  server_type = "cx21"
+  server_type = "cx41"
   ssh_keys = ["${hcloud_ssh_key.default.id}"]
 }
