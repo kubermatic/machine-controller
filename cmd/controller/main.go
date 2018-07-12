@@ -202,7 +202,14 @@ func main() {
 	machineInformerFactory.Start(stopCh)
 	kubeSystemInformerFactory.Start(stopCh)
 
-	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh), defaultKubeInformerFactory.WaitForCacheSync(stopCh), kubeSystemInformerFactory.WaitForCacheSync(stopCh)} {
+	syncsMaps := []map[reflect.Type]bool{
+		kubeInformerFactory.WaitForCacheSync(stopCh),
+		kubePublicKubeInformerFactory.WaitForCacheSync(stopCh),
+		machineInformerFactory.WaitForCacheSync(stopCh),
+		defaultKubeInformerFactory.WaitForCacheSync(stopCh),
+		kubeSystemInformerFactory.WaitForCacheSync(stopCh),
+	}
+	for _, syncsMap := range syncsMaps {
 		for key, synced := range syncsMap {
 			if !synced {
 				glog.Fatalf("unable to sync %s", key)
