@@ -8,8 +8,8 @@
     "services/network/mgmt/2018-04-01/network",
     "version"
   ]
-  revision = "4650843026a7fdec254a8d9cf893693a254edd0b"
-  version = "v16.2.1"
+  revision = "fbe7db0e3f9793ba3e5704efbab84f51436c136e"
+  version = "v18.0.0"
 
 [[projects]]
   name = "github.com/Azure/go-autorest"
@@ -22,8 +22,8 @@
     "autorest/to",
     "autorest/validation"
   ]
-  revision = "9157a90cf06a2f000b8a67181e1dd501cdb5753e"
-  version = "v10.8.2"
+  revision = "1f7cd6cfe0adea687ad44a512dfe76140f804318"
+  version = "v10.12.0"
 
 [[projects]]
   name = "github.com/Masterminds/semver"
@@ -853,6 +853,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "81769b653633721d43ebe5e7d954ce54f08f7ae1d265dbbe013199cb498cb523"
+  inputs-digest = "92d567349eff6d249a0e942969fe9d8ace5b776813582405dc9700fc7c7e5a5a"
   solver-name = "gps-cdcl"
   solver-version = 1
