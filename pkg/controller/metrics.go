@@ -97,7 +97,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-type NodeController struct {
+type NodeCollector struct {
 	lister v1.NodeLister
 
 	nodes       *prometheus.Desc
@@ -105,8 +105,8 @@ type NodeController struct {
 	nodeDeleted *prometheus.Desc
 }
 
-func NewNodeController(lister v1.NodeLister) *NodeController {
-	return &NodeController{
+func NewNodeCollector(lister v1.NodeLister) *NodeCollector {
+	return &NodeCollector{
 		lister: lister,
 
 		nodes: prometheus.NewDesc(
@@ -127,11 +127,11 @@ func NewNodeController(lister v1.NodeLister) *NodeController {
 	}
 }
 
-func (nc *NodeController) Describe(ch chan<- *prometheus.Desc) {
+func (nc *NodeCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- nc.nodes
 }
 
-func (nc *NodeController) Collect(ch chan<- prometheus.Metric) {
+func (nc *NodeCollector) Collect(ch chan<- prometheus.Metric) {
 	nodes, err := nc.lister.List(labels.Everything())
 	if err != nil {
 		return
