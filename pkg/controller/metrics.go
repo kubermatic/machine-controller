@@ -4,7 +4,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers/core/v1"
 )
 
 const metricsPrefix = "machine_controller_"
@@ -92,71 +91,6 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 				prometheus.GaugeValue,
 				float64(machine.DeletionTimestamp.Unix()),
 				machine.Name,
-			)
-		}
-	}
-}
-
-type NodeCollector struct {
-	lister v1.NodeLister
-
-	nodes       *prometheus.Desc
-	nodeCreated *prometheus.Desc
-	nodeDeleted *prometheus.Desc
-}
-
-func NewNodeCollector(lister v1.NodeLister) *NodeCollector {
-	return &NodeCollector{
-		lister: lister,
-
-		nodes: prometheus.NewDesc(
-			metricsPrefix+"nodes",
-			"The number of nodes created by a machine",
-			nil, nil,
-		),
-		nodeCreated: prometheus.NewDesc(
-			metricsPrefix+"node_created",
-			"The number of nodes created by a machine",
-			[]string{"node"}, nil,
-		),
-		nodeDeleted: prometheus.NewDesc(
-			metricsPrefix+"node_deleted",
-			"The number of nodes created by a machine",
-			[]string{"node"}, nil,
-		),
-	}
-}
-
-func (nc *NodeCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- nc.nodes
-}
-
-func (nc *NodeCollector) Collect(ch chan<- prometheus.Metric) {
-	nodes, err := nc.lister.List(labels.Everything())
-	if err != nil {
-		return
-	}
-
-	ch <- prometheus.MustNewConstMetric(
-		nc.nodes,
-		prometheus.GaugeValue,
-		float64(len(nodes)),
-	)
-
-	for _, node := range nodes {
-		ch <- prometheus.MustNewConstMetric(
-			nc.nodeCreated,
-			prometheus.GaugeValue,
-			float64(node.CreationTimestamp.Unix()),
-			node.Name,
-		)
-
-		if node.DeletionTimestamp != nil {
-			ch <- prometheus.MustNewConstMetric(
-				nc.nodeDeleted,
-				prometheus.GaugeValue,
-				float64(node.DeletionTimestamp.Unix()),
-				node.Name,
 			)
 		}
 	}

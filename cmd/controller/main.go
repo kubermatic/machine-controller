@@ -225,10 +225,6 @@ func main() {
 			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		))
 
-		prometheus.MustRegister(controller.NewNodeCollector(
-			kubeInformerFactory.Core().V1().Nodes().Lister(),
-		))
-
 		s := createUtilHttpServer(kubeClient, kubeconfigProvider)
 		g.Add(func() error {
 			return s.ListenAndServe()
