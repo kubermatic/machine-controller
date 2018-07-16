@@ -137,6 +137,34 @@ func TestProvider_UserData(t *testing.T) {
 			kubernetesCACert: "CACert",
 			osConfig:         &Config{DisableAutoUpdate: false},
 		},
+		{
+			name: "docker-1.12.6-vsphere-static-ipconfig",
+			providerConfig: &providerconfig.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfig.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfig.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: machinesv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: machinesv1alpha1.MachineVersionInfo{
+					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
+						Name:    "docker",
+						Version: "1.12.6",
+					},
+					Kubelet: "v1.9.2",
+				},
+			},
+			ccProvider:       &fakeCloudConfigProvider{name: "vsphere", config: "{vsphere-config:true}", err: nil},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig:         &Config{DisableAutoUpdate: true},
+		},
 	}
 
 	for _, test := range tests {
