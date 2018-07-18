@@ -15,7 +15,6 @@
 ## What works
 - Creation of worker nodes on AWS, Digitalocean, Openstack, Azure and Hetzner cloud
 - Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions
-- Using Ubuntu with [CRI-O](https://github.com/kubernetes-incubator/cri-o) container runtime instead of Docker
 
 ## What does not work
 - Master creation (Not planned at the moment)
@@ -100,7 +99,7 @@ Now you can either
 __Note:__ All e2e tests require corresponding credentials to be present, check
  [`test/e2e/provisioning/all_e2e_test.go`](test/e2e/provisioning/all_e2e_test.go) for details
 
-__Note:__ After finishing testing, pleae clean up after yourself:
+__Note:__ After finishing testing, please clean up after yourself:
 
 * Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
 * Execute `make -C test/tools/integration destroy` to clean up the test control plane

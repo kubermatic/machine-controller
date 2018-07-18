@@ -59,5 +59,4 @@ spec:
   versions:
     kubelet: "v1.10.2"
     containerRuntime:
-      # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "docker"
