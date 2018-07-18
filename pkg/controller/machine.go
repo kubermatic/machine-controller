@@ -102,12 +102,8 @@ type KubeconfigProvider interface {
 // MetricsCollection is a struct of all metrics used in
 // this controller.
 type MetricsCollection struct {
-	Machines            prometheus.Gauge
-	Nodes               prometheus.Gauge
-	Workers             prometheus.Gauge
-	Errors              prometheus.Counter
-	ControllerOperation *prometheus.HistogramVec
-	NodeJoinDuration    *prometheus.HistogramVec
+	Workers prometheus.Gauge
+	Errors  prometheus.Counter
 }
 
 // NewMachineController returns a new machine controller
@@ -129,11 +125,7 @@ func NewMachineController(
 	eventBroadcaster.StartLogging(glog.V(4).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	prometheus.MustRegister(metrics.ControllerOperation)
 	prometheus.MustRegister(metrics.Errors)
-	prometheus.MustRegister(metrics.Machines)
-	prometheus.MustRegister(metrics.Nodes)
-	prometheus.MustRegister(metrics.NodeJoinDuration)
 	prometheus.MustRegister(metrics.Workers)
 
 	controller := &Controller{
@@ -192,7 +184,6 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	}
 
 	c.metrics.Workers.Set(float64(threadiness))
-	go wait.Until(c.updateMetrics, metricsUpdatePeriod, stopCh)
 
 	<-stopCh
 	return nil
@@ -280,26 +271,18 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *machinev1alpha1.
 }
 
 func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) (instance.Instance, error) {
-	start := time.Now()
-	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "get-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Get(machine)
 }
 
 func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, instance instance.Instance) error {
-	start := time.Now()
-	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "delete-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Delete(machine, instance)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
-	start := time.Now()
-	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "create-cloud-instance"}).Observe(time.Since(start).Seconds())
 	return prov.Create(machine, userdata)
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
-	start := time.Now()
-	defer c.metrics.ControllerOperation.With(prometheus.Labels{"operation": "validate-machine"}).Observe(time.Since(start).Seconds())
 	return prov.Validate(machine.Spec)
 }
 
@@ -580,7 +563,6 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 			}
 			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
 			c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeMatched", "Successfully matched machine to node %s", node.Name)
-			c.metrics.NodeJoinDuration.WithLabelValues().Observe(node.CreationTimestamp.Sub(machine.CreationTimestamp.Time).Seconds())
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
@@ -876,37 +858,6 @@ func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 			return nil
 		},
 	}
-}
-
-func (c *Controller) updateMachinesMetric() {
-	machines, err := c.machinesLister.List(labels.Everything())
-	if err != nil {
-		glog.Errorf("failed to list machines for machines metric: %v", err)
-		return
-	}
-	c.metrics.Machines.Set(float64(len(machines)))
-}
-
-func (c *Controller) updateNodesMetric() {
-	nodes, err := c.nodesLister.List(labels.Everything())
-	if err != nil {
-		glog.Errorf("failed to list nodes for machine nodes metric: %v", err)
-		return
-	}
-
-	machineNodes := 0
-	for _, n := range nodes {
-		ownerRef := metav1.GetControllerOf(n)
-		if ownerRef != nil && ownerRef.Kind == machineKind {
-			machineNodes++
-		}
-	}
-	c.metrics.Nodes.Set(float64(machineNodes))
-}
-
-func (c *Controller) updateMetrics() {
-	c.updateMachinesMetric()
-	c.updateNodesMetric()
 }
 
 func (c *Controller) ensureDeleteFinalizerExists(machine *machinev1alpha1.Machine) (*machinev1alpha1.Machine, error) {

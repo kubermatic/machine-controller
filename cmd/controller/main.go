@@ -54,6 +54,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -202,7 +203,14 @@ func main() {
 	machineInformerFactory.Start(stopCh)
 	kubeSystemInformerFactory.Start(stopCh)
 
-	for _, syncsMap := range []map[reflect.Type]bool{kubeInformerFactory.WaitForCacheSync(stopCh), kubePublicKubeInformerFactory.WaitForCacheSync(stopCh), machineInformerFactory.WaitForCacheSync(stopCh), defaultKubeInformerFactory.WaitForCacheSync(stopCh), kubeSystemInformerFactory.WaitForCacheSync(stopCh)} {
+	syncsMaps := []map[reflect.Type]bool{
+		kubeInformerFactory.WaitForCacheSync(stopCh),
+		kubePublicKubeInformerFactory.WaitForCacheSync(stopCh),
+		machineInformerFactory.WaitForCacheSync(stopCh),
+		defaultKubeInformerFactory.WaitForCacheSync(stopCh),
+		kubeSystemInformerFactory.WaitForCacheSync(stopCh),
+	}
+	for _, syncsMap := range syncsMaps {
 		for key, synced := range syncsMap {
 			if !synced {
 				glog.Fatalf("unable to sync %s", key)
@@ -213,6 +221,10 @@ func main() {
 	ctx, ctxDone := context.WithCancel(context.Background())
 	var g run.Group
 	{
+		prometheus.MustRegister(controller.NewMachineCollector(
+			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+		))
+
 		s := createUtilHttpServer(kubeClient, kubeconfigProvider)
 		g.Add(func() error {
 			return s.ListenAndServe()
