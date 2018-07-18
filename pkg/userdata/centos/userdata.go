@@ -3,6 +3,7 @@ package centos
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"text/template"
@@ -92,6 +93,10 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 	pconfig, err := providerconfig.GetConfig(spec.ProviderConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to get provider config: %v", err)
+	}
+
+	if pconfig.Network != nil {
+		return "", errors.New("static IP config is not supported with CentOS")
 	}
 
 	osConfig, err := getConfig(pconfig.OperatingSystemSpec)
