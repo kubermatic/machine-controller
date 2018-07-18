@@ -78,6 +78,10 @@ func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *client
 		return "", fmt.Errorf("failed to get provider config: %v", err)
 	}
 
+	if pconfig.Network != nil {
+		return "", errors.New("static IP config is not supported with Ubuntu")
+	}
+
 	osConfig, err := getConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
