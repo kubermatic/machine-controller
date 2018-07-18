@@ -2,18 +2,20 @@ package controller
 
 import (
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
-	"github.com/go-test/deep"
 	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
-	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
+	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
+	"github.com/go-test/deep"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,9 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 )
 
 type fakeInstance struct {
@@ -201,43 +201,23 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
 			providerConfig := fmt.Sprintf(`{"cloudProvider": "fake", "operatingSystem": "coreos",
 		"cloudProviderSpec": %s}`, test.cloudProviderSpec)
 			machine := &v1alpha1.Machine{}
 			machine.Name = "testmachine"
 			machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
 
-			fakeMachineClient := machinefake.NewSimpleClientset(runtime.Object(machine))
 			machineIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 			err := machineIndexer.Add(machine)
 			if err != nil {
 				t.Fatal(err)
 			}
-			machineLister := machinelistersv1alpha1.NewMachineLister(machineIndexer)
-			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-			nodeLister := listerscorev1.NewNodeLister(nodeIndexer)
 
-			controller := Controller{
-				machineClient:   fakeMachineClient,
-				machinesLister:  machineLister,
-				metrics:         NewMachineControllerMetrics(),
-				nodesLister:     nodeLister,
-				recorder:        &record.FakeRecorder{},
-				validationCache: map[string]bool{},
-			}
+			controller, fakeMachineClient := createTestMachineController(t, machine)
 
 			err = controller.syncHandler("testmachine")
 			if err != nil && err.Error() != test.err {
 				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
-			}
-			if len(test.expectedActions) != len(fakeMachineClient.Actions()) {
-				t.Fatalf("unexpected actions %#v", fakeMachineClient.Actions())
-			}
-			for index, action := range fakeMachineClient.Actions() {
-				if !action.Matches(test.expectedActions[index], "machines") {
-					t.Fatalf("unexpected action %#v", action)
-				}
 			}
 
 			syncedMachine, err := fakeMachineClient.Machine().Machines().Get("testmachine", metav1.GetOptions{})
@@ -267,6 +247,9 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			os:    providerconfig.OperatingSystemUbuntu,
 			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
 			machine: &v1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testmachine",
+				},
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
 						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: "", Version: ""},
@@ -281,6 +264,9 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			os:    providerconfig.OperatingSystemUbuntu,
 			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
 			machine: &v1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testmachine",
+				},
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
 						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
@@ -295,6 +281,9 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			os:    providerconfig.OperatingSystemCoreos,
 			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "1.12.6"},
 			machine: &v1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testmachine",
+				},
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
 						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
@@ -307,13 +296,14 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			client := machinefake.NewSimpleClientset(test.machine)
 			prov, err := userdata.ForOS(test.os)
 			if err != nil {
 				t.Fatal(err)
 			}
-			controller := Controller{machineClient: client}
-			machine, err := controller.defaultContainerRuntime(test.machine, prov)
+
+			ctrl, _ := createTestMachineController(t, test.machine)
+
+			machine, err := ctrl.defaultContainerRuntime(test.machine.DeepCopy(), prov)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get '%v' instead got: '%v'", test.err, err)
 			}
@@ -322,9 +312,48 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			}
 
 			cr := machine.Spec.Versions.ContainerRuntime
+
 			if diff := deep.Equal(cr, test.resCR); diff != nil {
 				t.Errorf("expected to get %s+%s instead got: %s+%s", test.resCR.Name, test.resCR.Version, cr.Name, cr.Version)
 			}
 		})
 	}
+}
+
+func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Controller, *machinefake.Clientset) {
+	kubeClient := kubefake.NewSimpleClientset()
+	machineClient := machinefake.NewSimpleClientset(objects...)
+
+	kubeInformersFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
+	kubeSystemInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
+	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Millisecond*50)
+
+	machineIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+	for _, o := range objects {
+		if err := machineIndexer.Add(o); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	ctrl := NewMachineController(
+		kubeClient,
+		machineClient,
+		kubeInformersFactory.Core().V1().Nodes().Informer(),
+		kubeInformersFactory.Core().V1().Nodes().Lister(),
+		machineInformerFactory.Machine().V1alpha1().Machines().Informer(),
+		machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+		kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
+		[]net.IP{},
+		NewMachineControllerMetrics(),
+		nil,
+		&clusterinfo.KubeconfigProvider{},
+		"")
+
+	machineInformerFactory.Start(wait.NeverStop)
+	kubeInformersFactory.Start(wait.NeverStop)
+
+	machineInformerFactory.WaitForCacheSync(wait.NeverStop)
+	kubeInformersFactory.WaitForCacheSync(wait.NeverStop)
+
+	return ctrl, machineClient
 }
