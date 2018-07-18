@@ -15,11 +15,11 @@ spec:
       clientSecret: "<< AZURE_CLIENT_SECRET >>"
       subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
       location: "westeurope"
-      resourceGroup: "e2e-tests"
-      vmSize: "Standard_B1ms"
-      vnetName: "e2e-test-vnet"
-      subnetName: "e2e-test-subnet"
-      routeTableName: "e2e-test-routes"
+      resourceGroup: "machine-controller-e2e"
+      vmSize: "Standard_F1"
+      vnetName: "machine-controller-e2e"
+      subnetName: "machine-controller-e2e"
+      routeTableName: "machine-controller-e2e"
       assignPublicIP: false
     operatingSystem: "<< OS_NAME >>"
     operatingSystemSpec:
@@ -29,5 +29,4 @@ spec:
   versions:
     kubelet: "<< KUBERNETES_VERSION >>"
     containerRuntime:
-      # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "<< CONTAINER_RUNTIME >>"

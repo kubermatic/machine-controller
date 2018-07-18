@@ -45,7 +45,5 @@ spec:
   versions:
     kubelet: "v1.9.6"
     containerRuntime:
-      # If you are using Ubuntu, you may choose 'cri-o' instead
       name: "docker"
-      # Only has an effect on Ubuntu, check pkg/userdata/ubuntu/docker.go for available versions
       version: "1.13"

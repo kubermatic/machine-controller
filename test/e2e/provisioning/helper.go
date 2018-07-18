@@ -35,25 +35,6 @@ var scenarios = []scenario{
 		kubernetesVersion: "1.11.0",
 	},
 	{
-		name:              "Ubuntu CRI-O Kubernetes v1.9.8",
-		osName:            "ubuntu",
-		containerRuntime:  "cri-o",
-		kubernetesVersion: "1.9.8",
-	},
-	{
-		name:              "Ubuntu CRI-O Kubernetes v1.10.5",
-		osName:            "ubuntu",
-		containerRuntime:  "cri-o",
-		kubernetesVersion: "1.10.5",
-	},
-	{
-		name:              "Ubuntu CRI-O Kubernetes v1.11.0",
-		osName:            "ubuntu",
-		containerRuntime:  "cri-o",
-		kubernetesVersion: "1.11.0",
-	},
-
-	{
 		name:              "CentOS Docker Kubernetes v1.8.13",
 		osName:            "centos",
 		containerRuntime:  "docker",

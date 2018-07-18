@@ -1,165 +1,16 @@
-package ubuntu
-
-import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"net"
-	"text/template"
-
-	"github.com/Masterminds/semver"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime"
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-)
-
-type Provider struct{}
-
-type Config struct {
-	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
-}
-
-var (
-	NoInstallCandidateAvailableErr = errors.New("no install candidate available for the desired version")
-)
-
-func getConfig(r runtime.RawExtension) (*Config, error) {
-	p := Config{}
-	if len(r.Raw) == 0 {
-		return &p, nil
-	}
-	if err := json.Unmarshal(r.Raw, &p); err != nil {
-		return nil, err
-	}
-	return &p, nil
-}
-
-func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.ContainerRuntimeInfo) {
-	for _, ic := range dockerInstallCandidates {
-		for _, v := range ic.versions {
-			runtimes = append(runtimes, machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: v})
-		}
-	}
-
-	return runtimes
-}
-
-func (p Provider) UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error) {
-	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse user-data template: %v", err)
-	}
-
-	kubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
-	if err != nil {
-		return "", fmt.Errorf("invalid kubelet version: %v", err)
-	}
-
-	var kubeadmDropInFilename string
-	if kubeletVersion.Minor() > 8 {
-		kubeadmDropInFilename = "10-kubeadm.conf"
-	} else {
-		kubeadmDropInFilename = "kubeadm-10.conf"
-	}
-
-	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
-	if err != nil {
-		return "", fmt.Errorf("failed to get cloud config: %v", err)
-	}
-
-	pconfig, err := providerconfig.GetConfig(spec.ProviderConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to get provider config: %v", err)
-	}
-
-	osConfig, err := getConfig(pconfig.OperatingSystemSpec)
-	if err != nil {
-		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
-	}
-
-	bootstrapToken, err := userdatahelper.GetTokenFromKubeconfig(kubeconfig)
-	if err != nil {
-		return "", fmt.Errorf("error extracting token: %v", err)
-	}
-
-	kubeadmCACertHash, err := userdatahelper.GetKubeadmCACertHash(kubeconfig)
-	if err != nil {
-		return "", fmt.Errorf("error extracting kubeadm cacert hash: %v", err)
-	}
-
-	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(kubeconfig)
-	if err != nil {
-		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
-	}
-
-	var crPkg, crPkgVersion string
-	if spec.Versions.ContainerRuntime.Name == containerruntime.Docker {
-		crPkg, crPkgVersion, err = getDockerInstallCandidate(spec.Versions.ContainerRuntime.Version)
-		if err != nil {
-			return "", fmt.Errorf("failed to get docker install candidate for %s: %v", spec.Versions.ContainerRuntime.Version, err)
-		}
-	} else {
-		return "", fmt.Errorf("unknown container runtime selected '%s'", spec.Versions.ContainerRuntime.Name)
-	}
-
-	data := struct {
-		MachineSpec           machinesv1alpha1.MachineSpec
-		ProviderConfig        *providerconfig.Config
-		OSConfig              *Config
-		BoostrapToken         string
-		CloudProvider         string
-		CloudConfig           string
-		CRAptPackage          string
-		CRAptPackageVersion   string
-		KubernetesVersion     string
-		KubeadmDropInFilename string
-		ClusterDNSIPs         []net.IP
-		KubeadmCACertHash     string
-		ServerAddr            string
-	}{
-		MachineSpec:           spec,
-		ProviderConfig:        pconfig,
-		OSConfig:              osConfig,
-		BoostrapToken:         bootstrapToken,
-		CloudProvider:         cpName,
-		CloudConfig:           cpConfig,
-		CRAptPackage:          crPkg,
-		CRAptPackageVersion:   crPkgVersion,
-		KubernetesVersion:     kubeletVersion.String(),
-		KubeadmDropInFilename: kubeadmDropInFilename,
-		ClusterDNSIPs:         clusterDNSIPs,
-		KubeadmCACertHash:     kubeadmCACertHash,
-		ServerAddr:            serverAddr,
-	}
-	b := &bytes.Buffer{}
-	err = tmpl.Execute(b, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to execute user-data template: %v", err)
-	}
-
-	return string(b.String()), nil
-}
-
-const ctTemplate = `#cloud-config
-hostname: {{ .MachineSpec.Name }}
+#cloud-config
+hostname: node1
 
 ssh_pwauth: no
 
 ssh_authorized_keys:
-{{- range .ProviderConfig.SSHPublicKeys }}
-- "{{ . }}"
-{{- end }}
+- "ssh-rsa AAABBB"
+- "ssh-rsa CCCDDD"
 
 write_files:
 - path: "/etc/kubernetes/cloud-config"
   content: |
-{{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
+    {aws-config:true}
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
@@ -178,29 +29,20 @@ write_files:
     apt-key add /opt/docker.asc
     apt-key add /opt/kubernetes.asc
     apt-get update
-
-    {{- if .OSConfig.DistUpgradeOnBoot }}
-    apt-get dist-upgrade -y
-    {{- end }}
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
 
     export CR_PKG=''
-{{ if .CRAptPackage }}
-  {{ if ne .CRAptPackageVersion "" }}
-    export CR_PKG='{{ .CRAptPackage }}={{ .CRAptPackageVersion }}'
-  {{ else }}
-    export CR_PKG='{{ .CRAptPackage }}'
-  {{ end }}
-{{ end }}
+
+  
+    export CR_PKG='docker.io=1.13.1-0ubuntu1~16.04.2'
+  
+
 
     # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
     # specified, installation of the kube packages fails
     export CNI_PKG=''
-    {{- if semverCompare "=1.8.X" .KubernetesVersion }}
-    export CNI_PKG='kubernetes-cni=0.5.1-00'
-    {{- end }}
 
     apt-get install -y curl \
       ca-certificates \
@@ -220,8 +62,8 @@ write_files:
       util-linux \
       ${CR_PKG} \
       open-vm-tools \
-      kubelet={{ .KubernetesVersion }}-00 \
-      kubeadm={{ .KubernetesVersion }}-00 \
+      kubelet=1.11.0-00 \
+      kubeadm=1.11.0-00 \
       ${CNI_PKG}
 
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
@@ -231,9 +73,9 @@ write_files:
 
     if ! [[ -e /etc/kubernetes/pki/ca.crt ]]; then
       kubeadm join \
-        --token {{ .BoostrapToken }} \
-        --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
-        {{ .ServerAddr }}
+        --token my-token \
+        --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
+        server:443
     fi
 
 - path: "/opt/kubernetes.asc"
@@ -335,15 +177,10 @@ write_files:
 
 - path: "/etc/default/kubelet-overwrite"
   content: |
-    KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-config{{ end}} \
-      --authentication-token-webhook=true --hostname-override={{ .MachineSpec.Name }} --read-only-port 0 \
-      --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} --cluster-domain=cluster.local
-{{ if semverCompare "<1.11.0" .KubernetesVersion }}
-- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
-  content: |
-    [Service]
-    EnvironmentFile=/etc/default/kubelet
-{{ end }}
+    KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config \
+      --authentication-token-webhook=true --hostname-override=node1 --read-only-port 0 \
+      --cluster-dns=10.10.10.10 --cluster-domain=cluster.local
+
 
 - path: "/etc/systemd/system/setup.service"
   content: |
@@ -361,4 +198,3 @@ write_files:
 
 runcmd:
 - systemctl enable --now setup.service
-`

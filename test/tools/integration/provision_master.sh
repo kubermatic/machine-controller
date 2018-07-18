@@ -42,7 +42,7 @@ if ! which kubelet; then
 EOF
   apt-get update
   apt-get install -y kubelet kubeadm kubectl
-  kubeadm init --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16
+  kubeadm init --kubernetes-version=v1.11.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16
 fi
 if ! ls \$HOME/.kube/config; then
   mkdir -p \$HOME/.kube
@@ -59,6 +59,7 @@ if [[ "${1:-deploy_machine_controller}"  == "do-not-deploy-machine-controller" ]
 fi
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
+  sed -i -e 's/-worker-count=5/-worker-count=20/g' machine-controller.yaml
   kubectl apply -f machine-controller.yaml
   touch machine-controller-deployed
 fi

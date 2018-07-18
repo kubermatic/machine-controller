@@ -65,7 +65,7 @@ func TestUserDataGeneration(t *testing.T) {
 		clusterDNSIPs []net.IP
 	}{
 		{
-			name: "docker-1.13-aws",
+			name: "docker-1.13-kubelet-v1.9-aws",
 			spec: machinesv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: machinesv1alpha1.MachineVersionInfo{
@@ -74,6 +74,32 @@ func TestUserDataGeneration(t *testing.T) {
 						Version: "1.13",
 					},
 					Kubelet: "1.9.6",
+				},
+			},
+		},
+		{
+			name: "docker-1.13-kubelet-v1.11-aws",
+			spec: machinesv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: machinesv1alpha1.MachineVersionInfo{
+					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
+						Name:    "docker",
+						Version: "1.13",
+					},
+					Kubelet: "1.11.0",
+				},
+			},
+		},
+		{
+			name: "docker-1.13-kubelet-v1.8-aws",
+			spec: machinesv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: machinesv1alpha1.MachineVersionInfo{
+					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
+						Name:    "docker",
+						Version: "1.13",
+					},
+					Kubelet: "1.8.5",
 				},
 			},
 		},

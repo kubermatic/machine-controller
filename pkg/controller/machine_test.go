@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -300,34 +299,6 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 					Versions: v1alpha1.MachineVersionInfo{
 						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
 						Kubelet:          "1.9.2",
-					},
-				},
-			},
-		},
-		{
-			name:  "v1.9.2 ubuntu - get default cri-o version",
-			err:   nil,
-			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: "1.9"},
-			machine: &v1alpha1.Machine{
-				Spec: v1alpha1.MachineSpec{
-					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: ""},
-						Kubelet:          "1.9.2",
-					},
-				},
-			},
-		},
-		{
-			name:  "v1.8.5 ubuntu - no available cri-o version",
-			err:   errors.New("no supported versions available for 'cri-o'"),
-			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{},
-			machine: &v1alpha1.Machine{
-				Spec: v1alpha1.MachineSpec{
-					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.CRIO, Version: ""},
-						Kubelet:          "v1.8.5",
 					},
 				},
 			},

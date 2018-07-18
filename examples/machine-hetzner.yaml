@@ -40,4 +40,4 @@ spec:
     kubelet: "1.9.6"
     # Must be 'docker' if you don't use Ubuntu
     containerRuntime:
-      name: "cri-o"
+      name: "docker"

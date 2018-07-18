@@ -24,19 +24,24 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	osAuthUrl := os.Getenv("OS_AUTH_URL")
-	osTenantID := os.Getenv("OS_TENANT_ID")
-	osUsername := os.Getenv("OS_USERNAME")
+	osDomain := os.Getenv("OS_DOMAIN")
 	osPassword := os.Getenv("OS_PASSWORD")
+	osRegion := os.Getenv("OS_REGION")
+	osUsername := os.Getenv("OS_USERNAME")
+	osTenant := os.Getenv("OS_TENANT_NAME")
 
-	if osAuthUrl == "" || osTenantID == "" || osUsername == "" || osPassword == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_TENANT_ID, OS_USERNAME and OS_PASSOWRD must be set!")
+	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
 	}
 
-	params := []string{}
-	params = append(params, fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl))
-	params = append(params, fmt.Sprintf("<< TENANT_NAME >>=%s", osTenantID))
-	params = append(params, fmt.Sprintf("<< USERNAME >>=%s", osUsername))
-	params = append(params, fmt.Sprintf("<< PASSWORD >>=%s", osPassword))
+	params := []string{
+		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
+		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
+		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
+		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
+		fmt.Sprintf("<< REGION >>=%s", osRegion),
+		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+	}
 
 	runScenarios(t, nil, params, os_manifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
@@ -92,10 +97,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	// TODO fix centos
-	// cri-o doesn't work on Azure for some reason
-	excludeSelector := &scenarioSelector{osName: []string{"centos"}, containerRuntime: []string{"cri-o"}}
-
+	excludeSelector := &scenarioSelector{}
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
