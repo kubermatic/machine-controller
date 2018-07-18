@@ -348,7 +348,7 @@ func (c *Controller) syncHandler(key string) error {
 		if err := c.deleteMachineAndProviderInstance(prov, machine); err != nil {
 			return err
 		}
-		// Always requeue!
+		// As the deletion got triggered but the instance might not been gone yet, we need to recheck in a few seconds.
 		c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
 		return nil
 	}
