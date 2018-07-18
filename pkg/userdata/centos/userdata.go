@@ -239,8 +239,8 @@ write_files:
 
     cp /etc/sysconfig/kubelet-overwrite /etc/sysconfig/kubelet
 
-    systemctl enable docker && systemctl start docker
-    systemctl enable kubelet && systemctl start kubelet
+    systemctl enable --now docker
+    systemctl enable --now kubelet
 
     kubeadm join \
       --token {{ .BoostrapToken }} \
@@ -258,6 +258,9 @@ write_files:
 
 - path: "/etc/systemd/system/setup.service"
   content: |
+    [Install]
+    WantedBy=multi-user.target
+
     [Unit]
     Requires=network-online.target
     After=network-online.target
@@ -268,5 +271,5 @@ write_files:
     ExecStart=/usr/local/bin/supervise.sh /usr/local/bin/setup
 
 runcmd:
-- systemctl start setup
+- systemctl enable --now setup.service
 `

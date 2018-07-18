@@ -226,15 +226,15 @@ write_files:
 
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
 
+    systemctl enable --now docker
+    systemctl enable --now kubelet
+
     if ! [[ -e /etc/kubernetes/pki/ca.crt ]]; then
       kubeadm join \
         --token {{ .BoostrapToken }} \
         --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
         {{ .ServerAddr }}
     fi
-
-    
-    
 
 - path: "/opt/kubernetes.asc"
   permissions: "0400"
@@ -347,6 +347,9 @@ write_files:
 
 - path: "/etc/systemd/system/setup.service"
   content: |
+    [Install]
+    WantedBy=multi-user.target
+
     [Unit]
     Requires=network-online.target
     After=network-online.target
@@ -357,5 +360,5 @@ write_files:
     ExecStart=/usr/local/bin/supervise.sh /usr/local/bin/setup
 
 runcmd:
-- systemctl start setup.service
+- systemctl enable --now setup.service
 `
