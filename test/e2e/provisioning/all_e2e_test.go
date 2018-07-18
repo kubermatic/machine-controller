@@ -155,9 +155,11 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	runScenarios(t, excludeSelector, params, vs_manifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }
 
-// TestVsphereProvisioning - a test suite that exercises vsphere provider
-// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+// TestVsphereStaticIPProvisioningE2E will try to create a node with a VSphere machine
+// whose IP adress is statically assigned.
 func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
+	// no t.Parallel(), since testScenario function already calls it
+
 	// test data
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
