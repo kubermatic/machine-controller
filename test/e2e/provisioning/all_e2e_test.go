@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 )
 
@@ -15,6 +16,7 @@ const (
 	azure_manifest = "./testdata/machine-azure.yaml"
 	hz_manifest    = "./testdata/machine-hetzner.yaml"
 	vs_manifest    = "./testdata/machine-vsphere.yaml"
+	vssip_manifest = "./testdata/machine-vsphere-static-ip.yaml"
 	os_manifest    = "./testdata/machine-openstack.yaml"
 )
 
@@ -141,7 +143,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
-	// Vsphere only supports Ubuntu
+	// Vsphere only supports Ubuntu and CoreOS
 	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
 
 	// act
@@ -151,4 +153,40 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
 	}
 	runScenarios(t, excludeSelector, params, vs_manifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+}
+
+// TestVsphereProvisioning - a test suite that exercises vsphere provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
+	// test data
+	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
+	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
+	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
+	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
+	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	}
+
+	buildNum, err := strconv.Atoi(os.Getenv("CIRCLE_BUILD_NUM"))
+	if err != nil {
+		t.Fatalf("failed to parse CIRCLE_BUILD_NUM: %s", err)
+	}
+	ipOctet := buildNum % 256
+
+	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
+		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
+		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
+		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
+		fmt.Sprintf("<< IP_OCTET >>=%d", ipOctet),
+	}
+
+	// we only run one scenario, to prevent IP conflicts
+	scenario := scenario{
+		name:              "Coreos Docker Kubernetes v1.11.0",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.11.0",
+	}
+
+	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest)
 }
