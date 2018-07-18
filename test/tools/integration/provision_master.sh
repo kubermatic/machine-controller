@@ -42,7 +42,7 @@ if ! which kubelet; then
 EOF
   apt-get update
   apt-get install -y kubelet kubeadm kubectl
-  kubeadm init --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16
+  kubeadm init --kubernetes-version=v1.11.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16
 fi
 if ! ls \$HOME/.kube/config; then
   mkdir -p \$HOME/.kube
