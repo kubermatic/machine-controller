@@ -117,6 +117,7 @@ func NewMachineController(
 	secretSystemNsLister listerscorev1.SecretLister,
 	clusterDNSIPs []net.IP,
 	metrics *MetricsCollection,
+	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
 	name string) *Controller {
 
@@ -125,8 +126,10 @@ func NewMachineController(
 	eventBroadcaster.StartLogging(glog.V(4).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
-	prometheus.MustRegister(metrics.Errors)
-	prometheus.MustRegister(metrics.Workers)
+	if prometheusRegistry != nil {
+		prometheusRegistry.MustRegister(metrics.Errors)
+		prometheusRegistry.MustRegister(metrics.Workers)
+	}
 
 	controller := &Controller{
 		kubeClient:  kubeClient,
