@@ -124,6 +124,9 @@ type controllerRunOptions struct {
 	// and allow dependant function to close the parent.
 	// it should be the other way around i.e. derive a new context from the parent
 	parentCtxDone context.CancelFunc
+
+	// prometheusRegisterer is used by the MachineController instance to register its metrics
+	prometheusRegisterer prometheus.Registerer
 }
 
 func main() {
@@ -173,6 +176,8 @@ func main() {
 		glog.Fatalf("failed to create CustomResourceDefinition: %v", err)
 	}
 
+	prometheusRegistry := prometheus.NewRegistry()
+
 	// before we acquire a lock we actually warm up caches mirroring the state of the API server
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
@@ -195,6 +200,7 @@ func main() {
 		machineLister:        machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		kubeconfigProvider:   kubeconfigProvider,
 		name:                 name,
+		prometheusRegisterer: prometheusRegistry,
 	}
 
 	kubeInformerFactory.Start(stopCh)
@@ -221,11 +227,11 @@ func main() {
 	ctx, ctxDone := context.WithCancel(context.Background())
 	var g run.Group
 	{
-		prometheus.MustRegister(controller.NewMachineCollector(
+		prometheusRegistry.MustRegister(controller.NewMachineCollector(
 			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		))
 
-		s := createUtilHttpServer(kubeClient, kubeconfigProvider)
+		s := createUtilHttpServer(kubeClient, kubeconfigProvider, prometheusRegistry)
 		g.Add(func() error {
 			return s.ListenAndServe()
 		}, func(err error) {
@@ -298,13 +304,13 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.secretSystemNsLister,
 			runOptions.clusterDNSIPs,
 			runOptions.metrics,
+			runOptions.prometheusRegisterer,
 			runOptions.kubeconfigProvider,
 			runOptions.name,
 		)
 
-		err := machineController.Run(workerCount, runOptions.parentCtx.Done())
-		if err != nil {
-			glog.Errorf("error running controller: %v", err)
+		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
+			glog.Errorf("error running controller: %v", runErr)
 			runOptions.parentCtxDone()
 			return
 		}
@@ -333,7 +339,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 }
 
 // createUtilHttpServer creates a new HTTP server
-func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider controller.KubeconfigProvider) *http.Server {
+func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider controller.KubeconfigProvider, prometheusGatherer prometheus.Gatherer) *http.Server {
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
 
@@ -342,7 +348,7 @@ func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider c
 	}
 
 	m := http.NewServeMux()
-	m.Handle("/metrics", promhttp.Handler())
+	m.Handle("/metrics", promhttp.HandlerFor(prometheusGatherer, promhttp.HandlerOpts{}))
 	m.Handle("/live", http.HandlerFunc(health.LiveEndpoint))
 	m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
 
