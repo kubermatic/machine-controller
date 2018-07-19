@@ -25,7 +25,10 @@ type Provider interface {
 	GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error)
 
 	// Create creates a cloud instance according to the given machine
-	Create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error)
+	Create(machine *v1alpha1.Machine, update MachineUpdater, userdata string) (instance.Instance, error)
 
-	Delete(machine *v1alpha1.Machine, instance instance.Instance) error
+	Delete(machine *v1alpha1.Machine, update MachineUpdater, instance instance.Instance) error
 }
+
+// MachineUpdater defines a function to persist an update to a machine
+type MachineUpdater func(string, func(*v1alpha1.Machine)) (*v1alpha1.Machine, error)

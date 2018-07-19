@@ -300,11 +300,11 @@ func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1
 }
 
 func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, instance instance.Instance) error {
-	return prov.Delete(machine, instance)
+	return prov.Delete(machine, c.updateMachine, instance)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
-	return prov.Create(machine, userdata)
+	return prov.Create(machine, c.updateMachine, userdata)
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
