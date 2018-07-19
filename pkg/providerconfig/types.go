@@ -290,6 +290,26 @@ func (configVarResolver *ConfigVarResolver) GetConfigVarBoolValue(configVar Conf
 	return boolVal, nil
 }
 
+func (configVarResolver *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar ConfigVarBool, envVarName string) (bool, error) {
+	cvs := ConfigVarString{Value: strconv.FormatBool(configVar.Value), SecretKeyRef: configVar.SecretKeyRef}
+	stringVal, err := configVarResolver.GetConfigVarStringValue(cvs)
+	if err != nil {
+		return false, err
+	}
+	if stringVal == "" {
+		envVal, envValFound := os.LookupEnv(envVarName)
+		if !envValFound {
+			return false, fmt.Errorf("all machanisms(value, secret, configMap) of getting the value failed, including reading from environment variable = %s which was not set", envVarName)
+		}
+		stringVal = envVal
+	}
+	boolVal, err := strconv.ParseBool(stringVal)
+	if err != nil {
+		return false, err
+	}
+	return boolVal, nil
+}
+
 func NewConfigVarResolver(kubeClient kubernetes.Interface) *ConfigVarResolver {
 	return &ConfigVarResolver{kubeClient: kubeClient}
 }
