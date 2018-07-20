@@ -208,16 +208,9 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 			machine.Name = "testmachine"
 			machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
 
-			machineIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-			err := machineIndexer.Add(machine)
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			controller, fakeMachineClient := createTestMachineController(t, machine)
 
-			err = controller.syncHandler("testmachine")
-			if err != nil && err.Error() != test.err {
+			if err := controller.syncHandler("testmachine"); err != nil && err.Error() != test.err {
 				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
 			}
 
@@ -328,13 +321,6 @@ func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Cont
 	kubeInformersFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
 	kubeSystemInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
 	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Millisecond*50)
-
-	machineIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-	for _, o := range objects {
-		if err := machineIndexer.Add(o); err != nil {
-			t.Fatal(err)
-		}
-	}
 
 	ctrl := NewMachineController(
 		kubeClient,
