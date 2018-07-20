@@ -640,7 +640,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	return awsInstance, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater, instance instance.Instance) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater, instance instance.Instance) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{

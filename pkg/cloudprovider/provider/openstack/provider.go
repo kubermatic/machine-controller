@@ -342,7 +342,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, userdata string) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -465,7 +465,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	return &osInstance{server: &server}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater, instance instance.Instance) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater, instance instance.Instance) error {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
