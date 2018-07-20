@@ -243,13 +243,11 @@ func (c *Controller) updateMachine(name string, modify func(*machinev1alpha1.Mac
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var retryErr error
 
-		//Get latest version from cache
-		cacheMachine, err := c.machineClient.Machine().Machines().Get(name, metav1.GetOptions{})
+		//Get latest version from API
+		currentMachine, err := c.machineClient.Machine().Machines().Get(name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-
-		currentMachine := cacheMachine.DeepCopy()
 
 		// Apply modifications
 		modify(currentMachine)
