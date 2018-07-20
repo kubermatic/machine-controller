@@ -62,6 +62,9 @@ type Config struct {
 
 	// +optional
 	Network *NetworkConfig `json:"network,omitempty"`
+
+	// +optional
+	OverwriteCloudConfig *string `json:"overwriteCloudConfig,omitempty"`
 }
 
 // We can not use v1.SecretKeySelector because it is not cross namespace
