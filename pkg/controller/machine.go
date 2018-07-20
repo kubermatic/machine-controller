@@ -668,35 +668,45 @@ func (c *Controller) updateMachineStatus(machine *machinev1alpha1.Machine, node 
 		return fmt.Errorf("failed to get node reference for %s : %v", node.Name, err)
 	}
 
-	machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
-		if !equality.Semantic.DeepEqual(m.Status.NodeRef, ref) {
+	if !equality.Semantic.DeepEqual(machine.Status.NodeRef, ref) {
+		if machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
 			m.Status.NodeRef = ref
+		}); err != nil {
+			return fmt.Errorf("failed to update machine: %v", err)
 		}
+	}
 
-		if m.Status.Versions == nil {
+	if machine.Status.Versions == nil {
+		if machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
 			m.Status.Versions = &machinev1alpha1.MachineVersionInfo{}
+		}); err != nil {
+			return fmt.Errorf("failed to update machine: %v", err)
 		}
+	}
 
-		if node.Status.NodeInfo.ContainerRuntimeVersion != "" {
-			runtimeName, runtimeVersion, err = parseContainerRuntime(node.Status.NodeInfo.ContainerRuntimeVersion)
-			if err != nil {
-				glog.V(2).Infof("failed to parse container runtime from node %s: %v", node.Name, err)
-				runtimeName = "unknown"
-				runtimeVersion = "unknown"
-			}
-			if m.Status.Versions.ContainerRuntime.Name != runtimeName || m.Status.Versions.ContainerRuntime.Version != runtimeVersion {
+	if node.Status.NodeInfo.ContainerRuntimeVersion != "" {
+		runtimeName, runtimeVersion, err = parseContainerRuntime(node.Status.NodeInfo.ContainerRuntimeVersion)
+		if err != nil {
+			glog.V(2).Infof("failed to parse container runtime from node %s: %v", node.Name, err)
+			runtimeName = "unknown"
+			runtimeVersion = "unknown"
+		}
+		if machine.Status.Versions.ContainerRuntime.Name != runtimeName || machine.Status.Versions.ContainerRuntime.Version != runtimeVersion {
+			if machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
 				m.Status.Versions.ContainerRuntime.Name = runtimeName
 				m.Status.Versions.ContainerRuntime.Version = runtimeVersion
+			}); err != nil {
+				return fmt.Errorf("failed to update machine: %v", err)
 			}
 		}
+	}
 
-		if m.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
+	if machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
+		if machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
 			m.Status.Versions.Kubelet = node.Status.NodeInfo.KubeletVersion
+		}); err != nil {
+			return fmt.Errorf("failed to update machine: %v", err)
 		}
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to update machine: %v", err)
 	}
 
 	return nil
