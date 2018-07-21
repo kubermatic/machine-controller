@@ -1,0 +1,34 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: << MACHINE_NAME >>
+spec:
+  metadata:
+    name: << NODE_NAME >>
+    labels:
+      foo: "bar"
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "openstack"
+    cloudProviderSpec:
+      identityEndpoint: "<< IDENTITY_ENDPOINT >>"
+      username: "<< USERNAME >>"
+      password: "<< PASSWORD >>"
+      tenantName: "<< TENANT_NAME >>"
+      # Image link:
+      # https://cloud-images.ubuntu.com/releases/16.04/release-20160420.3/ubuntu-16.04-server-cloudimg-amd64-disk1.img
+      image: "Ubuntu 1604 2016-april-20"
+      flavor: "m1.small"
+      floatingIpPool: ""
+      domainName: "<< DOMAIN_NAME >>"
+      region: "<< REGION >>"
+    operatingSystem: "<< OS_NAME >>"
+    operatingSystemSpec:
+      distUpgradeOnBoot: true
+  roles:
+  - "Node"
+  versions:
+    kubelet: "<< KUBERNETES_VERSION >>"
+    containerRuntime:
+      name: "<< CONTAINER_RUNTIME >>"
