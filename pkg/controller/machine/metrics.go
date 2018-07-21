@@ -44,7 +44,7 @@ func NewMachineCollector(lister v1alpha1.MachineLister) *MachineCollector {
 		machines: prometheus.NewDesc(
 			metricsPrefix+"machines",
 			"The number of machines managed by this machine controller",
-			nil, nil,
+			[]string{"kubelet_version"}, nil,
 		),
 		machineCreated: prometheus.NewDesc(
 			metricsPrefix+"machine_created",
@@ -71,11 +71,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		mc.machines,
-		prometheus.GaugeValue,
-		float64(len(machines)),
-	)
+	machinesCountByKubeletVersion := make(map[string]uint)
 
 	for _, machine := range machines {
 		ch <- prometheus.MustNewConstMetric(
@@ -93,5 +89,16 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 				machine.Name,
 			)
 		}
+
+		machinesCountByKubeletVersion[machine.Spec.Versions.Kubelet]++;
+	}
+
+	for version, count := range machinesCountByKubeletVersion {
+		ch <- prometheus.MustNewConstMetric(
+			mc.machines,
+			prometheus.GaugeValue,
+			float64(count),
+			version,
+		)
 	}
 }
