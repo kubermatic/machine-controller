@@ -192,7 +192,7 @@ write_files:
     apt-get update
 
     {{- if .OSConfig.DistUpgradeOnBoot }}
-    apt-get dist-upgrade -y
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
     {{- end }}
     if [[ -e /var/run/reboot-required ]]; then
       reboot
@@ -214,7 +214,8 @@ write_files:
     export CNI_PKG='kubernetes-cni=0.5.1-00'
     {{- end }}
 
-    apt-get install -y curl \
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
+      curl \
       ca-certificates \
       ceph-common \
       cifs-utils \

@@ -44,7 +44,8 @@ write_files:
     # specified, installation of the kube packages fails
     export CNI_PKG=''
 
-    apt-get install -y curl \
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
+      curl \
       ca-certificates \
       ceph-common \
       cifs-utils \

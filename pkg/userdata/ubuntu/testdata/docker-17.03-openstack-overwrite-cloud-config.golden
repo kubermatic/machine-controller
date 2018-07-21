@@ -31,7 +31,7 @@ write_files:
     apt-key add /opt/docker.asc
     apt-key add /opt/kubernetes.asc
     apt-get update
-    apt-get dist-upgrade -y
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
@@ -47,7 +47,8 @@ write_files:
     # specified, installation of the kube packages fails
     export CNI_PKG=''
 
-    apt-get install -y curl \
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
+      curl \
       ca-certificates \
       ceph-common \
       cifs-utils \
