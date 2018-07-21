@@ -21,7 +21,7 @@ write_files:
   content: deb http://apt.kubernetes.io/ kubernetes-xenial main
 
 - path: "/usr/local/bin/setup"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -29,6 +29,21 @@ write_files:
     apt-key add /opt/docker.asc
     apt-key add /opt/kubernetes.asc
     apt-get update
+
+    # If something failed during package installation but one of docker/kubeadm/kubelet was already installed
+    # an apt-mark hold after the install won't do it, which is why we test here if the binaries exist and if
+    # yes put them on hold
+    set +e
+    which docker && apt-mark hold docker docker-ce
+    which kubelet && apt-mark hold kubelet
+    which kubeadm && apt-mark hold kubeadm
+
+    # When docker is started from within the apt installation it fails with a
+    # 'no sockets found via socket activation: make sure the service was started by systemd'
+    # Apparently the package is broken in a way that it gets started without its dependencies, manually starting
+    # it works fine thought
+    which docker && systemctl start docker
+    set -e
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
@@ -70,7 +85,7 @@ write_files:
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
 
     systemctl enable --now docker
-    systemctl enable --now kubelet
+    systemctl enable kubelet
 
     if ! [[ -e /etc/kubernetes/pki/ca.crt ]]; then
       kubeadm join \
@@ -168,7 +183,7 @@ write_files:
     -----END PGP PUBLIC KEY BLOCK-----
 
 - path: "/usr/local/bin/supervise.sh"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -184,6 +199,7 @@ write_files:
 
 
 - path: "/etc/systemd/system/setup.service"
+  permissions: "0644"
   content: |
     [Install]
     WantedBy=multi-user.target
