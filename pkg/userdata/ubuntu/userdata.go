@@ -182,7 +182,7 @@ write_files:
   content: deb http://apt.kubernetes.io/ kubernetes-xenial main
 
 - path: "/usr/local/bin/setup"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -191,8 +191,23 @@ write_files:
     apt-key add /opt/kubernetes.asc
     apt-get update
 
+    # If something failed during package installation but one of docker/kubeadm/kubelet was already installed
+    # an apt-mark hold after the install won't do it, which is why we test here if the binaries exist and if
+    # yes put them on hold
+    set +e
+    which docker && apt-mark hold docker docker-ce
+    which kubelet && apt-mark hold kubelet
+    which kubeadm && apt-mark hold kubeadm
+
+    # When docker is started from within the apt installation it fails with a
+    # 'no sockets found via socket activation: make sure the service was started by systemd'
+    # Apparently the package is broken in a way that it gets started without its dependencies, manually starting
+    # it works fine thought
+    which docker && systemctl start docker
+    set -e
+
     {{- if .OSConfig.DistUpgradeOnBoot }}
-    apt-get dist-upgrade -y
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
     {{- end }}
     if [[ -e /var/run/reboot-required ]]; then
       reboot
@@ -214,7 +229,8 @@ write_files:
     export CNI_PKG='kubernetes-cni=0.5.1-00'
     {{- end }}
 
-    apt-get install -y curl \
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
+      curl \
       ca-certificates \
       ceph-common \
       cifs-utils \
@@ -239,7 +255,7 @@ write_files:
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
 
     systemctl enable --now docker
-    systemctl enable --now kubelet
+    systemctl enable kubelet
 
     if ! [[ -e /etc/kubernetes/pki/ca.crt ]]; then
       kubeadm join \
@@ -337,7 +353,7 @@ write_files:
     -----END PGP PUBLIC KEY BLOCK-----
 
 - path: "/usr/local/bin/supervise.sh"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -352,12 +368,14 @@ write_files:
       --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} --cluster-domain=cluster.local
 {{ if semverCompare "<1.11.0" .KubernetesVersion }}
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
+  permissions: "0644"
   content: |
     [Service]
     EnvironmentFile=/etc/default/kubelet
 {{ end }}
 
 - path: "/etc/systemd/system/setup.service"
+  permissions: "0644"
   content: |
     [Install]
     WantedBy=multi-user.target
