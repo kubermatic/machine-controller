@@ -20,11 +20,7 @@ jobs:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: DEP_RELEASE_TAG=v0.4.1 curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-      - run: make vendor
-      - save_cache:
-          key: repo-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - /go/src/github.com/kubermatic/machine-controller
+      - run: dep status
 
   test:
     <<: *defaults
@@ -115,13 +111,13 @@ workflows:
               only: /v.*/
       - test:
           requires:
-            - check-dependencies
+            - checkout_code
           filters:
             tags:
               only: /v.*/
       - build:
           requires:
-            - check-dependencies
+            - checkout_code
           filters:
             tags:
               only: /v.*/
