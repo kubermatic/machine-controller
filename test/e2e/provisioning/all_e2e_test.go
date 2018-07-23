@@ -11,13 +11,14 @@ import (
 )
 
 const (
-	do_manifest    = "./testdata/machine-digitalocean.yaml"
-	aws_manifest   = "./testdata/machine-aws.yaml"
-	azure_manifest = "./testdata/machine-azure.yaml"
-	hz_manifest    = "./testdata/machine-hetzner.yaml"
-	vs_manifest    = "./testdata/machine-vsphere.yaml"
-	vssip_manifest = "./testdata/machine-vsphere-static-ip.yaml"
-	os_manifest    = "./testdata/machine-openstack.yaml"
+	do_manifest         = "./testdata/machine-digitalocean.yaml"
+	aws_manifest        = "./testdata/machine-aws.yaml"
+	azure_manifest      = "./testdata/machine-azure.yaml"
+	hz_manifest         = "./testdata/machine-hetzner.yaml"
+	vs_manifest         = "./testdata/machine-vsphere.yaml"
+	vssip_manifest      = "./testdata/machine-vsphere-static-ip.yaml"
+	os_manifest         = "./testdata/machine-openstack.yaml"
+	os_upgrade_manifest = "./testdata/machine-openstack-upgrade.yml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -191,4 +192,38 @@ func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 	}
 
 	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest)
+}
+
+// TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
+// image and upgrade it prior to joining the cluster
+func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
+	// no t.Parallel(), since testScenario function already calls it
+
+	osAuthUrl := os.Getenv("OS_AUTH_URL")
+	osDomain := os.Getenv("OS_DOMAIN")
+	osPassword := os.Getenv("OS_PASSWORD")
+	osRegion := os.Getenv("OS_REGION")
+	osUsername := os.Getenv("OS_USERNAME")
+	osTenant := os.Getenv("OS_TENANT_NAME")
+
+	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+		t.Fatal("unable to run test, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
+		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
+		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
+		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
+		fmt.Sprintf("<< REGION >>=%s", osRegion),
+		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+	}
+	scenario := scenario{
+		name:              "Ubuntu Docker Kubernetes v1.10.5",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	}
+
+	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest)
 }

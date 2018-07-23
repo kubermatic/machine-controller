@@ -488,7 +488,10 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	}
 
 	cacheKey := string(machine.UID) + machine.ResourceVersion
-	if !c.validationCache[cacheKey] {
+	c.validationCacheMutex.Lock()
+	validationSuccess := c.validationCache[cacheKey]
+	c.validationCacheMutex.Unlock()
+	if !validationSuccess {
 		if err := c.validateMachine(prov, machine); err != nil {
 			if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
 				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
