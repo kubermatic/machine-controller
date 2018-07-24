@@ -49,7 +49,7 @@ import (
 	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
-	"github.com/kubermatic/machine-controller/pkg/controller"
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
@@ -90,7 +90,7 @@ type controllerRunOptions struct {
 	clusterDNSIPs []net.IP
 
 	// metrics a struct that holds all metrics we want to collect
-	metrics *controller.MetricsCollection
+	metrics *machinecontroller.MetricsCollection
 
 	// leaderElectionClient holds a client that is used by the leader election library
 	leaderElectionClient *kubernetes.Clientset
@@ -111,7 +111,7 @@ type controllerRunOptions struct {
 	machineLister machinelistersv1alpha1.MachineLister
 
 	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
-	kubeconfigProvider controller.KubeconfigProvider
+	kubeconfigProvider machinecontroller.KubeconfigProvider
 
 	// name of the controller. When set the controller will only process machines with the annotation "machine.k8s.io/controller": name
 	name string
@@ -190,7 +190,7 @@ func main() {
 		kubeClient:           kubeClient,
 		extClient:            extClient,
 		machineClient:        machineClient,
-		metrics:              controller.NewMachineControllerMetrics(),
+		metrics:              machinecontroller.NewMachineControllerMetrics(),
 		clusterDNSIPs:        ips,
 		leaderElectionClient: leaderElectionClient,
 		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
@@ -227,7 +227,7 @@ func main() {
 	ctx, ctxDone := context.WithCancel(context.Background())
 	var g run.Group
 	{
-		prometheusRegistry.MustRegister(controller.NewMachineCollector(
+		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(
 			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		))
 
@@ -294,7 +294,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// imagine that a user wants to shutdown the app but since there is no way of telling the library to stop it will eventually run `runController` method
 	// and bad things can happen - the fact it works at the moment doesn't mean it will in the future
 	runController := func(_ <-chan struct{}) {
-		machineController := controller.NewMachineController(
+		machineController := machinecontroller.NewMachineController(
 			runOptions.kubeClient,
 			runOptions.machineClient,
 			runOptions.nodeInformer,
@@ -339,7 +339,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 }
 
 // createUtilHttpServer creates a new HTTP server
-func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider controller.KubeconfigProvider, prometheusGatherer prometheus.Gatherer) *http.Server {
+func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider machinecontroller.KubeconfigProvider, prometheusGatherer prometheus.Gatherer) *http.Server {
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
 
@@ -360,7 +360,7 @@ func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider c
 	}
 }
 
-func readinessChecks(kubeconfigProvider controller.KubeconfigProvider) map[string]healthcheck.Check {
+func readinessChecks(kubeconfigProvider machinecontroller.KubeconfigProvider) map[string]healthcheck.Check {
 	return map[string]healthcheck.Check{
 		"valid-info-kubeconfig": func() error {
 			cm, err := kubeconfigProvider.GetKubeconfig()
