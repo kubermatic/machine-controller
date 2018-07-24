@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-04-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-04-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/glog"
 
@@ -327,7 +328,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	}
 
 	ifaceName := machine.Spec.Name + "-netiface"
-	iface, err := createNetworkInterface(context.TODO(), ifaceName, machine.UID, config)
+	publicIPName := ifaceName + "-pubip"
+	var publicIP *network.PublicIPAddress
+	if config.AssignPublicIP {
+		publicIP, err = createPublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create public IP: %v", err)
+		}
+	}
+
+	iface, err := createNetworkInterface(context.TODO(), ifaceName, machine.UID, config, publicIP)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
 	}
