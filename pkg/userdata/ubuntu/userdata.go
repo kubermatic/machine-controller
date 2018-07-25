@@ -9,21 +9,16 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
-
-type Provider struct{}
-
-type Config struct {
-	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
-}
 
 var (
 	NoInstallCandidateAvailableErr = errors.New("no install candidate available for the desired version")
@@ -40,6 +35,15 @@ func getConfig(r runtime.RawExtension) (*Config, error) {
 	return &p, nil
 }
 
+// Config TODO
+type Config struct {
+	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
+}
+
+// Provider is a pkg/userdata.Provider implementation
+type Provider struct{}
+
+// SupportedContainerRuntimes return list of container runtimes
 func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.ContainerRuntimeInfo) {
 	for _, ic := range dockerInstallCandidates {
 		for _, v := range ic.versions {
@@ -50,11 +54,14 @@ func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.Cont
 	return runtimes
 }
 
+// UserData renders user-data template
 func (p Provider) UserData(
 	spec machinesv1alpha1.MachineSpec,
 	kubeconfig *clientcmdapi.Config,
 	ccProvider cloud.ConfigProvider,
-	clusterDNSIPs []net.IP) (string, error) {
+	clusterDNSIPs []net.IP,
+) (string, error) {
+
 	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -363,9 +370,18 @@ write_files:
 
 - path: "/etc/default/kubelet-overwrite"
   content: |
-    KUBELET_EXTRA_ARGS={{ if .CloudProvider }}--cloud-provider={{ .CloudProvider }} --cloud-config=/etc/kubernetes/cloud-config{{ end}} \
-      --authentication-token-webhook=true --hostname-override={{ .MachineSpec.Name }} --read-only-port 0 \
-      --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} --cluster-domain=cluster.local
+    KUBELET_EXTRA_ARGS=--authentication-token-webhook=true \
+      {{- if .CloudProvider }}
+      --cloud-provider={{ .CloudProvider }} \
+      --cloud-config=/etc/kubernetes/cloud-config \
+      {{- end}}
+      --hostname-override={{ .MachineSpec.Name }} \
+      --read-only-port=0 \
+      --keep-terminated-pod-volumes=false \
+      --event-qps=0 \
+      --protect-kernel-defaults=true \
+      --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
+      --cluster-domain=cluster.local
 {{ if semverCompare "<1.11.0" .KubernetesVersion }}
 - path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
   permissions: "0644"

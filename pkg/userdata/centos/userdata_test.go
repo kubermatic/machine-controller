@@ -7,13 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-
+	"github.com/pmezard/go-difflib/difflib"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/pmezard/go-difflib/difflib"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 )
 
 var pemCertificate = `-----BEGIN CERTIFICATE-----

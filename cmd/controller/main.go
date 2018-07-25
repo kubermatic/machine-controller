@@ -231,13 +231,13 @@ func main() {
 			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
 		))
 
-		s := createUtilHttpServer(kubeClient, kubeconfigProvider, prometheusRegistry)
+		s := createUtilHTTPServer(kubeClient, kubeconfigProvider, prometheusRegistry)
 		g.Add(func() error {
 			return s.ListenAndServe()
 		}, func(err error) {
-			ctx, cancel := context.WithTimeout(ctx, time.Second)
+			srvCtx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
-			s.Shutdown(ctx)
+			s.Shutdown(srvCtx)
 		})
 	}
 	{
@@ -338,8 +338,8 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	return nil
 }
 
-// createUtilHttpServer creates a new HTTP server
-func createUtilHttpServer(kubeClient *kubernetes.Clientset, kubeconfigProvider machinecontroller.KubeconfigProvider, prometheusGatherer prometheus.Gatherer) *http.Server {
+// createUtilHTTPServer creates a new HTTP server
+func createUtilHTTPServer(kubeClient *kubernetes.Clientset, kubeconfigProvider machinecontroller.KubeconfigProvider, prometheusGatherer prometheus.Gatherer) *http.Server {
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
 

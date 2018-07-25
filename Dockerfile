@@ -1,6 +1,6 @@
 FROM alpine:3.7
 
-RUN apk update && apk add ca-certificates cdrkit && rm -rf /var/cache/apk/*
+RUN apk add --no-cache ca-certificates cdrkit
 
 COPY machine-controller /usr/local/bin
 
