@@ -1,4 +1,7 @@
-required = ["k8s.io/code-generator/cmd/client-gen"]
+required = [
+  "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/code-generator/cmd/deepcopy-gen",
+]
 
 [prune]
   non-go = true
