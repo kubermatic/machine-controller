@@ -615,9 +615,11 @@
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
+    "pkg/api/validation/path",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
+    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -657,6 +659,16 @@
     "third_party/forked/golang/reflect"
   ]
   revision = "01bc873149a1802eb74df583613872d126449ed5"
+
+[[projects]]
+  branch = "master"
+  name = "k8s.io/apiserver"
+  packages = [
+    "pkg/apis/audit",
+    "pkg/authentication/user",
+    "pkg/endpoints/request"
+  ]
+  revision = "563a7d9b065ea20fbdbe24506369772acb413d8d"
 
 [[projects]]
   branch = "release-7.0"
@@ -829,6 +841,8 @@
     "cmd/client-gen/generators/util",
     "cmd/client-gen/path",
     "cmd/client-gen/types",
+    "cmd/deepcopy-gen",
+    "cmd/deepcopy-gen/args",
     "pkg/util"
   ]
   revision = "cbd9dba38c3d8e0035d4bb554bd321e2c190e629"
@@ -837,6 +851,8 @@
   name = "k8s.io/gengo"
   packages = [
     "args",
+    "examples/deepcopy-gen/generators",
+    "examples/set-gen/sets",
     "generator",
     "namer",
     "parser",
@@ -853,6 +869,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c8fb26b79267a3d4959d1cc5e91837a847ce8ce64808ce00620a24381c385d98"
+  inputs-digest = "d4adfdf26298e9ab7a15d7231fdae72c7b3f3bbd8a521b8f2e3b94c947b557ce"
   solver-name = "gps-cdcl"
   solver-version = 1
