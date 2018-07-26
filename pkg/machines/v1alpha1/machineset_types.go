@@ -26,8 +26,8 @@ import (
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	//"sigs.k8s.io/cluster-api/pkg/apis/cluster"
+	"github.com/kubermatic/machine-controller/pkg/machines/common"
 )
 
 // +genclient
@@ -129,7 +129,7 @@ type MachineSetStatus struct {
 
 // Validate checks that an instance of MachineSet is well formed
 func (MachineSetStrategy) Validate(ctx request.Context, obj runtime.Object) field.ErrorList {
-	machineSet := obj.(*cluster.MachineSet)
+	machineSet := obj.(*MachineSet)
 	errors := field.ErrorList{}
 
 	// validate spec.selector and spec.template.labels
