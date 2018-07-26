@@ -852,6 +852,7 @@
   packages = [
     "args",
     "examples/deepcopy-gen/generators",
+    "examples/defaulter-gen/generators",
     "examples/set-gen/sets",
     "generator",
     "namer",
@@ -869,6 +870,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5e6d4139ae06d66ea9c1dff24b55de2c58b6d70acb58b7adcb638a14e29629fa"
+  inputs-digest = "9622f63e47ce83c00833020c75acaaccb4f1ce20d2a7fa1924f21cfca3fc68af"
   solver-name = "gps-cdcl"
   solver-version = 1

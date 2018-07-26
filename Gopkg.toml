@@ -1,5 +1,6 @@
 required = [
   "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/gengo/examples/defaulter-gen/generators",
   "k8s.io/code-generator/cmd/deepcopy-gen",
 ]
 
