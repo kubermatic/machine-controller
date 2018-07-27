@@ -615,11 +615,9 @@
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
-    "pkg/api/validation/path",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
-    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -659,16 +657,6 @@
     "third_party/forked/golang/reflect"
   ]
   revision = "01bc873149a1802eb74df583613872d126449ed5"
-
-[[projects]]
-  branch = "master"
-  name = "k8s.io/apiserver"
-  packages = [
-    "pkg/apis/audit",
-    "pkg/authentication/user",
-    "pkg/endpoints/request"
-  ]
-  revision = "563a7d9b065ea20fbdbe24506369772acb413d8d"
 
 [[projects]]
   branch = "release-7.0"
@@ -870,6 +858,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9622f63e47ce83c00833020c75acaaccb4f1ce20d2a7fa1924f21cfca3fc68af"
+  inputs-digest = "bafac101ca8163f7d2ddd8e1339787e74748935ef9e7e502808cc775b9ee6f9f"
   solver-name = "gps-cdcl"
   solver-version = 1
