@@ -689,5 +689,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get virtual network: %v", err)
 	}
 
+	if _, err := getSubnet(context.TODO(), c); err != nil {
+		return fmt.Errorf("failed to get subnet: %v", err)
+	}
+
 	return nil
 }
