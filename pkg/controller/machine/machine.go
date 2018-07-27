@@ -302,17 +302,12 @@ func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machin
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
-	// Verify first that a `Get` returns an ErrInstanceNotFound, otherwise we must not proceed as the cleanup wont work
-	if err := prov.Get(machine); err != nil && err == cloudprovidererrors.ErrInstanceNotFound {
-		// Ensure finalizer is there
-		machine, err = c.ensureDeleteFinalizerExists(machine)
-		if err != nil {
-			return err
-		}
-		return prov.Create(machine, c.updateMachine, userdata)
+	// Ensure finalizer is there
+	machine, err := c.ensureDeleteFinalizerExists(machine)
+	if err != nil {
+		return nil, err
 	}
-	c.recorder.Eventf(machine, corev1.EventTypeWarning, "PreconditionFailed", "`Get` on the instance before creation did not return expected ErrInstanceNotFound but err=%v", err)
-	return fmt.Errorf("`Get` on the instance before creation did not return expected ErrInstanceNotFound but err=%v", err)
+	return prov.Create(machine, c.updateMachine, userdata)
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
@@ -442,7 +437,7 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machin
 
 // deleteMachineAndProviderInstance makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
-	if err = c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
+	if err := c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete machine: %v", err)
 		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
