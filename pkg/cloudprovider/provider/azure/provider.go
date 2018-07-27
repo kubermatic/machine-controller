@@ -333,13 +333,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
 
-	if !kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
-			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerPublicIP)
-		}); err != nil {
-			return nil, err
-		}
-	}
 	ifaceName := machine.Spec.Name + "-netiface"
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
@@ -347,6 +340,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 		publicIP, err = createPublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %v", err)
+		}
+		if !kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
+			if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
+				updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerPublicIP)
+			}); err != nil {
+				return nil, err
+			}
 		}
 	}
 
