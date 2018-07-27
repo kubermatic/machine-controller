@@ -297,8 +297,8 @@ func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1
 	return prov.Get(machine)
 }
 
-func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, instance instance.Instance) error {
-	return prov.Delete(machine, c.updateMachine, instance)
+func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
+	return prov.Delete(machine, c.updateMachine)
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
@@ -437,7 +437,7 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machin
 
 // deleteMachineAndProviderInstance makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
-	if err := c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
+	if err := c.deleteProviderInstance(prov, machine); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete machine: %v", err)
 		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")

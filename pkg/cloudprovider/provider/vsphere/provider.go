@@ -386,7 +386,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	return VSphereServer{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater, _ instance.Instance) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) error {
 	if _, err := p.Get(machine); err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil

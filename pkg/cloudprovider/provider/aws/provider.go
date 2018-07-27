@@ -630,7 +630,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 		Groups:     aws.StringSlice(securityGroupIDs),
 	})
 	if err != nil {
-		delErr := p.Delete(machine, update, awsInstance)
+		delErr := p.Delete(machine, update)
 		if delErr != nil {
 			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %s & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName))
 		}
@@ -640,8 +640,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	return awsInstance, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater, instance instance.Instance) error {
-	if _, err := p.Get(machine); err != nil {
+func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) error {
+	instance, err := p.Get(machine)
+	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil
 		}

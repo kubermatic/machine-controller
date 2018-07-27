@@ -450,7 +450,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater, instance instance.Instance) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse MachineSpec: %v", err)
@@ -467,6 +467,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater
 			}
 		}
 	}
+
 	if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
 	}); err != nil {

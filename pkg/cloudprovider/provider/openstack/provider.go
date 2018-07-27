@@ -465,8 +465,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	return &osInstance{server: &server}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater, instance instance.Instance) error {
-	if _, err := p.Get(machine); err != nil {
+func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) error {
+	instance, err := p.Get(machine)
+	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil
 		}
