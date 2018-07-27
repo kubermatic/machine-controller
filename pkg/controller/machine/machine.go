@@ -306,7 +306,13 @@ func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machin
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
-	return prov.Validate(machine.Spec)
+	err := prov.Validate(machine.Spec)
+	if err != nil {
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "ValidationFailed", "Validation failed: %v", err)
+		return err
+	}
+	c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSucceeded", "Validation succeeded")
+	return nil
 }
 
 func (c *Controller) syncHandler(key string) error {
@@ -496,10 +502,8 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			if _, errNested := c.updateMachineError(machine, machinev1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
 				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
 			}
-			c.recorder.Eventf(machine, corev1.EventTypeWarning, "ValidationFailed", "Validation failed: %v", err)
 			return fmt.Errorf("invalid provider config: %v", err)
 		}
-		c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSucceeded", "Validation succeeded")
 		c.validationCacheMutex.Lock()
 		c.validationCache[cacheKey] = true
 		c.validationCacheMutex.Unlock()
