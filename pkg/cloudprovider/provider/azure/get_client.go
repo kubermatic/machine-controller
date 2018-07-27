@@ -30,6 +30,16 @@ func getSubnetsClient(c *config) (*network.SubnetsClient, error) {
 	return &ipClient, nil
 }
 
+func getVirtualNetworksClient(c *config) (*network.VirtualNetworksClient, error) {
+	var err error
+	virtualNetworksClient := network.NewVirtualNetworksClient(c.SubscriptionID)
+	virtualNetworksClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create virtual networks authorizer: %v", err)
+	}
+	return &virtualNetworksClient, nil
+}
+
 func getVMClient(c *config) (*compute.VirtualMachinesClient, error) {
 	var err error
 	vmClient := compute.NewVirtualMachinesClient(c.SubscriptionID)

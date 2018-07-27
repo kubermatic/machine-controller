@@ -685,5 +685,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to list all: %v", err.Error())
 	}
 
+	if _, err := getVirtualNetwork(context.TODO(), c); err != nil {
+		return fmt.Errorf("failed to get virtual network: %v", err)
+	}
+
 	return nil
 }
