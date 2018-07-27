@@ -302,7 +302,17 @@ func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machin
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine, userdata string) (instance.Instance, error) {
-	return prov.Create(machine, c.updateMachine, userdata)
+	// Verify first that a `Get` returns an ErrInstanceNotFound, otherwise we must not proceed as the cleanup wont work
+	if err := prov.Get(machine); err != nil && err == cloudprovidererrors.ErrInstanceNotFound {
+		// Ensure finalizer is there
+		machine, err = c.ensureDeleteFinalizerExists(machine)
+		if err != nil {
+			return err
+		}
+		return prov.Create(machine, c.updateMachine, userdata)
+	}
+	c.recorder.Eventf(machine, corev1.EventTypeWarning, "PreconditionFailed", "`Get` on the instance before creation did not return expected ErrInstanceNotFound but err=%v", err)
+	return fmt.Errorf("`Get` on the instance before creation did not return expected ErrInstanceNotFound but err=%v", err)
 }
 
 func (c *Controller) validateMachine(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
@@ -507,11 +517,6 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
-			// Ensure finalizer is there
-			machine, err = c.ensureDeleteFinalizerExists(machine)
-			if err != nil {
-				return err
-			}
 			// Create the instance
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
