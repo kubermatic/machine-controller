@@ -456,7 +456,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater
 		return fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
-	_, err := p.Get(machine)
+	_, err = p.Get(machine)
 	if err != nil {
 		if err != cloudprovidererrors.ErrInstanceNotFound {
 			return err
@@ -645,7 +645,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, _, err := p.getConfig(spec.ProviderConfig)
+	c, providerCfg, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -700,9 +700,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	_, err := getOSImageReference(providerCfg.OperatingSystem)
+	_, err = getOSImageReference(providerCfg.OperatingSystem)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	return nil
