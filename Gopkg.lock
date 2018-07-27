@@ -973,6 +973,11 @@
 
 [[projects]]
   digest = "1:53e84052118027b435227562394fce46d0aad0071ecbe62f8a7a6290b83f104b"
+  pruneopts = "NUT"
+  revision = "cbd9dba38c3d8e0035d4bb554bd321e2c190e629"
+
+[[projects]]
+  digest = "1:31bbd0f9079d9b74e3326b139c8ae008a6af3ce5a43c74197aed64cdb7d91114"
   name = "k8s.io/gengo"
   packages = [
     "args",
