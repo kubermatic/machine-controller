@@ -21,13 +21,13 @@ func getIPClient(c *config) (*network.PublicIPAddressesClient, error) {
 
 func getSubnetsClient(c *config) (*network.SubnetsClient, error) {
 	var err error
-	ipClient := network.NewSubnetsClient(c.SubscriptionID)
-	ipClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
+	subnetClient := network.NewSubnetsClient(c.SubscriptionID)
+	subnetClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
 	}
 
-	return &ipClient, nil
+	return &subnetClient, nil
 }
 
 func getVirtualNetworksClient(c *config) (*network.VirtualNetworksClient, error) {
@@ -35,7 +35,7 @@ func getVirtualNetworksClient(c *config) (*network.VirtualNetworksClient, error)
 	virtualNetworksClient := network.NewVirtualNetworksClient(c.SubscriptionID)
 	virtualNetworksClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create virtual networks authorizer: %v", err)
+		return nil, fmt.Errorf("failed to create authorizer: %v", err)
 	}
 	return &virtualNetworksClient, nil
 }
