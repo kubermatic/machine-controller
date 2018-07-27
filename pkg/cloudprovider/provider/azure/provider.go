@@ -460,11 +460,11 @@ func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	if err != nil {
 		if err != cloudprovidererrors.ErrInstanceNotFound {
 			return err
-		} else {
-			glog.Infof("deleting VM %q", machine.Name)
-			if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-				return fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
-			}
+		}
+	} else {
+		glog.Infof("deleting VM %q", machine.Name)
+		if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
+			return fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
 		}
 	}
 
