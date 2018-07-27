@@ -337,10 +337,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 	if config.AssignPublicIP {
-		publicIP, err = createPublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create public IP: %v", err)
-		}
 		if !kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
 			if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
 				updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerPublicIP)
@@ -348,18 +344,22 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 				return nil, err
 			}
 		}
+		publicIP, err = createPublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create public IP: %v", err)
+		}
 	}
 
-	iface, err := createNetworkInterface(context.TODO(), ifaceName, machine.UID, config, publicIP)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
-	}
 	if !kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
 		if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerNIC)
 		}); err != nil {
 			return nil, err
 		}
+	}
+	iface, err := createNetworkInterface(context.TODO(), ifaceName, machine.UID, config, publicIP)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
 	}
 
 	tags := make(map[string]*string, len(config.Tags)+1)
