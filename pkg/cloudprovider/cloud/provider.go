@@ -27,6 +27,9 @@ type Provider interface {
 	// Create creates a cloud instance according to the given machine
 	Create(machine *v1alpha1.Machine, update MachineUpdater, userdata string) (instance.Instance, error)
 
+	// Delete deletes the instance and all associated ressources
+	// This will always be called on machine deletion, the implemention must check if there is actually
+	// something to delete and just do nothing if there isn't
 	Delete(machine *v1alpha1.Machine, update MachineUpdater, instance instance.Instance) error
 }
 

@@ -432,45 +432,12 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *machinev1alpha1.Machin
 
 // deleteMachineAndProviderInstance makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
-	// step 1: get the provider instance.
-	providerInstance, err := c.getProviderInstance(prov, machine)
-	if err != nil {
-		// step 1.1: failed to get instance, because of some unknown error -> return and see if we need to handle a terminal error here
-		if err != cloudprovidererrors.ErrInstanceNotFound {
-			return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, err.Error(), err, fmt.Sprintf("failed to get instance for machine %s after the delete got triggered", machine.Name))
-		}
-		glog.V(4).Infof("Provider has no instance for %s. Considering it as deleted", machine.Name)
-
-		// step 1.2 the instance could not be found -> it's gone, so we remove the finalizer. This essentially will remove the machine object from the system
-		return c.cleanupMachineAfterDeletion(machine)
-	}
-
-	// step 2: we still have an instance on the cloud provider
-	// step 2.1: Check if its in deleting state - if so, the provider normally does some own cleanup. We wait until the instance is completely gone.
-	if instance.StatusDeleting == providerInstance.Status() {
-		glog.V(4).Infof("deletion of instance %s got triggered. Waiting until it fully disappears", providerInstance.ID())
-		return nil
-	}
-
-	// step 2.2: The instance exists at the provider, but its considered dead
-	if instance.StatusDeleted == providerInstance.Status() {
-		glog.V(4).Infof("Provider says the instance for %s is deleted", machine.Name)
-		return c.cleanupMachineAfterDeletion(machine)
-	}
-
-	// step 2.3: delete provider instance
 	if err = c.deleteProviderInstance(prov, machine, providerInstance); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete machine: %v", err)
 		return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
-
-	// step 3: remove error message in case it was set
-	if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
-		return fmt.Errorf("failed to update machine after removing the delete error: %v", err)
-	}
-
-	return nil
+	return c.cleanupMachineAfterDeletion(machine)
 }
 
 func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *machinev1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
@@ -540,16 +507,16 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
+			// Ensure finalizer is there
+			machine, err = c.ensureDeleteFinalizerExists(machine)
+			if err != nil {
+				return err
+			}
 			// Create the instance
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return c.updateMachineErrorIfTerminalError(machine, machinev1alpha1.CreateMachineError, message, err, "failed to create machine at cloudprover")
-			}
-			// We created the instance, so ensure finalizer is there
-			machine, err = c.ensureDeleteFinalizerExists(machine)
-			if err != nil {
-				return err
 			}
 			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			// remove error message in case it was set

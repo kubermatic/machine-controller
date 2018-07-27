@@ -325,6 +325,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater, instance instance.Instance) error {
+	if _, err := p.Get(machine); err != nil {
+		if err == cloudprovidererrors.ErrInstanceNotFound {
+			return nil
+		}
+		return err
+	}
+
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{

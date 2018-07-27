@@ -456,9 +456,16 @@ func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater
 		return fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
-	glog.Infof("deleting VM %q", machine.Name)
-	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return fmt.Errorf("Is failed to remove public IP addresses of machine %q: %v", machine.Name, err)
+	_, err := p.Get(machine)
+	if err != nil {
+		if err != cloudprovidererrors.ErrInstanceNotFound {
+			return err
+		} else {
+			glog.Infof("deleting VM %q", machine.Name)
+			if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
+				return fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
+			}
+		}
 	}
 	if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
