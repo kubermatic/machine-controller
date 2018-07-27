@@ -700,5 +700,10 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
+	_, err := getOSImageReference(providerCfg.OperatingSystem)
+	if err != nil {
+		return nil, err
+	}
+
 	return nil
 }
