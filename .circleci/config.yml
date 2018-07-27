@@ -73,6 +73,7 @@ jobs:
           name: Clean up machines
           command: ./test/tools/integration/cleanup_machines.sh
           when: always
+          no_output_timeout: 25m
       - run:
           name: Clean up master
           command: make -C test/tools/integration destroy
