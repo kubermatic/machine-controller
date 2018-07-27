@@ -17,17 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	//"log"
-
-	//"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apiserver/pkg/endpoints/request"
+	"github.com/kubermatic/machine-controller/pkg/machines/common"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
-	//"k8s.io/apimachinery/pkg/labels"
-	//"k8s.io/apimachinery/pkg/util/validation/field"
-	//"sigs.k8s.io/cluster-api/pkg/apis/cluster"
-	"github.com/kubermatic/machine-controller/pkg/machines/common"
 )
 
 // +genclient
@@ -126,42 +118,3 @@ type MachineSetStatus struct {
 	// +optional
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
-
-// Validate checks that an instance of MachineSet is well formed
-//func (MachineSetStrategy) Validate(ctx request.Context, obj runtime.Object) field.ErrorList {
-//	machineSet := obj.(*MachineSet)
-//	errors := field.ErrorList{}
-//
-//	// validate spec.selector and spec.template.labels
-//	fldPath := field.NewPath("spec")
-//	errors = append(errors, metav1validation.ValidateLabelSelector(&machineSet.Spec.Selector, fldPath.Child("selector"))...)
-//	if len(machineSet.Spec.Selector.MatchLabels)+len(machineSet.Spec.Selector.MatchExpressions) == 0 {
-//		errors = append(errors, field.Invalid(fldPath.Child("selector"), machineSet.Spec.Selector, "empty selector is not valid for MachineSet."))
-//	}
-//	selector, err := metav1.LabelSelectorAsSelector(&machineSet.Spec.Selector)
-//	if err != nil {
-//		errors = append(errors, field.Invalid(fldPath.Child("selector"), machineSet.Spec.Selector, "invalid label selector."))
-//	} else {
-//		labels := labels.Set(machineSet.Spec.Template.Labels)
-//		if !selector.Matches(labels) {
-//			errors = append(errors, field.Invalid(fldPath.Child("template", "metadata", "labels"), machineSet.Spec.Template.Labels, "`selector` does not match template `labels`"))
-//		}
-//	}
-//
-//	return errors
-//}
-//
-//// DefaultingFunction sets default MachineSet field values
-//func (MachineSetSchemeFns) DefaultingFunction(o interface{}) {
-//	obj := o.(*MachineSet)
-//	log.Printf("Defaulting fields for MachineSet %s\n", obj.Name)
-//
-//	if obj.Spec.Replicas == nil {
-//		obj.Spec.Replicas = new(int32)
-//		*obj.Spec.Replicas = 1
-//	}
-//
-//	if len(obj.Namespace) == 0 {
-//		obj.Namespace = metav1.NamespaceDefault
-//	}
-//}
