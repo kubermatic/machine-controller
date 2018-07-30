@@ -189,6 +189,9 @@ write_files:
   content: |
     net.bridge.bridge-nf-call-ip6tables = 1
     net.bridge.bridge-nf-call-iptables = 1
+    kernel.panic_on_oops = 1
+    kernel.panic = 10
+    vm.overcommit_memory = 1
 
 - path: "/etc/yum.repos.d/kubernetes.repo"
   content: |
@@ -224,7 +227,6 @@ write_files:
       --hostname-override={{ .MachineSpec.Name }} \
       --read-only-port=0 \
       --keep-terminated-pod-volumes=false \
-      --event-qps=0 \
       --protect-kernel-defaults=true \
       --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
       --cluster-domain=cluster.local

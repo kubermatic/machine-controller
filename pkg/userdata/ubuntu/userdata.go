@@ -176,6 +176,14 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
+- path: "/etc/sysctl.d/k8s.conf"
+  content: |
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.bridge.bridge-nf-call-iptables = 1
+    kernel.panic_on_oops = 1
+    kernel.panic = 10
+    vm.overcommit_memory = 1
+
 - path: "/etc/kubernetes/cloud-config"
   content: |
 {{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
@@ -193,6 +201,8 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
+
+    sysctl --system
     mkdir -p /opt/bin
     apt-key add /opt/docker.asc
     apt-key add /opt/kubernetes.asc
@@ -378,7 +388,6 @@ write_files:
       --hostname-override={{ .MachineSpec.Name }} \
       --read-only-port=0 \
       --keep-terminated-pod-volumes=false \
-      --event-qps=0 \
       --protect-kernel-defaults=true \
       --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
       --cluster-domain=cluster.local

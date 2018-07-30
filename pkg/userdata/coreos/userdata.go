@@ -179,7 +179,8 @@ networkd:
         Gateway={{ .ProviderConfig.Network.Gateway }}
         {{range .ProviderConfig.Network.DNS.Servers}}DNS={{.}}
         {{end}}
-{{ end }}
+{{- end }}
+
 systemd:
   units:
 {{- if .CoreOSConfig.DisableAutoUpdate }}
@@ -250,7 +251,6 @@ systemd:
           --exit-on-lock-contention \
           --read-only-port=0 \
           --keep-terminated-pod-volumes=false \
-          --event-qps=0 \
           --protect-kernel-defaults=true \
           --authorization-mode=Webhook \
           --anonymous-auth=false \
@@ -263,6 +263,36 @@ systemd:
 
 storage:
   files:
+    - path: /etc/sysctl.d/k8s.conf
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          kernel.panic_on_oops = 1
+          kernel.panic = 10
+          vm.overcommit_memory = 1
+
+    - path: /proc/sys/kernel/panic_on_oops
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          1
+
+    - path: /proc/sys/kernel/panic
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          10
+
+    - path: /proc/sys/vm/overcommit_memory
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          1
+
     - path: /etc/kubernetes/bootstrap.kubeconfig
       filesystem: root
       mode: 0400
