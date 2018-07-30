@@ -1,9 +1,18 @@
-required = ["k8s.io/code-generator/cmd/client-gen"]
+required = [
+  "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/gengo/examples/defaulter-gen/generators",
+  "k8s.io/code-generator/cmd/deepcopy-gen",
+]
 
 [prune]
   non-go = true
   go-tests = true
   unused-packages = true
+  # contains a bash script we use for code generation
+  [[prune.project]]
+    name = "k8s.io/code-generator"
+    non-go = false
+    unused-packages = false
 
 [[constraint]]
   name = "github.com/golang/glog"
@@ -24,6 +33,10 @@ required = ["k8s.io/code-generator/cmd/client-gen"]
 
 [[constraint]]
   name = "k8s.io/apimachinery"
+  branch = "release-1.10"
+
+[[constraint]]
+  name = "k8s.io/api"
   branch = "release-1.10"
 
 [[constraint]]
