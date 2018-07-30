@@ -210,6 +210,15 @@ func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
 	return subnetsClient.Get(ctx, c.ResourceGroup, c.VNetName, c.SubnetName, "")
 }
 
+func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, error) {
+	virtualNetworksClient, err := getVirtualNetworksClient(c)
+	if err != nil {
+		return network.VirtualNetwork{}, err
+	}
+
+	return virtualNetworksClient.Get(ctx, c.ResourceGroup, c.VNetName, "")
+}
+
 func createNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP *network.PublicIPAddress) (network.Interface, error) {
 	ifClient, err := getInterfacesClient(config)
 	if err != nil {

@@ -333,17 +333,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
 
-	if !kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
-			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerPublicIP)
-		}); err != nil {
-			return nil, err
-		}
-	}
 	ifaceName := machine.Spec.Name + "-netiface"
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 	if config.AssignPublicIP {
+		if !kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
+			if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
+				updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerPublicIP)
+			}); err != nil {
+				return nil, err
+			}
+		}
 		publicIP, err = createPublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %v", err)
@@ -450,16 +450,22 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater, instance instance.Instance) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, update cloud.MachineUpdater) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
-	glog.Infof("deleting VM %q", machine.Name)
-	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return fmt.Errorf("Is failed to remove public IP addresses of machine %q: %v", machine.Name, err)
+	_, err = p.Get(machine)
+	// If a defunct VM got created, the `Get` call returns an error - But not because the request
+	// failed but because the VM has an invalid config hence always delete except on err == cloudprovidererrors.ErrInstanceNotFound
+	if err == nil || (err != nil && err != cloudprovidererrors.ErrInstanceNotFound) {
+		glog.Infof("deleting VM %q", machine.Name)
+		if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
+			return fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
+		}
 	}
+
 	if machine, err = update(machine.Name, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
 	}); err != nil {
@@ -638,7 +644,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, _, err := p.getConfig(spec.ProviderConfig)
+	c, providerCfg, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -683,6 +689,19 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	_, err = vmClient.ListAll(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to list all: %v", err.Error())
+	}
+
+	if _, err := getVirtualNetwork(context.TODO(), c); err != nil {
+		return fmt.Errorf("failed to get virtual network: %v", err)
+	}
+
+	if _, err := getSubnet(context.TODO(), c); err != nil {
+		return fmt.Errorf("failed to get subnet: %v", err)
+	}
+
+	_, err = getOSImageReference(providerCfg.OperatingSystem)
+	if err != nil {
+		return err
 	}
 
 	return nil

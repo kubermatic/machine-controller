@@ -179,8 +179,8 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 
 	// before we acquire a lock we actually warm up caches mirroring the state of the API server
-	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Second*30)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Minute*15)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
 	kubeSystemInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceSystem, nil)
 	defaultKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceDefault, nil)

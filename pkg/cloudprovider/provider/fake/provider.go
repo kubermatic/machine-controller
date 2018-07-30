@@ -77,6 +77,6 @@ func (p *provider) Create(_ *v1alpha1.Machine, _ cloud.MachineUpdater, _ string)
 	return FakeCloudProviderInstance{}, nil
 }
 
-func (p *provider) Delete(_ *v1alpha1.Machine, _ cloud.MachineUpdater, _ instance.Instance) error {
+func (p *provider) Delete(_ *v1alpha1.Machine, _ cloud.MachineUpdater) error {
 	return nil
 }
