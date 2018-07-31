@@ -226,7 +226,6 @@ write_files:
       {{- end}}
       --hostname-override={{ .MachineSpec.Name }} \
       --read-only-port=0 \
-      --keep-terminated-pod-volumes=false \
       --protect-kernel-defaults=true \
       --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
       --cluster-domain=cluster.local

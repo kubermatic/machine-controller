@@ -211,7 +211,6 @@ write_files:
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --read-only-port=0 \
-      --keep-terminated-pod-volumes=false \
       --protect-kernel-defaults=true \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local
