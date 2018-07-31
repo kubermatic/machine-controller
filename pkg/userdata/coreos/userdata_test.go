@@ -8,15 +8,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-
+	"github.com/pmezard/go-difflib/difflib"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/pmezard/go-difflib/difflib"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 )
 
 var (
@@ -47,8 +46,19 @@ sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
 kPe6XoSbiLm/kxk32T0=
 -----END CERTIFICATE-----`
 
-	kubeconfig = &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": &clientcmdapi.AuthInfo{Token: "my-token"}}}
+	kubeconfig = &clientcmdapi.Config{
+		Clusters: map[string]*clientcmdapi.Cluster{
+			"": &clientcmdapi.Cluster{
+				Server: "https://server:443",
+				CertificateAuthorityData: []byte(pemCertificate),
+			},
+		},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{
+			"": &clientcmdapi.AuthInfo{
+				Token: "my-token",
+			},
+		},
+	}
 )
 
 type fakeCloudConfigProvider struct {

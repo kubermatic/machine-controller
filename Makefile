@@ -16,22 +16,21 @@ vendor: Gopkg.lock Gopkg.toml
 	dep ensure -vendor-only
 
 machine-controller-docker:
-		@docker run --rm \
-			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
-			-v $$PWD/.buildcache:/cache \
-			-e GOCACHE=/cache \
-			-w /go/src/github.com/kubermatic/machine-controller \
-			golang:$(GO_VERSION) \
+	@docker run --rm \
+		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD/.buildcache:/cache \
+		-e GOCACHE=/cache \
+		-w /go/src/github.com/kubermatic/machine-controller \
+		golang:$(GO_VERSION) \
 			make machine-controller
 
 machine-controller: $(shell find cmd pkg -name '*.go') vendor
-	go build \
+	go build -v \
 		-ldflags '-s -w' \
 		-o machine-controller \
 		github.com/kubermatic/machine-controller/cmd/controller
 
-docker-image: machine-controller
-	make docker-image-nodep
+docker-image: machine-controller docker-image-nodep
 
 # This target exists because in our CI
 # we do not want to restore the vendor
@@ -50,17 +49,17 @@ docker-image-nodep:
 	fi
 
 test-unit-docker:
-		@docker run --rm \
-			-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
-			-v $$PWD/.buildcache:/cache \
-			-e GOCACHE=/cache \
-			-w /go/src/github.com/kubermatic/machine-controller \
-			golang:$(GO_VERSION) \
+	@docker run --rm \
+		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD/.buildcache:/cache \
+		-e GOCACHE=/cache \
+		-w /go/src/github.com/kubermatic/machine-controller \
+		golang:$(GO_VERSION) \
 			make test-unit
 
 test-unit: vendor
-			@#The `-race` flag requires CGO
-			CGO_ENABLED=1 go test -race ./...
+	@#The `-race` flag requires CGO
+	CGO_ENABLED=1 go test -race ./...
 
 e2e-cluster:
 	make -C test/tools/integration apply

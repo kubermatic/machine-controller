@@ -3,13 +3,14 @@ hostname: node1
 
 ssh_pwauth: no
 
-
-
 write_files:
 - path: "/etc/sysctl.d/k8s.conf"
   content: |
     net.bridge.bridge-nf-call-ip6tables = 1
     net.bridge.bridge-nf-call-iptables = 1
+    kernel.panic_on_oops = 1
+    kernel.panic = 10
+    vm.overcommit_memory = 1
 
 - path: "/etc/yum.repos.d/kubernetes.repo"
   content: |
@@ -35,14 +36,17 @@ write_files:
     #     mls - Multi Level Security protection.
     SELINUXTYPE=targeted
 
-
 - path: "/etc/sysconfig/kubelet-overwrite"
   content: |
-    KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config \
-      --authentication-token-webhook=true --hostname-override=node1 --read-only-port 0 \
-      --cluster-dns= --cluster-domain=cluster.local
-
-
+    KUBELET_EXTRA_ARGS=--authentication-token-webhook=true \
+      --cloud-provider=aws \
+      --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
+      --read-only-port=0 \
+      --keep-terminated-pod-volumes=false \
+      --protect-kernel-defaults=true \
+      --cluster-dns= \
+      --cluster-domain=cluster.local
 
 - path: "/etc/kubernetes/cloud-config"
   content: |

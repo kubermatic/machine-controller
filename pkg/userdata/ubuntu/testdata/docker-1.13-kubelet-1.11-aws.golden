@@ -8,6 +8,14 @@ ssh_authorized_keys:
 - "ssh-rsa CCCDDD"
 
 write_files:
+- path: "/etc/sysctl.d/k8s.conf"
+  content: |
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.bridge.bridge-nf-call-iptables = 1
+    kernel.panic_on_oops = 1
+    kernel.panic = 10
+    vm.overcommit_memory = 1
+
 - path: "/etc/kubernetes/cloud-config"
   content: |
     {aws-config:true}
@@ -25,6 +33,8 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
+
+    sysctl --system
     mkdir -p /opt/bin
     apt-key add /opt/docker.asc
     apt-key add /opt/kubernetes.asc
@@ -193,9 +203,15 @@ write_files:
 
 - path: "/etc/default/kubelet-overwrite"
   content: |
-    KUBELET_EXTRA_ARGS=--cloud-provider=aws --cloud-config=/etc/kubernetes/cloud-config \
-      --authentication-token-webhook=true --hostname-override=node1 --read-only-port 0 \
-      --cluster-dns=10.10.10.10 --cluster-domain=cluster.local
+    KUBELET_EXTRA_ARGS=--authentication-token-webhook=true \
+      --cloud-provider=aws \
+      --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
+      --read-only-port=0 \
+      --keep-terminated-pod-volumes=false \
+      --protect-kernel-defaults=true \
+      --cluster-dns=10.10.10.10 \
+      --cluster-domain=cluster.local
 
 
 - path: "/etc/systemd/system/setup.service"
