@@ -250,7 +250,6 @@ systemd:
           --lock-file=/var/run/lock/kubelet.lock \
           --exit-on-lock-contention \
           --read-only-port=0 \
-          --keep-terminated-pod-volumes=false \
           --protect-kernel-defaults=true \
           --authorization-mode=Webhook \
           --anonymous-auth=false \
