@@ -46,12 +46,13 @@ type RawConfig struct {
 	ClientID       providerconfig.ConfigVarString `json:"clientID"`
 	ClientSecret   providerconfig.ConfigVarString `json:"clientSecret"`
 
-	Location       providerconfig.ConfigVarString `json:"location"`
-	ResourceGroup  providerconfig.ConfigVarString `json:"resourceGroup"`
-	VMSize         providerconfig.ConfigVarString `json:"vmSize"`
-	VNetName       providerconfig.ConfigVarString `json:"vnetName"`
-	SubnetName     providerconfig.ConfigVarString `json:"subnetName"`
-	RouteTableName providerconfig.ConfigVarString `json:"routeTableName"`
+	Location        providerconfig.ConfigVarString `json:"location"`
+	ResourceGroup   providerconfig.ConfigVarString `json:"resourceGroup"`
+	VMSize          providerconfig.ConfigVarString `json:"vmSize"`
+	VNetName        providerconfig.ConfigVarString `json:"vnetName"`
+	SubnetName      providerconfig.ConfigVarString `json:"subnetName"`
+	RouteTableName  providerconfig.ConfigVarString `json:"routeTableName"`
+	AvailabilitySet providerconfig.ConfigVarString `json:"availabilitySet"`
 
 	AssignPublicIP providerconfig.ConfigVarBool `json:"assignPublicIP"`
 	Tags           map[string]string            `json:"tags"`
@@ -63,12 +64,13 @@ type config struct {
 	ClientID       string
 	ClientSecret   string
 
-	Location       string
-	ResourceGroup  string
-	VMSize         string
-	VNetName       string
-	SubnetName     string
-	RouteTableName string
+	Location        string
+	ResourceGroup   string
+	VMSize          string
+	VNetName        string
+	SubnetName      string
+	RouteTableName  string
+	AvailabilitySet string
 
 	AssignPublicIP bool
 	Tags           map[string]string
@@ -200,6 +202,11 @@ func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.C
 	c.AssignPublicIP, err = p.configVarResolver.GetConfigVarBoolValue(rawCfg.AssignPublicIP)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %v", err)
+	}
+
+	c.AvailabilitySet, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.AvailabilitySet)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"availabilitySet\" field, error = %v", err)
 	}
 
 	c.Tags = rawCfg.Tags
@@ -375,7 +382,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 			NetworkProfile: &compute.NetworkProfile{
 				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
 					{
-						ID: iface.ID,
+						ID:                                  iface.ID,
 						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{Primary: to.BoolPtr(true)},
 					},
 				},
@@ -399,6 +406,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 			StorageProfile: &compute.StorageProfile{ImageReference: osRef},
 		},
 		Tags: tags,
+	}
+
+	if config.AvailabilitySet != "" {
+		// Azure expects the full path to the resource
+		asURI := fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s", config.SubscriptionID, config.ResourceGroup, config.AvailabilitySet)
+		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
 	}
 
 	glog.Infof("Creating machine %q", machine.Spec.Name)
