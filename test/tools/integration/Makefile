@@ -17,7 +17,7 @@ terraform:
 	fi
 
 .terraform: terraform
-	terraform init -plugin-dir .plugins >/dev/null 2>&1
+	terraform init >/dev/null 2>&1
 
 .PHONY: plan apply destroy
 plan apply destroy: .terraform
