@@ -331,16 +331,6 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	machine := listerMachine.DeepCopy()
 
-	if machine.Spec.Name == "" {
-		machine, err = c.updateMachine(machine.Name, func(modifiedMachine *machinev1alpha1.Machine) {
-			modifiedMachine.Spec.Name = modifiedMachine.Name
-		})
-		if err != nil {
-			return fmt.Errorf("failed to default machine.Spec.Name to %s: %v", listerMachine.Name, err)
-		}
-		c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeName defaulted", "Defaulted nodename to %s", machine.Name)
-	}
-
 	// step 1: check if the machine can be processed by this controller.
 	// set the annotation "machine.k8s.io/controller": my-controller
 	// and the flag --name=my-controller to make only this controller process a node
@@ -358,6 +348,16 @@ func (c *Controller) syncHandler(key string) error {
 
 		glog.V(6).Infof("this controller is configured to process machines which the annotation %s:%s. The machine has %s:%s", controllerNameAnnotationKey, c.name, controllerNameAnnotationKey, machineControllerName)
 		return nil
+	}
+
+	if machine.Spec.Name == "" {
+		machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
+			m.Spec.Name = m.Name
+		})
+		if err != nil {
+			return fmt.Errorf("failed to default machine.Spec.Name to %s: %v", listerMachine.Name, err)
+		}
+		c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeName defaulted", "Defaulted nodename to %s", machine.Name)
 	}
 
 	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
