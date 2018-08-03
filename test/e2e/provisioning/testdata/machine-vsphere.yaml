@@ -4,7 +4,6 @@ metadata:
   name: << MACHINE_NAME >>
 spec:
   metadata:
-    name: << NODE_NAME >>
     labels:
       foo: "bar"
   providerConfig:

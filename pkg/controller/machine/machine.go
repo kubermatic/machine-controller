@@ -350,6 +350,16 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
+	if machine.Spec.Name == "" {
+		machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
+			m.Spec.Name = m.Name
+		})
+		if err != nil {
+			return fmt.Errorf("failed to default machine.Spec.Name to %s: %v", listerMachine.Name, err)
+		}
+		c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeName defaulted", "Defaulted nodename to %s", machine.Name)
+	}
+
 	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)

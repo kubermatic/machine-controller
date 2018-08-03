@@ -15,8 +15,6 @@ kind: Machine
 metadata:
   name: machine1
 spec:
-  metadata:
-    name: node1
   providerConfig:
     sshPublicKeys:
       - "<< YOUR_PUBLIC_KEY >>"
