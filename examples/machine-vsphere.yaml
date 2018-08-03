@@ -15,7 +15,6 @@ metadata:
   name: machine1
 spec:
   metadata:
-    name: node1
     labels:
       foo: "bar"
   providerConfig:

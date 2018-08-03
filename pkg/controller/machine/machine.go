@@ -506,6 +506,9 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
+			if machine.Spec.Name == "" {
+				machine.Spec.Name = machine.Name
+			}
 			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
 			if err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "UserdataRenderingFailed", "Userdata rendering failed: %v", err)

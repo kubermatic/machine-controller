@@ -144,7 +144,6 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	scenarioParams := append([]string(nil), testParams...)
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< MACHINE_NAME >>=%s", kubernetesCompliantName))
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< NODE_NAME >>=%s", kubernetesCompliantName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_NAME >>=%s", testCase.osName))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBERNETES_VERSION >>=%s", testCase.kubernetesVersion))
