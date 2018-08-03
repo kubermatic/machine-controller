@@ -12,7 +12,7 @@ endif
 
 terraform:
 	@if ! which terraform; then \
-		curl https://releases.hashicorp.com/terraform/0.11.3/terraform_0.11.3_linux_amd64.zip > /tmp/terraform.zip && \
+		curl https://releases.hashicorp.com/terraform/0.11.7/terraform_0.11.7_linux_amd64.zip > /tmp/terraform.zip && \
 		unzip -n /tmp/terraform.zip terraform; \
 	fi
 
