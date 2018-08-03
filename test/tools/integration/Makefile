@@ -10,13 +10,7 @@ else ifeq ($(MAKECMDGOALS),destroy)
 	EXTRA_ARG = -force
 endif
 
-.plugins/terraform-provider-hcloud:
-	mkdir -p $(dir $@)
-	curl -L https://github.com/hetznercloud/terraform-provider-hcloud/releases/download/v1.1.0/terraform-provider-hcloud_v1.1.0_linux_amd64.zip > /tmp/provider-hcloud.zip
-	unzip -n /tmp/provider-hcloud.zip terraform-provider-hcloud
-	mv terraform-provider-hcloud $@
-
-terraform: .plugins/terraform-provider-hcloud
+terraform:
 	@if ! which terraform; then \
 		curl https://releases.hashicorp.com/terraform/0.11.3/terraform_0.11.3_linux_amd64.zip > /tmp/terraform.zip && \
 		unzip -n /tmp/terraform.zip terraform; \
