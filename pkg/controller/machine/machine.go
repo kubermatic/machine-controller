@@ -335,6 +335,9 @@ func (c *Controller) syncHandler(key string) error {
 		machine, err = c.updateMachine(machine.Name, func(modifiedMachine *machinev1alpha1.Machine) {
 			modifiedMachine.Spec.Name = modifiedMachine.Name
 		})
+		if err != nil {
+			return fmt.Errorf("failed to default machine.Spec.Name to %s: %v", listerMachine.Name, err)
+		}
 		c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeName defaulted", "Defaulted nodename to %s", machine.Name)
 	}
 
