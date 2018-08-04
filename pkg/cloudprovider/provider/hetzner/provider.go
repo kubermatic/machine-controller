@@ -272,6 +272,19 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return "", "", nil
 }
 
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]string {
+	labels := make(map[string]string)
+
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err == nil {
+		labels["servertype"] = c.ServerType
+		labels["dc"] = c.Datacenter
+		labels["location"] = c.Location
+	}
+
+	return labels
+}
+
 type hetznerServer struct {
 	server *hcloud.Server
 }

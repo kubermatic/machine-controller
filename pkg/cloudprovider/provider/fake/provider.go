@@ -80,3 +80,7 @@ func (p *provider) Create(_ *v1alpha1.Machine, _ cloud.MachineUpdater, _ string)
 func (p *provider) Delete(_ *v1alpha1.Machine, _ cloud.MachineUpdater) error {
 	return nil
 }
+
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]string {
+	return map[string]string{}
+}

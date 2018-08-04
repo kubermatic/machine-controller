@@ -229,6 +229,7 @@ func main() {
 	{
 		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(
 			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+			kubeClient,
 		))
 
 		s := createUtilHTTPServer(kubeClient, kubeconfigProvider, prometheusRegistry)

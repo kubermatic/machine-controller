@@ -561,3 +561,17 @@ datacenter = "%s"
 `, url.Hostname(), port, c.Username, c.Password, insecureFlag, c.Datastore, workingDir, c.Datacenter)
 	return config, "vsphere", nil
 }
+
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]string {
+	labels := make(map[string]string)
+
+	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err == nil {
+		labels["dc"] = c.Datacenter
+		labels["cluster"] = c.Cluster
+		labels["cpus"] = fmt.Sprintf("%d", c.CPUs)
+		labels["memory"] = fmt.Sprintf("%d", c.MemoryMB)
+	}
+
+	return labels
+}

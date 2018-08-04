@@ -385,6 +385,18 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return "", "", nil
 }
 
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]string {
+	labels := make(map[string]string)
+
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err == nil {
+		labels["region"] = c.Region
+		labels["size"] = c.Size
+	}
+
+	return labels
+}
+
 type doInstance struct {
 	droplet *godo.Droplet
 }
