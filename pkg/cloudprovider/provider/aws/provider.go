@@ -715,7 +715,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return "", "aws", nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]string {
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
@@ -726,7 +726,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]st
 		labels["ami"] = c.AMI
 	}
 
-	return labels
+	return labels, err
 }
 
 type awsInstance struct {

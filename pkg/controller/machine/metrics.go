@@ -1,12 +1,15 @@
 package controller
 
 import (
+	"fmt"
+
 	"github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -142,32 +145,44 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
-		if err == nil {
-			provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, cvr)
-			if err == nil {
-				metricsLabels := machineMetricLabels{
-					KubeletVersion:  machine.Spec.Versions.Kubelet,
-					CloudProvider:   providerConfig.CloudProvider,
-					OperatingSystem: providerConfig.OperatingSystem,
-					ProviderLabels:  provider.MachineMetricsLabels(machine),
-				}
+		if err != nil {
+			runtime.HandleError(fmt.Errorf("failed to determine provider config for machine: %v", err))
+			continue
+		}
 
-				var key *machineMetricLabels
+		provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, cvr)
+		if err != nil {
+			runtime.HandleError(fmt.Errorf("failed to determine provider provider: %v", err))
+			continue
+		}
 
-				for p := range machineCountByLabels {
-					if equality.Semantic.DeepEqual(*p, metricsLabels) {
-						key = p
-						break
-					}
-				}
+		labels, err := provider.MachineMetricsLabels(machine)
+		if err != nil {
+			runtime.HandleError(fmt.Errorf("failed to determine machine metrics labels: %v", err))
+			continue
+		}
 
-				if key == nil {
-					key = &metricsLabels
-				}
+		metricsLabels := machineMetricLabels{
+			KubeletVersion:  machine.Spec.Versions.Kubelet,
+			CloudProvider:   providerConfig.CloudProvider,
+			OperatingSystem: providerConfig.OperatingSystem,
+			ProviderLabels:  labels,
+		}
 
-				machineCountByLabels[key]++
+		var key *machineMetricLabels
+
+		for p := range machineCountByLabels {
+			if equality.Semantic.DeepEqual(*p, metricsLabels) {
+				key = p
+				break
 			}
 		}
+
+		if key == nil {
+			key = &metricsLabels
+		}
+
+		machineCountByLabels[key]++
 	}
 
 	// ensure that we always report at least a machines=0

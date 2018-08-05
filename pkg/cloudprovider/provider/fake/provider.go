@@ -81,6 +81,6 @@ func (p *provider) Delete(_ *v1alpha1.Machine, _ cloud.MachineUpdater) error {
 	return nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]string {
-	return map[string]string{}
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+	return map[string]string{}, nil
 }

@@ -34,8 +34,9 @@ type Provider interface {
 
 	// MachineMetricsLabels returns labels used for the Prometheus metrics
 	// about created machines, e.g. instance type, instance size, region
-	// or whatever the provider deems interesting.
-	MachineMetricsLabels(machine *v1alpha1.Machine) map[string]string
+	// or whatever the provider deems interesting. Should always return
+	// a "size" label.
+	MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error)
 }
 
 // MachineUpdater defines a function to persist an update to a machine
