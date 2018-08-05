@@ -277,7 +277,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]st
 
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err == nil {
-		labels["servertype"] = c.ServerType
+		labels["size"] = c.ServerType
 		labels["dc"] = c.Datacenter
 		labels["location"] = c.Location
 	}

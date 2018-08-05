@@ -562,8 +562,8 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]st
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err == nil {
+		labels["size"] = c.Flavor
 		labels["image"] = c.Image
-		labels["flavor"] = c.Flavor
 		labels["region"] = c.Region
 	}
 

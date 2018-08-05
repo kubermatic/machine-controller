@@ -390,8 +390,8 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]st
 
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err == nil {
-		labels["region"] = c.Region
 		labels["size"] = c.Size
+		labels["region"] = c.Region
 	}
 
 	return labels

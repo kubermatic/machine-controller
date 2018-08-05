@@ -567,10 +567,9 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) map[string]st
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err == nil {
+		labels["size"] = fmt.Sprintf("%d-cpus-%d-mb", c.CPUs, c.MemoryMB)
 		labels["dc"] = c.Datacenter
 		labels["cluster"] = c.Cluster
-		labels["cpus"] = fmt.Sprintf("%d", c.CPUs)
-		labels["memory"] = fmt.Sprintf("%d", c.MemoryMB)
 	}
 
 	return labels
