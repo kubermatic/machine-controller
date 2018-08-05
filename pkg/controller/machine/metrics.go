@@ -54,9 +54,17 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 	labels := make(map[string]string)
 	labelNames := make([]string, 0)
 
-	labels["kubelet_version"] = l.KubeletVersion
-	labels["provider"] = string(l.CloudProvider)
-	labels["os"] = string(l.OperatingSystem)
+	if len(l.KubeletVersion) > 0 {
+		labels["kubelet_version"] = l.KubeletVersion
+	}
+
+	if len(l.CloudProvider) > 0 {
+		labels["provider"] = string(l.CloudProvider)
+	}
+
+	if len(l.OperatingSystem) > 0 {
+		labels["os"] = string(l.OperatingSystem)
+	}
 
 	for k, v := range l.ProviderLabels {
 		labels[k] = v
@@ -160,6 +168,11 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 				machineCountByLabels[key]++
 			}
 		}
+	}
+
+	// ensure that we always report at least a machines=0
+	if len(machineCountByLabels) == 0 {
+		machineCountByLabels[&machineMetricLabels{}] = 0
 	}
 
 	for info, count := range machineCountByLabels {
