@@ -64,7 +64,6 @@ import (
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
 
-	metricsUpdatePeriod     = 10 * time.Second
 	deletionRetryWaitPeriod = 10 * time.Second
 
 	machineKind = "Machine"

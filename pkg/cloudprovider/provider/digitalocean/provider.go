@@ -25,8 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const privateRSAKeyBitSize = 4096
-
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
