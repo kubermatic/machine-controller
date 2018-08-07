@@ -2,9 +2,11 @@
   "Vendor": true,
   "Concurrency": 2,
   "DisableAll": true,
-  "Exclude": [
+  "Skip": [
     "pkg/client",
     "pkg/machines/v1alpha1"
+  ],
+  "Exclude": [
   ],
   "Deadline": "5m",
   "Enable": [
