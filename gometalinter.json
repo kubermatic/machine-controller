@@ -1,0 +1,19 @@
+{
+  "Vendor": true,
+  "Concurrency": 2,
+  "DisableAll": true,
+  "Exclude": [
+    "pkg/client",
+    "pkg/machines/v1alpha1"
+  ],
+  "Deadline": "5m",
+  "Enable": [
+    "vet",
+    "golint",
+    "varcheck",
+    "structcheck",
+    "gosimple",
+    "unused",
+    "errcheck"
+  ]
+}
