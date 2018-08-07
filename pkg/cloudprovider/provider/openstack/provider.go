@@ -426,8 +426,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 
 	var server serverWithExt
 	err = osservers.Create(computeClient, keypairs.CreateOptsExt{
-		serverOpts,
-		"",
+		CreateOptsBuilder: serverOpts,
+		KeyName:           "",
 	}).ExtractInto(&server)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to create server")
