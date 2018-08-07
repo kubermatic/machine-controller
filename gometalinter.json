@@ -15,5 +15,8 @@
     "gosimple",
     "unused",
     "errcheck"
-  ]
+  ],
+  "Linters": {
+    "unused": {"Command": "unused -tags e2e"}
+  }
 }
