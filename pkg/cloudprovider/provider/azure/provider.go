@@ -533,7 +533,9 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 
 	for list.NotDone() {
 		allServers = append(allServers, list.Values()...)
-		list.Next()
+		if err = list.Next(); err != nil {
+			return nil, fmt.Errorf("failed to iterate the result list: %s", err)
+		}
 	}
 
 	for _, vm := range allServers {

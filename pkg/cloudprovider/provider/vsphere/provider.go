@@ -115,7 +115,11 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		if err != nil {
 			return spec, changed, fmt.Errorf("failed to get vsphere client: '%v'", err)
 		}
-		defer client.Logout(ctx)
+		defer func() {
+			if lerr := client.Logout(ctx); lerr != nil {
+				glog.Errorf("vsphere client failed to logout: %s", lerr)
+			}
+		}()
 
 		finder, err := getDatacenterFinder(cfg.Datacenter, client)
 		if err != nil {
@@ -271,7 +275,11 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
-	defer client.Logout(context.TODO())
+	defer func() {
+		if lerr := client.Logout(context.TODO()); lerr != nil {
+			glog.Errorf("vsphere client failed to logout: %s", lerr)
+		}
+	}()
 
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
@@ -304,7 +312,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
-	defer client.Logout(context.TODO())
+	defer func() {
+		if lerr := client.Logout(context.TODO()); lerr != nil {
+			glog.Errorf("vsphere client failed to logout: %s", lerr)
+		}
+	}()
 
 	var containerLinuxUserdata string
 	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
@@ -399,7 +411,11 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
-	defer client.Logout(context.TODO())
+	defer func() {
+		if lerr := client.Logout(context.TODO()); lerr != nil {
+			glog.Errorf("vsphere client failed to logout: %s", lerr)
+		}
+	}()
 	finder := find.NewFinder(client.Client, true)
 
 	// We can't use getDatacenterFinder because we need the dc object to
@@ -422,13 +438,17 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 	if err != nil {
 		return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
 	}
-	powerOffTask.Wait(context.TODO())
+	if err = powerOffTask.Wait(context.TODO()); err != nil {
+		return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
+	}
 
 	destroyTask, err := virtualMachine.Destroy(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
 	}
-	destroyTask.Wait(context.TODO())
+	if err = destroyTask.Wait(context.TODO()); err != nil {
+		return fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
+	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
 		datastore, err := finder.Datastore(context.TODO(), config.Datastore)
@@ -458,7 +478,11 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
-	defer client.Logout(context.TODO())
+	defer func() {
+		if lerr := client.Logout(context.TODO()); lerr != nil {
+			glog.Errorf("vsphere client failed to logout: %s", lerr)
+		}
+	}()
 
 	finder, err := getDatacenterFinder(config.Datacenter, client)
 	if err != nil {
