@@ -133,7 +133,6 @@ func createLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 						Value: userdataBase64,
 					},
 				})
-				break
 			case "guestinfo.coreos.config.data.encoding":
 				propertySpecs = append(propertySpecs, types.VAppPropertySpec{
 					ArrayUpdateSpec: types.ArrayUpdateSpec{
@@ -145,7 +144,6 @@ func createLinkClonedVm(vmName, vmImage, datacenter, clusterName, folder string,
 						Value: "base64",
 					},
 				})
-				break
 			}
 		}
 
@@ -201,12 +199,7 @@ func updateNetworkForVM(ctx context.Context, vm *object.VirtualMachine, currentN
 	currentBacking.DeviceName = newNetName
 	currentBacking.Network = newNet
 
-	err = vm.EditDevice(ctx, *netDev)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return vm.EditDevice(ctx, *netDev)
 }
 
 func getNetworkDevicesAndBackingsFromVM(ctx context.Context, vm *object.VirtualMachine, netNameFilter string) ([]netDeviceAndBackingInfo, error) {

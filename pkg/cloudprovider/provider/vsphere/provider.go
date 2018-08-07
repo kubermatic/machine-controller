@@ -284,11 +284,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 
 	_, err = finder.ClusterComputeResource(context.TODO(), config.Cluster)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func machineInvalidConfigurationTerminalError(err error) error {
