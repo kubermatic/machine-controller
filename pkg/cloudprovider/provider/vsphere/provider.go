@@ -74,26 +74,26 @@ type Config struct {
 	MemoryMB        int64
 }
 
-type VSphereServer struct {
+type Server struct {
 	name      string
 	id        string
 	status    instance.Status
 	addresses []string
 }
 
-func (vsphereServer VSphereServer) Name() string {
+func (vsphereServer Server) Name() string {
 	return vsphereServer.name
 }
 
-func (vsphereServer VSphereServer) ID() string {
+func (vsphereServer Server) ID() string {
 	return vsphereServer.id
 }
 
-func (vsphereServer VSphereServer) Addresses() []string {
+func (vsphereServer Server) Addresses() []string {
 	return vsphereServer.addresses
 }
 
-func (vsphereServer VSphereServer) Status() instance.Status {
+func (vsphereServer Server) Status() instance.Status {
 	return vsphereServer.status
 }
 
@@ -391,7 +391,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 		return nil, fmt.Errorf("timed out waiting to power on vm %s: %v", virtualMachine.Name(), err)
 	}
 
-	return VSphereServer{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
+	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) error {
@@ -531,7 +531,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		glog.Warningf("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
 	}
 
-	return VSphereServer{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil
+	return Server{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {

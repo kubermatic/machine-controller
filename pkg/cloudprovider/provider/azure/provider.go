@@ -335,7 +335,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	}
 
 	// We genete a random SSH key, since Azure won't let us create a VM without an SSH key or a password
-	key, err := ssh.NewSSHKey()
+	key, err := ssh.NewKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}

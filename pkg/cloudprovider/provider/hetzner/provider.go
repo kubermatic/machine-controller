@@ -180,7 +180,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 		return nil, hzErrorToTerminalError(err, "failed to get server type")
 	}
 
-	sshkey, err := ssh.NewSSHKey()
+	sshkey, err := ssh.NewKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
