@@ -293,8 +293,8 @@ func (s *hetznerServer) Addresses() []string {
 	return append(addresses, s.server.PublicNet.IPv4.IP.String(), s.server.PublicNet.IPv6.IP.String())
 }
 
-func (d *hetznerServer) Status() instance.Status {
-	switch d.server.Status {
+func (s *hetznerServer) Status() instance.Status {
+	switch s.server.Status {
 	case hcloud.ServerStatusInitializing:
 		return instance.StatusCreating
 	case hcloud.ServerStatusRunning:

@@ -126,12 +126,12 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			return spec, changed, err
 		}
 
-		templateVm, err := finder.VirtualMachine(ctx, cfg.TemplateVMName)
+		templateVM, err := finder.VirtualMachine(ctx, cfg.TemplateVMName)
 		if err != nil {
 			return spec, changed, err
 		}
 
-		availableNetworkDevices, err := getNetworkDevicesAndBackingsFromVM(ctx, templateVm, "")
+		availableNetworkDevices, err := getNetworkDevicesAndBackingsFromVM(ctx, templateVM, "")
 		if err != nil {
 			return spec, changed, err
 		}
@@ -177,13 +177,13 @@ func setProviderConfig(rawConfig RawConfig, s runtime.RawExtension) (runtime.Raw
 }
 
 func getClient(username, password, address string, allowInsecure bool) (*govmomi.Client, error) {
-	clientUrl, err := url.Parse(fmt.Sprintf("%s/sdk", address))
+	clientURL, err := url.Parse(fmt.Sprintf("%s/sdk", address))
 	if err != nil {
 		return nil, err
 	}
-	clientUrl.User = url.UserPassword(username, password)
+	clientURL.User = url.UserPassword(username, password)
 
-	return govmomi.NewClient(context.TODO(), clientUrl, allowInsecure)
+	return govmomi.NewClient(context.TODO(), clientURL, allowInsecure)
 }
 
 func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, *RawConfig, error) {
@@ -323,7 +323,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 		containerLinuxUserdata = userdata
 	}
 
-	if err = createLinkClonedVm(machine.Spec.Name,
+	if err = createLinkClonedVM(machine.Spec.Name,
 		config.TemplateVMName,
 		config.Datacenter,
 		config.Cluster,
@@ -353,7 +353,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
-		localUserdataIsoFilePath, err := generateLocalUserdataIso(userdata, machine.Spec.Name)
+		localUserdataIsoFilePath, err := generateLocalUserdataISO(userdata, machine.Spec.Name)
 		if err != nil {
 			return nil, err
 		}

@@ -224,7 +224,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			changed = true
 			rawConfig.Region.Value = regions[0].ID
 		} else {
-			return spec, changed, fmt.Errorf("could not default region because got '%v' results!", len(regions))
+			return spec, changed, fmt.Errorf("could not default region because got '%v' results", len(regions))
 		}
 	}
 

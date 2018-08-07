@@ -16,45 +16,49 @@ limitations under the License.
 
 package common
 
-// Constants aren't automatically generated for unversioned packages.
-// Instead share the same constant for all versioned packages
 type MachineStatusError string
 
+// Constants aren't automatically generated for unversioned packages.
+// Instead share the same constant for all versioned packages
+
 const (
-	// Represents that the combination of configuration in the MachineSpec
-	// is not supported by this cluster. This is not a transient error, but
-	// indicates a state that must be fixed before progress can be made.
+	// InvalidConfigurationMachineError represents that the combination
+	// of configuration in the MachineSpec is not supported by this cluster.
+	// This is not a transient error, but indicates a state that must be fixed
+	// before progress can be made.
 	//
 	// Example: the ProviderConfig specifies an instance type that doesn't exist,
 	InvalidConfigurationMachineError MachineStatusError = "InvalidConfiguration"
 
-	// This indicates that the MachineSpec has been updated in a way that
-	// is not supported for reconciliation on this cluster. The spec may be
-	// completely valid from a configuration standpoint, but the controller
-	// does not support changing the real world state to match the new
-	// spec.
+	// UnsupportedChangeMachineError indicates that the MachineSpec has been
+	// updated in a way that is not supported for reconciliation on this cluster.
+	// The spec may be completely valid from a configuration standpoint,
+	// but the controller does not support changing the real world state to match
+	// the new spec.
 	//
 	// Example: the responsible controller is not capable of changing the
 	// container runtime from docker to rkt.
 	UnsupportedChangeMachineError MachineStatusError = "UnsupportedChange"
 
-	// This generally refers to exceeding one's quota in a cloud provider,
-	// or running out of physical machines in an on-premise environment.
+	// InsufficientResourcesMachineError generally refers to exceeding one's quota
+	// in a cloud provider, or running out of physical machines in an on-premise
+	// environment.
 	InsufficientResourcesMachineError MachineStatusError = "InsufficientResources"
 
-	// There was an error while trying to create a Node to match this
-	// Machine. This may indicate a transient problem that will be fixed
-	// automatically with time, such as a service outage, or a terminal
+	// CreateMachineError means that was an error while trying to create a Node
+	// to match thisMachine. This may indicate a transient problem that will
+	// be fixed automatically with time, such as a service outage, or a terminal
 	// error during creation that doesn't match a more specific
 	// MachineStatusError value.
 	//
 	// Example: timeout trying to connect to GCE.
 	CreateMachineError MachineStatusError = "CreateError"
 
-	// An error was encountered while trying to delete the Node that this
-	// Machine represents. This could be a transient or terminal error, but
-	// will only be observable if the provider's Machine controller has
-	// added a finalizer to the object to more gracefully handle deletions.
+	// DeleteMachineError means that an error was encountered while trying
+	// to delete the Node that this Machine represents. This could be a transient
+	// or terminal error, but will only be observable if the provider's Machine
+	// controller has added a finalizer to the object to more gracefully handle
+	// deletions.
 	//
 	// Example: cannot resolve EC2 IP address.
 	DeleteMachineError MachineStatusError = "DeleteError"
@@ -114,9 +118,10 @@ const (
 type MachineSetStatusError string
 
 const (
-	// Represents that the combination of configuration in the MachineTemplateSpec
-	// is not supported by this cluster. This is not a transient error, but
-	// indicates a state that must be fixed before progress can be made.
+	// InvalidConfigurationMachineSetError represents that the combination
+	// of configuration in the MachineTemplateSpec is not supported by this cluster.
+	// This is not a transient error, but indicates a state that must be fixed
+	// before progress can be made.
 	//
 	// Example: the ProviderConfig specifies an instance type that doesn't exist.
 	InvalidConfigurationMachineSetError MachineSetStatusError = "InvalidConfiguration"
@@ -125,6 +130,7 @@ const (
 type MachineDeploymentStrategyType string
 
 const (
+	// RollingUpdateMachineDeploymentStrategyType denotes te following behavior:
 	// Replace the old MachineSet by new one using rolling update
 	// i.e gradually scale down the old MachineSet and scale up the new one.
 	RollingUpdateMachineDeploymentStrategyType MachineDeploymentStrategyType = "RollingUpdate"

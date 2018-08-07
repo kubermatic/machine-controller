@@ -18,7 +18,7 @@ func TestGetDockerInstallCandidate(t *testing.T) {
 		{
 			name:    "no version found",
 			version: "foo-does-not-exist",
-			resErr:  NoInstallCandidateAvailableErr,
+			resErr:  errNoInstallCandidateAvailable,
 			resPkg:  "",
 			resVer:  "",
 		},

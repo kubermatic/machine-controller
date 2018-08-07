@@ -705,7 +705,7 @@ func parseContainerRuntime(s string) (runtime, version string, err error) {
 
 func (c *Controller) getNode(instance instance.Instance, provider providerconfig.CloudProvider) (node *corev1.Node, exists bool, err error) {
 	if instance == nil {
-		return nil, false, fmt.Errorf("getNode called with nil provider instance!")
+		return nil, false, fmt.Errorf("getNode called with nil provider instance")
 	}
 	nodes, err := c.nodesLister.List(labels.Everything())
 	if err != nil {

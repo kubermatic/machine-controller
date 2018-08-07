@@ -12,7 +12,7 @@ import (
 
 const privateRSAKeyBitSize = 4096
 
-// We only use this to create temporary keypairs, thus we
+// SSHPubkey is only used to create temporary keypairs, thus we
 // do not need the Private key
 // The reason for not hardcoding a random public key is that
 // it would look like a backdoor
