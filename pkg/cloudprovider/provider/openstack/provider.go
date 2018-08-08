@@ -557,6 +557,19 @@ region = "%s"
 	return config, "openstack", nil
 }
 
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+	labels := make(map[string]string)
+
+	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err == nil {
+		labels["size"] = c.Flavor
+		labels["image"] = c.Image
+		labels["region"] = c.Region
+	}
+
+	return labels, err
+}
+
 type serverWithExt struct {
 	osservers.Server
 	osextendedstatus.ServerExtendedStatusExt

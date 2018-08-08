@@ -382,7 +382,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 			NetworkProfile: &compute.NetworkProfile{
 				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
 					{
-						ID:                                  iface.ID,
+						ID: iface.ID,
 						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{Primary: to.BoolPtr(true)},
 					},
 				},
@@ -718,4 +718,16 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 
 	return nil
+}
+
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+	labels := make(map[string]string)
+
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err == nil {
+		labels["size"] = c.VMSize
+		labels["location"] = c.Location
+	}
+
+	return labels, err
 }
