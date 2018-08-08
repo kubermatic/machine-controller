@@ -717,3 +717,15 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	_, err = getOSImageReference(providerCfg.OperatingSystem)
 	return nil
 }
+
+func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+	labels := make(map[string]string)
+
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err == nil {
+		labels["size"] = c.VMSize
+		labels["location"] = c.Location
+	}
+
+	return labels, err
+}
