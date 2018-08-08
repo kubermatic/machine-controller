@@ -4,7 +4,7 @@
   "DisableAll": true,
   "Skip": [
     "pkg/client",
-    "pkg/machines/v1alpha1"
+    "pkg/machines"
   ],
   "Exclude": [
     "should have comment or be unexported",

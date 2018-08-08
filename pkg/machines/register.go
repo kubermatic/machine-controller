@@ -49,7 +49,7 @@ func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.I
 			}
 		case apiextensionsv1beta1.NamesAccepted:
 			if cond.Status == apiextensionsv1beta1.ConditionFalse {
-				return false, fmt.Errorf("name conflict: %v", cond.Reason)
+				return false, fmt.Errorf("Name conflict: %v\n", cond.Reason)
 			}
 		}
 	}
