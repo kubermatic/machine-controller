@@ -278,14 +278,20 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// add a seed to the id, so that two processes on the same host don't accidentally both become active
 	id = id + "_" + string(uuid.NewUUID())
 
+	// add worker name to the election lock name to prevent conflicts betwen controllers handling different worker annotations
+	leaderName := controllerName
+	if runOptions.name != "" {
+		leaderName = runOptions.name + "-" + leaderName
+	}
+
 	rl := resourcelock.EndpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{
 			Namespace: defaultLeaderElectionNamespace,
-			Name:      controllerName,
+			Name:      leaderName,
 		},
 		Client: runOptions.leaderElectionClient.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity:      id + fmt.Sprintf("-%s", controllerName),
+			Identity:      id + fmt.Sprintf("-%s", leaderName),
 			EventRecorder: createRecorder(runOptions.kubeClient),
 		},
 	}
