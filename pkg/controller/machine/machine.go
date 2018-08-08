@@ -64,7 +64,6 @@ import (
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
 
-	metricsUpdatePeriod     = 10 * time.Second
 	deletionRetryWaitPeriod = 10 * time.Second
 
 	machineKind = "Machine"
@@ -291,10 +290,6 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *machinev1alpha1.
 		return err
 	}
 	return fmt.Errorf("%s, due to %v", errMsg, err)
-}
-
-func (c *Controller) getProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) (instance.Instance, error) {
-	return prov.Get(machine)
 }
 
 func (c *Controller) deleteProviderInstance(prov cloud.Provider, machine *machinev1alpha1.Machine) error {
@@ -710,7 +705,7 @@ func parseContainerRuntime(s string) (runtime, version string, err error) {
 
 func (c *Controller) getNode(instance instance.Instance, provider providerconfig.CloudProvider) (node *corev1.Node, exists bool, err error) {
 	if instance == nil {
-		return nil, false, fmt.Errorf("getNode called with nil provider instance!")
+		return nil, false, fmt.Errorf("getNode called with nil provider instance")
 	}
 	nodes, err := c.nodesLister.List(labels.Everything())
 	if err != nil {

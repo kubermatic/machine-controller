@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -117,14 +116,6 @@ func kubectlApply(kubecfgPath, manifest string) error {
 	}
 
 	return nil
-}
-
-func getDefaultKubeconfigPath() (string, error) {
-	user, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(user.HomeDir, ".kube/config"), nil
 }
 
 func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {

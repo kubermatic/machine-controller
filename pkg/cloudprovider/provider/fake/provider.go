@@ -14,22 +14,22 @@ import (
 
 type provider struct{}
 
-type FakeCloudProviderConfig struct {
+type CloudProviderConfig struct {
 	PassValidation bool `json:"passValidation"`
 }
 
-type FakeCloudProviderInstance struct{}
+type CloudProviderInstance struct{}
 
-func (f FakeCloudProviderInstance) Name() string {
+func (f CloudProviderInstance) Name() string {
 	return ""
 }
-func (f FakeCloudProviderInstance) ID() string {
+func (f CloudProviderInstance) ID() string {
 	return ""
 }
-func (f FakeCloudProviderInstance) Addresses() []string {
+func (f CloudProviderInstance) Addresses() []string {
 	return nil
 }
-func (f FakeCloudProviderInstance) Status() instance.Status {
+func (f CloudProviderInstance) Status() instance.Status {
 	return instance.StatusUnknown
 }
 
@@ -50,7 +50,7 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 		return err
 	}
 
-	fakeCloudProviderConfig := FakeCloudProviderConfig{}
+	fakeCloudProviderConfig := CloudProviderConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &fakeCloudProviderConfig); err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	return FakeCloudProviderInstance{}, nil
+	return CloudProviderInstance{}, nil
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, error) {
@@ -74,7 +74,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, er
 
 // Create creates a cloud instance according to the given machine
 func (p *provider) Create(_ *v1alpha1.Machine, _ cloud.MachineUpdater, _ string) (instance.Instance, error) {
-	return FakeCloudProviderInstance{}, nil
+	return CloudProviderInstance{}, nil
 }
 
 func (p *provider) Delete(_ *v1alpha1.Machine, _ cloud.MachineUpdater) error {
