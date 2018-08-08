@@ -117,7 +117,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 		defer func() {
 			if lerr := client.Logout(ctx); lerr != nil {
-				glog.Errorf("vsphere client failed to logout: %s", lerr)
+				utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
 			}
 		}()
 
@@ -277,7 +277,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 	defer func() {
 		if lerr := client.Logout(context.TODO()); lerr != nil {
-			glog.Errorf("vsphere client failed to logout: %s", lerr)
+			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
 		}
 	}()
 
@@ -314,7 +314,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	}
 	defer func() {
 		if lerr := client.Logout(context.TODO()); lerr != nil {
-			glog.Errorf("vsphere client failed to logout: %s", lerr)
+			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
 		}
 	}()
 
@@ -413,7 +413,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 	}
 	defer func() {
 		if lerr := client.Logout(context.TODO()); lerr != nil {
-			glog.Errorf("vsphere client failed to logout: %s", lerr)
+			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
 		}
 	}()
 	finder := find.NewFinder(client.Client, true)
@@ -480,7 +480,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	}
 	defer func() {
 		if lerr := client.Logout(context.TODO()); lerr != nil {
-			glog.Errorf("vsphere client failed to logout: %s", lerr)
+			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
 		}
 	}()
 
