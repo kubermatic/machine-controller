@@ -31,6 +31,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -73,6 +75,8 @@ const (
 	defaultLeaderElectionLeaseDuration = 15 * time.Second
 	defaultLeaderElectionRenewDeadline = 10 * time.Second
 	defaultLeaderElectionRetryPeriod   = 2 * time.Second
+
+	controllerNameLabelKey = "machine.k8s.io/controller"
 )
 
 // controllerRunOptions holds data that are required to create and run machine controller
@@ -179,7 +183,7 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 
 	// before we acquire a lock we actually warm up caches mirroring the state of the API server
-	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Minute*15)
+	machineInformerFactory := machineinformers.NewFilteredSharedInformerFactory(machineClient, time.Minute*15, metav1.NamespaceAll, labelSelector(name))
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
 	kubeSystemInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceSystem, nil)
@@ -418,4 +422,23 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+// return label selector to only process machines with a matching machine.k8s.io/controller label
+func labelSelector(workerName string) func(*metav1.ListOptions) {
+	return func(options *metav1.ListOptions) {
+		var req *labels.Requirement
+		var err error
+		if workerName == "" {
+			if req, err = labels.NewRequirement(controllerNameLabelKey, selection.DoesNotExist, nil); err != nil {
+				glog.Fatalf("failed to build label selector: %v", err)
+			}
+		} else {
+			if req, err = labels.NewRequirement(controllerNameLabelKey, selection.Equals, []string{workerName}); err != nil {
+				glog.Fatalf("failed to build label selector: %v", err)
+			}
+		}
+
+		options.LabelSelector = req.String()
+	}
 }
