@@ -208,6 +208,10 @@ write_files:
     apt-key add /opt/kubernetes.asc
     apt-get update
 
+    # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
+    systemctl mask swap.target
+    swapoff -a
+
     # If something failed during package installation but one of docker/kubeadm/kubelet was already installed
     # an apt-mark hold after the install won't do it, which is why we test here if the binaries exist and if
     # yes put them on hold
@@ -231,12 +235,12 @@ write_files:
     fi
 
     export CR_PKG=''
-{{ if .CRAptPackage }}
-  {{ if ne .CRAptPackageVersion "" }}
+{{- if .CRAptPackage }}
+{{- if ne .CRAptPackageVersion "" }}
     export CR_PKG='{{ .CRAptPackage }}={{ .CRAptPackageVersion }}'
-  {{ else }}
+{{- else }}
     export CR_PKG='{{ .CRAptPackage }}'
-  {{ end }}
+{{ end }}
 {{ end }}
 
     # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly

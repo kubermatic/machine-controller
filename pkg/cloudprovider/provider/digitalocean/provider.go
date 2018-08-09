@@ -76,7 +76,7 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfig.OperatingSystemUbuntu:
-		return "ubuntu-16-04-x64", nil
+		return "ubuntu-18-04-x64", nil
 	case providerconfig.OperatingSystemCoreos:
 		return "coreos-stable", nil
 	case providerconfig.OperatingSystemCentOS:
