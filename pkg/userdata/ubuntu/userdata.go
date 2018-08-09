@@ -231,12 +231,12 @@ write_files:
     fi
 
     export CR_PKG=''
-{{ if .CRAptPackage }}
-  {{ if ne .CRAptPackageVersion "" }}
+{{- if .CRAptPackage }}
+{{- if ne .CRAptPackageVersion "" }}
     export CR_PKG='{{ .CRAptPackage }}={{ .CRAptPackageVersion }}'
-  {{ else }}
+{{- else }}
     export CR_PKG='{{ .CRAptPackage }}'
-  {{ end }}
+{{ end }}
 {{ end }}
 
     # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly

@@ -60,10 +60,7 @@ write_files:
     fi
 
     export CR_PKG=''
-
-  
     export CR_PKG='docker-ce=17.03.2~ce-0~ubuntu-xenial'
-  
 
 
     # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly

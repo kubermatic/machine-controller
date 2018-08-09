@@ -59,10 +59,7 @@ write_files:
     fi
 
     export CR_PKG=''
-
-  
     export CR_PKG='docker.io=1.13.1-0ubuntu1~16.04.2'
-  
 
 
     # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
