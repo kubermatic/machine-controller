@@ -25,8 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const privateRSAKeyBitSize = 4096
-
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -231,7 +229,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 // digital ocean because it is not possible to create a droplet without ssh key assigned
 // this method returns an error if the key already exists
 func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (string, error) {
-	sshkey, err := ssh.NewSSHKey()
+	sshkey, err := ssh.NewKey()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate ssh key: %v", err)
 	}

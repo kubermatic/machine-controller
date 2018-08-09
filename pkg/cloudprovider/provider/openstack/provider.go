@@ -224,7 +224,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			changed = true
 			rawConfig.Region.Value = regions[0].ID
 		} else {
-			return spec, changed, fmt.Errorf("could not default region because got '%v' results!", len(regions))
+			return spec, changed, fmt.Errorf("could not default region because got '%v' results", len(regions))
 		}
 	}
 
@@ -426,8 +426,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 
 	var server serverWithExt
 	err = osservers.Create(computeClient, keypairs.CreateOptsExt{
-		serverOpts,
-		"",
+		CreateOptsBuilder: serverOpts,
+		KeyName:           "",
 	}).ExtractInto(&server)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to create server")

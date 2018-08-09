@@ -94,7 +94,7 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (strin
 	}
 
 	//If the token is close to expire, reset it's expiration time
-	if expirationTime.Sub(time.Now()).Minutes() < 30 {
+	if time.Until(expirationTime).Minutes() < 30 {
 		secret.Data[expirationKey] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
 	} else {
 		return token, nil

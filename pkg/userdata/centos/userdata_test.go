@@ -12,7 +12,6 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 )
 
 var pemCertificate = `-----BEGIN CERTIFICATE-----
@@ -60,7 +59,6 @@ func TestUserDataGeneration(t *testing.T) {
 	tests := []struct {
 		name          string
 		spec          machinesv1alpha1.MachineSpec
-		ccProvider    cloud.ConfigProvider
 		clusterDNSIPs []net.IP
 	}{
 		{

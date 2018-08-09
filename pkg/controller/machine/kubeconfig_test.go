@@ -67,7 +67,7 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 			t.Fatalf("Failed to parse timestamp from secret: %v", err)
 		}
 
-		if expirationTimeParsed.Sub(time.Now()).Minutes() < 0 {
+		if time.Until(expirationTimeParsed).Minutes() < 0 {
 			t.Errorf("Error, secret expiration is in the past!")
 		}
 

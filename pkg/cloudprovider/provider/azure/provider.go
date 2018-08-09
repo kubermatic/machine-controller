@@ -335,7 +335,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	}
 
 	// We genete a random SSH key, since Azure won't let us create a VM without an SSH key or a password
-	key, err := ssh.NewSSHKey()
+	key, err := ssh.NewKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
@@ -533,7 +533,9 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 
 	for list.NotDone() {
 		allServers = append(allServers, list.Values()...)
-		list.Next()
+		if err = list.Next(); err != nil {
+			return nil, fmt.Errorf("failed to iterate the result list: %s", err)
+		}
 	}
 
 	for _, vm := range allServers {
@@ -713,10 +715,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 
 	_, err = getOSImageReference(providerCfg.OperatingSystem)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
