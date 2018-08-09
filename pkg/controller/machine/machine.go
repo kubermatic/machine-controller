@@ -68,8 +68,6 @@ const (
 
 	machineKind = "Machine"
 
-	controllerNameAnnotationKey = "machine.k8s.io/controller"
-
 	latestKubernetesVersion = "1.9.6"
 )
 
@@ -326,25 +324,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	machine := listerMachine.DeepCopy()
 
-	// step 1: check if the machine can be processed by this controller.
-	// set the annotation "machine.k8s.io/controller": my-controller
-	// and the flag --name=my-controller to make only this controller process a node
-	machineControllerName := machine.Annotations[controllerNameAnnotationKey]
-	if machineControllerName != c.name {
-		glog.V(6).Infof("skipping machine '%s' as it is not meant for this controller", machine.Name)
-		if machineControllerName == "" && c.name != "" {
-			glog.V(6).Infof("this controller is configured to only process machines with the annotation %s:%s", controllerNameAnnotationKey, c.name)
-			return nil
-		}
-		if machineControllerName != "" && c.name == "" {
-			glog.V(6).Infof("this controller is configured to process all machines which have no controller specified via annotation %s. The machine has %s:%s", controllerNameAnnotationKey, controllerNameAnnotationKey, machineControllerName)
-			return nil
-		}
-
-		glog.V(6).Infof("this controller is configured to process machines which the annotation %s:%s. The machine has %s:%s", controllerNameAnnotationKey, c.name, controllerNameAnnotationKey, machineControllerName)
-		return nil
-	}
-
+	// step 1: verify machine spec and provider config
 	if machine.Spec.Name == "" {
 		machine, err = c.updateMachine(machine.Name, func(m *machinev1alpha1.Machine) {
 			m.Spec.Name = m.Name

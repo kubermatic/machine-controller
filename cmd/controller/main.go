@@ -31,6 +31,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -73,6 +75,8 @@ const (
 	defaultLeaderElectionLeaseDuration = 15 * time.Second
 	defaultLeaderElectionRenewDeadline = 10 * time.Second
 	defaultLeaderElectionRetryPeriod   = 2 * time.Second
+
+	controllerNameLabelKey = "machine.k8s.io/controller"
 )
 
 // controllerRunOptions holds data that are required to create and run machine controller
@@ -113,7 +117,7 @@ type controllerRunOptions struct {
 	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
 	kubeconfigProvider machinecontroller.KubeconfigProvider
 
-	// name of the controller. When set the controller will only process machines with the annotation "machine.k8s.io/controller": name
+	// name of the controller. When set the controller will only process machines with the label "machine.k8s.io/controller": name
 	name string
 
 	// parentCtx carries a cancellation signal
@@ -135,7 +139,7 @@ func main() {
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
-	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the annotation \"machine.k8s.io/controller\": name")
+	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
 
 	flag.Parse()
 
@@ -179,7 +183,7 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 
 	// before we acquire a lock we actually warm up caches mirroring the state of the API server
-	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Minute*15)
+	machineInformerFactory := machineinformers.NewFilteredSharedInformerFactory(machineClient, time.Minute*15, metav1.NamespaceAll, labelSelector(name))
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
 	kubeSystemInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceSystem, nil)
@@ -281,14 +285,20 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// add a seed to the id, so that two processes on the same host don't accidentally both become active
 	id = id + "_" + string(uuid.NewUUID())
 
+	// add worker name to the election lock name to prevent conflicts betwen controllers handling different worker labels
+	leaderName := controllerName
+	if runOptions.name != "" {
+		leaderName = runOptions.name + "-" + leaderName
+	}
+
 	rl := resourcelock.EndpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{
 			Namespace: defaultLeaderElectionNamespace,
-			Name:      controllerName,
+			Name:      leaderName,
 		},
 		Client: runOptions.leaderElectionClient.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity:      id + fmt.Sprintf("-%s", controllerName),
+			Identity:      id + fmt.Sprintf("-%s", leaderName),
 			EventRecorder: createRecorder(runOptions.kubeClient),
 		},
 	}
@@ -415,4 +425,23 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+// return label selector to only process machines with a matching machine.k8s.io/controller label
+func labelSelector(workerName string) func(*metav1.ListOptions) {
+	return func(options *metav1.ListOptions) {
+		var req *labels.Requirement
+		var err error
+		if workerName == "" {
+			if req, err = labels.NewRequirement(controllerNameLabelKey, selection.DoesNotExist, nil); err != nil {
+				glog.Fatalf("failed to build label selector: %v", err)
+			}
+		} else {
+			if req, err = labels.NewRequirement(controllerNameLabelKey, selection.Equals, []string{workerName}); err != nil {
+				glog.Fatalf("failed to build label selector: %v", err)
+			}
+		}
+
+		options.LabelSelector = req.String()
+	}
 }
