@@ -433,13 +433,21 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 		return fmt.Errorf("failed to get virtual machine object: %v", err)
 	}
 
-	// We can't destroy a VM thats powered on...
-	powerOffTask, err := virtualMachine.PowerOff(context.TODO())
+	powerState, err := virtualMachine.PowerState(context.TODO())
 	if err != nil {
-		return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
+		return fmt.Errorf("failed to get virtual machine power state: %v", err)
 	}
-	if err = powerOffTask.Wait(context.TODO()); err != nil {
-		return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
+
+	// We cannot destroy a VM thats powered on, but we also
+	// cannot power off a machine that is already off.
+	if powerState != types.VirtualMachinePowerStatePoweredOff {
+		powerOffTask, err := virtualMachine.PowerOff(context.TODO())
+		if err != nil {
+			return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
+		}
+		if err = powerOffTask.Wait(context.TODO()); err != nil {
+			return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
+		}
 	}
 
 	destroyTask, err := virtualMachine.Destroy(context.TODO())
