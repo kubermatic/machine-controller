@@ -32,6 +32,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	osRegion := os.Getenv("OS_REGION")
 	osUsername := os.Getenv("OS_USERNAME")
 	osTenant := os.Getenv("OS_TENANT_NAME")
+	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
 		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
@@ -44,6 +45,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
 		fmt.Sprintf("<< REGION >>=%s", osRegion),
 		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork)
 	}
 
 	runScenarios(t, nil, params, os_manifest, fmt.Sprintf("os-%s", *testRunIdentifier))
@@ -205,6 +207,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 	osRegion := os.Getenv("OS_REGION")
 	osUsername := os.Getenv("OS_USERNAME")
 	osTenant := os.Getenv("OS_TENANT_NAME")
+	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
 		t.Fatal("unable to run test, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
@@ -217,6 +220,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
 		fmt.Sprintf("<< REGION >>=%s", osRegion),
 		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 	scenario := scenario{
 		name:              "Ubuntu Docker Kubernetes v1.10.5",
