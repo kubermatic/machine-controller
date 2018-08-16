@@ -45,7 +45,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
 		fmt.Sprintf("<< REGION >>=%s", osRegion),
 		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
-		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork)
+		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
 	runScenarios(t, nil, params, os_manifest, fmt.Sprintf("os-%s", *testRunIdentifier))
