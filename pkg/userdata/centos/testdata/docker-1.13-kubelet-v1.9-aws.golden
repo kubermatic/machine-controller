@@ -4,6 +4,11 @@ hostname: node1
 ssh_pwauth: no
 
 write_files:
+- path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
+  content: |
+    [Journal]
+    SystemMaxUse=10G
+
 - path: "/etc/sysctl.d/k8s.conf"
   content: |
     net.bridge.bridge-nf-call-ip6tables = 1

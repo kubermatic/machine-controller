@@ -11,6 +11,12 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
+const (
+	// JournaldMaxUse defines the maximum space that journalD logs can occupy.
+	// https://www.freedesktop.org/software/systemd/man/journald.conf.html#SystemMaxUse=
+	JournaldMaxUse = "10G"
+)
+
 func GetServerAddressFromKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
 	if len(kubeconfig.Clusters) != 1 {
 		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address")
