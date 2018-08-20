@@ -31,7 +31,7 @@
         "path": "/etc/systemd/journald.conf.d/max_disk_use.conf",
         "user": {},
         "contents": {
-          "source": "data:,%5BJournal%5D%0ASystemMaxUse%3D10G%0A",
+          "source": "data:,%5BJournal%5D%0ASystemMaxUse%3D5G%0A",
           "verification": {}
         },
         "mode": 420

@@ -14,7 +14,7 @@ import (
 const (
 	// JournaldMaxUse defines the maximum space that journalD logs can occupy.
 	// https://www.freedesktop.org/software/systemd/man/journald.conf.html#SystemMaxUse=
-	JournaldMaxUse = "10G"
+	JournaldMaxUse = "5G"
 )
 
 func GetServerAddressFromKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
