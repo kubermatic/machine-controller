@@ -28,6 +28,17 @@
       {
         "filesystem": "root",
         "group": {},
+        "path": "/etc/systemd/journald.conf.d/max_disk_use.conf",
+        "user": {},
+        "contents": {
+          "source": "data:,%5BJournal%5D%0ASystemMaxUse%3D5G%0A",
+          "verification": {}
+        },
+        "mode": 420
+      },
+      {
+        "filesystem": "root",
+        "group": {},
         "path": "/etc/sysctl.d/k8s.conf",
         "user": {},
         "contents": {
