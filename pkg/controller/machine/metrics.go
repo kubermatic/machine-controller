@@ -56,8 +56,8 @@ type machineMetricLabels struct {
 	ProviderLabels  map[string]string
 }
 
-// Counter turns a label collection into a Prometheus counter.
-func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
+// Gauge turns a label collection into a Prometheus gauge.
+func (l *machineMetricLabels) Gauge(value uint) prometheus.Gauge {
 	labels := make(map[string]string)
 	labelNames := make([]string, 0)
 
@@ -81,14 +81,14 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 		labelNames = append(labelNames, k)
 	}
 
-	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
+	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: metricsPrefix + "machines",
 	}, labelNames)
 
-	counter := counterVec.With(labels)
-	counter.Set(float64(value))
+	gauge := gaugeVec.With(labels)
+	gauge.Set(float64(value))
 
-	return counter
+	return gauge
 }
 
 type nodeMetricLabels struct {
@@ -99,8 +99,8 @@ type nodeMetricLabels struct {
 	Architecture     string
 }
 
-// Counter turns a label collection into a Prometheus counter.
-func (l *nodeMetricLabels) Counter(value uint) prometheus.Counter {
+// Gauge turns a label collection into a Prometheus gauge.
+func (l *nodeMetricLabels) Gauge(value uint) prometheus.Gauge {
 	labels := make(map[string]string)
 	labelNames := make([]string, 0)
 
@@ -128,14 +128,14 @@ func (l *nodeMetricLabels) Counter(value uint) prometheus.Counter {
 		labelNames = append(labelNames, k)
 	}
 
-	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
+	gaugeVec := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: metricsPrefix + "nodes",
 	}, labelNames)
 
-	counter := counterVec.With(labels)
-	counter.Set(float64(value))
+	gauge := gaugeVec.With(labels)
+	gauge.Set(float64(value))
 
-	return counter
+	return gauge
 }
 
 // NewMachineCollector creates a new machine metrics collector.
@@ -251,7 +251,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for info, count := range machineCountByLabels {
-		ch <- info.Counter(count)
+		ch <- info.Gauge(count)
 	}
 
 	// Gather the same kind of information in much the same
@@ -297,6 +297,6 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for info, count := range nodeCountByLabels {
-		ch <- info.Counter(count)
+		ch <- info.Gauge(count)
 	}
 }
