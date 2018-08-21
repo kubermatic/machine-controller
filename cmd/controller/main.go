@@ -232,7 +232,8 @@ func main() {
 	var g run.Group
 	{
 		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(
-			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+			runOptions.machineLister,
+			runOptions.nodeLister,
 			kubeClient,
 		))
 
