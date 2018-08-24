@@ -1,0 +1,45 @@
+metadata:
+  creationTimestamp: null
+  name: vsphere-static-ip
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+    labels:
+      foo: bar
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: vsphere
+      cloudProviderSpec:
+        MemoryMB: 2048
+        allowInsecure: true
+        cluster: << VSPHERE_CLUSTER >>
+        cpus: 2
+        datacenter: Datacenter
+        datastore: datastore1
+        folder: /Datacenter/vm/e2e-tests
+        password: << VSPHERE_PASSWORD >>
+        templateVMName: << OS_NAME >>-template
+        username: << VSPHERE_USERNAME >>
+        vsphereURL: << VSPHERE_ADDRESS >>
+      containerRuntimeInfo:
+        name: << CONTAINER_RUNTIME >>
+        version: ""
+      network:
+        cidr: 192.168.44.<< IP_OCTET >>/20
+        dns:
+          servers:
+          - 192.168.32.1
+          - 8.8.8.8
+        gateway: 192.168.32.1
+      operatingSystem: << OS_NAME >>
+      operatingSystemSpec:
+        distUpgradeOnBoot: false
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  versions:
+    kubelet: << KUBERNETES_VERSION >>
+status:
+  lastUpdated: null
+  providerStatus: null
