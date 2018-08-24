@@ -1,0 +1,42 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: vsphere
+spec:
+  metadata:
+    labels:
+      foo: "bar"
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "vsphere"
+    cloudProviderSpec:
+      templateVMName: ubuntu-template
+      # Can also be set via the env var 'VSPHERE_USERNAME' on the machine-controller
+      username: '<< VSPHERE_USERNAME >>'
+      # Can also be set via the env var 'VSPHERE_ADDRESS' on the machine-controller
+      # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
+      vsphereURL: '<< VSPHERE_ADDRESS >>'
+      datacenter: 'Datacenter'
+      # Can also be set via the env var 'VSPHERE_PASSWORD' on the machine-controller
+      password:
+        secretKeyRef:
+          namespace: kube-system
+          name: machine-controller-vsphere
+          key: password
+      cluster: "test-cluster"
+      datastore: datastore1
+      # Can also be set via the env var 'VSPHERE_ALLOW_INSECURE' on the machine-controller
+      allowInsecure: true
+      cpus: 2
+      MemoryMB: 2048
+    operatingSystem: "ubuntu"
+    operatingSystemSpec:
+      distUpgradeOnBoot: false
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.9.6"
+    containerRuntime:
+      name: "docker"
+      version: "1.13"
