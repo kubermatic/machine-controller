@@ -1326,6 +1326,7 @@
     "github.com/aws/aws-sdk-go/service/iam",
     "github.com/coreos/container-linux-config-transpiler/config",
     "github.com/digitalocean/godo",
+    "github.com/ghodss/yaml",
     "github.com/go-test/deep",
     "github.com/golang/glog",
     "github.com/gophercloud/gophercloud",
