@@ -21,7 +21,6 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.Generation = 0
 	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = "kube-system"
-	out.Finalizers = in.Finalizers
 	// sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineStatus and
 	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former
 	// only has one additional field, so we cast by serializing and deserializing
