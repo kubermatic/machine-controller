@@ -75,7 +75,7 @@ func TestProvider_UserData(t *testing.T) {
 		kubernetesCACert string
 	}{
 		{
-			name: "docker-1.13-dist-upgrade-on-boot-aws",
+			name: "docker-17.12-dist-upgrade-on-boot-aws",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -85,7 +85,7 @@ func TestProvider_UserData(t *testing.T) {
 				Versions: machinesv1alpha1.MachineVersionInfo{
 					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
 						Name:    "docker",
-						Version: "1.13.1",
+						Version: "17.12",
 					},
 					Kubelet: "1.9.2",
 				},
@@ -96,7 +96,7 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "docker-1.13-kubelet-1.11-aws",
+			name: "docker-17.12-kubelet-1.11-aws",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -106,7 +106,7 @@ func TestProvider_UserData(t *testing.T) {
 				Versions: machinesv1alpha1.MachineVersionInfo{
 					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
 						Name:    "docker",
-						Version: "1.13.1",
+						Version: "17.12",
 					},
 					Kubelet: "1.11.0",
 				},
@@ -117,7 +117,7 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: false},
 		},
 		{
-			name: "docker-17.03-openstack-multiple-dns",
+			name: "docker-18.06-openstack-multiple-dns",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -127,7 +127,7 @@ func TestProvider_UserData(t *testing.T) {
 				Versions: machinesv1alpha1.MachineVersionInfo{
 					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
 						Name:    "docker",
-						Version: "17.03.2",
+						Version: "18.06",
 					},
 					Kubelet: "1.9.2",
 				},
@@ -138,7 +138,7 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "docker-17.03-openstack-kubelet-v-version-prefix",
+			name: "docker-18.06-openstack-kubelet-v-version-prefix",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -148,7 +148,7 @@ func TestProvider_UserData(t *testing.T) {
 				Versions: machinesv1alpha1.MachineVersionInfo{
 					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
 						Name:    "docker",
-						Version: "17.03.2",
+						Version: "18.06",
 					},
 					Kubelet: "v1.9.2",
 				},
@@ -159,7 +159,7 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "docker-17.03-openstack-overwrite-cloud-config",
+			name: "docker-18.06-openstack-overwrite-cloud-config",
 			providerConfig: &providerconfig.Config{
 				CloudProvider:        "openstack",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -170,7 +170,7 @@ func TestProvider_UserData(t *testing.T) {
 				Versions: machinesv1alpha1.MachineVersionInfo{
 					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
 						Name:    "docker",
-						Version: "17.03.2",
+						Version: "18.06",
 					},
 					Kubelet: "v1.9.2",
 				},

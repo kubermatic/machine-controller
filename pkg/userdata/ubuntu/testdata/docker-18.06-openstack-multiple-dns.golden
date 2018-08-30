@@ -27,7 +27,7 @@ write_files:
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
-  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
 
 - path: "/etc/apt/sources.list.d/kubernetes.list"
   permissions: "0644"
@@ -69,7 +69,7 @@ write_files:
     fi
 
     export CR_PKG=''
-    export CR_PKG='docker-ce=17.03.2~ce-0~ubuntu-xenial'
+    export CR_PKG='docker-ce=18.06.1~ce~3-0~ubuntu'
 
 
     # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
