@@ -190,7 +190,7 @@ func deleteMachinesV1Alpha1Machine(machine *machinesv1alpha1.Machine,
 	}
 
 	if err := wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
-		return isDownstreamMachineDeleted(machine.Name, machineClient)
+		return isMachinesV1Alpha1MachineDeleted(machine.Name, machineClient)
 	}); err != nil {
 		return fmt.Errorf("failed to wait for machine %s to be deleted: %v", machine.Name, err)
 	}
@@ -198,7 +198,7 @@ func deleteMachinesV1Alpha1Machine(machine *machinesv1alpha1.Machine,
 	return nil
 }
 
-func isDownstreamMachineDeleted(name string, client machinesv1alpha1clientset.Interface) (bool, error) {
+func isMachinesV1Alpha1MachineDeleted(name string, client machinesv1alpha1clientset.Interface) (bool, error) {
 	if _, err := client.MachineV1alpha1().Machines().Get(name, metav1.GetOptions{}); err != nil {
 		if kerrors.IsNotFound(err) {
 			return true, nil
