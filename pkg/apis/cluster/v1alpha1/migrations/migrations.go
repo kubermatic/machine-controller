@@ -6,12 +6,17 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
+	"github.com/kubermatic/machine-controller/pkg/machines"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 
 	"github.com/golang/glog"
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/equality"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -24,7 +29,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	clusterv1Alpha1Client clusterv1alpha1clientset.Interface,
 	config *restclient.Config) error {
 
-	_, err := apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(downstreammachines.CRDName, metav1.GetOptions{})
+	_, err := apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(machines.CRDName, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			glog.Infof("Old crd not present, nothing to do...")
@@ -48,8 +53,8 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		clusterv1Alpha1Client); err != nil {
 		return fmt.Errorf("failed to migrate machines: %v", err)
 	}
-	if err = apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(downstreammachines.CRDName, nil); err != nil {
-		return fmt.Errorf("failed to delete downstream crd: %v", err)
+	if err = apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(machines.CRDName, nil); err != nil {
+		return fmt.Errorf("failed to delete machinesv1alpha1.machine crd: %v", err)
 	}
 
 	return nil
@@ -69,7 +74,9 @@ func migrateMachines(kubeClient kubernetes.Interface,
 	// We do this in one loop to avoid ending up having all machines in  both the new and the old format if deletion
 	// failes for whatever reason
 	for _, machinesV1Alpha1Machine := range machinesv1Alpha1Machines.Items {
-		convertedClusterv1alpha1Machine, err := conversions.ConvertV1alpha1DownStreamMachineToV1alpha1ClusterMachine(machinesV1Alpha1Machine)
+		var convertedClusterv1alpha1Machine *clusterv1alpha1.Machine
+		err := conversions.Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(&machinesV1Alpha1Machine,
+			convertedClusterv1alpha1Machine)
 		if err != nil {
 			return fmt.Errorf("failed to convert machinesV1alpha1.machine to clusterV1alpha1.machine name=%s err=%v",
 				machinesV1Alpha1Machine.Name, err)
@@ -83,7 +90,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		// Do a get first to cover the case the new machine was already created but then something went wrong
 		// If that is the case and the clusterv1alpha1machine != machinesv1alpha1machine we error out and the operator
 		// has to manually delete either the new or the old machine
-		existingClusterV1alpha1Machine, err := clusterv1alpha1Client.ClusterV1alpha1().Machines(
+		existingClusterV1alpha1Machine, err := clusterv1Alpha1Client.ClusterV1alpha1().Machines(
 			convertedClusterv1alpha1Machine.Namespace).Get(convertedClusterv1alpha1Machine.Name, metav1.GetOptions{})
 		// Some random error occured
 		if err != nil && !kerrors.IsNotFound(err) {
@@ -91,20 +98,20 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		}
 		// ClusterV1alpha1Machine already exists
 		if err != nil {
-			if !equality.Semantic.DeepEqual(convertedClusterv1alpha1Machine.Spec, existingClusterV1alpha1Machine.spec) {
+			if !equality.Semantic.DeepEqual(convertedClusterv1alpha1Machine.Spec, existingClusterV1alpha1Machine.Spec) {
 				return fmt.Errorf("---manual intervention required!--- Spec of machines.v1alpha1.machine %s is not equal to clusterv1alpha1.machines %s/%s, delete either of them to allow migration to succeed!",
-					machinesV1Alpha1Machine.name, convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
+					machinesV1Alpha1Machine.Name, convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 			}
 			existingClusterV1alpha1Machine.Labels = convertedClusterv1alpha1Machine.Labels
 			existingClusterV1alpha1Machine.Annotations = convertedClusterv1alpha1Machine.Annotations
 			existingClusterV1alpha1Machine.Finalizers = convertedClusterv1alpha1Machine.Finalizers
-			if owningClusterV1Alpha1Machine, err := clusterv1alpha1Client.ClusterV1alpha1().Machines(existingClusterV1alpha1Machine.Namespace).Update(existingClusterV1alpha1Machine); err != nil {
+			if owningClusterV1Alpha1Machine, err = clusterv1Alpha1Client.ClusterV1alpha1().Machines(existingClusterV1alpha1Machine.Namespace).Update(existingClusterV1alpha1Machine); err != nil {
 				return fmt.Errorf("failed to update metadata of existing clusterV1Alpha1 machine: %v", err)
 			}
 		}
 		// ClusterV1alpha1Machine does not exist yet
 		if err == nil {
-			owningClusterV1Alpha1Machine, err = clusterv1alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
+			owningClusterV1Alpha1Machine, err = clusterv1Alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
 			if err != nil {
 				return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
 			}
@@ -116,8 +123,12 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		}
 
 		// All went fine, we only have to clear the old machine now
-		return deleteMachinesV1Alpha1Machine(machinesV1Alpha1Machine, machinesv1Alpha1MachineClient)
+		if err := deleteMachinesV1Alpha1Machine(&machinesV1Alpha1Machine, machinesv1Alpha1MachineClient); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func ensureClusterV1Alpha1NodeOwnerRef(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface) error {
@@ -128,7 +139,7 @@ func ensureClusterV1Alpha1NodeOwnerRef(machine *clusterv1alpha1.Machine, kubeCli
 			return nil
 		}
 		return fmt.Errorf("Failed to get node %s for machine %s: %v",
-			machine.Spec.Name, convertedClusterv1alpha1Machine.Name, err)
+			machine.Spec.Name, machine.Name, err)
 	}
 
 	// Node exists, we have ensure there is an ownerReference to our machine
@@ -156,27 +167,31 @@ func ensureClusterV1Alpha1NodeOwnerRef(machine *clusterv1alpha1.Machine, kubeCli
 	}); err != nil {
 		return fmt.Errorf("failed to update OwnerRef on node %s: %v", node.Name, err)
 	}
+
+	return nil
 }
 
 func deleteMachinesV1Alpha1Machine(machine *machinesv1alpha1.Machine,
-	machineClient *machinesv1alpha1clientset.Interface) error {
+	machineClient machinesv1alpha1clientset.Interface) error {
 
 	machine.Finalizers = []string{}
-	if _, err := machineClient.MachineV1alpha1().Machines().Update(&downstreamMachine); err != nil {
-		return fmt.Errorf("failed to update downstream machine %s after removing finalizer: %v", convertedClusterv1alpha1Machine.Name, err)
+	if _, err := machineClient.MachineV1alpha1().Machines().Update(machine); err != nil {
+		return fmt.Errorf("failed to update machinesv1alpha1.machine %s after removing finalizer: %v", machine.Name, err)
 	}
 	if err := machineClient.MachineV1alpha1().Machines().Delete(machine.Name, nil); err != nil {
 		return fmt.Errorf("failed to delete machine %s: %v", machine.Name, err)
 	}
 
-	if err = wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
+	if err := wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
 		return isDownstreamMachineDeleted(machine.Name, machineClient)
 	}); err != nil {
 		return fmt.Errorf("failed to wait for machine %s to be deleted: %v", machine.Name, err)
 	}
+
+	return nil
 }
 
-func isDownstreamMachineDeleted(name string, client downstreammachineclientset.Interface) (bool, error) {
+func isDownstreamMachineDeleted(name string, client machinesv1alpha1clientset.Interface) (bool, error) {
 	if _, err := client.MachineV1alpha1().Machines().Get(name, metav1.GetOptions{}); err != nil {
 		if kerrors.IsNotFound(err) {
 			return true, nil
