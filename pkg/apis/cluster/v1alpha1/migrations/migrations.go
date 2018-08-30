@@ -74,7 +74,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 	// We do this in one loop to avoid ending up having all machines in  both the new and the old format if deletion
 	// failes for whatever reason
 	for _, machinesV1Alpha1Machine := range machinesv1Alpha1Machines.Items {
-		var convertedClusterv1alpha1Machine *clusterv1alpha1.Machine
+		convertedClusterv1alpha1Machine := &clusterv1alpha1.Machine{}
 		err := conversions.Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(&machinesV1Alpha1Machine,
 			convertedClusterv1alpha1Machine)
 		if err != nil {
