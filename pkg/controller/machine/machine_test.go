@@ -239,7 +239,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			name:  "v1.9.2 ubuntu - get default container runtime",
 			err:   nil,
 			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
+			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "18.06"},
 			machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testmachine",
@@ -256,7 +256,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			name:  "v1.9.2 ubuntu - get default docker version",
 			err:   nil,
 			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
+			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "18.06"},
 			machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testmachine",
