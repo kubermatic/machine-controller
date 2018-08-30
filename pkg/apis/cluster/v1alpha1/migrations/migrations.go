@@ -106,7 +106,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		} else {
 			// ClusterV1alpha1Machine already exists
 			if !equality.Semantic.DeepEqual(convertedClusterv1alpha1Machine.Spec, existingClusterV1alpha1Machine.Spec) {
-				return fmt.Errorf("---manual intervention required!--- Spec of machines.v1alpha1.machine %s is not equal to clusterv1alpha1.machines %s/%s, delete either of them to allow migration to succeed!",
+				return fmt.Errorf("---manual intervention required!--- Spec of machines.v1alpha1.machine %s is not equal to clusterv1alpha1.machines %s/%s, delete either of them to allow migration to succeed",
 					machinesV1Alpha1Machine.Name, convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 			}
 			existingClusterV1alpha1Machine.Labels = convertedClusterv1alpha1Machine.Labels
@@ -160,10 +160,8 @@ func ensureClusterV1Alpha1NodeOwnerRef(machine *clusterv1alpha1.Machine, kubeCli
 			return err
 		}
 		node.OwnerReferences = updatedOwnerRefs
-		if _, err := kubeClient.CoreV1().Nodes().Update(node); err != nil {
-			return err
-		}
-		return nil
+		_, err = kubeClient.CoreV1().Nodes().Update(node)
+		return err
 	}); err != nil {
 		return fmt.Errorf("failed to update OwnerRef on node %s: %v", node.Name, err)
 	}
