@@ -92,12 +92,19 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		// has to manually delete either the new or the old machine
 		existingClusterV1alpha1Machine, err := clusterv1Alpha1Client.ClusterV1alpha1().Machines(
 			convertedClusterv1alpha1Machine.Namespace).Get(convertedClusterv1alpha1Machine.Name, metav1.GetOptions{})
-		// Some random error occured
-		if err != nil && !kerrors.IsNotFound(err) {
-			return fmt.Errorf("failed to check if converted machine %s already exists: %v", convertedClusterv1alpha1Machine.Name, err)
-		}
-		// ClusterV1alpha1Machine already exists
 		if err != nil {
+			// Some random error occured
+			if !kerrors.IsNotFound(err) {
+				return fmt.Errorf("failed to check if converted machine %s already exists: %v", convertedClusterv1alpha1Machine.Name, err)
+			}
+
+			// ClusterV1alpha1Machine does not exist yet
+			owningClusterV1Alpha1Machine, err = clusterv1Alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
+			if err != nil {
+				return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
+			}
+		} else {
+			// ClusterV1alpha1Machine already exists
 			if !equality.Semantic.DeepEqual(convertedClusterv1alpha1Machine.Spec, existingClusterV1alpha1Machine.Spec) {
 				return fmt.Errorf("---manual intervention required!--- Spec of machines.v1alpha1.machine %s is not equal to clusterv1alpha1.machines %s/%s, delete either of them to allow migration to succeed!",
 					machinesV1Alpha1Machine.Name, convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
@@ -109,15 +116,8 @@ func migrateMachines(kubeClient kubernetes.Interface,
 				return fmt.Errorf("failed to update metadata of existing clusterV1Alpha1 machine: %v", err)
 			}
 		}
-		// ClusterV1alpha1Machine does not exist yet
-		if err == nil {
-			owningClusterV1Alpha1Machine, err = clusterv1Alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
-			if err != nil {
-				return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
-			}
-		}
 
-		// Node exists, we have to ensure there is an ownerRef to our clusterv1alpha1.Machine the ownerRef
+		// We have to ensure there is an ownerRef to our clusterv1alpha1.Machine on the node if it exists
 		if err := ensureClusterV1Alpha1NodeOwnerRef(owningClusterV1Alpha1Machine, kubeClient); err != nil {
 			return err
 		}
