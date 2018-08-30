@@ -117,7 +117,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 		// FIXME We'd like to use Ubuntu 18.04 eventually, but the docker's release
 		// deb repo for `bionic` is empty, and we use `$RELEASE` in userdata.
 		// Either Docker needs to fix their repo, or we need to hardcode `xenial`.
-		Sku:     to.StringPtr("16.04-LTS"),
+		Sku:     to.StringPtr("18.04-LTS"),
 		Version: to.StringPtr("latest"),
 	},
 }
