@@ -142,16 +142,25 @@ func ensureClusterV1Alpha1NodeOwnerRef(machine *clusterv1alpha1.Machine, kubeCli
 			machine.Spec.Name, machine.Name, err)
 	}
 
+	hasCurrentOwnerRef := false
+	updatedOwnerRefs := node.OwnerReferences
+
 	// Node exists, we have ensure there is an ownerReference to our machine
-	for _, ownerRef := range node.OwnerReferences {
+	// Also, there may only be one controller
+	for idx, ownerRef := range updatedOwnerRefs {
 		if ownerRef.UID == machine.UID {
-			// Nothing to do, ownerRef already exists
-			return nil
+			hasCurrentOwnerRef = true
+		} else {
+			if ownerRef.Controller != nil {
+				updatedOwnerRefs[idx].Controller = nil
+			}
 		}
 	}
 
-	gv := clusterv1alpha1.SchemeGroupVersion
-	updatedOwnerRefs := append(node.OwnerReferences, *metav1.NewControllerRef(machine, gv.WithKind("Machine")))
+	if !hasCurrentOwnerRef {
+		gv := clusterv1alpha1.SchemeGroupVersion
+		updatedOwnerRefs = append(node.OwnerReferences, *metav1.NewControllerRef(machine, gv.WithKind("Machine")))
+	}
 
 	// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
 	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
