@@ -717,20 +717,21 @@ func (c *Controller) defaultContainerRuntime(machine *clusterv1alpha1.Machine, p
 		}
 	}
 
-	if machine.Spec.Versions.ContainerRuntime.Name == "" {
-		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
-			m.Spec.Versions.ContainerRuntime.Name = containerruntime.Docker
-		}); err != nil {
-			return nil, err
-		}
+	containerRuntimeInfo, err := providerconfig.GetContainerRuntimeInfoFromProviderconfig(machine.Spec.ProviderConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract containerRuntimeInfo from machine %s: %v", machine.Name, err)
 	}
 
-	if machine.Spec.Versions.ContainerRuntime.Version == "" {
+	if containerRuntimeInfo.Name == "" {
+		containerRuntimeInfo.Name = containerruntime.Docker
+	}
+
+	if containerRuntimeInfo.Version == "" {
 		var (
 			defaultVersions []string
 			err             error
 		)
-		switch machine.Spec.Versions.ContainerRuntime.Name {
+		switch containerRuntimeInfo.Name {
 		case containerruntime.Docker:
 			defaultVersions, err = docker.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
 			if err != nil {
@@ -740,21 +741,26 @@ func (c *Controller) defaultContainerRuntime(machine *clusterv1alpha1.Machine, p
 			return nil, fmt.Errorf("invalid container runtime. Supported: '%s'", containerruntime.Docker)
 		}
 
-		var newVersion string
 		providerSupportedVersions := prov.SupportedContainerRuntimes()
 		for _, v := range defaultVersions {
 			for _, sv := range providerSupportedVersions {
 				if sv.Version == v {
 					// we should not return asap as we prefer the highest supported version
-					newVersion = sv.Version
+					containerRuntimeInfo.Version = sv.Version
 				}
 			}
 		}
-		if newVersion == "" {
-			return nil, fmt.Errorf("no supported versions available for '%s'", machine.Spec.Versions.ContainerRuntime.Name)
+		if containerRuntimeInfo.Version == "" {
+			return nil, fmt.Errorf("no supported versions available for '%s'", containerRuntimeInfo.Name)
+		}
+
+		defaultedProviderConfig, err := providerconfig.AddContainerRuntimeInfoToProviderconfig(machine.Spec.ProviderConfig,
+			containerRuntimeInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update provider config with defaulted container runtime: %v", err)
 		}
 		machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
-			m.Spec.Versions.ContainerRuntime.Version = newVersion
+			m.Spec.ProviderConfig = *defaultedProviderConfig
 		})
 		if err != nil {
 			return nil, err

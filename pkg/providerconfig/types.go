@@ -9,6 +9,7 @@ import (
 
 	"os"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -345,4 +346,32 @@ func GetContainerRuntimeInfo(c Config) (machinesv1alpha1.ContainerRuntimeInfo, e
 	cps := cloudProviderSpecWithContainerRuntime{}
 	err := json.Unmarshal(c.CloudProviderSpec.Raw, &cps)
 	return cps.containerRuntimeInfo, err
+}
+
+func GetContainerRuntimeInfoFromProviderconfig(pc clusterv1alpha1.ProviderConfig) (machinesv1alpha1.ContainerRuntimeInfo, error) {
+	config, err := GetConfig(pc)
+	if err != nil {
+		return machinesv1alpha1.ContainerRuntimeInfo{}, err
+	}
+
+	return GetContainerRuntimeInfo(*config)
+}
+
+func AddContainerRuntimeInfoToProviderconfig(pc clusterv1alpha1.ProviderConfig, cri machinesv1alpha1.ContainerRuntimeInfo) (*clusterv1alpha1.ProviderConfig, error) {
+	if pc.Value == nil {
+		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+	}
+
+	pcRaw := map[string]interface{}{}
+	if err := json.Unmarshal(pc.Value.Raw, &pcRaw); err != nil {
+		return nil, err
+	}
+
+	pcRaw[conversions.ContainerRuntimeInfoKey] = cri
+	providerConfigSerialized, err := json.Marshal(pcRaw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal providerconfig: %v", err)
+	}
+
+	return &clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigSerialized}}, nil
 }
