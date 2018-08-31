@@ -251,6 +251,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 					Versions: v1alpha1.MachineVersionInfo{
 						Kubelet: "1.9.2",
 					},
+					ProviderConfig: v1alpha1.ProviderConfig{Value: &runtime.RawExtension{}},
 				},
 			},
 		},
@@ -267,6 +268,7 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 					Versions: v1alpha1.MachineVersionInfo{
 						Kubelet: "1.9.2",
 					},
+					ProviderConfig: v1alpha1.ProviderConfig{Value: &runtime.RawExtension{}},
 				},
 			},
 		},
