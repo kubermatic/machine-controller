@@ -52,7 +52,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
-	"github.com/kubermatic/machine-controller/pkg/machines"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -64,13 +63,12 @@ import (
 )
 
 var (
-	masterURL       string
-	kubeconfig      string
-	clusterDNSIPs   string
-	listenAddress   string
-	name            string
-	workerCount     int
-	enableMigration bool
+	masterURL     string
+	kubeconfig    string
+	clusterDNSIPs string
+	listenAddress string
+	name          string
+	workerCount   int
 )
 
 const (
@@ -147,7 +145,6 @@ func main() {
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
-	flag.BoolVar(&enableMigration, "enable-migration", false, "When enabled, machinesV1Alpha1.machine types will be migrated to clusterV1Alpha1.machine, which will render the actual controller useless as it can not handle them yet")
 
 	flag.Parse()
 
@@ -181,11 +178,6 @@ func main() {
 	leaderElectionClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("error building kubernetes clientset for leaderElectionClient: %v", err)
-	}
-
-	err = machines.EnsureCustomResourceDefinitions(extClient)
-	if err != nil {
-		glog.Fatalf("failed to create CustomResourceDefinition: %v", err)
 	}
 
 	prometheusRegistry := prometheus.NewRegistry()
@@ -332,18 +324,17 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.name,
 		)
 
-		if enableMigration {
-			clusterv1Alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(runOptions.cfg)
-			if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
-				runOptions.kubeClient,
-				runOptions.extClient,
-				clusterv1Alpha1Client,
-				runOptions.cfg,
-			); err != nil {
-				glog.Errorf("Migration failed: %v", err)
-				runOptions.parentCtxDone()
-				return
-			}
+		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
+		clusterv1Alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(runOptions.cfg)
+		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
+			runOptions.kubeClient,
+			runOptions.extClient,
+			clusterv1Alpha1Client,
+			runOptions.cfg,
+		); err != nil {
+			glog.Errorf("Migration failed: %v", err)
+			runOptions.parentCtxDone()
+			return
 		}
 
 		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
