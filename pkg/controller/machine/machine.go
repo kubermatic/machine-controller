@@ -650,23 +650,6 @@ func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 		}
 	}
 
-	if node.Status.NodeInfo.ContainerRuntimeVersion != "" {
-		runtimeName, runtimeVersion, err = parseContainerRuntime(node.Status.NodeInfo.ContainerRuntimeVersion)
-		if err != nil {
-			glog.V(2).Infof("failed to parse container runtime from node %s: %v", node.Name, err)
-			runtimeName = "unknown"
-			runtimeVersion = "unknown"
-		}
-		if machine.Status.Versions.ContainerRuntime.Name != runtimeName || machine.Status.Versions.ContainerRuntime.Version != runtimeVersion {
-			if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
-				m.Status.Versions.ContainerRuntime.Name = runtimeName
-				m.Status.Versions.ContainerRuntime.Version = runtimeVersion
-			}); err != nil {
-				return fmt.Errorf("failed to update machine: %v", err)
-			}
-		}
-	}
-
 	if machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
 		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
 			m.Status.Versions.Kubelet = node.Status.NodeInfo.KubeletVersion
