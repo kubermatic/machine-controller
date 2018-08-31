@@ -712,7 +712,7 @@ func (c *Controller) defaultContainerRuntime(machine *clusterv1alpha1.Machine, p
 		}
 	}
 
-	containerRuntimeInfo, err := providerconfig.GetContainerRuntimeInfoFromProviderconfig(machine.Spec.ProviderConfig)
+	containerRuntimeInfo, err := providerconfig.GetContainerRuntimeInfo(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract containerRuntimeInfo from machine %s: %v", machine.Name, err)
 	}

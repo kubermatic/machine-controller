@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
+
 	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
 	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
-	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
@@ -24,7 +26,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/go-test/deep"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 type fakeInstance struct {
@@ -206,7 +208,7 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 		"cloudProviderSpec": %s}`, test.cloudProviderSpec)
 			machine := &v1alpha1.Machine{}
 			machine.Name = "testmachine"
-			machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
+			machine.Spec.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(providerConfig)}
 
 			controller, fakeMachineClient := createTestMachineController(t, machine)
 
@@ -233,38 +235,20 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 		machine *v1alpha1.Machine
 		os      providerconfig.OperatingSystem
 		err     error
-		resCR   v1alpha1.ContainerRuntimeInfo
+		resCR   machinesv1alpha1.ContainerRuntimeInfo
 	}{
 		{
-			name:  "v1.9.2 ubuntu - get default container runtime",
+			name:  "v1.9.2 ubuntu - get default container runtime and version",
 			err:   nil,
 			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
+			resCR: machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
 			machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testmachine",
 				},
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: "", Version: ""},
-						Kubelet:          "1.9.2",
-					},
-				},
-			},
-		},
-		{
-			name:  "v1.9.2 ubuntu - get default docker version",
-			err:   nil,
-			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "17.03.2"},
-			machine: &v1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "testmachine",
-				},
-				Spec: v1alpha1.MachineSpec{
-					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
-						Kubelet:          "1.9.2",
+						Kubelet: "1.9.2",
 					},
 				},
 			},
@@ -273,15 +257,14 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			name:  "v1.9.2 coreos - get default docker version",
 			err:   nil,
 			os:    providerconfig.OperatingSystemCoreos,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "1.12.6"},
+			resCR: machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "1.12.6"},
 			machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testmachine",
 				},
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
-						Kubelet:          "1.9.2",
+						Kubelet: "1.9.2",
 					},
 				},
 			},
@@ -305,7 +288,10 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 				return
 			}
 
-			cr := machine.Spec.Versions.ContainerRuntime
+			cr, err := providerconfig.GetContainerRuntimeInfo(machine.Spec.ProviderConfig)
+			if err != nil {
+				t.Fatalf("Failed to get container runtime from providerconfig: %v", err)
+			}
 
 			if diff := deep.Equal(cr, test.resCR); diff != nil {
 				t.Errorf("expected to get %s+%s instead got: %s+%s", test.resCR.Name, test.resCR.Version, cr.Name, cr.Version)
