@@ -114,6 +114,7 @@ func TestUserDataGeneration(t *testing.T) {
 			t.Fatalf("Failed to add containerRuntimeInfo to providerconfig: %v", err)
 		}
 		test.spec.ProviderConfig = *providerConfig
+
 		userdata, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pmezard/go-difflib/difflib"
+
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -16,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/pmezard/go-difflib/difflib"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 var (
@@ -57,7 +59,7 @@ type fakeCloudConfigProvider struct {
 	err    error
 }
 
-func (p *fakeCloudConfigProvider) GetCloudConfig(spec machinesv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return p.config, p.name, p.err
 }
 
@@ -67,7 +69,7 @@ func TestProvider_UserData(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name             string
-		spec             machinesv1alpha1.MachineSpec
+		spec             clusterv1alpha1.MachineSpec
 		ccProvider       cloud.ConfigProvider
 		osConfig         *Config
 		providerConfig   *providerconfig.Config
@@ -79,14 +81,14 @@ func TestProvider_UserData(t *testing.T) {
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
+					Name:    "docker",
+					Version: "1.13.1",
+				},
 			},
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "1.13.1",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.9.2",
 				},
 			},
@@ -100,14 +102,14 @@ func TestProvider_UserData(t *testing.T) {
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
+					Name:    "docker",
+					Version: "1.13.1",
+				},
 			},
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "1.13.1",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.11.0",
 				},
 			},
@@ -121,14 +123,14 @@ func TestProvider_UserData(t *testing.T) {
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
+					Name:    "docker",
+					Version: "17.03.2",
+				},
 			},
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "17.03.2",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.9.2",
 				},
 			},
@@ -142,14 +144,14 @@ func TestProvider_UserData(t *testing.T) {
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
+					Name:    "docker",
+					Version: "17.03.2",
+				},
 			},
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "17.03.2",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "v1.9.2",
 				},
 			},
@@ -164,14 +166,14 @@ func TestProvider_UserData(t *testing.T) {
 				CloudProvider:        "openstack",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
+				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
+					Name:    "docker",
+					Version: "17.03.2",
+				},
 			},
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "17.03.2",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "v1.9.2",
 				},
 			},
@@ -184,6 +186,7 @@ func TestProvider_UserData(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+
 			spec := test.spec
 			rProviderConfig := test.providerConfig
 			osConfigByte, err := json.Marshal(test.osConfig)
@@ -196,7 +199,7 @@ func TestProvider_UserData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderConfig = runtime.RawExtension{Raw: providerConfigRaw}
+			spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 			p := Provider{}
 
 			userdata, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)

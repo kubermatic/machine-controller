@@ -119,19 +119,14 @@ func (p Provider) UserData(
 		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
 	}
 
-	containerRuntimeInfo, err := providerconfig.GetContainerRuntimeInfo(*pconfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to extract containerRuntimeInfo: %v", err)
-	}
-
-	if containerRuntimeInfo.Name != containerruntime.Docker {
+	if pconfig.ContainerRuntimeInfo.Name != containerruntime.Docker {
 		return "", fmt.Errorf("unsupported container runtime: %s, only supported runtime: %s",
-			containerRuntimeInfo.Name, containerruntime.Docker)
+			pconfig.ContainerRuntimeInfo.Name, containerruntime.Docker)
 	}
 
-	crPkg, crPkgVersion, err := getDockerInstallCandidate(containerRuntimeInfo.Version)
+	crPkg, crPkgVersion, err := getDockerInstallCandidate(pconfig.ContainerRuntimeInfo.Version)
 	if err != nil {
-		return "", fmt.Errorf("failed to get docker install candidate for %s: %v", containerRuntimeInfo.Version, err)
+		return "", fmt.Errorf("failed to get docker install candidate for %s: %v", pconfig.ContainerRuntimeInfo.Version, err)
 	}
 
 	data := struct {
