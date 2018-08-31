@@ -8,7 +8,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,6 +20,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/golang/glog"
+
+	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 type provider struct {
@@ -284,7 +286,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	config, pc, err := p.getConfig(spec.ProviderConfig)
+	config, pc, err := p.getConfig(*spec.ProviderConfig.Value)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -505,10 +507,10 @@ func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater, userdata string) (instance.Instance, error) {
-	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, pc, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
@@ -556,7 +558,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 		if amiID, err = getDefaultAMIID(pc.OperatingSystem, config.Region); err != nil {
 			if err != nil {
 				return nil, cloudprovidererrors.TerminalError{
-					Reason:  v1alpha1.InvalidConfigurationMachineError,
+					Reason:  common.InvalidConfigurationMachineError,
 					Message: fmt.Sprintf("Invalid Region and Operating System configuration: %v", err),
 				}
 			}
@@ -650,10 +652,10 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 		return err
 	}
 
-	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
@@ -678,10 +680,10 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
@@ -719,7 +721,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
-	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	c, _, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
 	if err == nil {
 		labels["size"] = c.InstanceType
 		labels["region"] = c.Region
@@ -793,14 +795,14 @@ func awsErrorToTerminalError(err error, msg string) error {
 		switch aerr.Code() {
 		case "InstanceLimitExceeded":
 			return cloudprovidererrors.TerminalError{
-				Reason:  v1alpha1.InsufficientResourcesMachineError,
+				Reason:  common.InsufficientResourcesMachineError,
 				Message: "You've reached the AWS quota for number of instances of this type",
 			}
 		case "AuthFailure":
 			// authorization primitives come from MachineSpec
 			// thus we are setting InvalidConfigurationMachineError
 			return cloudprovidererrors.TerminalError{
-				Reason:  v1alpha1.InvalidConfigurationMachineError,
+				Reason:  common.InvalidConfigurationMachineError,
 				Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",
 			}
 		default:
