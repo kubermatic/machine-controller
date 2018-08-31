@@ -18,11 +18,12 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
-	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 const (
@@ -136,9 +137,12 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
-func (p *provider) getConfig(s runtime.RawExtension) (*config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*config, *providerconfig.Config, error) {
+	if s.Value == nil {
+		return nil, nil, fmt.Errorf("machines.spec.providerconfig.value is nil")
+	}
 	pconfig := providerconfig.Config{}
-	err := json.Unmarshal(s.Raw, &pconfig)
+	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -319,7 +323,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
-			Reason:  v1alpha1.InvalidConfigurationMachineError,
+			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("failed to parse MachineSpec, due to %v", err),
 		}
 	}
