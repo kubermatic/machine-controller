@@ -39,6 +39,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
@@ -47,6 +48,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
@@ -58,15 +60,18 @@ import (
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
 
 var (
-	masterURL     string
-	kubeconfig    string
-	clusterDNSIPs string
-	listenAddress string
-	name          string
-	workerCount   int
+	masterURL       string
+	kubeconfig      string
+	clusterDNSIPs   string
+	listenAddress   string
+	name            string
+	workerCount     int
+	enableMigration bool
 )
 
 const (
@@ -131,6 +136,9 @@ type controllerRunOptions struct {
 
 	// prometheusRegisterer is used by the MachineController instance to register its metrics
 	prometheusRegisterer prometheus.Registerer
+
+	// The cfg is used by the migration to conditionally spawn additional clients
+	cfg *restclient.Config
 }
 
 func main() {
@@ -140,6 +148,7 @@ func main() {
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
+	flag.BoolVar(&enableMigration, "enable-migration", false, "When enabled, machinesV1Alpha1.machine types will be migrated to clusterV1Alpha1.machine, which will render the actual controller useless as it can not handle them yet")
 
 	flag.Parse()
 
@@ -205,6 +214,7 @@ func main() {
 		kubeconfigProvider:   kubeconfigProvider,
 		name:                 name,
 		prometheusRegisterer: prometheusRegistry,
+		cfg:                  cfg,
 	}
 
 	kubeInformerFactory.Start(stopCh)
@@ -322,6 +332,20 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.kubeconfigProvider,
 			runOptions.name,
 		)
+
+		if enableMigration {
+			clusterv1Alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(runOptions.cfg)
+			if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
+				runOptions.kubeClient,
+				runOptions.extClient,
+				clusterv1Alpha1Client,
+				runOptions.cfg,
+			); err != nil {
+				glog.Errorf("Migration failed: %v", err)
+				runOptions.parentCtxDone()
+				return
+			}
+		}
 
 		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
 			glog.Errorf("error running controller: %v", runErr)

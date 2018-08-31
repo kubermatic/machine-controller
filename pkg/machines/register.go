@@ -19,6 +19,8 @@ type resource struct {
 	kind   string
 }
 
+const CRDName = v1alpha1.MachineResourcePlural + "." + v1alpha1.GroupName
+
 var resourceNames = []resource{
 	{
 		plural: "machines",
@@ -58,7 +60,7 @@ func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.I
 }
 
 func createCustomResourceDefinition(plural, kind string, clientset apiextensionsclient.Interface) error {
-	name := plural + "." + v1alpha1.GroupName
+	name := CRDName
 	crd := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
