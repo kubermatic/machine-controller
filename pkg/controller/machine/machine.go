@@ -432,7 +432,7 @@ func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machi
 	if err := c.deleteProviderInstance(prov, machine); err != nil {
 		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete machine: %v", err)
-		return c.updateMachineErrorIfTerminalError(machine, clusterv1alpha1.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
+		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
 	return c.cleanupMachineAfterDeletion(machine)
 }
@@ -443,7 +443,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	// even though this is a little bit premature and inefficient, it helps us detect invalid specification
 	defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
 	if err != nil {
-		return c.updateMachineErrorIfTerminalError(machine, clusterv1alpha1.InvalidConfigurationMachineError, err.Error(), err, "failed to add defaults to machine")
+		return c.updateMachineErrorIfTerminalError(machine, common.InvalidConfigurationMachineError, err.Error(), err, "failed to add defaults to machine")
 	}
 	if changed {
 		glog.V(4).Infof("updating machine '%s' with defaults...", machine.Name)
@@ -463,7 +463,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	c.validationCacheMutex.Unlock()
 	if !validationSuccess {
 		if err := c.validateMachine(prov, machine); err != nil {
-			if _, errNested := c.updateMachineError(machine, clusterv1alpha1.InvalidConfigurationMachineError, err.Error()); errNested != nil {
+			if _, errNested := c.updateMachineError(machine, common.InvalidConfigurationMachineError, err.Error()); errNested != nil {
 				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
 			}
 			return fmt.Errorf("invalid provider config: %v", err)
@@ -508,7 +508,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
-				return c.updateMachineErrorIfTerminalError(machine, clusterv1alpha1.CreateMachineError, message, err, "failed to create machine at cloudprover")
+				return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprover")
 			}
 			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			// remove error message in case it was set
@@ -522,7 +522,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 		// case 2.2: terminal error was returned and manual interaction is required to recover
 		if ok, _, message := cloudprovidererrors.IsTerminalError(err); ok {
 			message = fmt.Sprintf("%v. Unable to create a machine.", err)
-			return c.updateMachineErrorIfTerminalError(machine, clusterv1alpha1.CreateMachineError, message, err, "failed to get instance from provider")
+			return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to get instance from provider")
 		}
 
 		// case 2.3: transient error was returned, requeue the request and try again in the future
