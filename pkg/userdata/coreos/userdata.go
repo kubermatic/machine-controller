@@ -111,27 +111,29 @@ func (p Provider) UserData(
 	}
 
 	data := struct {
-		MachineSpec       clusterv1alpha1.MachineSpec
-		ProviderConfig    *providerconfig.Config
-		CoreOSConfig      *Config
-		Kubeconfig        string
-		CloudProvider     string
-		CloudConfig       string
-		HyperkubeImageTag string
-		ClusterDNSIPs     []net.IP
-		KubernetesCACert  string
-		JournaldMaxSize   string
+		MachineSpec          clusterv1alpha1.MachineSpec
+		ProviderConfig       *providerconfig.Config
+		CoreOSConfig         *Config
+		Kubeconfig           string
+		CloudProvider        string
+		CloudConfig          string
+		HyperkubeImageTag    string
+		ClusterDNSIPs        []net.IP
+		KubernetesCACert     string
+		JournaldMaxSize      string
+		ContainerRuntimeInfo machinesv1alpha1.ContainerRuntimeInfo
 	}{
-		MachineSpec:       spec,
-		ProviderConfig:    pconfig,
-		CoreOSConfig:      coreosConfig,
-		Kubeconfig:        kubeconfigString,
-		CloudProvider:     cpName,
-		CloudConfig:       cpConfig,
-		HyperkubeImageTag: fmt.Sprintf("v%s", kubeletVersion.String()),
-		ClusterDNSIPs:     clusterDNSIPs,
-		KubernetesCACert:  kubernetesCACert,
-		JournaldMaxSize:   userdatahelper.JournaldMaxUse,
+		MachineSpec:          spec,
+		ProviderConfig:       pconfig,
+		CoreOSConfig:         coreosConfig,
+		Kubeconfig:           kubeconfigString,
+		CloudProvider:        cpName,
+		CloudConfig:          cpConfig,
+		HyperkubeImageTag:    fmt.Sprintf("v%s", kubeletVersion.String()),
+		ClusterDNSIPs:        clusterDNSIPs,
+		KubernetesCACert:     kubernetesCACert,
+		JournaldMaxSize:      userdatahelper.JournaldMaxUse,
+		ContainerRuntimeInfo: pconfig.ContainerRuntimeInfo,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -325,7 +327,7 @@ storage:
         inline: |
 {{ .KubernetesCACert | indent 10 }}
 
-{{- if contains "1.12" .MachineSpec.Versions.ContainerRuntime.Version }}
+{{- if contains "1.12" .ContainerRuntimeInfo.Version }}
     - path: /etc/coreos/docker-1.12
       mode: 0644
       filesystem: root
