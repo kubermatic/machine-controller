@@ -139,7 +139,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
 
 func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*config, *providerconfig.Config, error) {
 	if s.Value == nil {
-		return nil, nil, fmt.Errorf("machines.spec.providerconfig.value is nil")
+		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
