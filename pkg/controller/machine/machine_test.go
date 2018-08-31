@@ -213,7 +213,7 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 
 			controller, fakeMachineClient := createTestMachineController(t, machine)
 
-			if err := controller.syncHandler("testmachine"); err != nil && err.Error() != test.err {
+			if err := controller.syncHandler("kube-system/testmachine"); err != nil && err.Error() != test.err {
 				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
 			}
 
