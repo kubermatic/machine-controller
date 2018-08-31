@@ -71,6 +71,8 @@ const (
 	machineKind = "Machine"
 
 	latestKubernetesVersion = "1.9.6"
+
+	nodeOwnerLabelName = "machine-controller/owned-by"
 )
 
 // Controller is the controller implementation for machine resources
@@ -546,21 +548,16 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
 	}
 	if exists {
-		ownerRef := metav1.GetControllerOf(node)
-		if ownerRef == nil {
-			gv := clusterv1alpha1.SchemeGroupVersion
-			node.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machine, gv.WithKind(machineKind))}
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after adding the owner ref: %v", node.Name, err)
-			}
-			glog.V(4).Infof("Added owner ref to node %s (machine=%s)", node.Name, machine.Name)
-			c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeMatched", "Successfully matched machine to node %s", node.Name)
+		if val := node.Labels[nodeOwnerLabelName]; val != string(machine.UID) {
+			c.updateNode(node.Name, func(n *corev1.Node) {
+				n.Labels[nodeOwnerLabelName] = string(machine.UID)
+			})
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
-			node.Spec.ConfigSource = machine.Spec.ConfigSource
-			node, err = c.kubeClient.CoreV1().Nodes().Update(node)
+			c.updateNode(node.Name, func(n *corev1.Node) {
+				n.Spec.ConfigSource = machine.Spec.ConfigSource
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
 			}
@@ -885,4 +882,27 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
 	return machine, nil
+}
+
+func (c *Controller) updateNode(
+	name string, modify func(*corev1.Node)) (*corev1.Node, error) {
+	var updatedNode *corev1.Node
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var retryErr error
+
+		//Get latest version from API
+		currentNode, err := c.kubeClient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		// Apply modifications
+		modify(currentNode)
+
+		// Update the node
+		updatedNode, retryErr = c.kubeClient.CoreV1().Nodes().Update(currentNode)
+		return retryErr
+	})
+
+	return updatedNode, err
 }
