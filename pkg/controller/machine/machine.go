@@ -789,53 +789,45 @@ func (c *Controller) handleObject(obj interface{}) {
 		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 
-	ownerRef := metav1.GetControllerOf(object)
-	if ownerRef != nil {
-		if ownerRef.Kind != "Machine" {
-			return
-		}
-
-		var owningMachine *clusterv1alpha1.Machine
-		machinesList, err := c.machinesLister.List(labels.Everything())
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
-			return
-		}
-		for _, machine := range machinesList {
-			if machine.UID == ownerRef.UID {
-				owningMachine = machine
-				break
-			}
-		}
-		if owningMachine == nil {
-			utilruntime.HandleError(fmt.Errorf("Could not resolve ownerRef for node %s", object.GetName()))
-			return
-		}
-		machine, err := c.machinesLister.Machines(owningMachine.Namespace).Get(owningMachine.Name)
-		if err != nil {
-			glog.V(4).Infof("ignoring orphaned object '%s' of machine '%s'", object.GetSelfLink(), ownerRef.Name)
-			return
-		}
-
-		glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), machine.Name)
-		c.enqueueMachine(machine)
+	var owningMachine *clusterv1alpha1.Machine
+	machinesList, err := c.machinesLister.List(labels.Everything())
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
 		return
 	}
 
-	if ownerRef == nil {
-		machines, err := c.machinesLister.List(labels.Everything())
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("error listing machines: '%v'", err))
-			return
-		}
-		for _, machine := range machines {
-			// We get triggered by node{Add,Update}, so enqeue machines if they
-			// have no nodeRef yet to make matching happen ASAP
+	var ownerUIDString string
+	var exists bool
+	if ownerUIDString, exists = object.GetLabels()[nodeOwnerLabelName]; !exists {
+		// We get triggered by node{Add,Update}, so enqeue machines if they
+		// have no nodeRef yet to make matching happen ASAP
+		for _, machine := range machinesList {
 			if machine.Status.NodeRef == nil {
 				c.enqueueMachine(machine)
 			}
 		}
+		// Must return here, because we delete the node if owningMachine == nil
+		return
 	}
+
+	for _, machine := range machinesList {
+		if string(machine.UID) == ownerUIDString {
+			owningMachine = machine
+			break
+		}
+	}
+
+	// Owning machine was deleted, so we delete the node
+	if owningMachine == nil {
+		if err := c.kubeClient.CoreV1().Nodes().Delete(object.GetName(), nil); err != nil {
+			utilruntime.HandleError(fmt.Errorf("failed to delete orphaned node %s: %v", object.GetName(), err))
+		}
+		return
+	}
+
+	glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), owningMachine.Name)
+	c.enqueueMachine(owningMachine)
+	return
 }
 
 func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
