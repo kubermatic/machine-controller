@@ -17,6 +17,8 @@ import (
 	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
+
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 func getConfig(r runtime.RawExtension) (*Config, error) {
@@ -63,7 +65,7 @@ func (p Provider) SupportedContainerRuntimes() (runtimes []machinesv1alpha1.Cont
 
 // UserData renders user-data template
 func (p Provider) UserData(
-	spec machinesv1alpha1.MachineSpec,
+	spec clusterv1alpha1.MachineSpec,
 	kubeconfig *clientcmdapi.Config,
 	ccProvider cloud.ConfigProvider,
 	clusterDNSIPs []net.IP,
@@ -109,7 +111,7 @@ func (p Provider) UserData(
 	}
 
 	data := struct {
-		MachineSpec       machinesv1alpha1.MachineSpec
+		MachineSpec       clusterv1alpha1.MachineSpec
 		ProviderConfig    *providerconfig.Config
 		CoreOSConfig      *Config
 		Kubeconfig        string

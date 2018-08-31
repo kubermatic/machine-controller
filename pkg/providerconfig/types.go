@@ -9,10 +9,13 @@ import (
 
 	"os"
 
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 var (
@@ -320,13 +323,26 @@ func NewConfigVarResolver(kubeClient kubernetes.Interface) *ConfigVarResolver {
 	return &ConfigVarResolver{kubeClient: kubeClient}
 }
 
-func GetConfig(r runtime.RawExtension) (*Config, error) {
+func GetConfig(r clusterv1alpha1.ProviderConfig) (*Config, error) {
+	if r.Value == nil {
+		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+	}
 	p := new(Config)
-	if len(r.Raw) == 0 {
+	if len(r.Value.Raw) == 0 {
 		return p, nil
 	}
-	if err := json.Unmarshal(r.Raw, p); err != nil {
+	if err := json.Unmarshal(r.Value.Raw, p); err != nil {
 		return nil, err
 	}
 	return p, nil
+}
+
+type cloudProviderSpecWithContainerRuntime struct {
+	containerRuntimeInfo machinesv1alpha1.ContainerRuntimeInfo `json:"containerRuntimeInfo"`
+}
+
+func GetContainerRuntimeInfo(c Config) (machinesv1alpha1.ContainerRuntimeInfo, error) {
+	cps := cloudProviderSpecWithContainerRuntime{}
+	err := json.Unmarshal(c.CloudProviderSpec.Raw, &cps)
+	return cps.containerRuntimeInfo, err
 }
