@@ -49,9 +49,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
-	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
-	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
-	machinelistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
@@ -62,6 +59,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
+	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
+	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 )
 
 var (
@@ -93,7 +92,7 @@ type controllerRunOptions struct {
 	extClient *apiextclient.Clientset
 
 	// machineClient a client that knows how to consume Machine resources
-	machineClient *machineclientset.Clientset
+	machineClient *clusterv1alpha1clientset.Clientset
 
 	// this essentially sets the cluster DNS IP addresses. The list is passed to kubelet and then down to pods.
 	clusterDNSIPs []net.IP
@@ -117,7 +116,7 @@ type controllerRunOptions struct {
 	machineInformer cache.SharedIndexInformer
 
 	// machineLister holds a lister that knows how to list Machines from a cache
-	machineLister machinelistersv1alpha1.MachineLister
+	machineLister clusterlistersv1alpha1.MachineLister
 
 	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
 	kubeconfigProvider machinecontroller.KubeconfigProvider
@@ -174,7 +173,7 @@ func main() {
 		glog.Fatalf("error building kubernetes clientset for extClient: %v", err)
 	}
 
-	machineClient, err := machineclientset.NewForConfig(cfg)
+	machineClient, err := clusterv1alpha1clientset.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("error building example clientset for machineClient: %v", err)
 	}
@@ -192,7 +191,7 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 
 	// before we acquire a lock we actually warm up caches mirroring the state of the API server
-	machineInformerFactory := machineinformers.NewFilteredSharedInformerFactory(machineClient, time.Minute*15, metav1.NamespaceAll, labelSelector(name))
+	clusterInformerFactory := clusterinformers.NewFilteredSharedInformerFactory(machineClient, time.Minute*15, metav1.NamespaceAll, labelSelector(name))
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
 	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
 	kubeSystemInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceSystem, nil)
@@ -209,8 +208,8 @@ func main() {
 		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
 		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
 		secretSystemNsLister: kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
-		machineInformer:      machineInformerFactory.Machine().V1alpha1().Machines().Informer(),
-		machineLister:        machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+		machineInformer:      clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
+		machineLister:        clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
 		kubeconfigProvider:   kubeconfigProvider,
 		name:                 name,
 		prometheusRegisterer: prometheusRegistry,
@@ -220,13 +219,13 @@ func main() {
 	kubeInformerFactory.Start(stopCh)
 	kubePublicKubeInformerFactory.Start(stopCh)
 	defaultKubeInformerFactory.Start(stopCh)
-	machineInformerFactory.Start(stopCh)
+	clusterInformerFactory.Start(stopCh)
 	kubeSystemInformerFactory.Start(stopCh)
 
 	syncsMaps := []map[reflect.Type]bool{
 		kubeInformerFactory.WaitForCacheSync(stopCh),
 		kubePublicKubeInformerFactory.WaitForCacheSync(stopCh),
-		machineInformerFactory.WaitForCacheSync(stopCh),
+		clusterInformerFactory.WaitForCacheSync(stopCh),
 		defaultKubeInformerFactory.WaitForCacheSync(stopCh),
 		kubeSystemInformerFactory.WaitForCacheSync(stopCh),
 	}
@@ -242,7 +241,7 @@ func main() {
 	var g run.Group
 	{
 		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(
-			machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+			clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
 			kubeClient,
 		))
 
