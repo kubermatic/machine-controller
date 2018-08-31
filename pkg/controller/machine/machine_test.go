@@ -8,8 +8,6 @@ import (
 
 	"github.com/go-test/deep"
 
-	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
-	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
@@ -27,6 +25,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterfake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
+	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 )
 
 type fakeInstance struct {
@@ -208,6 +208,7 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 		"cloudProviderSpec": %s}`, test.cloudProviderSpec)
 			machine := &v1alpha1.Machine{}
 			machine.Name = "testmachine"
+			machine.Namespace = "kube-system"
 			machine.Spec.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(providerConfig)}
 
 			controller, fakeMachineClient := createTestMachineController(t, machine)
@@ -216,7 +217,7 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
 			}
 
-			syncedMachine, err := fakeMachineClient.Machine().Machines().Get("testmachine", metav1.GetOptions{})
+			syncedMachine, err := fakeMachineClient.Cluster().Machines("kube-system").Get("testmachine", metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Failed to get machine: %v", err)
 			}
@@ -300,21 +301,21 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 	}
 }
 
-func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Controller, *machinefake.Clientset) {
+func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Controller, *clusterfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
-	machineClient := machinefake.NewSimpleClientset(objects...)
+	clusterClient := clusterfake.NewSimpleClientset(objects...)
 
 	kubeInformersFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
 	kubeSystemInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
-	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Millisecond*50)
+	clusterInformerFactory := clusterinformers.NewSharedInformerFactory(clusterClient, time.Millisecond*50)
 
 	ctrl := NewMachineController(
 		kubeClient,
-		machineClient,
+		clusterClient,
 		kubeInformersFactory.Core().V1().Nodes().Informer(),
 		kubeInformersFactory.Core().V1().Nodes().Lister(),
-		machineInformerFactory.Machine().V1alpha1().Machines().Informer(),
-		machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+		clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
+		clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
 		kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
 		[]net.IP{},
 		NewMachineControllerMetrics(),
@@ -322,11 +323,11 @@ func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Cont
 		&clusterinfo.KubeconfigProvider{},
 		"")
 
-	machineInformerFactory.Start(wait.NeverStop)
+	clusterInformerFactory.Start(wait.NeverStop)
 	kubeInformersFactory.Start(wait.NeverStop)
 
-	machineInformerFactory.WaitForCacheSync(wait.NeverStop)
+	clusterInformerFactory.WaitForCacheSync(wait.NeverStop)
 	kubeInformersFactory.WaitForCacheSync(wait.NeverStop)
 
-	return ctrl, machineClient
+	return ctrl, clusterClient
 }
