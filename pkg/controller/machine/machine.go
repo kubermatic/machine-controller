@@ -161,12 +161,12 @@ func NewMachineController(
 
 	nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
-		UpdateFunc: func(old, new interface{}) {
-			newNode := new.(*corev1.Node)
-			oldNode := old.(*corev1.Node)
-			if newNode.ResourceVersion == oldNode.ResourceVersion {
-				return
-			}
+		// We handle all node updates
+		// as we have to garbage collect orphaned nodes
+		// TODO: Move node garbage collection to a finalizer
+		// else we depend on getting the event which puts the node from
+		// ready -> not ready
+		UpdateFunc: func(_, new interface{}) {
 			controller.handleObject(new)
 		},
 		DeleteFunc: controller.handleObject,
