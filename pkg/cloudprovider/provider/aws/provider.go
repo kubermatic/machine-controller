@@ -10,7 +10,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -195,9 +194,12 @@ func getDefaultRootDevicePath(os providerconfig.OperatingSystem) (string, error)
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
 }
 
-func (p *provider) getConfig(s runtime.RawExtension) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfig.Config, error) {
+	if s.Value == nil {
+		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+	}
 	pconfig := providerconfig.Config{}
-	err := json.Unmarshal(s.Raw, &pconfig)
+	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -286,7 +288,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	config, pc, err := p.getConfig(*spec.ProviderConfig.Value)
+	config, pc, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -507,7 +509,7 @@ func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater, userdata string) (instance.Instance, error) {
-	config, pc, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
+	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -652,7 +654,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 		return err
 	}
 
-	config, _, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
+	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -680,7 +682,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	config, _, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
+	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -721,7 +723,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
-	c, _, err := p.getConfig(*machine.Spec.ProviderConfig.Value)
+	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err == nil {
 		labels["size"] = c.InstanceType
 		labels["region"] = c.Region
