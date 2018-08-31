@@ -624,11 +624,6 @@ func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 		return nil
 	}
 
-	var (
-		runtimeName, runtimeVersion string
-		err                         error
-	)
-
 	ref, err := reference.GetReference(scheme.Scheme, node)
 	if err != nil {
 		return fmt.Errorf("failed to get node reference for %s : %v", node.Name, err)
