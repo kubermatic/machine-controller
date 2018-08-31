@@ -806,17 +806,17 @@ func (c *Controller) handleObject(obj interface{}) {
 		var owningMachine *clusterv1alpha1.Machine
 		machinesList, err := c.machinesLister.List(labels.Everything())
 		if err != nil {
-			utilruntime.HandleError(fmt.Sprintf("Failed to list machines in lister: %v", err))
+			utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
 			return
 		}
-		for _, machine := range c.machinesList {
+		for _, machine := range machinesList {
 			if machine.UID == ownerRef.UID {
-				owningMachine = &machine
+				owningMachine = machine
 				break
 			}
 		}
 		if owningMachine == nil {
-			utilruntime.HandleError(fmt.Sprintf("Could not resolve ownerRef for node %s", object.GetName()))
+			utilruntime.HandleError(fmt.Errorf("Could not resolve ownerRef for node %s", object.GetName()))
 			return
 		}
 		machine, err := c.machinesLister.Machines(owningMachine.Namespace).Get(owningMachine.Name)
