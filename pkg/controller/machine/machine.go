@@ -72,7 +72,7 @@ const (
 
 	latestKubernetesVersion = "1.9.6"
 
-	nodeOwnerLabelName = "machine-controller/owned-by"
+	NodeOwnerLabelName = "machine-controller/owned-by"
 )
 
 // Controller is the controller implementation for machine resources
@@ -548,9 +548,9 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		return fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
 	}
 	if exists {
-		if val := node.Labels[nodeOwnerLabelName]; val != string(machine.UID) {
+		if val := node.Labels[NodeOwnerLabelName]; val != string(machine.UID) {
 			c.updateNode(node.Name, func(n *corev1.Node) {
-				n.Labels[nodeOwnerLabelName] = string(machine.UID)
+				n.Labels[NodeOwnerLabelName] = string(machine.UID)
 			})
 		}
 
@@ -798,7 +798,7 @@ func (c *Controller) handleObject(obj interface{}) {
 
 	var ownerUIDString string
 	var exists bool
-	if ownerUIDString, exists = object.GetLabels()[nodeOwnerLabelName]; !exists {
+	if ownerUIDString, exists = object.GetLabels()[NodeOwnerLabelName]; !exists {
 		// We get triggered by node{Add,Update}, so enqeue machines if they
 		// have no nodeRef yet to make matching happen ASAP
 		for _, machine := range machinesList {

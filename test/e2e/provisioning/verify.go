@@ -10,8 +10,7 @@ import (
 
 	"github.com/golang/glog"
 
-	machineclientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
-	machinev1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
 
 const (
@@ -41,7 +43,7 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 	if err != nil {
 		return fmt.Errorf("Error building kubernetes clientset: %v", err)
 	}
-	machineClient, err := machineclientset.NewForConfig(cfg)
+	clusterClient, err := clusterv1alpha1clientset.NewForConfig(cfg)
 	if err != nil {
 		return fmt.Errorf("Error building example clientset: %v", err)
 	}
@@ -58,7 +60,7 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 			continue
 		}
 		if strings.Contains(manifest, "kind: Machine") {
-			newMachine := &machinev1alpha1.Machine{}
+			newMachine := &clusterv1alpha1.Machine{}
 			manifestReader := strings.NewReader(manifest)
 			manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
 			err = manifestDecoder.Decode(newMachine)
@@ -66,12 +68,12 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 				return err
 			}
 
-			err = createAndAssure(newMachine, machineClient, kubeClient, timeout)
+			err = createAndAssure(newMachine, clusterClient, kubeClient, timeout)
 			if err != nil {
 				return err
 			}
 
-			err = deleteAndAssure(newMachine, machineClient, kubeClient, timeout)
+			err = deleteAndAssure(newMachine, clusterClient, kubeClient, timeout)
 			if err != nil {
 				return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
 			}
@@ -118,7 +120,8 @@ func kubectlApply(kubecfgPath, manifest string) error {
 	return nil
 }
 
-func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
+func createAndAssure(machine *clusterv1alpha1.Machine,
+	clusterClient clusterv1alpha1clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachine(machine, kubeClient, false)
 	if err != nil {
@@ -126,7 +129,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	}
 
 	glog.Infof("creating a new \"%s\" machine\n", machine.Name)
-	machine, err = machineClient.MachineV1alpha1().Machines().Create(machine)
+	machine, err = clusterClient.ClusterV1alpha1().Machines(machine.Namespace).Create(machine)
 	if err != nil {
 		return err
 	}
@@ -138,7 +141,7 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		return false, nil
 	})
 	if err != nil {
-		status := getMachineStatusAsString(machine.Name, machineClient)
+		status := getMachineStatusAsString(machine, clusterClient)
 		return fmt.Errorf("falied to created the new machine, err = %v, machine Status = %v", err, status)
 	}
 
@@ -168,9 +171,10 @@ func createAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 	return nil
 }
 
-func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
+func deleteAndAssure(machine *clusterv1alpha1.Machine,
+	clusterClient clusterv1alpha1clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	glog.Infof("deleting the machine \"%s\"\n", machine.Name)
-	err := machineClient.MachineV1alpha1().Machines().Delete(machine.Name, nil)
+	err := clusterClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, nil)
 	if err != nil {
 		return fmt.Errorf("unable to remove machine %s, due to %v", machine.Name, err)
 	}
@@ -181,7 +185,7 @@ func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 		if errNodeStillExists != nil {
 			return false, nil
 		}
-		_, errGetMachine := machineClient.MachineV1alpha1().Machines().Get(machine.Name, metav1.GetOptions{})
+		_, errGetMachine := clusterClient.ClusterV1alpha1().Machines(machine.Namespace).Get(machine.Name, metav1.GetOptions{})
 		if errGetMachine != nil && kerrors.IsNotFound(errGetMachine) {
 			return true, nil
 		}
@@ -195,7 +199,7 @@ func deleteAndAssure(machine *machinev1alpha1.Machine, machineClient machineclie
 
 // assureNodeForMachine according to shouldExists parameter check if a node for machine exists in the system or not
 // this method examines OwnerReference of each node.
-func assureNodeForMachine(machine *machinev1alpha1.Machine, kubeClient kubernetes.Interface, shouldExists bool) error {
+func assureNodeForMachine(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface, shouldExists bool) error {
 	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -215,12 +219,13 @@ func assureNodeForMachine(machine *machinev1alpha1.Machine, kubeClient kubernete
 	return nil
 }
 
-func isNodeForMachine(node *v1.Node, machine *machinev1alpha1.Machine) bool {
-	ownerRef := metav1.GetControllerOf(node)
-	if ownerRef == nil {
+func isNodeForMachine(node *v1.Node, machine *clusterv1alpha1.Machine) bool {
+	// This gets called before the Objects are persisted in the API
+	// which means UI will be emppy for machine
+	if string(machine.UID) == "" {
 		return false
 	}
-	return ownerRef.Name == machine.Name && ownerRef.UID == machine.UID
+	return node.Labels[machinecontroller.NodeOwnerLabelName] == string(machine.UID)
 }
 
 func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (string, error) {
@@ -242,10 +247,10 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	return content, nil
 }
 
-func getMachineStatusAsString(machineName string, machineClient machineclientset.Interface) string {
+func getMachineStatusAsString(machine *clusterv1alpha1.Machine, machineClient clusterv1alpha1clientset.Interface) string {
 	statusMessage := ""
 
-	machine, err := machineClient.MachineV1alpha1().Machines().Get(machineName, metav1.GetOptions{})
+	machine, err := machineClient.ClusterV1alpha1().Machines(machine.Namespace).Get(machine.Name, metav1.GetOptions{})
 	if err == nil {
 		if machine.Status.ErrorReason != nil {
 			statusMessage = fmt.Sprintf("ErrorReason = %s", *machine.Status.ErrorReason)
