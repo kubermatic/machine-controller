@@ -103,11 +103,7 @@ func (p Provider) UserData(
 		return "", fmt.Errorf("failed to get provider config: %v", err)
 	}
 
-	containerRuntimeInfo, err := providerconfig.GetContainerRuntimeInfo(*pconfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to get containerRuntimeInfo: %v", err)
-	}
-	dockerPackageName, err := getDockerPackageName(containerRuntimeInfo.Version)
+	dockerPackageName, err := getDockerPackageName(pconfig.ContainerRuntimeInfo.Version)
 	if err != nil {
 		return "", fmt.Errorf("error getting Docker package name: '%v'", err)
 	}

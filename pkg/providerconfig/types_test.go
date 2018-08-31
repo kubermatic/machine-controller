@@ -5,7 +5,12 @@ import (
 	"reflect"
 	"testing"
 
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 func TestConfigVarStringUnmarshalling(t *testing.T) {
@@ -170,4 +175,9 @@ func TestConfigVarBoolMarshallingAndUnmarshalling(t *testing.T) {
 			t.Errorf("ConfigVarBool object is not equal after marshalling and unmarshalling, old: '%+v', new: '%+v'", cvs, unmarshalled)
 		}
 	}
+}
+
+func TestAddContainerRuntimeInfoToProviderconfig(t *testing.T) {
+	containerRuntimeInfo := machinesv1alpha1.ContainerRuntimeInfo{Name: "Hans", Version: "Wurst"}
+	providerConfig := clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{}}
 }

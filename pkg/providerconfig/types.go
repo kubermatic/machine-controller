@@ -58,11 +58,13 @@ type NetworkConfig struct {
 type Config struct {
 	SSHPublicKeys []string `json:"sshPublicKeys"`
 
-	CloudProvider     CloudProvider        `json:"cloudProvider,omitempty"`
-	CloudProviderSpec runtime.RawExtension `json:"cloudProviderSpec,omitempty"`
+	CloudProvider     CloudProvider        `json:"cloudProvider"`
+	CloudProviderSpec runtime.RawExtension `json:"cloudProviderSpec"`
 
 	OperatingSystem     OperatingSystem      `json:"operatingSystem"`
 	OperatingSystemSpec runtime.RawExtension `json:"operatingSystemSpec"`
+
+	ContainerRuntimeInfo machinesv1alpha1.ContainerRuntimeInfo `json:"containerRuntimeInfo"`
 
 	// +optional
 	Network *NetworkConfig `json:"network,omitempty"`
@@ -338,23 +340,12 @@ func GetConfig(r clusterv1alpha1.ProviderConfig) (*Config, error) {
 	return p, nil
 }
 
-type cloudProviderSpecWithContainerRuntime struct {
-	containerRuntimeInfo machinesv1alpha1.ContainerRuntimeInfo `json:"containerRuntimeInfo"`
-}
-
-func GetContainerRuntimeInfo(c Config) (machinesv1alpha1.ContainerRuntimeInfo, error) {
-	cps := cloudProviderSpecWithContainerRuntime{}
-	err := json.Unmarshal(c.CloudProviderSpec.Raw, &cps)
-	return cps.containerRuntimeInfo, err
-}
-
-func GetContainerRuntimeInfoFromProviderconfig(pc clusterv1alpha1.ProviderConfig) (machinesv1alpha1.ContainerRuntimeInfo, error) {
+func GetContainerRuntimeInfo(pc clusterv1alpha1.ProviderConfig) (machinesv1alpha1.ContainerRuntimeInfo, error) {
 	config, err := GetConfig(pc)
 	if err != nil {
 		return machinesv1alpha1.ContainerRuntimeInfo{}, err
 	}
-
-	return GetContainerRuntimeInfo(*config)
+	return config.ContainerRuntimeInfo, nil
 }
 
 func AddContainerRuntimeInfoToProviderconfig(pc clusterv1alpha1.ProviderConfig, cri machinesv1alpha1.ContainerRuntimeInfo) (*clusterv1alpha1.ProviderConfig, error) {
@@ -363,8 +354,11 @@ func AddContainerRuntimeInfoToProviderconfig(pc clusterv1alpha1.ProviderConfig, 
 	}
 
 	pcRaw := map[string]interface{}{}
-	if err := json.Unmarshal(pc.Value.Raw, &pcRaw); err != nil {
-		return nil, err
+	// We can not re-use GetConfig here because we may lose data
+	if len(pc.Value.Raw) != 0 {
+		if err := json.Unmarshal(pc.Value.Raw, &pcRaw); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal providerconfig: %v", err)
+		}
 	}
 
 	pcRaw[conversions.ContainerRuntimeInfoKey] = cri
