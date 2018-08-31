@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -67,8 +66,6 @@ const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
 
 	deletionRetryWaitPeriod = 10 * time.Second
-
-	machineKind = "Machine"
 
 	latestKubernetesVersion = "1.9.6"
 
@@ -549,16 +546,17 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 	}
 	if exists {
 		if val := node.Labels[NodeOwnerLabelName]; val != string(machine.UID) {
-			c.updateNode(node.Name, func(n *corev1.Node) {
+			if _, err := c.updateNode(node.Name, func(n *corev1.Node) {
 				n.Labels[NodeOwnerLabelName] = string(machine.UID)
-			})
+			}); err != nil {
+				return err
+			}
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
-			c.updateNode(node.Name, func(n *corev1.Node) {
+			if _, err := c.updateNode(node.Name, func(n *corev1.Node) {
 				n.Spec.ConfigSource = machine.Spec.ConfigSource
-			})
-			if err != nil {
+			}); err != nil {
 				return fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
 			}
 			glog.V(4).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
@@ -651,18 +649,6 @@ func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 	}
 
 	return nil
-}
-
-var (
-	containerRuntime = regexp.MustCompile(`(docker)://(.*)`)
-)
-
-func parseContainerRuntime(s string) (runtime, version string, err error) {
-	res := containerRuntime.FindStringSubmatch(s)
-	if len(res) == 3 {
-		return res[1], res[2], nil
-	}
-	return "", "", fmt.Errorf("invalid format. Expected 'runtime://version'")
 }
 
 func (c *Controller) getNode(instance instance.Instance, provider providerconfig.CloudProvider) (node *corev1.Node, exists bool, err error) {
@@ -827,7 +813,6 @@ func (c *Controller) handleObject(obj interface{}) {
 
 	glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), owningMachine.Name)
 	c.enqueueMachine(owningMachine)
-	return
 }
 
 func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
