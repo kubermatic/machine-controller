@@ -3,9 +3,9 @@ package vsphere
 import (
 	"testing"
 
-	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 func TestGetCloudConfig(t *testing.T) {
@@ -133,8 +133,8 @@ datacenter = "Datacenter"
 
 	p := provider{}
 	for _, test := range tests {
-		providerconfigRuntimeRawExtension := runtime.RawExtension{Raw: test.providerConfig}
-		machineSpec := v1alpha1.MachineSpec{ProviderConfig: providerconfigRuntimeRawExtension}
+		providerconfig := v1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: test.providerConfig}}
+		machineSpec := v1alpha1.MachineSpec{ProviderConfig: providerconfig}
 		cloudConfig, _, err := p.GetCloudConfig(machineSpec)
 		if err != nil {
 			t.Fatalf("Error rendering cloud-config: %v", err)
