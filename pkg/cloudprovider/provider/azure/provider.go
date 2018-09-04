@@ -117,7 +117,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 		// FIXME We'd like to use Ubuntu 18.04 eventually, but the docker's release
 		// deb repo for `bionic` is empty, and we use `$RELEASE` in userdata.
 		// Either Docker needs to fix their repo, or we need to hardcode `xenial`.
-		Sku:     to.StringPtr("16.04-LTS"),
+		Sku:     to.StringPtr("18.04-LTS"),
 		Version: to.StringPtr("latest"),
 	},
 }
@@ -265,7 +265,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 			if conf.Name != nil {
 				name = *conf.Name
 			} else {
-				glog.Warning("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
+				glog.Warningf("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
 				if conf.ID == nil || len(*conf.ID) == 0 {
 					return nil, fmt.Errorf("IP configuration of NIC %q was returned with no ID", ifaceName)
 				}
@@ -619,12 +619,12 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 
 	ipAddresses, err := getVMIPAddresses(context.TODO(), config, vm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", vm.Name, err)
+		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %v", vm.Name, err)
 	}
 
 	status, err := getVMStatus(context.TODO(), config, machine.Spec.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", vm.Name, err)
+		return nil, fmt.Errorf("failed to retrieve status for VM %v: %v", vm.Name, err)
 	}
 
 	return &azureVM{vm: vm, ipAddresses: ipAddresses, status: status}, nil

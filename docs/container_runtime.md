@@ -2,7 +2,7 @@
 
 ## Defaulting
 The machine-controller is able to default to a supported container runtime in case no runtime was specified in the machine-spec.
-Also when no specific container runtime version is defined, the controller will try to default to a version. 
+Also when no specific container runtime version is defined, the controller will try to default to a version.
 
 Having a machine like the following:
 ```yaml
@@ -73,24 +73,17 @@ spec:
     containerRuntime:
       name: "docker"
       version: "1.13.1"
-``` 
+```
 
 ## Available runtimes
 
 ### Ubuntu
 
 #### Docker
-- 1.10 / 1.10.3
-- 1.13 / 1.13.1
-- 17.03.0
-- 17.03.1
-- 17.03 / 17.03.2
-- 17.06.0
-- 17.06.1
-- 17.06 / 17.06.2
-- 17.09.0
-- 17.09 / 17.09.1
-- 17.12 / 17.12.0
+- 17.12 / 17.12.1
+- 18.03 / 18.03.1
+- 18.06.0
+- 18.06 / 18.06.1
 
 ### Container Linux
 

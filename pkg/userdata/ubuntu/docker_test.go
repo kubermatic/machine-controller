@@ -24,24 +24,24 @@ func TestGetDockerInstallCandidate(t *testing.T) {
 		},
 		{
 			name:    "get patch version",
-			version: "1.10.3",
+			version: "17.12.1",
 			resErr:  nil,
 			resPkg:  "docker.io",
-			resVer:  "1.10.3-0ubuntu6",
+			resVer:  "17.12.1-0ubuntu1",
 		},
 		{
 			name:    "get minor version",
-			version: "1.10",
+			version: "17.12",
 			resErr:  nil,
 			resPkg:  "docker.io",
-			resVer:  "1.10.3-0ubuntu6",
+			resVer:  "17.12.1-0ubuntu1",
 		},
 		{
 			name:    "get different package for newer version",
-			version: "17.12",
+			version: "18.06.1",
 			resErr:  nil,
 			resPkg:  "docker-ce",
-			resVer:  "17.12.0~ce-0~ubuntu",
+			resVer:  "18.06.1~ce~3-0~ubuntu",
 		},
 	}
 	for _, test := range tests {
