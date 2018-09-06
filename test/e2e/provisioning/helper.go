@@ -7,83 +7,27 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
+	"github.com/Masterminds/semver"
 )
 
-var scenarios = []scenario{
-	{
-		name:              "Ubuntu Docker Kubernetes v1.8.13",
-		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.8.13",
-	},
-	{
-		name:              "Ubuntu Docker Kubernetes v1.9.10",
-		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.9.8",
-	},
-	{
-		name:              "Ubuntu Docker Kubernetes v1.10.6",
-		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.10.5",
-	},
-	{
-		name:              "Ubuntu Docker Kubernetes v1.11.1",
-		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.11.0",
-	},
-	{
-		name:              "CentOS Docker Kubernetes v1.8.13",
-		osName:            "centos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.8.13",
-	},
-	{
-		name:              "CentOS Docker Kubernetes v1.9.10",
-		osName:            "centos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.9.8",
-	},
-	{
-		name:              "CentOS Docker Kubernetes v1.10.6",
-		osName:            "centos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.10.5",
-	},
-	{
-		name:              "CentOS Docker Kubernetes v1.11.1",
-		osName:            "centos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.11.0",
-	},
+var (
+	scenarios = buildScenarios()
 
-	{
-		name:              "Coreos Docker Kubernetes v1.8.13",
-		osName:            "coreos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.8.13",
-	},
-	{
-		name:              "Coreos Docker Kubernetes v1.9.10",
-		osName:            "coreos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.9.8",
-	},
-	{
-		name:              "Coreos Docker Kubernetes v1.10.6",
-		osName:            "coreos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.10.5",
-	},
-	{
-		name:              "Coreos Docker Kubernetes v1.11.1",
-		osName:            "coreos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.11.0",
-	},
-}
+	versions = []*semver.Version{
+		semver.MustParse("v1.9.10"),
+		semver.MustParse("v1.10.7"),
+		semver.MustParse("v1.11.2"),
+	}
+
+	operatingSystems = []providerconfig.OperatingSystem{
+		providerconfig.OperatingSystemUbuntu,
+		providerconfig.OperatingSystemCoreos,
+		providerconfig.OperatingSystemCentOS,
+	}
+)
 
 type scenario struct {
 	// name holds short description of the test scenario, it is also used to create machines and nodes names
@@ -164,4 +108,22 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	if err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}
+}
+
+func buildScenarios() []scenario {
+	var all []scenario
+	for _, version := range versions {
+		for _, os := range operatingSystems {
+			s := scenario{
+				name: fmt.Sprintf("%s - %s", os, version),
+				// We only support docker
+				containerRuntime:  "docker",
+				kubernetesVersion: version.String(),
+				osName:            string(os),
+			}
+			all = append(all, s)
+		}
+	}
+
+	return all
 }
