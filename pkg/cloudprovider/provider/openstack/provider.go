@@ -545,16 +545,30 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	config = fmt.Sprintf(`
-[Global]
-auth-url = "%s"
-username = "%s"
-password = "%s"
-domain-name="%s"
-tenant-name = "%s"
-region = "%s"
-`, c.IdentityEndpoint, c.Username, c.Password, c.DomainName, c.TenantName, c.Region)
-	return config, "openstack", nil
+	cc := &CloudConfig{
+		Global: GlobalOpts{
+			AuthURL:    c.IdentityEndpoint,
+			Username:   c.Username,
+			Password:   c.Password,
+			DomainName: c.DomainName,
+			TenantName: c.TenantName,
+			Region:     c.Region,
+		},
+		LoadBalancer: LoadBalancerOpts{
+			ManageSecurityGroups: true,
+		},
+		BlockStorage: BlockStorageOpts{
+			BSVersion:       "v2",
+			TrustDevicePath: false,
+			IgnoreVolumeAZ:  true,
+		},
+	}
+
+	s, err := CloudConfigToString(cc)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %v", err)
+	}
+	return s, "openstack", nil
 }
 
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
