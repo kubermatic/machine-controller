@@ -382,7 +382,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 			NetworkProfile: &compute.NetworkProfile{
 				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
 					{
-						ID: iface.ID,
+						ID:                                  iface.ID,
 						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{Primary: to.BoolPtr(true)},
 					},
 				},
@@ -636,26 +636,26 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	config = fmt.Sprintf(`
-{
-  "cloud": "AZUREPUBLICCLOUD",
-  "tenantId": "%s",
-  "subscriptionId": "%s",
-  "aadClientId": "%s",
-  "aadClientSecret": "%s",
+	cc := &CloudConfig{
+		Cloud:               "AZUREPUBLICCLOUD",
+		TenantID:            c.TenantID,
+		SubscriptionID:      c.SubscriptionID,
+		AADClientID:         c.ClientID,
+		AADClientSecret:     c.ClientSecret,
+		ResourceGroup:       c.ResourceGroup,
+		Location:            c.Location,
+		VNetName:            c.VNetName,
+		SubnetName:          c.SubnetName,
+		RouteTableName:      c.RouteTableName,
+		UseInstanceMetadata: true,
+	}
 
-  "resourceGroup": "%s",
-  "location": "%s",
-  "vnetName": "%s",
-  "vnetResourceGroup": "%s",
-  "subnetName": "%s",
-  "routeTableName": "%s",
+	s, err := CloudConfigToString(cc)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to convert cloud-config to string: %v", err)
+	}
 
-  "useInstanceMetadata": true
-}`, c.TenantID, c.SubscriptionID, c.ClientID, c.ClientSecret,
-		c.ResourceGroup, c.Location, c.VNetName, c.ResourceGroup, c.SubnetName, c.RouteTableName)
-
-	return config, "azure", nil
+	return s, "azure", nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
