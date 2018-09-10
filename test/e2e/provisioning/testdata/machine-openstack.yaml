@@ -20,6 +20,7 @@ spec:
       floatingIpPool: ""
       domainName: "<< DOMAIN_NAME >>"
       region: "<< REGION >>"
+      network: "<< NETWORK_NAME >>"
     operatingSystem: "<< OS_NAME >>"
   roles:
   - "Node"

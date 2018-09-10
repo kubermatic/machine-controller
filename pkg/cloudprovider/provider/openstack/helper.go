@@ -405,7 +405,7 @@ NetworkLoop:
 		return &candidates[0], nil
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("%d candidate networks found", len(candidates))
 }
 
 func getDefaultSubnet(client *gophercloud.ProviderClient, network *osnetworks.Network, region string) (*string, error) {
