@@ -545,15 +545,15 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	config = fmt.Sprintf(`
-[Global]
-auth-url = "%s"
-username = "%s"
-password = "%s"
-domain-name="%s"
-tenant-name = "%s"
-region = "%s"
+	config = fmt.Sprintf(`[Global]
+auth-url = %q
+username = %q
+password = %q
+domain-name = %q
+tenant-name = %q
+region = %q
 `, c.IdentityEndpoint, c.Username, c.Password, c.DomainName, c.TenantName, c.Region)
+
 	return config, "openstack", nil
 }
 

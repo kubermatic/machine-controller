@@ -639,17 +639,17 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	config = fmt.Sprintf(`
 {
   "cloud": "AZUREPUBLICCLOUD",
-  "tenantId": "%s",
-  "subscriptionId": "%s",
-  "aadClientId": "%s",
-  "aadClientSecret": "%s",
+  "tenantId": %q,
+  "subscriptionId": %q,
+  "aadClientId": %q,
+  "aadClientSecret": %q,
 
-  "resourceGroup": "%s",
-  "location": "%s",
-  "vnetName": "%s",
-  "vnetResourceGroup": "%s",
-  "subnetName": "%s",
-  "routeTableName": "%s",
+  "resourceGroup": %q,
+  "location": %q,
+  "vnetName": %q,
+  "vnetResourceGroup": %q,
+  "subnetName": %q,
+  "routeTableName": %q,
 
   "useInstanceMetadata": true
 }`, c.TenantID, c.SubscriptionID, c.ClientID, c.ClientSecret,
