@@ -64,7 +64,7 @@ spec:
           namespace: kube-system
           name: machine-controller-openstack
           key: tenantName
-      image: "Ubuntu 16.04 amd64"
+      image: "Ubuntu 18.04 amd64"
       flavor: "m1.small"
       securityGroups:
         - configMapKeyRef:

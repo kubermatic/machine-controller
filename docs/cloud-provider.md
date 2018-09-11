@@ -13,7 +13,7 @@ size: "2gb"
 # enable backups for the droplet
 backups: false
 # enable ipv6 for the droplet
-ipv6: false- Add operating system config 
+ipv6: false- Add operating system config
 # enable private networking for the droplet
 private_networking: true
 # enable monitoring for the droplet
@@ -47,15 +47,15 @@ diskSize: 50
 diskType: "gp2"
 # optional! the ami id to use. Needs to fit to the specified operating system
 ami: ""
-# optional! The security group ids for the instance. 
+# optional! The security group ids for the instance.
 # When not set a 'kubernetes-v1' security gruop will get created
 securityGroupIDs:
 - ""
 # name of the instance profile to use.
-# When not set a 'kubernetes-v1' instance profile will get created 
+# When not set a 'kubernetes-v1' instance profile will get created
 instanceProfile : ""
 
-# instance tags ("KubernetesCluster": "my-cluster" is a required tag. 
+# instance tags ("KubernetesCluster": "my-cluster" is a required tag.
 # If not set, the kubernetes controller-manager will delete the nodes)
 tags:
   "KubernetesCluster": "my-cluster"
@@ -76,7 +76,7 @@ domainName: "default"
 # tenant name
 tenantName: ""
 # image to use (currently only ubuntu & coreos are supported)
-image: "Ubuntu 16.04 amd64"
+image: "Ubuntu 18.04 amd64"
 # instance flavor
 flavor: ""
 # additional security groups.

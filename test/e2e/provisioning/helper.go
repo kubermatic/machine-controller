@@ -27,6 +27,12 @@ var (
 		providerconfig.OperatingSystemCoreos,
 		providerconfig.OperatingSystemCentOS,
 	}
+
+	openStackImages = map[string]string{
+		string(providerconfig.OperatingSystemUbuntu): "Ubuntu 18.04 LTS - 2018-08-10",
+		string(providerconfig.OperatingSystemCoreos): "coreos",
+		string(providerconfig.OperatingSystemCentOS): "centos",
+	}
 )
 
 type scenario struct {
@@ -92,6 +98,9 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< CONTAINER_RUNTIME >>=%s", testCase.containerRuntime))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBERNETES_VERSION >>=%s", testCase.kubernetesVersion))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< YOUR_PUBLIC_KEY >>=%s", os.Getenv("E2E_SSH_PUBKEY")))
+
+	// only used by OpenStack scenarios
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
 
 	gopath := os.Getenv("GOPATH")
 	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")

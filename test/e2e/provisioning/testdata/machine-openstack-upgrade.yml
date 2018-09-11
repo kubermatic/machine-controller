@@ -15,9 +15,7 @@ spec:
       username: "<< USERNAME >>"
       password: "<< PASSWORD >>"
       tenantName: "<< TENANT_NAME >>"
-      # Image link:
-      # https://cloud-images.ubuntu.com/releases/16.04/release-20160420.3/ubuntu-16.04-server-cloudimg-amd64-disk1.img
-      image: "Ubuntu 1604 2016-april-20"
+      image: "Ubuntu 18.04 LTS - 2018-08-10"
       flavor: "m1.small"
       floatingIpPool: ""
       domainName: "<< DOMAIN_NAME >>"
