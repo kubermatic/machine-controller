@@ -28,9 +28,14 @@ if ! grep -q kubectl /root/.bashrc; then
   echo 'source <(kubectl completion bash)' >> /root/.bashrc
 fi
 
+# Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
+systemctl mask swap.target
+swapoff -a
+
 if ! which docker; then
   apt update
   apt install -y docker.io
+  systemctl enable docker.service
   systemctl start docker
   systemctl status docker
 fi
