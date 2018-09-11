@@ -218,6 +218,7 @@ write_files:
       --hostname-override=node1 \
       --read-only-port=0 \
       --protect-kernel-defaults=true \
+      --resolv-conf=/run/systemd/resolve/resolv.conf \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local
 
