@@ -818,7 +818,10 @@ func (c *Controller) handleObject(obj interface{}) {
 
 	var ownerUIDString string
 	var exists bool
-	if ownerUIDString, exists = object.GetLabels()[NodeOwnerLabelName]; !exists {
+	if labels := object.GetLabels(); labels != nil {
+		ownerUIDString, exists = labels[NodeOwnerLabelName]
+	}
+	if !exists {
 		// We get triggered by node{Add,Update}, so enqeue machines if they
 		// have no nodeRef yet to make matching happen ASAP
 		for _, machine := range machinesList {
