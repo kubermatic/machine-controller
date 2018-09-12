@@ -290,6 +290,16 @@ rules:
   verbs:
   - "*"
 - apiGroups:
+  - "cluster.k8s.io"
+  resources:
+  - "machines"
+  verbs:
+  - list
+  - get
+  - create
+  - update
+  - watch
+- apiGroups:
   - ""
   resources:
   - "nodes"
