@@ -12,6 +12,8 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
+const ContainerRuntimeInfoKey = "containerRuntimeInfo"
+
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
@@ -68,6 +70,6 @@ func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExte
 	if providerConfigMap == nil {
 		providerConfigMap = map[string]interface{}{}
 	}
-	providerConfigMap["containerRuntimeInfo"] = containerRuntimeInfo
+	providerConfigMap[ContainerRuntimeInfoKey] = containerRuntimeInfo
 	return json.Marshal(providerConfigMap)
 }

@@ -1298,15 +1298,22 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
-  digest = "1:81cffd0827c79bb19b9350dfc696d028fab2af7a3040f1c8b39edb02a1fffcb9"
+  digest = "1:841d5841a6667835a5e95e04aa25787dcb6d60fe39caa7409db4802fc9e708e9"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis/cluster",
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
     "pkg/client/clientset_generated/clientset",
+    "pkg/client/clientset_generated/clientset/fake",
     "pkg/client/clientset_generated/clientset/scheme",
     "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1",
+    "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1/fake",
+    "pkg/client/informers_generated/externalversions",
+    "pkg/client/informers_generated/externalversions/cluster",
+    "pkg/client/informers_generated/externalversions/cluster/v1alpha1",
+    "pkg/client/informers_generated/externalversions/internalinterfaces",
+    "pkg/client/listers_generated/cluster/v1alpha1",
   ]
   pruneopts = "NUT"
   revision = "e1903be683739379be57f78a4095cd51726495fd"
@@ -1407,8 +1414,13 @@
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/gengo/examples/defaulter-gen/generators",
+    "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset",
+    "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake",
+    "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme",
+    "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions",
+    "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

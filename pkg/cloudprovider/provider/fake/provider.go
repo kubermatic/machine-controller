@@ -6,10 +6,11 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"github.com/golang/glog"
+
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 type provider struct{}
@@ -45,7 +46,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 // Validate returns success or failure based according to its FakeCloudProviderConfig
 func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	pconfig := providerconfig.Config{}
-	err := json.Unmarshal(machinespec.ProviderConfig.Raw, &pconfig)
+	err := json.Unmarshal(machinespec.ProviderConfig.Value.Raw, &pconfig)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 
@@ -118,7 +119,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		}
 
 		// We have to ensure there is an ownerRef to our clusterv1alpha1.Machine on the node if it exists
-		if err := ensureClusterV1Alpha1NodeOwnerRef(owningClusterV1Alpha1Machine, kubeClient); err != nil {
+		if err := ensureClusterV1Alpha1NodeOwnerLabel(owningClusterV1Alpha1Machine, kubeClient); err != nil {
 			return err
 		}
 
@@ -131,7 +132,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 	return nil
 }
 
-func ensureClusterV1Alpha1NodeOwnerRef(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface) error {
+func ensureClusterV1Alpha1NodeOwnerLabel(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface) error {
 	node, err := kubeClient.CoreV1().Nodes().Get(machine.Spec.Name, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
@@ -142,37 +143,19 @@ func ensureClusterV1Alpha1NodeOwnerRef(machine *clusterv1alpha1.Machine, kubeCli
 			machine.Spec.Name, machine.Name, err)
 	}
 
-	hasCurrentOwnerRef := false
-	updatedOwnerRefs := node.OwnerReferences
-
-	// Node exists, we have ensure there is an ownerReference to our machine
-	// Also, there may only be one controller
-	for idx, ownerRef := range updatedOwnerRefs {
-		if ownerRef.UID == machine.UID {
-			hasCurrentOwnerRef = true
-		} else {
-			if ownerRef.Controller != nil {
-				updatedOwnerRefs[idx].Controller = nil
-			}
-		}
-	}
-
-	if !hasCurrentOwnerRef {
-		gv := clusterv1alpha1.SchemeGroupVersion
-		updatedOwnerRefs = append(node.OwnerReferences, *metav1.NewControllerRef(machine, gv.WithKind("Machine")))
-	}
-
+	nodeLabels := node.Labels
+	nodeLabels[machinecontroller.NodeOwnerLabelName] = string(machine.UID)
 	// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
 	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		node, err := kubeClient.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		node.OwnerReferences = updatedOwnerRefs
+		node.Labels = nodeLabels
 		_, err = kubeClient.CoreV1().Nodes().Update(node)
 		return err
 	}); err != nil {
-		return fmt.Errorf("failed to update OwnerRef on node %s: %v", node.Name, err)
+		return fmt.Errorf("failed to update OwnerLabel on node %s: %v", node.Name, err)
 	}
 
 	return nil
