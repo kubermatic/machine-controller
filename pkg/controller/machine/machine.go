@@ -443,17 +443,28 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 	return c.cleanupMachineAfterDeletion(machine)
 }
 
+func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.Node) bool {
+	return func(node *corev1.Node) bool {
+		labels := node.GetLabels()
+		if labels == nil {
+			return false
+		}
+		if ownerUID, exists := labels[NodeOwnerLabelName]; exists && string(machine.UID) == ownerUID {
+			return true
+		}
+		return false
+	}
+}
+
 func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
-	nodesList, err := c.nodesLister.List(labels.Everything())
+	nodesList, err := c.nodesLister.ListWithPredicate(ownedNodesPredicateFactory(machine))
 	if err != nil {
 		return fmt.Errorf("failed to list nodes: %v", err)
 	}
 
 	for _, node := range nodesList {
-		if ownerUID, exists := node.GetLabels()[NodeOwnerLabelName]; exists {
-			if ownerUID == string(machine.UID) {
-				return c.kubeClient.CoreV1().Nodes().Delete(node.Name, nil)
-			}
+		if err := c.kubeClient.CoreV1().Nodes().Delete(node.Name, nil); err != nil {
+			return err
 		}
 	}
 
