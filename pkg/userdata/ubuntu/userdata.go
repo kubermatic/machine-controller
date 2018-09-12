@@ -403,6 +403,9 @@ write_files:
       --hostname-override={{ .MachineSpec.Name }} \
       --read-only-port=0 \
       --protect-kernel-defaults=true \
+      {{- if semverCompare "<1.11.0" .KubernetesVersion }}
+      --resolv-conf=/run/systemd/resolve/resolv.conf \
+      {{- end }}
       --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
       --cluster-domain=cluster.local
 {{ if semverCompare "<1.11.0" .KubernetesVersion }}
