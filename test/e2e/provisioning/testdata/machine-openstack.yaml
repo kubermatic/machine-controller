@@ -14,7 +14,7 @@ spec:
         username: "<< USERNAME >>"
         password: "<< PASSWORD >>"
         tenantName: "<< TENANT_NAME >>"
-        image: "<< OS_NAME >>"
+        image: "<< OS_IMAGE >>"
         flavor: "m1.small"
         floatingIpPool: ""
         domainName: "<< DOMAIN_NAME >>"

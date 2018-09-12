@@ -23,11 +23,11 @@ write_files:
 
 - path: "/etc/kubernetes/cloud-config"
   content: |
-    {openstack-config:true}
+    {aws-config:true}
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
-  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
 
 - path: "/etc/apt/sources.list.d/kubernetes.list"
   permissions: "0644"
@@ -63,13 +63,12 @@ write_files:
     # it works fine thought
     which docker && systemctl start docker
     set -e
-    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
 
     export CR_PKG=''
-    export CR_PKG='docker-ce=17.03.2~ce-0~ubuntu-xenial'
+    export CR_PKG='docker.io=17.12.1-0ubuntu1'
 
 
     # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
@@ -95,8 +94,8 @@ write_files:
       util-linux \
       ${CR_PKG} \
       open-vm-tools \
-      kubelet=1.9.2-00 \
-      kubeadm=1.9.2-00 \
+      kubelet=1.11.0-00 \
+      kubeadm=1.11.0-00 \
       ${CNI_PKG}
 
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
@@ -213,19 +212,13 @@ write_files:
   content: |
     KUBELET_DNS_ARGS=
     KUBELET_EXTRA_ARGS=--authentication-token-webhook=true \
-      --cloud-provider=openstack \
+      --cloud-provider=aws \
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --read-only-port=0 \
       --protect-kernel-defaults=true \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local
-
-- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
-  permissions: "0644"
-  content: |
-    [Service]
-    EnvironmentFile=/etc/default/kubelet
 
 
 - path: "/etc/systemd/system/setup.service"

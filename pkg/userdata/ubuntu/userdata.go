@@ -199,7 +199,7 @@ write_files:
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
-  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
 
 - path: "/etc/apt/sources.list.d/kubernetes.list"
   permissions: "0644"
@@ -405,6 +405,9 @@ write_files:
       --hostname-override={{ .MachineSpec.Name }} \
       --read-only-port=0 \
       --protect-kernel-defaults=true \
+      {{- if semverCompare "<1.11.0" .KubernetesVersion }}
+      --resolv-conf=/run/systemd/resolve/resolv.conf \
+      {{- end }}
       --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
       --cluster-domain=cluster.local
 {{ if semverCompare "<1.11.0" .KubernetesVersion }}

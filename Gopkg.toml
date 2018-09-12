@@ -106,3 +106,11 @@ required = [
 [[override]]
   name = "github.com/golang/protobuf"
   version = "v1.1.*"
+
+[[constraint]]
+  name = "gopkg.in/ini.v1"
+  version = "1.38.2"
+
+[[constraint]]
+  name = "gopkg.in/gcfg.v1"
+  version = "1.2.3"
