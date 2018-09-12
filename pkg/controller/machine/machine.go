@@ -888,8 +888,7 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 	return machine, nil
 }
 
-func (c *Controller) updateNode(
-	name string, modify func(*corev1.Node)) (*corev1.Node, error) {
+func (c *Controller) updateNode(name string, modify func(*corev1.Node)) (*corev1.Node, error) {
 	var updatedNode *corev1.Node
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var retryErr error
