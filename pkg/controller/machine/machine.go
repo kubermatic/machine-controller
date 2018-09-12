@@ -64,6 +64,7 @@ import (
 
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
+	finalizerDeleteNode     = "machine-node-delete-finalizer"
 
 	deletionRetryWaitPeriod = 10 * time.Second
 
@@ -158,12 +159,12 @@ func NewMachineController(
 
 	nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
-		// We handle all node updates
-		// as we have to garbage collect orphaned nodes
-		// TODO: Move node garbage collection to a finalizer
-		// else we depend on getting the event which puts the node from
-		// ready -> not ready
-		UpdateFunc: func(_, new interface{}) {
+		UpdateFunc: func(old, new interface{}) {
+			newNode := new.(*corev1.Node)
+			oldNode := old.(*corev1.Node)
+			if newNode.ResourceVersion == oldNode.ResourceVersion {
+				return
+			}
 			controller.handleObject(new)
 		},
 		DeleteFunc: controller.handleObject,
@@ -353,7 +354,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// step 2: check if a user requested to delete the machine
 	if machine.DeletionTimestamp != nil {
-		if err := c.deleteMachineAndProviderInstance(prov, machine); err != nil {
+		if err := c.deleteMachine(prov, machine); err != nil {
 			return err
 		}
 		// As the deletion got triggered but the instance might not been gone yet, we need to recheck in a few seconds.
@@ -417,6 +418,7 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *clusterv1alpha1.Machin
 	if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(finalizerDeleteInstance)
+		finalizers.Delete(finalizerDeleteNode)
 		m.Finalizers = finalizers.List()
 	}); err != nil {
 		return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
@@ -426,14 +428,36 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *clusterv1alpha1.Machin
 	return nil
 }
 
-// deleteMachineAndProviderInstance makes sure that an instance has gone in a series of steps.
-func (c *Controller) deleteMachineAndProviderInstance(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
+// deleteMachine makes sure that an instance has gone in a series of steps.
+func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
 	if err := c.deleteProviderInstance(prov, machine); err != nil {
-		message := fmt.Sprintf("%v. Please manually delete finalizers from the machine object.", err)
-		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete machine: %v", err)
+		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, finalizerDeleteInstance)
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete instance: %v", err)
 		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloudprovider")
 	}
+	if err := c.deleteNodeForMachine(machine); err != nil {
+		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, finalizerDeleteNode)
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete node: %v", err)
+		return errors.New(message)
+	}
 	return c.cleanupMachineAfterDeletion(machine)
+}
+
+func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
+	nodesList, err := c.nodesLister.List(labels.Everything())
+	if err != nil {
+		return fmt.Errorf("failed to list nodes: %v", err)
+	}
+
+	for _, node := range nodesList {
+		if ownerUID, exists := node.GetLabels()[NodeOwnerLabelName]; exists {
+			if ownerUID == string(machine.UID) {
+				return c.kubeClient.CoreV1().Nodes().Delete(node.Name, nil)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
@@ -775,7 +799,6 @@ func (c *Controller) handleObject(obj interface{}) {
 		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 
-	var owningMachine *clusterv1alpha1.Machine
 	machinesList, err := c.machinesLister.List(labels.Everything())
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
@@ -792,27 +815,16 @@ func (c *Controller) handleObject(obj interface{}) {
 				c.enqueueMachine(machine)
 			}
 		}
-		// Must return here, because we delete the node if owningMachine == nil
-		return
 	}
 
 	for _, machine := range machinesList {
 		if string(machine.UID) == ownerUIDString {
-			owningMachine = machine
+			glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), machine.Name)
+			c.enqueueMachine(machine)
 			break
 		}
 	}
 
-	// Owning machine was deleted, so we delete the node
-	if owningMachine == nil {
-		if err := c.kubeClient.CoreV1().Nodes().Delete(object.GetName(), nil); err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to delete orphaned node %s: %v", object.GetName(), err))
-		}
-		return
-	}
-
-	glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), owningMachine.Name)
-	c.enqueueMachine(owningMachine)
 }
 
 func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
@@ -852,6 +864,7 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
 			finalizers := sets.NewString(m.Finalizers...)
 			finalizers.Insert(finalizerDeleteInstance)
+			finalizers.Insert(finalizerDeleteNode)
 			m.Finalizers = finalizers.List()
 		}); err != nil {
 			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
