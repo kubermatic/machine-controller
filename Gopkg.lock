@@ -530,9 +530,12 @@
   version = "1.1.3"
 
 [[projects]]
-  digest = "1:11813b67edacc2bd17ed90ee8fd80dcc9c8551cf7b0e809a584c52e5bdafb5d3"
+  digest = "1:51467fad41a1756ddf7b713144441cfeffde734e1185e59c0dbbd147677e6639"
   name = "github.com/kubernetes-incubator/apiserver-builder"
-  packages = ["pkg/builders"]
+  packages = [
+    "pkg/builders",
+    "pkg/controller",
+  ]
   pruneopts = "NUT"
   revision = "14201e804a58a140011a0044b15331f477535f91"
   version = "v1.9-alpha.4"
@@ -1327,7 +1330,7 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
-  digest = "1:841d5841a6667835a5e95e04aa25787dcb6d60fe39caa7409db4802fc9e708e9"
+  digest = "1:0e182d8408302cfe15888da27c35c529972cfe4a9beef582a2e45fce9ef813e3"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis/cluster",
@@ -1343,6 +1346,10 @@
     "pkg/client/informers_generated/externalversions/cluster/v1alpha1",
     "pkg/client/informers_generated/externalversions/internalinterfaces",
     "pkg/client/listers_generated/cluster/v1alpha1",
+    "pkg/controller/machineset",
+    "pkg/controller/noderefutil",
+    "pkg/controller/sharedinformers",
+    "pkg/util",
   ]
   pruneopts = "NUT"
   revision = "e1903be683739379be57f78a4095cd51726495fd"
@@ -1452,6 +1459,8 @@
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme",
     "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions",
     "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1",
+    "sigs.k8s.io/cluster-api/pkg/controller/machineset",
+    "sigs.k8s.io/cluster-api/pkg/controller/sharedinformers",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

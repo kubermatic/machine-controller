@@ -60,6 +60,8 @@ import (
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
+	machinesetcontroller "sigs.k8s.io/cluster-api/pkg/controller/machineset"
+	sharedinformerscontroller "sigs.k8s.io/cluster-api/pkg/controller/sharedinformers"
 )
 
 var (
@@ -308,7 +310,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// to stop the leader election library might cause synchronization issues.
 	// imagine that a user wants to shutdown the app but since there is no way of telling the library to stop it will eventually run `runController` method
 	// and bad things can happen - the fact it works at the moment doesn't mean it will in the future
-	runController := func(_ <-chan struct{}) {
+	runController := func(stopChannel <-chan struct{}) {
 		machineController := machinecontroller.NewMachineController(
 			runOptions.kubeClient,
 			runOptions.machineClient,
@@ -336,6 +338,12 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.parentCtxDone()
 			return
 		}
+
+		sharedInformersController := sharedinformerscontroller.NewSharedInformers(
+			runOptions.cfg, stopChannel)
+		machineSetController := machinesetcontroller.NewMachineSetController(
+			runOptions.cfg, sharedInformersController)
+		machineSetController.Run(stopChannel)
 
 		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
 			glog.Errorf("error running controller: %v", runErr)

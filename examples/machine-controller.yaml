@@ -10,6 +10,42 @@ spec:
     kind: Machine
     plural: machines
 ---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: machinesets.cluster.k8s.io
+spec:
+  group: cluster.k8s.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: MachineSet
+    plural: machinesets
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: machinedeployments.cluster.k8s.io
+spec:
+  group: cluster.k8s.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: MachineDeployment
+    plural: machinedeployments
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: clusters.cluster.k8s.io
+spec:
+  group: cluster.k8s.io
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    kind: Cluster
+    plural: clusters
+---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
@@ -128,12 +164,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
   - secrets
   verbs:
   - create
@@ -205,13 +235,6 @@ rules:
   - get
   - watch
   - list
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
@@ -269,6 +292,13 @@ rules:
   verbs:
   - "delete"
 - apiGroups:
+  - ""
+  resources:
+  - "events"
+  verbs:
+  - "create"
+  - "patch"
+- apiGroups:
   - "apiextensions.k8s.io"
   resources:
   - "customresourcedefinitions"
@@ -293,12 +323,11 @@ rules:
   - "cluster.k8s.io"
   resources:
   - "machines"
+  - "machinesets"
+  - "machinedeployments"
+  - "clusters"
   verbs:
-  - list
-  - get
-  - create
-  - update
-  - watch
+  - '*'
 - apiGroups:
   - ""
   resources:
