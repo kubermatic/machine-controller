@@ -20,8 +20,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
 
 const (
@@ -44,7 +44,7 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 	if err != nil {
 		return fmt.Errorf("Error building kubernetes clientset: %v", err)
 	}
-	clusterClient, err := clusterv1alpha1clientset.NewForConfig(cfg)
+	clusterClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
 		return fmt.Errorf("Error building example clientset: %v", err)
 	}
@@ -61,7 +61,7 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 			continue
 		}
 		if strings.Contains(manifest, "kind: MachineSet") {
-			newMachineSet := &clusterv1alpha1.MachineSet{}
+			newMachineSet := &v1alpha1.MachineSet{}
 			manifestReader := strings.NewReader(manifest)
 			manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
 			err = manifestDecoder.Decode(newMachineSet)
@@ -121,8 +121,8 @@ func kubectlApply(kubecfgPath, manifest string) error {
 	return nil
 }
 
-func createAndAssure(machineSet *clusterv1alpha1.MachineSet,
-	clusterClient clusterv1alpha1clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
+func createAndAssure(machineSet *v1alpha1.MachineSet,
+	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachineSet(machineSet, kubeClient, clusterClient, false)
 	if err != nil {
@@ -175,8 +175,8 @@ func createAndAssure(machineSet *clusterv1alpha1.MachineSet,
 	return nil
 }
 
-func deleteAndAssure(machineSet *clusterv1alpha1.MachineSet,
-	clusterClient clusterv1alpha1clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
+func deleteAndAssure(machineSet *v1alpha1.MachineSet,
+	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	glog.Infof("deleting the machineSet \"%s\"\n", machineSet.Name)
 	err := clusterClient.ClusterV1alpha1().MachineSets(machineSet.Namespace).Delete(machineSet.Name, nil)
 	if err != nil {
@@ -202,7 +202,7 @@ func deleteAndAssure(machineSet *clusterv1alpha1.MachineSet,
 
 // assureNodeForMachineSet according to shouldExists parameter check if a node for machine exists in the system or not
 // this method examines OwnerReference of each node.
-func assureNodeForMachineSet(machineSet *clusterv1alpha1.MachineSet, kubeClient kubernetes.Interface, clusterClient clusterv1alpha1clientset.Interface, shouldExists bool) error {
+func assureNodeForMachineSet(machineSet *v1alpha1.MachineSet, kubeClient kubernetes.Interface, clusterClient clientset.Interface, shouldExists bool) error {
 	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -229,7 +229,7 @@ func assureNodeForMachineSet(machineSet *clusterv1alpha1.MachineSet, kubeClient 
 	return nil
 }
 
-func isNodeForMachine(node *v1.Node, machine *clusterv1alpha1.Machine) bool {
+func isNodeForMachine(node *v1.Node, machine *v1alpha1.Machine) bool {
 	// This gets called before the Objects are persisted in the API
 	// which means UI will be emppy for machine
 	if string(machine.UID) == "" {
@@ -257,12 +257,12 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	return content, nil
 }
 
-func getMatchingMachines(machineSet *clusterv1alpha1.MachineSet, clusterClient clusterv1alpha1clientset.Interface) ([]clusterv1alpha1.Machine, error) {
+func getMatchingMachines(machineSet *v1alpha1.MachineSet, clusterClient clientset.Interface) ([]v1alpha1.Machine, error) {
 	allMachines, err := clusterClient.ClusterV1alpha1().Machines(machineSet.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list machines: %v", err)
 	}
-	var matchingMachines []clusterv1alpha1.Machine
+	var matchingMachines []v1alpha1.Machine
 	for _, machine := range allMachines.Items {
 		if !shouldExcludeMachine(machineSet, &machine) {
 			matchingMachines = append(matchingMachines, machine)
@@ -274,7 +274,7 @@ func getMatchingMachines(machineSet *clusterv1alpha1.MachineSet, clusterClient c
 // Copied over from sigs.k8s.io/cluster-api/pkg/controller/machineset/controller.go because
 // it is not exported
 // shoudExcludeMachine returns true if the machine should be filtered out, false otherwise.
-func shouldExcludeMachine(machineSet *clusterv1alpha1.MachineSet, machine *clusterv1alpha1.Machine) bool {
+func shouldExcludeMachine(machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
 	// Ignore inactive machines.
 	if metav1.GetControllerOf(machine) != nil && !metav1.IsControlledBy(machine, machineSet) {
 		glog.V(4).Infof("%s not controlled by %v", machine.Name, machineSet.Name)
@@ -286,7 +286,7 @@ func shouldExcludeMachine(machineSet *clusterv1alpha1.MachineSet, machine *clust
 	return false
 }
 
-func hasMatchingLabels(machineSet *clusterv1alpha1.MachineSet, machine *clusterv1alpha1.Machine) bool {
+func hasMatchingLabels(machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
 	selector, err := metav1.LabelSelectorAsSelector(&machineSet.Spec.Selector)
 	if err != nil {
 		glog.Warningf("unable to convert selector: %v", err)
