@@ -164,12 +164,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
   - secrets
   verbs:
   - create
@@ -241,13 +235,6 @@ rules:
   - get
   - watch
   - list
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
@@ -304,6 +291,13 @@ rules:
   - "machines.machine.k8s.io"
   verbs:
   - "delete"
+- apiGroups:
+  - ""
+  resources:
+  - "events"
+  verbs:
+  - "create"
+  - "patch"
 - apiGroups:
   - "apiextensions.k8s.io"
   resources:
