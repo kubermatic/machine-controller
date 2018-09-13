@@ -180,25 +180,49 @@ func createAndAssure(machineSet *v1alpha1.MachineSet,
 func deleteAndAssure(machineSet *v1alpha1.MachineSet,
 	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	glog.Infof("deleting the machineSet \"%s\"\n", machineSet.Name)
-	err := clusterClient.ClusterV1alpha1().MachineSets(machineSet.Namespace).Delete(machineSet.Name, nil)
+
+	// We first scale down to 0, because once the machineSet is deleted we can not
+	// match machines anymore and we do want to verify not only the node is gone but also
+	// the instance at the cloud provider
+	machineSet, err := clusterClient.ClusterV1alpha1().MachineSets(machineSet.Namespace).Get(machineSet.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("unable to remove machine %s, due to %v", machineSet.Name, err)
+		return fmt.Errorf("failed to get machineset %s: %v", machineSet.Namespace, err)
+	}
+	machineSet.Spec.Replicas = getInt32Ptr(0)
+	machineSet, err = clusterClient.ClusterV1alpha1().MachineSets(machineSet.Namespace).Update(machineSet)
+	if err != nil {
+		return fmt.Errorf("unable to set update replicas of machineset %s: %v", machineSet.Name, err)
 	}
 
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
+		ownedMachines, err := getMatchingMachines(machineSet, clusterClient)
+		if err != nil || len(ownedMachines) != 0 {
+			return false, err
+		}
 		errNodeStillExists := assureNodeForMachineSet(machineSet, kubeClient, clusterClient, false)
 		if errNodeStillExists != nil {
 			return false, nil
 		}
+		if len(ownedMachines) == 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return fmt.Errorf("falied to delete the node, err = %v", err)
+	}
+
+	err = clusterClient.ClusterV1alpha1().MachineSets(machineSet.Namespace).Delete(machineSet.Name, nil)
+	if err != nil {
+		return fmt.Errorf("unable to remove machine %s, due to %v", machineSet.Name, err)
+	}
+	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		_, errGetMachineSet := clusterClient.ClusterV1alpha1().MachineSets(machineSet.Namespace).Get(machineSet.Name, metav1.GetOptions{})
 		if errGetMachineSet != nil && kerrors.IsNotFound(errGetMachineSet) {
 			return true, nil
 		}
 		return false, errGetMachineSet
 	})
-	if err != nil {
-		return fmt.Errorf("falied to delete the node, err = %v", err)
-	}
 	return nil
 }
 
@@ -304,4 +328,8 @@ func hasMatchingLabels(machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machin
 		return false
 	}
 	return true
+}
+
+func getInt32Ptr(i int32) *int32 {
+	return &i
 }
