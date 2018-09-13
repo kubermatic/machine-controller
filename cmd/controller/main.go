@@ -60,6 +60,7 @@ import (
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
+	machinedeploymentcontroller "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment"
 	machinesetcontroller "sigs.k8s.io/cluster-api/pkg/controller/machineset"
 	sharedinformerscontroller "sigs.k8s.io/cluster-api/pkg/controller/sharedinformers"
 )
@@ -346,6 +347,9 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 		machineSetController := machinesetcontroller.NewMachineSetController(
 			runOptions.cfg, sharedInformersController)
 		machineSetController.Run(stopChannel)
+		machineDeploymentController := machinedeploymentcontroller.NewMachineDeploymentController(
+			runOptions.cfg, sharedInformersController)
+		machineDeploymentController.Run(stopChannel)
 
 		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
 			glog.Errorf("error running controller: %v", runErr)

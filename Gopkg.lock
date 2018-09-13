@@ -1330,7 +1330,7 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
-  digest = "1:0e182d8408302cfe15888da27c35c529972cfe4a9beef582a2e45fce9ef813e3"
+  digest = "1:960b3708a7b27337963c65468ebe6c4da55427340c44fd68e50de052a2144baf"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis/cluster",
@@ -1346,6 +1346,8 @@
     "pkg/client/informers_generated/externalversions/cluster/v1alpha1",
     "pkg/client/informers_generated/externalversions/internalinterfaces",
     "pkg/client/listers_generated/cluster/v1alpha1",
+    "pkg/controller/machinedeployment",
+    "pkg/controller/machinedeployment/util",
     "pkg/controller/machineset",
     "pkg/controller/noderefutil",
     "pkg/controller/sharedinformers",
@@ -1459,6 +1461,7 @@
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme",
     "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions",
     "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1",
+    "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment",
     "sigs.k8s.io/cluster-api/pkg/controller/machineset",
     "sigs.k8s.io/cluster-api/pkg/controller/sharedinformers",
   ]
