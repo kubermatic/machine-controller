@@ -68,6 +68,8 @@ func verify(kubeConfig, manifestPath string, parameters []string, timeout time.D
 			if err != nil {
 				return err
 			}
+			// Enforce the kube-system namespace, otherwise cleanup wont work
+			newMachineSet.Namespace = "kube-system"
 
 			err = createAndAssure(newMachineSet, clusterClient, kubeClient, timeout)
 			if err != nil {
