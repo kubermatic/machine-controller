@@ -120,7 +120,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 
 		// We have to ensure there is an ownerRef to our clusterv1alpha1.Machine on the node if it exists
 		// and that there is no ownerRef to the old machine anymore
-		if err := ensureClusterV1Alpha1NodeOwner(owningClusterV1Alpha1Machine, kubeClient); err != nil {
+		if err := ensureClusterV1Alpha1NodeOwnership(owningClusterV1Alpha1Machine, kubeClient); err != nil {
 			return err
 		}
 
