@@ -12,7 +12,13 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
-const ContainerRuntimeInfoKey = "containerRuntimeInfo"
+const (
+	ContainerRuntimeInfoKey = "containerRuntimeInfo"
+
+	TypeRevisionAnnotationName = "machine-controller/machine-type-revision"
+
+	TypeRevisionCurrentVersion = "e1903be683739379be57f78a4095cd51726495fd"
+)
 
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
 	out.ObjectMeta = in.ObjectMeta
@@ -23,6 +29,13 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.Generation = 0
 	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = "kube-system"
+
+	// Add annotation that indicates the current revision used for the types
+	if out.Annotations == nil {
+		out.Annotations = map[string]string{}
+	}
+	out.Annotations[TypeRevisionAnnotationName] = TypeRevisionCurrentVersion
+
 	// sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineStatus and
 	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former
 	// only has one additional field, so we cast by serializing and deserializing

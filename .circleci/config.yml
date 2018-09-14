@@ -31,6 +31,7 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - run: ./hack/verify-type-revision-annotation-const.sh
       - run: gometalinter --config gometalinter.json ./...
 
   test:
