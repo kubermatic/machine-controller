@@ -338,12 +338,15 @@ func (c *Controller) syncHandler(key string) error {
 		machine.Annotations = map[string]string{}
 	}
 	if _, ok := machine.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName]; !ok {
-		c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		machine, err := c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
 			if m.Annotations == nil {
 				m.Annotations = map[string]string{}
 			}
 			m.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName] = clusterv1alpha1conversions.TypeRevisionCurrentVersion
 		})
+		if err != nil {
+			return fmt.Errorf("failed to set type revision annotation on machine: %v", err)
+		}
 		glog.V(4).Infof("Set type revision annotation on machine %s/%s to %s",
 			machine.Namespace, machine.Name, clusterv1alpha1conversions.TypeRevisionCurrentVersion)
 	}
