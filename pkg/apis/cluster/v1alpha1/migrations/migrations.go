@@ -119,7 +119,8 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		}
 
 		// We have to ensure there is an ownerRef to our clusterv1alpha1.Machine on the node if it exists
-		if err := ensureClusterV1Alpha1NodeOwnerLabel(owningClusterV1Alpha1Machine, kubeClient); err != nil {
+		// and that there is no ownerRef to the old machine anymore
+		if err := ensureClusterV1Alpha1NodeOwner(owningClusterV1Alpha1Machine, kubeClient); err != nil {
 			return err
 		}
 
@@ -132,7 +133,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 	return nil
 }
 
-func ensureClusterV1Alpha1NodeOwnerLabel(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface) error {
+func ensureClusterV1Alpha1NodeOwnership(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface) error {
 	node, err := kubeClient.CoreV1().Nodes().Get(machine.Spec.Name, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
@@ -151,6 +152,8 @@ func ensureClusterV1Alpha1NodeOwnerLabel(machine *clusterv1alpha1.Machine, kubeC
 		if err != nil {
 			return err
 		}
+		// Clear all OwnerReferences as a safety measure
+		node.OwnerReferences = nil
 		node.Labels = nodeLabels
 		_, err = kubeClient.CoreV1().Nodes().Update(node)
 		return err
