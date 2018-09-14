@@ -1,4 +1,6 @@
 metadata:
+  annotations:
+    machine-controller/machine-type-revision: e1903be683739379be57f78a4095cd51726495fd
   creationTimestamp: null
   name: digitalocean
   namespace: kube-system
