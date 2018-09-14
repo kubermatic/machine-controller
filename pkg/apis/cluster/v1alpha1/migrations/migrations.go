@@ -134,6 +134,9 @@ func migrateMachines(kubeClient kubernetes.Interface,
 }
 
 func ensureClusterV1Alpha1NodeOwnership(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface) error {
+	if machine.Spec.Name == "" {
+		return nil
+	}
 	node, err := kubeClient.CoreV1().Nodes().Get(machine.Spec.Name, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
