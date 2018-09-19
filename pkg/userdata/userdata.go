@@ -12,6 +12,8 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 var (
@@ -32,6 +34,6 @@ func ForOS(os providerconfig.OperatingSystem) (Provider, error) {
 }
 
 type Provider interface {
-	UserData(spec machinesv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error)
+	UserData(spec clusterv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error)
 	SupportedContainerRuntimes() []machinesv1alpha1.ContainerRuntimeInfo
 }

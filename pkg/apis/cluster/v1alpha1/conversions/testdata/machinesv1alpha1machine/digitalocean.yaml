@@ -1,0 +1,31 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: digitalocean
+spec:
+  metadata:
+    name: node1
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "digitalocean"
+    cloudProviderSpec:
+      token: "token"
+      region: fra1
+      size: 2gb
+      backups: false
+      ipv6: false
+      private_networking: true
+      monitoring: false
+      tags:
+        - "machine-controller"
+    operatingSystem: "coreos"
+    operatingSystemSpec:
+      disableAutoUpdate: true
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.9.6"
+    containerRuntime:
+      name: "docker"
+      version: "1.13"

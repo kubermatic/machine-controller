@@ -1,0 +1,35 @@
+metadata:
+  annotations:
+    machine-controller/machine-type-revision: e1903be683739379be57f78a4095cd51726495fd
+  creationTimestamp: null
+  name: hetzner
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: hetzner
+      cloudProviderSpec:
+        datacenter: ""
+        location: fsn1
+        serverType: cx11
+        token:
+          secretKeyRef:
+            key: token
+            name: machine-controller-hetzner
+            namespace: kube-system
+      containerRuntimeInfo:
+        name: docker
+        version: ""
+      operatingSystem: ubuntu
+      operatingSystemSpec:
+        distUpgradeOnBoot: false
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  versions:
+    kubelet: 1.9.6
+status:
+  lastUpdated: null
+  providerStatus: null

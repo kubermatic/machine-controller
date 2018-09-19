@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	machinefake "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/fake"
-	machineinformers "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions"
+	"github.com/go-test/deep"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
-	"github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 
@@ -24,7 +24,9 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/go-test/deep"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterfake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
+	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 )
 
 type fakeInstance struct {
@@ -206,15 +208,16 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 		"cloudProviderSpec": %s}`, test.cloudProviderSpec)
 			machine := &v1alpha1.Machine{}
 			machine.Name = "testmachine"
-			machine.Spec.ProviderConfig.Raw = []byte(providerConfig)
+			machine.Namespace = "kube-system"
+			machine.Spec.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(providerConfig)}
 
 			controller, fakeMachineClient := createTestMachineController(t, machine)
 
-			if err := controller.syncHandler("testmachine"); err != nil && err.Error() != test.err {
+			if err := controller.syncHandler("kube-system/testmachine"); err != nil && err.Error() != test.err {
 				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
 			}
 
-			syncedMachine, err := fakeMachineClient.Machine().Machines().Get("testmachine", metav1.GetOptions{})
+			syncedMachine, err := fakeMachineClient.Cluster().Machines("kube-system").Get("testmachine", metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Failed to get machine: %v", err)
 			}
@@ -233,39 +236,22 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 		machine *v1alpha1.Machine
 		os      providerconfig.OperatingSystem
 		err     error
-		resCR   v1alpha1.ContainerRuntimeInfo
+		resCR   machinesv1alpha1.ContainerRuntimeInfo
 	}{
 		{
-			name:  "v1.9.2 ubuntu - get default container runtime",
+			name:  "v1.9.2 ubuntu - get default container runtime and version",
 			err:   nil,
 			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "18.06"},
+			resCR: machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "18.06"},
 			machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testmachine",
 				},
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: "", Version: ""},
-						Kubelet:          "1.9.2",
+						Kubelet: "1.9.2",
 					},
-				},
-			},
-		},
-		{
-			name:  "v1.9.2 ubuntu - get default docker version",
-			err:   nil,
-			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "18.06"},
-			machine: &v1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "testmachine",
-				},
-				Spec: v1alpha1.MachineSpec{
-					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
-						Kubelet:          "1.9.2",
-					},
+					ProviderConfig: v1alpha1.ProviderConfig{Value: &runtime.RawExtension{}},
 				},
 			},
 		},
@@ -273,16 +259,16 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 			name:  "v1.9.2 coreos - get default docker version",
 			err:   nil,
 			os:    providerconfig.OperatingSystemCoreos,
-			resCR: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "1.12.6"},
+			resCR: machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "1.12.6"},
 			machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testmachine",
 				},
 				Spec: v1alpha1.MachineSpec{
 					Versions: v1alpha1.MachineVersionInfo{
-						ContainerRuntime: v1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: ""},
-						Kubelet:          "1.9.2",
+						Kubelet: "1.9.2",
 					},
+					ProviderConfig: v1alpha1.ProviderConfig{Value: &runtime.RawExtension{}},
 				},
 			},
 		},
@@ -305,7 +291,10 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 				return
 			}
 
-			cr := machine.Spec.Versions.ContainerRuntime
+			cr, err := providerconfig.GetContainerRuntimeInfo(machine.Spec.ProviderConfig)
+			if err != nil {
+				t.Fatalf("Failed to get container runtime from providerconfig: %v", err)
+			}
 
 			if diff := deep.Equal(cr, test.resCR); diff != nil {
 				t.Errorf("expected to get %s+%s instead got: %s+%s", test.resCR.Name, test.resCR.Version, cr.Name, cr.Version)
@@ -314,21 +303,21 @@ func TestController_defaultContainerRuntime(t *testing.T) {
 	}
 }
 
-func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Controller, *machinefake.Clientset) {
+func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Controller, *clusterfake.Clientset) {
 	kubeClient := kubefake.NewSimpleClientset()
-	machineClient := machinefake.NewSimpleClientset(objects...)
+	clusterClient := clusterfake.NewSimpleClientset(objects...)
 
 	kubeInformersFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
 	kubeSystemInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
-	machineInformerFactory := machineinformers.NewSharedInformerFactory(machineClient, time.Millisecond*50)
+	clusterInformerFactory := clusterinformers.NewSharedInformerFactory(clusterClient, time.Millisecond*50)
 
 	ctrl := NewMachineController(
 		kubeClient,
-		machineClient,
+		clusterClient,
 		kubeInformersFactory.Core().V1().Nodes().Informer(),
 		kubeInformersFactory.Core().V1().Nodes().Lister(),
-		machineInformerFactory.Machine().V1alpha1().Machines().Informer(),
-		machineInformerFactory.Machine().V1alpha1().Machines().Lister(),
+		clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
+		clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
 		kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
 		[]net.IP{},
 		NewMachineControllerMetrics(),
@@ -336,11 +325,11 @@ func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Cont
 		&clusterinfo.KubeconfigProvider{},
 		"")
 
-	machineInformerFactory.Start(wait.NeverStop)
+	clusterInformerFactory.Start(wait.NeverStop)
 	kubeInformersFactory.Start(wait.NeverStop)
 
-	machineInformerFactory.WaitForCacheSync(wait.NeverStop)
+	clusterInformerFactory.WaitForCacheSync(wait.NeverStop)
 	kubeInformersFactory.WaitForCacheSync(wait.NeverStop)
 
-	return ctrl, machineClient
+	return ctrl, clusterClient
 }

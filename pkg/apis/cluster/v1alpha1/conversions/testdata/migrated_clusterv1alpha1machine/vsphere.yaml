@@ -1,0 +1,43 @@
+metadata:
+  annotations:
+    machine-controller/machine-type-revision: e1903be683739379be57f78a4095cd51726495fd
+  creationTimestamp: null
+  name: vsphere
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+    labels:
+      foo: bar
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: vsphere
+      cloudProviderSpec:
+        MemoryMB: 2048
+        allowInsecure: true
+        cluster: test-cluster
+        cpus: 2
+        datacenter: Datacenter
+        datastore: datastore1
+        password:
+          secretKeyRef:
+            key: password
+            name: machine-controller-vsphere
+            namespace: kube-system
+        templateVMName: ubuntu-template
+        username: << VSPHERE_USERNAME >>
+        vsphereURL: << VSPHERE_ADDRESS >>
+      containerRuntimeInfo:
+        name: docker
+        version: "1.13"
+      operatingSystem: ubuntu
+      operatingSystemSpec:
+        distUpgradeOnBoot: false
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  versions:
+    kubelet: v1.9.6
+status:
+  lastUpdated: null
+  providerStatus: null

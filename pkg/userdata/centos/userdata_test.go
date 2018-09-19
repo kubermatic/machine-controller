@@ -7,11 +7,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
 	"github.com/pmezard/go-difflib/difflib"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 var pemCertificate = `-----BEGIN CERTIFICATE-----
@@ -47,7 +51,7 @@ type fakeCloudConfigProvider struct {
 	err    error
 }
 
-func (p *fakeCloudConfigProvider) GetCloudConfig(spec machinesv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return p.config, p.name, p.err
 }
 
@@ -58,55 +62,59 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		spec          machinesv1alpha1.MachineSpec
+		spec          clusterv1alpha1.MachineSpec
 		clusterDNSIPs []net.IP
+		dockerVersion string
 	}{
 		{
 			name: "docker-1.13-kubelet-v1.9-aws",
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "1.13",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.9.6",
 				},
 			},
+			dockerVersion: "1.13",
 		},
 		{
 			name: "docker-1.13-kubelet-v1.11-aws",
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "1.13",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.11.0",
 				},
 			},
+			dockerVersion: "1.13",
 		},
 		{
 			name: "docker-1.13-kubelet-v1.8-aws",
-			spec: machinesv1alpha1.MachineSpec{
+			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: machinesv1alpha1.MachineVersionInfo{
-					ContainerRuntime: machinesv1alpha1.ContainerRuntimeInfo{
-						Name:    "docker",
-						Version: "1.13",
-					},
+				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.8.5",
 				},
 			},
+			dockerVersion: "1.13",
 		},
 	}
 
 	cloudProvider := &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil}
-	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
+	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{
+		"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": &clientcmdapi.AuthInfo{Token: "my-token"}}}
 	provider := Provider{}
+
 	for _, test := range tests {
+		containerRuntimeInfo := machinesv1alpha1.ContainerRuntimeInfo{Name: "docker", Version: test.dockerVersion}
+		emtpyProviderConfig := clusterv1alpha1.ProviderConfig{
+			Value: &runtime.RawExtension{}}
+		providerConfig, err := providerconfig.AddContainerRuntimeInfoToProviderconfig(emtpyProviderConfig,
+			containerRuntimeInfo)
+		if err != nil {
+			t.Fatalf("Failed to add containerRuntimeInfo to providerconfig: %v", err)
+		}
+		test.spec.ProviderConfig = *providerConfig
+
 		userdata, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)

@@ -3,7 +3,6 @@ package controller
 import (
 	"fmt"
 
-	"github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,6 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
+
+	"sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 )
 
 const metricsPrefix = "machine_controller_"

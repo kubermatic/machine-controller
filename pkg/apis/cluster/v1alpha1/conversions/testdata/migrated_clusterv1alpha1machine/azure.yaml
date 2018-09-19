@@ -1,0 +1,56 @@
+metadata:
+  annotations:
+    machine-controller/machine-type-revision: e1903be683739379be57f78a4095cd51726495fd
+  creationTimestamp: null
+  name: azure
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+    labels:
+      foo: bar
+  providerConfig:
+    ValueFrom: null
+    value:
+      cloudProvider: azure
+      cloudProviderSpec:
+        assignPublicIP: false
+        clientID:
+          secretKeyRef:
+            key: clientID
+            name: machine-controller-azure
+            namespace: kube-system
+        clientSecret:
+          secretKeyRef:
+            key: clientSecret
+            name: machine-controller-azure
+            namespace: kube-system
+        location: westeurope
+        resourceGroup: << YOUR_RESOURCE_GROUP >>
+        routeTableName: << ROUTE_TABLE_NAME >>
+        subnetName: << SUBNET_NAME >>
+        subscriptionID:
+          secretKeyRef:
+            key: subscriptionID
+            name: machine-controller-azure
+            namespace: kube-system
+        tenantID:
+          secretKeyRef:
+            key: tenantID
+            name: machine-controller-azure
+            namespace: kube-system
+        vmSize: Standard_B1ms
+        vnetName: << VNET_NAME >>
+      containerRuntimeInfo:
+        name: docker
+        version: ""
+      operatingSystem: coreos
+      operatingSystemSpec:
+        distUpgradeOnBoot: false
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  versions:
+    kubelet: v1.10.2
+status:
+  lastUpdated: null
+  providerStatus: null

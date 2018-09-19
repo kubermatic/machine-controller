@@ -19,6 +19,8 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      # We need mercurial for bitbucket.org/ww/goautoneg, otherwise dep hangs forever
+      - run: apt update && apt install -y mercurial
       - run: export DEP_RELEASE_TAG=v0.5.0; curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: dep status
 
@@ -29,6 +31,7 @@ jobs:
     steps:
       - restore_cache:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
+      - run: ./hack/verify-type-revision-annotation-const.sh
       - run: gometalinter --config gometalinter.json ./...
 
   test:
