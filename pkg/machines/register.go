@@ -60,10 +60,9 @@ func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.I
 }
 
 func createCustomResourceDefinition(plural, kind string, clientset apiextensionsclient.Interface) error {
-	name := CRDName
 	crd := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name: CRDName,
 		},
 		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 			Group:   v1alpha1.GroupName,
@@ -86,10 +85,10 @@ func createCustomResourceDefinition(plural, kind string, clientset apiextensions
 
 	// wait for CRD being established
 	err = wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
-		return CustomResourceDefinitionExists(name, clientset)
+		return CustomResourceDefinitionExists(CRDName, clientset)
 	})
 	if err != nil {
-		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(name, nil)
+		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(CRDName, nil)
 		if deleteErr != nil {
 			return errors.NewAggregate([]error{err, deleteErr})
 		}
