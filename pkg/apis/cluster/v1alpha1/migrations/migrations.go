@@ -33,7 +33,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	_, err := apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(machines.CRDName, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			glog.Infof("Old crd not present, nothing to do...")
+			glog.Infof("CRD %s not present, no migration needed", machines.CRDName)
 			return nil
 		}
 		return fmt.Errorf("failed to get crds: %v", err)
@@ -54,10 +54,11 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		clusterv1Alpha1Client); err != nil {
 		return fmt.Errorf("failed to migrate machines: %v", err)
 	}
+	glog.Infof("Attempting to delete CRD %s", machines.CRDName)
 	if err = apiextClient.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(machines.CRDName, nil); err != nil {
 		return fmt.Errorf("failed to delete machinesv1alpha1.machine crd: %v", err)
 	}
-
+	glog.Infof("Successfully deleted CRD %s", machines.CRDName)
 	return nil
 }
 
@@ -65,16 +66,21 @@ func migrateMachines(kubeClient kubernetes.Interface,
 	machinesv1Alpha1MachineClient machinesv1alpha1clientset.Interface,
 	clusterv1Alpha1Client clusterv1alpha1clientset.Interface) error {
 
+	glog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
+
 	// Get machinesv1Alpha1Machines
+	glog.Infof("Getting existing machine.machines.k8s.io/v1alpha1 to migrate")
 	machinesv1Alpha1Machines, err := machinesv1Alpha1MachineClient.MachineV1alpha1().Machines().List(metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list machinesV1Alpha1 machines: %v", err)
 	}
+	glog.Infof("Found %v machine.machines.k8s.io/v1alpha1", len(machinesv1Alpha1Machines.Items))
 
 	// Convert the machine, create the new machine, delete the old one, wait for it to be absent
 	// We do this in one loop to avoid ending up having all machines in  both the new and the old format if deletion
 	// failes for whatever reason
 	for _, machinesV1Alpha1Machine := range machinesv1Alpha1Machines.Items {
+		glog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		convertedClusterv1alpha1Machine := &clusterv1alpha1.Machine{}
 		err := conversions.Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(&machinesV1Alpha1Machine,
 			convertedClusterv1alpha1Machine)
@@ -91,6 +97,8 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		// Do a get first to cover the case the new machine was already created but then something went wrong
 		// If that is the case and the clusterv1alpha1machine != machinesv1alpha1machine we error out and the operator
 		// has to manually delete either the new or the old machine
+		glog.Infof("Checking if machine.cluster.k8s.io/v1alpha1 %s/%s already exists",
+			convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 		existingClusterV1alpha1Machine, err := clusterv1Alpha1Client.ClusterV1alpha1().Machines(
 			convertedClusterv1alpha1Machine.Namespace).Get(convertedClusterv1alpha1Machine.Name, metav1.GetOptions{})
 		if err != nil {
@@ -100,10 +108,14 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			}
 
 			// ClusterV1alpha1Machine does not exist yet
+			glog.Infof("Machine.cluster.k8s.io/v1alpha1 %s/%s does not yet exist, attempting to create it",
+				convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 			owningClusterV1Alpha1Machine, err = clusterv1Alpha1Client.ClusterV1alpha1().Machines(convertedClusterv1alpha1Machine.Namespace).Create(convertedClusterv1alpha1Machine)
 			if err != nil {
 				return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
 			}
+			glog.Infof("Successfully created machine.cluster.k8s.io/v1alpha1 %s/%s",
+				convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 		} else {
 			// ClusterV1alpha1Machine already exists
 			if !equality.Semantic.DeepEqual(convertedClusterv1alpha1Machine.Spec, existingClusterV1alpha1Machine.Spec) {
@@ -113,9 +125,13 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			existingClusterV1alpha1Machine.Labels = convertedClusterv1alpha1Machine.Labels
 			existingClusterV1alpha1Machine.Annotations = convertedClusterv1alpha1Machine.Annotations
 			existingClusterV1alpha1Machine.Finalizers = convertedClusterv1alpha1Machine.Finalizers
+			glog.Infof("Updating existing machine.cluster.k8s.io/v1alpha1 %s/%s",
+				existingClusterV1alpha1Machine.Namespace, existingClusterV1alpha1Machine.Name)
 			if owningClusterV1Alpha1Machine, err = clusterv1Alpha1Client.ClusterV1alpha1().Machines(existingClusterV1alpha1Machine.Namespace).Update(existingClusterV1alpha1Machine); err != nil {
 				return fmt.Errorf("failed to update metadata of existing clusterV1Alpha1 machine: %v", err)
 			}
+			glog.Infof("Successfully updated existing machine.cluster.k8s.io/v1alpha1 %s/%s",
+				existingClusterV1alpha1Machine.Namespace, existingClusterV1alpha1Machine.Name)
 		}
 
 		// We have to ensure there is an ownerRef to our clusterv1alpha1.Machine on the node if it exists
@@ -125,28 +141,37 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		}
 
 		// All went fine, we only have to clear the old machine now
+		glog.Infof("Deleting machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		if err := deleteMachinesV1Alpha1Machine(&machinesV1Alpha1Machine, machinesv1Alpha1MachineClient); err != nil {
 			return err
 		}
+		glog.Infof("Successfully deleted machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+		glog.Infof("Successfully finished migration for machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 	}
 
+	glog.Infof("Successfully finished migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
 	return nil
 }
 
 func ensureClusterV1Alpha1NodeOwnership(machine *clusterv1alpha1.Machine, kubeClient kubernetes.Interface) error {
 	if machine.Spec.Name == "" {
-		return nil
+		machine.Spec.Name = machine.Name
 	}
+	glog.Infof("Checking if node for machines.cluster.k8s.io/v1alpha1 %s/%s exists",
+		machine.Namespace, machine.Name)
 	node, err := kubeClient.CoreV1().Nodes().Get(machine.Spec.Name, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			// Node does not exist, nothing to do
+			glog.Infof("No node for machines.cluster.k8s.io/v1alpha1 %s/%s found",
+				machine.Namespace, machine.Name)
 			return nil
 		}
 		return fmt.Errorf("Failed to get node %s for machine %s: %v",
 			machine.Spec.Name, machine.Name, err)
 	}
 
+	glog.Infof("Found node for machines.cluster.k8s.io/v1alpha1 %s/%s: %s, removing its ownerRef and adding NodeOwnerLabel",
+		node.Name, machine.Namespace, machine.Name)
 	nodeLabels := node.Labels
 	nodeLabels[machinecontroller.NodeOwnerLabelName] = string(machine.UID)
 	// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
@@ -163,7 +188,8 @@ func ensureClusterV1Alpha1NodeOwnership(machine *clusterv1alpha1.Machine, kubeCl
 	}); err != nil {
 		return fmt.Errorf("failed to update OwnerLabel on node %s: %v", node.Name, err)
 	}
-
+	glog.Infof("Successfully removed ownerRef and added NodeOwnerLabelName to node %s for machines.cluster.k8s.io/v1alpha1 %s/%s",
+		node.Name, machine.Namespace, machine.Name)
 	return nil
 }
 
