@@ -179,7 +179,7 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 
 func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
-	glog.Infof("deleting the machineDeployment \"%s\"\n", machineDeployment.Name)
+	glog.Infof("Starting to clean up machineDeployment %s", machineDeployment.Name)
 
 	// We first scale down to 0, because once the machineSets are deleted we can not
 	// match machines anymore and we do want to verify not only the node is gone but also
@@ -196,25 +196,22 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		}
 	}
 
-	// Ensure node is gone
+	// Ensure machines are gone
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		ownedMachines, err := getMatchingMachines(machineDeployment, clusterClient)
-		if err != nil || len(ownedMachines) != 0 {
+		if err != nil {
 			return false, err
 		}
-		errNodeStillExists := assureNodeForMachineDeployment(machineDeployment, kubeClient, clusterClient, false)
-		if errNodeStillExists != nil {
+		if len(ownedMachines) != 0 {
 			return false, nil
 		}
-		if len(ownedMachines) == 0 {
-			return true, nil
-		}
-		return false, nil
+		return true, nil
 	})
 	if err != nil {
-		return fmt.Errorf("falied to delete the node, err = %v", err)
+		return fmt.Errorf("failed to wait for machines to be deleted, err = %v", err)
 	}
 
+	glog.V(2).Infof("Deleting machineDeployment %s", machineDeployment.Name)
 	err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Delete(machineDeployment.Name, nil)
 	if err != nil {
 		return fmt.Errorf("unable to remove machine deployment %s, due to %v", machineDeployment.Name, err)
@@ -288,27 +285,41 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 
 // getMatchingMachines returns all machines that are owned by the passed machineDeployment
 func getMatchingMachines(machineDeployment *v1alpha1.MachineDeployment, clusterClient clientset.Interface) ([]v1alpha1.Machine, error) {
-	allMachines, err := clusterClient.ClusterV1alpha1().Machines(machineDeployment.Namespace).List(metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list machines: %v", err)
-	}
 	matchingMachineSets, err := getMachingMachineSets(machineDeployment, clusterClient)
 	if err != nil {
 		return nil, err
 	}
+	glog.V(2).Infof("Found %v matching machineSets for %s", len(matchingMachineSets), machineDeployment.Name)
+	allMachines, err := clusterClient.ClusterV1alpha1().Machines(machineDeployment.Namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list machines: %v", err)
+	}
 	var matchingMachines []v1alpha1.Machine
-	for _, machine := range allMachines.Items {
-		for _, machineSet := range matchingMachineSets {
-			if !shouldExcludeMachine(&machineSet, &machine) {
+	for _, machineSet := range matchingMachineSets {
+		for _, machine := range allMachines.Items {
+			if metav1.GetControllerOf(&machine) != nil && metav1.IsControlledBy(&machine, &machineSet) {
 				matchingMachines = append(matchingMachines, machine)
 			}
 		}
 	}
+	glog.V(2).Infof("Found %v matching machines for %s", len(matchingMachines), machineDeployment.Name)
 	return matchingMachines, nil
 }
 
 // getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment
 func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, clusterClient clientset.Interface) ([]v1alpha1.MachineSet, error) {
+	// Ensure we actually have an object from the KubeAPI and not just the result of the yaml parsing, as the latter
+	// can not be the owner of anything due to missing UID
+	if machineDeployment.ResourceVersion == "" {
+		var err error
+		machineDeployment, err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Get(machineDeployment.Name)
+		if err != nil {
+			if !kerrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get machineDeployment %s: %v", machineDeployment.Name, err)
+			}
+			return nil, nil
+		}
+	}
 	allMachineSets, err := clusterClient.ClusterV1alpha1().MachineSets(machineDeployment.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list machineSets: %v", err)
@@ -320,21 +331,6 @@ func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, cluste
 		}
 	}
 	return matchingMachineSets, nil
-}
-
-// Copied over from sigs.k8s.io/cluster-api/pkg/controller/machineset/controller.go because
-// it is not exported
-// shoudExcludeMachine returns true if the machine should be filtered out, false otherwise.
-func shouldExcludeMachine(machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
-	// Ignore inactive machines.
-	if metav1.GetControllerOf(machine) != nil && !metav1.IsControlledBy(machine, machineSet) {
-		glog.V(4).Infof("%s not controlled by %v", machine.Name, machineSet.Name)
-		return true
-	}
-	if !hasMatchingLabels(machineSet, machine) {
-		return true
-	}
-	return false
 }
 
 func hasMatchingLabels(machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
