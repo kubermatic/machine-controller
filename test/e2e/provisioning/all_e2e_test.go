@@ -11,14 +11,14 @@ import (
 )
 
 const (
-	do_manifest         = "./testdata/machineset-digitalocean.yaml"
-	aws_manifest        = "./testdata/machineset-aws.yaml"
-	azure_manifest      = "./testdata/machineset-azure.yaml"
-	hz_manifest         = "./testdata/machineset-hetzner.yaml"
-	vs_manifest         = "./testdata/machineset-vsphere.yaml"
-	vssip_manifest      = "./testdata/machineset-vsphere-static-ip.yaml"
-	os_manifest         = "./testdata/machineset-openstack.yaml"
-	os_upgrade_manifest = "./testdata/machineset-openstack-upgrade.yml"
+	do_manifest         = "./testdata/machinedeployment-digitalocean.yaml"
+	aws_manifest        = "./testdata/machinedeployment-aws.yaml"
+	azure_manifest      = "./testdata/machinedeployment-azure.yaml"
+	hz_manifest         = "./testdata/machinedeployment-hetzner.yaml"
+	vs_manifest         = "./testdata/machinedeployment-vsphere.yaml"
+	vssip_manifest      = "./testdata/machinedeployment-vsphere-static-ip.yaml"
+	os_manifest         = "./testdata/machinedeployment-openstack.yaml"
+	os_upgrade_manifest = "./testdata/machinedeployment-openstack-upgrade.yml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
