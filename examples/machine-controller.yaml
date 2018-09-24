@@ -125,7 +125,7 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
-        - image: alvaroaleman/machine-controller:bd5c2ec5b5829e211596c3394d2c907fc647fe4f
+        - image: kubermatic/machine-controller:latest
           imagePullPolicy: IfNotPresent
           name: machine-controller
           command:
