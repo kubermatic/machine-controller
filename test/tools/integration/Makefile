@@ -16,11 +16,17 @@ terraform:
 		unzip -n /tmp/terraform.zip terraform; \
 	fi
 
+ssh-key:
+	if ! ls ~/.ssh/id_rsa.pub; then \
+		mkdir -p ~/.ssh && \
+		echo $(E2E_SSH_PUBKEY) > ~/.ssh/id_rsa.pub; \
+	fi
+
 .terraform: terraform
 	terraform init >/dev/null 2>&1
 
 .PHONY: plan apply destroy
-plan apply destroy: .terraform
+plan apply destroy: .terraform ssh-key
 	@terraform $@\
 		$(EXTRA_ARG) \
 		-var hcloud_token=$(HZ_E2E_TOKEN) \

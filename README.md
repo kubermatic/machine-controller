@@ -102,7 +102,7 @@ __Note:__ All e2e tests require corresponding credentials to be present, check
 __Note:__ After finishing testing, please clean up after yourself:
 
 * Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
-* Execute `make -C test/tools/integration destroy` to clean up the test control plane
+* Execute `make e2e-destroy` to clean up the test control plane
 
 You can also insert your ssh key into the created instances by editing the manifests in
 [`test/e2e/provisioning/testdata/`](test/e2e/provisioning/testdata)
