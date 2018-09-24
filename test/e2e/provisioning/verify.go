@@ -14,7 +14,6 @@ import (
 	"k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
@@ -312,10 +311,10 @@ func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, cluste
 	// can not be the owner of anything due to missing UID
 	if machineDeployment.ResourceVersion == "" {
 		var err error
-		machineDeployment, err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Get(machineDeployment.Name)
+		machineDeployment, err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Get(machineDeployment.Name, metav1.GetOptions{})
 		if err != nil {
 			if !kerrors.IsNotFound(err) {
-				return fmt.Errorf("failed to get machineDeployment %s: %v", machineDeployment.Name, err)
+				return nil, fmt.Errorf("failed to get machineDeployment %s: %v", machineDeployment.Name, err)
 			}
 			return nil, nil
 		}
@@ -331,24 +330,6 @@ func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, cluste
 		}
 	}
 	return matchingMachineSets, nil
-}
-
-func hasMatchingLabels(machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
-	selector, err := metav1.LabelSelectorAsSelector(&machineSet.Spec.Selector)
-	if err != nil {
-		glog.Warningf("unable to convert selector: %v", err)
-		return false
-	}
-	// If a deployment with a nil or empty selector creeps in, it should match nothing, not everything.
-	if selector.Empty() {
-		glog.V(2).Infof("%v machineset has empty selector", machineSet.Name)
-		return false
-	}
-	if !selector.Matches(labels.Set(machine.Labels)) {
-		glog.V(4).Infof("%v machine has mismatch labels", machine.Name)
-		return false
-	}
-	return true
 }
 
 func getInt32Ptr(i int32) *int32 {
