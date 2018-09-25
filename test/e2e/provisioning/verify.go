@@ -3,8 +3,6 @@ package provisioning
 import (
 	"fmt"
 	"io/ioutil"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,98 +26,66 @@ const (
 	tempDir                 = "/tmp"
 )
 
-func verify(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
+func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 
+	kubeClient, clusterClient, machineDeployment, err := prepare(kubeConfig, manifestPath, parameters)
+	if err != nil {
+		return err
+	}
+
+	err = createAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
+	if err != nil {
+		return err
+	}
+
+	err = deleteAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
+	if err != nil {
+		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
+	}
+
+	msg := "all good, successfully verified that a machine/node has been created and then deleted"
+	glog.Infoln(msg)
+
+	return nil
+}
+
+func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface,
+	clientset.Interface, *v1alpha1.MachineDeployment, error) {
 	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
-		return fmt.Errorf("kubeconfig and manifest path must be defined")
+		return nil, nil, nil, fmt.Errorf("kubeconfig and manifest path must be defined")
 	}
 
 	// init kube related stuff
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
-		return fmt.Errorf("Error building kubeconfig: %v", err)
+		return nil, nil, nil, fmt.Errorf("Error building kubeconfig: %v", err)
 	}
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("Error building kubernetes clientset: %v", err)
+		return nil, nil, nil, fmt.Errorf("Error building kubernetes clientset: %v", err)
 	}
 	clusterClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("Error building example clientset: %v", err)
+		return nil, nil, nil, fmt.Errorf("Error building example clientset: %v", err)
 	}
 
 	// prepare the manifest
-	manifests, err := readAndModifyManifest(manifestPath, parameters)
+	manifest, err := readAndModifyManifest(manifestPath, parameters)
 	if err != nil {
-		return fmt.Errorf("failed to prepare the manifest, due to: %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to prepare the manifest, due to: %v", err)
 	}
 
-	manifestsList := strings.Split(manifests, "\n---\n")
-	for _, manifest := range manifestsList {
-		if manifest == "" {
-			continue
-		}
-		if strings.Contains(manifest, "kind: MachineDeployment") {
-			newMachineDeployment := &v1alpha1.MachineDeployment{}
-			manifestReader := strings.NewReader(manifest)
-			manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
-			err = manifestDecoder.Decode(newMachineDeployment)
-			if err != nil {
-				return err
-			}
-			// Enforce the kube-system namespace, otherwise cleanup wont work
-			newMachineDeployment.Namespace = "kube-system"
-
-			err = createAndAssure(newMachineDeployment, clusterClient, kubeClient, timeout)
-			if err != nil {
-				return err
-			}
-
-			err = deleteAndAssure(newMachineDeployment, clusterClient, kubeClient, timeout)
-			if err != nil {
-				return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
-			}
-
-			msg := "all good, successfully verified that a machine/node has been created and then deleted"
-			glog.Infoln(msg)
-		} else {
-			// Be pragmatic
-			glog.Infof("Trying to apply additional manifest...")
-			err = kubectlApply(kubeConfig, manifest)
-			if err != nil {
-				return fmt.Errorf("error applying manifest: '%v'", err)
-			}
-			glog.Infof("Successfully applied additional manifest!")
-		}
-	}
-
-	return nil
-}
-
-func kubectlApply(kubecfgPath, manifest string) error {
-	file, err := ioutil.TempFile(tempDir, "")
+	newMachineDeployment := &v1alpha1.MachineDeployment{}
+	manifestReader := strings.NewReader(manifest)
+	manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
+	err = manifestDecoder.Decode(newMachineDeployment)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
-	_, err = file.WriteString(manifest)
-	if err != nil {
-		return err
-	}
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	filePath := filepath.Join(tempDir, fileInfo.Name())
-	glog.Infof("Wrote temporary manifest file to '%s'", filePath)
+	// Enforce the kube-system namespace, otherwise cleanup wont work
+	newMachineDeployment.Namespace = "kube-system"
 
-	cmdSlice := []string{"kubectl", "--kubeconfig", kubecfgPath, "apply", "-f", filePath}
-	command := exec.Command(cmdSlice[0], cmdSlice[1:]...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Error executing command '%s': '%v'\nOutput:\n%s", strings.Join(cmdSlice, " "), err, string(output))
-	}
-
-	return nil
+	return kubeClient, clusterClient, newMachineDeployment, nil
 }
 
 func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,

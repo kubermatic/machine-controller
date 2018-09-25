@@ -113,7 +113,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// we decided to keep this time lower that the global timeout to prevent the following:
 	// the global timeout is set to 20 minutes and the verify tool waits up to 60 hours for a machine to show up.
 	// thus one faulty scenario prevents from showing the results for the whole group, which is confusing because it looks like all tests are broken.
-	err := verify(kubeConfig, manifestPath, scenarioParams, 25*time.Minute)
+	err := verifyCreateAndDelete(kubeConfig, manifestPath, scenarioParams, 25*time.Minute)
 	if err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}
