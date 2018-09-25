@@ -9,7 +9,7 @@ import (
 	"github.com/golang/glog"
 
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -112,26 +112,19 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return nil, fmt.Errorf("failed to created the new machineSet, err: %v", err)
 	}
 
-	glog.Infof("waiting for status = %s to come \n", v1.NodeReady)
+	glog.Infof("waiting for status = %s to come \n", corev1.NodeReady)
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		machines, pollErr := getMatchingMachines(machineDeployment, clusterClient)
 		if pollErr != nil || len(machines) < 1 {
 			return false, nil
 		}
-		nodes, pollErr := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
-		if pollErr != nil {
-			return false, nil
-		}
-
 		for _, machine := range machines {
-			for _, node := range nodes.Items {
-				if isNodeForMachine(&node, &machine) {
-					for _, condition := range node.Status.Conditions {
-						if condition.Type == v1.NodeReady && condition.Status == v1.ConditionTrue {
-							return true, nil
-						}
-					}
-				}
+			hasReadyNode, pollErr := hasMachineReadyNode(&machine, kubeClient, clusterClient)
+			if err != nil {
+				return false, pollErr
+			}
+			if hasReadyNode {
+				return true, nil
 			}
 		}
 		return false, nil
@@ -140,6 +133,23 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return nil, fmt.Errorf("falied to created the new machine, err = %v", err)
 	}
 	return machineDeployment, nil
+}
+
+func hasMachineReadyNode(machine *v1alpha1.Machine, kubeClient kubernetes.Interface, clusterClient clientset.Interface) (bool, error) {
+	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return false, fmt.Errorf("failed to list nodes: %v", err)
+	}
+	for _, node := range nodes.Items {
+		if isNodeForMachine(&node, machine) {
+			for _, condition := range node.Status.Conditions {
+				if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
 }
 
 func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
@@ -220,7 +230,7 @@ func assureNodeForMachineDeployment(machineDeployment *v1alpha1.MachineDeploymen
 	return nil
 }
 
-func isNodeForMachine(node *v1.Node, machine *v1alpha1.Machine) bool {
+func isNodeForMachine(node *corev1.Node, machine *v1alpha1.Machine) bool {
 	// This gets called before the Objects are persisted in the API
 	// which means UI will be emppy for machine
 	if string(machine.UID) == "" {
@@ -255,19 +265,29 @@ func getMatchingMachines(machineDeployment *v1alpha1.MachineDeployment, clusterC
 		return nil, err
 	}
 	glog.V(2).Infof("Found %v matching machineSets for %s", len(matchingMachineSets), machineDeployment.Name)
-	allMachines, err := clusterClient.ClusterV1alpha1().Machines(machineDeployment.Namespace).List(metav1.ListOptions{})
+	var matchingMachines []v1alpha1.Machine
+	for _, machineSet := range matchingMachineSets {
+		machinesForMachineSet, err := getMatchingMachinesForMachineset(&machineSet, clusterClient)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get matching machines for machineset %s: %v", machineSet.Name, err)
+		}
+		matchingMachines = append(matchingMachines, machinesForMachineSet...)
+	}
+	glog.V(2).Infof("Found %v matching machines for %s", len(matchingMachines), machineDeployment.Name)
+	return matchingMachines, nil
+}
+
+func getMatchingMachinesForMachineset(machineSet *v1alpha1.MachineSet, clusterClient clientset.Interface) ([]v1alpha1.Machine, error) {
+	allMachines, err := clusterClient.ClusterV1alpha1().Machines(machineSet.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list machines: %v", err)
 	}
 	var matchingMachines []v1alpha1.Machine
-	for _, machineSet := range matchingMachineSets {
-		for _, machine := range allMachines.Items {
-			if metav1.GetControllerOf(&machine) != nil && metav1.IsControlledBy(&machine, &machineSet) {
-				matchingMachines = append(matchingMachines, machine)
-			}
+	for _, machine := range allMachines.Items {
+		if metav1.GetControllerOf(&machine) != nil && metav1.IsControlledBy(&machine, machineSet) {
+			matchingMachines = append(matchingMachines, machine)
 		}
 	}
-	glog.V(2).Infof("Found %v matching machines for %s", len(matchingMachines), machineDeployment.Name)
 	return matchingMachines, nil
 }
 
