@@ -24,7 +24,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 
 	machineDeployment, err = createAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
 	if err != nil {
-		return fmt.Errorf("failed to verify creation of node for machineDeployment %s: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to verify creation of node for machineDeployment: %v", err)
 	}
 
 	if err := updateMachineDeployment(machineDeployment, clusterClient, func(md *v1alpha1.MachineDeployment) {
