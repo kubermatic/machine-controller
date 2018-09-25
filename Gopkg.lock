@@ -1330,7 +1330,7 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
-  digest = "1:960b3708a7b27337963c65468ebe6c4da55427340c44fd68e50de052a2144baf"
+  digest = "1:c779cf03c5cb9102f8e15d79b1c2ee9b0541077ae6f2590884e29934776f0f9c"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis/cluster",
@@ -1354,7 +1354,7 @@
     "pkg/util",
   ]
   pruneopts = "NUT"
-  revision = "e1903be683739379be57f78a4095cd51726495fd"
+  revision = "d99b7630cf7803c40691b86f42ea99eb0e9128a3"
 
 [solve-meta]
   analyzer-name = "dep"
