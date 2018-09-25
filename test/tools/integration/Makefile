@@ -19,7 +19,7 @@ terraform:
 ssh-key:
 	if ! ls ~/.ssh/id_rsa.pub; then \
 		mkdir -p ~/.ssh && \
-		echo $(E2E_SSH_PUBKEY) > ~/.ssh/id_rsa.pub; \
+		echo "$(E2E_SSH_PUBKEY)" > ~/.ssh/id_rsa.pub; \
 	fi
 
 .terraform: terraform
