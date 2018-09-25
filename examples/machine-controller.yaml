@@ -333,8 +333,11 @@ rules:
   resources:
   - "machines"
   - "machinesets"
+  - "machinesets/status"
   - "machinedeployments"
+  - "machinedeployments/status"
   - "clusters"
+  - "clusters/status"
   verbs:
   - '*'
 - apiGroups:
