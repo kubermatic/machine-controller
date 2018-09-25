@@ -33,9 +33,9 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 		return err
 	}
 
-	err = createAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
+	machineDeployment, err = createAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to verify creation of node for machineDeployment %s: %v", machineDeployment.Name, err)
 	}
 
 	err = deleteAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
@@ -89,17 +89,17 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.I
 }
 
 func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
-	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
+	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) (*v1alpha1.MachineDeployment, error) {
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachineDeployment(machineDeployment, kubeClient, clusterClient, false)
 	if err != nil {
-		return fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
+		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
 	glog.Infof("creating a new \"%s\" machineDeployment\n", machineDeployment.Name)
 	machineDeployment, err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Create(machineDeployment)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		pollErr := assureNodeForMachineDeployment(machineDeployment, kubeClient, clusterClient, true)
@@ -109,7 +109,7 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return false, nil
 	})
 	if err != nil {
-		return fmt.Errorf("falied to created the new machineSet, err: %v", err)
+		return nil, fmt.Errorf("failed to created the new machineSet, err: %v", err)
 	}
 
 	glog.Infof("waiting for status = %s to come \n", v1.NodeReady)
@@ -137,9 +137,9 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return false, nil
 	})
 	if err != nil {
-		return fmt.Errorf("falied to created the new machine, err = %v", err)
+		return nil, fmt.Errorf("falied to created the new machine, err = %v", err)
 	}
-	return nil
+	return machineDeployment, nil
 }
 
 func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
