@@ -24,7 +24,6 @@ import (
 
 const (
 	machineReadyCheckPeriod = 15 * time.Second
-	tempDir                 = "/tmp"
 )
 
 func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
