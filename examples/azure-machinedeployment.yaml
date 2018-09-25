@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: machine-controller-azure
+  namespace: kube-system
+type: Opaque
+stringData:
+  tenantID: "<< AZURE_TENANT_ID >>"
+  clientID: "<< AZURE_CLIENT_ID >>"
+  clientSecret: "<< AZURE_CLIENT_SECRET >>"
+  subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: azure-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "azure"
+          cloudProviderSpec:
+            tenantID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-azure
+                key: tenantID
+            clientID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-azure
+                key: clientID
+            clientSecret:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-azure
+                key: clientSecret
+            subscriptionID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-azure
+                key: subscriptionID
+            location: "westeurope"
+            resourceGroup: "<< YOUR_RESOURCE_GROUP >>"
+            vmSize: "Standard_B1ms"
+            vnetName: "<< VNET_NAME >>"
+            subnetName: "<< SUBNET_NAME >>"
+            routeTableName: "<< ROUTE_TABLE_NAME >>"
+            assignPublicIP: false
+          operatingSystem: "coreos"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+      versions:
+        kubelet: 1.9.6

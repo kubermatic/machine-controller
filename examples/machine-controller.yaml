@@ -21,6 +21,9 @@ spec:
   names:
     kind: MachineSet
     plural: machinesets
+  subresources:
+     # status enables the status subresource.
+     status: {}
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -33,6 +36,9 @@ spec:
   names:
     kind: MachineDeployment
     plural: machinedeployments
+  subresources:
+     # status enables the status subresource.
+     status: {}
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -45,6 +51,9 @@ spec:
   names:
     kind: Cluster
     plural: clusters
+  subresources:
+     # status enables the status subresource.
+     status: {}
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
