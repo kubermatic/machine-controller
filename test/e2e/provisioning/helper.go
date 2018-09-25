@@ -102,12 +102,10 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
 
-	kubeConfigPath := os.Getenv("KUBECONFIG")
-	if kubeConfigPath == "" {
-		gopath := os.Getenv("GOPATH")
-		projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
-		kubeConfigPath = filepath.Join(projectDir, ".kubeconfig")
-	}
+	gopath := os.Getenv("GOPATH")
+	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
+
+	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 
 	// the golang test runtime waits for individual subtests to complete before reporting the status.
 	// if one of them is blocking/waiting and the global timeout is reached the status will not be reported/visible.
@@ -115,7 +113,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// we decided to keep this time lower that the global timeout to prevent the following:
 	// the global timeout is set to 20 minutes and the verify tool waits up to 60 hours for a machine to show up.
 	// thus one faulty scenario prevents from showing the results for the whole group, which is confusing because it looks like all tests are broken.
-	err := scenarioExecutor(kubeConfigPath, manifestPath, scenarioParams, 25*time.Minute)
+	err := scenarioExecutor(kubeConfig, manifestPath, scenarioParams, 25*time.Minute)
 	if err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}
