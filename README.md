@@ -25,10 +25,10 @@
 
 `kubectl apply -f examples/machine-controller.yaml`
 
-## Creating a machine
+## Creating a machineDeployment
 ```bash
-# edit examples/machine.yaml & create the machine
-kubectl create -f examples/machine.yaml
+# edit examples/$cloudprovider-machinedeployment.yaml & create the machineDeployment
+kubectl create -f examples/$cloudprovider-machinedeployment.yaml
 ```
 
 ## Advanced usage

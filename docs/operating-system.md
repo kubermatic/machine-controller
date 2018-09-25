@@ -23,35 +23,39 @@ OS specific settings can be set via `machine.spec.providerConfig.operatingSystem
 ### Ubuntu
 
 ```yaml
-apiVersion: "machine.k8s.io/v1alpha1"
-kind: Machine
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
 metadata:
   name: machine1
+  namespace: kube-system
 spec:
   metadata:
     name: node1
   providerConfig:
-    ...
-    operatingSystem: "ubuntu"
-    operatingSystemSpec:
-      # do a apt-get dist-upgrade on start and reboot if required
-      distUpgradeOnBoot: true
+    value:
+      ...
+      operatingSystem: "ubuntu"
+      operatingSystemSpec:
+        # do a apt-get dist-upgrade on start and reboot if required
+        distUpgradeOnBoot: true
 ```
 
 ### Container Linux
 
 ```yaml
-apiVersion: "machine.k8s.io/v1alpha1"
-kind: Machine
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
 metadata:
   name: machine1
+  namespace: kube-system
 spec:
   metadata:
     name: node1
   providerConfig:
-    ...
-    operatingSystem: "coreos"
-    operatingSystemSpec:
-      # disable auto update
-      disableAutoUpdate: true
+    value:
+      ...
+      operatingSystem: "coreos"
+      operatingSystemSpec:
+        # disable auto update
+        disableAutoUpdate: true
 ```
