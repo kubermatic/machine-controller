@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
@@ -320,4 +321,17 @@ func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, cluste
 
 func getInt32Ptr(i int32) *int32 {
 	return &i
+}
+
+func updateMachineDeployment(md *v1alpha1.MachineDeployment, clusterClient clientset.Interface, modify func(*v1alpha1.MachineDeployment)) error {
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var err error
+		md, err = clusterClient.ClusterV1alpha1().MachineDeployments(md.Namespace).Get(md.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		modify(md)
+		md, err = clusterClient.ClusterV1alpha1().MachineDeployments(md.Namespace).Update(md)
+		return err
+	})
 }

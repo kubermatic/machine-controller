@@ -193,7 +193,7 @@ func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 		kubernetesVersion: "1.11.0",
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest)
+	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest, verifyCreateAndDelete)
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
@@ -229,5 +229,23 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		kubernetesVersion: "1.10.5",
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest)
+	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest, verifyCreateAndDelete)
+}
+
+// TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
+// rolls over machines on changes in the machineDeployment
+func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
+	hzToken := os.Getenv("HZ_E2E_TOKEN")
+	if len(hzToken) == 0 {
+		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
+	}
+
+	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
+	scenario := scenario{
+		name:              "Ubuntu Docker Kubernetes v1.10.5",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	}
+	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, hz_manifest, verifyCreateUpdateAndDelete)
 }
