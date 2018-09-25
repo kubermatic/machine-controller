@@ -160,20 +160,14 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 	// We first scale down to 0, because once the machineSets are deleted we can not
 	// match machines anymore and we do want to verify not only the node is gone but also
 	// the instance at the cloud provider
-	machineSets, err := getMachingMachineSets(machineDeployment, clusterClient)
-	if err != nil {
-		return err
-	}
-	for _, machineSet := range machineSets {
-		machineSet.Spec.Replicas = getInt32Ptr(0)
-		_, err = clusterClient.ClusterV1alpha1().MachineSets(machineSet.Namespace).Update(&machineSet)
-		if err != nil {
-			return fmt.Errorf("unable to set update replicas of machineset %s: %v", machineSet.Name, err)
-		}
+	if err := updateMachineDeployment(machineDeployment, clusterClient, func(md *v1alpha1.MachineDeployment) {
+		md.Spec.Replicas = getInt32Ptr(0)
+	}); err != nil {
+		return fmt.Errorf("failed to update replicas of machineDeployment %s: %v", machineDeployment.Name, err)
 	}
 
 	// Ensure machines are gone
-	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
+	if err := wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		ownedMachines, err := getMatchingMachines(machineDeployment, clusterClient)
 		if err != nil {
 			return false, err
@@ -182,13 +176,12 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 			return false, nil
 		}
 		return true, nil
-	})
-	if err != nil {
+	}); err != nil {
 		return fmt.Errorf("failed to wait for machines to be deleted, err = %v", err)
 	}
 
 	glog.V(2).Infof("Deleting machineDeployment %s", machineDeployment.Name)
-	err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Delete(machineDeployment.Name, nil)
+	err := clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Delete(machineDeployment.Name, nil)
 	if err != nil {
 		return fmt.Errorf("unable to remove machine deployment %s, due to %v", machineDeployment.Name, err)
 	}
