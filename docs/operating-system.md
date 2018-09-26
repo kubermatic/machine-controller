@@ -29,15 +29,29 @@ metadata:
   name: machine1
   namespace: kube-system
 spec:
-  metadata:
-    name: node1
-  providerConfig:
-    value:
-      ...
-      operatingSystem: "ubuntu"
-      operatingSystemSpec:
-        # do a apt-get dist-upgrade on start and reboot if required
-        distUpgradeOnBoot: true
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          ...
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            # do a apt-get dist-upgrade on start and reboot if required
+            distUpgradeOnBoot: true
 ```
 
 ### Container Linux
@@ -49,13 +63,27 @@ metadata:
   name: machine1
   namespace: kube-system
 spec:
-  metadata:
-    name: node1
-  providerConfig:
-    value:
-      ...
-      operatingSystem: "coreos"
-      operatingSystemSpec:
-        # disable auto update
-        disableAutoUpdate: true
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          ...
+          operatingSystem: "coreos"
+          operatingSystemSpec:
+            # disable auto update
+            disableAutoUpdate: true
 ```

@@ -12,31 +12,45 @@ metadata:
   name: machine-docker
   namespace: kube-system
 spec:
-  metadata:
-    name: node-docker
-  providerConfig:
-    value:
-      sshPublicKeys:
-       - "some-ssh-pub-key"
-      cloudProvider: "digitalocean"
-      cloudProviderSpec:
-        token: "some-do-token"
-        region: "fra1"
-        size: "2gb"
-        backups: false
-        ipv6: false
-        private_networking: true
-        monitoring: false
-        tags:
-         - "machine-controller"
-      operatingSystem: "ubuntu"
-      operatingSystemSpec:
-        distUpgradeOnBoot: false
-      containerRuntimeInfo:
-        name: docker
-        version: ""
-  versions:
-    kubelet: "1.9.2"
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          sshPublicKeys:
+           - "some-ssh-pub-key"
+          cloudProvider: "digitalocean"
+          cloudProviderSpec:
+            token: "some-do-token"
+            region: "fra1"
+            size: "2gb"
+            backups: false
+            ipv6: false
+            private_networking: true
+            monitoring: false
+            tags:
+             - "machine-controller"
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+          containerRuntimeInfo:
+            name: docker
+            version: ""
+      versions:
+        kubelet: "1.9.2"
 ```
 
 The machine-controller would default to Docker in version 1.13.1 as it is the supported version for kubernetes 1.9:
@@ -48,31 +62,45 @@ metadata:
   name: machine-docker
   namespace: kube-system
 spec:
-  metadata:
-    name: node-docker
-  providerConfig:
-    value:
-      sshPublicKeys:
-       - "some-ssh-pub-key"
-      cloudProvider: "digitalocean"
-      cloudProviderSpec:
-        token: "some-do-token"
-        region: "fra1"
-        size: "2gb"
-        backups: false
-        ipv6: false
-        private_networking: true
-        monitoring: false
-        tags:
-         - "machine-controller"
-      operatingSystem: "ubuntu"
-      operatingSystemSpec:
-        distUpgradeOnBoot: false
-      containerRuntimeInfo:
-        name: docker
-        version: 1.13.1
-  versions:
-    kubelet: "1.9.2"
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          sshPublicKeys:
+           - "some-ssh-pub-key"
+          cloudProvider: "digitalocean"
+          cloudProviderSpec:
+            token: "some-do-token"
+            region: "fra1"
+            size: "2gb"
+            backups: false
+            ipv6: false
+            private_networking: true
+            monitoring: false
+            tags:
+             - "machine-controller"
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+          containerRuntimeInfo:
+            name: docker
+            version: 1.13.1
+      versions:
+        kubelet: "1.9.2"
 ```
 
 ## Available runtimes
