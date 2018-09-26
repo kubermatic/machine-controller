@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-openstack
+  namespace: kube-system
+type: Opaque
+stringData:
+  identityEndpoint: << OS_AUTH_URL >>
+  username: << OS_USERNAME >>
+  password: << OS_PASSWORD >>
+  domainName: << OS_DOMAIN_NAME >>
+  tenantName: << OS_TENANT_NAME >>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: machine-controller
+  namespace: kube-system
+data:
+  securityGroup: external-ssh
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: openstack-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "openstack"
+          cloudProviderSpec:
+          # If empty, ca be set via OS_AUTH_URL env var
+            identityEndpoint:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: identityEndpoint
+          # If empty, ca be set via OS_USER_NAME env var
+            username:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: username
+          # If empty, ca be set via OS_PASSWORD env var
+            password:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: password
+          # If empty, ca be set via OS_DOMAIN_NAME env var
+            domainName:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: domainName
+          # If empty, ca be set via OS_TENANT_NAME env var
+            tenantName:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: tenantName
+            image: "Ubuntu 18.04 amd64"
+            flavor: "m1.small"
+            securityGroups:
+              - configMapKeyRef:
+                  namespace: kube-system
+                  name: machine-controller
+                  key: securityGroup
+            # The machine won't get a floating ip if you leave this empty
+            floatingIpPool: "ext-net"
+            # Only required if there is more than one AZ to choose from
+            availabilityZone: ""
+            # Only required if there is more than one region to choose from
+            region: ""
+            # Only required if there is more than one network available
+            network: ""
+            # Only required if the network has more than one subnet
+            subnet: ""
+            # the list of tags you would like to attach to the instance
+            tags:
+              tagKey: tagValue
+          # Can be 'ubuntu', 'coreos' or 'centos'
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: true
+      versions:
+        kubelet: 1.9.6

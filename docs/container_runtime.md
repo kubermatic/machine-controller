@@ -6,73 +6,101 @@ Also when no specific container runtime version is defined, the controller will 
 
 Having a machine like the following:
 ```yaml
-apiVersion: "machine.k8s.io/v1alpha1"
-kind: Machine
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
 metadata:
   name: machine-docker
+  namespace: kube-system
 spec:
-  metadata:
-    name: node-docker
-  providerConfig:
-    sshPublicKeys:
-     - "some-ssh-pub-key"
-    cloudProvider: "digitalocean"
-    cloudProviderSpec:
-      token: "some-do-token"
-      region: "fra1"
-      size: "2gb"
-      backups: false
-      ipv6: false
-      private_networking: true
-      monitoring: false
-      tags:
-       - "machine-controller"
-    operatingSystem: "ubuntu"
-    operatingSystemSpec:
-      distUpgradeOnBoot: false
-  roles:
- - "Node"
-  versions:
-    kubelet: "1.9.2"
-    containerRuntime:
-      name: "docker"
-      version: ""
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          sshPublicKeys:
+           - "some-ssh-pub-key"
+          cloudProvider: "digitalocean"
+          cloudProviderSpec:
+            token: "some-do-token"
+            region: "fra1"
+            size: "2gb"
+            backups: false
+            ipv6: false
+            private_networking: true
+            monitoring: false
+            tags:
+             - "machine-controller"
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+          containerRuntimeInfo:
+            name: docker
+            version: ""
+      versions:
+        kubelet: "1.9.2"
 ```
 
 The machine-controller would default to Docker in version 1.13.1 as it is the supported version for kubernetes 1.9:
 
 ```yaml
-apiVersion: "machine.k8s.io/v1alpha1"
-kind: Machine
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
 metadata:
   name: machine-docker
+  namespace: kube-system
 spec:
-  metadata:
-    name: node-docker
-  providerConfig:
-    sshPublicKeys:
-     - "some-ssh-pub-key"
-    cloudProvider: "digitalocean"
-    cloudProviderSpec:
-      token: "some-do-token"
-      region: "fra1"
-      size: "2gb"
-      backups: false
-      ipv6: false
-      private_networking: true
-      monitoring: false
-      tags:
-       - "machine-controller"
-    operatingSystem: "ubuntu"
-    operatingSystemSpec:
-      distUpgradeOnBoot: false
-  roles:
- - "Node"
-  versions:
-    kubelet: "1.9.2"
-    containerRuntime:
-      name: "docker"
-      version: "1.13.1"
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          sshPublicKeys:
+           - "some-ssh-pub-key"
+          cloudProvider: "digitalocean"
+          cloudProviderSpec:
+            token: "some-do-token"
+            region: "fra1"
+            size: "2gb"
+            backups: false
+            ipv6: false
+            private_networking: true
+            monitoring: false
+            tags:
+             - "machine-controller"
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+          containerRuntimeInfo:
+            name: docker
+            version: 1.13.1
+      versions:
+        kubelet: "1.9.2"
 ```
 
 ## Available runtimes

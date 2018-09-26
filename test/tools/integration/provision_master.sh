@@ -23,6 +23,8 @@ rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" 
 cat <<EOEXEC |ssh_exec
 set -ex
 
+echo "$E2E_SSH_PUBKEY" >> .ssh/authorized_keys
+
 if ! grep -q kubectl /root/.bashrc; then
   echo 'function cn { kubectl config set-context \$(kubectl config current-context) --namespace=\$1; }' >> /root/.bashrc
   echo 'source <(kubectl completion bash)' >> /root/.bashrc

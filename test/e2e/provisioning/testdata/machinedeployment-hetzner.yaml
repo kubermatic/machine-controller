@@ -1,10 +1,17 @@
 apiVersion: "cluster.k8s.io/v1alpha1"
-kind: MachineSet
+kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
 spec:
+  paused: false
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
   selector:
     matchLabels:
       name: << MACHINE_NAME >>
@@ -17,18 +24,12 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "openstack"
+          cloudProvider: "hetzner"
           cloudProviderSpec:
-            identityEndpoint: "<< IDENTITY_ENDPOINT >>"
-            username: "<< USERNAME >>"
-            password: "<< PASSWORD >>"
-            tenantName: "<< TENANT_NAME >>"
-            image: "<< OS_IMAGE >>"
-            flavor: "m1.small"
-            floatingIpPool: ""
-            domainName: "<< DOMAIN_NAME >>"
-            region: "<< REGION >>"
-            network: "<< NETWORK_NAME >>"
+            token: << HETZNER_TOKEN >>
+            serverType: "cx11"
+            datacenter: ""
+            location: "fsn1"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
