@@ -64,3 +64,6 @@ test-unit: vendor
 e2e-cluster:
 	make -C test/tools/integration apply
 	./test/tools/integration/provision_master.sh do-not-deploy-machine-controller
+
+e2e-destroy:
+	make -C test/tools/integration destroy

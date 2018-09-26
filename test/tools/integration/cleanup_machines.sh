@@ -13,6 +13,7 @@ ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no roo
 
 cat <<EOEXEC |ssh_exec
 set -ex
+kubectl delete machinedeployment -n kube-system --all
 kubectl delete machineset -n kube-system --all
 kubectl delete machine -n kube-system --all
 for try in {1..30}; do

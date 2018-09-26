@@ -25,10 +25,10 @@
 
 `kubectl apply -f examples/machine-controller.yaml`
 
-## Creating a machine
+## Creating a machineDeployment
 ```bash
-# edit examples/machine.yaml & create the machine
-kubectl create -f examples/machine.yaml
+# edit examples/$cloudprovider-machinedeployment.yaml & create the machineDeployment
+kubectl create -f examples/$cloudprovider-machinedeployment.yaml
 ```
 
 ## Advanced usage
@@ -102,7 +102,7 @@ __Note:__ All e2e tests require corresponding credentials to be present, check
 __Note:__ After finishing testing, please clean up after yourself:
 
 * Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
-* Execute `make -C test/tools/integration destroy` to clean up the test control plane
+* Execute `make e2e-destroy` to clean up the test control plane
 
 You can also insert your ssh key into the created instances by editing the manifests in
 [`test/e2e/provisioning/testdata/`](test/e2e/provisioning/testdata)

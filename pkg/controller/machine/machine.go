@@ -422,6 +422,11 @@ func (c *Controller) syncHandler(key string) error {
 		if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
 			return fmt.Errorf("failed to clear machine error: %v", err)
 		}
+		// We must do this to ensure the informers in the machineSet and machineDeployment controller
+		// get triggered as soon as a ready node exists for a machine
+		if machine, err = c.ensureMachineHasNodeReadyCondition(machine); err != nil {
+			return fmt.Errorf("failed to set nodeReady condition on machine: %v", err)
+		}
 	} else {
 		// Node is not ready anymore? Maybe it got deleted
 		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
@@ -429,6 +434,19 @@ func (c *Controller) syncHandler(key string) error {
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
 	return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
+}
+
+func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
+	for _, condition := range machine.Status.Conditions {
+		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+			return machine, nil
+		}
+	}
+	return c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		m.Status.Conditions = append(m.Status.Conditions, corev1.NodeCondition{Type: corev1.NodeReady,
+			Status: corev1.ConditionTrue,
+		})
+	})
 }
 
 func (c *Controller) cleanupMachineAfterDeletion(machine *clusterv1alpha1.Machine) error {

@@ -1,6 +1,6 @@
 metadata:
   annotations:
-    machine-controller/machine-type-revision: e1903be683739379be57f78a4095cd51726495fd
+    machine-controller/machine-type-revision: d99b7630cf7803c40691b86f42ea99eb0e9128a3
   creationTimestamp: null
   name: vsphere
   namespace: kube-system

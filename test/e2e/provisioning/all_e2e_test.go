@@ -11,14 +11,14 @@ import (
 )
 
 const (
-	do_manifest         = "./testdata/machineset-digitalocean.yaml"
-	aws_manifest        = "./testdata/machineset-aws.yaml"
-	azure_manifest      = "./testdata/machineset-azure.yaml"
-	hz_manifest         = "./testdata/machineset-hetzner.yaml"
-	vs_manifest         = "./testdata/machineset-vsphere.yaml"
-	vssip_manifest      = "./testdata/machineset-vsphere-static-ip.yaml"
-	os_manifest         = "./testdata/machineset-openstack.yaml"
-	os_upgrade_manifest = "./testdata/machineset-openstack-upgrade.yml"
+	do_manifest         = "./testdata/machinedeployment-digitalocean.yaml"
+	aws_manifest        = "./testdata/machinedeployment-aws.yaml"
+	azure_manifest      = "./testdata/machinedeployment-azure.yaml"
+	hz_manifest         = "./testdata/machinedeployment-hetzner.yaml"
+	vs_manifest         = "./testdata/machinedeployment-vsphere.yaml"
+	vssip_manifest      = "./testdata/machinedeployment-vsphere-static-ip.yaml"
+	os_manifest         = "./testdata/machinedeployment-openstack.yaml"
+	os_upgrade_manifest = "./testdata/machinedeployment-openstack-upgrade.yml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -193,7 +193,7 @@ func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 		kubernetesVersion: "1.11.0",
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest)
+	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest, verifyCreateAndDelete)
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
@@ -229,5 +229,31 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		kubernetesVersion: "1.10.5",
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest)
+	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest, verifyCreateAndDelete)
+}
+
+// TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
+// rolls over machines on changes in the machineDeployment
+func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
+	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
+	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
+	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
+	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
+	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	}
+
+	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
+		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
+		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
+		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
+	}
+
+	scenario := scenario{
+		name:              "Coreos Kubernetes v1.10.5",
+		osName:            "coreos",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.10.5",
+	}
+	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, vs_manifest, verifyCreateUpdateAndDelete)
 }

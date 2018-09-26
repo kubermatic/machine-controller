@@ -80,7 +80,7 @@ jobs:
               go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$CIRCLE_BUILD_NUM ||
               (kubectl logs -n kube-system $(kubectl get pods -n kube-system|egrep '^machine-controller'|
               awk '{print $1}'); exit 1)
-          no_output_timeout: 25m
+          no_output_timeout: 35m
       - run:
           name: Clean up machines
           command: ./test/tools/integration/cleanup_machines.sh

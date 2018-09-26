@@ -1,0 +1,45 @@
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: << MACHINE_NAME >>
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      name: << MACHINE_NAME >>
+  template:
+    metadata:
+      labels:
+        name: << MACHINE_NAME >>
+    spec:
+      providerConfig:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "openstack"
+          cloudProviderSpec:
+            identityEndpoint: "<< IDENTITY_ENDPOINT >>"
+            username: "<< USERNAME >>"
+            password: "<< PASSWORD >>"
+            tenantName: "<< TENANT_NAME >>"
+            image: "Ubuntu 18.04 LTS - 2018-08-10"
+            flavor: "m1.small"
+            floatingIpPool: ""
+            domainName: "<< DOMAIN_NAME >>"
+            region: "<< REGION >>"
+            network: "<< NETWORK_NAME >>"
+          operatingSystem: "<< OS_NAME >>"
+          operatingSystemSpec:
+            distUpgradeOnBoot: true
+          containerRuntimeInfo:
+            name: "<< CONTAINER_RUNTIME >>"
+      versions:
+        kubelet: "<< KUBERNETES_VERSION >>"
