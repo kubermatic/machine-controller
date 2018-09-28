@@ -30,6 +30,13 @@ type Image struct {
 	OSVersion string
 
 	Protection ImageProtection
+	Deprecated time.Time // The zero value denotes the image is not deprecated.
+	Labels     map[string]string
+}
+
+// IsDeprecated returns whether the image is deprecated.
+func (image *Image) IsDeprecated() bool {
+	return !image.Deprecated.IsZero()
 }
 
 // ImageProtection represents the protection level of an image.
@@ -44,9 +51,9 @@ const (
 	// ImageTypeSnapshot represents a snapshot image.
 	ImageTypeSnapshot ImageType = "snapshot"
 	// ImageTypeBackup represents a backup image.
-	ImageTypeBackup = "backup"
+	ImageTypeBackup ImageType = "backup"
 	// ImageTypeSystem represents a system image.
-	ImageTypeSystem = "system"
+	ImageTypeSystem ImageType = "system"
 )
 
 // ImageStatus specifies the status of an image.
@@ -56,7 +63,7 @@ const (
 	// ImageStatusCreating is the status when an image is being created.
 	ImageStatusCreating ImageStatus = "creating"
 	// ImageStatusAvailable is the status when an image is available.
-	ImageStatusAvailable = "available"
+	ImageStatusAvailable ImageStatus = "available"
 )
 
 // ImageClient is a client for the image API.
@@ -137,10 +144,12 @@ func (c *ImageClient) List(ctx context.Context, opts ImageListOpts) ([]*Image, *
 
 // All returns all images.
 func (c *ImageClient) All(ctx context.Context) ([]*Image, error) {
-	allImages := []*Image{}
+	return c.AllWithOpts(ctx, ImageListOpts{ListOpts{PerPage: 50}})
+}
 
-	opts := ImageListOpts{}
-	opts.PerPage = 50
+// AllWithOpts returns all images for the given options.
+func (c *ImageClient) AllWithOpts(ctx context.Context, opts ImageListOpts) ([]*Image, error) {
+	allImages := []*Image{}
 
 	_, err := c.client.all(func(page int) (*Response, error) {
 		opts.Page = page
@@ -171,6 +180,7 @@ func (c *ImageClient) Delete(ctx context.Context, image *Image) (*Response, erro
 type ImageUpdateOpts struct {
 	Description *string
 	Type        ImageType
+	Labels      map[string]string
 }
 
 // Update updates an image.
@@ -180,6 +190,9 @@ func (c *ImageClient) Update(ctx context.Context, image *Image, opts ImageUpdate
 	}
 	if opts.Type != "" {
 		reqBody.Type = String(string(opts.Type))
+	}
+	if opts.Labels != nil {
+		reqBody.Labels = &opts.Labels
 	}
 	reqBodyData, err := json.Marshal(reqBody)
 	if err != nil {
