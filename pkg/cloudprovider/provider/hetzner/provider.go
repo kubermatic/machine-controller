@@ -268,7 +268,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	client := getClient(c.Token)
 
 	servers, _, err := client.Server.List(ctx, hcloud.ServerListOpts{ListOpts: hcloud.ListOpts{
-		LabelSelector: fmt.Sprintf("%s=%s", machineUIDLabelKey, machine.UID),
+		LabelSelector: machineUIDLabelKey + "==" + string(machine.UID),
 	}})
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to list servers")
