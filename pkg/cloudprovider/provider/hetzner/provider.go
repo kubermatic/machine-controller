@@ -21,6 +21,10 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
+const (
+	machineUIDLabelKey = "machine-uid"
+)
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -157,6 +161,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
 		UserData: userdata,
+		Labels: map[string]string{
+			machineUIDLabelKey: string(machine.UID),
+		},
 	}
 
 	if c.Datacenter != "" {
@@ -260,15 +267,20 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	server, _, err := client.Server.Get(ctx, machine.Spec.Name)
+	servers, _, err := client.Server.List(ctx, hcloud.ServerListOpts{ListOpts: hcloud.ListOpts{
+		LabelSelector: fmt.Sprintf("%s=%s", machineUIDLabelKey, machine.UID),
+	}})
 	if err != nil {
-		return nil, hzErrorToTerminalError(err, "failed to get the server object")
-	}
-	if server == nil {
-		return nil, cloudprovidererrors.ErrInstanceNotFound
+		return nil, hzErrorToTerminalError(err, "failed to list servers")
 	}
 
-	return &hetznerServer{server: server}, nil
+	for _, server := range servers {
+		if server.Labels[machineUIDLabelKey] == string(machine.UID) {
+			return &hetznerServer{server: server}, nil
+		}
+	}
+
+	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
