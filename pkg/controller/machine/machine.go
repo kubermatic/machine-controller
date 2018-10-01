@@ -607,8 +607,20 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	}
 
 	// case 3: retrieving the instance from cloudprovider was successfull
-	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", providerInstance.Addresses())
+	// Emit an event and update .Status.Addresses
+	addresses := providerInstance.Addresses()
+	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", addresses)
 	c.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", eventMessage)
+	machineAddresses := []corev1.NodeAddress{}
+	for _, address := range addresses {
+		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address})
+	}
+	machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		m.Status.Addresses = machineAddresses
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update machine after setting .status.addresses: %v", err)
+	}
 	return c.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
 }
 
