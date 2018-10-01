@@ -32,10 +32,6 @@ func (c *FakeMachineV1alpha1) Machines() v1alpha1.MachineInterface {
 	return &FakeMachines{c}
 }
 
-func (c *FakeMachineV1alpha1) MachineSets(namespace string) v1alpha1.MachineSetInterface {
-	return &FakeMachineSets{c, namespace}
-}
-
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeMachineV1alpha1) RESTClient() rest.Interface {

@@ -19,5 +19,3 @@ limitations under the License.
 package v1alpha1
 
 type MachineExpansion interface{}
-
-type MachineSetExpansion interface{}
