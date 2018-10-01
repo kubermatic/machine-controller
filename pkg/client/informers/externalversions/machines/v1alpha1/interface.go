@@ -26,8 +26,6 @@ import (
 type Interface interface {
 	// Machines returns a MachineInformer.
 	Machines() MachineInformer
-	// MachineSets returns a MachineSetInformer.
-	MachineSets() MachineSetInformer
 }
 
 type version struct {
@@ -44,9 +42,4 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // Machines returns a MachineInformer.
 func (v *version) Machines() MachineInformer {
 	return &machineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
-}
-
-// MachineSets returns a MachineSetInformer.
-func (v *version) MachineSets() MachineSetInformer {
-	return &machineSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
