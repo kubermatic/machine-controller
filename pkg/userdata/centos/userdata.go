@@ -277,6 +277,8 @@ write_files:
       ${CNI_PKG}
 
     cp /etc/sysconfig/kubelet-overwrite /etc/sysconfig/kubelet
+    sed -i '#/var/lib/kubelet/config.yaml#d' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+    systemctl daemon-reload
 
     systemctl enable --now docker
     systemctl enable --now kubelet
