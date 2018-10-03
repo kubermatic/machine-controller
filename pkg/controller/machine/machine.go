@@ -725,28 +725,14 @@ func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 	if err != nil {
 		return fmt.Errorf("failed to get node reference for %s : %v", node.Name, err)
 	}
-
-	if !equality.Semantic.DeepEqual(machine.Status.NodeRef, ref) {
+	if !equality.Semantic.DeepEqual(machine.Status.NodeRef, ref) ||
+		machine.Status.Versions == nil ||
+		machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
 		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Status.NodeRef = ref
+			m.Status.Versions = &clusterv1alpha1.MachineVersionInfo{Kubelet: node.Status.NodeInfo.KubeletVersion}
 		}); err != nil {
-			return fmt.Errorf("failed to update machine: %v", err)
-		}
-	}
-
-	if machine.Status.Versions == nil {
-		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			m.Status.Versions = &clusterv1alpha1.MachineVersionInfo{}
-		}); err != nil {
-			return fmt.Errorf("failed to update machine: %v", err)
-		}
-	}
-
-	if machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
-		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			m.Status.Versions.Kubelet = node.Status.NodeInfo.KubeletVersion
-		}); err != nil {
-			return fmt.Errorf("failed to update machine: %v", err)
+			return fmt.Errorf("failed to update machine after setting its status: %v", err)
 		}
 	}
 
