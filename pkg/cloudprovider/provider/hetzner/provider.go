@@ -200,7 +200,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 		PublicKey: sshkey.PublicKey,
 	})
 	if err != nil || res.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("creating temporary ssh key failed with http status %d and error %v", res.StatusCode, err)
+		var statusCode int
+		if res != nil {
+			statusCode = res.StatusCode
+		}
+		return nil, fmt.Errorf("creating temporary ssh key failed with http status %d and error %v", statusCode, err)
 	}
 	defer func() {
 		_, err := client.SSHKey.Delete(ctx, hkey)
