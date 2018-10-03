@@ -57,7 +57,7 @@ if ! ls \$HOME/.kube/config; then
   mkdir -p \$HOME/.kube
   cp -i /etc/kubernetes/admin.conf \$HOME/.kube/config
   kubectl taint nodes --all node-role.kubernetes.io/master-
-  kubectl get configmap kubelet-config-1.12 -o yaml \
+  kubectl get configmap -n kube-system kubelet-config-1.12 -o yaml \
    |sed '/creationTimestamp/d;/resourceVersion/d;/selfLink/d;/uid/d;s/kubelet-config-1.12/kubelet-config-1.11/g' \
    |kubectl apply -f -
 fi
