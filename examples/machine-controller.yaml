@@ -114,13 +114,14 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: machine-controller:kubelet-config-1.11
+  name: machine-controller:kubelet-config
   namespace: kube-system
 rules:
 - apiGroups:
   - ""
   resourceNames:
   - kubelet-config-1.11
+  - kubelet-config-1.12
   resources:
   - configmaps
   verbs:
