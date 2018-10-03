@@ -24,16 +24,16 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 
 	machineDeployment, err = createAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
 	if err != nil {
-		return fmt.Errorf("failed to verify creation of node for machineDeployment: %v", err)
+		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %v", err)
 	}
 
 	if err := updateMachineDeployment(machineDeployment, clusterClient, func(md *v1alpha1.MachineDeployment) {
 		md.Spec.Template.Labels["testUpdate"] = "true"
 	}); err != nil {
-		return fmt.Errorf("failed to update machineDeployment %s after modiying it: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to update MachineDeployment %s after modifying it: %v", machineDeployment.Name, err)
 	}
 
-	glog.Infof("Waiting for second machineSet to appear after updating machineDeployment %s", machineDeployment.Name)
+	glog.Infof("Waiting for second MachineSet to appear after updating MachineDeployment %s", machineDeployment.Name)
 	var machineSets []v1alpha1.MachineSet
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
 		machineSets, err = getMachingMachineSets(machineDeployment, clusterClient)
@@ -52,9 +52,9 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	}); err != nil {
 		return err
 	}
-	glog.Infof("Found second machineSet for machineDeployment %s!", machineDeployment.Name)
+	glog.Infof("Found second MachineSet for MachineDeployment %s!", machineDeployment.Name)
 
-	glog.Infof("Waiting for new machineSets node to appear")
+	glog.Infof("Waiting for new MachineSets node to appear")
 	var newestMachineSet, oldMachineSet v1alpha1.MachineSet
 	if machineSets[0].CreationTimestamp.Before(&machineSets[1].CreationTimestamp) {
 		newestMachineSet = machineSets[1]
@@ -76,17 +76,17 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	}); err != nil {
 		return err
 	}
-	glog.Infof("New machineSet %s appeared with %v machines", newestMachineSet.Name, len(machines))
+	glog.Infof("New MachineSet %s appeared with %v machines", newestMachineSet.Name, len(machines))
 
-	glog.Infof("Waiting for new machineSet %s to get a ready node", newestMachineSet.Name)
+	glog.Infof("Waiting for new MachineSet %s to get a ready node", newestMachineSet.Name)
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
 		return hasMachineReadyNode(&machines[0], kubeClient, clusterClient)
 	}); err != nil {
 		return err
 	}
-	glog.Infof("Found ready node for machineSet %s", newestMachineSet.Name)
+	glog.Infof("Found ready node for MachineSet %s", newestMachineSet.Name)
 
-	glog.Infof("Waiting for old machineSet %s to be scaled down and have no associated machines",
+	glog.Infof("Waiting for old MachineSet %s to be scaled down and have no associated machines",
 		oldMachineSet.Name)
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
 		machineSet, err := clusterClient.ClusterV1alpha1().MachineSets(oldMachineSet.Namespace).Get(oldMachineSet.Name, metav1.GetOptions{})
@@ -104,28 +104,28 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	}); err != nil {
 		return err
 	}
-	glog.Infof("Old machineSet %s got scaled down and has no associated machines anymore", oldMachineSet.Name)
+	glog.Infof("Old MachineSet %s got scaled down and has no associated machines anymore", oldMachineSet.Name)
 
-	glog.Infof("Setting replicas of machineDeployment %s to 0 and waiting until it has no associated machines", machineDeployment.Name)
+	glog.Infof("Setting replicas of MachineDeployment %s to 0 and waiting until it has no associated machines", machineDeployment.Name)
 	if err := updateMachineDeployment(machineDeployment, clusterClient, func(md *v1alpha1.MachineDeployment) {
 		md.Spec.Replicas = getInt32Ptr(0)
 	}); err != nil {
-		return fmt.Errorf("failed to update replicas of machineDeployment %s: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to update replicas of MachineDeployment %s: %v", machineDeployment.Name, err)
 	}
-	glog.Infof("Successfully set replicas of machineDeployment %s to 0", machineDeployment.Name)
+	glog.Infof("Successfully set replicas of MachineDeployment %s to 0", machineDeployment.Name)
 
-	glog.Infof("Waiting for machineDeployment %s to not have any associated machines", machineDeployment.Name)
+	glog.Infof("Waiting for MachineDeployment %s to not have any associated machines", machineDeployment.Name)
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
 		machines, err := getMatchingMachines(machineDeployment, clusterClient)
 		return len(machines) == 0, err
 	}); err != nil {
 		return err
 	}
-	glog.Infof("Successfully waited for machineDeployment %s to not have any associated machines", machineDeployment.Name)
+	glog.Infof("Successfully waited for MachineDeployment %s to not have any associated machines", machineDeployment.Name)
 
-	glog.Infof("Deleting machineDeployment %s and waiting for it to disappear", machineDeployment.Name)
+	glog.Infof("Deleting MachineDeployment %s and waiting for it to disappear", machineDeployment.Name)
 	if err := clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Delete(machineDeployment.Name, nil); err != nil {
-		return fmt.Errorf("failed to delete machineDeployment %s: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to delete MachineDeployment %s: %v", machineDeployment.Name, err)
 	}
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
 		_, err := clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Get(machineDeployment.Name, metav1.GetOptions{})
@@ -136,6 +136,6 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	}); err != nil {
 		return err
 	}
-	glog.Infof("Successfully deleted machineDeployment %s!", machineDeployment.Name)
+	glog.Infof("Successfully deleted MachineDeployment %s!", machineDeployment.Name)
 	return nil
 }
