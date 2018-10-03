@@ -222,7 +222,7 @@ func main() {
 		kubeconfigProvider:   kubeconfigProvider,
 		name:                 name,
 		prometheusRegisterer: prometheusRegistry,
-		cfg:                  cfg,
+		cfg:                  machineCfg,
 	}
 
 	kubeInformerFactory.Start(stopCh)
