@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 
@@ -51,7 +50,7 @@ kPe6XoSbiLm/kxk32T0=
 	kubeconfig = &clientcmdapi.Config{
 		Clusters: map[string]*clientcmdapi.Cluster{
 			"": &clientcmdapi.Cluster{
-				Server: "https://server:443",
+				Server:                   "https://server:443",
 				CertificateAuthorityData: []byte(pemCertificate),
 			},
 		},
@@ -87,14 +86,10 @@ func TestProvider_UserData(t *testing.T) {
 		kubernetesCACert string
 	}{
 		{
-			name: "docker-1.12.6-disable-auto-update-aws",
+			name: "v1.9.2-disable-auto-update-aws",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "1.12.6",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -108,19 +103,15 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DisableAutoUpdate: true},
 		},
 		{
-			name: "docker-1.12.6-auto-update-openstack-multiple-dns",
+			name: "v1.10.3-auto-update-openstack-multiple-dns",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "1.12.6",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.2",
+					Kubelet: "1.10.3",
 				},
 			},
 			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
@@ -129,14 +120,10 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DisableAutoUpdate: false},
 		},
 		{
-			name: "docker-1.12.6-auto-update-openstack-kubelet-v-version-prefix",
+			name: "auto-update-openstack-kubelet-v-version-prefix",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "1.12.6",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -150,7 +137,7 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DisableAutoUpdate: false},
 		},
 		{
-			name: "docker-1.12.6-vsphere-static-ipconfig",
+			name: "v1.11.2-vsphere-static-ipconfig",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -161,15 +148,11 @@ func TestProvider_UserData(t *testing.T) {
 						Servers: []string{"8.8.8.8"},
 					},
 				},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "1.12.6",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.9.2",
+					Kubelet: "1.11.2",
 				},
 			},
 			ccProvider:       &fakeCloudConfigProvider{name: "vsphere", config: "{vsphere-config:true}", err: nil},
@@ -178,7 +161,7 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DisableAutoUpdate: true},
 		},
 		{
-			name: "docker-1.12.6-vsphere-overwrite-cloudconfig",
+			name: "v1.12.0-vsphere-overwrite-cloudconfig",
 			providerConfig: &providerconfig.Config{
 				CloudProvider:        "vsphere",
 				OverwriteCloudConfig: stringPtr("my\ncustom\ncloud-config"),
@@ -190,15 +173,11 @@ func TestProvider_UserData(t *testing.T) {
 						Servers: []string{"8.8.8.8"},
 					},
 				},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "1.12.6",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.9.2",
+					Kubelet: "v1.12.0",
 				},
 			},
 			ccProvider:       &fakeCloudConfigProvider{name: "vsphere", config: "{vsphere-config:true}", err: nil},

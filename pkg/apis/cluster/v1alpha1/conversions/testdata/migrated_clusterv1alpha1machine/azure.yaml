@@ -41,9 +41,6 @@ spec:
             namespace: kube-system
         vmSize: Standard_B1ms
         vnetName: << VNET_NAME >>
-      containerRuntimeInfo:
-        name: docker
-        version: ""
       operatingSystem: coreos
       operatingSystemSpec:
         distUpgradeOnBoot: false

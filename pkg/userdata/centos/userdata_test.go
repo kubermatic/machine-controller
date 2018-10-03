@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/pmezard/go-difflib/difflib"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -64,37 +62,42 @@ func TestUserDataGeneration(t *testing.T) {
 		name          string
 		spec          clusterv1alpha1.MachineSpec
 		clusterDNSIPs []net.IP
-		dockerVersion string
 	}{
 		{
-			name: "docker-1.13-kubelet-v1.9-aws",
+			name: "kubelet-v1.9-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.9.6",
 				},
 			},
-			dockerVersion: "1.13",
 		},
 		{
-			name: "docker-1.13-kubelet-v1.11-aws",
+			name: "kubelet-v1.10-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.11.0",
+					Kubelet: "1.10.2",
 				},
 			},
-			dockerVersion: "1.13",
 		},
 		{
-			name: "docker-1.13-kubelet-v1.8-aws",
+			name: "kubelet-v1.11-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.8.5",
+					Kubelet: "1.11.3",
 				},
 			},
-			dockerVersion: "1.13",
+		},
+		{
+			name: "kubelet-v1.12-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.12.0",
+				},
+			},
 		},
 	}
 
@@ -105,15 +108,9 @@ func TestUserDataGeneration(t *testing.T) {
 	provider := Provider{}
 
 	for _, test := range tests {
-		containerRuntimeInfo := machinesv1alpha1.ContainerRuntimeInfo{Name: "docker", Version: test.dockerVersion}
 		emtpyProviderConfig := clusterv1alpha1.ProviderConfig{
 			Value: &runtime.RawExtension{}}
-		providerConfig, err := providerconfig.AddContainerRuntimeInfoToProviderconfig(emtpyProviderConfig,
-			containerRuntimeInfo)
-		if err != nil {
-			t.Fatalf("Failed to add containerRuntimeInfo to providerconfig: %v", err)
-		}
-		test.spec.ProviderConfig = *providerConfig
+		test.spec.ProviderConfig = emtpyProviderConfig
 
 		userdata, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
 		if err != nil {

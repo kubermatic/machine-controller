@@ -31,8 +31,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime/docker"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 	"github.com/prometheus/client_golang/prometheus"
@@ -56,7 +54,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	machinescheme "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme"
@@ -405,14 +403,14 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// We use a new variable here to be able to put the Event on the machine even thought
-	// c.defaultContainerRuntime returns a nil pointer for the machine in case of an error
-	machineWithDefaultedContainerRuntime, err := c.defaultContainerRuntime(machine, userdataProvider)
+	// c.defaultMachine returns a nil pointer for the machine in case of an error
+	defaultedMachine, err := c.defaultMachine(machine, userdataProvider)
 	if err != nil {
-		errorMessage := fmt.Sprintf("failed to default the container runtime version: %v", err)
-		c.recorder.Event(machine, corev1.EventTypeWarning, "ContainerRuntimeDefaultingFailed", errorMessage)
+		errorMessage := fmt.Sprintf("failed to default the Machine specs: %v", err)
+		c.recorder.Event(machine, corev1.EventTypeWarning, "MachineDefaultingFailed", errorMessage)
 		return errors.New(errorMessage)
 	}
-	machine = machineWithDefaultedContainerRuntime
+	machine = defaultedMachine
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
 	if machine.Status.NodeRef == nil {
@@ -771,7 +769,7 @@ func (c *Controller) getNode(instance instance.Instance, provider providerconfig
 	return nil, false, nil
 }
 
-func (c *Controller) defaultContainerRuntime(machine *clusterv1alpha1.Machine, prov userdata.Provider) (*clusterv1alpha1.Machine, error) {
+func (c *Controller) defaultMachine(machine *clusterv1alpha1.Machine, prov userdata.Provider) (*clusterv1alpha1.Machine, error) {
 	var err error
 
 	if machine.Spec.Versions.Kubelet == "" {
@@ -782,56 +780,6 @@ func (c *Controller) defaultContainerRuntime(machine *clusterv1alpha1.Machine, p
 		}
 	}
 
-	containerRuntimeInfo, err := providerconfig.GetContainerRuntimeInfo(machine.Spec.ProviderConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract containerRuntimeInfo from machine %s: %v", machine.Name, err)
-	}
-
-	if containerRuntimeInfo.Name == "" {
-		containerRuntimeInfo.Name = containerruntime.Docker
-	}
-
-	if containerRuntimeInfo.Version == "" {
-		var (
-			defaultVersions []string
-			err             error
-		)
-		switch containerRuntimeInfo.Name {
-		case containerruntime.Docker:
-			defaultVersions, err = docker.GetOfficiallySupportedVersions(machine.Spec.Versions.Kubelet)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get a officially supported docker version for the given kubelet version: %v", err)
-			}
-		default:
-			return nil, fmt.Errorf("invalid container runtime. Supported: '%s'", containerruntime.Docker)
-		}
-
-		providerSupportedVersions := prov.SupportedContainerRuntimes()
-		for _, v := range defaultVersions {
-			for _, sv := range providerSupportedVersions {
-				if sv.Version == v {
-					// we should not return asap as we prefer the highest supported version
-					containerRuntimeInfo.Version = sv.Version
-				}
-			}
-		}
-		if containerRuntimeInfo.Version == "" {
-			return nil, fmt.Errorf("no supported versions available for '%s'", containerRuntimeInfo.Name)
-		}
-
-		defaultedProviderConfig, err := providerconfig.AddContainerRuntimeInfoToProviderconfig(machine.Spec.ProviderConfig,
-			containerRuntimeInfo)
-		if err != nil {
-			return nil, fmt.Errorf("failed to update provider config with defaulted container runtime: %v", err)
-		}
-		machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			m.Spec.ProviderConfig = *defaultedProviderConfig
-		})
-		if err != nil {
-			return nil, err
-		}
-		return machine, err
-	}
 	return machine, nil
 }
 

@@ -226,17 +226,6 @@ type MachineVersionInfo struct {
 	// master.
 	// +optional
 	ControlPlane string `json:"controlPlane,omitempty"`
-
-	// Name/version of container runtime
-	ContainerRuntime ContainerRuntimeInfo `json:"containerRuntime"`
-}
-
-type ContainerRuntimeInfo struct {
-	// docker, rkt, containerd, ...
-	Name string `json:"name"`
-
-	// Semantic version of the container runtime to use
-	Version string `json:"version"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

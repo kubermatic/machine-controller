@@ -26,9 +26,6 @@ spec:
         tags:
           KubernetesCluster: 6qsm86c2d
         vpcId: vpc-819f62e9
-      containerRuntimeInfo:
-        name: docker
-        version: "1.13"
       operatingSystem: coreos
       operatingSystemSpec:
         disableAutoUpdate: true

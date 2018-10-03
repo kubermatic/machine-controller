@@ -22,9 +22,6 @@ spec:
         tags:
         - machine-controller
         token: token
-      containerRuntimeInfo:
-        name: docker
-        version: "1.13"
       operatingSystem: coreos
       operatingSystemSpec:
         disableAutoUpdate: true

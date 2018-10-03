@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -35,5 +34,4 @@ func ForOS(os providerconfig.OperatingSystem) (Provider, error) {
 
 type Provider interface {
 	UserData(spec clusterv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error)
-	SupportedContainerRuntimes() []machinesv1alpha1.ContainerRuntimeInfo
 }

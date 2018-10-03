@@ -23,6 +23,3 @@ spec:
   - "Node"
   versions:
     kubelet: "1.9.6"
-    # Must be 'docker' if you don't use Ubuntu
-    containerRuntime:
-      name: "docker"
