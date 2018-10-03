@@ -43,8 +43,7 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
 	}
 
-	msg := "all good, successfully verified that a machine/node has been created and then deleted"
-	glog.Infoln(msg)
+	glog.Infof("Successfully finished test for machineDeployment %s", machineDeployment.Name)
 
 	return nil
 }
@@ -109,10 +108,11 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to created the new machineSet, err: %v", err)
+		return nil, fmt.Errorf("failed waiting for machineDeployment %s to get a node: %v", machineDeployment.Name, err)
 	}
+	glog.Infof("Found a node for machineDeployment %s", machineDeployment.Name)
 
-	glog.Infof("waiting for status = %s to come \n", corev1.NodeReady)
+	glog.Infof("Waiting for node of machineDeployment %s to become ready", machineDeployment.Name)
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		machines, pollErr := getMatchingMachines(machineDeployment, clusterClient)
 		if pollErr != nil || len(machines) < 1 {
@@ -130,7 +130,7 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("falied to created the new machine, err = %v", err)
+		return nil, fmt.Errorf("failed waiting for machine %s to get a node in ready state: %v", machineDeployment.Name, err)
 	}
 	return machineDeployment, nil
 }
@@ -176,7 +176,7 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		}
 		return true, nil
 	}); err != nil {
-		return fmt.Errorf("failed to wait for machines to be deleted, err = %v", err)
+		return fmt.Errorf("failed to wait for machines of machineDeployment %s to be deleted: %v", machineDeployment.Name, err)
 	}
 
 	glog.V(2).Infof("Deleting machineDeployment %s", machineDeployment.Name)
