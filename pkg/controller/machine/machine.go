@@ -715,7 +715,6 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 
 }
 
-//TODO: Run one update only
 func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node *corev1.Node) error {
 	if node == nil {
 		return nil
