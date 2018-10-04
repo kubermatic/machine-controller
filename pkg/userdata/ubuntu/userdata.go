@@ -102,8 +102,6 @@ func (p Provider) UserData(
 		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
 	}
 
-	crPkg, crPkgVersion := getDockerInstallCandidate(kubeletVersion)
-
 	data := struct {
 		MachineSpec           clusterv1alpha1.MachineSpec
 		ProviderConfig        *providerconfig.Config
@@ -126,8 +124,6 @@ func (p Provider) UserData(
 		BoostrapToken:         bootstrapToken,
 		CloudProvider:         cpName,
 		CloudConfig:           cpConfig,
-		CRAptPackage:          crPkg,
-		CRAptPackageVersion:   crPkgVersion,
 		KubeadmDropInFilename: kubeadmDropInFilename,
 		ClusterDNSIPs:         clusterDNSIPs,
 		KubeadmCACertHash:     kubeadmCACertHash,
@@ -200,7 +196,7 @@ write_files:
     # an apt-mark hold after the install won't do it, which is why we test here if the binaries exist and if
     # yes put them on hold
     set +e
-    which docker && apt-mark hold docker docker-ce
+    which docker && apt-mark hold docker.io docker-ce
     which kubelet && apt-mark hold kubelet
     which kubeadm && apt-mark hold kubeadm
 
@@ -218,21 +214,10 @@ write_files:
       reboot
     fi
 
-    export CR_PKG=''
-{{- if .CRAptPackage }}
-{{- if ne .CRAptPackageVersion "" }}
-    export CR_PKG='{{ .CRAptPackage }}={{ .CRAptPackageVersion }}'
-{{- else }}
-    export CR_PKG='{{ .CRAptPackage }}'
+    export CR_PKG='docker-ce=18.06.0~ce~3-0~ubuntu'
+{{- if semverCompare "<1.12.0" .KubeletVersion }}
+    export CR_PKG='docker.io=17.12.1-0ubuntu1'
 {{ end }}
-{{ end }}
-
-    # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
-    # specified, installation of the kube packages fails
-    export CNI_PKG=''
-    {{- if semverCompare "=1.8.X" .KubeletVersion }}
-    export CNI_PKG='kubernetes-cni=0.5.1-00'
-    {{- end }}
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
@@ -255,7 +240,6 @@ write_files:
       open-vm-tools \
       kubelet={{ .KubeletVersion }}-00 \
       kubeadm={{ .KubeletVersion }}-00 \
-      ${CNI_PKG}
 
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
 
