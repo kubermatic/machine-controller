@@ -223,8 +223,7 @@ write_files:
       ethtool \
       nfs-utils \
       bash-completion \
-      sudo \
-      ${CNI_PKG}
+      sudo
 
     cp /etc/sysconfig/kubelet-overwrite /etc/sysconfig/kubelet
 
