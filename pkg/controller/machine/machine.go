@@ -238,24 +238,40 @@ func (c *Controller) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.
 	return listerNode.DeepCopy(), nil
 }
 
-func (c *Controller) updateMachine(
-	namespace, name string, modify func(*clusterv1alpha1.Machine)) (*clusterv1alpha1.Machine, error) {
+func (c *Controller) updateMachine(machine *clusterv1alpha1.Machine, modify func(*clusterv1alpha1.Machine)) (*clusterv1alpha1.Machine, error) {
 	var updatedMachine *clusterv1alpha1.Machine
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		var retryErr error
 
-		//Get latest version from API
-		currentMachine, err := c.machineClient.ClusterV1alpha1().Machines(namespace).Get(name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
+	// Both machine and updatedMachine can be nil later on, so we store the namespace and name here
+	namespace := machine.Namespace
+	name := machine.Name
+	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var getErr, retryErr error
 
 		// Apply modifications
-		modify(currentMachine)
+		// machine could be nil here if the get after a failed update failed
+		if machine == nil {
+			machine, getErr = c.machineClient.ClusterV1alpha1().Machines(namespace).Get(name, metav1.GetOptions{})
+			if getErr != nil {
+				return getErr
+			}
+		}
+		modify(machine)
 
-		// Update the machine
-		updatedMachine, retryErr = c.machineClient.ClusterV1alpha1().Machines(namespace).Update(currentMachine)
+		// Update the machine, if that fails, get the latest version from the api
+		// we deliberately try to update first via the provided machine object
+		// to not have at least one get call per update as we do a lot of updates
+		// which gets us ratelimited very quickly which then creates issues when there is an actual conflict
+		updatedMachine, retryErr = c.machineClient.ClusterV1alpha1().Machines(namespace).Update(machine)
+		if retryErr != nil {
+			//Get latest version from API
+			machine, getErr = c.machineClient.ClusterV1alpha1().Machines(namespace).Get(name, metav1.GetOptions{})
+			if getErr != nil {
+				return getErr
+			}
+			return retryErr
+		}
 		return retryErr
+
 	})
 
 	return updatedMachine, err
@@ -263,7 +279,7 @@ func (c *Controller) updateMachine(
 
 func (c *Controller) clearMachineErrorIfSet(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
 	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
-		return c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Status.ErrorMessage = nil
 			m.Status.ErrorReason = nil
 		})
@@ -274,7 +290,7 @@ func (c *Controller) clearMachineErrorIfSet(machine *clusterv1alpha1.Machine) (*
 // updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not
 // this essentially overwrites previous values
 func (c *Controller) updateMachineError(machine *clusterv1alpha1.Machine, reason common.MachineStatusError, message string) (*clusterv1alpha1.Machine, error) {
-	return c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+	return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.ErrorMessage = &message
 		m.Status.ErrorReason = &reason
 	})
@@ -338,7 +354,7 @@ func (c *Controller) syncHandler(key string) error {
 		machine.Annotations = map[string]string{}
 	}
 	if _, ok := machine.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName]; !ok {
-		machine, err := c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		machine, err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			if m.Annotations == nil {
 				m.Annotations = map[string]string{}
 			}
@@ -353,7 +369,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// step 1: verify machine spec and provider config
 	if machine.Spec.Name == "" {
-		machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Spec.Name = m.Name
 		})
 		if err != nil {
@@ -408,7 +424,7 @@ func (c *Controller) syncHandler(key string) error {
 		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
 		if kerrors.IsNotFound(err) {
 			glog.V(4).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
-			_, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+			_, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 				m.Status.NodeRef = nil
 			})
 			return err
@@ -442,7 +458,7 @@ func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 			return machine, nil
 		}
 	}
-	return c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+	return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Conditions = append(m.Status.Conditions, corev1.NodeCondition{Type: corev1.NodeReady,
 			Status: corev1.ConditionTrue,
 		})
@@ -453,7 +469,7 @@ func (c *Controller) cleanupMachineAfterDeletion(machine *clusterv1alpha1.Machin
 	var err error
 	glog.V(4).Infof("Removing finalizers from machine machine %s", machine.Name)
 
-	if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+	if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(finalizerDeleteInstance)
 		finalizers.Delete(finalizerDeleteNode)
@@ -520,7 +536,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	if changed {
 		glog.V(4).Infof("updating machine '%s' with defaults...", machine.Name)
 		c.recorder.Event(machine, corev1.EventTypeNormal, "Defaulted", "Updated machine with defaults")
-		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Spec = defaultedMachineSpec
 		}); err != nil {
 			return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
@@ -615,7 +631,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 	for _, address := range addresses {
 		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address})
 	}
-	machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+	machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Addresses = machineAddresses
 	})
 	if err != nil {
@@ -708,28 +724,14 @@ func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 	if err != nil {
 		return fmt.Errorf("failed to get node reference for %s : %v", node.Name, err)
 	}
-
-	if !equality.Semantic.DeepEqual(machine.Status.NodeRef, ref) {
-		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+	if !equality.Semantic.DeepEqual(machine.Status.NodeRef, ref) ||
+		machine.Status.Versions == nil ||
+		machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
+		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Status.NodeRef = ref
+			m.Status.Versions = &clusterv1alpha1.MachineVersionInfo{Kubelet: node.Status.NodeInfo.KubeletVersion}
 		}); err != nil {
-			return fmt.Errorf("failed to update machine: %v", err)
-		}
-	}
-
-	if machine.Status.Versions == nil {
-		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
-			m.Status.Versions = &clusterv1alpha1.MachineVersionInfo{}
-		}); err != nil {
-			return fmt.Errorf("failed to update machine: %v", err)
-		}
-	}
-
-	if machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
-		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
-			m.Status.Versions.Kubelet = node.Status.NodeInfo.KubeletVersion
-		}); err != nil {
-			return fmt.Errorf("failed to update machine: %v", err)
+			return fmt.Errorf("failed to update machine after setting its status: %v", err)
 		}
 	}
 
@@ -773,7 +775,7 @@ func (c *Controller) defaultContainerRuntime(machine *clusterv1alpha1.Machine, p
 	var err error
 
 	if machine.Spec.Versions.Kubelet == "" {
-		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Spec.Versions.Kubelet = latestKubernetesVersion
 		}); err != nil {
 			return nil, err
@@ -822,7 +824,7 @@ func (c *Controller) defaultContainerRuntime(machine *clusterv1alpha1.Machine, p
 		if err != nil {
 			return nil, fmt.Errorf("failed to update provider config with defaulted container runtime: %v", err)
 		}
-		machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Spec.ProviderConfig = *defaultedProviderConfig
 		})
 		if err != nil {
@@ -925,7 +927,7 @@ func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
 	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
 		var err error
-		if machine, err = c.updateMachine(machine.Namespace, machine.Name, func(m *clusterv1alpha1.Machine) {
+		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			finalizers := sets.NewString(m.Finalizers...)
 			finalizers.Insert(finalizerDeleteInstance)
 			finalizers.Insert(finalizerDeleteNode)

@@ -35,7 +35,7 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 
 	machineDeployment, err = createAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
 	if err != nil {
-		return fmt.Errorf("failed to verify creation of node for machineDeployment: %v", err)
+		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %v", err)
 	}
 
 	err = deleteAndAssure(machineDeployment, clusterClient, kubeClient, timeout)
@@ -43,8 +43,7 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
 	}
 
-	msg := "all good, successfully verified that a machine/node has been created and then deleted"
-	glog.Infoln(msg)
+	glog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
 
 	return nil
 }
@@ -96,7 +95,7 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
-	glog.Infof("creating a new \"%s\" machineDeployment\n", machineDeployment.Name)
+	glog.Infof("creating a new \"%s\" MachineDeployment\n", machineDeployment.Name)
 	machineDeployment, err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Create(machineDeployment)
 	if err != nil {
 		return nil, err
@@ -109,10 +108,11 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to created the new machineSet, err: %v", err)
+		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %v", machineDeployment.Name, err)
 	}
+	glog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 
-	glog.Infof("waiting for status = %s to come \n", corev1.NodeReady)
+	glog.Infof("Waiting for node of MachineDeployment %s to become ready", machineDeployment.Name)
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		machines, pollErr := getMatchingMachines(machineDeployment, clusterClient)
 		if pollErr != nil || len(machines) < 1 {
@@ -130,7 +130,7 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("falied to created the new machine, err = %v", err)
+		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node in ready state: %v", machineDeployment.Name, err)
 	}
 	return machineDeployment, nil
 }
@@ -154,7 +154,7 @@ func hasMachineReadyNode(machine *v1alpha1.Machine, kubeClient kubernetes.Interf
 
 func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
-	glog.Infof("Starting to clean up machineDeployment %s", machineDeployment.Name)
+	glog.Infof("Starting to clean up MachineDeployment %s", machineDeployment.Name)
 
 	// We first scale down to 0, because once the machineSets are deleted we can not
 	// match machines anymore and we do want to verify not only the node is gone but also
@@ -162,7 +162,7 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 	if err := updateMachineDeployment(machineDeployment, clusterClient, func(md *v1alpha1.MachineDeployment) {
 		md.Spec.Replicas = getInt32Ptr(0)
 	}); err != nil {
-		return fmt.Errorf("failed to update replicas of machineDeployment %s: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to update replicas of MachineDeployment %s: %v", machineDeployment.Name, err)
 	}
 
 	// Ensure machines are gone
@@ -176,13 +176,13 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 		}
 		return true, nil
 	}); err != nil {
-		return fmt.Errorf("failed to wait for machines to be deleted, err = %v", err)
+		return fmt.Errorf("failed to wait for machines of MachineDeployment %s to be deleted: %v", machineDeployment.Name, err)
 	}
 
-	glog.V(2).Infof("Deleting machineDeployment %s", machineDeployment.Name)
+	glog.V(2).Infof("Deleting MachineDeployment %s", machineDeployment.Name)
 	err := clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Delete(machineDeployment.Name, nil)
 	if err != nil {
-		return fmt.Errorf("unable to remove machine deployment %s, due to %v", machineDeployment.Name, err)
+		return fmt.Errorf("unable to remove MachineDeployment %s, due to %v", machineDeployment.Name, err)
 	}
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		_, errGetMachineDeployment := clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Get(machineDeployment.Name, metav1.GetOptions{})
@@ -204,7 +204,7 @@ func assureNodeForMachineDeployment(machineDeployment *v1alpha1.MachineDeploymen
 
 	machines, err := getMatchingMachines(machineDeployment, clusterClient)
 	if err != nil {
-		return fmt.Errorf("failed to list machines: %v", err)
+		return fmt.Errorf("failed to list Machines: %v", err)
 	}
 
 	nodeForMachineExists := false
@@ -257,23 +257,23 @@ func getMatchingMachines(machineDeployment *v1alpha1.MachineDeployment, clusterC
 	if err != nil {
 		return nil, err
 	}
-	glog.V(2).Infof("Found %v matching machineSets for %s", len(matchingMachineSets), machineDeployment.Name)
+	glog.V(2).Infof("Found %v matching MachineSets for %s", len(matchingMachineSets), machineDeployment.Name)
 	var matchingMachines []v1alpha1.Machine
 	for _, machineSet := range matchingMachineSets {
 		machinesForMachineSet, err := getMatchingMachinesForMachineset(&machineSet, clusterClient)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get matching machines for machineset %s: %v", machineSet.Name, err)
+			return nil, fmt.Errorf("failed to get matching Machines for MachineSet %s: %v", machineSet.Name, err)
 		}
 		matchingMachines = append(matchingMachines, machinesForMachineSet...)
 	}
-	glog.V(2).Infof("Found %v matching machines for %s", len(matchingMachines), machineDeployment.Name)
+	glog.V(2).Infof("Found %v matching Machines for MachineDeployment %s", len(matchingMachines), machineDeployment.Name)
 	return matchingMachines, nil
 }
 
 func getMatchingMachinesForMachineset(machineSet *v1alpha1.MachineSet, clusterClient clientset.Interface) ([]v1alpha1.Machine, error) {
 	allMachines, err := clusterClient.ClusterV1alpha1().Machines(machineSet.Namespace).List(metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list machines: %v", err)
+		return nil, fmt.Errorf("failed to list Machines: %v", err)
 	}
 	var matchingMachines []v1alpha1.Machine
 	for _, machine := range allMachines.Items {
@@ -293,14 +293,14 @@ func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, cluste
 		machineDeployment, err = clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Get(machineDeployment.Name, metav1.GetOptions{})
 		if err != nil {
 			if !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to get machineDeployment %s: %v", machineDeployment.Name, err)
+				return nil, fmt.Errorf("failed to get MachineDeployment %s: %v", machineDeployment.Name, err)
 			}
 			return nil, nil
 		}
 	}
 	allMachineSets, err := clusterClient.ClusterV1alpha1().MachineSets(machineDeployment.Namespace).List(metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list machineSets: %v", err)
+		return nil, fmt.Errorf("failed to list MachineSets: %v", err)
 	}
 	var matchingMachineSets []v1alpha1.MachineSet
 	for _, machineSet := range allMachineSets.Items {

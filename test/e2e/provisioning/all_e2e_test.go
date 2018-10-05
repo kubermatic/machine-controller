@@ -11,45 +11,45 @@ import (
 )
 
 const (
-	do_manifest         = "./testdata/machinedeployment-digitalocean.yaml"
-	aws_manifest        = "./testdata/machinedeployment-aws.yaml"
-	azure_manifest      = "./testdata/machinedeployment-azure.yaml"
-	hz_manifest         = "./testdata/machinedeployment-hetzner.yaml"
-	vs_manifest         = "./testdata/machinedeployment-vsphere.yaml"
-	vssip_manifest      = "./testdata/machinedeployment-vsphere-static-ip.yaml"
-	os_manifest         = "./testdata/machinedeployment-openstack.yaml"
-	os_upgrade_manifest = "./testdata/machinedeployment-openstack-upgrade.yml"
+	do_manifest    = "./testdata/machinedeployment-digitalocean.yaml"
+	aws_manifest   = "./testdata/machinedeployment-aws.yaml"
+	azure_manifest = "./testdata/machinedeployment-azure.yaml"
+	hz_manifest    = "./testdata/machinedeployment-hetzner.yaml"
+	vs_manifest    = "./testdata/machinedeployment-vsphere.yaml"
+	vssip_manifest = "./testdata/machinedeployment-vsphere-static-ip.yaml"
+	//os_manifest         = "./testdata/machinedeployment-openstack.yaml"
+	//os_upgrade_manifest = "./testdata/machinedeployment-openstack-upgrade.yml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
 
-func TestOpenstackProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	osAuthUrl := os.Getenv("OS_AUTH_URL")
-	osDomain := os.Getenv("OS_DOMAIN")
-	osPassword := os.Getenv("OS_PASSWORD")
-	osRegion := os.Getenv("OS_REGION")
-	osUsername := os.Getenv("OS_USERNAME")
-	osTenant := os.Getenv("OS_TENANT_NAME")
-	osNetwork := os.Getenv("OS_NETWORK_NAME")
-
-	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
-	}
-
-	params := []string{
-		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
-		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
-		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
-		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
-		fmt.Sprintf("<< REGION >>=%s", osRegion),
-		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
-		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
-	}
-
-	runScenarios(t, nil, params, os_manifest, fmt.Sprintf("os-%s", *testRunIdentifier))
-}
+//func TestOpenstackProvisioningE2E(t *testing.T) {
+//	t.Parallel()
+//
+//	osAuthUrl := os.Getenv("OS_AUTH_URL")
+//	osDomain := os.Getenv("OS_DOMAIN")
+//	osPassword := os.Getenv("OS_PASSWORD")
+//	osRegion := os.Getenv("OS_REGION")
+//	osUsername := os.Getenv("OS_USERNAME")
+//	osTenant := os.Getenv("OS_TENANT_NAME")
+//	osNetwork := os.Getenv("OS_NETWORK_NAME")
+//
+//	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+//		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
+//	}
+//
+//	params := []string{
+//		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
+//		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
+//		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
+//		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
+//		fmt.Sprintf("<< REGION >>=%s", osRegion),
+//		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+//		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
+//	}
+//
+//	runScenarios(t, nil, params, os_manifest, fmt.Sprintf("os-%s", *testRunIdentifier))
+//}
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
@@ -198,39 +198,39 @@ func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
 // image and upgrade it prior to joining the cluster
-func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
-	// no t.Parallel(), since testScenario function already calls it
-
-	osAuthUrl := os.Getenv("OS_AUTH_URL")
-	osDomain := os.Getenv("OS_DOMAIN")
-	osPassword := os.Getenv("OS_PASSWORD")
-	osRegion := os.Getenv("OS_REGION")
-	osUsername := os.Getenv("OS_USERNAME")
-	osTenant := os.Getenv("OS_TENANT_NAME")
-	osNetwork := os.Getenv("OS_NETWORK_NAME")
-
-	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
-	}
-
-	params := []string{
-		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
-		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
-		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
-		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
-		fmt.Sprintf("<< REGION >>=%s", osRegion),
-		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
-		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
-	}
-	scenario := scenario{
-		name:              "Ubuntu Docker Kubernetes v1.10.5",
-		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.10.5",
-	}
-
-	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest, verifyCreateAndDelete)
-}
+//func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
+//	// no t.Parallel(), since testScenario function already calls it
+//
+//	osAuthUrl := os.Getenv("OS_AUTH_URL")
+//	osDomain := os.Getenv("OS_DOMAIN")
+//	osPassword := os.Getenv("OS_PASSWORD")
+//	osRegion := os.Getenv("OS_REGION")
+//	osUsername := os.Getenv("OS_USERNAME")
+//	osTenant := os.Getenv("OS_TENANT_NAME")
+//	osNetwork := os.Getenv("OS_NETWORK_NAME")
+//
+//	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+//		t.Fatal("unable to run test, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
+//	}
+//
+//	params := []string{
+//		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
+//		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
+//		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
+//		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
+//		fmt.Sprintf("<< REGION >>=%s", osRegion),
+//		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+//		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
+//	}
+//	scenario := scenario{
+//		name:              "Ubuntu Docker Kubernetes v1.10.5",
+//		osName:            "ubuntu",
+//		containerRuntime:  "docker",
+//		kubernetesVersion: "1.10.5",
+//	}
+//
+//	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest, verifyCreateAndDelete)
+//}
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
 // rolls over machines on changes in the machineDeployment

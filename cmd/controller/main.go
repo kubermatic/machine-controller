@@ -163,6 +163,15 @@ func main() {
 		glog.Fatalf("error building kubeconfig: %v", err)
 	}
 
+	// rest.Config has no DeepCopy() that returns another rest.Config, thus
+	// we simply build it twice
+	// We need a dedicated one for machines because we want to increate the
+	// QPS and Burst config there
+	machineCfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+	if err != nil {
+		glog.Fatalf("error building kubeconfig for machines: %v", err)
+	}
+
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
@@ -173,7 +182,12 @@ func main() {
 		glog.Fatalf("error building kubernetes clientset for extClient: %v", err)
 	}
 
-	machineClient, err := clusterv1alpha1clientset.NewForConfig(cfg)
+	// We do a huge amount of requests when processing some more machines
+	// as this controller still does defaulting and there is no seperate status
+	// object so conflicts happen often which results in retries
+	machineCfg.QPS = 20
+	machineCfg.Burst = 50
+	machineClient, err := clusterv1alpha1clientset.NewForConfig(machineCfg)
 	if err != nil {
 		glog.Fatalf("error building example clientset for machineClient: %v", err)
 	}
@@ -208,7 +222,7 @@ func main() {
 		kubeconfigProvider:   kubeconfigProvider,
 		name:                 name,
 		prometheusRegisterer: prometheusRegistry,
-		cfg:                  cfg,
+		cfg:                  machineCfg,
 	}
 
 	kubeInformerFactory.Start(stopCh)
