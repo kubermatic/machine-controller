@@ -53,7 +53,7 @@ write_files:
     # an apt-mark hold after the install won't do it, which is why we test here if the binaries exist and if
     # yes put them on hold
     set +e
-    which docker && apt-mark hold docker docker-ce
+    which docker && apt-mark hold docker.io docker-ce
     which kubelet && apt-mark hold kubelet
     which kubeadm && apt-mark hold kubeadm
 
@@ -63,18 +63,13 @@ write_files:
     # it works fine thought
     which docker && systemctl start docker
     set -e
-    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
 
-    export CR_PKG=''
+    export CR_PKG='docker-ce=18.06.0~ce~3-0~ubuntu'
     export CR_PKG='docker.io=17.12.1-0ubuntu1'
 
-
-    # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
-    # specified, installation of the kube packages fails
-    export CNI_PKG=''
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
@@ -95,9 +90,8 @@ write_files:
       util-linux \
       ${CR_PKG} \
       open-vm-tools \
-      kubelet=1.9.2-00 \
-      kubeadm=1.9.2-00 \
-      ${CNI_PKG}
+      kubelet=1.11.0-00 \
+      kubeadm=1.11.0-00 \
 
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
 
@@ -218,15 +212,8 @@ write_files:
       --hostname-override=node1 \
       --read-only-port=0 \
       --protect-kernel-defaults=true \
-      --resolv-conf=/run/systemd/resolve/resolv.conf \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local
-
-- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
-  permissions: "0644"
-  content: |
-    [Service]
-    EnvironmentFile=/etc/default/kubelet
 
 
 - path: "/etc/systemd/system/setup.service"

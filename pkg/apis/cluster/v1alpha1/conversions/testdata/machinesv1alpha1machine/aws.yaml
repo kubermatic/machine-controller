@@ -30,6 +30,3 @@ spec:
   - "Node"
   versions:
     kubelet: "v1.9.6"
-    containerRuntime:
-      name: "docker"
-      version: "1.13"

@@ -45,5 +45,3 @@ spec:
   - "Node"
   versions:
     kubelet: "v1.10.2"
-    containerRuntime:
-      name: "docker"

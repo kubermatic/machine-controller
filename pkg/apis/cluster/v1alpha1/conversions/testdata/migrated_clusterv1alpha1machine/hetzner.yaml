@@ -20,9 +20,6 @@ spec:
             key: token
             name: machine-controller-hetzner
             namespace: kube-system
-      containerRuntimeInfo:
-        name: docker
-        version: ""
       operatingSystem: ubuntu
       operatingSystemSpec:
         distUpgradeOnBoot: false

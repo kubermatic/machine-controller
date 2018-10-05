@@ -18,6 +18,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+export GOPATH=$(go env GOPATH)
+
 echo Removing old client
 rm -rf "pkg/crd/client"
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE}")

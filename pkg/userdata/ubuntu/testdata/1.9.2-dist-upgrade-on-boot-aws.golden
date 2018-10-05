@@ -23,7 +23,7 @@ write_files:
 
 - path: "/etc/kubernetes/cloud-config"
   content: |
-    {openstack-config:true}
+    {aws-config:true}
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
@@ -53,7 +53,7 @@ write_files:
     # an apt-mark hold after the install won't do it, which is why we test here if the binaries exist and if
     # yes put them on hold
     set +e
-    which docker && apt-mark hold docker docker-ce
+    which docker && apt-mark hold docker.io docker-ce
     which kubelet && apt-mark hold kubelet
     which kubeadm && apt-mark hold kubeadm
 
@@ -68,13 +68,9 @@ write_files:
       reboot
     fi
 
-    export CR_PKG=''
-    export CR_PKG='docker-ce=18.06.1~ce~3-0~ubuntu'
+    export CR_PKG='docker-ce=18.06.0~ce~3-0~ubuntu'
+    export CR_PKG='docker.io=17.12.1-0ubuntu1'
 
-
-    # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
-    # specified, installation of the kube packages fails
-    export CNI_PKG=''
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
@@ -97,7 +93,6 @@ write_files:
       open-vm-tools \
       kubelet=1.9.2-00 \
       kubeadm=1.9.2-00 \
-      ${CNI_PKG}
 
     cp /etc/default/kubelet-overwrite /etc/default/kubelet
 
@@ -213,7 +208,7 @@ write_files:
   content: |
     KUBELET_DNS_ARGS=
     KUBELET_EXTRA_ARGS=--authentication-token-webhook=true \
-      --cloud-provider=openstack \
+      --cloud-provider=aws \
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --read-only-port=0 \

@@ -69,20 +69,14 @@ write_files:
     setenforce 0 || true
     sysctl --system
 
-    # There is a dependency issue in the rpm repo for 1.8, if the cni package is not explicitly
-    # specified, installation of the kube packages fails
-    export CNI_PKG=''
-    export CNI_PKG='kubernetes-cni-0.5.1-1'
-
     yum install -y docker-1.13.1 \
-      kubelet-1.8.5 \
-      kubeadm-1.8.5 \
+      kubelet-1.9.6 \
+      kubeadm-1.9.6 \
       ebtables \
       ethtool \
       nfs-utils \
       bash-completion \
-      sudo \
-      ${CNI_PKG}
+      sudo
 
     cp /etc/sysconfig/kubelet-overwrite /etc/sysconfig/kubelet
 
@@ -92,6 +86,7 @@ write_files:
     kubeadm join \
       --token my-token \
       --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
+      --ignore-preflight-errors=CRI \
       server:443
 
 - path: "/usr/local/bin/supervise.sh"

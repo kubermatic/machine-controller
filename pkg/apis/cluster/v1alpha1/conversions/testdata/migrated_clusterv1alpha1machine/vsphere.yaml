@@ -28,9 +28,6 @@ spec:
         templateVMName: ubuntu-template
         username: << VSPHERE_USERNAME >>
         vsphereURL: << VSPHERE_ADDRESS >>
-      containerRuntimeInfo:
-        name: docker
-        version: "1.13"
       operatingSystem: ubuntu
       operatingSystemSpec:
         distUpgradeOnBoot: false

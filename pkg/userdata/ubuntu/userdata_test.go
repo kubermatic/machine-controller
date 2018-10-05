@@ -10,7 +10,6 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 
@@ -77,14 +76,10 @@ func TestProvider_UserData(t *testing.T) {
 		kubernetesCACert string
 	}{
 		{
-			name: "docker-17.12-dist-upgrade-on-boot-aws",
+			name: "1.9.2-dist-upgrade-on-boot-aws",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "17.12",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -98,14 +93,10 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "docker-17.12-kubelet-1.11-aws",
+			name: "1.11-aws",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "17.12",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -119,14 +110,10 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: false},
 		},
 		{
-			name: "docker-18.06-openstack-multiple-dns",
+			name: "1.9.2-openstack-multiple-dns",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "18.06",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -140,14 +127,10 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "docker-18.06-openstack-kubelet-v-version-prefix",
+			name: "openstack-kubelet-v-version-prefix",
 			providerConfig: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "18.06",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -161,15 +144,11 @@ func TestProvider_UserData(t *testing.T) {
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "docker-18.06-openstack-overwrite-cloud-config",
+			name: "openstack-overwrite-cloud-config",
 			providerConfig: &providerconfig.Config{
 				CloudProvider:        "openstack",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
-				ContainerRuntimeInfo: machinesv1alpha1.ContainerRuntimeInfo{
-					Name:    "docker",
-					Version: "18.06",
-				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},

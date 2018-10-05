@@ -10,11 +10,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime"
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -228,79 +224,6 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 		})
 	}
 
-}
-
-func TestController_defaultContainerRuntime(t *testing.T) {
-	tests := []struct {
-		name    string
-		machine *v1alpha1.Machine
-		os      providerconfig.OperatingSystem
-		err     error
-		resCR   machinesv1alpha1.ContainerRuntimeInfo
-	}{
-		{
-			name:  "v1.9.2 ubuntu - get default container runtime and version",
-			err:   nil,
-			os:    providerconfig.OperatingSystemUbuntu,
-			resCR: machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "18.06"},
-			machine: &v1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "testmachine",
-				},
-				Spec: v1alpha1.MachineSpec{
-					Versions: v1alpha1.MachineVersionInfo{
-						Kubelet: "1.9.2",
-					},
-					ProviderConfig: v1alpha1.ProviderConfig{Value: &runtime.RawExtension{}},
-				},
-			},
-		},
-		{
-			name:  "v1.9.2 coreos - get default docker version",
-			err:   nil,
-			os:    providerconfig.OperatingSystemCoreos,
-			resCR: machinesv1alpha1.ContainerRuntimeInfo{Name: containerruntime.Docker, Version: "1.12.6"},
-			machine: &v1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "testmachine",
-				},
-				Spec: v1alpha1.MachineSpec{
-					Versions: v1alpha1.MachineVersionInfo{
-						Kubelet: "1.9.2",
-					},
-					ProviderConfig: v1alpha1.ProviderConfig{Value: &runtime.RawExtension{}},
-				},
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			prov, err := userdata.ForOS(test.os)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			ctrl, _ := createTestMachineController(t, test.machine)
-
-			machine, err := ctrl.defaultContainerRuntime(test.machine.DeepCopy(), prov)
-			if diff := deep.Equal(err, test.err); diff != nil {
-				t.Errorf("expected to get '%v' instead got: '%v'", test.err, err)
-			}
-			if err != nil {
-				return
-			}
-
-			cr, err := providerconfig.GetContainerRuntimeInfo(machine.Spec.ProviderConfig)
-			if err != nil {
-				t.Fatalf("Failed to get container runtime from providerconfig: %v", err)
-			}
-
-			if diff := deep.Equal(cr, test.resCR); diff != nil {
-				t.Errorf("expected to get %s+%s instead got: %s+%s", test.resCR.Name, test.resCR.Version, cr.Name, cr.Version)
-			}
-		})
-	}
 }
 
 func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Controller, *clusterfake.Clientset) {

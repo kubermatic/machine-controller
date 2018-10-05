@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	ContainerRuntimeInfoKey = "containerRuntimeInfo"
-
 	TypeRevisionAnnotationName = "machine-controller/machine-type-revision"
 
 	TypeRevisionCurrentVersion = "d99b7630cf7803c40691b86f42ea99eb0e9128a3"
@@ -28,7 +26,7 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.ResourceVersion = ""
 	out.Generation = 0
 	out.CreationTimestamp = metav1.Time{}
-	out.ObjectMeta.Namespace = "kube-system"
+	out.ObjectMeta.Namespace = metav1.NamespaceSystem
 
 	// Add annotation that indicates the current revision used for the types
 	if out.Annotations == nil {
@@ -65,24 +63,6 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	if err = json.Unmarshal(inMachineVersionJSON, &out.Spec.Versions); err != nil {
 		return fmt.Errorf("failed to unmarshal downstreammachine version: %v", err)
 	}
-	out.Spec.ProviderConfig.Value.Raw, err = addContainerRuntimeInfoToProviderConfig(*out.Spec.ProviderConfig.Value,
-		in.Spec.Versions.ContainerRuntime)
-	if err != nil {
-		return fmt.Errorf("failed to add containerRuntimeInfo to providerConfig: %v", err)
-	}
 	out.Spec.ConfigSource = in.Spec.ConfigSource
 	return nil
-}
-
-func addContainerRuntimeInfoToProviderConfig(providerConfigValue runtime.RawExtension, containerRuntimeInfo machinesv1alpha1.ContainerRuntimeInfo) ([]byte, error) {
-	providerConfigMap := map[string]interface{}{}
-	if err := json.Unmarshal(providerConfigValue.Raw, &providerConfigMap); err != nil {
-		return nil, fmt.Errorf("failed to unmarshall provider config into map: %v", err)
-	}
-	// The JSON unmarshall makes the map a null pointer if providerConfigValue.Raw is empty
-	if providerConfigMap == nil {
-		providerConfigMap = map[string]interface{}{}
-	}
-	providerConfigMap[ContainerRuntimeInfoKey] = containerRuntimeInfo
-	return json.Marshal(providerConfigMap)
 }
