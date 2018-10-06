@@ -3,13 +3,13 @@ package ubuntu
 import (
 	"encoding/json"
 	"flag"
-	"io/ioutil"
+	"fmt"
 	"net"
-	"path/filepath"
 	"testing"
 
-	"github.com/pmezard/go-difflib/difflib"
+	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
+	"github.com/Masterminds/semver"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 
@@ -52,6 +52,10 @@ kPe6XoSbiLm/kxk32T0=
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": &clientcmdapi.AuthInfo{Token: "my-token"}}}
 )
 
+const (
+	defaultVersion = "1.11.3"
+)
+
 type fakeCloudConfigProvider struct {
 	config string
 	name   string
@@ -64,104 +68,157 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 
 var update = flag.Bool("update", false, "update .golden files")
 
-func TestProvider_UserData(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name             string
-		spec             clusterv1alpha1.MachineSpec
-		ccProvider       cloud.ConfigProvider
-		osConfig         *Config
-		providerConfig   *providerconfig.Config
-		DNSIPs           []net.IP
-		kubernetesCACert string
-	}{
-		{
-			name: "1.9.2-dist-upgrade-on-boot-aws",
+func getSimpleVersionTests() []userDataTestCase {
+	versions := []*semver.Version{
+		semver.MustParse("v1.9.10"),
+		semver.MustParse("v1.10.10"),
+		semver.MustParse("v1.11.3"),
+		semver.MustParse("v1.12.1"),
+	}
+
+	var tests []userDataTestCase
+	for _, v := range versions {
+		tests = append(tests, userDataTestCase{
+			name: fmt.Sprintf("version-%s", v.String()),
 			providerConfig: &providerconfig.Config{
-				CloudProvider: "aws",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.2",
+					Kubelet: v.String(),
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
+			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig:         &Config{DistUpgradeOnBoot: false},
+		})
+	}
+
+	return tests
+}
+
+type userDataTestCase struct {
+	name             string
+	spec             clusterv1alpha1.MachineSpec
+	ccProvider       cloud.ConfigProvider
+	osConfig         *Config
+	providerConfig   *providerconfig.Config
+	DNSIPs           []net.IP
+	kubernetesCACert string
+}
+
+func TestProvider_UserData(t *testing.T) {
+	t.Parallel()
+
+	tests := getSimpleVersionTests()
+	tests = append(tests, []userDataTestCase{
+		{
+			name: "dist-upgrade-on-boot",
+			providerConfig: &providerconfig.Config{
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
 			osConfig:         &Config{DistUpgradeOnBoot: true},
 		},
 		{
-			name: "1.11-aws",
+			name: "multiple-dns-servers",
 			providerConfig: &providerconfig.Config{
-				CloudProvider: "aws",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.11.0",
+					Kubelet: defaultVersion,
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
+			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			kubernetesCACert: "CACert",
+			osConfig:         &Config{DistUpgradeOnBoot: false},
+		},
+		{
+			name: "kubelet-version-without-v-prefix",
+			providerConfig: &providerconfig.Config{
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.11.3",
+				},
+			},
+			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
 			osConfig:         &Config{DistUpgradeOnBoot: false},
 		},
 		{
-			name: "1.9.2-openstack-multiple-dns",
+			name: "multiple-ssh-keys",
 			providerConfig: &providerconfig.Config{
-				CloudProvider: "openstack",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD", "ssh-rsa EEEFFF"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.2",
+					Kubelet: "1.11.3",
+				},
+			},
+			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig:         &Config{DistUpgradeOnBoot: false},
+		},
+		{
+			name: "openstack",
+			providerConfig: &providerconfig.Config{
+				CloudProvider: "openstack",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
 				},
 			},
 			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: true},
-		},
-		{
-			name: "openstack-kubelet-v-version-prefix",
-			providerConfig: &providerconfig.Config{
-				CloudProvider: "openstack",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.9.2",
-				},
-			},
-			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: true},
+			osConfig:         &Config{DistUpgradeOnBoot: false},
 		},
 		{
 			name: "openstack-overwrite-cloud-config",
 			providerConfig: &providerconfig.Config{
 				CloudProvider:        "openstack",
-				SSHPublicKeys:        []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.9.2",
+					Kubelet: "v1.11.3",
 				},
 			},
 			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: true},
+			osConfig:         &Config{DistUpgradeOnBoot: false},
 		},
-	}
+	}...)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -186,30 +243,7 @@ func TestProvider_UserData(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			golden := filepath.Join("testdata", test.name+".golden")
-			if *update {
-				ioutil.WriteFile(golden, []byte(userdata), 0644)
-			}
-			expected, err := ioutil.ReadFile(golden)
-			if err != nil {
-				t.Errorf("failed to read .golden file: %v", err)
-			}
-
-			diff := difflib.UnifiedDiff{
-				A:        difflib.SplitLines(string(expected)),
-				B:        difflib.SplitLines(userdata),
-				FromFile: "Fixture",
-				ToFile:   "Current",
-				Context:  3,
-			}
-			diffStr, err := difflib.GetUnifiedDiffString(diff)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diffStr != "" {
-				t.Errorf("got diff between expected and actual result: \n%s\n", diffStr)
-			}
+			testhelper.CompareOutput(t, test.name, userdata, *update)
 		})
 	}
 }
