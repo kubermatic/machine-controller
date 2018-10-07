@@ -66,4 +66,5 @@ e2e-cluster:
 	./test/tools/integration/provision_master.sh do-not-deploy-machine-controller
 
 e2e-destroy:
+	./test/tools/integration/cleanup_machines.sh
 	make -C test/tools/integration destroy
