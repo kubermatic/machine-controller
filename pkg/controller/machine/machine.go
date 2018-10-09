@@ -31,6 +31,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 	"github.com/prometheus/client_golang/prometheus"
@@ -466,11 +467,6 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 		return err
 	}
 
-	// Delete the node object after the instance is gone
-	if sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
-		return nil
-	}
-
 	if err := c.deleteNodeForMachine(machine); err != nil {
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete node: %v", err)
 		return err
@@ -483,6 +479,19 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 	finalizers := sets.NewString(machine.Finalizers...)
 	if !finalizers.Has(finalizerDeleteInstance) {
 		return nil
+	}
+	if machine.Status.NodeRef != nil {
+		node, err := c.kubeClient.CoreV1().Nodes().Get(machine.Status.NodeRef.Name, metav1.GetOptions{})
+		if err != nil {
+			if !kerrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get node %s for machine %s/%s: %v", machine.Status.NodeRef.Name, machine.Namespace, machine.Name, err)
+			}
+		}
+		if node != nil {
+			if err := eviction.EvictNode(node, c.kubeClient); err != nil {
+				return fmt.Errorf("failed to evict node %s: %v", node.Name, err)
+			}
+		}
 	}
 
 	// Retrieve the instance from the cloud provider
@@ -498,19 +507,19 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 
 		message := fmt.Sprintf("%v. Please manually delete the instance at the cloud provider and remove the %s finalizer from the machine object.", err, finalizerDeleteInstance)
 		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to retrieve instance from cloud provider")
-	}
 
-	// Delete the instance
-	if err := prov.Delete(machine, c.updateMachine); err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
-			return nil
+		// Delete the instance
+		if err := prov.Delete(machine, c.updateMachine); err != nil {
+			if err == cloudprovidererrors.ErrInstanceNotFound {
+				// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
+				return nil
+			}
+
+			message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, finalizerDeleteInstance)
+			return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
 		}
-
-		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, finalizerDeleteInstance)
-		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
+		return nil
 	}
-	return nil
 }
 
 func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.Node) bool {

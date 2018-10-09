@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
+
 	corev1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,14 +17,27 @@ const timeout = 60 * time.Second
 
 // EvictNode evicts the passed node
 func EvictNode(node *corev1.Node, kubeClient kubernetes.Interface) error {
+	glog.V(4).Infof("Starting to evict node %s", node.Name)
+
 	node, err := cordonNode(node, kubeClient)
 	if err != nil {
 		return fmt.Errorf("failed to cordon node %s: %v", node.Name, err)
 	}
+	glog.V(4).Infof("Successfully cordoned node %s", node.Name)
+
 	podsToEvict, err := getFilteredPods(node, kubeClient)
 	if err != nil {
 		return fmt.Errorf("failed to get Pods to evict for node %s: %v", node.Name, err)
 	}
+	glog.V(4).Infof("Found %v pods to evict for node %s", len(podsToEvict), node.Name)
+
+	errs := evictPods(podsToEvict, kubeClient)
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to evict pods, errors encountered: %v", errs)
+	}
+
+	glog.V(4).Infof("Successfully evicted all pods for node %s!", node.Name)
+	return nil
 }
 
 func cordonNode(node *corev1.Node, kubeClient kubernetes.Interface) (*corev1.Node, error) {
@@ -40,14 +55,14 @@ func getFilteredPods(node *corev1.Node, kubeClient kubernetes.Interface) ([]core
 	}
 
 	var filteredPods []corev1.Pod
-	for _, candidatePod := range pods {
+	for _, candidatePod := range pods.Items {
 		if candidatePod.Status.Phase != corev1.PodRunning {
 			continue
 		}
-		if controllerRef := metav1.GetControllerOf(candidatePod); controllerRef != nil && controllerRef.Kind == "DaemonSet" {
+		if controllerRef := metav1.GetControllerOf(&candidatePod); controllerRef != nil && controllerRef.Kind == "DaemonSet" {
 			continue
 		}
-		if _, found := pod.ObjectMeta.Annotations[corev1.MirrorPodAnnotationKey]; found {
+		if _, found := candidatePod.ObjectMeta.Annotations[corev1.MirrorPodAnnotationKey]; found {
 			continue
 		}
 		filteredPods = append(filteredPods, candidatePod)
@@ -56,13 +71,17 @@ func getFilteredPods(node *corev1.Node, kubeClient kubernetes.Interface) ([]core
 	return filteredPods, nil
 }
 
-func evictPods(pods []corev1.Pod, kubeClient kuberconfig.Interface) []error {
+func evictPods(pods []corev1.Pod, kubeClient kubernetes.Interface) []error {
+	if len(pods) == 0 {
+		return nil
+	}
+
 	doneCh := make(chan bool, len(pods))
 	errCh := make(chan error, len(pods))
 	retErrs := []error{}
 
 	for _, pod := range pods {
-		go evictPod(&pod, doneCh, errCh)
+		go evictPod(&pod, kubeClient, doneCh, errCh)
 	}
 
 	doneCount := 0
@@ -80,8 +99,8 @@ func evictPods(pods []corev1.Pod, kubeClient kuberconfig.Interface) []error {
 		if doneCount == len(pods) {
 			break
 		}
-	case <-time.After(time.Now().Add(timeout)):
-		retErrs = append(retErrs, fmt.Errorf("timed out waiting for all evictions to complete, finished %v out of %v"), doneCount, len(pods))
+	case <-time.After(timeout):
+		retErrs = append(retErrs, fmt.Errorf("timed out waiting for all evictions to complete, finished %v out of %v", doneCount, len(pods)))
 	}
 
 	return retErrs
