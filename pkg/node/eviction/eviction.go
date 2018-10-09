@@ -12,6 +12,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 )
@@ -32,9 +33,9 @@ func EvictNode(node *corev1.Node, kubeClient kubernetes.Interface) error {
 
 	glog.V(4).Infof("Starting to evict node %s", node.Name)
 
-	node, err := cordonNode(node, kubeClient)
 	// Required to not cause a NPE when passing back the nodeName in the error
 	nodeName := node.Name
+	node, err := cordonNode(node, kubeClient)
 	if err != nil {
 		return fmt.Errorf("failed to cordon node %s: %v", nodeName, err)
 	}
@@ -50,15 +51,33 @@ func EvictNode(node *corev1.Node, kubeClient kubernetes.Interface) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("failed to evict pods, errors encountered: %v", errs)
 	}
-
 	glog.V(4).Infof("Successfully evicted all pods for node %s!", node.Name)
+
+	glog.V(4).Infof("Waiting for deletion of all pods for node %s", nodeName)
+	if err := waitForDeletion(podsToEvict, kubeClient); err != nil {
+		return fmt.Errorf("failed waiting for pods of node %s to be deleted: %v", nodeName, err)
+	}
+	glog.V(4).Infof("All pods of node %s were successfully deleted", nodeName)
+
 	return nil
 }
 
 func cordonNode(node *corev1.Node, kubeClient kubernetes.Interface) (*corev1.Node, error) {
-	return updateNode(node.Name, kubeClient, func(n *corev1.Node) {
+	nodeName := node.Name
+	node, err := updateNode(node.Name, kubeClient, func(n *corev1.Node) {
 		n.Spec.Unschedulable = true
 	})
+	err = wait.Poll(1*time.Second, timeout, func() (bool, error) {
+		node, err := kubeClient.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if node.Spec.Unschedulable {
+			return true, nil
+		}
+		return false, nil
+	})
+	return node, err
 }
 
 func getFilteredPods(node *corev1.Node, kubeClient kubernetes.Interface) ([]corev1.Pod, error) {
@@ -71,7 +90,7 @@ func getFilteredPods(node *corev1.Node, kubeClient kubernetes.Interface) ([]core
 
 	var filteredPods []corev1.Pod
 	for _, candidatePod := range pods.Items {
-		if candidatePod.Status.Phase != corev1.PodRunning {
+		if candidatePod.Status.Phase == corev1.PodSucceeded || candidatePod.Status.Phase == corev1.PodFailed {
 			continue
 		}
 		if controllerRef := metav1.GetControllerOf(&candidatePod); controllerRef != nil && controllerRef.Kind == "DaemonSet" {
@@ -80,6 +99,7 @@ func getFilteredPods(node *corev1.Node, kubeClient kubernetes.Interface) ([]core
 		if _, found := candidatePod.ObjectMeta.Annotations[corev1.MirrorPodAnnotationKey]; found {
 			continue
 		}
+		glog.V(5).Infof("Appending pod %s/%s for node %s", candidatePod.Namespace, candidatePod.Name, candidatePod.Spec.NodeName)
 		filteredPods = append(filteredPods, candidatePod)
 	}
 
@@ -90,6 +110,7 @@ func evictPods(pods []corev1.Pod, kubeClient kubernetes.Interface) []error {
 	if len(pods) == 0 {
 		return nil
 	}
+	nodeName := pods[0].Spec.NodeName
 
 	errCh := make(chan error, len(pods))
 	retErrs := []error{}
@@ -99,35 +120,41 @@ func evictPods(pods []corev1.Pod, kubeClient kubernetes.Interface) []error {
 	defer func() { isDone = true }()
 
 	for _, pod := range pods {
-		go func() {
+		go func(p corev1.Pod) {
 			wg.Add(1)
 			defer wg.Done()
 			for {
 				if isDone {
 					return
 				}
-				err := evictPod(&pod, kubeClient)
+				err := evictPod(&p, kubeClient)
 				if err == nil || kerrors.IsNotFound(err) {
+					glog.V(5).Infof("Successfully evicted pod %s/%s on node %s", p.Namespace, p.Name, nodeName)
 					return
 				} else if kerrors.IsTooManyRequests(err) {
+					glog.V(5).Infof("Will retry eviction for pod %s/%s on node %s", p.Namespace, p.Name, nodeName)
 					time.Sleep(5 * time.Second)
 				} else {
-					errCh <- fmt.Errorf("error evicting pod %s/%s: %v", pod.Namespace, pod.Name, err)
+					errCh <- fmt.Errorf("error evicting pod %s/%s: %v", p.Namespace, p.Name, err)
 					return
 				}
 			}
-		}()
+		}(pod)
 	}
 
-	var finished chan struct{}
+	finished := make(chan struct{})
 	go func() { wg.Wait(); finished <- struct{}{} }()
 
 	select {
 	case <-finished:
+		glog.V(5).Infof("All goroutines for eviction pods on node %s finished", nodeName)
 		break
 	case err := <-errCh:
+		glog.V(5).Infof("Got an error from eviction goroutine for node %s: %v", nodeName, err)
 		retErrs = append(retErrs, err)
 	case <-time.After(timeout):
+		retErrs = append(retErrs, fmt.Errorf("timed out waiting for evictions to complete"))
+		glog.V(5).Infof("Timed out waiting for all evition goroutiness for node %s to finish", nodeName)
 		break
 	}
 
@@ -162,4 +189,17 @@ func updateNode(name string, client kubernetes.Interface, modify func(*corev1.No
 	})
 
 	return updatedNode, err
+}
+
+func waitForDeletion(pods []corev1.Pod, kubeClient kubernetes.Interface) error {
+	return wait.Poll(1*time.Second, timeout, func() (bool, error) {
+		for _, pod := range pods {
+			_, err := kubeClient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+			if err != nil && kerrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
 }
