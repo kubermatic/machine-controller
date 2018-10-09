@@ -2,12 +2,14 @@ package eviction
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
 
 	corev1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
@@ -76,48 +78,57 @@ func evictPods(pods []corev1.Pod, kubeClient kubernetes.Interface) []error {
 		return nil
 	}
 
-	doneCh := make(chan bool, len(pods))
 	errCh := make(chan error, len(pods))
 	retErrs := []error{}
 
+	var wg sync.WaitGroup
+	var isDone bool
+	defer func() { isDone = true }()
+
 	for _, pod := range pods {
-		go evictPod(&pod, kubeClient, doneCh, errCh)
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
+			for {
+				if isDone {
+					return
+				}
+				err := evictPod(&pod, kubeClient)
+				if err == nil || kerrors.IsNotFound(err) {
+					return
+				} else if kerrors.IsTooManyRequests(err) {
+					time.Sleep(5 * time.Second)
+				} else {
+					errCh <- fmt.Errorf("error evicting pod %s/%s: %v", pod.Namespace, pod.Name, err)
+					return
+				}
+			}
+		}()
 	}
 
-	doneCount := 0
+	var finished chan struct{}
+	go func() { wg.Wait(); finished <- struct{}{} }()
+
 	select {
-	case <-doneCh:
-		doneCount++
-		if doneCount == len(pods) {
-			break
-		}
+	case <-finished:
+		break
 	case err := <-errCh:
-		if err != nil {
-			retErrs = append(retErrs, err)
-		}
-		doneCount++
-		if doneCount == len(pods) {
-			break
-		}
+		retErrs = append(retErrs, err)
 	case <-time.After(timeout):
-		retErrs = append(retErrs, fmt.Errorf("timed out waiting for all evictions to complete, finished %v out of %v", doneCount, len(pods)))
+		break
 	}
 
 	return retErrs
 }
 
-func evictPod(pod *corev1.Pod, kubeClient kubernetes.Interface, doneCh chan bool, errCh chan error) {
+func evictPod(pod *corev1.Pod, kubeClient kubernetes.Interface) error {
 	eviction := &policy.Eviction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
 		},
 	}
-	err := kubeClient.PolicyV1beta1().Evictions(eviction.Namespace).Evict(eviction)
-	doneCh <- true
-	if err != nil {
-		errCh <- err
-	}
+	return kubeClient.PolicyV1beta1().Evictions(eviction.Namespace).Evict(eviction)
 }
 
 func updateNode(name string, client kubernetes.Interface, modify func(*corev1.Node)) (*corev1.Node, error) {
