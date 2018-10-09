@@ -11,19 +11,32 @@ import (
 	policy "k8s.io/api/policy/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 )
 
-const timeout = 60 * time.Second
+const (
+	timeout                   = 60 * time.Second
+	SkipEvictionAnnotationKey = "kubermatic.io/skip-eviction"
+)
 
 // EvictNode evicts the passed node
 func EvictNode(node *corev1.Node, kubeClient kubernetes.Interface) error {
+	if node.Annotations != nil {
+		if _, exists := node.Annotations[SkipEvictionAnnotationKey]; exists {
+			glog.V(4).Infof("Skipping eviction for node %s as it has a %s annotation", node.Name, SkipEvictionAnnotationKey)
+			return nil
+		}
+	}
+
 	glog.V(4).Infof("Starting to evict node %s", node.Name)
 
 	node, err := cordonNode(node, kubeClient)
+	// Required to not cause a NPE when passing back the nodeName in the error
+	nodeName := node.Name
 	if err != nil {
-		return fmt.Errorf("failed to cordon node %s: %v", node.Name, err)
+		return fmt.Errorf("failed to cordon node %s: %v", nodeName, err)
 	}
 	glog.V(4).Infof("Successfully cordoned node %s", node.Name)
 
@@ -50,7 +63,7 @@ func cordonNode(node *corev1.Node, kubeClient kubernetes.Interface) (*corev1.Nod
 
 func getFilteredPods(node *corev1.Node, kubeClient kubernetes.Interface) ([]corev1.Pod, error) {
 	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(metav1.ListOptions{
-		FieldSelector: fmt.Sprintf(fmt.Sprint("spec.nodeName==%s", node.Name)),
+		FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": node.Name}).String(),
 	})
 	if err != nil {
 		return nil, err
