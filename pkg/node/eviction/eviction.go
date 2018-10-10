@@ -119,9 +119,9 @@ func evictPods(pods []corev1.Pod, kubeClient kubernetes.Interface) []error {
 	var isDone bool
 	defer func() { isDone = true }()
 
+	wg.Add(len(pods))
 	for _, pod := range pods {
 		go func(p corev1.Pod) {
-			wg.Add(1)
 			defer wg.Done()
 			for {
 				if isDone {
