@@ -377,6 +377,14 @@ rules:
   - "nodes"
   verbs:
   - "*"
+# Required for draining
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "list"
+  - "get"
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
