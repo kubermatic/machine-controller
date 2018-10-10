@@ -85,6 +85,11 @@ func (ne *NodeEviction) cordonNode(node *corev1.Node) error {
 	}
 
 	// Be paranoid and wait until the change got propagated to the lister
+	// This assumes that the delay between our lister and the APIserver
+	// is smaller or equal to the delay the schedulers lister has - If
+	// that is not the case, there is a small chance the scheduler schedules
+	// pods in between, those will then get deleted upon node deletion and
+	// not evicted
 	return wait.Poll(1*time.Second, timeout, func() (bool, error) {
 		node, err := ne.nodeLister.Get(ne.nodeName)
 		if err != nil {
