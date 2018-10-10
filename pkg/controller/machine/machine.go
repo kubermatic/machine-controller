@@ -388,7 +388,7 @@ func (c *Controller) syncHandler(key string) error {
 			return err
 		}
 		// As the deletion got triggered but the instance might not been gone yet, we need to recheck in a few seconds.
-		c.workqueue.AddAfter(machine.Name, deletionRetryWaitPeriod)
+		c.enqueueMachineAfter(machine, deletionRetryWaitPeriod)
 		return nil
 	}
 
@@ -459,28 +459,16 @@ func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 	})
 }
 
-func (c *Controller) cleanupMachineAfterDeletion(machine *clusterv1alpha1.Machine) error {
-	var err error
-	glog.V(4).Infof("Removing finalizers from machine machine %s", machine.Name)
-
-	if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-		finalizers := sets.NewString(m.Finalizers...)
-		finalizers.Delete(finalizerDeleteInstance)
-		finalizers.Delete(finalizerDeleteNode)
-		m.Finalizers = finalizers.List()
-	}); err != nil {
-		return fmt.Errorf("failed to update machine after removing the delete instance finalizer: %v", err)
-	}
-
-	glog.V(4).Infof("Removed delete finalizer from machine %s", machine.Name)
-	return nil
-}
-
 // deleteMachine makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
 	if err := c.deleteCloudProviderInstance(prov, machine); err != nil {
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete instance at cloud provider: %v", err)
 		return err
+	}
+
+	// Delete the node object after the instance is gone
+	if sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+		return nil
 	}
 
 	if err := c.deleteNodeForMachine(machine); err != nil {
@@ -831,6 +819,16 @@ func (c *Controller) enqueueMachine(obj interface{}) {
 		return
 	}
 	c.workqueue.AddRateLimited(key)
+}
+
+func (c *Controller) enqueueMachineAfter(obj interface{}, after time.Duration) {
+	var key string
+	var err error
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	c.workqueue.AddAfter(key, after)
 }
 
 func (c *Controller) handleObject(obj interface{}) {
