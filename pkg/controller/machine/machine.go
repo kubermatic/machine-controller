@@ -480,19 +480,6 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 	if !finalizers.Has(finalizerDeleteInstance) {
 		return nil
 	}
-	if machine.Status.NodeRef != nil {
-		node, err := c.kubeClient.CoreV1().Nodes().Get(machine.Status.NodeRef.Name, metav1.GetOptions{})
-		if err != nil {
-			if !kerrors.IsNotFound(err) {
-				return fmt.Errorf("failed to get node %s for machine %s/%s: %v", machine.Status.NodeRef.Name, machine.Namespace, machine.Name, err)
-			}
-		}
-		if node != nil {
-			if err := eviction.EvictNode(node, c.kubeClient); err != nil {
-				return fmt.Errorf("failed to evict node %s: %v", node.Name, err)
-			}
-		}
-	}
 
 	// Retrieve the instance from the cloud provider
 	if _, err := prov.Get(machine); err != nil {
