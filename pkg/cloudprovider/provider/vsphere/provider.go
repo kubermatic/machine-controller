@@ -433,6 +433,16 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 		return fmt.Errorf("failed to get virtual machine object: %v", err)
 	}
 
+	// Detach PVC Disks before deleting VM
+	var moVirtualMachine mo.VirtualMachine
+	pcollect := property.DefaultCollector(client.Client)
+	err = pcollect.RetrieveOne(context.TODO(), virtualMachine.Reference(), []string{"config.files"}, &moVirtualMachine)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve VM configuration: %v", err)
+	}
+	err = detachDisksPVC(virtualMachine,moVirtualMachine)
+
+
 	// We can't destroy a VM thats powered on...
 	powerOffTask, err := virtualMachine.PowerOff(context.TODO())
 	if err != nil {
@@ -530,6 +540,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	} else {
 		glog.Warningf("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
 	}
+
 
 	return Server{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }

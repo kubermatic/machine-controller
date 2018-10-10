@@ -1,6 +1,7 @@
 package vsphere
 
 import (
+	"path/filepath"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -408,6 +409,37 @@ func generateLocalUserdataISO(userdata, name string) (string, error) {
 	}
 
 	return isoFilePath, nil
+}
+
+func detachDisksPVC (virtualMachine *object.VirtualMachine, moVM mo.VirtualMachine) error {
+    // Get VM folder path
+	glog.Infof("VM URL: %v", moVM.Config.Files.VmPathName)
+	vm_dir := filepath.Dir(moVM.Config.Files.VmPathName)
+	glog.Infof("VM folder: %v", vm_dir)
+
+	// Get devices
+    glog.Infof("Getting pvc disks")
+	vmDevices, err := virtualMachine.Device(context.TODO())
+	if err != nil {
+		return fmt.Errorf("Failed to get device list: %v", err)
+	}
+	for _, device := range vmDevices {
+		if _, ok := device.(*types.VirtualDisk); ok {
+            disk_name := device.GetVirtualDevice().DeviceInfo.GetDescription().Label
+            disk_path := device.GetVirtualDevice().Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+            disk_dir := filepath.Dir(disk_path)
+            if (disk_dir != vm_dir) {
+                glog.Infof("Detaching disk: %v disk path: %v", disk_name, disk_path)
+	            err = virtualMachine.RemoveDevice(context.TODO(), true, device)
+	            if err != nil {
+                    return fmt.Errorf("failed to detach disk: %v", err)
+	            }
+            } else {
+                    glog.Infof("Ignoring disk: %v, disk path: %v", disk_name, disk_path)
+            }
+        }
+    }
+	return nil
 }
 
 func removeFloppyDevice(virtualMachine *object.VirtualMachine) error {
