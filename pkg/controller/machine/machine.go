@@ -494,19 +494,19 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 
 		message := fmt.Sprintf("%v. Please manually delete the instance at the cloud provider and remove the %s finalizer from the machine object.", err, finalizerDeleteInstance)
 		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to retrieve instance from cloud provider")
-
-		// Delete the instance
-		if err := prov.Delete(machine, c.updateMachine); err != nil {
-			if err == cloudprovidererrors.ErrInstanceNotFound {
-				// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
-				return nil
-			}
-
-			message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, finalizerDeleteInstance)
-			return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
-		}
-		return nil
 	}
+
+	// Delete the instance
+	if err := prov.Delete(machine, c.updateMachine); err != nil {
+		if err == cloudprovidererrors.ErrInstanceNotFound {
+			// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
+			return nil
+		}
+
+		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, finalizerDeleteInstance)
+		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
+	}
+	return nil
 }
 
 func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.Node) bool {
