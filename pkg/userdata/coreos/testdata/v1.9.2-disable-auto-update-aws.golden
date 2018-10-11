@@ -142,6 +142,17 @@
           "verification": {}
         },
         "mode": 384
+      },
+      {
+        "filesystem": "root",
+        "group": {},
+        "path": "/etc/systemd/system/docker.service.d/10-storage.conf",
+        "user": {},
+        "contents": {
+          "source": "data:,%5BService%5D%0AEnvironment%3DDOCKER_OPTS%3D--storage-driver%3Doverlay2%0A",
+          "verification": {}
+        },
+        "mode": 420
       }
     ]
   },

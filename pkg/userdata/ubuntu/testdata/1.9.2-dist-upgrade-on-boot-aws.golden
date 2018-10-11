@@ -239,12 +239,12 @@ write_files:
     RemainAfterExit=true
     ExecStart=/usr/local/bin/supervise.sh /usr/local/bin/setup
 
-- path: /etc/systemd/system/docker.service.d/storage.conf
+- path: /etc/systemd/system/docker.service.d/10-storage.conf
   permission: "0644"
   content: |
     [Service]
     ExecStart=
-    ExecStart=/usr/bin/dockerd -H fd:// --storage-driver overlay2
+    ExecStart=/usr/bin/dockerd -H fd:// --storage-driver=overlay2
 
 runcmd:
 - systemctl enable --now setup.service

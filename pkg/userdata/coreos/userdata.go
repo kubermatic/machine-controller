@@ -337,4 +337,12 @@ storage:
           PrintMotd no # handled by PAM
           PasswordAuthentication no
           ChallengeResponseAuthentication no
+
+    - path: /etc/systemd/system/docker.service.d/10-storage.conf
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          [Service]
+          Environment=DOCKER_OPTS=--storage-driver=overlay2
 `
