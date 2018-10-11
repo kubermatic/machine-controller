@@ -468,8 +468,9 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 			if !kerrors.IsNotFound(err) {
 				return fmt.Errorf("failed to get node %s for machine %s/%s: %v", machine.Status.NodeRef.Name, machine.Namespace, machine.Name, err)
 			}
-		}
-		if err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run(); err != nil {
+			// if kerrors.IsNotFound(err) => continue by deleting cloud provider instance
+			// only if err == nil => evict node
+		} else if err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run(); err != nil {
 			return fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
 		}
 	}
