@@ -479,6 +479,15 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 		return err
 	}
 
+	// Delete the node object only after the instance is gone, `deleteCloudProviderInstance`
+	// returns with a nil-error after it triggers the instance deletion but it is async for
+	// some providers hence the instance deletion may not been executed yet
+	// `finalizerDeleteInstance` stays until the instance is really gone thought, so we check
+	// for that here
+	if sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+		return nil
+	}
+
 	if err := c.deleteNodeForMachine(machine); err != nil {
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete node: %v", err)
 		return err
