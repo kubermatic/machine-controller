@@ -49,7 +49,7 @@ func (ne *NodeEviction) Run() error {
 		glog.V(4).Infof("Skipping eviction for node %s as it has a %s annotation", ne.nodeName, SkipEvictionAnnotationKey)
 		return nil
 	}
-	glog.V(4).Infof("Starting to evict node %s", ne.nodeLister)
+	glog.V(4).Infof("Starting to evict node %s", ne.nodeName)
 
 	if err := ne.cordonNode(node); err != nil {
 		return fmt.Errorf("failed to cordon node %s: %v", ne.nodeName, err)
