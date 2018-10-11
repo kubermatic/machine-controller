@@ -461,18 +461,13 @@ func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
-	if err := c.deleteCloudProviderInstance(prov, machine); err != nil {
-		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete instance at cloud provider: %v", err)
+	if err := c.deleteNodeForMachine(machine); err != nil {
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete node: %v", err)
 		return err
 	}
 
-	// Delete the node object after the instance is gone
-	if sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
-		return nil
-	}
-
-	if err := c.deleteNodeForMachine(machine); err != nil {
-		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete node: %v", err)
+	if err := c.deleteCloudProviderInstance(prov, machine); err != nil {
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete instance at cloud provider: %v", err)
 		return err
 	}
 
