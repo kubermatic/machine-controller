@@ -462,6 +462,18 @@ func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
+	if machine.Status.NodeRef != nil {
+		_, err := c.nodesLister.Get(machine.Status.NodeRef.Name)
+		if err != nil {
+			if !kerrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get node %s for machine %s/%s: %v", machine.Status.NodeRef.Name, machine.Namespace, machine.Name, err)
+			}
+		}
+		if err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run(); err != nil {
+			return fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
+		}
+	}
+
 	if err := c.deleteCloudProviderInstance(prov, machine); err != nil {
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete instance at cloud provider: %v", err)
 		return err
