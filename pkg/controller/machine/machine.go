@@ -31,6 +31,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 	"github.com/prometheus/client_golang/prometheus"
@@ -461,12 +462,29 @@ func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
+	if machine.Status.NodeRef != nil {
+		_, err := c.nodesLister.Get(machine.Status.NodeRef.Name)
+		if err != nil {
+			if !kerrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get node %s for machine %s/%s: %v", machine.Status.NodeRef.Name, machine.Namespace, machine.Name, err)
+			}
+			// if kerrors.IsNotFound(err) => continue by deleting cloud provider instance
+			// only if err == nil => evict node
+		} else if err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run(); err != nil {
+			return fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
+		}
+	}
+
 	if err := c.deleteCloudProviderInstance(prov, machine); err != nil {
 		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete instance at cloud provider: %v", err)
 		return err
 	}
 
-	// Delete the node object after the instance is gone
+	// Delete the node object only after the instance is gone, `deleteCloudProviderInstance`
+	// returns with a nil-error after it triggers the instance deletion but it is async for
+	// some providers hence the instance deletion may not been executed yet
+	// `finalizerDeleteInstance` stays until the instance is really gone thought, so we check
+	// for that here
 	if sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
 		return nil
 	}
