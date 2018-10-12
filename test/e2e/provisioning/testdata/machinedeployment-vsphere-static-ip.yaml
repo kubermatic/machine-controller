@@ -41,6 +41,7 @@ spec:
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
+            disableAutoUpdate: true
           network:
            cidr: "192.168.44.<< IP_OCTET >>/20"
            gateway: "192.168.32.1"

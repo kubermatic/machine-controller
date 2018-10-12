@@ -41,6 +41,7 @@ spec:
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
+            disableAutoUpdate: true
           containerRuntimeInfo:
             name: "<< CONTAINER_RUNTIME >>"
       versions:
