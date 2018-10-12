@@ -209,7 +209,7 @@ write_files:
 {{ if ne .CloudConfig "" }}{{ .CloudConfig | indent 4 }}{{ end }}
 
 - path: "/usr/local/bin/setup"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -230,16 +230,33 @@ write_files:
     systemctl enable --now docker
     systemctl enable --now kubelet
 
-    kubeadm join \
-      --token {{ .BoostrapToken }} \
-      --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
-      {{- if semverCompare ">=1.9.X" .KubeletVersion }}
-      --ignore-preflight-errors=CRI \
-      {{- end }}
-      {{ .ServerAddr }}
+    if [[ ! -x /usr/local/bin/health-monitor.sh ]]; then
+      curl -Lfo /usr/local/bin/health-monitor.sh \
+        https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+      chmod +x /usr/local/bin/health-monitor.sh
+    fi
+
+    if ! [[ -e /etc/kubernetes/pki/ca.crt ]]; then
+      kubeadm join \
+        --token {{ .BoostrapToken }} \
+        --discovery-token-ca-cert-hash sha256:{{ .KubeadmCACertHash }} \
+        {{- if semverCompare ">=1.9.X" .KubeletVersion }}
+        --ignore-preflight-errors=CRI \
+        {{- end }}
+        {{ .ServerAddr }}
+    fi
+
+    if [[ ! -x /usr/local/bin/health-monitor.sh ]]; then
+      curl -Lfo /usr/local/bin/health-monitor.sh \
+        https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+      chmod +x /usr/local/bin/health-monitor.sh
+    fi
+
+    systemctl enable --now --no-block kubelet-healthcheck.service
+    systemctl enable --now --no-block docker-healthcheck.service
 
 - path: "/usr/local/bin/supervise.sh"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -260,6 +277,32 @@ write_files:
     Type=oneshot
     RemainAfterExit=true
     ExecStart=/usr/local/bin/supervise.sh /usr/local/bin/setup
+
+- path: /etc/systemd/system/kubelet-healthcheck.service
+  permissions: "0644"
+  content: |
+    [Unit]
+    Requires=kubelet.service
+    After=kubelet.service
+
+    [Service]
+    ExecStart=/usr/local/bin/health-monitor.sh kubelet
+
+    [Install]
+    WantedBy=multi-user.target
+
+- path: /etc/systemd/system/docker-healthcheck.service
+  permissions: "0644"
+  content: |
+    [Unit]
+    Requires=docker.service
+    After=docker.service
+
+    [Service]
+    ExecStart=/usr/local/bin/health-monitor.sh container-runtime
+
+    [Install]
+    WantedBy=multi-user.target
 
 runcmd:
 - systemctl enable --now setup.service

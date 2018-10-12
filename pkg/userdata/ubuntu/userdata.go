@@ -246,6 +246,12 @@ write_files:
     systemctl enable --now docker
     systemctl enable kubelet
 
+    if [[ ! -x /usr/local/bin/health-monitor.sh ]]; then
+      curl -Lfo /usr/local/bin/health-monitor.sh \
+        https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+      chmod +x /usr/local/bin/health-monitor.sh
+    fi
+
     if ! [[ -e /etc/kubernetes/pki/ca.crt ]]; then
       kubeadm join \
         --token {{ .BoostrapToken }} \
@@ -255,6 +261,9 @@ write_files:
         {{- end }}
         {{ .ServerAddr }}
     fi
+
+    systemctl enable --now --no-block kubelet-healthcheck.service
+    systemctl enable --now --no-block docker-healthcheck.service
 
 - path: "/opt/kubernetes.asc"
   permissions: "0400"
@@ -393,11 +402,37 @@ write_files:
     ExecStart=/usr/local/bin/supervise.sh /usr/local/bin/setup
 
 - path: /etc/systemd/system/docker.service.d/10-storage.conf
-  permission: "0644"
+  permissions: "0644"
   content: |
     [Service]
     ExecStart=
     ExecStart=/usr/bin/dockerd -H fd:// --storage-driver=overlay2
+
+- path: /etc/systemd/system/kubelet-healthcheck.service
+  permissions: "0644"
+  content: |
+    [Unit]
+    Requires=kubelet.service
+    After=kubelet.service
+
+    [Service]
+    ExecStart=/usr/local/bin/health-monitor.sh kubelet
+
+    [Install]
+    WantedBy=multi-user.target
+
+- path: /etc/systemd/system/docker-healthcheck.service
+  permissions: "0644"
+  content: |
+    [Unit]
+    Requires=docker.service
+    After=docker.service
+
+    [Service]
+    ExecStart=/usr/local/bin/health-monitor.sh container-runtime
+
+    [Install]
+    WantedBy=multi-user.target
 
 runcmd:
 - systemctl enable --now setup.service

@@ -175,6 +175,45 @@ systemd:
     - name: docker.service
       enabled: true
 
+    - name: download-healthcheck-script.service
+      enabled: true
+      contents: |
+        [Unit]
+        Requires=network-online.target
+        After=network-online.target
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/bin/download-healthcheck-script.sh
+        [Install]
+        WantedBy=multi-user.target
+
+
+    - name: kubelet-healthcheck.service
+      enabled: true
+      contents: |
+        [Unit]
+        Requires=download-healthcheck-script.service kubelet.service
+        After=download-healthcheck-script.service kubelet.service
+
+        [Service]
+        ExecStart=/opt/bin/health-monitor.sh kubelet
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: docker-healthcheck.service
+      enabled: true
+      contents: |
+        [Unit]
+        Requires=download-healthcheck-script.service docker.service
+        After=download-healthcheck-script.service docker.service
+
+        [Service]
+        ExecStart=/opt/bin/health-monitor.sh container-runtime
+
+        [Install]
+        WantedBy=multi-user.target
+
     - name: kubelet.service
       enabled: true
       dropins:
@@ -345,4 +384,17 @@ storage:
         inline: |
           [Service]
           Environment=DOCKER_OPTS=--storage-driver=overlay2
+
+    - path: /opt/bin/download-healthcheck-script.sh
+      filesystem: root
+      mode: 755
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+          set -xeuo pipefail
+          until [[ -x /opt/bin/health-monitor.sh ]]; do
+            curl -Lfo /opt/bin/health-monitor.sh \
+              https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+            chmod +x /opt/bin/health-monitor.sh
+          done
 `
