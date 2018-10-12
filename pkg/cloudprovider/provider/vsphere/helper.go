@@ -156,8 +156,10 @@ func createLinkClonedVM(vmName, vmImage, datacenter, clusterName, folder string,
 		return fmt.Errorf("failed to clone template vm: %v", err)
 	}
 
-	_, err = clonedVMTask.WaitForResult(ctx, nil)
-	return fmt.Errorf("error when waiting for result of clone task: %v", err)
+	if _, err = clonedVMTask.WaitForResult(ctx, nil); err != nil {
+		return fmt.Errorf("error when waiting for result of clone task: %v", err)
+	}
+	return nil
 }
 
 func updateNetworkForVM(ctx context.Context, vm *object.VirtualMachine, currentNetName string, newNetName string) error {
