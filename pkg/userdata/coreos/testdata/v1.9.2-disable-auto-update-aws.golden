@@ -187,12 +187,12 @@
         "name": "download-healthcheck-script.service"
       },
       {
-        "contents": "[Unit]\nRequires=download-healthcheck-script.service\nAfter=download-healthcheck-script.service\n\n[Service]\nExecStart=/opt/bin/health-monitor.sh kubelet\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nRequires=download-healthcheck-script.service kubelet.service\nAfter=download-healthcheck-script.service kubelet.service\n\n[Service]\nExecStart=/opt/bin/health-monitor.sh kubelet\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "kubelet-healthcheck.service"
       },
       {
-        "contents": "[Unit]\nRequires=download-healthcheck-script.service\nAfter=download-healthcheck-script.service\n\n[Service]\nExecStart=/opt/bin/health-monitor.sh container-runtime\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nRequires=download-healthcheck-script.service docker.service\nAfter=download-healthcheck-script.service docker.service\n\n[Service]\nExecStart=/opt/bin/health-monitor.sh container-runtime\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "docker-healthcheck.service"
       },

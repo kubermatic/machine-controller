@@ -192,8 +192,8 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Requires=download-healthcheck-script.service
-        After=download-healthcheck-script.service
+        Requires=download-healthcheck-script.service kubelet.service
+        After=download-healthcheck-script.service kubelet.service
 
         [Service]
         ExecStart=/opt/bin/health-monitor.sh kubelet
@@ -205,8 +205,8 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Requires=download-healthcheck-script.service
-        After=download-healthcheck-script.service
+        Requires=download-healthcheck-script.service docker.service
+        After=download-healthcheck-script.service docker.service
 
         [Service]
         ExecStart=/opt/bin/health-monitor.sh container-runtime

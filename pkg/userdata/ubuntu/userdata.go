@@ -412,8 +412,8 @@ write_files:
   permissions: "0644"
   content: |
     [Unit]
-    Requires=setup.service
-    After=setup.service
+    Requires=kubelet.service
+    After=kubelet.service
 
     [Service]
     ExecStart=/usr/local/bin/health-monitor.sh kubelet
@@ -425,8 +425,8 @@ write_files:
   permissions: "0644"
   content: |
     [Unit]
-    Requires=setup.service
-    After=setup.service
+    Requires=docker.service
+    After=docker.service
 
     [Service]
     ExecStart=/usr/local/bin/health-monitor.sh container-runtime
