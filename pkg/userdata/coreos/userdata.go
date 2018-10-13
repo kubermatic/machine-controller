@@ -13,7 +13,6 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	machinetemplate "github.com/kubermatic/machine-controller/pkg/template"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 
@@ -48,7 +47,7 @@ func (p Provider) UserData(
 	clusterDNSIPs []net.IP,
 ) (string, error) {
 
-	tmpl, err := template.New("user-data").Funcs(machinetemplate.TxtFuncMap()).Parse(ctTemplate)
+	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(ctTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
 	}
@@ -97,7 +96,6 @@ func (p Provider) UserData(
 		HyperkubeImageTag string
 		ClusterDNSIPs     []net.IP
 		KubernetesCACert  string
-		JournaldMaxSize   string
 		KubeletVersion    string
 	}{
 		MachineSpec:       spec,
@@ -109,7 +107,6 @@ func (p Provider) UserData(
 		HyperkubeImageTag: fmt.Sprintf("v%s", kubeletVersion.String()),
 		ClusterDNSIPs:     clusterDNSIPs,
 		KubernetesCACert:  kubernetesCACert,
-		JournaldMaxSize:   userdatahelper.JournaldMaxUse,
 		KubeletVersion:    kubeletVersion.String(),
 	}
 	b := &bytes.Buffer{}
@@ -183,45 +180,34 @@ systemd:
         After=network-online.target
         [Service]
         Type=oneshot
-        ExecStart=/opt/bin/download-healthcheck-script.sh
-        [Install]
-        WantedBy=multi-user.target
-
-
-    - name: kubelet-healthcheck.service
-      enabled: true
-      contents: |
-        [Unit]
-        Requires=download-healthcheck-script.service kubelet.service
-        After=download-healthcheck-script.service kubelet.service
-
-        [Service]
-        ExecStart=/opt/bin/health-monitor.sh kubelet
-
+        ExecStart=/opt/bin/download.sh
         [Install]
         WantedBy=multi-user.target
 
     - name: docker-healthcheck.service
       enabled: true
+      dropins:
+      - name: 40-docker.conf
+        contents: |
+          [Unit]
+          Requires=download-healthcheck-script.service
+          After=download-healthcheck-script.service
       contents: |
-        [Unit]
-        Requires=download-healthcheck-script.service docker.service
-        After=download-healthcheck-script.service docker.service
+{{ containerRuntimeHealthCheckSystemdUnit | indent 10 }}
 
-        [Service]
-        ExecStart=/opt/bin/health-monitor.sh container-runtime
-
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: kubelet.service
+    - name: kubelet-healthcheck.service
       enabled: true
       dropins:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=docker.service
-          After=docker.service
+          Requires=download-healthcheck-script.service
+          After=download-healthcheck-script.service
+      contents: |
+{{ kubeletHealthCheckSystemdUnit | indent 10 }}
+
+    - name: kubelet.service
+      enabled: true
       contents: |
         [Unit]
         Description=Kubernetes Kubelet
@@ -250,32 +236,7 @@ systemd:
         ExecStartPre=/bin/mkdir -p /opt/cni/bin
         ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
-          --container-runtime=docker \
-          --allow-privileged=true \
-          --cni-bin-dir=/opt/cni/bin \
-          --cni-conf-dir=/etc/cni/net.d \
-          --cluster-dns={{ ipSliceToCommaSeparatedString .ClusterDNSIPs }} \
-          --cluster-domain=cluster.local \
-          --authentication-token-webhook=true \
-          --hostname-override={{ .MachineSpec.Name }} \
-          --network-plugin=cni \
-          {{- if .CloudProvider }}
-          --cloud-provider={{ .CloudProvider }} \
-          --cloud-config=/etc/kubernetes/cloud-config \
-          {{- end }}
-          --cert-dir=/etc/kubernetes/ \
-          --pod-manifest-path=/etc/kubernetes/manifests \
-          --resolv-conf=/etc/resolv.conf \
-          --rotate-certificates=true \
-          --kubeconfig=/etc/kubernetes/kubeconfig \
-          --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
-          --lock-file=/var/run/lock/kubelet.lock \
-          --exit-on-lock-contention \
-          --read-only-port=0 \
-          --protect-kernel-defaults=true \
-          --authorization-mode=Webhook \
-          --anonymous-auth=false \
-          --client-ca-file=/etc/kubernetes/ca.crt
+{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs | indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
@@ -289,17 +250,21 @@ storage:
       mode: 0644
       contents:
         inline: |
-          [Journal]
-          SystemMaxUse={{ .JournaldMaxSize }}
+{{ journalDConfig | indent 10 }}
+
+    - path: /etc/modules-load.d/k8s.conf
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+{{ kernelModules | indent 10 }}
 
     - path: /etc/sysctl.d/k8s.conf
       filesystem: root
       mode: 0644
       contents:
         inline: |
-          kernel.panic_on_oops = 1
-          kernel.panic = 10
-          vm.overcommit_memory = 1
+{{ kernelSettings | indent 10 }}
 
     - path: /proc/sys/kernel/panic_on_oops
       filesystem: root
@@ -322,7 +287,7 @@ storage:
         inline: |
           1
 
-    - path: /etc/kubernetes/bootstrap.kubeconfig
+    - path: /etc/kubernetes/bootstrap-kubelet.conf
       filesystem: root
       mode: 0400
       contents:
@@ -336,7 +301,7 @@ storage:
         inline: |
 {{ .CloudConfig | indent 10 }}
 
-    - path: /etc/kubernetes/ca.crt
+    - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
       mode: 0644
       contents:
@@ -385,16 +350,12 @@ storage:
           [Service]
           Environment=DOCKER_OPTS=--storage-driver=overlay2
 
-    - path: /opt/bin/download-healthcheck-script.sh
+    - path: /opt/bin/download.sh
       filesystem: root
-      mode: 755
+      mode: 0755
       contents:
         inline: |
-          #!/usr/bin/env bash
+          #!/bin/bash
           set -xeuo pipefail
-          until [[ -x /opt/bin/health-monitor.sh ]]; do
-            curl -Lfo /opt/bin/health-monitor.sh \
-              https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
-            chmod +x /opt/bin/health-monitor.sh
-          done
+{{ downloadBinariesScript .KubeletVersion false | indent 10 }}
 `

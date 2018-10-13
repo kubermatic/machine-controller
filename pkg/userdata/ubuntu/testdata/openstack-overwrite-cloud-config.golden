@@ -5,13 +5,22 @@ ssh_pwauth: no
 
 ssh_authorized_keys:
 - "ssh-rsa AAABBB"
-- "ssh-rsa CCCDDD"
 
 write_files:
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
     [Journal]
     SystemMaxUse=5G
+    
+
+- path: "/etc/modules-load.d/k8s.conf"
+  content: |
+    ip_vs
+    ip_vs_rr
+    ip_vs_wrr
+    ip_vs_sh
+    nf_conntrack_ipv4
+    
 
 - path: "/etc/sysctl.d/k8s.conf"
   content: |
@@ -19,126 +28,13 @@ write_files:
     net.bridge.bridge-nf-call-iptables = 1
     kernel.panic_on_oops = 1
     kernel.panic = 10
+    net.ipv4.ip_forward = 1
     vm.overcommit_memory = 1
-
-- path: "/etc/kubernetes/cloud-config"
-  content: |
-    custom
-    cloud
-    config
+    
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
   content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
-
-- path: "/etc/apt/sources.list.d/kubernetes.list"
-  permissions: "0644"
-  content: deb http://apt.kubernetes.io/ kubernetes-xenial main
-
-- path: "/usr/local/bin/setup"
-  permissions: "0755"
-  content: |
-    #!/bin/bash
-    set -xeuo pipefail
-
-    sysctl --system
-    mkdir -p /opt/bin
-    apt-key add /opt/docker.asc
-    apt-key add /opt/kubernetes.asc
-    apt-get update
-
-    # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
-    systemctl mask swap.target
-    swapoff -a
-
-    # If something failed during package installation but one of docker/kubeadm/kubelet was already installed
-    # an apt-mark hold after the install won't do it, which is why we test here if the binaries exist and if
-    # yes put them on hold
-    set +e
-    which docker && apt-mark hold docker.io docker-ce
-    which kubelet && apt-mark hold kubelet
-    which kubeadm && apt-mark hold kubeadm
-
-    # When docker is started from within the apt installation it fails with a
-    # 'no sockets found via socket activation: make sure the service was started by systemd'
-    # Apparently the package is broken in a way that it gets started without its dependencies, manually starting
-    # it works fine thought
-    which docker && systemctl start docker
-    set -e
-    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
-    if [[ -e /var/run/reboot-required ]]; then
-      reboot
-    fi
-
-    export CR_PKG='docker-ce=18.06.0~ce~3-0~ubuntu'
-    export CR_PKG='docker.io=17.12.1-0ubuntu1'
-
-
-    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
-      curl \
-      ca-certificates \
-      ceph-common \
-      cifs-utils \
-      conntrack \
-      e2fsprogs \
-      ebtables \
-      ethtool \
-      glusterfs-client \
-      iptables \
-      jq \
-      kmod \
-      openssh-client \
-      nfs-common \
-      socat \
-      util-linux \
-      ${CR_PKG} \
-      open-vm-tools \
-      kubelet=1.9.2-00 \
-      kubeadm=1.9.2-00 \
-
-    cp /etc/default/kubelet-overwrite /etc/default/kubelet
-
-    systemctl enable --now docker
-    systemctl enable kubelet
-
-    if [[ ! -x /usr/local/bin/health-monitor.sh ]]; then
-      curl -Lfo /usr/local/bin/health-monitor.sh \
-        https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
-      chmod +x /usr/local/bin/health-monitor.sh
-    fi
-
-    if ! [[ -e /etc/kubernetes/pki/ca.crt ]]; then
-      kubeadm join \
-        --token my-token \
-        --discovery-token-ca-cert-hash sha256:6caecce9fedcb55d4953d61a27dc6997361a2f226ad86d7e6004dde7526fc4b1 \
-        --ignore-preflight-errors=CRI \
-        server:443
-    fi
-
-    systemctl enable --now --no-block kubelet-healthcheck.service
-    systemctl enable --now --no-block docker-healthcheck.service
-
-- path: "/opt/kubernetes.asc"
-  permissions: "0400"
-  content: |
-    -----BEGIN PGP PUBLIC KEY BLOCK-----
-
-    mQENBFrBaNsBCADrF18KCbsZlo4NjAvVecTBCnp6WcBQJ5oSh7+E98jX9YznUCrN
-    rgmeCcCMUvTDRDxfTaDJybaHugfba43nqhkbNpJ47YXsIa+YL6eEE9emSmQtjrSW
-    IiY+2YJYwsDgsgckF3duqkb02OdBQlh6IbHPoXB6H//b1PgZYsomB+841XW1LSJP
-    YlYbIrWfwDfQvtkFQI90r6NknVTQlpqQh5GLNWNYqRNrGQPmsB+NrUYrkl1nUt1L
-    RGu+rCe4bSaSmNbwKMQKkROE4kTiB72DPk7zH4Lm0uo0YFFWG4qsMIuqEihJ/9KN
-    X8GYBr+tWgyLooLlsdK3l+4dVqd8cjkJM1ExABEBAAG0QEdvb2dsZSBDbG91ZCBQ
-    YWNrYWdlcyBBdXRvbWF0aWMgU2lnbmluZyBLZXkgPGdjLXRlYW1AZ29vZ2xlLmNv
-    bT6JAT4EEwECACgFAlrBaNsCGy8FCQWjmoAGCwkIBwMCBhUIAgkKCwQWAgMBAh4B
-    AheAAAoJEGoDCyG6B/T78e8H/1WH2LN/nVNhm5TS1VYJG8B+IW8zS4BqyozxC9iJ
-    AJqZIVHXl8g8a/Hus8RfXR7cnYHcg8sjSaJfQhqO9RbKnffiuQgGrqwQxuC2jBa6
-    M/QKzejTeP0Mgi67pyrLJNWrFI71RhritQZmzTZ2PoWxfv6b+Tv5v0rPaG+ut1J4
-    7pn+kYgtUaKdsJz1umi6HzK6AacDf0C0CksJdKG7MOWsZcB4xeOxJYuy6NuO6Kcd
-    Ez8/XyEUjIuIOlhYTd0hH8E/SEBbXXft7/VBQC5wNq40izPi+6WFK/e1O42DIpzQ
-    749ogYQ1eodexPNhLzekKR3XhGrNXJ95r5KO10VrsLFNd8I=
-    =TKuP
-    -----END PGP PUBLIC KEY BLOCK-----
 
 - path: "/opt/docker.asc"
   permissions: "0400"
@@ -206,7 +102,81 @@ write_files:
     =0YYh
     -----END PGP PUBLIC KEY BLOCK-----
 
-- path: "/usr/local/bin/supervise.sh"
+- path: "/opt/bin/setup"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+
+    # As we added some modules and don't want to reboot, restart the service 
+    systemctl restart systemd-modules-load.service
+    sysctl --system
+    
+    apt-key add /opt/docker.asc
+    apt-get update
+
+    # Make sure we always disable swap - Otherwise the kubelet won't start'.
+    systemctl mask swap.target
+    swapoff -a
+    export CR_PKG='docker.io=17.12.1-0ubuntu1'
+
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
+      curl \
+      ca-certificates \
+      ceph-common \
+      cifs-utils \
+      conntrack \
+      e2fsprogs \
+      ebtables \
+      ethtool \
+      glusterfs-client \
+      iptables \
+      jq \
+      kmod \
+      openssh-client \
+      nfs-common \
+      socat \
+      util-linux \
+      ${CR_PKG} \
+      open-vm-tools \
+      ipvsadm
+
+    # If something failed during package installation but docker got installed, we need to put it on hold
+    apt-mark hold docker.io || true
+    apt-mark hold docker-ce || true
+    if [[ -e /var/run/reboot-required ]]; then
+      reboot
+    fi
+
+    #setup some common directories
+    mkdir -p /opt/bin/
+    mkdir -p /var/lib/calico
+    mkdir -p /etc/kubernetes/manifests
+    mkdir -p /etc/cni/net.d
+    mkdir -p /opt/cni/bin
+    
+    # cni
+    if [ ! -f /opt/cni/bin/loopback ]; then
+        curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
+    fi
+    # kubelet
+    if [ ! -f /opt/bin/kubelet ]; then
+        curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.11.3/bin/linux/amd64/kubelet
+        chmod +x /opt/bin/kubelet
+    fi
+    
+    if [[ ! -x /opt/bin/health-monitor.sh ]]; then
+        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+        chmod +x /opt/bin/health-monitor.sh
+    fi
+    
+
+    systemctl enable --now docker
+    systemctl enable --now kubelet 
+    systemctl enable --now --no-block kubelet-healthcheck.service
+    systemctl enable --now --no-block docker-healthcheck.service
+
+- path: "/opt/bin/supervise.sh"
   permissions: "0755"
   content: |
     #!/bin/bash
@@ -215,25 +185,107 @@ write_files:
       sleep 1
     done
 
-- path: "/etc/default/kubelet-overwrite"
+- path: "/etc/systemd/system/kubelet.service"
   content: |
-    KUBELET_DNS_ARGS=
-    KUBELET_EXTRA_ARGS=--authentication-token-webhook=true \
+    [Unit]
+    After=docker.service
+    Requires=docker.service
+    
+    Description=kubelet: The Kubernetes Node Agent
+    Documentation=https://kubernetes.io/docs/home/
+    
+    [Service]
+    Restart=always
+    StartLimitInterval=0
+    RestartSec=10
+    
+    Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+    
+    ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
+      --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+      --kubeconfig=/etc/kubernetes/kubelet.conf \
+      --pod-manifest-path=/etc/kubernetes/manifests \
+      --allow-privileged=true \
+      --network-plugin=cni \
+      --cni-conf-dir=/etc/cni/net.d \
+      --cni-bin-dir=/opt/cni/bin \
+      --authorization-mode=Webhook \
+      --client-ca-file=/etc/kubernetes/pki/ca.crt \
+      --cadvisor-port=0 \
+      --rotate-certificates=true \
+      --cert-dir=/etc/kubernetes/pki \
+      --authentication-token-webhook=true \
       --cloud-provider=openstack \
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --read-only-port=0 \
+      --exit-on-lock-contention \
+      --lock-file=/tmp/kubelet.lock \
+      --anonymous-auth=false \
       --protect-kernel-defaults=true \
-      --resolv-conf=/run/systemd/resolve/resolv.conf \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local
+    
+    [Install]
+    WantedBy=multi-user.target
 
-- path: "/etc/systemd/system/kubelet.service.d/20-extra.conf"
-  permissions: "0644"
+- path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
     [Service]
-    EnvironmentFile=/etc/default/kubelet
+    Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
 
+- path: "/etc/kubernetes/cloud-config"
+  content: |
+    custom
+    cloud
+    config
+
+- path: "/etc/kubernetes/bootstrap-kubelet.conf"
+  content: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUVXakNDQTBLZ0F3SUJBZ0lKQUxmUmxXc0k4WVFITUEwR0NTcUdTSWIzRFFFQkJRVUFNSHN4Q3pBSkJnTlYKQkFZVEFsVlRNUXN3Q1FZRFZRUUlFd0pEUVRFV01CUUdBMVVFQnhNTlUyRnVJRVp5WVc1amFYTmpiekVVTUJJRwpBMVVFQ2hNTFFuSmhaR1pwZEhwcGJtTXhFakFRQmdOVkJBTVRDV3h2WTJGc2FHOXpkREVkTUJzR0NTcUdTSWIzCkRRRUpBUllPWW5KaFpFQmtZVzVuWVM1amIyMHdIaGNOTVRRd056RTFNakEwTmpBMVdoY05NVGN3TlRBME1qQTAKTmpBMVdqQjdNUXN3Q1FZRFZRUUdFd0pWVXpFTE1Ba0dBMVVFQ0JNQ1EwRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMEp5WVdSbWFYUjZhVzVqTVJJd0VBWURWUVFERXdsc2IyTmhiR2h2CmMzUXhIVEFiQmdrcWhraUc5dzBCQ1FFV0RtSnlZV1JBWkdGdVoyRXVZMjl0TUlJQklqQU5CZ2txaGtpRzl3MEIKQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdDVmQWpwNGZUY2VrV1VUZnpzcDBreWloMU9ZYnNHTDBLWDFlUmJTUwpSOE9kMCs5UTYySHlueStHRndNVGI0QS9LVThtc3NvSHZjY2VTQUFid2ZieEZLLytzNTFUb2JxVW5PUlpyT29UClpqa1V5Z2J5WERTSzk5WUJiY1IxUGlwOHZ3TVRtNFhLdUx0Q2lnZUJCZGpqQVFkZ1VPMjhMRU5HbHNNbm1lWWsKSmZPRFZHblZtcjVMdGI5QU5BOElLeVRmc25ISjRpT0NTL1BsUGJVajJxN1lub1ZMcG9zVUJNbGdVYi9DeWtYMwptT29MYjR5SkpReUEvaVNUNlp4aUlFajM2RDR5V1o1bGc3WUpsK1VpaUJRSEdDblBkR3lpcHFWMDZleDBoZVlXCmNhaVc4TFdaU1VROTNqUStXVkNIOGhUN0RRTzFkbXN2VW1YbHEvSmVBbHdRL1FJREFRQUJvNEhnTUlIZE1CMEcKQTFVZERnUVdCQlJjQVJPdGhTNFA0VTd2VGZqQnlDNTY5UjdFNkRDQnJRWURWUjBqQklHbE1JR2lnQlJjQVJPdApoUzRQNFU3dlRmakJ5QzU2OVI3RTZLRi9wSDB3ZXpFTE1Ba0dBMVVFQmhNQ1ZWTXhDekFKQmdOVkJBZ1RBa05CCk1SWXdGQVlEVlFRSEV3MVRZVzRnUm5KaGJtTnBjMk52TVJRd0VnWURWUVFLRXd0Q2NtRmtabWwwZW1sdVl6RVMKTUJBR0ExVUVBeE1KYkc5allXeG9iM04wTVIwd0d3WUpLb1pJaHZjTkFRa0JGZzVpY21Ga1FHUmhibWRoTG1OdgpiWUlKQUxmUmxXc0k4WVFITUF3R0ExVWRFd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVGQlFBRGdnRUJBRzZoClU5ZjlzTkgwLzZvQmJHR3kyRVZVMFVnSVRVUUlyRldvOXJGa3JXNWsvWGtEalFtKzNsempUMGlHUjRJeEUvQW8KZVU2c1FodWE3d3JXZUZFbjQ3R0w5OGxuQ3NKZEQ3b1pOaEZtUTk1VGIvTG5EVWpzNVlqOWJyUDBOV3pYZllVNApVSzJabklOSlJjSnBCOGlSQ2FDeEU4RGRjVUYwWHFJRXE2cEEyNzJzbm9MbWlYTE12Tmwza1lFZG0ramU2dm9ECjU4U05WRVVzenR6UXlYbUpFaENwd1ZJMEE2UUNqelhqK3F2cG13M1paSGk4SndYZWk4WlpCTFRTRkJraThaN24Kc0g5QkJIMzgvU3pVbUFONFFIU1B5MWdqcW0wME9BRThOYVlEa2gvYnpFNGQ3bUxHR01XcC9XRTNLUFN1ODJIRgprUGU2WG9TYmlMbS9reGszMlQwPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
+        server: https://server:443
+      name: ""
+    contexts: []
+    current-context: ""
+    kind: Config
+    preferences: {}
+    users:
+    - name: ""
+      user:
+        token: my-token
+    
+
+- path: "/etc/kubernetes/pki/ca.crt"
+  content: |
+    -----BEGIN CERTIFICATE-----
+    MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
+    BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
+    A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
+    DQEJARYOYnJhZEBkYW5nYS5jb20wHhcNMTQwNzE1MjA0NjA1WhcNMTcwNTA0MjA0
+    NjA1WjB7MQswCQYDVQQGEwJVUzELMAkGA1UECBMCQ0ExFjAUBgNVBAcTDVNhbiBG
+    cmFuY2lzY28xFDASBgNVBAoTC0JyYWRmaXR6aW5jMRIwEAYDVQQDEwlsb2NhbGhv
+    c3QxHTAbBgkqhkiG9w0BCQEWDmJyYWRAZGFuZ2EuY29tMIIBIjANBgkqhkiG9w0B
+    AQEFAAOCAQ8AMIIBCgKCAQEAt5fAjp4fTcekWUTfzsp0kyih1OYbsGL0KX1eRbSS
+    R8Od0+9Q62Hyny+GFwMTb4A/KU8mssoHvcceSAAbwfbxFK/+s51TobqUnORZrOoT
+    ZjkUygbyXDSK99YBbcR1Pip8vwMTm4XKuLtCigeBBdjjAQdgUO28LENGlsMnmeYk
+    JfODVGnVmr5Ltb9ANA8IKyTfsnHJ4iOCS/PlPbUj2q7YnoVLposUBMlgUb/CykX3
+    mOoLb4yJJQyA/iST6ZxiIEj36D4yWZ5lg7YJl+UiiBQHGCnPdGyipqV06ex0heYW
+    caiW8LWZSUQ93jQ+WVCH8hT7DQO1dmsvUmXlq/JeAlwQ/QIDAQABo4HgMIHdMB0G
+    A1UdDgQWBBRcAROthS4P4U7vTfjByC569R7E6DCBrQYDVR0jBIGlMIGigBRcAROt
+    hS4P4U7vTfjByC569R7E6KF/pH0wezELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNB
+    MRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRQwEgYDVQQKEwtCcmFkZml0emluYzES
+    MBAGA1UEAxMJbG9jYWxob3N0MR0wGwYJKoZIhvcNAQkBFg5icmFkQGRhbmdhLmNv
+    bYIJALfRlWsI8YQHMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBAG6h
+    U9f9sNH0/6oBbGGy2EVU0UgITUQIrFWo9rFkrW5k/XkDjQm+3lzjT0iGR4IxE/Ao
+    eU6sQhua7wrWeFEn47GL98lnCsJdD7oZNhFmQ95Tb/LnDUjs5Yj9brP0NWzXfYU4
+    UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
+    58SNVEUsztzQyXmJEhCpwVI0A6QCjzXj+qvpmw3ZZHi8JwXei8ZZBLTSFBki8Z7n
+    sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
+    kPe6XoSbiLm/kxk32T0=
+    -----END CERTIFICATE-----
 
 - path: "/etc/systemd/system/setup.service"
   permissions: "0644"
@@ -248,7 +300,12 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
-    ExecStart=/usr/local/bin/supervise.sh /usr/local/bin/setup
+    ExecStart=/opt/bin/supervise.sh /opt/bin/setup
+
+- path: "/etc/profile.d/opt-bin-path.sh"
+  permissions: "0644"
+  content: |
+    export PATH="/opt/bin:$PATH"
 
 - path: /etc/systemd/system/docker.service.d/10-storage.conf
   permissions: "0644"
@@ -263,12 +320,13 @@ write_files:
     [Unit]
     Requires=kubelet.service
     After=kubelet.service
-
+    
     [Service]
-    ExecStart=/usr/local/bin/health-monitor.sh kubelet
-
+    ExecStart=/opt/bin/health-monitor.sh kubelet
+    
     [Install]
     WantedBy=multi-user.target
+    
 
 - path: /etc/systemd/system/docker-healthcheck.service
   permissions: "0644"
@@ -276,12 +334,13 @@ write_files:
     [Unit]
     Requires=docker.service
     After=docker.service
-
+    
     [Service]
-    ExecStart=/usr/local/bin/health-monitor.sh container-runtime
-
+    ExecStart=/opt/bin/health-monitor.sh container-runtime
+    
     [Install]
     WantedBy=multi-user.target
+    
 
 runcmd:
 - systemctl enable --now setup.service

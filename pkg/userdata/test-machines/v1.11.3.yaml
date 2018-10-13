@@ -1,0 +1,108 @@
+apiVersion: cluster.k8s.io/v1alpha1
+kind: Machine
+metadata:
+  name: v1.11.3-ubuntu
+  namespace: kube-system
+spec:
+  metadata:
+    name: v1.11.3-ubuntu
+  providerConfig:
+    value:
+      cloudProvider: aws
+      cloudProviderSpec:
+        accessKeyId: ""
+        ami: ""
+        availabilityZone: eu-central-1a
+        diskSize: 100
+        diskType: gp2
+        instanceProfile: kubermatic-instance-profile-5f4rjps8mv
+        instanceType: t2.medium
+        region: eu-central-1
+        secretAccessKey: ""
+        securityGroupIDs:
+        - sg-0e1c9bcdb6fb5b057
+        subnetId: subnet-2bff4f43
+        tags:
+          kubernetes.io/cluster/5f4rjps8mv: ""
+        vpcId: vpc-819f62e9
+      operatingSystem: ubuntu
+      operatingSystemSpec:
+        distUpgradeOnBoot: false
+      sshPublicKeys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC496PqMk7zZuQKXpzcgl3g92LNZMcgEgkfnj4BNoa2CRs5f4wrHMt1Ii78CgY3Ziqw4y191v6IJ3Fby2gT26YWIaK6qSF35sXmjyG/MH+Iu96wIn7JcjlnTkizofGE7zOkRmEtMYcyOVbgnwEH4UNj1W1aalton5JCAqz8kFpKE7sp/2NpxZMqgO68NaqYSd0nDXdwM9HX1grWVF88lBXEJ5YSF03sEpnsOyw0QHhXHyNwHOpfL/wCG0/8OWel1dcXOeQKVVp5V045er0AyIFJVwHSTQCnfyKYCf5i0cLci4+61iSS1hBSl2qBqz6z6mdLy8O7XSP9kPoyQarnQguFO+DHOG8IyTP/Kk3PC/+yR8xGfhFxqM8fGdSdrRwpIgjGH0/7or1vbbUvp52evRMZIdT1YfndahRxafo0iZ36o+VgX1W5oWiZ8Bws/zrV2PCqrmuEbFYSpLati3XvxRQG+Om5p7dzdXx1mb86wqyNe4xpZ2gVInaUYINnwcUmLiaOtCHh4tE/RBMqjcRY7i75gl29H8nbDFwWHGLTULix1W+1FH0XyPiL831XdECYSlw8h+kJW/fYtlynTgeYSLSrIA0atEblf1ui0BPnd8imFX7h8mlUhPgxpfxasI+EQj+m4xjeJUalHTvFuE1wqls8A7A6+J8HP/Ol9cOlDFxexw==
+        henrik@loodse.com
+  versions:
+    kubelet: 1.11.3
+---
+apiVersion: cluster.k8s.io/v1alpha1
+kind: Machine
+metadata:
+  name: v1.11.3-coreos
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+    name: v1.11.3-coreos
+  providerConfig:
+    value:
+      cloudProvider: aws
+      cloudProviderSpec:
+        accessKeyId: ""
+        ami: ""
+        availabilityZone: eu-central-1a
+        diskSize: 100
+        diskType: gp2
+        instanceProfile: kubermatic-instance-profile-5f4rjps8mv
+        instanceType: t2.medium
+        region: eu-central-1
+        secretAccessKey: ""
+        securityGroupIDs:
+        - sg-0e1c9bcdb6fb5b057
+        subnetId: subnet-2bff4f43
+        tags:
+          kubernetes.io/cluster/5f4rjps8mv: ""
+        vpcId: vpc-819f62e9
+      operatingSystem: coreos
+      operatingSystemSpec:
+        disableAutoUpdate: false
+      sshPublicKeys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC496PqMk7zZuQKXpzcgl3g92LNZMcgEgkfnj4BNoa2CRs5f4wrHMt1Ii78CgY3Ziqw4y191v6IJ3Fby2gT26YWIaK6qSF35sXmjyG/MH+Iu96wIn7JcjlnTkizofGE7zOkRmEtMYcyOVbgnwEH4UNj1W1aalton5JCAqz8kFpKE7sp/2NpxZMqgO68NaqYSd0nDXdwM9HX1grWVF88lBXEJ5YSF03sEpnsOyw0QHhXHyNwHOpfL/wCG0/8OWel1dcXOeQKVVp5V045er0AyIFJVwHSTQCnfyKYCf5i0cLci4+61iSS1hBSl2qBqz6z6mdLy8O7XSP9kPoyQarnQguFO+DHOG8IyTP/Kk3PC/+yR8xGfhFxqM8fGdSdrRwpIgjGH0/7or1vbbUvp52evRMZIdT1YfndahRxafo0iZ36o+VgX1W5oWiZ8Bws/zrV2PCqrmuEbFYSpLati3XvxRQG+Om5p7dzdXx1mb86wqyNe4xpZ2gVInaUYINnwcUmLiaOtCHh4tE/RBMqjcRY7i75gl29H8nbDFwWHGLTULix1W+1FH0XyPiL831XdECYSlw8h+kJW/fYtlynTgeYSLSrIA0atEblf1ui0BPnd8imFX7h8mlUhPgxpfxasI+EQj+m4xjeJUalHTvFuE1wqls8A7A6+J8HP/Ol9cOlDFxexw==
+        henrik@loodse.com
+  versions:
+    kubelet: 1.11.3
+---
+apiVersion: cluster.k8s.io/v1alpha1
+kind: Machine
+metadata:
+  name: v1.11.3-centos
+  namespace: kube-system
+spec:
+  metadata:
+    name: v1.11.3-centos
+  providerConfig:
+    value:
+      cloudProvider: aws
+      cloudProviderSpec:
+        accessKeyId: ""
+        ami: ""
+        availabilityZone: eu-central-1a
+        diskSize: 100
+        diskType: gp2
+        instanceProfile: kubermatic-instance-profile-5f4rjps8mv
+        instanceType: t2.medium
+        region: eu-central-1
+        secretAccessKey: ""
+        securityGroupIDs:
+        - sg-0e1c9bcdb6fb5b057
+        subnetId: subnet-2bff4f43
+        tags:
+          kubernetes.io/cluster/5f4rjps8mv: ""
+        vpcId: vpc-819f62e9
+      operatingSystem: centos
+      operatingSystemSpec:
+        distUpgradeOnBoot: false
+      sshPublicKeys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC496PqMk7zZuQKXpzcgl3g92LNZMcgEgkfnj4BNoa2CRs5f4wrHMt1Ii78CgY3Ziqw4y191v6IJ3Fby2gT26YWIaK6qSF35sXmjyG/MH+Iu96wIn7JcjlnTkizofGE7zOkRmEtMYcyOVbgnwEH4UNj1W1aalton5JCAqz8kFpKE7sp/2NpxZMqgO68NaqYSd0nDXdwM9HX1grWVF88lBXEJ5YSF03sEpnsOyw0QHhXHyNwHOpfL/wCG0/8OWel1dcXOeQKVVp5V045er0AyIFJVwHSTQCnfyKYCf5i0cLci4+61iSS1hBSl2qBqz6z6mdLy8O7XSP9kPoyQarnQguFO+DHOG8IyTP/Kk3PC/+yR8xGfhFxqM8fGdSdrRwpIgjGH0/7or1vbbUvp52evRMZIdT1YfndahRxafo0iZ36o+VgX1W5oWiZ8Bws/zrV2PCqrmuEbFYSpLati3XvxRQG+Om5p7dzdXx1mb86wqyNe4xpZ2gVInaUYINnwcUmLiaOtCHh4tE/RBMqjcRY7i75gl29H8nbDFwWHGLTULix1W+1FH0XyPiL831XdECYSlw8h+kJW/fYtlynTgeYSLSrIA0atEblf1ui0BPnd8imFX7h8mlUhPgxpfxasI+EQj+m4xjeJUalHTvFuE1wqls8A7A6+J8HP/Ol9cOlDFxexw==
+        henrik@loodse.com
+  versions:
+    kubelet: 1.11.3
