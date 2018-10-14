@@ -1,0 +1,4 @@
+[plugins]
+  [plugins.cri]
+    # see release notes: https://github.com/containerd/containerd/releases/tag/v1.2.0-rc.1
+    stream_server_address = ""

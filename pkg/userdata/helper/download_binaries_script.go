@@ -31,6 +31,30 @@ if [[ ! -x /opt/bin/health-monitor.sh ]]; then
     curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
     chmod +x /opt/bin/health-monitor.sh
 fi
+
+# crictl
+if [ ! -f /opt/bin/crictl ]; then
+    {{- if semverCompare ">=1.10.0-0, < 1.11.0-0" .KubeletVersion }}
+    wget -O /opt/crictl.tar.gz https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.0.0-beta.1/crictl-v1.0.0-beta.1-linux-amd64.tar.gz
+    {{- else if semverCompare ">=1.11.0-0, < 1.12.0-0" .KubeletVersion }}
+    wget -O /opt/crictl.tar.gz https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.11.1/crictl-v1.11.1-linux-amd64.tar.gz
+    {{- else }}
+    wget -O /opt/crictl.tar.gz https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.12.0/crictl-v1.12.0-linux-amd64.tar.gz
+    {{- end }}
+    tar -xvf /opt/crictl.tar.gz -C /opt/bin/
+fi
+
+# runc
+if [ ! -f /opt/bin/runc ]; then
+    wget -O /opt/bin/runc https://github.com/opencontainers/runc/releases/download/v1.0.0-rc5/runc.amd64        
+    chmod +x /opt/bin/runc
+fi
+
+# containerd
+if [ ! -f /opt/bin/containerd ]; then
+    wget -O /opt/containerd.tar.gz https://github.com/containerd/containerd/releases/download/v1.2.0-rc.1/containerd-1.2.0-rc.1.linux-amd64.tar.gz
+    sudo tar -xvf /opt/containerd.tar.gz -C /opt/
+fi
 `
 )
 

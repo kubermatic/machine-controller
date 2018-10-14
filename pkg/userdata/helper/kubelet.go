@@ -15,6 +15,10 @@ const (
 --network-plugin=cni \
 --cni-conf-dir=/etc/cni/net.d \
 --cni-bin-dir=/opt/cni/bin \
+--container-runtime=remote \
+--container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+--runtime-cgroups=/system.slice/containerd.service \
+--runtime-request-timeout=15m \
 --authorization-mode=Webhook \
 --client-ca-file=/etc/kubernetes/pki/ca.crt \
 {{- if semverCompare "<1.12.0-0" .KubeletVersion }}
@@ -39,7 +43,7 @@ const (
 --cluster-domain=cluster.local`
 
 	kubeletSystemdUnitTpl = `[Unit]
-After=docker.service
+After=containerd.service
 Requires=docker.service
 
 Description=kubelet: The Kubernetes Node Agent
@@ -128,8 +132,8 @@ WantedBy=multi-user.target
 
 func ContainerRuntimeHealthCheckSystemdUnit() string {
 	return `[Unit]
-Requires=docker.service
-After=docker.service
+Requires=containerd.service
+After=containerd.service
 
 [Service]
 ExecStart=/opt/bin/health-monitor.sh container-runtime
