@@ -2,14 +2,13 @@ package centos
 
 import (
 	"flag"
-	"io/ioutil"
 	"net"
-	"path/filepath"
 	"testing"
+
+	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/pmezard/go-difflib/difflib"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
@@ -68,7 +67,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.6",
+					Kubelet: "1.9.2",
 				},
 			},
 		},
@@ -116,28 +115,7 @@ func TestUserDataGeneration(t *testing.T) {
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}
-		golden := filepath.Join("testdata", test.name+".golden")
-		if *update {
-			ioutil.WriteFile(golden, []byte(userdata), 0644)
-		}
-		expected, err := ioutil.ReadFile(golden)
-		if err != nil {
-			t.Errorf("failed to read .golden file: %v", err)
-		}
 
-		if string(expected) != userdata {
-			diff := difflib.UnifiedDiff{
-				A:        difflib.SplitLines(string(expected)),
-				B:        difflib.SplitLines(userdata),
-				FromFile: "Fixture",
-				ToFile:   "Current",
-				Context:  3,
-			}
-			diffStr, err := difflib.GetUnifiedDiffString(diff)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Errorf("got diff between expected and actual result: \n%s\n", diffStr)
-		}
+		testhelper.CompareOutput(t, test.name, userdata, *update)
 	}
 }
