@@ -36,7 +36,9 @@ const (
 --anonymous-auth=false \
 --protect-kernel-defaults=true \
 --cluster-dns={{ .ClusterDNSIPs | join "," }} \
---cluster-domain=cluster.local`
+--cluster-domain=cluster.local \
+--kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+--system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi`
 
 	kubeletSystemdUnitTpl = `[Unit]
 After=docker.service
