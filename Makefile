@@ -68,3 +68,31 @@ e2e-cluster:
 e2e-destroy:
 	./test/tools/integration/cleanup_machines.sh
 	make -C test/tools/integration destroy
+
+examples/ca-key.pem:
+	openssl genrsa -out examples/ca-key.pem 4096
+
+examples/ca-cert.pem: examples/ca-key.pem
+	openssl req -x509 -new -nodes -key examples/ca-key.pem \
+    -subj "/C=US/ST=CA/O=Acme/CN=k8s-machine-controller-ca" \
+		-sha256 -days 10000 -out examples/ca-cert.pem
+
+examples/admission-key.pem: examples/ca-cert.pem
+	openssl genrsa -out examples/admission-key.pem 2048
+	chmod 0600 examples/admission-key.pem
+
+examples/admission-cert.pem: examples/admission-key.pem
+	openssl req -new -sha256 \
+    -key examples/admission-key.pem \
+    -subj "/C=US/ST=CA/O=Acme/CN=machine-controller.kube-system.svc" \
+    -out examples/admission.csr
+	openssl x509 -req -in examples/admission.csr -CA examples/ca-cert.pem \
+		-CAkey examples/ca-key.pem -CAcreateserial \
+		-out examples/admission-cert.pem -days 10000 -sha256
+
+deploy: examples/admission-cert.pem
+	@cat examples/machine-controller.yaml \
+		|sed "s/__admission_ca_cert__/$(shell cat examples/ca-cert.pem|base64 -w0)/g" \
+		|sed "s/__admission_cert__/$(shell cat examples/admission-cert.pem|base64 -w0)/g" \
+		|sed "s/__admission_key__/$(shell cat examples/admission-key.pem|base64 -w0)/g" \
+		|kubectl apply -f -

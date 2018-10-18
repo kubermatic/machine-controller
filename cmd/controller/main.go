@@ -72,6 +72,8 @@ var (
 	clusterDNSIPs          string
 	listenAddress          string
 	admissionListenAddress string
+	admissionTLSCertPath   string
+	admissionTLSKeyPath    string
 	name                   string
 	workerCount            int
 )
@@ -151,6 +153,8 @@ func main() {
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
 	flag.StringVar(&admissionListenAddress, "admission-listen-address", ":9876", "The address on which the MutatingWebhook will listen on")
+	flag.StringVar(&admissionTLSCertPath, "admission-tls-cert-path", "/tmp/cert/cert.pem", "The path of the TLS cert for the MutatingWebhook")
+	flag.StringVar(&admissionTLSKeyPath, "admission-tls-key-path", "/tmp/cert/key.pem", "The path of the TLS key for the MutatingWebhook")
 
 	flag.Parse()
 
@@ -274,7 +278,7 @@ func main() {
 	{
 		s := admission.New(admissionListenAddress)
 		g.Add(func() error {
-			return s.ListenAndServe()
+			return s.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath)
 		}, func(err error) {
 			glog.Warningf("shutting down admission HTTP server due to: %s", err)
 			srvCtx, cancel := context.WithTimeout(ctx, time.Second)
