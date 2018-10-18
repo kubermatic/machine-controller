@@ -1,13 +1,11 @@
 package admission
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"reflect"
 	"time"
 
-	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/mattbaird/jsonpatch"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -37,5 +35,5 @@ func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperat
 	if err != nil {
 		return nil, err
 	}
-	return jsonpatch.CreateMergePatch(ori, cur)
+	return jsonpatch.CreatePatch(ori, cur)
 }
