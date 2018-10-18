@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/mattbaird/jsonpatch"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,9 +34,11 @@ func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperat
 	if err != nil {
 		return nil, err
 	}
+	glog.V(4).Infof("jsonpatch: Marshaled original: %s", string(ori))
 	cur, err := json.Marshal(current)
 	if err != nil {
 		return nil, err
 	}
+	glog.V(4).Infof("jsonpatch: Marshaled target: %s", string(cur))
 	return jsonpatch.CreatePatch(ori, cur)
 }
