@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -34,20 +35,24 @@ func mutateMachineDeployments(ar admissionv1beta1.AdmissionReview) (*admissionv1
 		return nil, fmt.Errorf("validation failed: %v", errs)
 	}
 
-	patchOpts, err := newJSONPatch(machineDeploymentOriginal, &machineDeployment)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create json patch: %v", err)
-	}
-
-	patchRaw, err := json.Marshal(patchOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal json patch: %v", err)
-	}
-
 	response := &admissionv1beta1.AdmissionResponse{}
 	response.Allowed = true
-	response.Patch = patchRaw
-	response.PatchType = &jsonPatch
+	if !apiequality.Semantic.DeepEqual(*machineDeploymentOriginal, machineDeployment) {
+		patchOpts, err := newJSONPatch(machineDeploymentOriginal, &machineDeployment)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create json patch: %v", err)
+		}
+
+		patchRaw, err := json.Marshal(patchOpts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal json patch: %v", err)
+		}
+		glog.V(6).Infof("Produced jsonpatch: %s", string(patchRaw))
+
+		response.Patch = patchRaw
+		response.PatchType = &jsonPatch
+	}
+
 	return response, nil
 }
 
