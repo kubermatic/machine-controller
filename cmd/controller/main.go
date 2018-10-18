@@ -48,6 +48,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
+	"github.com/kubermatic/machine-controller/pkg/admission"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
@@ -66,12 +67,13 @@ import (
 )
 
 var (
-	masterURL     string
-	kubeconfig    string
-	clusterDNSIPs string
-	listenAddress string
-	name          string
-	workerCount   int
+	masterURL              string
+	kubeconfig             string
+	clusterDNSIPs          string
+	listenAddress          string
+	admissionListenAddress string
+	name                   string
+	workerCount            int
 )
 
 const (
@@ -148,6 +150,7 @@ func main() {
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
+	flag.StringVar(&admissionListenAddress, "admission-listen-address", ":9876", "The address on which the MutatingWebhook will listen on")
 
 	flag.Parse()
 
@@ -260,11 +263,24 @@ func main() {
 		g.Add(func() error {
 			return s.ListenAndServe()
 		}, func(err error) {
-			glog.Warningf("shutting down HTTP server due to: %s", err)
+			glog.Warningf("shutting down util HTTP server due to: %s", err)
 			srvCtx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
 			if err = s.Shutdown(srvCtx); err != nil {
-				glog.Errorf("failed to shutdown HTTP server: %s", err)
+				glog.Errorf("failed to shutdown util HTTP server: %s", err)
+			}
+		})
+	}
+	{
+		s := admission.New(admissionListenAddress)
+		g.Add(func() error {
+			return s.ListenAndServe()
+		}, func(err error) {
+			glog.Warningf("shutting down admission HTTP server due to: %s", err)
+			srvCtx, cancel := context.WithTimeout(ctx, time.Second)
+			defer cancel()
+			if err = s.Shutdown(srvCtx); err != nil {
+				glog.Errorf("failed to shutdown admission HTTP server: %s", err)
 			}
 		})
 	}
