@@ -553,14 +553,6 @@
   revision = "03f2033d19d5860aef995fe360ac7d395cd8ce65"
 
 [[projects]]
-  branch = "master"
-  digest = "1:0e9bfc47ab9941ecc3344e580baca5deb4091177e84dd9773b48b38ec26b93d5"
-  name = "github.com/mattbaird/jsonpatch"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "81af80346b1a01caae0cbc27fd3c1ba5b11e189f"
-
-[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
@@ -1382,6 +1374,7 @@
     "github.com/aws/aws-sdk-go/service/iam",
     "github.com/coreos/container-linux-config-transpiler/config",
     "github.com/digitalocean/godo",
+    "github.com/evanphx/json-patch",
     "github.com/ghodss/yaml",
     "github.com/go-test/deep",
     "github.com/golang/glog",
@@ -1403,7 +1396,6 @@
     "github.com/gophercloud/gophercloud/pagination",
     "github.com/heptiolabs/healthcheck",
     "github.com/hetznercloud/hcloud-go/hcloud",
-    "github.com/mattbaird/jsonpatch",
     "github.com/oklog/run",
     "github.com/pborman/uuid",
     "github.com/pmezard/go-difflib/difflib",

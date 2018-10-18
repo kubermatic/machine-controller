@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/mattbaird/jsonpatch"
+	jsonpatch "github.com/evanphx/json-patch"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -37,5 +37,5 @@ func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperat
 	if err != nil {
 		return nil, err
 	}
-	return jsonpatch.CreatePatch(ori, cur)
+	return jsonpatch.CreateMergePatch(ori, cur)
 }
