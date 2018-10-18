@@ -47,7 +47,6 @@ func mutateMachineDeployments(ar admissionv1beta1.AdmissionReview) (*admissionv1
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal json patch: %v", err)
 		}
-		patchRaw = []byte(`[{"op":"add","path":"/spec","value":{"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"}}}]`)
 		glog.V(6).Infof("Produced jsonpatch: %s", string(patchRaw))
 
 		response.Patch = patchRaw
