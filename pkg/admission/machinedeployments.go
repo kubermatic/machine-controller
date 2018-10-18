@@ -16,16 +16,39 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-var codecs = serializer.NewCodecFactory(runtime.NewScheme())
+var (
+	codecs    = serializer.NewCodecFactory(runtime.NewScheme())
+	jsonPatch = admissionv1beta1.PatchTypeJSONPatch
+)
 
 func mutateMachineDeployments(ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
 
-	machineDeployment := &clusterv1alpha1.MachineDeployment{}
-	if err := json.Unmarshal(ar.Request.Object.Raw, machineDeployment); err != nil {
+	machineDeployment := clusterv1alpha1.MachineDeployment{}
+	if err := json.Unmarshal(ar.Request.Object.Raw, &machineDeployment); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
+	machineDeploymentOriginal := machineDeployment.DeepCopy()
 
-	return nil, fmt.Errorf("unimplemented")
+	machineDeploymentDefaultingFunction(&machineDeployment)
+	if errs := validateMachineDeployment(machineDeployment); errs != nil {
+		return nil, fmt.Errorf("validation failed: %v", errs)
+	}
+
+	patchOpts, err := newJSONPatch(machineDeploymentOriginal, &machineDeployment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create json patch: %v", err)
+	}
+
+	patchRaw, err := json.Marshal(patchOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal json patch: %v", err)
+	}
+
+	response := &admissionv1beta1.AdmissionResponse{}
+	response.Allowed = true
+	response.Patch = patchRaw
+	response.PatchType = &jsonPatch
+	return response, nil
 }
 
 func handleFuncFactory(mutate func(admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error)) func(http.ResponseWriter, *http.Request) {
@@ -53,8 +76,9 @@ func handleFuncFactory(mutate func(admissionv1beta1.AdmissionReview) (*admission
 		} else {
 			reviewResponse, err = mutate(ar)
 			if err != nil {
-				glog.Errorf("Error mutating %v", err)
+				glog.Errorf("Error mutating: %v", err)
 			}
+			reviewResponse.Result = &metav1.Status{Message: fmt.Sprintf("Error mutating: %v", err)}
 		}
 
 		response := admissionv1beta1.AdmissionReview{}
