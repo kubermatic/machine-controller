@@ -165,6 +165,17 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
+        - image: kubermatic/machine-controller-webhook:latest
+          imagePullPolicy: IfNotPresent
+          name: webhook
+          command:
+            - /usr/local/bin/webhook
+            - -logtostderr
+            - -v=6
+            - listen-address=0.0.0.0:9876
+          volumeMounts:
+            - name: machine-controller-admission-cert
+              mountPath: /tmp/cert
         - image: kubermatic/machine-controller:latest
           imagePullPolicy: IfNotPresent
           name: machine-controller
@@ -175,7 +186,6 @@ spec:
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -internal-listen-address=0.0.0.0:8085
-            - -admission-listen-address=0.0.0.0:9876
           ports:
           - containerPort: 8085
           livenessProbe:
@@ -189,9 +199,6 @@ spec:
               path: /ready
               port: 8085
             periodSeconds: 5
-          volumeMounts:
-            - name: machine-controller-admission-cert
-              mountPath: /tmp/cert
       volumes:
         - name: machine-controller-admission-cert
           secret:

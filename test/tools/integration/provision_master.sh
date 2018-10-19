@@ -15,9 +15,8 @@ for try in {1..100}; do
   sleep 1;
 done
 
-
 rsync -avR  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../.././{Makefile,examples/machine-controller.yaml,machine-controller,Dockerfile} \
+    ../../.././{Makefile,examples/machine-controller.yaml,machine-controller,Dockerfile,webhook,Dockerfile.webhook} \
     root@$ADDR:/root/
 
 cat <<EOEXEC |ssh_exec
@@ -76,6 +75,7 @@ if [[ "${1:-deploy_machine_controller}"  == "do-not-deploy-machine-controller" ]
 fi
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
+  docker build -t kubermatic/machine-controller-webhook -f Dockerfile.webhook .
   sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/machine-controller.yaml
   make deploy
   touch machine-controller-deployed
@@ -91,7 +91,7 @@ done
 
 echo "Error: machine-controller didn't come up within 100 seconds!"
 echo "Logs:"
-kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
+kubectl logs -n kube-system -c machine-controller \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
 exit 1
 EOEXEC
 

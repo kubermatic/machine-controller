@@ -10,6 +10,7 @@ REGISTRY_NAMESPACE ?= kubermatic
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
+IMAGE_NAME_WEBHOOK = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller-webhook:$(IMAGE_TAG)
 
 
 vendor: Gopkg.lock Gopkg.toml
@@ -30,7 +31,13 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 		-o machine-controller \
 		github.com/kubermatic/machine-controller/cmd/controller
 
-docker-image: machine-controller docker-image-nodep
+webhook: $(shell find cmd pkg -name '*.go') vendor
+	go build -v \
+		-ldflags '-s -w' \
+		-o webhook \
+		github.com/kubermatic/machine-controller/cmd/webhook
+
+docker-image: machine-controller docker-image-nodep admission-webhook
 
 # This target exists because in our CI
 # we do not want to restore the vendor
@@ -46,6 +53,16 @@ docker-image-nodep:
 		$(eval IMAGE_TAG = latest) \
 		docker build -t $(IMAGE_NAME) . ;\
 		docker push $(IMAGE_NAME) ;\
+	fi
+	docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook .
+	docker push $(IMAGE_NAME_WEBHOOK)
+	if [[ -n "$(GIT_TAG)" ]]; then \
+		$(eval IMAGE_TAG = $(GIT_TAG)) \
+		docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook . && \
+		docker push $(IMAGE_NAME_WEBHOOK) && \
+		$(eval IMAGE_TAG = latest) \
+		docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook . ;\
+		docker push $(IMAGE_NAME_WEBHOOK) ;\
 	fi
 
 test-unit-docker:
