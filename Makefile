@@ -37,7 +37,7 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 		-o webhook \
 		github.com/kubermatic/machine-controller/cmd/webhook
 
-docker-image: machine-controller docker-image-nodep admission-webhook
+docker-image: machine-controller admission-webhook docker-image-nodep
 
 # This target exists because in our CI
 # we do not want to restore the vendor
