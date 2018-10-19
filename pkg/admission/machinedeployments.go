@@ -69,6 +69,7 @@ func handleFuncFactory(mutate func(admissionv1beta1.AdmissionReview) (*admission
 		contentType := r.Header.Get("Content-Type")
 		if contentType != "application/json" {
 			glog.Errorf("contentType=%s, expect application/json", contentType)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 

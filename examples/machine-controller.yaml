@@ -165,17 +165,6 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
-        - image: kubermatic/machine-controller-webhook:latest
-          imagePullPolicy: IfNotPresent
-          name: webhook
-          command:
-            - /usr/local/bin/webhook
-            - -logtostderr
-            - -v=6
-            - listen-address=0.0.0.0:9876
-          volumeMounts:
-            - name: machine-controller-admission-cert
-              mountPath: /tmp/cert
         - image: kubermatic/machine-controller:latest
           imagePullPolicy: IfNotPresent
           name: machine-controller
@@ -199,6 +188,45 @@ spec:
               path: /ready
               port: 8085
             periodSeconds: 5
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: machine-controller-webhook
+  namespace: kube-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: machine-controller-webhook
+  template:
+    metadata:
+      labels:
+        app: machine-controller-webhook
+    spec:
+      containers:
+        - image: kubermatic/machine-controller-webhook:latest
+          imagePullPolicy: IfNotPresent
+          name: webhook
+          command:
+            - /usr/local/bin/webhook
+            - -logtostderr
+            - -v=6
+            - -listen-address=0.0.0.0:9876
+          volumeMounts:
+            - name: machine-controller-admission-cert
+              mountPath: /tmp/cert
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9876
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9876
+            periodSeconds: 5
       volumes:
         - name: machine-controller-admission-cert
           secret:
@@ -216,7 +244,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: machine-controller
+  name: machine-controller-webhook
   namespace: kube-system
 spec:
   ports:
@@ -225,7 +253,7 @@ spec:
     protocol: TCP
     targetPort: 9876
   selector:
-    app: machine-controller
+    app: machine-controller-webhook
   type: ClusterIP
 ---
 apiVersion: v1

@@ -16,12 +16,17 @@ import (
 func New(listenAddress string) *http.Server {
 	m := http.NewServeMux()
 	m.HandleFunc("/machinedeployments", handleFuncFactory(mutateMachineDeployments))
+	m.HandleFunc("/healthz", healthZHandler)
 	return &http.Server{
 		Addr:         listenAddress,
 		Handler:      m,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
+}
+
+func healthZHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperation, error) {

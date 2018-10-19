@@ -11,4 +11,5 @@ terraform-provider-hcloud
 examples/*.pem
 examples/*.csr
 examples/*.srl
-./webhook
+webhook
+!cmd/webhook
