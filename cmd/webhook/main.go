@@ -21,6 +21,14 @@ func main() {
 	flag.Parse()
 
 	s := admission.New(admissionListenAddress)
-	glog.Infof("Starting to listen on %s", admissionListenAddress)
-	glog.Fatal(s.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath))
+	if err := s.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath); err != nil {
+		glog.Fatalf("Failed to start server: %v", err)
+	}
+	defer func() {
+		if err := s.Close(); err != nil {
+			glog.Fatalf("Failed to shutdown server: %v", err)
+		}
+	}()
+	glog.Infof("Listening on %s", admissionListenAddress)
+	select {}
 }

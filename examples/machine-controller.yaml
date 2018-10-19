@@ -220,12 +220,14 @@ spec:
             httpGet:
               path: /healthz
               port: 9876
+              scheme: HTTPS
             initialDelaySeconds: 5
             periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /healthz
               port: 9876
+              scheme: HTTPS
             periodSeconds: 5
       volumes:
         - name: machine-controller-admission-cert
