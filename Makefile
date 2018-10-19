@@ -10,7 +10,6 @@ REGISTRY_NAMESPACE ?= kubermatic
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
-IMAGE_NAME_WEBHOOK = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller-webhook:$(IMAGE_TAG)
 
 
 vendor: Gopkg.lock Gopkg.toml
@@ -46,19 +45,13 @@ docker-image: machine-controller admission-webhook docker-image-nodep
 docker-image-nodep:
 	docker build -t $(IMAGE_NAME) .
 	docker push $(IMAGE_NAME)
-	docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook .
-	docker push $(IMAGE_NAME_WEBHOOK)
 	if [[ -n "$(GIT_TAG)" ]]; then \
 		$(eval IMAGE_TAG = $(GIT_TAG)) \
 		docker build -t $(IMAGE_NAME) . && \
 		docker push $(IMAGE_NAME) && \
-		docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook . && \
-		docker push $(IMAGE_NAME_WEBHOOK) && \
 		$(eval IMAGE_TAG = latest) \
 		docker build -t $(IMAGE_NAME) . ;\
 		docker push $(IMAGE_NAME) ;\
-		docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook . ;\
-		docker push $(IMAGE_NAME_WEBHOOK) ;\
 	fi
 
 test-unit-docker:

@@ -205,7 +205,7 @@ spec:
         app: machine-controller-webhook
     spec:
       containers:
-        - image: kubermatic/machine-controller-webhook:latest
+        - image: kubermatic/machine-controller:latest
           imagePullPolicy: IfNotPresent
           name: webhook
           command:
