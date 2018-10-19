@@ -46,21 +46,17 @@ docker-image: machine-controller docker-image-nodep admission-webhook
 docker-image-nodep:
 	docker build -t $(IMAGE_NAME) .
 	docker push $(IMAGE_NAME)
-	if [[ -n "$(GIT_TAG)" ]]; then \
-		$(eval IMAGE_TAG = $(GIT_TAG)) \
-		docker build -t $(IMAGE_NAME) . && \
-		docker push $(IMAGE_NAME) && \
-		$(eval IMAGE_TAG = latest) \
-		docker build -t $(IMAGE_NAME) . ;\
-		docker push $(IMAGE_NAME) ;\
-	fi
 	docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook .
 	docker push $(IMAGE_NAME_WEBHOOK)
 	if [[ -n "$(GIT_TAG)" ]]; then \
 		$(eval IMAGE_TAG = $(GIT_TAG)) \
+		docker build -t $(IMAGE_NAME) . && \
+		docker push $(IMAGE_NAME) && \
 		docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook . && \
 		docker push $(IMAGE_NAME_WEBHOOK) && \
 		$(eval IMAGE_TAG = latest) \
+		docker build -t $(IMAGE_NAME) . ;\
+		docker push $(IMAGE_NAME) ;\
 		docker build -t $(IMAGE_NAME_WEBHOOK) -f Dockerfile.webhook . ;\
 		docker push $(IMAGE_NAME_WEBHOOK) ;\
 	fi
