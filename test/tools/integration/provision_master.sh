@@ -56,10 +56,10 @@ EOF
   kubeadm init --kubernetes-version=v1.12.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16
   sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-scheduler.yaml
   sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-controller-manager.yaml
-  modprobe ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh nf_conntrack_ipv4
+fi
+if ! ls \$HOME/.kube/config; then
   mkdir -p \$HOME/.kube
   cp -i /etc/kubernetes/admin.conf \$HOME/.kube/config
-  kubectl get configmap -n kube-system kube-proxy -o yaml|sed 's/mode: ""/mode: "ipvs"/g'|kubectl apply -f -
   kubectl taint nodes --all node-role.kubernetes.io/master-
   kubectl get configmap -n kube-system kubelet-config-1.12 -o yaml \
    |sed '/creationTimestamp/d;/resourceVersion/d;/selfLink/d;/uid/d;s/kubelet-config-1.12/kubelet-config-1.11/g' \
