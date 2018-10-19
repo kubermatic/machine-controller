@@ -82,7 +82,7 @@ if ! ls machine-controller-deployed; then
 fi
 
 for try in {1..10}; do
-  if kubectl get pods -n kube-system|egrep '^machine-controller'|grep Running; then
+  if kubectl get pods -n kube-system|egrep '^machine-controller'|grep -v webhook|grep Running; then
     echo "Success!"
     exit 0
   fi
