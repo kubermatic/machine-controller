@@ -91,7 +91,7 @@ done
 
 echo "Error: machine-controller didn't come up within 100 seconds!"
 echo "Logs:"
-kubectl logs -n kube-system  \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
+kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
 exit 1
 EOEXEC
 

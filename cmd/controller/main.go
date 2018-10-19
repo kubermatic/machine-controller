@@ -260,11 +260,11 @@ func main() {
 		g.Add(func() error {
 			return s.ListenAndServe()
 		}, func(err error) {
-			glog.Warningf("shutting down util HTTP server due to: %s", err)
+			glog.Warningf("shutting down HTTP server due to: %s", err)
 			srvCtx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
 			if err = s.Shutdown(srvCtx); err != nil {
-				glog.Errorf("failed to shutdown util HTTP server: %s", err)
+				glog.Errorf("failed to shutdown HTTP server: %s", err)
 			}
 		})
 	}
