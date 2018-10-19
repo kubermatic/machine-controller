@@ -15,9 +15,8 @@ for try in {1..100}; do
   sleep 1;
 done
 
-
-rsync -av  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../../{examples/machine-controller.yaml,machine-controller,Dockerfile} \
+rsync -avR  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
+    ../../.././{Makefile,examples/machine-controller.yaml,machine-controller,Dockerfile,webhook} \
     root@$ADDR:/root/
 
 cat <<EOEXEC |ssh_exec
@@ -34,6 +33,10 @@ fi
 systemctl mask swap.target
 swapoff -a
 
+if ! which make; then
+  apt update
+  apt install make
+fi
 if ! which docker; then
   apt update
   apt install -y docker.io
@@ -72,13 +75,13 @@ if [[ "${1:-deploy_machine_controller}"  == "do-not-deploy-machine-controller" ]
 fi
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
-  sed -i -e 's/-worker-count=5/-worker-count=50/g' machine-controller.yaml
-  kubectl apply -f machine-controller.yaml
+  sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/machine-controller.yaml
+  make deploy
   touch machine-controller-deployed
 fi
 
 for try in {1..10}; do
-  if kubectl get pods -n kube-system|egrep '^machine-controller'|grep Running; then
+  if kubectl get pods -n kube-system|egrep '^machine-controller'|grep -v webhook|grep Running; then
     echo "Success!"
     exit 0
   fi
