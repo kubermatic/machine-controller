@@ -492,6 +492,6 @@ webhooks:
   clientConfig:
     service:
       namespace: kube-system
-      name: machine-controller
+      name: machine-controller-webhook
       path: /machinedeployments
     caBundle: __admission_ca_cert__

@@ -101,7 +101,7 @@ examples/admission-key.pem: examples/ca-cert.pem
 examples/admission-cert.pem: examples/admission-key.pem
 	openssl req -new -sha256 \
     -key examples/admission-key.pem \
-    -subj "/C=US/ST=CA/O=Acme/CN=machine-controller.kube-system.svc" \
+    -subj "/C=US/ST=CA/O=Acme/CN=machine-controller-webhook.kube-system.svc" \
     -out examples/admission.csr
 	openssl x509 -req -in examples/admission.csr -CA examples/ca-cert.pem \
 		-CAkey examples/ca-key.pem -CAcreateserial \
