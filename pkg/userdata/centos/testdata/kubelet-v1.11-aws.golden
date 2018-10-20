@@ -51,9 +51,13 @@ write_files:
 
     setenforce 0 || true
 
-    # As we added some modules and don't want to reboot, restart the service 
+    # As we added some modules and don't want to reboot, restart the service
     systemctl restart systemd-modules-load.service
     sysctl --system
+
+    # The normal way of setting it via cloud-init is broken:
+    # https://bugs.launchpad.net/cloud-init/+bug/1662542
+    hostnamectl set-hostname node1
 
     yum install -y docker-1.13.1 \
       ebtables \
@@ -87,8 +91,6 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
-    
-
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
