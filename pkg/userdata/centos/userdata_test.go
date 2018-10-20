@@ -58,9 +58,10 @@ func TestUserDataGeneration(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		spec          clusterv1alpha1.MachineSpec
-		clusterDNSIPs []net.IP
+		name              string
+		spec              clusterv1alpha1.MachineSpec
+		clusterDNSIPs     []net.IP
+		cloudProviderName *string
 	}{
 		{
 			name: "kubelet-v1.9-aws",
@@ -98,9 +99,19 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "kubelet-v1.12-vsphere",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.12.0",
+				},
+			},
+			cloudProviderName: stringPtr("vsphere"),
+		},
 	}
 
-	cloudProvider := &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil}
+	defaultCloudProvider := &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil}
 	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{
 		"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": &clientcmdapi.AuthInfo{Token: "my-token"}}}
@@ -110,6 +121,12 @@ func TestUserDataGeneration(t *testing.T) {
 		emtpyProviderConfig := clusterv1alpha1.ProviderConfig{
 			Value: &runtime.RawExtension{}}
 		test.spec.ProviderConfig = emtpyProviderConfig
+		var cloudProvider *fakeCloudConfigProvider
+		if test.cloudProviderName != nil {
+			cloudProvider = &fakeCloudConfigProvider{name: *test.cloudProviderName, config: "{config:true}", err: nil}
+		} else {
+			cloudProvider = defaultCloudProvider
+		}
 
 		userdata, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
 		if err != nil {
@@ -118,4 +135,8 @@ func TestUserDataGeneration(t *testing.T) {
 
 		testhelper.CompareOutput(t, test.name, userdata, *update)
 	}
+}
+
+func stringPtr(a string) *string {
+	return &a
 }
