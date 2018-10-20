@@ -218,6 +218,24 @@ func TestProvider_UserData(t *testing.T) {
 			kubernetesCACert: "CACert",
 			osConfig:         &Config{DistUpgradeOnBoot: false},
 		},
+		{
+			name: "vsphere",
+			providerConfig: &providerconfig.Config{
+				CloudProvider:        "vsphere",
+				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
+				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.11.3",
+				},
+			},
+			ccProvider:       &fakeCloudConfigProvider{name: "vsphere", config: "{vsphere-config:true}", err: nil},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig:         &Config{DistUpgradeOnBoot: false},
+		},
 	}...)
 
 	for _, test := range tests {

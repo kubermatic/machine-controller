@@ -194,12 +194,14 @@ write_files:
       socat \
       wget \
       curl \
-      ipvsadm \
-      open-vm-tools
+      ipvsadm{{ if eq .CloudProvider "vsphere" }} \
+      open-vm-tools{{ end }}
 
 {{ downloadBinariesScript .KubeletVersion true | indent 4 }}
 
+    {{- if eq .CloudProvider "vsphere" }}
     systemctl enable --now vmtoolsd.service
+    {{ end -}}
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service

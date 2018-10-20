@@ -68,8 +68,7 @@ write_files:
       socat \
       wget \
       curl \
-      ipvsadm \
-      open-vm-tools
+      ipvsadm
 
     #setup some common directories
     mkdir -p /opt/bin/
@@ -92,9 +91,6 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
-    
-
-    systemctl enable --now vmtoolsd.service
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service

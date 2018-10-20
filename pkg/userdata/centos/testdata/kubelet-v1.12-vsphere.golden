@@ -68,7 +68,8 @@ write_files:
       socat \
       wget \
       curl \
-      ipvsadm
+      ipvsadm \
+      open-vm-tools
 
     #setup some common directories
     mkdir -p /opt/bin/
@@ -83,7 +84,7 @@ write_files:
     fi
     # kubelet
     if [ ! -f /opt/bin/kubelet ]; then
-        curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.10.2/bin/linux/amd64/kubelet
+        curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.12.0/bin/linux/amd64/kubelet
         chmod +x /opt/bin/kubelet
     fi
     
@@ -91,6 +92,8 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
+    
+    systemctl enable --now vmtoolsd.service
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -131,11 +134,10 @@ write_files:
       --cni-bin-dir=/opt/cni/bin \
       --authorization-mode=Webhook \
       --client-ca-file=/etc/kubernetes/pki/ca.crt \
-      --cadvisor-port=0 \
       --rotate-certificates=true \
       --cert-dir=/etc/kubernetes/pki \
       --authentication-token-webhook=true \
-      --cloud-provider=aws \
+      --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --read-only-port=0 \
@@ -156,7 +158,7 @@ write_files:
 
 - path: "/etc/kubernetes/cloud-config"
   content: |
-    {aws-config:true}
+    {config:true}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   content: |

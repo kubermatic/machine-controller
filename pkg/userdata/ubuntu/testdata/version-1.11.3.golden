@@ -108,10 +108,10 @@ write_files:
     #!/bin/bash
     set -xeuo pipefail
 
-    # As we added some modules and don't want to reboot, restart the service 
+    # As we added some modules and don't want to reboot, restart the service
     systemctl restart systemd-modules-load.service
     sysctl --system
-    
+
     apt-key add /opt/docker.asc
     apt-get update
 
@@ -138,7 +138,6 @@ write_files:
       socat \
       util-linux \
       ${CR_PKG} \
-      open-vm-tools \
       ipvsadm
 
     # If something failed during package installation but docker got installed, we need to put it on hold
@@ -172,7 +171,7 @@ write_files:
     
 
     systemctl enable --now docker
-    systemctl enable --now kubelet 
+    systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
 
