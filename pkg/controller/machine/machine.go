@@ -197,6 +197,33 @@ func (c *Controller) runWorker() {
 	}
 }
 
+// clearMachineError is a convenience function to remove a error on the machine if its set.
+// It does not return an error as it's used around the sync handler
+func (c *Controller) clearMachineError(key string) {
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to split metaNamespaceKey: %v", err))
+		return
+	}
+	listerMachine, err := c.machinesLister.Machines(namespace).Get(name)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to get Machine from lister: %v", err))
+		return
+	}
+	machine := listerMachine.DeepCopy()
+
+	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
+		_, err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+			m.Status.ErrorMessage = nil
+			m.Status.ErrorReason = nil
+		})
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("failed to update machine: %v", err))
+			return
+		}
+	}
+}
+
 func (c *Controller) processNextWorkItem() bool {
 	key, quit := c.workqueue.Get()
 	if quit {
@@ -208,6 +235,8 @@ func (c *Controller) processNextWorkItem() bool {
 	glog.V(6).Infof("Processing machine: %s", key)
 	err := c.syncHandler(key.(string))
 	if err == nil {
+		// Every time we successfully sync a Machine, we should check if we should remove the error if its set
+		c.clearMachineError(key.(string))
 		c.workqueue.Forget(key)
 		return true
 	}
@@ -274,16 +303,6 @@ func (c *Controller) updateMachine(machine *clusterv1alpha1.Machine, modify func
 	})
 
 	return updatedMachine, err
-}
-
-func (c *Controller) clearMachineErrorIfSet(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
-	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
-		return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			m.Status.ErrorMessage = nil
-			m.Status.ErrorReason = nil
-		})
-	}
-	return machine, nil
 }
 
 // updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not
@@ -428,11 +447,6 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	if c.nodeIsReady(node) {
-		// If we have an ready node, we should clear the error in case one was set.
-		// Useful when there was a network outage & a cloud-provider api outage at the same time
-		if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
-			return fmt.Errorf("failed to clear machine error: %v", err)
-		}
 		// We must do this to ensure the informers in the machineSet and machineDeployment controller
 		// get triggered as soon as a ready node exists for a machine
 		if machine, err = c.ensureMachineHasNodeReadyCondition(machine); err != nil {
@@ -618,10 +632,6 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 
 		// case 2.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			// remove an error message in case it was set
-			if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
-				return fmt.Errorf("failed to update machine after removing the failed validation error: %v", err)
-			}
 			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
 
 			kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
@@ -643,10 +653,6 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprover")
 			}
 			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
-			// remove error message in case it was set
-			if machine, err = c.clearMachineErrorIfSet(machine); err != nil {
-				return fmt.Errorf("failed to update machine after removing the create machine error: %v", err)
-			}
 			glog.V(4).Infof("Created machine %s at cloud provider", machine.Name)
 			return nil
 		}
