@@ -1,7 +1,9 @@
-# VMWware vSphere
+# VMware vSphere
 
 To use the machine-controller to create machines on VMWare vsphere, you must first
-create a template. Currently Ubuntu and Container Linux are supported.
+create a template.
+
+Ubuntu & CoreOS:
 
 1. Go into the VSphere WebUI, select your datacenter, right click onto it and choose "Deploy OVF Template"
 2. Fill in the "URL" field with the appropriate url:
@@ -12,3 +14,10 @@ create a template. Currently Ubuntu and Container Linux are supported.
 5. Select the same network you want to use for your machines
 6. Leave everyhting in the "Customize Template" and "Ready to complete" dialog as it is
 7. Wait until the VM got fully imported and the "Snapshots" => "Create Snapshot" button is not grayed out anymore
+
+CentOS:
+
+1. Download the CentOS cloud image to your local workstation from here: `https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2`
+1. Convert it to vmdk: `qemu-img convert -f qcow2 -O vmdk CentOS-7-x86_64-GenericCloud.qcow2 CentOS-7-x86_64-GenericCloud.vmdk`
+1. Upload it to a Datastore of your Vsphere installation
+1. Create a new virtual machine that uses the uploaded vmdk as rootdisk
