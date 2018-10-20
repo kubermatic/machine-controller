@@ -48,10 +48,12 @@ jobs:
           key: repo-{{ .Environment.CIRCLE_SHA1 }}
       - run: DEP_RELEASE_TAG=v0.5.0 curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: make machine-controller
+      - run: make webhook
       - save_cache:
           key: machine-controller-{{ .Revision }}
           paths:
             - /go/src/github.com/kubermatic/machine-controller
+            - /go/src/github.com/kubermatic/webhook
   end-to-end:
     <<: *defaults
     steps:

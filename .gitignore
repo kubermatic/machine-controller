@@ -8,3 +8,8 @@ test/tools/verify/verify
 terraform
 terraform-provider-hcloud
 .kubeconfig
+examples/*.pem
+examples/*.csr
+examples/*.srl
+webhook
+!cmd/webhook

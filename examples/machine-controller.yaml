@@ -189,6 +189,75 @@ spec:
               port: 8085
             periodSeconds: 5
 ---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: machine-controller-webhook
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: machine-controller-webhook
+  template:
+    metadata:
+      labels:
+        app: machine-controller-webhook
+    spec:
+      containers:
+        - image: kubermatic/machine-controller:latest
+          imagePullPolicy: IfNotPresent
+          name: webhook
+          command:
+            - /usr/local/bin/webhook
+            - -logtostderr
+            - -v=6
+            - -listen-address=0.0.0.0:9876
+          volumeMounts:
+            - name: machine-controller-admission-cert
+              mountPath: /tmp/cert
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9876
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9876
+              scheme: HTTPS
+            periodSeconds: 5
+      volumes:
+        - name: machine-controller-admission-cert
+          secret:
+            secretName: machine-controller-admission-cert
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: machine-controller-admission-cert
+  namespace: kube-system
+data:
+  "cert.pem": __admission_cert__
+  "key.pem": __admission_key__
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: machine-controller-webhook
+  namespace: kube-system
+spec:
+  ports:
+  - name: 443-9876
+    port: 443
+    protocol: TCP
+    targetPort: 9876
+  selector:
+    app: machine-controller-webhook
+  type: ClusterIP
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -404,3 +473,27 @@ subjects:
   - kind: ServiceAccount
     name: machine-controller
     namespace: kube-system
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: machinedeployments.machine-controller.kubermatic.io
+webhooks:
+- name: machinedeployments.machine-controller.kubermatic.io
+  failurePolicy: Fail
+  rules:
+  - apiGroups:
+    - "cluster.k8s.io"
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - machinedeployments
+  clientConfig:
+    service:
+      namespace: kube-system
+      name: machine-controller-webhook
+      path: /machinedeployments
+    caBundle: __admission_ca_cert__

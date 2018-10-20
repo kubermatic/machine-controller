@@ -23,7 +23,7 @@
 
 ## Deploy the machine-controller
 
-`kubectl apply -f examples/machine-controller.yaml`
+`make deploy`
 
 ## Creating a machineDeployment
 ```bash
