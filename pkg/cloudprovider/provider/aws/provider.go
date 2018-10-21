@@ -389,37 +389,37 @@ func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, er
 				}
 				groupID := aws.StringValue(csgOut.GroupId)
 
-				// Allow SSH from everywhere
+				// Add permissions
 				_, err = client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
-					CidrIp:     aws.String("0.0.0.0/0"),
-					FromPort:   aws.Int64(22),
-					ToPort:     aws.Int64(22),
-					GroupId:    csgOut.GroupId,
-					IpProtocol: aws.String("tcp"),
+					GroupId: csgOut.GroupId,
+					IpPermissions: []*ec2.IpPermission{
+						(&ec2.IpPermission{}).
+							// all protocols from within the sg
+							SetIpProtocol("-1").
+							SetUserIdGroupPairs([]*ec2.UserIdGroupPair{
+								(&ec2.UserIdGroupPair{}).
+									SetGroupId(groupID),
+							}),
+						(&ec2.IpPermission{}).
+							// tcp:22 from everywhere
+							SetIpProtocol("tcp").
+							SetFromPort(22).
+							SetToPort(22).
+							SetIpRanges([]*ec2.IpRange{
+								{CidrIp: aws.String("0.0.0.0/0")},
+							}),
+						(&ec2.IpPermission{}).
+							// tcp:10250 from everywhere
+							SetIpProtocol("tcp").
+							SetFromPort(10250).
+							SetToPort(10250).
+							SetIpRanges([]*ec2.IpRange{
+								{CidrIp: aws.String("0.0.0.0/0")},
+							}),
+					},
 				})
 				if err != nil {
-					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for ssh to security group %s", groupID))
-				}
-
-				// Allow kubelet 10250 from everywhere
-				_, err = client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
-					CidrIp:     aws.String("0.0.0.0/0"),
-					FromPort:   aws.Int64(10250),
-					ToPort:     aws.Int64(10250),
-					GroupId:    csgOut.GroupId,
-					IpProtocol: aws.String("tcp"),
-				})
-				if err != nil {
-					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for kubelet port 10250 to security group %s", groupID))
-				}
-
-				// Allow node-to-node communication
-				_, err = client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
-					SourceSecurityGroupName: aws.String(defaultSecurityGroupName),
-					GroupId:                 csgOut.GroupId,
-				})
-				if err != nil {
-					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for node-to-node communication to security group %s", groupID))
+					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rules for security group %s", groupID))
 				}
 
 				glog.V(4).Infof("security group %s successfully created", defaultSecurityGroupName)
