@@ -15,7 +15,7 @@ import (
 
 func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 
-	kubeClient, clusterClient, machineDeployment, err := prepare(kubeConfig, manifestPath, parameters)
+	kubeClient, clusterClient, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
 	}

@@ -204,6 +204,7 @@ spec:
       labels:
         app: machine-controller-webhook
     spec:
+      serviceAccountName: machine-controller
       containers:
         - image: kubermatic/machine-controller:latest
           imagePullPolicy: IfNotPresent
@@ -211,7 +212,7 @@ spec:
           command:
             - /usr/local/bin/webhook
             - -logtostderr
-            - -v=6
+            - -v=4
             - -listen-address=0.0.0.0:9876
           volumeMounts:
             - name: machine-controller-admission-cert
@@ -496,4 +497,22 @@ webhooks:
       namespace: kube-system
       name: machine-controller-webhook
       path: /machinedeployments
+    caBundle: __admission_ca_cert__
+- name: machines.machine-controller.kubermatic.io
+  failurePolicy: Fail
+  rules:
+  - apiGroups:
+    - "cluster.k8s.io"
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - machines
+  clientConfig:
+    service:
+      namespace: kube-system
+      name: machine-controller-webhook
+      path: /machines
     caBundle: __admission_ca_cert__

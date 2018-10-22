@@ -21,12 +21,10 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
-	clusterv1alpha1conversions "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -68,8 +66,6 @@ const (
 
 	deletionRetryWaitPeriod = 10 * time.Second
 
-	latestKubernetesVersion = "1.9.6"
-
 	NodeOwnerLabelName = "machine-controller/owned-by"
 )
 
@@ -88,9 +84,6 @@ type Controller struct {
 	clusterDNSIPs      []net.IP
 	metrics            *MetricsCollection
 	kubeconfigProvider KubeconfigProvider
-
-	validationCache      map[string]bool
-	validationCacheMutex sync.Mutex
 
 	name string
 }
@@ -145,7 +138,6 @@ func NewMachineController(
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
 		kubeconfigProvider: kubeconfigProvider,
-		validationCache:    map[string]bool{},
 
 		name: name,
 	}
@@ -337,16 +329,6 @@ func (c *Controller) createProviderInstance(prov cloud.Provider, machine *cluste
 	return prov.Create(machine, c.updateMachine, userdata)
 }
 
-func (c *Controller) validateMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
-	err := prov.Validate(machine.Spec)
-	if err != nil {
-		c.recorder.Eventf(machine, corev1.EventTypeWarning, "ValidationFailed", "Validation failed: %v", err)
-		return err
-	}
-	c.recorder.Event(machine, corev1.EventTypeNormal, "ValidationSucceeded", "Validation succeeded")
-	return nil
-}
-
 func (c *Controller) syncHandler(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -362,34 +344,12 @@ func (c *Controller) syncHandler(key string) error {
 	}
 	machine := listerMachine.DeepCopy()
 
-	// Add type revision annotation to be able
-	// to migrate in case there is a backwards-incompatible change on the upstream machine types
-	if machine.Annotations == nil {
-		machine.Annotations = map[string]string{}
-	}
-	if _, ok := machine.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName]; !ok {
-		machine, err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			if m.Annotations == nil {
-				m.Annotations = map[string]string{}
-			}
-			m.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName] = clusterv1alpha1conversions.TypeRevisionCurrentVersion
-		})
-		if err != nil {
-			return fmt.Errorf("failed to set type revision annotation on machine: %v", err)
-		}
-		glog.V(4).Infof("Set type revision annotation on machine %s/%s to %s",
-			machine.Namespace, machine.Name, clusterv1alpha1conversions.TypeRevisionCurrentVersion)
-	}
-
-	// step 1: verify machine spec and provider config
+	// This must stay in the controller, it can not be moved into the webhook
+	// as the webhook does not get the name of machineset controller generated
+	// machines on the CREATE request, because they only have `GenerateName` set,
+	// not name: https://github.com/kubernetes-sigs/cluster-api/blob/852541448c3a1d847513a2ecf2cb75e2d4b91c2d/pkg/controller/machineset/controller.go#L290
 	if machine.Spec.Name == "" {
-		machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			m.Spec.Name = m.Name
-		})
-		if err != nil {
-			return fmt.Errorf("failed to default machine.Spec.Name to %s: %v", listerMachine.Name, err)
-		}
-		c.recorder.Eventf(machine, corev1.EventTypeNormal, "NodeName defaulted", "Defaulted nodename to %s", machine.Name)
+		machine.Spec.Name = machine.Name
 	}
 
 	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
@@ -417,16 +377,6 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
 	}
-
-	// We use a new variable here to be able to put the Event on the machine even thought
-	// c.defaultMachine returns a nil pointer for the machine in case of an error
-	defaultedMachine, err := c.defaultMachine(machine, userdataProvider)
-	if err != nil {
-		errorMessage := fmt.Sprintf("failed to default the Machine specs: %v", err)
-		c.recorder.Event(machine, corev1.EventTypeWarning, "MachineDefaultingFailed", errorMessage)
-		return errors.New(errorMessage)
-	}
-	machine = defaultedMachine
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
 	if machine.Status.NodeRef == nil {
@@ -583,50 +533,11 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 
 func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
 	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
-	// case 1: validate the machine spec before getting the instance from cloud provider.
-	// even though this is a little bit premature and inefficient, it helps us detect invalid specification
-	defaultedMachineSpec, changed, err := prov.AddDefaults(machine.Spec)
-	if err != nil {
-		return c.updateMachineErrorIfTerminalError(machine, common.InvalidConfigurationMachineError, err.Error(), err, "failed to add defaults to machine")
-	}
-	if changed {
-		glog.V(4).Infof("updating machine '%s' with defaults...", machine.Name)
-		c.recorder.Event(machine, corev1.EventTypeNormal, "Defaulted", "Updated machine with defaults")
-		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			m.Spec = defaultedMachineSpec
-		}); err != nil {
-			return fmt.Errorf("failed to update machine '%s' after adding defaults: '%v'", machine.Name, err)
-		}
 
-		glog.V(4).Infof("Successfully updated machine '%s' with defaults!", machine.Name)
-	}
-
-	cacheKey := string(machine.UID) + machine.ResourceVersion
-	c.validationCacheMutex.Lock()
-	validationSuccess := c.validationCache[cacheKey]
-	c.validationCacheMutex.Unlock()
-	if !validationSuccess {
-		if err := c.validateMachine(prov, machine); err != nil {
-			if _, errNested := c.updateMachineError(machine, common.InvalidConfigurationMachineError, err.Error()); errNested != nil {
-				return fmt.Errorf("failed to update machine error after failed validation: %v", errNested)
-			}
-			return fmt.Errorf("invalid provider config: %v", err)
-		}
-		c.validationCacheMutex.Lock()
-		c.validationCache[cacheKey] = true
-		c.validationCacheMutex.Unlock()
-	} else {
-		glog.V(6).Infof("Skipping validation as the machine was already successfully validated before")
-	}
 	providerInstance, err := prov.Get(machine)
 
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
-		//First invalidate the validation cache to make sure we run the validation on the next sync.
-		//This might happen in case the user invalidates his provider credentials...
-		c.validationCacheMutex.Lock()
-		c.validationCache[cacheKey] = false
-		c.validationCacheMutex.Unlock()
 
 		// case 2.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -817,20 +728,6 @@ func (c *Controller) getNode(instance instance.Instance, provider providerconfig
 		}
 	}
 	return nil, false, nil
-}
-
-func (c *Controller) defaultMachine(machine *clusterv1alpha1.Machine, prov userdata.Provider) (*clusterv1alpha1.Machine, error) {
-	var err error
-
-	if machine.Spec.Versions.Kubelet == "" {
-		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			m.Spec.Versions.Kubelet = latestKubernetesVersion
-		}); err != nil {
-			return nil, err
-		}
-	}
-
-	return machine, nil
 }
 
 func (c *Controller) enqueueMachine(obj interface{}) {

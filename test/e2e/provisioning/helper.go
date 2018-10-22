@@ -81,7 +81,7 @@ func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams [
 		}
 
 		st.Run(testCase.name, func(it *testing.T) {
-			testScenario(it, testCase, cloudProvider, testParams, manifestPath)
+			testScenario(it, testCase, cloudProvider, testParams, manifestPath, true)
 		})
 	}
 }
@@ -90,8 +90,11 @@ func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams [
 // args: kubeConfig, maifestPath, scenarioParams, timeout
 type scenarioExecutor func(string, string, []string, time.Duration) error
 
-func testScenario(t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string) {
-	t.Parallel()
+func testScenario(t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string, parallelize bool) {
+
+	if parallelize {
+		t.Parallel()
+	}
 
 	kubernetesCompliantName := fmt.Sprintf("%s-%s", testCase.name, cloudProvider)
 	kubernetesCompliantName = strings.Replace(kubernetesCompliantName, " ", "-", -1)

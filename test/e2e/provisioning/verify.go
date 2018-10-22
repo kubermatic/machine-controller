@@ -26,9 +26,20 @@ const (
 	machineReadyCheckPeriod = 15 * time.Second
 )
 
+func verifyCreateMachineFails(kubeConfig, manifestPath string, parameters []string, _ time.Duration) error {
+	_, clusterClient, machine, err := prepareMachine(kubeConfig, manifestPath, parameters)
+	if err != nil {
+		return err
+	}
+	if _, err := clusterClient.ClusterV1alpha1().Machines(machine.Namespace).Create(machine); err != nil {
+		return nil
+	}
+	return fmt.Errorf("expected create of Machine %s to fail but succeeded", machine.Name)
+}
+
 func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 
-	kubeClient, clusterClient, machineDeployment, err := prepare(kubeConfig, manifestPath, parameters)
+	kubeClient, clusterClient, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
 	}
@@ -44,36 +55,15 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 	}
 
 	glog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
-
 	return nil
 }
 
-func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface,
-	clientset.Interface, *v1alpha1.MachineDeployment, error) {
-	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
-		return nil, nil, nil, fmt.Errorf("kubeconfig and manifest path must be defined")
-	}
+func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface, clientset.Interface, *v1alpha1.MachineDeployment, error) {
 
-	// init kube related stuff
-	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+	kubeClient, clusterClient, manifest, err := prepare(kubeConfig, manifestPath, parameters)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error building kubeconfig: %v", err)
+		return nil, nil, nil, err
 	}
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error building kubernetes clientset: %v", err)
-	}
-	clusterClient, err := clientset.NewForConfig(cfg)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Error building example clientset: %v", err)
-	}
-
-	// prepare the manifest
-	manifest, err := readAndModifyManifest(manifestPath, parameters)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to prepare the manifest, due to: %v", err)
-	}
-
 	newMachineDeployment := &v1alpha1.MachineDeployment{}
 	manifestReader := strings.NewReader(manifest)
 	manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
@@ -85,6 +75,54 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.I
 	newMachineDeployment.Namespace = "kube-system"
 
 	return kubeClient, clusterClient, newMachineDeployment, nil
+}
+
+func prepareMachine(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface, clientset.Interface, *v1alpha1.Machine, error) {
+
+	kubeClient, clusterClient, manifest, err := prepare(kubeConfig, manifestPath, parameters)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	newMachine := &v1alpha1.Machine{}
+	manifestReader := strings.NewReader(manifest)
+	manifestDecoder := yaml.NewYAMLToJSONDecoder(manifestReader)
+	err = manifestDecoder.Decode(newMachine)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// Enforce the kube-system namespace, otherwise cleanup wont work
+	newMachine.Namespace = "kube-system"
+
+	return kubeClient, clusterClient, newMachine, nil
+}
+
+func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface,
+	clientset.Interface, string, error) {
+	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
+		return nil, nil, "", fmt.Errorf("kubeconfig and manifest path must be defined")
+	}
+
+	// init kube related stuff
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("Error building kubeconfig: %v", err)
+	}
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("Error building kubernetes clientset: %v", err)
+	}
+	clusterClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("Error building example clientset: %v", err)
+	}
+
+	// prepare the manifest
+	manifest, err := readAndModifyManifest(manifestPath, parameters)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("failed to prepare the manifest, due to: %v", err)
+	}
+
+	return kubeClient, clusterClient, manifest, nil
 }
 
 func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
