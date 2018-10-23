@@ -1,5 +1,8 @@
 #cloud-config
+
 hostname: node1
+# Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name
+
 
 ssh_pwauth: no
 
