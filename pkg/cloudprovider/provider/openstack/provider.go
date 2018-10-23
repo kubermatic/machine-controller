@@ -504,8 +504,11 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) err
 		return osErrorToTerminalError(err, "failed to get compute client")
 	}
 
-	err = osservers.Delete(computeClient, instance.ID()).ExtractErr()
-	return osErrorToTerminalError(err, "failed to delete instance")
+	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil {
+		return osErrorToTerminalError(err, "failed to delete instance")
+	}
+
+	return nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
