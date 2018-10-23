@@ -1,0 +1,17 @@
+[Global]
+user          = "admin"
+password      = "password"
+port          = ""
+insecure-flag = true
+
+[Disk]
+scsicontrollertype = "pvscsi"
+
+[Workspace]
+server            = "https://127.0.0.1:8443"
+datacenter        = "Datacenter"
+folder            = "some-folder"
+default-datastore = "Datastore"
+resourcepool-path = "/some-resource-pool"
+
+
