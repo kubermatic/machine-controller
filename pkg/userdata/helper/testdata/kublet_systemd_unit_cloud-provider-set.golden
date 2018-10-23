@@ -28,7 +28,6 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --authentication-token-webhook=true \
   --cloud-provider=aws \
   --cloud-config=/etc/kubernetes/cloud-config \
-  --hostname-override=some-test-node \
   --read-only-port=0 \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \

@@ -1,5 +1,5 @@
 #cloud-config
-hostname: node1
+
 
 ssh_pwauth: no
 
@@ -55,9 +55,7 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
-    # The normal way of setting it via cloud-init is broken:
-    # https://bugs.launchpad.net/cloud-init/+bug/1662542
-    hostnamectl set-hostname node1
+    
 
     yum install -y docker-1.13.1 \
       ebtables \
@@ -137,7 +135,6 @@ write_files:
       --authentication-token-webhook=true \
       --cloud-provider=aws \
       --cloud-config=/etc/kubernetes/cloud-config \
-      --hostname-override=node1 \
       --read-only-port=0 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \

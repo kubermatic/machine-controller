@@ -1,5 +1,8 @@
 #cloud-config
+
 hostname: node1
+# Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name
+
 
 ssh_pwauth: no
 
@@ -55,9 +58,11 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
+     
     # The normal way of setting it via cloud-init is broken:
     # https://bugs.launchpad.net/cloud-init/+bug/1662542
     hostnamectl set-hostname node1
+    
 
     yum install -y docker-1.13.1 \
       ebtables \
