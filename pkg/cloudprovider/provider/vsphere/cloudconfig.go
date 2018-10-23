@@ -74,7 +74,7 @@ type CloudConfig struct {
 
 func CloudConfigToString(c *CloudConfig) (string, error) {
 	funcMap := sprig.TxtFuncMap()
-	funcMap["iniEscape"] = ini.INIEscape
+	funcMap["iniEscape"] = ini.Escape
 
 	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
 	if err != nil {

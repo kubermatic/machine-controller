@@ -46,7 +46,7 @@ func TestINIEscape(t *testing.T) {
 		}
 
 		funcMap := sprig.TxtFuncMap()
-		funcMap["iniEscape"] = INIEscape
+		funcMap["iniEscape"] = Escape
 
 		tpl, err := template.New("test").Funcs(funcMap).Parse(testTpl)
 		if err != nil {
