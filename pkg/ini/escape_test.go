@@ -65,7 +65,7 @@ func TestINIEscape(t *testing.T) {
 		}
 
 		if before.Global.Password != after.Global.Password {
-			t.Fatalf("after unmarshalling the config into a string an reading it back in, the value changed")
+			t.Fatalf("after unmarshalling the config into a string an reading it back in, the value changed. Password before:\n%s Password after:\n%s", before.Global.Password, after.Global.Password)
 		}
 	}
 }
