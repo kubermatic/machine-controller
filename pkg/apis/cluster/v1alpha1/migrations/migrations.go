@@ -6,9 +6,11 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"github.com/golang/glog"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -88,6 +90,19 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			return fmt.Errorf("failed to convert machinesV1alpha1.machine to clusterV1alpha1.machine name=%s err=%v",
 				machinesV1Alpha1Machine.Name, err)
 		}
+		convertedClusterv1alpha1Machine.Finalizers = append(convertedClusterv1alpha1Machine.Finalizers, machinecontroller.FinalizerDeleteNode)
+
+		// Some providers need to update the provider instance to the new UID, we get the provider as early as possible
+		// to not fail in a half-migrated state when the providerconfig is invalid
+		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderConfig)
+		if err != nil {
+			return fmt.Errorf("failed to get provider config: %v", err)
+		}
+		skg := providerconfig.NewConfigVarResolver(kubeClient)
+		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+		if err != nil {
+			return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
+		}
 
 		// We will set that to whats finally in the apisever, be that a created a clusterv1alpha1machine
 		// or a preexisting one, because the migration got interrupted
@@ -140,6 +155,14 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			return err
 		}
 
+		glog.Infof("Attempting to update the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+		newMachineWithOldUID := owningClusterV1Alpha1Machine.DeepCopy()
+		newMachineWithOldUID.UID = machinesV1Alpha1Machine.UID
+		if err := prov.MigrateUID(newMachineWithOldUID, owningClusterV1Alpha1Machine.UID); err != nil {
+			return fmt.Errorf("running the provider migration for the UID failed: %v", err)
+		}
+		glog.Infof("Successfully updated the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+
 		// All went fine, we only have to clear the old machine now
 		glog.Infof("Deleting machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		if err := deleteMachinesV1Alpha1Machine(&machinesV1Alpha1Machine, machinesv1Alpha1MachineClient); err != nil {
@@ -159,37 +182,47 @@ func ensureClusterV1Alpha1NodeOwnership(machine *clusterv1alpha1.Machine, kubeCl
 	}
 	glog.Infof("Checking if node for machines.cluster.k8s.io/v1alpha1 %s/%s exists",
 		machine.Namespace, machine.Name)
-	node, err := kubeClient.CoreV1().Nodes().Get(machine.Spec.Name, metav1.GetOptions{})
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			glog.Infof("No node for machines.cluster.k8s.io/v1alpha1 %s/%s found",
-				machine.Namespace, machine.Name)
-			return nil
+	nodeNameCandidates := []string{machine.Spec.Name}
+	if machine.Status.NodeRef != nil {
+		if machine.Status.NodeRef.Name != machine.Spec.Name {
+			nodeNameCandidates = append(nodeNameCandidates, machine.Status.NodeRef.Name)
 		}
-		return fmt.Errorf("Failed to get node %s for machine %s: %v",
-			machine.Spec.Name, machine.Name, err)
 	}
 
-	glog.Infof("Found node for machines.cluster.k8s.io/v1alpha1 %s/%s: %s, removing its ownerRef and adding NodeOwnerLabel",
-		node.Name, machine.Namespace, machine.Name)
-	nodeLabels := node.Labels
-	nodeLabels[machinecontroller.NodeOwnerLabelName] = string(machine.UID)
-	// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
-	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		node, err := kubeClient.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
+	for _, nodeName := range nodeNameCandidates {
+		node, err := kubeClient.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
 		if err != nil {
-			return err
+			if kerrors.IsNotFound(err) {
+				glog.Infof("No node for machines.cluster.k8s.io/v1alpha1 %s/%s found",
+					machine.Namespace, machine.Name)
+				continue
+			}
+			return fmt.Errorf("Failed to get node %s for machine %s: %v",
+				machine.Spec.Name, machine.Name, err)
 		}
-		// Clear all OwnerReferences as a safety measure
-		node.OwnerReferences = nil
-		node.Labels = nodeLabels
-		_, err = kubeClient.CoreV1().Nodes().Update(node)
-		return err
-	}); err != nil {
-		return fmt.Errorf("failed to update OwnerLabel on node %s: %v", node.Name, err)
+
+		glog.Infof("Found node for machines.cluster.k8s.io/v1alpha1 %s/%s: %s, removing its ownerRef and adding NodeOwnerLabel",
+			node.Name, machine.Namespace, machine.Name)
+		nodeLabels := node.Labels
+		nodeLabels[machinecontroller.NodeOwnerLabelName] = string(machine.UID)
+		// We retry this because nodes get frequently updated so there is a reasonable chance this may fail
+		if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			node, err := kubeClient.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			// Clear all OwnerReferences as a safety measure
+			node.OwnerReferences = nil
+			node.Labels = nodeLabels
+			_, err = kubeClient.CoreV1().Nodes().Update(node)
+			return err
+		}); err != nil {
+			return fmt.Errorf("failed to update OwnerLabel on node %s: %v", node.Name, err)
+		}
+		glog.Infof("Successfully removed ownerRef and added NodeOwnerLabelName to node %s for machines.cluster.k8s.io/v1alpha1 %s/%s",
+			node.Name, machine.Namespace, machine.Name)
 	}
-	glog.Infof("Successfully removed ownerRef and added NodeOwnerLabelName to node %s for machines.cluster.k8s.io/v1alpha1 %s/%s",
-		node.Name, machine.Namespace, machine.Name)
+
 	return nil
 }
 
