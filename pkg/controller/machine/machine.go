@@ -64,7 +64,7 @@ import (
 
 const (
 	finalizerDeleteInstance = "machine-delete-finalizer"
-	finalizerDeleteNode     = "machine-node-delete-finalizer"
+	FinalizerDeleteNode     = "machine-node-delete-finalizer"
 
 	deletionRetryWaitPeriod = 10 * time.Second
 
@@ -559,11 +559,6 @@ func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.N
 }
 
 func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
-	finalizers := sets.NewString(machine.Finalizers...)
-	if !finalizers.Has(finalizerDeleteNode) {
-		return nil
-	}
-
 	nodesList, err := c.nodesLister.ListWithPredicate(ownedNodesPredicateFactory(machine))
 	if err != nil {
 		return fmt.Errorf("failed to list nodes: %v", err)
@@ -575,10 +570,13 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 		}
 	}
 
-	machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-		finalizers.Delete(finalizerDeleteNode)
-		m.Finalizers = finalizers.List()
-	})
+	finalizers := sets.NewString(machine.Finalizers...)
+	if finalizers.Has(FinalizerDeleteNode) {
+		machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+			finalizers.Delete(FinalizerDeleteNode)
+			m.Finalizers = finalizers.List()
+		})
+	}
 
 	return err
 }
@@ -940,7 +938,7 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			finalizers := sets.NewString(m.Finalizers...)
 			finalizers.Insert(finalizerDeleteInstance)
-			finalizers.Insert(finalizerDeleteNode)
+			finalizers.Insert(FinalizerDeleteNode)
 			m.Finalizers = finalizers.List()
 		}); err != nil {
 			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)

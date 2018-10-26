@@ -328,6 +328,20 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// imagine that a user wants to shutdown the app but since there is no way of telling the library to stop it will eventually run `runController` method
 	// and bad things can happen - the fact it works at the moment doesn't mean it will in the future
 	runController := func(stopChannel <-chan struct{}) {
+
+		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
+		clusterv1Alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(runOptions.cfg)
+		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
+			runOptions.kubeClient,
+			runOptions.extClient,
+			clusterv1Alpha1Client,
+			runOptions.cfg,
+		); err != nil {
+			glog.Errorf("Migration failed: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+
 		machineController := machinecontroller.NewMachineController(
 			runOptions.kubeClient,
 			runOptions.machineClient,
@@ -342,19 +356,6 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.kubeconfigProvider,
 			runOptions.name,
 		)
-
-		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
-		clusterv1Alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(runOptions.cfg)
-		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
-			runOptions.kubeClient,
-			runOptions.extClient,
-			clusterv1Alpha1Client,
-			runOptions.cfg,
-		); err != nil {
-			glog.Errorf("Migration failed: %v", err)
-			runOptions.parentCtxDone()
-			return
-		}
 
 		sharedInformersController := sharedinformerscontroller.NewSharedInformers(
 			runOptions.cfg, stopChannel)

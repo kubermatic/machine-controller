@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/golang/glog"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
-	"github.com/golang/glog"
+	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
@@ -79,6 +81,10 @@ func (p *provider) Create(_ *v1alpha1.Machine, _ cloud.MachineUpdater, _ string)
 }
 
 func (p *provider) Delete(_ *v1alpha1.Machine, _ cloud.MachineUpdater) error {
+	return nil
+}
+
+func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
