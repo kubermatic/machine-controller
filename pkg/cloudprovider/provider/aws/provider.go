@@ -78,12 +78,13 @@ var (
 			owner: "595879546273",
 		},
 		providerconfig.OperatingSystemCentOS: {
-			description: "CentOS Linux 7 x86_64*",
+			description: "CentOS Linux 7 x86_64 HVM EBS*",
 			// The AWS marketplace ID from AWS
 			owner: "679593333241",
 		},
 		providerconfig.OperatingSystemUbuntu: {
-			description: "Canonical, Ubuntu, 18.04*",
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "Canonical, Ubuntu, 18.04 LTS, amd64 bionic image build on ????-??-??",
 			// The AWS marketplace ID from Canonical
 			owner: "099720109477",
 		},
@@ -149,6 +150,10 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem) (string
 			{
 				Name:   aws.String("virtualization-type"),
 				Values: aws.StringSlice([]string{"hvm"}),
+			},
+			{
+				Name:   aws.String("root-device-type"),
+				Values: aws.StringSlice([]string{"ebs"}),
 			},
 		},
 	})
