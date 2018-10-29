@@ -523,7 +523,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 			}
 		}
 	} else {
-		glog.Warningf("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
+		glog.V(4).Infof("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
 	}
 
 	return Server{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil

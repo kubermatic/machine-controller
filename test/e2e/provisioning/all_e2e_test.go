@@ -190,9 +190,10 @@ func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 		osName:            "coreos",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.11.0",
+		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest, verifyCreateAndDelete)
+	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest)
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
@@ -226,9 +227,10 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.10.5",
+		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest, verifyCreateAndDelete)
+	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest)
 }
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
@@ -253,6 +255,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		osName:            "coreos",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.10.5",
+		executor:          verifyCreateUpdateAndDelete,
 	}
-	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, vs_manifest, verifyCreateUpdateAndDelete)
+	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, vs_manifest)
 }

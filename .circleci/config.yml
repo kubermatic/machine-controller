@@ -62,7 +62,7 @@ jobs:
       - run:
           name: Install dependencies
           command: >-
-              apt update && apt install -y jq rsync unzip &&
+              apt update && apt install -y jq rsync unzip genisoimage &&
               curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl &&
               chmod +x kubectl &&
               mv kubectl /usr/local/bin
@@ -79,7 +79,7 @@ jobs:
           name:  Run E2E test
           command: >-
               export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig &&
-              go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$CIRCLE_BUILD_NUM  -args -logtostderr
+              go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$CIRCLE_BUILD_NUM
           no_output_timeout: 35m
       - run:
           name: Clean up machines
