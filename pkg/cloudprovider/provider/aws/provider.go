@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -70,62 +71,22 @@ var (
   ]
 }`
 
-	amis = map[providerconfig.OperatingSystem]map[string]string{
+	amiFilters = map[providerconfig.OperatingSystem]amiFilter{
 		providerconfig.OperatingSystemCoreos: {
-			"ap-northeast-1": "ami-6a6bec0c",
-			"ap-northeast-2": "ami-7fb41211",
-			"ap-south-1":     "ami-02b4fd6d",
-			"ap-southeast-1": "ami-cb096db7",
-			"ap-southeast-2": "ami-7957a31b",
-			"ca-central-1":   "ami-9c16adf8",
-			"cn-north-1":     "ami-e803d185",
-			"eu-central-1":   "ami-31c74e5e",
-			"eu-west-1":      "ami-c8a811b1",
-			"eu-west-2":      "ami-8ccdd3e8",
-			"sa-east-1":      "ami-af84c3c3",
-			"us-east-1":      "ami-6dfb9a17",
-			"us-east-2":      "ami-01e2cb64",
-			"us-gov-west-1":  "ami-6bad220a",
-			"us-west-1":      "ami-7d81bb1d",
-			"us-west-2":      "ami-c167bdb9",
-		},
-		// for region in $(aws ec2 describe-regions  | jq '.Regions[].RegionName' --raw-output); do
-		//   IMAGE="$(aws ec2 --region "$region" describe-images --filters Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server* --output json | jq '.Images | sort_by(.CreationDate) | reverse | .[0].ImageId' --raw-output)"
-		//   echo "\"$region\": \"$IMAGE\","
-		// done
-		providerconfig.OperatingSystemUbuntu: {
-			"ap-south-1":     "ami-004ae4f94341b595d",
-			"eu-west-3":      "ami-0f230b076c11618ab",
-			"eu-west-2":      "ami-54d12433",
-			"eu-west-1":      "ami-0bd5ae06b6779872a",
-			"ap-northeast-2": "ami-0cffb4e3f8f2c7ca2",
-			"ap-northeast-1": "ami-18a8d1f5",
-			"sa-east-1":      "ami-0ba619c9d7a85181f",
-			"ca-central-1":   "ami-4875f82c",
-			"ap-southeast-1": "ami-02717f13071669929",
-			"ap-southeast-2": "ami-3b288859",
-			"eu-central-1":   "ami-f3bcb218",
-			"us-east-1":      "ami-920b10ed",
-			"us-east-2":      "ami-03bd56e7bb2f24c5d",
-			"us-west-1":      "ami-f36b8490",
-			"us-west-2":      "ami-349fb84c",
+			description: "CoreOS Container Linux stable*",
+			// The AWS marketplace ID from CoreOS
+			owner: "595879546273",
 		},
 		providerconfig.OperatingSystemCentOS: {
-			"ap-northeast-1": "ami-25bd2743",
-			"ap-south-1":     "ami-5d99ce32",
-			"ap-southeast-1": "ami-d2fa88ae",
-			"ca-central-1":   "ami-dcad28b8",
-			"eu-central-1":   "ami-337be65c",
-			"eu-west-1":      "ami-6e28b517",
-			"sa-east-1":      "ami-f9adef95",
-			"us-east-1":      "ami-4bf3d731",
-			"us-west-1":      "ami-65e0e305",
-			"ap-northeast-2": "ami-7248e81c",
-			"ap-southeast-2": "ami-b6bb47d4",
-			"eu-west-2":      "ami-ee6a718a",
-			"us-east-2":      "ami-e1496384",
-			"us-west-2":      "ami-a042f4d8",
-			"eu-west-3":      "ami-bfff49c2",
+			description: "CentOS Linux 7 x86_64 HVM EBS*",
+			// The AWS marketplace ID from AWS
+			owner: "679593333241",
+		},
+		providerconfig.OperatingSystemUbuntu: {
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "Canonical, Ubuntu, 18.04 LTS, amd64 bionic image build on ????-??-??",
+			// The AWS marketplace ID from Canonical
+			owner: "099720109477",
 		},
 	}
 )
@@ -168,18 +129,52 @@ type Config struct {
 	Tags         map[string]string
 }
 
-func getDefaultAMIID(os providerconfig.OperatingSystem, region string) (string, error) {
-	amis, osSupported := amis[os]
+type amiFilter struct {
+	description string
+	owner       string
+}
+
+func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem) (string, error) {
+	filter, osSupported := amiFilters[os]
 	if !osSupported {
 		return "", fmt.Errorf("operating system %q not supported", os)
 	}
 
-	id, regionFound := amis[region]
-	if !regionFound {
-		return "", fmt.Errorf("specified region %q not supported with this operating system %q", region, os)
+	imagesOut, err := client.DescribeImages(&ec2.DescribeImagesInput{
+		Owners: aws.StringSlice([]string{filter.owner}),
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("description"),
+				Values: aws.StringSlice([]string{filter.description}),
+			},
+			{
+				Name:   aws.String("virtualization-type"),
+				Values: aws.StringSlice([]string{"hvm"}),
+			},
+			{
+				Name:   aws.String("root-device-type"),
+				Values: aws.StringSlice([]string{"ebs"}),
+			},
+		},
+	})
+	if err != nil {
+		return "", err
 	}
 
-	return id, nil
+	if len(imagesOut.Images) == 0 {
+		return "", fmt.Errorf("could not find Image for '%s'", os)
+	}
+
+	image := imagesOut.Images[0]
+	for _, v := range imagesOut.Images {
+		itime, _ := time.Parse(time.RFC3339, *image.CreationDate)
+		vtime, _ := time.Parse(time.RFC3339, *v.CreationDate)
+		if vtime.After(itime) {
+			image = v
+		}
+	}
+
+	return *image.ImageId, nil
 }
 
 func getDefaultRootDevicePath(os providerconfig.OperatingSystem) (string, error) {
@@ -306,7 +301,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 			return fmt.Errorf("failed to validate ami: %v", err)
 		}
 	} else {
-		_, err := getDefaultAMIID(pc.OperatingSystem, config.Region)
+		_, err := getDefaultAMIID(ec2Client, pc.OperatingSystem)
 		if err != nil {
 			return fmt.Errorf("invalid region+os configuration: %v", err)
 		}
@@ -558,7 +553,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, update cloud.MachineUpdater
 
 	amiID := config.AMI
 	if amiID == "" {
-		if amiID, err = getDefaultAMIID(pc.OperatingSystem, config.Region); err != nil {
+		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem); err != nil {
 			if err != nil {
 				return nil, cloudprovidererrors.TerminalError{
 					Reason:  common.InvalidConfigurationMachineError,
