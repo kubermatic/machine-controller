@@ -475,18 +475,18 @@ func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, se
 	glog.V(0).Infof("Instance %s got deleted", serverID)
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) error {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
 	instance, err := p.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			return nil
+			return true, nil
 		}
-		return err
+		return false, err
 	}
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return cloudprovidererrors.TerminalError{
+		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
@@ -494,19 +494,19 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 
 	client, err := getClient(c)
 	if err != nil {
-		return osErrorToTerminalError(err, "failed to get a openstack client")
+		return false, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
-		return osErrorToTerminalError(err, "failed to get compute client")
+		return false, osErrorToTerminalError(err, "failed to get compute client")
 	}
 
 	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil {
-		return osErrorToTerminalError(err, "failed to delete instance")
+		return false, osErrorToTerminalError(err, "failed to delete instance")
 	}
 
-	return nil
+	return false, nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {

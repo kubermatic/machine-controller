@@ -63,8 +63,8 @@ func (w *cachingValidationWrapper) Create(m *v1alpha1.Machine, mcd *cloud.Machin
 }
 
 // Delete just calls the underlying cloudproviders Delete
-func (w *cachingValidationWrapper) Delete(m *v1alpha1.Machine, mcd *cloud.MachineCreateDeleteData) error {
-	return w.actualProvider.Delete(m, mcd)
+func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloud.MachineCreateDeleteData) (bool, error) {
+	return w.actualProvider.Cleanup(m, mcd)
 }
 
 // MigrateUID just calls the underlying cloudproviders MigrateUID

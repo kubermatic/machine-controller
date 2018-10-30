@@ -226,18 +226,18 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) error {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
 	instance, err := p.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			return nil
+			return true, nil
 		}
-		return err
+		return false, err
 	}
 
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return cloudprovidererrors.TerminalError{
+		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
@@ -248,12 +248,12 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 
 	res, err := client.Server.Delete(ctx, instance.(*hetznerServer).server)
 	if err != nil {
-		return hzErrorToTerminalError(err, "failed to delete the server")
+		return false, hzErrorToTerminalError(err, "failed to delete the server")
 	}
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
-		return fmt.Errorf("invalid status code returned. expected=%d got=%d", http.StatusOK, res.StatusCode)
+		return false, fmt.Errorf("invalid status code returned. expected=%d got=%d", http.StatusOK, res.StatusCode)
 	}
-	return nil
+	return false, nil
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
