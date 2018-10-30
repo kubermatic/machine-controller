@@ -289,6 +289,14 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
+	if _, osSupported := amiFilters[pc.OperatingSystem]; !osSupported {
+		return fmt.Errorf("unsupported os %s", pc.OperatingSystem)
+	}
+
+	if !volumeTypes.Has(config.DiskType) {
+		return fmt.Errorf("invalid volume type %s specified. Supported: %s", config.DiskType, volumeTypes)
+	}
+
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
 		return fmt.Errorf("failed to create ec2 client: %v", err)
@@ -299,11 +307,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		})
 		if err != nil {
 			return fmt.Errorf("failed to validate ami: %v", err)
-		}
-	} else {
-		_, err := getDefaultAMIID(ec2Client, pc.OperatingSystem)
-		if err != nil {
-			return fmt.Errorf("invalid region+os configuration: %v", err)
 		}
 	}
 
@@ -340,10 +343,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		if err != nil {
 			return fmt.Errorf("failed to validate instance profile: %v", err)
 		}
-	}
-
-	if !volumeTypes.Has(config.DiskType) {
-		return fmt.Errorf("invalid volume type %s specified. Supported: %s", config.DiskType, volumeTypes)
 	}
 
 	return nil
