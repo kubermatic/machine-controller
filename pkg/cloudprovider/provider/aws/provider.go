@@ -703,24 +703,25 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, awsErrorToTerminalError(err, "failed to list instances from aws")
 	}
 
-	if len(inOut.Reservations) == 0 || len(inOut.Reservations[0].Instances) == 0 {
-		return nil, cloudprovidererrors.ErrInstanceNotFound
-	}
+	// We might have multiple instances (Maybe some old, terminated ones)
+	// Thus we need to find the instance which is not in the terminated state
+	for _, reservation := range inOut.Reservations {
+		for _, i := range reservation.Instances {
+			if i.State == nil || i.State.Name == nil {
+				continue
+			}
 
-	i := inOut.Reservations[0].Instances[0]
-	if i.State != nil && i.State.Name != nil {
-		// We consider terminated instances as deleted / don't exist anymore.
-		// The reason is that AWS takes very long >10min to gc those instances.
-		// Customers don't get billed anymore for those instances and they also don't block the deletion of security groups, etc.
-		// In AWS terms, a terminated instance is deleted.
-		if *i.State.Name == ec2.InstanceStateNameTerminated {
-			return nil, cloudprovidererrors.ErrInstanceNotFound
+			if *i.State.Name == ec2.InstanceStateNameTerminated {
+				continue
+			}
+
+			return &awsInstance{
+				instance: i,
+			}, nil
 		}
 	}
 
-	return &awsInstance{
-		instance: i,
-	}, nil
+	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
