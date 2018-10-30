@@ -63,7 +63,7 @@ import (
 )
 
 const (
-	finalizerDeleteInstance = "machine-delete-finalizer"
+	FinalizerDeleteInstance = "machine-delete-finalizer"
 	FinalizerDeleteNode     = "machine-node-delete-finalizer"
 
 	deletionRetryWaitPeriod = 10 * time.Second
@@ -497,9 +497,9 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 	// Delete the node object only after the instance is gone, `deleteCloudProviderInstance`
 	// returns with a nil-error after it triggers the instance deletion but it is async for
 	// some providers hence the instance deletion may not been executed yet
-	// `finalizerDeleteInstance` stays until the instance is really gone thought, so we check
+	// `FinalizerDeleteInstance` stays until the instance is really gone thought, so we check
 	// for that here
-	if sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+	if sets.NewString(machine.Finalizers...).Has(FinalizerDeleteInstance) {
 		return nil
 	}
 
@@ -513,7 +513,7 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 
 func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
 	finalizers := sets.NewString(machine.Finalizers...)
-	if !finalizers.Has(finalizerDeleteInstance) {
+	if !finalizers.Has(FinalizerDeleteInstance) {
 		return nil
 	}
 
@@ -522,13 +522,13 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
 			machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-				finalizers.Delete(finalizerDeleteInstance)
+				finalizers.Delete(FinalizerDeleteInstance)
 				m.Finalizers = finalizers.List()
 			})
 			return err
 		}
 
-		message := fmt.Sprintf("%v. Please manually delete the instance at the cloud provider and remove the %s finalizer from the machine object.", err, finalizerDeleteInstance)
+		message := fmt.Sprintf("%v. Please manually delete the instance at the cloud provider and remove the %s finalizer from the machine object.", err, FinalizerDeleteInstance)
 		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to retrieve instance from cloud provider")
 	}
 
@@ -539,7 +539,7 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 			return nil
 		}
 
-		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, finalizerDeleteInstance)
+		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, FinalizerDeleteInstance)
 		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
 	}
 	return nil
@@ -933,11 +933,11 @@ func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 }
 
 func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
-	if !sets.NewString(machine.Finalizers...).Has(finalizerDeleteInstance) {
+	if !sets.NewString(machine.Finalizers...).Has(FinalizerDeleteInstance) {
 		var err error
 		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			finalizers := sets.NewString(m.Finalizers...)
-			finalizers.Insert(finalizerDeleteInstance)
+			finalizers.Insert(FinalizerDeleteInstance)
 			finalizers.Insert(FinalizerDeleteNode)
 			m.Finalizers = finalizers.List()
 		}); err != nil {
