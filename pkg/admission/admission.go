@@ -34,7 +34,7 @@ func New(listenAddress string, coreClient kubernetes.Interface) *http.Server {
 		Addr:         listenAddress,
 		Handler:      m,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 25 * time.Second,
 	}
 }
 
