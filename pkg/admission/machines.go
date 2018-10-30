@@ -57,39 +57,54 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		machine.Spec.Name = machine.Name
 	}
 
+	var isMachineSetOwned bool
+	for _, ownerRef := range machine.OwnerReferences {
+		if ownerRef.Kind == "MachineSet" {
+			isMachineSetOwned = true
+			break
+		}
+	}
 	// Default and verify .Spec on CREATE only, its expensive and not required to do it on UPDATE
 	// as we disallow .Spec changes anyways
-	if ar.Request.Operation == admissionv1beta1.Create {
-		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read machine.Spec.ProviderConfig: %v", err)
-		}
-		skg := providerconfig.NewConfigVarResolver(ad.coreClient)
-		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
-		}
-
-		// Verify operating system
-		if _, err := userdata.ForOS(providerConfig.OperatingSystem); err != nil {
-			return nil, fmt.Errorf("failed to get OS '%s': %v", providerConfig.OperatingSystem, err)
-		}
-
-		// Set kubelet version
-		if machine.Spec.Versions.Kubelet == "" {
-			return nil, fmt.Errorf("Kubelet version must be set")
-		}
-
-		defaultedMachineSpec, _, err := prov.AddDefaults(machine.Spec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to default machineSpec: %v", err)
-		}
-		machine.Spec = defaultedMachineSpec
-
-		if err := prov.Validate(machine.Spec); err != nil {
-			return nil, fmt.Errorf("validation failed: %v", err)
+	if ar.Request.Operation == admissionv1beta1.Create && !isMachineSetOwned {
+		if err := ad.defaultAndValidateMachineSpec(&machine.Spec); err != nil {
+			return nil, err
 		}
 	}
 
 	return createAdmissionResponse(machineOriginal, &machine)
+}
+
+func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.MachineSpec) error {
+	providerConfig, err := providerconfig.GetConfig(spec.ProviderConfig)
+	if err != nil {
+		return fmt.Errorf("failed to read machine.Spec.Providerconfig: %v", err)
+	}
+	skg := providerconfig.NewConfigVarResolver(ad.coreClient)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
+	}
+
+	// Verify operating system
+	if _, err := userdata.ForOS(providerConfig.OperatingSystem); err != nil {
+		return fmt.Errorf("failed to get OS '%s': %v", providerConfig.OperatingSystem, err)
+	}
+
+	// Check kubelet version
+	if spec.Versions.Kubelet == "" {
+		return fmt.Errorf("Kubelet version must be set")
+	}
+
+	defaultedSpec, _, err := prov.AddDefaults(*spec)
+	if err != nil {
+		return fmt.Errorf("failed to default machineSpec: %v", err)
+	}
+	spec = &defaultedSpec
+
+	if err := prov.Validate(*spec); err != nil {
+		return fmt.Errorf("validation failed: %v", err)
+	}
+
+	return nil
 }

@@ -21,5 +21,9 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1beta1.AdmissionR
 		return nil, fmt.Errorf("validation failed: %v", errs)
 	}
 
+	if err := ad.defaultAndValidateMachineSpec(&machineDeployment.Spec.Template.Spec); err != nil {
+		return nil, err
+	}
+
 	return createAdmissionResponse(machineDeploymentOriginal, &machineDeployment)
 }
