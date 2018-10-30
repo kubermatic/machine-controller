@@ -36,8 +36,8 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.
 		Spec:       machineDeployment.Spec.Template.Spec,
 	}
 
-	oldUID := types.UID("aaa")
-	newUID := types.UID("bbb")
+	oldUID := types.UID(fmt.Sprintf("aaa-%s", machineDeployment.Name))
+	newUID := types.UID(fmt.Sprintf("bbb-%s", machineDeployment.Name))
 	machine.UID = oldUID
 	machine.Name = machineDeployment.Name
 	machine.Spec.Name = machine.Name
@@ -60,7 +60,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.
 	machine.Spec = defaultedSpec
 
 	// Step 0: Create instance with old UID
-	maxTries := 5
+	maxTries := 15
 	for i := 0; i < maxTries; i++ {
 		_, err := prov.Get(machine)
 		if err != nil {
@@ -89,6 +89,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.
 	for i := 0; i < maxTries; i++ {
 		if _, err := prov.Get(machine); err != nil {
 			if i < maxTries-1 {
+				glog.V(4).Infof("failed to get instance for machine %s before migrating on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
 				continue
 			}
@@ -102,6 +103,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.
 		if err := prov.MigrateUID(machine, newUID); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
+				glog.V(4).Infof("failed to migrate UID for machine %s  on try %v with err=%v, will retry", machine.Name, i, err)
 				continue
 			}
 			return fmt.Errorf("failed to migrate UID for machine %s: %v", machine.Name, err)
@@ -115,6 +117,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.
 		if _, err := prov.Get(machine); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
+				glog.V(4).Infof("failed to get instance for machine %s after migrating on try %v with err=%v, will retry", machine.Name, i, err)
 				continue
 			}
 			return fmt.Errorf("failed to get machine %s after migrating UID: %v", machine.Name, err)

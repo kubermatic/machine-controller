@@ -217,7 +217,7 @@ func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
 			if err != nil {
 				t.Errorf("Failed to get machine: %v", err)
 			}
-			hasFinalizer := sets.NewString(syncedMachine.Finalizers...).Has(finalizerDeleteInstance)
+			hasFinalizer := sets.NewString(syncedMachine.Finalizers...).Has(FinalizerDeleteInstance)
 			if hasFinalizer != test.finalizerExpected {
 				t.Errorf("Finalizer expected: %v, but was:%v", test.finalizerExpected, hasFinalizer)
 			}

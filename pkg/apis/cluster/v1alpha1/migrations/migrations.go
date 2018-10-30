@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
@@ -155,13 +156,27 @@ func migrateMachines(kubeClient kubernetes.Interface,
 			return err
 		}
 
-		glog.Infof("Attempting to update the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
-		newMachineWithOldUID := owningClusterV1Alpha1Machine.DeepCopy()
-		newMachineWithOldUID.UID = machinesV1Alpha1Machine.UID
-		if err := prov.MigrateUID(newMachineWithOldUID, owningClusterV1Alpha1Machine.UID); err != nil {
-			return fmt.Errorf("running the provider migration for the UID failed: %v", err)
+		if sets.NewString(owningClusterV1Alpha1Machine.Finalizers...).Has(machinecontroller.FinalizerDeleteInstance) {
+			glog.Infof("Attempting to update the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+			newMachineWithOldUID := owningClusterV1Alpha1Machine.DeepCopy()
+			newMachineWithOldUID.UID = machinesV1Alpha1Machine.UID
+			if err := prov.MigrateUID(newMachineWithOldUID, owningClusterV1Alpha1Machine.UID); err != nil {
+				return fmt.Errorf("running the provider migration for the UID failed: %v", err)
+			}
+			// Block until we can actually GET the instance with the new UID
+			var isMigrated bool
+			for i := 0; i < 100; i++ {
+				if _, err := prov.Get(owningClusterV1Alpha1Machine); err == nil {
+					isMigrated = true
+					break
+				}
+				time.Sleep(10 * time.Second)
+			}
+			if !isMigrated {
+				return fmt.Errorf("failed to GET instance for machine %s after UID migration", owningClusterV1Alpha1Machine.Name)
+			}
+			glog.Infof("Successfully updated the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		}
-		glog.Infof("Successfully updated the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 
 		// All went fine, we only have to clear the old machine now
 		glog.Infof("Deleting machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
