@@ -30,11 +30,10 @@ func New(listenAddress string, coreClient kubernetes.Interface) *http.Server {
 	m.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))
 	m.HandleFunc("/machines", handleFuncFactory(ad.mutateMachines))
 	m.HandleFunc("/healthz", healthZHandler)
+
 	return &http.Server{
-		Addr:         listenAddress,
-		Handler:      m,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 25 * time.Second,
+		Addr:    listenAddress,
+		Handler: http.TimeoutHandler(m, 25*time.Second, "timeout"),
 	}
 }
 
