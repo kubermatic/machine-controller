@@ -257,26 +257,21 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 	t.Parallel()
 
-	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
-	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
-	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
-	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
-	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
-		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	// test data
+	hzToken := os.Getenv("HZ_E2E_TOKEN")
+	if len(hzToken) == 0 {
+		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
-	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
-		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
-		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
-		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
-	}
+	// act
+	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 
 	scenario := scenario{
-		name:              "Coreos Kubernetes v1.10.5",
-		osName:            "coreos",
+		name:              "Ubuntu MachineDeployment upgrade",
+		osName:            "ubuntu",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.10.5",
 		executor:          verifyCreateUpdateAndDelete,
 	}
-	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, vs_manifest, false)
+	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, hz_manifest, false)
 }
