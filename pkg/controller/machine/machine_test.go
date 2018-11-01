@@ -2,27 +2,20 @@ package controller
 
 import (
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
 	"github.com/go-test/deep"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
-
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterfake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
-	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 )
 
 type fakeInstance struct {
@@ -174,85 +167,4 @@ func TestController_GetNode(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestController_AddDeleteFinalizerOnlyIfValidationSucceeded(t *testing.T) {
-	tests := []struct {
-		name              string
-		cloudProviderSpec string
-		finalizerExpected bool
-		err               string
-		expectedActions   []string
-	}{
-		{
-			name:              "Finalizer gets added on sucessfull validation",
-			cloudProviderSpec: `{"passValidation": true}`,
-			finalizerExpected: true,
-			expectedActions:   []string{"update", "update", "update"},
-		},
-		{
-			name:              "Finalizer does not get added on failed validation",
-			cloudProviderSpec: `{"passValidation": false}`,
-			err:               "invalid provider config: failing validation as requested",
-			finalizerExpected: false,
-			expectedActions:   []string{"update", "update", "update"},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			providerConfig := fmt.Sprintf(`{"cloudProvider": "fake", "operatingSystem": "coreos",
-		"cloudProviderSpec": %s}`, test.cloudProviderSpec)
-			machine := &v1alpha1.Machine{}
-			machine.Name = "testmachine"
-			machine.Namespace = "kube-system"
-			machine.Spec.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(providerConfig)}
-
-			controller, fakeMachineClient := createTestMachineController(t, machine)
-
-			if err := controller.syncHandler("kube-system/testmachine"); err != nil && err.Error() != test.err {
-				t.Fatalf("Expected test to have err '%s' but was '%v'", test.err, err)
-			}
-
-			syncedMachine, err := fakeMachineClient.Cluster().Machines("kube-system").Get("testmachine", metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Failed to get machine: %v", err)
-			}
-			hasFinalizer := sets.NewString(syncedMachine.Finalizers...).Has(FinalizerDeleteInstance)
-			if hasFinalizer != test.finalizerExpected {
-				t.Errorf("Finalizer expected: %v, but was:%v", test.finalizerExpected, hasFinalizer)
-			}
-		})
-	}
-
-}
-
-func createTestMachineController(t *testing.T, objects ...runtime.Object) (*Controller, *clusterfake.Clientset) {
-	kubeClient := kubefake.NewSimpleClientset()
-	clusterClient := clusterfake.NewSimpleClientset(objects...)
-
-	kubeInformersFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
-	kubeSystemInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Millisecond*50)
-	clusterInformerFactory := clusterinformers.NewSharedInformerFactory(clusterClient, time.Millisecond*50)
-
-	ctrl := NewMachineController(
-		kubeClient,
-		clusterClient,
-		kubeInformersFactory.Core().V1().Nodes().Informer(),
-		kubeInformersFactory.Core().V1().Nodes().Lister(),
-		clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
-		clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
-		kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
-		[]net.IP{},
-		NewMachineControllerMetrics(),
-		nil,
-		&clusterinfo.KubeconfigProvider{},
-		"")
-
-	clusterInformerFactory.Start(wait.NeverStop)
-	kubeInformersFactory.Start(wait.NeverStop)
-
-	clusterInformerFactory.WaitForCacheSync(wait.NeverStop)
-	kubeInformersFactory.WaitForCacheSync(wait.NeverStop)
-
-	return ctrl, clusterClient
 }

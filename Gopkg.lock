@@ -1338,17 +1338,15 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
-  digest = "1:c779cf03c5cb9102f8e15d79b1c2ee9b0541077ae6f2590884e29934776f0f9c"
+  digest = "1:13eddcc7cef8f152e1d5018c905c5bbcbc5af015bed69ac3492ed82058672f02"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis/cluster",
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
     "pkg/client/clientset_generated/clientset",
-    "pkg/client/clientset_generated/clientset/fake",
     "pkg/client/clientset_generated/clientset/scheme",
     "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1",
-    "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1/fake",
     "pkg/client/informers_generated/externalversions",
     "pkg/client/informers_generated/externalversions/cluster",
     "pkg/client/informers_generated/externalversions/cluster/v1alpha1",
@@ -1473,7 +1471,6 @@
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset",
-    "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake",
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme",
     "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions",
     "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1",

@@ -11,17 +11,36 @@ import (
 )
 
 const (
-	do_manifest         = "./testdata/machinedeployment-digitalocean.yaml"
-	aws_manifest        = "./testdata/machinedeployment-aws.yaml"
-	azure_manifest      = "./testdata/machinedeployment-azure.yaml"
-	hz_manifest         = "./testdata/machinedeployment-hetzner.yaml"
-	vs_manifest         = "./testdata/machinedeployment-vsphere.yaml"
-	vssip_manifest      = "./testdata/machinedeployment-vsphere-static-ip.yaml"
-	os_manifest         = "./testdata/machinedeployment-openstack.yaml"
-	os_upgrade_manifest = "./testdata/machinedeployment-openstack-upgrade.yml"
+	do_manifest            = "./testdata/machinedeployment-digitalocean.yaml"
+	aws_manifest           = "./testdata/machinedeployment-aws.yaml"
+	azure_manifest         = "./testdata/machinedeployment-azure.yaml"
+	hz_manifest            = "./testdata/machinedeployment-hetzner.yaml"
+	vs_manifest            = "./testdata/machinedeployment-vsphere.yaml"
+	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
+	os_manifest            = "./testdata/machinedeployment-openstack.yaml"
+	os_upgrade_manifest    = "./testdata/machinedeployment-openstack-upgrade.yml"
+	invalidMachineManifest = "./testdata/machine-invalid.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
+
+func TestInvalidObjectsGetRejected(t *testing.T) {
+	t.Parallel()
+
+	tests := []scenario{
+		{osName: "invalid", executor: verifyCreateMachineFails},
+		{osName: "coreos", executor: verifyCreateMachineFails},
+	}
+
+	for i, test := range tests {
+		testScenario(t,
+			test,
+			fmt.Sprintf("invalid-machine-%v", i),
+			nil,
+			invalidMachineManifest,
+			false)
+	}
+}
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
 	t.Parallel()
@@ -160,7 +179,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 // TestVsphereStaticIPProvisioningE2E will try to create a node with a VSphere machine
 // whose IP adress is statically assigned.
 func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
-	// no t.Parallel(), since testScenario function already calls it
+	t.Parallel()
 
 	// test data
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
@@ -193,13 +212,13 @@ func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest)
+	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest, false)
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
 // image and upgrade it prior to joining the cluster
 func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
-	// no t.Parallel(), since testScenario function already calls it
+	t.Parallel()
 
 	osAuthUrl := os.Getenv("OS_AUTH_URL")
 	osDomain := os.Getenv("OS_DOMAIN")
@@ -230,12 +249,14 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest)
+	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest, false)
 }
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
 // rolls over machines on changes in the machineDeployment
 func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
+	t.Parallel()
+
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
 	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
@@ -257,5 +278,5 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		kubernetesVersion: "1.10.5",
 		executor:          verifyCreateUpdateAndDelete,
 	}
-	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, vs_manifest)
+	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, vs_manifest, false)
 }
