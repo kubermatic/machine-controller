@@ -57,12 +57,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"sigs.k8s.io/cluster-api/pkg/apis"
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 	machinedeploymentcontroller "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment"
 	machinesetcontroller "sigs.k8s.io/cluster-api/pkg/controller/machineset"
-	sharedinformerscontroller "sigs.k8s.io/cluster-api/pkg/controller/sharedinformers"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var (
@@ -342,6 +343,35 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			return
 		}
 
+		mgr, err := manager.New(runOptions.cfg, manager.Options{})
+		if err != nil {
+			glog.Errorf("failed to start kubebuilder manager: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+		if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+			glog.Errorf("failed to add api schemes to kubebuilder manager: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+		if err := machinesetcontroller.Add(mgr); err != nil {
+			glog.Errorf("failed to add MachineSet controller to manager: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+		if err := machinedeploymentcontroller.Add(mgr); err != nil {
+			glog.Errorf("failed to add MachineDeployment controller to manager: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+		go func() {
+			if err := mgr.Start(stopChannel); err != nil {
+				glog.Errorf("failed to start kubebuilder manager: %v", err)
+				runOptions.parentCtxDone()
+				return
+			}
+		}()
+
 		machineController := machinecontroller.NewMachineController(
 			runOptions.kubeClient,
 			runOptions.machineClient,
@@ -356,15 +386,6 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.kubeconfigProvider,
 			runOptions.name,
 		)
-
-		sharedInformersController := sharedinformerscontroller.NewSharedInformers(
-			runOptions.cfg, stopChannel)
-		machineSetController := machinesetcontroller.NewMachineSetController(
-			runOptions.cfg, sharedInformersController)
-		machineSetController.Run(stopChannel)
-		machineDeploymentController := machinedeploymentcontroller.NewMachineDeploymentController(
-			runOptions.cfg, sharedInformersController)
-		machineDeploymentController.Run(stopChannel)
 
 		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
 			glog.Errorf("error running controller: %v", runErr)

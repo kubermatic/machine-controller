@@ -1,6 +1,6 @@
 metadata:
   annotations:
-    machine-controller/machine-type-revision: d99b7630cf7803c40691b86f42ea99eb0e9128a3
+    machine-controller/machine-type-revision: 571cb480e561d1b1d49713e0a1db09de152dff69
   creationTimestamp: null
   name: digitalocean
   namespace: kube-system
@@ -9,7 +9,6 @@ spec:
     creationTimestamp: null
     name: node1
   providerConfig:
-    ValueFrom: null
     value:
       cloudProvider: digitalocean
       cloudProviderSpec:
@@ -29,6 +28,4 @@ spec:
       - << YOUR_PUBLIC_KEY >>
   versions:
     kubelet: v1.9.6
-status:
-  lastUpdated: null
-  providerStatus: null
+status: {}
