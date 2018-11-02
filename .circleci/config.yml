@@ -143,6 +143,7 @@ workflows:
       - end-to-end:
           requires:
             - check-dependencies
+            - lint
             - test
             - build
           filters:
