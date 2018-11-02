@@ -24,10 +24,6 @@ set -ex
 
 echo "$E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 
-if ! grep -q kubectl /root/.bashrc; then
-  echo 'function cn { kubectl config set-context \$(kubectl config current-context) --namespace=\$1; }' >> /root/.bashrc
-  echo 'source <(kubectl completion bash)' >> /root/.bashrc
-fi
 
 # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
 systemctl mask swap.target
@@ -68,6 +64,15 @@ if ! ls kube-flannel.yml; then
   # Open upstream PR for the fix that is needed for kube 1.12: https://github.com/coreos/flannel/pull/1045
   curl -LO https://raw.githubusercontent.com/alvaroaleman/flannel/kube-1.12-support/Documentation/kube-flannel.yml
   kubectl apply -f kube-flannel.yml
+fi
+
+if ! grep -q kubectl /root/.bashrc; then
+  echo 'function cn { kubectl config set-context \$(kubectl config current-context) --namespace=\$1; }' >> /root/.bashrc
+  echo 'source <(kubectl completion bash)' >> /root/.bashrc
+  echo 'alias k=kubectl' >> /root/.bashrc
+  echo 'source <(k completion bash | sed s/kubectl/k/)' >> /root/.bashrc
+  function cn { kubectl config set-context \$(kubectl config current-context) --namespace=\$1; }
+  cn kube-system
 fi
 
 if [[ "${1:-deploy_machine_controller}"  == "do-not-deploy-machine-controller" ]]; then

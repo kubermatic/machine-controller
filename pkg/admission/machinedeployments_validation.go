@@ -37,7 +37,7 @@ func validateMachineDeploymentSpec(spec *v1alpha1.MachineDeploymentSpec, fldPath
 	if spec.Replicas == nil || *spec.Replicas < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("replicas"), *spec.Replicas, "replicas must be specified and can not be negative"))
 	}
-	allErrs = append(allErrs, validateMachineDeploymentStrategy(&spec.Strategy, fldPath.Child("strategy"))...)
+	allErrs = append(allErrs, validateMachineDeploymentStrategy(spec.Strategy, fldPath.Child("strategy"))...)
 	return allErrs
 }
 

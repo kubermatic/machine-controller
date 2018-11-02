@@ -101,11 +101,7 @@ required = [
 
 [[constraint]]
   name = "sigs.k8s.io/cluster-api"
-  revision = "d99b7630cf7803c40691b86f42ea99eb0e9128a3"
-
-[[override]]
-  name = "github.com/golang/protobuf"
-  version = "v1.1.*"
+  revision = "571cb480e561d1b1d49713e0a1db09de152dff69"
 
 [[constraint]]
   name = "gopkg.in/gcfg.v1"
