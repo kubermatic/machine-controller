@@ -111,8 +111,11 @@ type controllerRunOptions struct {
 	// nodeLister holds a lister that knows how to list Nodes from a cache
 	nodeLister listerscorev1.NodeLister
 
-	// secreSystemNstLister knows hot to list Secrects that are inside kube-system namespace from a cache
+	// secretSystemNsLister knows hot to list Secrects that are inside kube-system namespace from a cache
 	secretSystemNsLister listerscorev1.SecretLister
+
+	// pvLister knows how to list PersistentVolumes
+	pvLister listerscorev1.PersistentVolumeLister
 
 	// machineInformer holds a shared informer for Machines
 	machineInformer cache.SharedIndexInformer
@@ -218,6 +221,7 @@ func main() {
 		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
 		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
 		secretSystemNsLister: kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
+		pvLister:             kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
 		machineInformer:      clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
 		machineLister:        clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
 		kubeconfigProvider:   kubeconfigProvider,
@@ -380,6 +384,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.machineInformer,
 			runOptions.machineLister,
 			runOptions.secretSystemNsLister,
+			runOptions.pvLister,
 			runOptions.clusterDNSIPs,
 			runOptions.metrics,
 			runOptions.prometheusRegisterer,

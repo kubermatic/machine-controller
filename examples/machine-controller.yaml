@@ -447,11 +447,13 @@ rules:
   - "nodes"
   verbs:
   - "*"
-# Required for draining
+# Pods are required for draining
+# PVs are required for vsphere to detach them prior to deleting the instance
 - apiGroups:
   - ""
   resources:
   - "pods"
+  - "persistentvolumes"
   verbs:
   - "list"
   - "get"

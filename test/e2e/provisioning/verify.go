@@ -354,14 +354,18 @@ func getInt32Ptr(i int32) *int32 {
 }
 
 func updateMachineDeployment(md *v1alpha1.MachineDeployment, clusterClient clientset.Interface, modify func(*v1alpha1.MachineDeployment)) error {
+	// Store Namespace and Name here because after an error md will be nil
+	name := md.Name
+	namespace := md.Namespace
+
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		var err error
-		md, err = clusterClient.ClusterV1alpha1().MachineDeployments(md.Namespace).Get(md.Name, metav1.GetOptions{})
+		md, err = clusterClient.ClusterV1alpha1().MachineDeployments(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 		modify(md)
-		md, err = clusterClient.ClusterV1alpha1().MachineDeployments(md.Namespace).Update(md)
+		md, err = clusterClient.ClusterV1alpha1().MachineDeployments(namespace).Update(md)
 		return err
 	})
 }

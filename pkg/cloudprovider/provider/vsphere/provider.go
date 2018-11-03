@@ -311,7 +311,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -382,7 +382,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData) error {
+	pvs, err := data.PVLister.List(nil)
+	if err != nil {
+		return fmt.Errorf("failed to list PVs: %v", err)
+	}
+	for _, pv := range pvs {
+		_ = pv
+	}
+
 	if _, err := p.Get(machine); err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil

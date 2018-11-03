@@ -140,7 +140,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -226,7 +226,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ cloud.MachineUpdater, use
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ cloud.MachineUpdater) error {
+func (p *provider) Delete(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) error {
 	instance, err := p.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {

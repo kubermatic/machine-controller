@@ -85,6 +85,8 @@ type Controller struct {
 	metrics            *MetricsCollection
 	kubeconfigProvider KubeconfigProvider
 
+	machineCreateDeleteData *cloud.MachineCreateDeleteData
+
 	name string
 }
 
@@ -108,6 +110,7 @@ func NewMachineController(
 	machineInformer cache.SharedIndexInformer,
 	machineLister clusterlistersv1alpha1.MachineLister,
 	secretSystemNsLister listerscorev1.SecretLister,
+	pvLister listerscorev1.PersistentVolumeLister,
 	clusterDNSIPs []net.IP,
 	metrics *MetricsCollection,
 	prometheusRegistry prometheus.Registerer,
@@ -140,6 +143,11 @@ func NewMachineController(
 		kubeconfigProvider: kubeconfigProvider,
 
 		name: name,
+	}
+
+	controller.machineCreateDeleteData = &cloud.MachineCreateDeleteData{
+		Updater:  controller.updateMachine,
+		PVLister: pvLister,
 	}
 
 	machineInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -326,7 +334,7 @@ func (c *Controller) createProviderInstance(prov cloud.Provider, machine *cluste
 	if err != nil {
 		return nil, err
 	}
-	return prov.Create(machine, c.updateMachine, userdata)
+	return prov.Create(machine, c.machineCreateDeleteData, userdata)
 }
 
 func (c *Controller) syncHandler(key string) error {
@@ -483,7 +491,7 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 	}
 
 	// Delete the instance
-	if err := prov.Delete(machine, c.updateMachine); err != nil {
+	if err := prov.Delete(machine, c.machineCreateDeleteData); err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
 			return nil
