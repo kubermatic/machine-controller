@@ -76,11 +76,11 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, er
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(_ *v1alpha1.Machine, _ cloud.MachineUpdater, _ string) (instance.Instance, error) {
+func (p *provider) Create(_ *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, _ string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) Delete(_ *v1alpha1.Machine, _ cloud.MachineUpdater) error {
+func (p *provider) Delete(_ *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) error {
 	return nil
 }
 

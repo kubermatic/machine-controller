@@ -8,21 +8,39 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.Duration) error {
+func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 	// prepare the manifest
 	manifest, err := readAndModifyManifest(manifestPath, parameters)
 	if err != nil {
 		return fmt.Errorf("failed to prepare the manifest, due to: %v", err)
+	}
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
+	if err != nil {
+		return fmt.Errorf("error building kubeconfig: %v", err)
+	}
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("error building kubernetes clientset: %v", err)
+	}
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
+	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
+	machineCreateDeleteData := &cloud.MachineCreateDeleteData{
+		Updater:  machineUpdater,
+		PVLister: pvLister,
 	}
 
 	machineDeployment := &v1alpha1.MachineDeployment{}
@@ -72,7 +90,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.
 				}
 				return fmt.Errorf("failed to get machine %s before creating it: %v", machine.Name, err)
 			}
-			_, err := prov.Create(machine, machineUpdater, "#cloud-config")
+			_, err := prov.Create(machine, machineCreateDeleteData, "#cloud-config")
 			if err != nil {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
@@ -128,7 +146,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, timeout time.
 	// Step 4: Delete the instance and then verify instance is gone
 	for i := 0; i < maxTries; i++ {
 		// Deletion part 0: Delete and continue on err if there are tries left
-		if err := prov.Delete(machine, machineUpdater); err != nil {
+		if err := prov.Delete(machine, machineCreateDeleteData); err != nil {
 			if i < maxTries-1 {
 				glog.V(4).Infof("Failed to delete machine %s on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
