@@ -96,7 +96,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("Kubelet version must be set")
 	}
 
-	defaultedSpec, _, err := prov.AddDefaults(*spec)
+	defaultedSpec, err := prov.AddDefaults(*spec)
 	if err != nil {
 		return fmt.Errorf("failed to default machineSpec: %v", err)
 	}

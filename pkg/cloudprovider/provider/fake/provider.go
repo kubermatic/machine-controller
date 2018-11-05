@@ -41,8 +41,8 @@ func New(_ *providerconfig.ConfigVarResolver) cloud.Provider {
 	return &provider{}
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
-	return spec, false, nil
+func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+	return spec, nil
 }
 
 // Validate returns success or failure based according to its FakeCloudProviderConfig
