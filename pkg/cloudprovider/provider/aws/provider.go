@@ -145,16 +145,16 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem, region 
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
+	filter, osSupported := amiFilters[os]
+	if !osSupported {
+		return "", fmt.Errorf("operating system %q not supported", os)
+	}
+
 	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
 	amiID, found := cache.Get(cacheKey)
 	if found {
 		glog.V(4).Info("found AMI-ID in cache!")
 		return amiID.(string), nil
-	}
-
-	filter, osSupported := amiFilters[os]
-	if !osSupported {
-		return "", fmt.Errorf("operating system %q not supported", os)
 	}
 
 	imagesOut, err := client.DescribeImages(&ec2.DescribeImagesInput{
