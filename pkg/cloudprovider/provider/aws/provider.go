@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -21,8 +22,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/golang/glog"
+	gocache "github.com/patrickmn/go-cache"
 
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
@@ -89,6 +91,11 @@ var (
 			owner: "099720109477",
 		},
 	}
+
+	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
+	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data
+	cacheLock = &sync.Mutex{}
+	cache     = gocache.New(5*time.Minute, 5*time.Minute)
 )
 
 type RawConfig struct {
@@ -134,10 +141,20 @@ type amiFilter struct {
 	owner       string
 }
 
-func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem) (string, error) {
+func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem, region string) (string, error) {
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+
 	filter, osSupported := amiFilters[os]
 	if !osSupported {
 		return "", fmt.Errorf("operating system %q not supported", os)
+	}
+
+	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
+	amiID, found := cache.Get(cacheKey)
+	if found {
+		glog.V(4).Info("found AMI-ID in cache!")
+		return amiID.(string), nil
 	}
 
 	imagesOut, err := client.DescribeImages(&ec2.DescribeImagesInput{
@@ -174,6 +191,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem) (string
 		}
 	}
 
+	cache.SetDefault(cacheKey, *image.ImageId)
 	return *image.ImageId, nil
 }
 
@@ -552,7 +570,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 
 	amiID := config.AMI
 	if amiID == "" {
-		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem); err != nil {
+		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region); err != nil {
 			if err != nil {
 				return nil, cloudprovidererrors.TerminalError{
 					Reason:  common.InvalidConfigurationMachineError,
