@@ -461,6 +461,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:748946761cf99c8b73cef5a3c0ee3e040859dd713a20cece0d0e0dc04e6ceca7"
+  name = "github.com/patrickmn/go-cache"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0"
+  version = "v2.1.0"
+
+[[projects]]
   digest = "1:cce3a18fb0b96b5015cd8ca03a57d20a662679de03c4dc4b6ff5f17ea2050fa6"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -1174,6 +1182,7 @@
     "github.com/hetznercloud/hcloud-go/hcloud",
     "github.com/mattbaird/jsonpatch",
     "github.com/oklog/run",
+    "github.com/patrickmn/go-cache",
     "github.com/pborman/uuid",
     "github.com/pmezard/go-difflib/difflib",
     "github.com/prometheus/client_golang/prometheus",
