@@ -110,3 +110,7 @@ required = [
 [[constraint]]
   name = "github.com/sethvargo/go-password"
   version = "0.1.2"
+
+[[constraint]]
+  name = "github.com/patrickmn/go-cache"
+  version = "2.1.0"
