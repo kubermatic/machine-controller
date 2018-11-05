@@ -71,7 +71,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 
 	}
-	defaultedSpec, _, err := prov.AddDefaults(machine.Spec)
+	defaultedSpec, err := prov.AddDefaults(machine.Spec)
 	if err != nil {
 		return fmt.Errorf("failed to add defaults: %v", err)
 	}

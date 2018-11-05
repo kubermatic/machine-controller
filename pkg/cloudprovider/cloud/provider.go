@@ -11,7 +11,8 @@ import (
 
 // Provider exposed all required functions to interact with a cloud provider
 type Provider interface {
-	AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, bool, error)
+	// AddDefaults will read the MachineSpec and apply defaults for provider specific fields
+	AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error)
 
 	// Validate validates the given machine's specification.
 	//
@@ -28,6 +29,7 @@ type Provider interface {
 	// In case the instance cannot be found, github.com/kubermatic/machine-controller/pkg/cloudprovider/errors/ErrInstanceNotFound will be returned
 	Get(machine *clusterv1alpha1.Machine) (instance.Instance, error)
 
+	// GetCloudConfig will return the cloud provider specific cloud-config, which gets consumed by the kubelet
 	GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error)
 
 	// Create creates a cloud instance according to the given machine

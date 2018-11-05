@@ -99,12 +99,10 @@ func (vsphereServer Server) Status() instance.Status {
 	return vsphereServer.status
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, bool, error) {
-	changed := false
-
+func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	cfg, _, rawCfg, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
-		return spec, changed, cloudprovidererrors.TerminalError{
+		return spec, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
@@ -115,7 +113,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		ctx := context.TODO()
 		client, err := getClient(cfg.Username, cfg.Password, cfg.VSphereURL, cfg.AllowInsecure)
 		if err != nil {
-			return spec, changed, fmt.Errorf("failed to get vsphere client: '%v'", err)
+			return spec, fmt.Errorf("failed to get vsphere client: '%v'", err)
 		}
 		defer func() {
 			if lerr := client.Logout(ctx); lerr != nil {
@@ -125,17 +123,17 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 		finder, err := getDatacenterFinder(cfg.Datacenter, client)
 		if err != nil {
-			return spec, changed, fmt.Errorf("failed to get datacenter finder: %v", err)
+			return spec, fmt.Errorf("failed to get datacenter finder: %v", err)
 		}
 
 		templateVM, err := finder.VirtualMachine(ctx, cfg.TemplateVMName)
 		if err != nil {
-			return spec, changed, fmt.Errorf("failed to get virtual machine: %v", err)
+			return spec, fmt.Errorf("failed to get virtual machine: %v", err)
 		}
 
 		availableNetworkDevices, err := getNetworkDevicesAndBackingsFromVM(ctx, templateVM, "")
 		if err != nil {
-			return spec, changed, fmt.Errorf("failed to get network devices for vm: %v", err)
+			return spec, fmt.Errorf("failed to get network devices for vm: %v", err)
 		}
 
 		if len(availableNetworkDevices) == 0 {
@@ -145,16 +143,15 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		} else {
 			eth := availableNetworkDevices[0].backingInfo
 			rawCfg.TemplateNetName.Value = eth.DeviceName
-			changed = true
 		}
 	}
 
 	spec.ProviderConfig.Value, err = setProviderConfig(*rawCfg, spec.ProviderConfig)
 	if err != nil {
-		return spec, changed, fmt.Errorf("error marshaling providerconfig: %s", err)
+		return spec, fmt.Errorf("error marshaling providerconfig: %s", err)
 	}
 
-	return spec, changed, nil
+	return spec, nil
 }
 
 func setProviderConfig(rawConfig RawConfig, s v1alpha1.ProviderConfig) (*runtime.RawExtension, error) {
