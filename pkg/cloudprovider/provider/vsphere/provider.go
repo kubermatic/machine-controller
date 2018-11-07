@@ -11,11 +11,13 @@ import (
 
 	"github.com/golang/glog"
 
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
@@ -380,13 +382,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 }
 
 func (p *provider) Delete(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData) error {
-	pvs, err := data.PVLister.List(nil)
-	if err != nil {
-		return fmt.Errorf("failed to list PVs: %v", err)
-	}
-	for _, pv := range pvs {
-		_ = pv
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	if _, err := p.Get(machine); err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -405,7 +402,7 @@ func (p *provider) Delete(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 		return fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 	defer func() {
-		if err := client.Logout(context.TODO()); err != nil {
+		if err := client.Logout(context.Background()); err != nil {
 			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", err))
 		}
 	}()
@@ -415,18 +412,18 @@ func (p *provider) Delete(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	// be able to initialize the Datastore Filemanager to delete the instaces
 	// folder on the storage - This doesn't happen automatically because there
 	// is still the cloud-init iso
-	dc, err := finder.Datacenter(context.TODO(), config.Datacenter)
+	dc, err := finder.Datacenter(ctx, config.Datacenter)
 	if err != nil {
 		return fmt.Errorf("failed to get vsphere datacenter: %v", err)
 	}
 	finder.SetDatacenter(dc)
 
-	virtualMachine, err := finder.VirtualMachine(context.TODO(), machine.Spec.Name)
+	virtualMachine, err := finder.VirtualMachine(ctx, machine.Spec.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get virtual machine object: %v", err)
 	}
 
-	powerState, err := virtualMachine.PowerState(context.TODO())
+	powerState, err := virtualMachine.PowerState(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get virtual machine power state: %v", err)
 	}
@@ -434,32 +431,57 @@ func (p *provider) Delete(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	// We cannot destroy a VM thats powered on, but we also
 	// cannot power off a machine that is already off.
 	if powerState != types.VirtualMachinePowerStatePoweredOff {
-		powerOffTask, err := virtualMachine.PowerOff(context.TODO())
+		powerOffTask, err := virtualMachine.PowerOff(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
 		}
-		if err = powerOffTask.Wait(context.TODO()); err != nil {
+		if err = powerOffTask.Wait(ctx); err != nil {
 			return fmt.Errorf("failed to poweroff vm %s: %v", virtualMachine.Name(), err)
 		}
 	}
 
-	destroyTask, err := virtualMachine.Destroy(context.TODO())
+	virtualMachineDeviceList, err := virtualMachine.Device(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get devices for virtual machine: %v", err)
+	}
+
+	pvs, err := data.PVLister.List(labels.Everything())
+	if err != nil {
+		return fmt.Errorf("failed to list PVs: %v", err)
+	}
+
+	for _, pv := range pvs {
+		if pv.Spec.VsphereVolume == nil {
+			continue
+		}
+		for _, device := range virtualMachineDeviceList {
+			if virtualMachineDeviceList.Type(device) == object.DeviceTypeDisk {
+				fileName := device.GetVirtualDevice().Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+				if pv.Spec.VsphereVolume.VolumePath == fileName {
+					if err := virtualMachine.RemoveDevice(ctx, true, device); err != nil {
+						return fmt.Errorf("error detaching pv-backing disk %s: %v", fileName, err)
+					}
+				}
+			}
+		}
+	}
+
+	destroyTask, err := virtualMachine.Destroy(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
 	}
-	if err := destroyTask.Wait(context.TODO()); err != nil {
+	if err := destroyTask.Wait(ctx); err != nil {
 		return fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
 	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
-		datastore, err := finder.Datastore(context.TODO(), config.Datastore)
+		datastore, err := finder.Datastore(ctx, config.Datastore)
 		if err != nil {
 			return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
 		}
 		filemanager := datastore.NewFileManager(dc, false)
 
-		err = filemanager.Delete(context.TODO(), virtualMachine.Name())
-		if err != nil {
+		if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {
 			return fmt.Errorf("failed to delete storage of deleted instance %s: %v", virtualMachine.Name(), err)
 		}
 	}

@@ -453,10 +453,17 @@ rules:
   - ""
   resources:
   - "pods"
+  verbs:
+  - "list"
+  - "get"
+- apiGroups:
+  - ""
+  resources:
   - "persistentvolumes"
   verbs:
   - "list"
   - "get"
+  - "watch"
 - apiGroups:
   - ""
   resources:
