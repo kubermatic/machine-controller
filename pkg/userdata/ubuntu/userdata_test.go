@@ -7,6 +7,8 @@ import (
 	"net"
 	"testing"
 
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
+
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
 	"github.com/Masterminds/semver"
@@ -256,12 +258,17 @@ func TestProvider_UserData(t *testing.T) {
 			spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 			p := Provider{}
 
-			userdata, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
+			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			testhelper.CompareOutput(t, test.name, userdata, *update)
+			//Check if we can gzip it
+			if _, err := convert.GzipString(s); err != nil {
+				t.Fatal(err)
+			}
+
+			testhelper.CompareOutput(t, test.name, s, *update)
 		})
 	}
 }

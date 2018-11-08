@@ -5,6 +5,8 @@ import (
 	"net"
 	"testing"
 
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
+
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -128,12 +130,17 @@ func TestUserDataGeneration(t *testing.T) {
 			cloudProvider = defaultCloudProvider
 		}
 
-		userdata, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
+		s, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}
 
-		testhelper.CompareOutput(t, test.name, userdata, *update)
+		//Check if we can gzip it
+		if _, err := convert.GzipString(s); err != nil {
+			t.Fatal(err)
+		}
+
+		testhelper.CompareOutput(t, test.name, s, *update)
 	}
 }
 

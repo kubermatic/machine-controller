@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
+
 	"github.com/pmezard/go-difflib/difflib"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -204,14 +206,19 @@ func TestProvider_UserData(t *testing.T) {
 			spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 			p := Provider{}
 
-			userdata, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
+			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
 			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Check if we can convert it to ignition
+			if _, err := convert.ToIgnition(s); err != nil {
 				t.Fatal(err)
 			}
 
 			golden := filepath.Join("testdata", test.name+".golden")
 			if *update {
-				ioutil.WriteFile(golden, []byte(userdata), 0644)
+				ioutil.WriteFile(golden, []byte(s), 0644)
 			}
 			expected, err := ioutil.ReadFile(golden)
 			if err != nil {
@@ -220,7 +227,7 @@ func TestProvider_UserData(t *testing.T) {
 
 			diff := difflib.UnifiedDiff{
 				A:        difflib.SplitLines(string(expected)),
-				B:        difflib.SplitLines(userdata),
+				B:        difflib.SplitLines(s),
 				FromFile: "Fixture",
 				ToFile:   "Current",
 				Context:  3,
