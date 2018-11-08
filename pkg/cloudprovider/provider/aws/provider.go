@@ -11,6 +11,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -577,6 +578,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 					Message: fmt.Sprintf("Invalid Region and Operating System configuration: %v", err),
 				}
 			}
+		}
+	}
+
+	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
+		// Gzip the userdata in case we don't use CoreOS.
+		userdata, err = convert.GzipString(userdata)
+		if err != nil {
+			return nil, fmt.Errorf("failed to gzip the userdata")
 		}
 	}
 

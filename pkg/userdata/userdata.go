@@ -21,8 +21,8 @@ var (
 
 	providers = map[providerconfig.OperatingSystem]Provider{
 		providerconfig.OperatingSystemCoreos: convert.NewIgnition(coreos.Provider{}),
-		providerconfig.OperatingSystemUbuntu: convert.NewGzip(ubuntu.Provider{}),
-		providerconfig.OperatingSystemCentOS: convert.NewGzip(centos.Provider{}),
+		providerconfig.OperatingSystemUbuntu: ubuntu.Provider{},
+		providerconfig.OperatingSystemCentOS: centos.Provider{},
 	}
 )
 
