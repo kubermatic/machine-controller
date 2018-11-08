@@ -7,6 +7,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 
@@ -19,7 +20,7 @@ var (
 	ErrProviderNotFound = errors.New("no user data provider for the given os found")
 
 	providers = map[providerconfig.OperatingSystem]Provider{
-		providerconfig.OperatingSystemCoreos: coreos.Provider{},
+		providerconfig.OperatingSystemCoreos: convert.NewIgnition(coreos.Provider{}),
 		providerconfig.OperatingSystemUbuntu: ubuntu.Provider{},
 		providerconfig.OperatingSystemCentOS: centos.Provider{},
 	}
@@ -30,6 +31,7 @@ func ForOS(os providerconfig.OperatingSystem) (Provider, error) {
 		return p, nil
 	}
 	return nil, ErrProviderNotFound
+
 }
 
 type Provider interface {
