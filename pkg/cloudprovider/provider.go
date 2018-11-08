@@ -3,6 +3,7 @@ package cloudprovider
 import (
 	"errors"
 
+	cloudprovidercache "github.com/kubermatic/machine-controller/pkg/cloudprovider/cache"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure"
@@ -15,6 +16,8 @@ import (
 )
 
 var (
+	cache = cloudprovidercache.New()
+
 	// ErrProviderNotFound tells that the requested cloud provider was not found
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
@@ -46,7 +49,7 @@ var (
 // ForProvider returns a CloudProvider actuator for the requested provider
 func ForProvider(p providerconfig.CloudProvider, cvr *providerconfig.ConfigVarResolver) (cloud.Provider, error) {
 	if p, found := providers[p]; found {
-		return p(cvr), nil
+		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
 	}
 	return nil, ErrProviderNotFound
 }
