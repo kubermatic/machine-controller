@@ -57,16 +57,9 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		machine.Spec.Name = machine.Name
 	}
 
-	var isMachineSetOwned bool
-	for _, ownerRef := range machine.OwnerReferences {
-		if ownerRef.Kind == "MachineSet" {
-			isMachineSetOwned = true
-			break
-		}
-	}
 	// Default and verify .Spec on CREATE only, its expensive and not required to do it on UPDATE
 	// as we disallow .Spec changes anyways
-	if ar.Request.Operation == admissionv1beta1.Create && !isMachineSetOwned {
+	if ar.Request.Operation == admissionv1beta1.Create {
 		if err := ad.defaultAndValidateMachineSpec(&machine.Spec); err != nil {
 			return nil, err
 		}
