@@ -17,6 +17,7 @@ func TestCloudproviderCache(t *testing.T) {
 	m1.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m1"}`)}
 	m1.Name = "hans"
 
+	// Test SET and GET
 	if err := cache.Set(m1, nil); err != nil {
 		t.Fatalf("Error setting cache value for m1: %v", err)
 	}
@@ -31,6 +32,7 @@ func TestCloudproviderCache(t *testing.T) {
 		t.Errorf("Expected m1 val to be nil but was %v", val)
 	}
 
+	// Test metadata gets ignored by cache
 	m1.Name = "wurst"
 	val, exists, err = cache.Get(m1)
 	if err != nil {
@@ -43,6 +45,7 @@ func TestCloudproviderCache(t *testing.T) {
 		t.Errorf("Expected m1 val to be nil after changing name but was %v", val)
 	}
 
+	// Test taints get ignored by cache
 	m1.Taints = []corev1.Taint{{Key: "hello", Value: "world"}}
 	val, exists, err = cache.Get(m1)
 	if err != nil {
@@ -55,6 +58,20 @@ func TestCloudproviderCache(t *testing.T) {
 		t.Errorf("Expected m1 val to be nil after adding taint but was %s", val)
 	}
 
+	// Test versions field gets ignored by cache
+	m1.Versions.Kubelet = "1.13.0"
+	val, exists, err = cache.Get(m1)
+	if err != nil {
+		t.Fatalf("Error getting m1 from cache after adding kubelet version: %v", err)
+	}
+	if !exists {
+		t.Error("Expected val to exist when getting m1 from cache after adding kubelet version")
+	}
+	if val != nil {
+		t.Errorf("Expected m1 val to be nil after adding kubelet version but was %s", val)
+	}
+
+	// Test Providerconfig does not get ignored by cache
 	m2 := clusterv1alpha1.MachineSpec{}
 	m2.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m2"}`)}
 	val, exists, err = cache.Get(m2)
@@ -68,6 +85,7 @@ func TestCloudproviderCache(t *testing.T) {
 		t.Errorf("Expected val for m2 to be nil but was %v", val)
 	}
 
+	// Test error gets properly cached
 	m3 := clusterv1alpha1.MachineSpec{}
 	m3.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m3"}`)}
 	errMsg := "Thou shall not pass"

@@ -8,8 +8,6 @@ import (
 
 	gocache "github.com/patrickmn/go-cache"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
@@ -58,11 +56,7 @@ func (c *CloudproviderCache) Set(machineSpec clusterv1alpha1.MachineSpec, val er
 }
 
 func getID(machineSpec clusterv1alpha1.MachineSpec) (string, error) {
-	// We clear these two fields as they are irrelevant for the cloudprovider validation
-	machineSpec.ObjectMeta = metav1.ObjectMeta{}
-	machineSpec.Taints = nil
-
-	b, err := json.Marshal(machineSpec)
+	b, err := json.Marshal(machineSpec.ProviderConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal MachineSpec: %v", err)
 	}
