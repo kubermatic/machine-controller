@@ -37,6 +37,7 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 		github.com/kubermatic/machine-controller/cmd/webhook
 
 lint:
+	./hack/verify-type-revision-annotation-const.sh
 	gometalinter --config gometalinter.json ./...
 
 docker-image: machine-controller webhook docker-image-nodep
@@ -105,3 +106,9 @@ deploy: examples/admission-cert.pem
 		|sed "s/__admission_cert__/$(shell cat examples/admission-cert.pem|base64 -w0)/g" \
 		|sed "s/__admission_key__/$(shell cat examples/admission-key.pem|base64 -w0)/g" \
 		|kubectl apply -f -
+
+check-dependencies:
+	# We need mercurial for bitbucket.org/ww/goautoneg, otherwise dep hangs forever
+	which hg >/dev/null 2>&1 || apt update && apt install -y mercurial
+	$$GOPATH/bin/dep version || (export DEP_RELEASE_TAG=v0.5.0; curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh)
+	dep status
