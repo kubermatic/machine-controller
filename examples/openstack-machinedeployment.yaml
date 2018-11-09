@@ -81,6 +81,8 @@ spec:
                 key: tenantName
             image: "Ubuntu 18.04 amd64"
             flavor: "m1.small"
+            # only required if there is need to inject keypair
+            keypair: ""
             securityGroups:
               - configMapKeyRef:
                   namespace: kube-system

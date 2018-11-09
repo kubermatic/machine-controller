@@ -12,7 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
+	oskeypairs "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/pagination"
 
@@ -57,6 +57,7 @@ type RawConfig struct {
 	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
 	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
 	Region           providerconfig.ConfigVarString   `json:"region"`
+	KeyPair          providerconfig.ConfigVarString   `json:"keypair"`
 	Tags             map[string]string                `json:"tags"`
 }
 
@@ -77,6 +78,7 @@ type Config struct {
 	FloatingIPPool   string
 	AvailabilityZone string
 	Region           string
+	KeyPair          string
 
 	Tags map[string]string
 }
@@ -164,6 +166,12 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	c.KeyPair, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.KeyPair)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	c.Tags = rawConfig.Tags
 	if c.Tags == nil {
 		c.Tags = map[string]string{}
@@ -319,6 +327,10 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet %q: %v", c.Subnet, err)
 	}
 
+	if _, err := getKeyPair(client, c.Region, c.KeyPair); err != nil {
+		return fmt.Errorf("failed to get keypair %q: %v", c.KeyPair, err)
+	}
+
 	if c.FloatingIPPool != "" {
 		if _, err := getNetwork(client, c.Region, c.FloatingIPPool); err != nil {
 			return fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
@@ -375,6 +387,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get network %s", c.Network))
 	}
 
+	keypair, err := getKeyPair(client, c.Region, c.KeyPair)
+	if err != nil {
+		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get keypair%s", c.KeyPair))
+	}
+
 	securityGroups := c.SecurityGroups
 	if len(securityGroups) == 0 {
 		glog.V(2).Infof("creating security group %s for worker nodes", securityGroupName)
@@ -389,7 +406,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	allTags := c.Tags
 	allTags[machineUIDMetaKey] = string(machine.UID)
 
-	serverOpts := osservers.CreateOpts{
+	serverCreateOpts := osservers.CreateOpts{
 		Name:             machine.Spec.Name,
 		FlavorRef:        flavor.ID,
 		ImageRef:         image.ID,
@@ -399,16 +416,18 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		Networks:         []osservers.Network{{UUID: network.ID}},
 		Metadata:         allTags,
 	}
+	serverOpts := oskeypairs.CreateOptsExt{
+		CreateOptsBuilder: serverCreateOpts,
+		KeyName:           keypair.Name,
+	}
+
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get compute client")
 	}
 
 	var server serverWithExt
-	err = osservers.Create(computeClient, keypairs.CreateOptsExt{
-		CreateOptsBuilder: serverOpts,
-		KeyName:           "",
-	}).ExtractInto(&server)
+	err = osservers.Create(computeClient, serverOpts).ExtractInto(&server)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to create server")
 	}

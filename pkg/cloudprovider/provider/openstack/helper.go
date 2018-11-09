@@ -11,6 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osavailabilityzones "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
+	oskeypairs "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osflavors "github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	osimages "github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	osregions "github.com/gophercloud/gophercloud/openstack/identity/v3/regions"
@@ -114,6 +115,36 @@ func getImageByName(client *gophercloud.ProviderClient, region, name string) (*o
 	for _, i := range allImages {
 		if i.Name == name {
 			return &i, nil
+		}
+	}
+
+	return nil, errNotFound
+}
+
+func getKeyPair(client *gophercloud.ProviderClient, region, name string) (*oskeypairs.KeyPair, error) {
+	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: region})
+	if err != nil {
+		return nil, err
+	}
+
+	var allKeypairs []oskeypairs.KeyPair
+
+	pager := oskeypairs.List(computeClient)
+	err = pager.EachPage(func(page pagination.Page) (bool, error) {
+		keypairs, err := oskeypairs.ExtractKeyPairs(page)
+		if err != nil {
+			return false, err
+		}
+		allKeypairs = append(allKeypairs, keypairs...)
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range allKeypairs {
+		if f.Name == name {
+			return &f, nil
 		}
 	}
 
