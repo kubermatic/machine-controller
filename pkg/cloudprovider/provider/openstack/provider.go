@@ -57,6 +57,7 @@ type RawConfig struct {
 	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
 	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
 	Region           providerconfig.ConfigVarString   `json:"region"`
+	// This tag is related to server metadata, not compute server's tag
 	Tags             map[string]string                `json:"tags"`
 }
 
