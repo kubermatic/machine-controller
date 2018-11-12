@@ -71,7 +71,7 @@ test-unit: vendor
 	@#The `-race` flag requires CGO
 	CGO_ENABLED=1 go test -race ./...
 
-e2e-cluster:
+e2e-cluster: machine-controller webhook
 	make -C test/tools/integration apply
 	./test/tools/integration/provision_master.sh do-not-deploy-machine-controller
 
