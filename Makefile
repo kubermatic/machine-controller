@@ -4,6 +4,8 @@ GO_VERSION = 1.10.1
 
 export CGO_ENABLED := 0
 
+export E2E_SSH_PUBKEY ?= $(shell cat ~/.ssh/id_rsa.pub)
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
