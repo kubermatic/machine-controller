@@ -74,6 +74,7 @@ test-unit: vendor
 e2e-cluster: machine-controller webhook
 	make -C test/tools/integration apply
 	./test/tools/integration/provision_master.sh do-not-deploy-machine-controller
+	KUBECONFIG=$(shell pwd)/.kubeconfig kubectl apply -f examples/machine-controller.yaml -l local-testing="true"
 
 e2e-destroy:
 	./test/tools/integration/cleanup_machines.sh
