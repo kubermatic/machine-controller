@@ -12,6 +12,7 @@ stringData:
   password: << OS_PASSWORD >>
   domainName: << OS_DOMAIN_NAME >>
   tenantName: << OS_TENANT_NAME >>
+  region: << OS_REGION_NAME >>
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -79,6 +80,12 @@ spec:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: tenantName
+            # Only required if there is more than one region to choose from
+            region:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: region
             image: "Ubuntu 18.04 amd64"
             flavor: "m1.small"
             securityGroups:
@@ -90,8 +97,6 @@ spec:
             floatingIpPool: "ext-net"
             # Only required if there is more than one AZ to choose from
             availabilityZone: ""
-            # Only required if there is more than one region to choose from
-            region: ""
             # Only required if there is more than one network available
             network: ""
             # Only required if the network has more than one subnet
