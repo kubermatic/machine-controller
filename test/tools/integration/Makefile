@@ -1,3 +1,6 @@
+# prow uses BUILD_ID
+# TODO: remove CIRCLE_BUILD_NUM entirely after moving to prow
+CIRCLE_BUILD_NUM ?=$$BUILD_ID
 CIRCLE_BUILD_NUM ?= local
 
 USER ?= circleCI
