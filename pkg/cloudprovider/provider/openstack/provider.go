@@ -53,7 +53,6 @@ type RawConfig struct {
 	Flavor           providerconfig.ConfigVarString   `json:"flavor"`
 	SecurityGroups   []providerconfig.ConfigVarString `json:"securityGroups"`
 	Network          providerconfig.ConfigVarString   `json:"network"`
-	Subnet           providerconfig.ConfigVarString   `json:"subnet"`
 	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
 	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
 	Region           providerconfig.ConfigVarString   `json:"region"`
@@ -74,7 +73,6 @@ type Config struct {
 	Flavor           string
 	SecurityGroups   []string
 	Network          string
-	Subnet           string
 	FloatingIPPool   string
 	AvailabilityZone string
 	Region           string
@@ -146,10 +144,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 		c.SecurityGroups = append(c.SecurityGroups, securityGroupValue)
 	}
 	c.Network, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Network)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.Subnet, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Subnet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -261,24 +255,13 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
-	if c.Subnet == "" {
-		networkID := c.Network
-		if rawConfig.Network.Value != "" {
-			networkID = rawConfig.Network.Value
-		}
-
-		net, err := getNetwork(client, c.Region, networkID)
-		if err != nil {
-			return spec, osErrorToTerminalError(err, fmt.Sprintf("failed to get network for subnet defaulting '%s", networkID))
-		}
-		subnet, err := getDefaultSubnet(client, net, c.Region)
-		if err != nil {
-			return spec, osErrorToTerminalError(err, "error defaulting subnet")
-		}
-		if subnet != nil {
-			glog.V(4).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
-			rawConfig.Subnet.Value = *subnet
-		}
+	// Try to get subnets, ensure at least one subnet exists
+	subnets, err := getSubnets(client, c.Region, rawConfig.Network.Value)
+	if err != nil {
+		return spec, osErrorToTerminalError(err, "failed to get subnets")
+	}
+	if len(subnets) == 0 {
+		return spec, fmt.Errorf("no subnet associated with net '%s'", rawConfig.Network.Value)
 	}
 
 	spec.ProviderConfig.Value, err = setProviderConfig(*rawConfig, spec.ProviderConfig)
@@ -314,10 +297,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	if _, err := getNetwork(client, c.Region, c.Network); err != nil {
 		return fmt.Errorf("failed to get network %q: %v", c.Network, err)
-	}
-
-	if _, err := getSubnet(client, c.Region, c.Subnet); err != nil {
-		return fmt.Errorf("failed to get subnet %q: %v", c.Subnet, err)
 	}
 
 	if c.FloatingIPPool != "" {

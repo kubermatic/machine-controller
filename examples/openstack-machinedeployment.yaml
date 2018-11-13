@@ -94,8 +94,6 @@ spec:
             region: ""
             # Only required if there is more than one network available
             network: ""
-            # Only required if the network has more than one subnet
-            subnet: ""
             # the list of metadata you would like to attach to the instance
             tags:
               tagKey: tagValue

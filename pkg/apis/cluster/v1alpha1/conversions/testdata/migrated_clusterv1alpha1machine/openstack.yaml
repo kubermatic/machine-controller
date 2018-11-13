@@ -39,7 +39,6 @@ spec:
             key: securityGroup
             name: machine-controller
             namespace: kube-system
-        subnet: ""
         tags:
           tagKey: tagValue
         tenantName:
