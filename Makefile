@@ -1,6 +1,6 @@
 SHELL = /bin/bash
 
-GO_VERSION = 1.10.1
+GO_VERSION = 1.10.3
 
 export CGO_ENABLED := 0
 
@@ -40,7 +40,7 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 
 lint:
 	./hack/verify-type-revision-annotation-const.sh
-	gometalinter --config gometalinter.json ./...
+	gometalinter --config gometalinter.json ./... --deadline 20m
 
 docker-image: machine-controller webhook docker-image-nodep
 
@@ -113,5 +113,5 @@ deploy: examples/admission-cert.pem
 check-dependencies:
 	# We need mercurial for bitbucket.org/ww/goautoneg, otherwise dep hangs forever
 	which hg >/dev/null 2>&1 || apt update && apt install -y mercurial
-	$$GOPATH/bin/dep version || (export DEP_RELEASE_TAG=v0.5.0; curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh)
+	dep version || go get -u github.com/golang/dep/cmd/dep
 	dep status

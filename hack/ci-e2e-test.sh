@@ -2,6 +2,19 @@
 
 set -e
 
+function cleanup {
+    set +e
+
+    # Clean up machines
+    echo "Cleaning up machines."
+    ./test/tools/integration/cleanup_machines.sh
+
+    # Clean up master
+    echo "Clean up master."
+    make -C test/tools/integration destroy
+}
+trap cleanup EXIT
+
 export BUILD_ID="${BUILD_ID:-$CIRCLE_BUILD_NUM}"
 
 # Install dependencies
@@ -19,6 +32,10 @@ ssh-keygen -f $HOME/.ssh/id_rsa -P ''
 echo "Creating environment at cloud provider."
 make -C test/tools/integration apply
 
+# Build binaries
+echo "Building machine-controller and webhook"
+make machine-controller webhook
+
 # Create kubeadm cluster and install machine-controller onto it
 echo "Creating kubeadm cluster and install machine-controller onto it."
 ./test/tools/integration/provision_master.sh
@@ -27,16 +44,3 @@ echo "Creating kubeadm cluster and install machine-controller onto it."
 echo "Running e2e test."
 export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig &&
 go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$BUILD_ID
-
-function cleanup {
-    set +e
-
-    # Clean up machines
-    echo "Cleaning up machines."
-    ./test/tools/integration/cleanup_machines.sh
-
-    # Clean up master
-    echo "Clean up master."
-    make -C test/tools/integration destroy
-}
-trap cleanup EXIT
