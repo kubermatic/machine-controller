@@ -4,6 +4,8 @@ GO_VERSION = 1.10.1
 
 export CGO_ENABLED := 0
 
+export E2E_SSH_PUBKEY ?= $(shell cat ~/.ssh/id_rsa.pub)
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
@@ -71,9 +73,10 @@ test-unit: vendor
 	@#The `-race` flag requires CGO
 	CGO_ENABLED=1 go test -race ./...
 
-e2e-cluster:
+e2e-cluster: machine-controller webhook
 	make -C test/tools/integration apply
 	./test/tools/integration/provision_master.sh do-not-deploy-machine-controller
+	KUBECONFIG=$(shell pwd)/.kubeconfig kubectl apply -f examples/machine-controller.yaml -l local-testing="true"
 
 e2e-destroy:
 	./test/tools/integration/cleanup_machines.sh
