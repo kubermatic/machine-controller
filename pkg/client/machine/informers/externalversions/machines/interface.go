@@ -19,8 +19,8 @@ limitations under the License.
 package machine
 
 import (
-	internalinterfaces "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/machines/v1alpha1"
+	internalinterfaces "github.com/kubermatic/machine-controller/pkg/client/machine/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/kubermatic/machine-controller/pkg/client/machine/informers/externalversions/machines/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

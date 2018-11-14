@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	scheme "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/scheme"
+	scheme "github.com/kubermatic/machine-controller/pkg/client/machine/clientset/versioned/scheme"
 	v1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"

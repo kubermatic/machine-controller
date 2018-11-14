@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
-	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
+	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/machine/clientset/versioned"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"github.com/kubermatic/machine-controller/pkg/machines"

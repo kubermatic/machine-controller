@@ -21,9 +21,9 @@ package v1alpha1
 import (
 	time "time"
 
-	versioned "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
+	versioned "github.com/kubermatic/machine-controller/pkg/client/machine/clientset/versioned"
+	internalinterfaces "github.com/kubermatic/machine-controller/pkg/client/machine/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/kubermatic/machine-controller/pkg/client/machine/listers/machines/v1alpha1"
 	machines_v1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"

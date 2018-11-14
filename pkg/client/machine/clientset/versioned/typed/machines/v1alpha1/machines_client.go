@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/kubermatic/machine-controller/pkg/client/clientset/versioned/scheme"
+	"github.com/kubermatic/machine-controller/pkg/client/machine/clientset/versioned/scheme"
 	v1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"

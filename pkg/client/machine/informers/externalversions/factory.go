@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/internalinterfaces"
-	machines "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/machines"
+	versioned "github.com/kubermatic/machine-controller/pkg/client/machine/clientset/versioned"
+	internalinterfaces "github.com/kubermatic/machine-controller/pkg/client/machine/informers/externalversions/internalinterfaces"
+	machines "github.com/kubermatic/machine-controller/pkg/client/machine/informers/externalversions/machines"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
