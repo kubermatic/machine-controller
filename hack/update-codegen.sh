@@ -28,3 +28,8 @@ echo $SCRIPT_ROOT
     github.com/kubermatic/machine-controller/pkg/client/machine github.com/kubermatic/machine-controller/pkg \
     machines:v1alpha1 \
     --go-header-file=${SCRIPT_ROOT}/header.txt
+
+./vendor/k8s.io/code-generator/generate-groups.sh "client,lister,informer" \
+    github.com/kubermatic/machine-controller/pkg/client/cluster sigs.k8s.io/cluster-api/pkg/apis \
+    "cluster:v1alpha1" \
+    --go-header-file=${SCRIPT_ROOT}/header.txt

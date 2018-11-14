@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 
+	clusterv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/cluster/clientset/versioned"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,7 +20,6 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
 
 const (
@@ -58,7 +58,7 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 	return nil
 }
 
-func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface, clientset.Interface, *v1alpha1.MachineDeployment, error) {
+func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface, clusterv1alpha1clientset.Interface, *v1alpha1.MachineDeployment, error) {
 
 	kubeClient, clusterClient, manifest, err := prepare(kubeConfig, manifestPath, parameters)
 	if err != nil {
@@ -77,7 +77,7 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 	return kubeClient, clusterClient, newMachineDeployment, nil
 }
 
-func prepareMachine(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface, clientset.Interface, *v1alpha1.Machine, error) {
+func prepareMachine(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface, clusterv1alpha1clientset.Interface, *v1alpha1.Machine, error) {
 
 	kubeClient, clusterClient, manifest, err := prepare(kubeConfig, manifestPath, parameters)
 	if err != nil {
@@ -97,7 +97,7 @@ func prepareMachine(kubeConfig, manifestPath string, parameters []string) (kuber
 }
 
 func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.Interface,
-	clientset.Interface, string, error) {
+	clusterv1alpha1clientset.Interface, string, error) {
 	if len(manifestPath) == 0 || len(kubeConfig) == 0 {
 		return nil, nil, "", fmt.Errorf("kubeconfig and manifest path must be defined")
 	}
@@ -111,7 +111,7 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.I
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("Error building kubernetes clientset: %v", err)
 	}
-	clusterClient, err := clientset.NewForConfig(cfg)
+	clusterClient, err := clusterv1alpha1clientset.NewForConfig(cfg)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("Error building example clientset: %v", err)
 	}
@@ -126,7 +126,7 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (kubernetes.I
 }
 
 func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
-	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) (*v1alpha1.MachineDeployment, error) {
+	clusterClient clusterv1alpha1clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) (*v1alpha1.MachineDeployment, error) {
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachineDeployment(machineDeployment, kubeClient, clusterClient, false)
 	if err != nil {
@@ -173,7 +173,7 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 	return machineDeployment, nil
 }
 
-func hasMachineReadyNode(machine *v1alpha1.Machine, kubeClient kubernetes.Interface, clusterClient clientset.Interface) (bool, error) {
+func hasMachineReadyNode(machine *v1alpha1.Machine, kubeClient kubernetes.Interface, clusterClient clusterv1alpha1clientset.Interface) (bool, error) {
 	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return false, fmt.Errorf("failed to list nodes: %v", err)
@@ -191,7 +191,7 @@ func hasMachineReadyNode(machine *v1alpha1.Machine, kubeClient kubernetes.Interf
 }
 
 func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
-	clusterClient clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
+	clusterClient clusterv1alpha1clientset.Interface, kubeClient kubernetes.Interface, timeout time.Duration) error {
 	glog.Infof("Starting to clean up MachineDeployment %s", machineDeployment.Name)
 
 	// We first scale down to 0, because once the machineSets are deleted we can not
@@ -234,7 +234,7 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 
 // assureNodeForMachineDeployment according to shouldExists parameter check if a node for machine exists in the system or not
 // this method examines OwnerReference of each node.
-func assureNodeForMachineDeployment(machineDeployment *v1alpha1.MachineDeployment, kubeClient kubernetes.Interface, clusterClient clientset.Interface, shouldExists bool) error {
+func assureNodeForMachineDeployment(machineDeployment *v1alpha1.MachineDeployment, kubeClient kubernetes.Interface, clusterClient clusterv1alpha1clientset.Interface, shouldExists bool) error {
 	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -290,7 +290,7 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 }
 
 // getMatchingMachines returns all machines that are owned by the passed machineDeployment
-func getMatchingMachines(machineDeployment *v1alpha1.MachineDeployment, clusterClient clientset.Interface) ([]v1alpha1.Machine, error) {
+func getMatchingMachines(machineDeployment *v1alpha1.MachineDeployment, clusterClient clusterv1alpha1clientset.Interface) ([]v1alpha1.Machine, error) {
 	matchingMachineSets, err := getMachingMachineSets(machineDeployment, clusterClient)
 	if err != nil {
 		return nil, err
@@ -308,7 +308,7 @@ func getMatchingMachines(machineDeployment *v1alpha1.MachineDeployment, clusterC
 	return matchingMachines, nil
 }
 
-func getMatchingMachinesForMachineset(machineSet *v1alpha1.MachineSet, clusterClient clientset.Interface) ([]v1alpha1.Machine, error) {
+func getMatchingMachinesForMachineset(machineSet *v1alpha1.MachineSet, clusterClient clusterv1alpha1clientset.Interface) ([]v1alpha1.Machine, error) {
 	allMachines, err := clusterClient.ClusterV1alpha1().Machines(machineSet.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Machines: %v", err)
@@ -323,7 +323,7 @@ func getMatchingMachinesForMachineset(machineSet *v1alpha1.MachineSet, clusterCl
 }
 
 // getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment
-func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, clusterClient clientset.Interface) ([]v1alpha1.MachineSet, error) {
+func getMachingMachineSets(machineDeployment *v1alpha1.MachineDeployment, clusterClient clusterv1alpha1clientset.Interface) ([]v1alpha1.MachineSet, error) {
 	// Ensure we actually have an object from the KubeAPI and not just the result of the yaml parsing, as the latter
 	// can not be the owner of anything due to missing UID
 	if machineDeployment.ResourceVersion == "" {
@@ -353,7 +353,7 @@ func getInt32Ptr(i int32) *int32 {
 	return &i
 }
 
-func updateMachineDeployment(md *v1alpha1.MachineDeployment, clusterClient clientset.Interface, modify func(*v1alpha1.MachineDeployment)) error {
+func updateMachineDeployment(md *v1alpha1.MachineDeployment, clusterClient clusterv1alpha1clientset.Interface, modify func(*v1alpha1.MachineDeployment)) error {
 	// Store Namespace and Name here because after an error md will be nil
 	name := md.Name
 	namespace := md.Namespace

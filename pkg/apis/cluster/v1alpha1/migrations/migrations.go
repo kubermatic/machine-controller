@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
+	clusterv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/cluster/clientset/versioned"
 	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/machine/clientset/versioned"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
@@ -24,7 +25,6 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
 
 func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(

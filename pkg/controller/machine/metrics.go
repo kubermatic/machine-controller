@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 
-	"sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/client/cluster/listers/cluster/v1alpha1"
 )
 
 const metricsPrefix = "machine_controller_"

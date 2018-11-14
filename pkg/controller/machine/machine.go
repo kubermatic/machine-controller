@@ -34,6 +34,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata"
 	"github.com/prometheus/client_golang/prometheus"
 
+	clusterv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/cluster/clientset/versioned"
+	machinescheme "github.com/kubermatic/machine-controller/pkg/client/cluster/clientset/versioned/scheme"
+	clusterlistersv1alpha1 "github.com/kubermatic/machine-controller/pkg/client/cluster/listers/cluster/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -55,9 +58,6 @@ import (
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
-	machinescheme "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme"
-	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 )
 
 const (
