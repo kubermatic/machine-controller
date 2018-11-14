@@ -19,7 +19,8 @@ type resource struct {
 	kind   string
 }
 
-const CRDName = v1alpha1.MachineResourcePlural + "." + v1alpha1.GroupName
+# This is a deliberate change to verify if tests fail
+CRDName = v1alpha1.MachineResourcePlural + "." + v1alpha1.GroupName
 
 var resourceNames = []resource{
 	{
