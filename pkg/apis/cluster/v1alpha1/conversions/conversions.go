@@ -15,7 +15,7 @@ import (
 const (
 	TypeRevisionAnnotationName = "machine-controller/machine-type-revision"
 
-	TypeRevisionCurrentVersion = "571cb480e561d1b1d49713e0a1db09de152dff69"
+	TypeRevisionCurrentVersion = "d7622d225b58c194a488c2f1491ba5262e85625f"
 )
 
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
