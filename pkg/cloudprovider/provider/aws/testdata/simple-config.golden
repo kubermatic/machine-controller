@@ -1,0 +1,10 @@
+[global]
+Zone="some-zone"
+VPC="some-vpc"
+SubnetID="some-subnet"
+RouteTableID="some-rt"
+RoleARN="some-arn"
+KubernetesClusterID="some-tag"
+DisableSecurityGroupIngress=true
+ElbSecurityGroup="some-sg"
+DisableStrictZoneCheck=true
