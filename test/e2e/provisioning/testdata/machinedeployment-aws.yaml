@@ -30,6 +30,7 @@ spec:
             availabilityZone: "eu-central-1a"
             vpcId: "vpc-819f62e9"
             instanceType: "t2.medium"
+            instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
             tags:
