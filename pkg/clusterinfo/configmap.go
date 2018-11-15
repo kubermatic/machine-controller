@@ -103,7 +103,7 @@ func (p *KubeconfigProvider) buildKubeconfigFromEndpoint() (*clientcmdapi.Config
 		APIVersion: "v1",
 		Clusters: map[string]*clientcmdapi.Cluster{
 			"": {
-				Server: url,
+				Server:                   url,
 				CertificateAuthorityData: caData,
 			},
 		},

@@ -39,6 +39,7 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 lint:
 	./hack/verify-type-revision-annotation-const.sh
 	gometalinter --config gometalinter.json ./...
+	hack/verify-gofmt.sh
 
 docker-image: machine-controller webhook docker-image-nodep
 
