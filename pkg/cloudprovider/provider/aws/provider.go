@@ -357,7 +357,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to create iam client: %v", err)
 	}
 
-	if config.InstanceProfile != "" {
+	if config.InstanceProfile == "" {
+		return fmt.Errorf("invalid instance profile specified %q: %v", config.InstanceProfile, err)
+	} else {
 		_, err := iamClient.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(config.InstanceProfile)})
 		if err != nil {
 			return fmt.Errorf("failed to validate instance profile: %v", err)
@@ -447,81 +449,6 @@ func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, er
 	return aws.StringValue(sgOut.SecurityGroups[0].GroupId), nil
 }
 
-func ensureDefaultRoleExists(client *iam.IAM) error {
-	_, err := client.GetRole(&iam.GetRoleInput{RoleName: aws.String(defaultRoleName)})
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
-				glog.V(4).Infof("creating machine iam role %s...", defaultRoleName)
-				paramsRole := &iam.CreateRoleInput{
-					AssumeRolePolicyDocument: aws.String(instanceProfileRole),
-					RoleName:                 aws.String(defaultRoleName),
-				}
-				_, err := client.CreateRole(paramsRole)
-				if err != nil {
-					return fmt.Errorf("failed to create role: %v", err)
-				}
-
-				for _, arn := range roleARNS {
-					paramsAttachPolicy := &iam.AttachRolePolicyInput{
-						PolicyArn: aws.String(arn),
-						RoleName:  aws.String(defaultRoleName),
-					}
-					_, err = client.AttachRolePolicy(paramsAttachPolicy)
-					if err != nil {
-						return fmt.Errorf("failed to attach role %q to policy %q: %v", defaultRoleName, arn, err)
-					}
-				}
-				glog.V(4).Infof("machine iam role %s successfully created", defaultRoleName)
-				return nil
-			}
-			return awsErrorToTerminalError(err, fmt.Sprintf("failed to get role %s", defaultRoleName))
-		}
-		return fmt.Errorf("failed to get role %s: %v", defaultRoleName, err)
-	}
-	glog.V(6).Infof("machine iam role %s already exists", defaultRoleName)
-	return nil
-}
-
-func ensureDefaultInstanceProfileExists(client *iam.IAM) error {
-	err := ensureDefaultRoleExists(client)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(defaultInstanceProfileName)})
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == iam.ErrCodeNoSuchEntityException {
-				glog.V(4).Infof("creating instance profile %s...", defaultInstanceProfileName)
-				paramsInstanceProfile := &iam.CreateInstanceProfileInput{
-					InstanceProfileName: aws.String(defaultInstanceProfileName),
-				}
-				_, err = client.CreateInstanceProfile(paramsInstanceProfile)
-				if err != nil {
-					return awsErrorToTerminalError(err, "failed to create instance profile")
-				}
-
-				paramsAddRole := &iam.AddRoleToInstanceProfileInput{
-					InstanceProfileName: aws.String(defaultInstanceProfileName),
-					RoleName:            aws.String(defaultRoleName),
-				}
-				_, err = client.AddRoleToInstanceProfile(paramsAddRole)
-				if err != nil {
-					return awsErrorToTerminalError(err, fmt.Sprintf("failed to add role %q to instance profile %q", defaultInstanceProfileName, defaultRoleName))
-				}
-				glog.V(4).Infof("instance profile %s successfully created", defaultInstanceProfileName)
-				return nil
-			}
-			return awsErrorToTerminalError(err, fmt.Sprintf("failed to get instance profile %s", defaultInstanceProfileName))
-		}
-		return fmt.Errorf("failed to get instance profile: %v", err)
-	}
-	glog.V(6).Infof("instance profile %s already exists", defaultInstanceProfileName)
-
-	return nil
-}
-
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
@@ -534,20 +461,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
 		return nil, err
-	}
-
-	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region)
-	if err != nil {
-		return nil, err
-	}
-
-	instanceProfileName := config.InstanceProfile
-	if instanceProfileName == "" {
-		err = ensureDefaultInstanceProfileExists(iamClient)
-		if err != nil {
-			return nil, err
-		}
-		instanceProfileName = defaultInstanceProfileName
 	}
 
 	vpc, err := getVpc(ec2Client, config.VpcID)
@@ -635,7 +548,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 			},
 		},
 		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
-			Name: aws.String(instanceProfileName),
+			Name: aws.String(config.InstanceProfile),
 		},
 		TagSpecifications: []*ec2.TagSpecification{
 			{
