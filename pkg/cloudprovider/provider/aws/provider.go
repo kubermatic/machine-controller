@@ -42,13 +42,6 @@ const (
 	nameTag       = "Name"
 	machineUIDTag = "Machine-UID"
 
-	policyRoute53FullAccess = "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
-	policyEC2FullAccess     = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-
-	defaultRoleName            = "kubernetes-v1"
-	defaultInstanceProfileName = "kubernetes-v1"
-	defaultSecurityGroupName   = "kubernetes-v1"
-
 	maxRetries = 100
 )
 
@@ -60,19 +53,6 @@ var (
 		ec2.VolumeTypeSc1,
 		ec2.VolumeTypeSt1,
 	)
-
-	roleARNS = []string{policyRoute53FullAccess, policyEC2FullAccess}
-
-	instanceProfileRole = `{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": { "Service": "ec2.amazonaws.com"},
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}`
 
 	amiFilters = map[providerconfig.OperatingSystem]amiFilter{
 		providerconfig.OperatingSystemCoreos: {
@@ -359,11 +339,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	if config.InstanceProfile == "" {
 		return fmt.Errorf("invalid instance profile specified %q: %v", config.InstanceProfile, err)
-	} else {
-		_, err := iamClient.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(config.InstanceProfile)})
-		if err != nil {
-			return fmt.Errorf("failed to validate instance profile: %v", err)
-		}
+	}
+	if _, err := iamClient.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(config.InstanceProfile)}); err != nil {
+		return fmt.Errorf("failed to validate instance profile: %v", err)
 	}
 
 	return nil
@@ -387,68 +365,6 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 	return vpcOut.Vpcs[0], nil
 }
 
-func ensureDefaultSecurityGroupExists(client *ec2.EC2, vpc *ec2.Vpc) (string, error) {
-	sgOut, err := client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
-		GroupNames: aws.StringSlice([]string{defaultSecurityGroupName}),
-	})
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() == "InvalidGroup.NotFound" {
-				glog.V(4).Infof("creating security group %s...", defaultSecurityGroupName)
-				csgOut, err := client.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
-					VpcId:       vpc.VpcId,
-					GroupName:   aws.String(defaultSecurityGroupName),
-					Description: aws.String("Kubernetes security group"),
-				})
-				if err != nil {
-					return "", awsErrorToTerminalError(err, "failed to create security group")
-				}
-				groupID := aws.StringValue(csgOut.GroupId)
-
-				// Allow SSH from everywhere
-				_, err = client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
-					CidrIp:     aws.String("0.0.0.0/0"),
-					FromPort:   aws.Int64(22),
-					ToPort:     aws.Int64(22),
-					GroupId:    csgOut.GroupId,
-					IpProtocol: aws.String("tcp"),
-				})
-				if err != nil {
-					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for ssh to security group %s", groupID))
-				}
-
-				// Allow kubelet 10250 from everywhere
-				_, err = client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
-					CidrIp:     aws.String("0.0.0.0/0"),
-					FromPort:   aws.Int64(10250),
-					ToPort:     aws.Int64(10250),
-					GroupId:    csgOut.GroupId,
-					IpProtocol: aws.String("tcp"),
-				})
-				if err != nil {
-					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for kubelet port 10250 to security group %s", groupID))
-				}
-
-				// Allow node-to-node communication
-				_, err = client.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
-					SourceSecurityGroupName: aws.String(defaultSecurityGroupName),
-					GroupId:                 csgOut.GroupId,
-				})
-				if err != nil {
-					return "", awsErrorToTerminalError(err, fmt.Sprintf("failed to authorize security group ingress rule for node-to-node communication to security group %s", groupID))
-				}
-
-				glog.V(4).Infof("security group %s successfully created", defaultSecurityGroupName)
-				return groupID, nil
-			}
-		}
-		return "", awsErrorToTerminalError(err, "failed to list security group")
-	}
-
-	glog.V(6).Infof("security group %s already exists", defaultSecurityGroupName)
-	return aws.StringValue(sgOut.SecurityGroups[0].GroupId), nil
-}
-
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
@@ -461,20 +377,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
 		return nil, err
-	}
-
-	vpc, err := getVpc(ec2Client, config.VpcID)
-	if err != nil {
-		return nil, err
-	}
-
-	securityGroupIDs := config.SecurityGroupIDs
-	if len(securityGroupIDs) == 0 {
-		sgID, err := ensureDefaultSecurityGroupExists(ec2Client, vpc)
-		if err != nil {
-			return nil, err
-		}
-		securityGroupIDs = append(securityGroupIDs, sgID)
 	}
 
 	rootDevicePath, err := getDefaultRootDevicePath(pc.OperatingSystem)
@@ -567,14 +469,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	// Change to our security group
 	_, err = ec2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
 		InstanceId: runOut.Instances[0].InstanceId,
-		Groups:     aws.StringSlice(securityGroupIDs),
+		Groups:     aws.StringSlice(config.SecurityGroupIDs),
 	})
 	if err != nil {
 		delErr := p.Delete(machine, data)
 		if delErr != nil {
-			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %s & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName))
+			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security groups %v & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
 		}
-		return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %s", aws.StringValue(runOut.Instances[0].InstanceId), defaultSecurityGroupName))
+		return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %v", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
 	}
 
 	return awsInstance, nil
