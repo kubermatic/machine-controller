@@ -30,8 +30,11 @@ spec:
             availabilityZone: "eu-central-1a"
             vpcId: "vpc-819f62e9"
             instanceType: "t2.medium"
+            instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
+            securityGroupIDs:
+            - "sg-0310564b3bfa46ec0"
             tags:
             # you have to set this flag to real clusterID when running against our dev or prod
             # otherwise you might have issues with your nodes not joining the cluster
