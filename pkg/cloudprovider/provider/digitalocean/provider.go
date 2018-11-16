@@ -327,18 +327,18 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	return &doInstance{droplet: droplet}, err
 }
 
-func (p *provider) Delete(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) error {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
 	instance, err := p.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			return nil
+			return true, nil
 		}
-		return err
+		return false, err
 	}
 
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
-		return cloudprovidererrors.TerminalError{
+		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
@@ -348,14 +348,15 @@ func (p *provider) Delete(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 
 	doID, err := strconv.Atoi(instance.ID())
 	if err != nil {
-		return fmt.Errorf("failed to convert instance id %s to int: %v", instance.ID(), err)
+		return false, fmt.Errorf("failed to convert instance id %s to int: %v", instance.ID(), err)
 	}
 
 	rsp, err := client.Droplets.Delete(ctx, doID)
 	if err != nil {
-		return doStatusAndErrToTerminalError(rsp.StatusCode, err)
+		return false, doStatusAndErrToTerminalError(rsp.StatusCode, err)
 	}
-	return nil
+
+	return false, nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {

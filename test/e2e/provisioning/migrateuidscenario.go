@@ -145,14 +145,21 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 4: Delete the instance and then verify instance is gone
 	for i := 0; i < maxTries; i++ {
+
 		// Deletion part 0: Delete and continue on err if there are tries left
-		if err := prov.Delete(machine, machineCreateDeleteData); err != nil {
+		done, err := prov.Cleanup(machine, machineCreateDeleteData)
+		if err != nil {
 			if i < maxTries-1 {
 				glog.V(4).Infof("Failed to delete machine %s on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
 				continue
 			}
 			return fmt.Errorf("failed to delete machine %s: %v", machine.Name, err)
+		}
+		if !done {
+			// The deletion is async, thus we wait 10 seconds to recheck if its done
+			time.Sleep(10 * time.Second)
+			continue
 		}
 
 		// Deletion part 1: Get and continue if err != cloudprovidererrors.ErrInstanceNotFound if there are tries left

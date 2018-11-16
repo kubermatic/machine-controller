@@ -375,8 +375,6 @@ func (c *Controller) syncHandler(key string) error {
 		if err := c.deleteMachine(prov, machine); err != nil {
 			return err
 		}
-		// As the deletion got triggered but the instance might not been gone yet, we need to recheck in a few seconds.
-		c.enqueueMachineAfter(machine, deletionRetryWaitPeriod)
 		return nil
 	}
 
@@ -475,31 +473,24 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 		return nil
 	}
 
-	// Retrieve the instance from the cloud provider
-	if _, err := prov.Get(machine); err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
-			machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-				finalizers.Delete(FinalizerDeleteInstance)
-				m.Finalizers = finalizers.List()
-			})
-			return err
-		}
-
-		message := fmt.Sprintf("%v. Please manually delete the instance at the cloud provider and remove the %s finalizer from the machine object.", err, FinalizerDeleteInstance)
-		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to retrieve instance from cloud provider")
-	}
-
 	// Delete the instance
-	if err := prov.Delete(machine, c.machineCreateDeleteData); err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			// Only remove the finalizers if the instance is really gone. This ensures that consumers of this API can safely do follow up actions.
-			return nil
-		}
-
+	completelyGone, err := prov.Cleanup(machine, c.machineCreateDeleteData)
+	if err != nil {
 		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, FinalizerDeleteInstance)
 		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
 	}
+
+	if !completelyGone {
+		// As the instance is not completely gone yet, we need to recheck in a few seconds.
+		c.enqueueMachineAfter(machine, deletionRetryWaitPeriod)
+		return nil
+	}
+
+	machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+		finalizers.Delete(FinalizerDeleteInstance)
+		m.Finalizers = finalizers.List()
+	})
+
 	return nil
 }
 

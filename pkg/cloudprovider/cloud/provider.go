@@ -35,11 +35,11 @@ type Provider interface {
 	// Create creates a cloud instance according to the given machine
 	Create(machine *clusterv1alpha1.Machine, data *MachineCreateDeleteData, userdata string) (instance.Instance, error)
 
-	// Delete deletes the instance and all associated ressources
-	// This will always be called on machine deletion, the implemention must check if there is actually
-	// something to delete and just do nothing if there isn't
-	// In case the instance is already gone, nil will be returned
-	Delete(machine *clusterv1alpha1.Machine, data *MachineCreateDeleteData) error
+	// Cleanup will delete the instance associated with the machine and all associated resources.
+	// If all resources have been cleaned up, true will be returned.
+	// In case the cleanup involves ansynchronous deletion of resources & those resources are not gone yet,
+	// false should be returned. This is to indicate that the cleanup is not done, but needs to be called again at a later point
+	Cleanup(machine *clusterv1alpha1.Machine, data *MachineCreateDeleteData) (bool, error)
 
 	// MachineMetricsLabels returns labels used for the Prometheus metrics
 	// about created machines, e.g. instance type, instance size, region
