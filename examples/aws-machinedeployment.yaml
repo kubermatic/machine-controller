@@ -55,6 +55,7 @@ spec:
             vpcId: "vpc-819f62e9"
             subnetId: "subnet-2bff4f43"
             instanceType: "t2.micro"
+            instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
             tags:

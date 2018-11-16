@@ -47,6 +47,7 @@ type RawConfig struct {
 	DomainName       providerconfig.ConfigVarString `json:"domainName"`
 	TenantName       providerconfig.ConfigVarString `json:"tenantName"`
 	TokenID          providerconfig.ConfigVarString `json:"tokenId"`
+	Region           providerconfig.ConfigVarString `json:"region"`
 
 	// Machine details
 	Image            providerconfig.ConfigVarString   `json:"image"`
@@ -56,7 +57,6 @@ type RawConfig struct {
 	Subnet           providerconfig.ConfigVarString   `json:"subnet"`
 	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
 	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
-	Region           providerconfig.ConfigVarString   `json:"region"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags             map[string]string                `json:"tags"`
 }
@@ -68,6 +68,7 @@ type Config struct {
 	DomainName       string
 	TenantName       string
 	TokenID          string
+	Region           string
 
 	// Machine details
 	Image            string
@@ -77,7 +78,6 @@ type Config struct {
 	Subnet           string
 	FloatingIPPool   string
 	AvailabilityZone string
-	Region           string
 
 	Tags map[string]string
 }
@@ -120,6 +120,12 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
 	}
+	// Ignore Region not found as Region might not be found and we can default it later
+	c.Region, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
+        if err != nil {
+		glog.V(6).Infof("Region from configuration or environment variable not found")
+        }
+
 	// We ignore errors here because the OS domain is only required when using Identity API V3
 	c.DomainName, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
 	c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
@@ -158,10 +164,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 		return nil, nil, nil, err
 	}
 	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
 		return nil, nil, nil, err
 	}
