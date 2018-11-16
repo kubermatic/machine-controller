@@ -62,7 +62,7 @@ func (w *cachingValidationWrapper) Create(m *v1alpha1.Machine, mcd *cloud.Machin
 	return w.actualProvider.Create(m, mcd, cloudConfig)
 }
 
-// Delete just calls the underlying cloudproviders Delete
+// Cleanup just calls the underlying cloudproviders Cleanup
 func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloud.MachineCreateDeleteData) (bool, error) {
 	return w.actualProvider.Cleanup(m, mcd)
 }

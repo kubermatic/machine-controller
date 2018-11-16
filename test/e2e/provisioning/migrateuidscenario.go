@@ -157,8 +157,8 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 			return fmt.Errorf("failed to delete machine %s: %v", machine.Name, err)
 		}
 		if !done {
-			// Resources are not gone yet, check in a few seconds again
-			time.Sleep(30 * time.Second)
+			// The deletion is async, thus we wait 10 seconds to recheck if its done
+			time.Sleep(10 * time.Second)
 			continue
 		}
 
