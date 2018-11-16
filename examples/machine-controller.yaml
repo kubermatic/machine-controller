@@ -2,6 +2,8 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: machines.cluster.k8s.io
+  labels:
+    local-testing: "true"
 spec:
   group: cluster.k8s.io
   version: v1alpha1
@@ -28,6 +30,8 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: machinesets.cluster.k8s.io
+  labels:
+    local-testing: "true"
 spec:
   group: cluster.k8s.io
   version: v1alpha1
@@ -56,6 +60,8 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: machinedeployments.cluster.k8s.io
+  labels:
+    local-testing: "true"
 spec:
   group: cluster.k8s.io
   version: v1alpha1
@@ -84,6 +90,8 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   name: clusters.cluster.k8s.io
+  labels:
+    local-testing: "true"
 spec:
   group: cluster.k8s.io
   version: v1alpha1
@@ -99,6 +107,8 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: machine-controller:kubelet-bootstrap
+  labels:
+    local-testing: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -112,6 +122,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: machine-controller:node-autoapprove-bootstrap
+  labels:
+    local-testing: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -126,6 +138,8 @@ kind: Role
 metadata:
   name: machine-controller:kubelet-config
   namespace: kube-system
+  labels:
+    local-testing: "true"
 rules:
 - apiGroups:
   - ""
@@ -142,6 +156,8 @@ kind: RoleBinding
 metadata:
   name: machine-controller:kubelet-config
   namespace: kube-system
+  labels:
+    local-testing: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -274,12 +290,16 @@ kind: ServiceAccount
 metadata:
   name: machine-controller
   namespace: kube-system
+  labels:
+    local-testing: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
 metadata:
   name: machine-controller
   namespace: kube-system
+  labels:
+    local-testing: "true"
 rules:
 - apiGroups:
   - ""
@@ -331,6 +351,8 @@ kind: Role
 metadata:
   name: machine-controller
   namespace: kube-public
+  labels:
+    local-testing: "true"
 rules:
 - apiGroups:
   - ""
@@ -346,6 +368,8 @@ kind: Role
 metadata:
   name: machine-controller
   namespace: default
+  labels:
+    local-testing: "true"
 rules:
 - apiGroups:
   - ""
@@ -361,6 +385,8 @@ kind: RoleBinding
 metadata:
   name: machine-controller
   namespace: kube-system
+  labels:
+    local-testing: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -375,6 +401,8 @@ kind: RoleBinding
 metadata:
   name: machine-controller
   namespace: kube-public
+  labels:
+    local-testing: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -389,6 +417,8 @@ kind: RoleBinding
 metadata:
   name: machine-controller
   namespace: default
+  labels:
+    local-testing: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -402,6 +432,8 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
   name: machine-controller
+  labels:
+    local-testing: "true"
 rules:
 - apiGroups:
   - "apiextensions.k8s.io"
@@ -485,6 +517,8 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
   name: machine-controller
+  labels:
+    local-testing: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

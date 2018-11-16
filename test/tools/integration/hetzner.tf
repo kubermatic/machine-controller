@@ -3,13 +3,14 @@ provider "hcloud" {
 }
 
 resource "hcloud_ssh_key" "default" {
-  name = "${var.hcloud_sshkey_name}"
+  name       = "${var.hcloud_sshkey_name}"
   public_key = "${var.hcloud_sshkey_content}"
 }
 
 resource "hcloud_server" "machine-controller-test" {
-  name = "${var.hcloud_test_server_name}"
-  image = "ubuntu-18.04"
+  name        = "${var.hcloud_test_server_name}"
+  image       = "ubuntu-18.04"
   server_type = "cx41"
-  ssh_keys = ["${hcloud_ssh_key.default.id}"]
+  ssh_keys    = ["${hcloud_ssh_key.default.id}"]
+  location    = "hel1"
 }
