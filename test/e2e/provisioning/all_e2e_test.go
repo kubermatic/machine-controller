@@ -241,14 +241,14 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 	scenario := scenario{
-		name:              "Ubuntu Docker Kubernetes v1.10.5",
+		name:              "Ubuntu upgrade",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.10.5",
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("ubuntu-upgrade-%s", *testRunIdentifier), params, os_upgrade_manifest, false)
+	testScenario(t, scenario, fmt.Sprintf("%s", *testRunIdentifier), params, os_upgrade_manifest, false)
 }
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
@@ -266,11 +266,11 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 
 	scenario := scenario{
-		name:              "Ubuntu MachineDeployment upgrade",
+		name:              "MachineDeployment upgrade",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.10.5",
 		executor:          verifyCreateUpdateAndDelete,
 	}
-	testScenario(t, scenario, fmt.Sprintf("deployment-upgrade-%s", *testRunIdentifier), params, hz_manifest, false)
+	testScenario(t, scenario, fmt.Sprintf("%s", *testRunIdentifier), params, hz_manifest, false)
 }

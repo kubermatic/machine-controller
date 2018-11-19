@@ -132,7 +132,7 @@ func buildScenarios() []scenario {
 	for _, version := range versions {
 		for _, os := range operatingSystems {
 			s := scenario{
-				name: fmt.Sprintf("%s - %s", os, version),
+				name: fmt.Sprintf("%s-%s", os, version),
 				// We only support docker
 				containerRuntime:  "docker",
 				kubernetesVersion: version.String(),

@@ -1,9 +1,6 @@
-# prow uses BUILD_ID
-# TODO: remove CIRCLE_BUILD_NUM entirely after moving to prow
 BUILD_ID ?= $(USER)-local
-CIRCLE_BUILD_NUM ?=$(BUILD_ID)
 
-USER ?= circleCI
+USER ?= prow
 
 export PATH := $(shell pwd):$(PATH)
 
@@ -27,9 +24,9 @@ plan apply destroy: .terraform
 	@terraform $@\
 		$(EXTRA_ARG) \
 		-var hcloud_token=$(HZ_E2E_TOKEN) \
-		-var hcloud_sshkey_name=$(USER)-$(CIRCLE_BUILD_NUM) \
+		-var hcloud_sshkey_name=$(USER)-$(BUILD_ID) \
 		-var hcloud_sshkey_content="$(shell cat ~/.ssh/id_rsa.pub)" \
-		-var hcloud_test_server_name="machine-controller-test-$(CIRCLE_BUILD_NUM)"
+		-var hcloud_test_server_name="machine-controller-test-$(BUILD_ID)"
 
 provision: apply
 	cd ../verify/ && make verify
