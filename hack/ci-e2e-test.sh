@@ -15,7 +15,7 @@ function cleanup {
 }
 trap cleanup EXIT
 
-export BUILD_ID="${BUILD_ID:-$CIRCLE_BUILD_NUM}"
+export BUILD_ID="${BUILD_ID}"
 
 # Install dependencies
 echo "Installing dependencies."
