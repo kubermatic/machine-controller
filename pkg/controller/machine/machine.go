@@ -115,9 +115,11 @@ func NewMachineController(
 	metrics *MetricsCollection,
 	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
-	name string) *Controller {
+	name string) (*Controller, error) {
 
-	machinescheme.AddToScheme(scheme.Scheme)
+	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.V(4).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
@@ -174,7 +176,7 @@ func NewMachineController(
 		controller.metrics.Errors.Add(1)
 	})
 
-	return controller
+	return controller, nil
 }
 
 // Run starts the control loop
