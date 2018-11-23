@@ -33,23 +33,23 @@ required = [
 
 [[override]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.10"
+  branch = "release-1.11"
 
 [[override]]
   name = "k8s.io/api"
-  branch = "release-1.10"
+  branch = "release-1.11"
 
 [[override]]
   name = "k8s.io/client-go"
-  branch = "release-7.0"
+  branch = "release-8.0"
 
 [[override]]
   name = "k8s.io/apiserver"
-  branch = "release-1.10"
+  branch = "release-1.11"
 
 [[override]]
   name = "k8s.io/code-generator"
-  branch = "release-1.10"
+  branch = "release-1.11"
 
 [[override]]
   name = "k8s.io/gengo"
@@ -61,7 +61,7 @@ required = [
 
 [[constraint]]
   name = "k8s.io/apiextensions-apiserver"
-  branch = "release-1.10"
+  branch = "release-1.11"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
