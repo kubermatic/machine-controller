@@ -376,7 +376,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			}
 		}()
 
-		machineController := machinecontroller.NewMachineController(
+		machineController, err := machinecontroller.NewMachineController(
 			runOptions.kubeClient,
 			runOptions.machineClient,
 			runOptions.nodeInformer,
@@ -391,6 +391,11 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.kubeconfigProvider,
 			runOptions.name,
 		)
+		if err != nil {
+			glog.Errorf("failed to create machine-controller: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
 
 		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
 			glog.Errorf("error running controller: %v", runErr)
