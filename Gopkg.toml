@@ -101,7 +101,7 @@ required = [
 
 [[constraint]]
   name = "sigs.k8s.io/cluster-api"
-  revision = "571cb480e561d1b1d49713e0a1db09de152dff69"
+  revision = "05cb1e663eb4085fbb92321dd1235377c84567f8"
 
 [[constraint]]
   name = "gopkg.in/gcfg.v1"
