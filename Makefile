@@ -6,6 +6,8 @@ export CGO_ENABLED := 0
 
 export E2E_SSH_PUBKEY ?= $(shell cat ~/.ssh/id_rsa.pub)
 
+export GIT_TAG ?= $(shell git tag --points-at HEAD)
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
@@ -42,13 +44,7 @@ lint:
 	./hack/verify-type-revision-annotation-const.sh
 	gometalinter --config gometalinter.json ./... --deadline 20m
 
-docker-image: machine-controller webhook docker-image-nodep
-
-# This target exists because in our CI
-# we do not want to restore the vendor
-# folder for the push step, but we know
-# for sure it is not required there
-docker-image-nodep:
+docker-image: machine-controller webhook
 	docker build -t $(IMAGE_NAME) .
 	docker push $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
