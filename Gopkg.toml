@@ -15,6 +15,15 @@ required = [
     unused-packages = false
 
 [[constraint]]
+  name = "kubevirt.io/kubevirt"
+  branch = "release-0.10"
+  source = "github.com/kubevirt/kubevirt"
+
+[[override]]
+  name = "kubevirt.io/containerized-data-importer"
+  source = "github.com/kubevirt/containerized-data-importer"
+
+[[constraint]]
   name = "github.com/golang/glog"
   branch = "master"
 
