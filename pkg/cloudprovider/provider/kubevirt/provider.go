@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"k8s.io/apimachinery/pkg/types"
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
@@ -34,11 +35,18 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
+type RawConfig struct {
+	Config        string `json:"config"`
+	CPUs          int32  `json:"cpus"`
+	MemoryMiB     int64  `json:"memoryMIB"`
+	RegistryImage string `json:"registryImage"`
+}
+
 type Config struct {
-	Config        rest.Config `json:"config"`
-	CPUs          int32       `json:"cpus"`
-	MemoryMiB     int64       `json:"memoryMIB"`
-	registryImage string      `json:"registryImage"`
+	Config        rest.Config
+	CPUs          int32
+	MemoryMiB     int64
+	RegistryImage string
 }
 
 type kubeVirtServer struct {
@@ -81,9 +89,19 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 	}
 
 	//TODO: Use RawConfig to allow resolving via secretReg/ConfigMapRef
-	config := Config{}
-	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &config); err != nil {
+	rawConfig := RawConfig{}
+	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
+	}
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConfig.Config))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %v", err)
+	}
+	config := Config{
+		Config:        *restConfig,
+		CPUs:          rawConfig.CPUs,
+		MemoryMiB:     rawConfig.MemoryMiB,
+		RegistryImage: rawConfig.RegistryImage,
 	}
 
 	return &config, &pconfig, nil
@@ -166,7 +184,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	if err == nil {
 		labels["cpus"] = strconv.Itoa(int(c.CPUs))
 		labels["memoryMIB"] = strconv.Itoa(int(c.MemoryMiB))
-		labels["registryImage"] = c.registryImage
+		labels["registryImage"] = c.RegistryImage
 	}
 
 	return labels, err
@@ -185,6 +203,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	virtualMachineInstance.Name = string(machine.UID)
 	virtualMachineInstance.Namespace = metav1.NamespaceSystem
 	virtualMachineInstance.Spec.Domain.CPU = &kubevirtv1.CPU{Cores: uint32(c.CPUs)}
+	//TODO: Dont use Must funcs
+	memoryResource := resource.MustParse(fmt.Sprintf("%vM", c.MemoryMiB))
+	//	virtualMachineInstance.Spec.Domain.Memory = &kubevirtv1.Memory{
+	//		Guest: &memoryResource,
+	//	}
 	var disks []kubevirtv1.Disk
 	disks = append(disks, kubevirtv1.Disk{
 		Name:       "registryDisk",
@@ -200,7 +223,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	//TODO: Remove the `MustParse`, we do not want the controller to crash
 	// on errors here
 	requestsAndLimits := corev1.ResourceList{
-		corev1.ResourceMemory: resource.MustParse(strconv.Itoa(int(c.MemoryMiB))),
+		corev1.ResourceMemory: memoryResource,
 		corev1.ResourceCPU:    resource.MustParse(strconv.Itoa(int(c.CPUs))),
 	}
 	virtualMachineInstance.Spec.Domain.Resources.Requests = requestsAndLimits
@@ -209,7 +232,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	volumes = append(volumes, kubevirtv1.Volume{
 		Name: "registryvolume",
 		VolumeSource: kubevirtv1.VolumeSource{
-			RegistryDisk: &kubevirtv1.RegistryDiskSource{Image: c.registryImage},
+			RegistryDisk: &kubevirtv1.RegistryDiskSource{Image: c.RegistryImage},
 		},
 	})
 
@@ -224,6 +247,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 			},
 		},
 	})
+	virtualMachineInstance.Spec.Volumes = volumes
 
 	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
 	if err != nil {
@@ -236,9 +260,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		return nil, fmt.Errorf("failed to create vmi: %v", err)
 	}
 
-	secretName := fmt.Sprintf("machine-controller-userdata-%s", createdVMI.UID)
 	secret := &corev1.Secret{}
-	secret.Name = secretName
+	secret.Name = userdataSecretName
 	secret.Namespace = createdVMI.Namespace
 	ownerRef := *metav1.NewControllerRef(createdVMI, kubevirtv1.VirtualMachineInstanceGroupVersionKind)
 	secret.OwnerReferences = append(secret.OwnerReferences, ownerRef)
