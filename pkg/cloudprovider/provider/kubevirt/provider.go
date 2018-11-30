@@ -130,7 +130,15 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	if virtualMachineInstance.Status.Phase == kubevirtv1.Failed {
+	// Deletion takes some time, so consider the VMI as deleted as soon as it has a DeletionTimestamp
+	if virtualMachineInstance.DeletionTimestamp != nil {
+		return nil, cloudprovidererrors.ErrInstanceNotFound
+	}
+
+	if virtualMachineInstance.Status.Phase == kubevirtv1.Failed ||
+		// The VMI enters phase succeeded if someone issues a kubectl
+		// delete pod on the virt-launcher pod it runs in
+		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
 		if err := client.VirtualMachine(metav1.NamespaceSystem).Delete(string(machine.UID), &metav1.DeleteOptions{}); err != nil {
@@ -147,18 +155,21 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, _, err := p.getConfig(spec.ProviderConfig)
+	c, pc, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 	if c.CPUs < 1 {
 		return errors.New("CPUs must be 1 or greater")
 	}
-	if c.MemoryMiB < 1 {
-		return errors.New("MemoryMiB must be 1 or greater")
+	if c.MemoryMiB < 512 {
+		return errors.New("MemoryMiB must be 512 or greater")
 	}
 	if _, err := parseResources(c.CPUs, c.MemoryMiB); err != nil {
 		return err
+	}
+	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
+		return fmt.Errorf("CoreOS is not supported")
 	}
 	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
 	if err != nil {

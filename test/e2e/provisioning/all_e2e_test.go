@@ -19,6 +19,7 @@ const (
 	os_manifest            = "./testdata/machinedeployment-openstack.yaml"
 	os_upgrade_manifest    = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest = "./testdata/machine-invalid.yaml"
+	kubevirtManifest       = "./testdata/machinedeployment-kubevirt.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -39,6 +40,21 @@ func TestInvalidObjectsGetRejected(t *testing.T) {
 			invalidMachineManifest,
 			false)
 	}
+}
+
+func TestKubevirtProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG")
+	if kubevirtKubeconfig == "" {
+		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
+	}
+
+	// Provisioning coreos images via kubevirt does not work, needs investigation
+	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
+
+	params := []string{fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig)}
+	runScenarios(t, excludeSelector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
 }
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
