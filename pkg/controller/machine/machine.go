@@ -374,10 +374,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// step 2: check if a user requested to delete the machine
 	if machine.DeletionTimestamp != nil {
-		if err := c.deleteMachine(prov, machine); err != nil {
-			return err
-		}
-		return nil
+		return c.deleteMachine(prov, machine)
 	}
 
 	// step 3: essentially creates an instance for the given machine
