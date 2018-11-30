@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"k8s.io/apimachinery/pkg/types"
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/kubecli"
@@ -203,6 +204,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	virtualMachineInstance.Name = string(machine.UID)
 	virtualMachineInstance.Namespace = metav1.NamespaceSystem
 	virtualMachineInstance.Spec.Domain.CPU = &kubevirtv1.CPU{Cores: uint32(c.CPUs)}
+	// Must be set because of https://github.com/kubevirt/kubevirt/issues/1780
+	virtualMachineInstance.Spec.TerminationGracePeriodSeconds = to.Int64Ptr(30)
 	//TODO: Dont use Must funcs
 	memoryResource := resource.MustParse(fmt.Sprintf("%vM", c.MemoryMiB))
 	//	virtualMachineInstance.Spec.Domain.Memory = &kubevirtv1.Memory{
