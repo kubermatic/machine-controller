@@ -157,6 +157,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if c.MemoryMiB < 1 {
 		return errors.New("MemoryMiB must be 1 or greater")
 	}
+	if _, err := parseResources(c.CPUs, c.MemoryMiB); err != nil {
+		return err
+	}
 	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %v", err)
@@ -206,11 +209,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	virtualMachineInstance.Spec.Domain.CPU = &kubevirtv1.CPU{Cores: uint32(c.CPUs)}
 	// Must be set because of https://github.com/kubevirt/kubevirt/issues/1780
 	virtualMachineInstance.Spec.TerminationGracePeriodSeconds = to.Int64Ptr(30)
-	//TODO: Dont use Must funcs
-	memoryResource := resource.MustParse(fmt.Sprintf("%vM", c.MemoryMiB))
-	//	virtualMachineInstance.Spec.Domain.Memory = &kubevirtv1.Memory{
-	//		Guest: &memoryResource,
-	//	}
 	var disks []kubevirtv1.Disk
 	disks = append(disks, kubevirtv1.Disk{
 		Name:       "registryDisk",
@@ -223,14 +221,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
 	})
 	virtualMachineInstance.Spec.Domain.Devices.Disks = disks
-	//TODO: Remove the `MustParse`, we do not want the controller to crash
-	// on errors here
-	requestsAndLimits := corev1.ResourceList{
-		corev1.ResourceMemory: memoryResource,
-		corev1.ResourceCPU:    resource.MustParse(strconv.Itoa(int(c.CPUs))),
+	requestsAndLimits, err := parseResources(c.CPUs, c.MemoryMiB)
+	if err != nil {
+		return nil, err
 	}
-	virtualMachineInstance.Spec.Domain.Resources.Requests = requestsAndLimits
-	virtualMachineInstance.Spec.Domain.Resources.Limits = requestsAndLimits
+	virtualMachineInstance.Spec.Domain.Resources.Requests = *requestsAndLimits
+	virtualMachineInstance.Spec.Domain.Resources.Limits = *requestsAndLimits
 	var volumes []kubevirtv1.Volume
 	volumes = append(volumes, kubevirtv1.Volume{
 		Name: "registryvolume",
@@ -304,4 +300,19 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 	}
 
 	return false, client.VirtualMachineInstance(metav1.NamespaceSystem).Delete(string(machine.UID), &metav1.DeleteOptions{})
+}
+
+func parseResources(cpus int32, memoryMiB int64) (*corev1.ResourceList, error) {
+	memoryResource, err := resource.ParseQuantity(fmt.Sprintf("%vM", memoryMiB))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse memory requests: %v", err)
+	}
+	cpuResource, err := resource.ParseQuantity(strconv.Itoa(int(cpus)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse cpu request: %v", err)
+	}
+	return &corev1.ResourceList{
+		corev1.ResourceMemory: memoryResource,
+		corev1.ResourceCPU:    cpuResource,
+	}, nil
 }
