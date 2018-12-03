@@ -43,6 +43,7 @@ type RawConfig struct {
 	CPUs          int32  `json:"cpus"`
 	MemoryMiB     int64  `json:"memoryMIB"`
 	RegistryImage string `json:"registryImage"`
+	Namespace     string `json:"namespace"`
 }
 
 type Config struct {
@@ -50,6 +51,7 @@ type Config struct {
 	CPUs          int32
 	MemoryMiB     int64
 	RegistryImage string
+	Namespace     string
 }
 
 type kubeVirtServer struct {
@@ -105,6 +107,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 		CPUs:          rawConfig.CPUs,
 		MemoryMiB:     rawConfig.MemoryMiB,
 		RegistryImage: rawConfig.RegistryImage,
+		Namespace:     rawConfig.Namespace,
 	}
 
 	return &config, &pconfig, nil
@@ -127,10 +130,10 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get VMI name: %v")
 	}
-	virtualMachineInstance, err := client.VirtualMachineInstance(metav1.NamespaceSystem).Get(vmiName, &metav1.GetOptions{})
+	virtualMachineInstance, err := client.VirtualMachineInstance(c.Namespace).Get(vmiName, &metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.UID, err)
+			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", vmiName, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 
@@ -149,7 +152,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
-		if err := client.VirtualMachine(metav1.NamespaceSystem).Delete(string(machine.UID), &metav1.DeleteOptions{}); err != nil {
+		if err := client.VirtualMachine(c.Namespace).Delete(string(machine.UID), &metav1.DeleteOptions{}); err != nil {
 			return nil, fmt.Errorf("failed to delete failed VMI %s: %v", machine.UID, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -187,7 +190,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
 	// Check if we can reach the API of the target cluster
-	_, err = client.VirtualMachineInstance(metav1.NamespaceSystem).Get("not-expected-to-exist", &metav1.GetOptions{})
+	_, err = client.VirtualMachineInstance(c.Namespace).Get("not-expected-to-exist", &metav1.GetOptions{})
 	if err != nil && !kerrors.IsNotFound(err) {
 		return fmt.Errorf("failed to request VirtualMachineInstances: %v", err)
 	}
@@ -240,7 +243,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      vmiName,
-			Namespace: metav1.NamespaceSystem,
+			Namespace: c.Namespace,
 		},
 		Spec: kubevirtv1.VirtualMachineInstanceSpec{
 			Domain: kubevirtv1.DomainSpec{
@@ -330,7 +333,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 	if err != nil {
 		return false, fmt.Errorf("failed to get VMI name for machine: %v")
 	}
-	_, err = client.VirtualMachineInstance(metav1.NamespaceSystem).Get(vmiName, &metav1.GetOptions{})
+	_, err = client.VirtualMachineInstance(c.Namespace).Get(vmiName, &metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", vmiName, err)
@@ -339,7 +342,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 		return true, nil
 	}
 
-	return false, client.VirtualMachineInstance(metav1.NamespaceSystem).Delete(vmiName, &metav1.DeleteOptions{})
+	return false, client.VirtualMachineInstance(c.Namespace).Delete(vmiName, &metav1.DeleteOptions{})
 }
 
 func parseResources(cpus int32, memoryMiB int64) (*corev1.ResourceList, error) {

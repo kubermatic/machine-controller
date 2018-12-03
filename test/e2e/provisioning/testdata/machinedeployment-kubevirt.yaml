@@ -30,6 +30,7 @@ spec:
             memoryMIB: 2048
             registryImage: quay.io/kubermatic/machine-controller-kubevirt:<< OS_NAME >>-2
             config: '<< KUBECONFIG >>'
+            namespace: kube-system
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
