@@ -1,6 +1,7 @@
 package kubevirt
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -121,16 +122,22 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
 
-	//TODO: Should the namespace be configurable?
-	virtualMachineInstance, err := client.VirtualMachineInstance(metav1.NamespaceSystem).Get(string(machine.UID), &metav1.GetOptions{})
+	vmiName, err := getVMINameForMachine(machine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VMI name: %v")
+	}
+	virtualMachineInstance, err := client.VirtualMachineInstance(metav1.NamespaceSystem).Get(vmiName, &metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.UID, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
-	}
 
+	}
 	// Deletion takes some time, so consider the VMI as deleted as soon as it has a DeletionTimestamp
+	// because once the node got into status not ready its informers wont fire again
+	// With the current approach we may run into a conflict when creating the VMI again, however this
+	// results in the machine being reqeued
 	if virtualMachineInstance.DeletionTimestamp != nil {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
@@ -214,50 +221,64 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		}
 	}
 
-	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
-	virtualMachineInstance.Name = string(machine.UID)
-	virtualMachineInstance.Namespace = metav1.NamespaceSystem
-	virtualMachineInstance.Spec.Domain.CPU = &kubevirtv1.CPU{Cores: uint32(c.CPUs)}
-	// Must be set because of https://github.com/kubevirt/kubevirt/issues/1780
-	virtualMachineInstance.Spec.TerminationGracePeriodSeconds = to.Int64Ptr(30)
-	var disks []kubevirtv1.Disk
-	disks = append(disks, kubevirtv1.Disk{
-		Name:       "registryDisk",
-		VolumeName: "registryvolume",
-		DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-	})
-	disks = append(disks, kubevirtv1.Disk{
-		Name:       "cloudinitdisk",
-		VolumeName: "cloudinitvolume",
-		DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-	})
-	virtualMachineInstance.Spec.Domain.Devices.Disks = disks
+	userdataSecretName := fmt.Sprintf("machine-controller-userdata-%s", machine.UID)
+	vmiName, err := getVMINameForMachine(machine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VMI name for machine: %v")
+	}
 	requestsAndLimits, err := parseResources(c.CPUs, c.MemoryMiB)
 	if err != nil {
 		return nil, err
 	}
-	virtualMachineInstance.Spec.Domain.Resources.Requests = *requestsAndLimits
-	virtualMachineInstance.Spec.Domain.Resources.Limits = *requestsAndLimits
-	var volumes []kubevirtv1.Volume
-	volumes = append(volumes, kubevirtv1.Volume{
-		Name: "registryvolume",
-		VolumeSource: kubevirtv1.VolumeSource{
-			RegistryDisk: &kubevirtv1.RegistryDiskSource{Image: c.RegistryImage},
+	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      vmiName,
+			Namespace: metav1.NamespaceSystem,
 		},
-	})
-
-	userdataSecretName := fmt.Sprintf("machine-controller-userdata-%s", machine.UID)
-	volumes = append(volumes, kubevirtv1.Volume{
-		Name: "cloudinitvolume",
-		VolumeSource: kubevirtv1.VolumeSource{
-			CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
-				UserDataSecretRef: &corev1.LocalObjectReference{
-					Name: userdataSecretName,
+		Spec: kubevirtv1.VirtualMachineInstanceSpec{
+			Domain: kubevirtv1.DomainSpec{
+				CPU: &kubevirtv1.CPU{Cores: uint32(c.CPUs)},
+				Devices: kubevirtv1.Devices{
+					Disks: []kubevirtv1.Disk{
+						{
+							Name:       "registryDisk",
+							VolumeName: "registryvolume",
+							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+						},
+						{
+							Name:       "cloudinitdisk",
+							VolumeName: "cloudinitvolume",
+							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+						},
+					},
+				},
+				Resources: kubevirtv1.ResourceRequirements{
+					Requests: *requestsAndLimits,
+					Limits:   *requestsAndLimits,
+				},
+			},
+			// Must be set because of https://github.com/kubevirt/kubevirt/issues/178
+			TerminationGracePeriodSeconds: to.Int64Ptr(30),
+			Volumes: []kubevirtv1.Volume{
+				{
+					Name: "registryvolume",
+					VolumeSource: kubevirtv1.VolumeSource{
+						RegistryDisk: &kubevirtv1.RegistryDiskSource{Image: c.RegistryImage},
+					},
+				},
+				{
+					Name: "cloudinitvolume",
+					VolumeSource: kubevirtv1.VolumeSource{
+						CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
+							UserDataSecretRef: &corev1.LocalObjectReference{
+								Name: userdataSecretName,
+							},
+						},
+					},
 				},
 			},
 		},
-	})
-	virtualMachineInstance.Spec.Volumes = volumes
+	}
 
 	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
 	if err != nil {
@@ -270,18 +291,18 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		return nil, fmt.Errorf("failed to create vmi: %v", err)
 	}
 
-	secret := &corev1.Secret{}
-	secret.Name = userdataSecretName
-	secret.Namespace = createdVMI.Namespace
-	ownerRef := *metav1.NewControllerRef(createdVMI, kubevirtv1.VirtualMachineInstanceGroupVersionKind)
-	secret.OwnerReferences = append(secret.OwnerReferences, ownerRef)
-	if secret.Data == nil {
-		secret.Data = map[string][]byte{}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            userdataSecretName,
+			Namespace:       createdVMI.Namespace,
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(createdVMI, kubevirtv1.VirtualMachineInstanceGroupVersionKind)},
+		},
+		Data: map[string][]byte{"userdata": []byte(userdata)},
 	}
-	secret.Data["userdata"] = []byte(userdata)
 	_, err = client.CoreV1().Secrets(secret.Namespace).Create(secret)
 	// TODO: What happens when the pod for the vmi dies and we re-create the VMI?
 	// A secret with the given name may still exist
+	// => Generate a random name for the secret
 	if err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
@@ -301,16 +322,20 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 	if err != nil {
 		return false, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
-	_, err = client.VirtualMachineInstance(metav1.NamespaceSystem).Get(string(machine.UID), &metav1.GetOptions{})
+	vmiName, err := getVMINameForMachine(machine)
+	if err != nil {
+		return false, fmt.Errorf("failed to get VMI name for machine: %v")
+	}
+	_, err = client.VirtualMachineInstance(metav1.NamespaceSystem).Get(vmiName, &metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", string(machine.UID), err)
+			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", vmiName, err)
 		}
 		// VMI is gone
 		return true, nil
 	}
 
-	return false, client.VirtualMachineInstance(metav1.NamespaceSystem).Delete(string(machine.UID), &metav1.DeleteOptions{})
+	return false, client.VirtualMachineInstance(metav1.NamespaceSystem).Delete(vmiName, &metav1.DeleteOptions{})
 }
 
 func parseResources(cpus int32, memoryMiB int64) (*corev1.ResourceList, error) {
@@ -326,4 +351,18 @@ func parseResources(cpus int32, memoryMiB int64) (*corev1.ResourceList, error) {
 		corev1.ResourceMemory: memoryResource,
 		corev1.ResourceCPU:    cpuResource,
 	}, nil
+}
+
+func getVMINameForMachine(machine *v1alpha1.Machine) (string, error) {
+	b, err := json.Marshal(machine.Spec.ProviderConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal MachineSpec: %v", err)
+	}
+
+	sum := sha256.Sum256(b)
+	var sumSlice []byte
+	for _, b := range sum {
+		sumSlice = append(sumSlice, b)
+	}
+	return string(sumSlice), nil
 }
