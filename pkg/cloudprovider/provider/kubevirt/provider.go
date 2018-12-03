@@ -98,15 +98,15 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 	config := Config{}
 	configString, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Config, "KUBEVIRT_KUBECONFIG")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "config" field: %v`)
+		return nil, nil, fmt.Errorf(`failed to get value of "config" field: %v`, err)
 	}
 	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.CPUs)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %v`)
+		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %v`, err)
 	}
 	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Memory)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`)
+		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
 	}
 	config.RegistryImage, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RegistryImage)
 	if err != nil {
