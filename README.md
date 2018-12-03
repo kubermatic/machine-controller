@@ -1,4 +1,4 @@
-# Generic machine controller
+# Kubermatic machine-controller
 
 # Table of Contents
 
@@ -13,8 +13,8 @@
 
 # Features
 ## What works
-- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure and Hetzner cloud
-- Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions
+- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, VMWare Vsphere, Hetzner cloud and Kubevirt (experimental)
+- Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions (not all distributions work on all providers)
 
 ## What does not work
 - Master creation (Not planned at the moment)
