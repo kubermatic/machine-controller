@@ -1,9 +1,7 @@
 package kubevirt
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -39,17 +37,17 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
 }
 
 type RawConfig struct {
-	Config        string `json:"config"`
-	CPUs          int32  `json:"cpus"`
-	MemoryMiB     int64  `json:"memoryMIB"`
-	RegistryImage string `json:"registryImage"`
-	Namespace     string `json:"namespace"`
+	Config        providerconfig.ConfigVarString `json:"config"`
+	CPUs          providerconfig.ConfigVarString `json:"cpus"`
+	Memory        providerconfig.ConfigVarString `json:"memory"`
+	RegistryImage providerconfig.ConfigVarString `json:"registryImage"`
+	Namespace     providerconfig.ConfigVarString `json:"namespace"`
 }
 
 type Config struct {
 	Config        rest.Config
-	CPUs          int32
-	MemoryMiB     int64
+	CPUs          string
+	Memory        string
 	RegistryImage string
 	Namespace     string
 }
@@ -98,17 +96,32 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
 	}
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(rawConfig.Config))
+	config := Config{}
+	configString, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Config, "KUBEVIRT_KUBECONFIG")
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "config" field: %v`)
+	}
+	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.CPUs)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %v`)
+	}
+	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Memory)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`)
+	}
+	config.RegistryImage, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RegistryImage)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "registryImage" field: %v`, err)
+	}
+	config.Namespace, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Namespace)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "namespace" field: %v`, err)
+	}
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(configString))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %v", err)
 	}
-	config := Config{
-		Config:        *restConfig,
-		CPUs:          rawConfig.CPUs,
-		MemoryMiB:     rawConfig.MemoryMiB,
-		RegistryImage: rawConfig.RegistryImage,
-		Namespace:     rawConfig.Namespace,
-	}
+	config.Config = *restConfig
 
 	return &config, &pconfig, nil
 }
@@ -126,14 +139,10 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
 
-	vmiName, err := getVMINameForMachine(machine)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get VMI name: %v")
-	}
-	virtualMachineInstance, err := client.VirtualMachineInstance(c.Namespace).Get(vmiName, &metav1.GetOptions{})
+	virtualMachineInstance, err := client.VirtualMachineInstance(c.Namespace).Get(machine.Name, &metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", vmiName, err)
+			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 
@@ -152,8 +161,8 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
-		if err := client.VirtualMachine(c.Namespace).Delete(string(machine.UID), &metav1.DeleteOptions{}); err != nil {
-			return nil, fmt.Errorf("failed to delete failed VMI %s: %v", machine.UID, err)
+		if err := client.VirtualMachine(c.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
+			return nil, fmt.Errorf("failed to delete failed VMI %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
@@ -173,13 +182,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
-	if c.CPUs < 1 {
-		return errors.New("CPUs must be 1 or greater")
-	}
-	if c.MemoryMiB < 512 {
-		return errors.New("MemoryMiB must be 512 or greater")
-	}
-	if _, err := parseResources(c.CPUs, c.MemoryMiB); err != nil {
+	if _, err := parseResources(c.CPUs, c.Memory); err != nil {
 		return err
 	}
 	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
@@ -211,8 +214,8 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 
 	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err == nil {
-		labels["cpus"] = strconv.Itoa(int(c.CPUs))
-		labels["memoryMIB"] = strconv.Itoa(int(c.MemoryMiB))
+		labels["cpus"] = c.CPUs
+		labels["memoryMIB"] = c.Memory
 		labels["registryImage"] = c.RegistryImage
 	}
 
@@ -228,26 +231,21 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		}
 	}
 
-	vmiName, err := getVMINameForMachine(machine)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get VMI name for machine: %v")
-	}
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up
-	userdataSecretName := fmt.Sprintf("userdata-%s-%s", vmiName, strconv.Itoa(int(time.Now().Unix())))
-	requestsAndLimits, err := parseResources(c.CPUs, c.MemoryMiB)
+	userdataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
+	requestsAndLimits, err := parseResources(c.CPUs, c.Memory)
 	if err != nil {
 		return nil, err
 	}
 	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      vmiName,
+			Name:      machine.Name,
 			Namespace: c.Namespace,
 		},
 		Spec: kubevirtv1.VirtualMachineInstanceSpec{
 			Domain: kubevirtv1.DomainSpec{
-				CPU: &kubevirtv1.CPU{Cores: uint32(c.CPUs)},
 				Devices: kubevirtv1.Devices{
 					Disks: []kubevirtv1.Disk{
 						{
@@ -329,28 +327,24 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 	if err != nil {
 		return false, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
-	vmiName, err := getVMINameForMachine(machine)
-	if err != nil {
-		return false, fmt.Errorf("failed to get VMI name for machine: %v")
-	}
-	_, err = client.VirtualMachineInstance(c.Namespace).Get(vmiName, &metav1.GetOptions{})
+	_, err = client.VirtualMachineInstance(c.Namespace).Get(machine.Name, &metav1.GetOptions{})
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", vmiName, err)
+			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
 		// VMI is gone
 		return true, nil
 	}
 
-	return false, client.VirtualMachineInstance(c.Namespace).Delete(vmiName, &metav1.DeleteOptions{})
+	return false, client.VirtualMachineInstance(c.Namespace).Delete(machine.Name, &metav1.DeleteOptions{})
 }
 
-func parseResources(cpus int32, memoryMiB int64) (*corev1.ResourceList, error) {
-	memoryResource, err := resource.ParseQuantity(fmt.Sprintf("%vM", memoryMiB))
+func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
+	memoryResource, err := resource.ParseQuantity(memory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse memory requests: %v", err)
 	}
-	cpuResource, err := resource.ParseQuantity(strconv.Itoa(int(cpus)))
+	cpuResource, err := resource.ParseQuantity(cpus)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse cpu request: %v", err)
 	}
@@ -358,18 +352,4 @@ func parseResources(cpus int32, memoryMiB int64) (*corev1.ResourceList, error) {
 		corev1.ResourceMemory: memoryResource,
 		corev1.ResourceCPU:    cpuResource,
 	}, nil
-}
-
-func getVMINameForMachine(machine *v1alpha1.Machine) (string, error) {
-	b, err := json.Marshal(machine.Spec.ProviderConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal MachineSpec: %v", err)
-	}
-
-	sum := sha256.Sum256(b)
-	var sumSlice []byte
-	for _, b := range sum {
-		sumSlice = append(sumSlice, b)
-	}
-	return string(sumSlice), nil
 }
