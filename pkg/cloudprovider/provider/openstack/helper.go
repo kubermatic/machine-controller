@@ -98,7 +98,7 @@ func getImageByName(client *gophercloud.ProviderClient, region, name string) (*o
 	}
 
 	var allImages []osimages.Image
-	pager := osimages.ListDetail(computeClient, osimages.ListOpts{})
+	pager := osimages.ListDetail(computeClient, osimages.ListOpts{Name: name})
 	err = pager.EachPage(func(page pagination.Page) (bool, error) {
 		images, err := osimages.ExtractImages(page)
 		if err != nil {
