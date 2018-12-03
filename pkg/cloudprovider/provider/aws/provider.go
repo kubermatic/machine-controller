@@ -466,19 +466,21 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	}
 	awsInstance := &awsInstance{instance: runOut.Instances[0]}
 
-	// Change to our security group
-	_, err = ec2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-		InstanceId: runOut.Instances[0].InstanceId,
-		Groups:     aws.StringSlice(config.SecurityGroupIDs),
-	})
-	if err != nil {
-		_, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
-			InstanceIds: []*string{runOut.Instances[0].InstanceId},
+	if len(config.SecurityGroupIDs) > 0 {
+		// Change to our security group
+		_, modifyInstanceErr := ec2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
+			InstanceId: runOut.Instances[0].InstanceId,
+			Groups:     aws.StringSlice(config.SecurityGroupIDs),
 		})
-		if err != nil {
-			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group id's %v & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
+		if modifyInstanceErr != nil {
+			_, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
+				InstanceIds: []*string{runOut.Instances[0].InstanceId},
+			})
+			if err != nil {
+				return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group id's %v due to %v & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs, modifyInstanceErr))
+			}
+			return nil, awsErrorToTerminalError(modifyInstanceErr, fmt.Sprintf("failed to attach instance %s to security group %v", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
 		}
-		return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group %v", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
 	}
 
 	return awsInstance, nil
