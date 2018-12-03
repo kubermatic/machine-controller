@@ -6,7 +6,7 @@ BUILD_NUM=2
 
 cd $(dirname $0)/kubevirt_dockerfiles
 
-for flavor in ubuntu centos coreos; do
+for flavor in ubuntu centos; do
 	docker build \
 		-t quay.io/kubermatic/machine-controller-kubevirt:$flavor-$BUILD_NUM \
 		-f dockerfile.$flavor .

@@ -1,8 +1,0 @@
-FROM kubevirt/registry-disk-v1alpha:v0.10.0
-
-RUN \
-  cd /tmp && \
-  curl -LO  https://stable.release.core-os.net/amd64-usr/current/coreos_production_openstack_image.img.bz2 && \
-  bzip2 -d coreos_production_openstack_image.img.bz2 && \
-  mv coreos_production_openstack_image.img /disk/coreos.img && \
-  qemu-img resize /disk/coreos.img +10g
