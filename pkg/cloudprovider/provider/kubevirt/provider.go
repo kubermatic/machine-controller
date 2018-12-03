@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"k8s.io/apimachinery/pkg/types"
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/kubecli"
@@ -234,6 +233,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up
+	terminationGracePeriodSeconds := int64(30)
 	userdataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
 	requestsAndLimits, err := parseResources(c.CPUs, c.Memory)
 	if err != nil {
@@ -266,7 +266,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 				},
 			},
 			// Must be set because of https://github.com/kubevirt/kubevirt/issues/178
-			TerminationGracePeriodSeconds: to.Int64Ptr(30),
+			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 			Volumes: []kubevirtv1.Volume{
 				{
 					Name: "registryvolume",
