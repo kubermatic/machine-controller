@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -157,8 +158,11 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
 }
 
+// We don't use the UID for kubevirt because the name of a VMI must stay stable
+// in order for the node name to stay stable. The operator is responsible for ensuring
+// there are no conflicts, e.G. by using one Namespace per Kubevirt user cluster
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	return errors.New("not implemented")
+	return nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
@@ -221,11 +225,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		}
 	}
 
-	userdataSecretName := fmt.Sprintf("machine-controller-userdata-%s", machine.UID)
 	vmiName, err := getVMINameForMachine(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get VMI name for machine: %v")
 	}
+	// We add the timestamp because the secret name must be different when we recreate the VMI
+	// because its pod got deleted
+	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up
+	userdataSecretName := fmt.Sprintf("userdata-%s-%s", vmiName, strconv.Itoa(int(time.Now().Unix())))
 	requestsAndLimits, err := parseResources(c.CPUs, c.MemoryMiB)
 	if err != nil {
 		return nil, err
@@ -300,9 +307,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		Data: map[string][]byte{"userdata": []byte(userdata)},
 	}
 	_, err = client.CoreV1().Secrets(secret.Namespace).Create(secret)
-	// TODO: What happens when the pod for the vmi dies and we re-create the VMI?
-	// A secret with the given name may still exist
-	// => Generate a random name for the secret
 	if err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
