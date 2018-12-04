@@ -21,7 +21,8 @@ rsync -avR  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
     root@$ADDR:/root/
 fi
 
-cat <<EOEXEC |ssh_exec
+for try in {1..20}; do
+if cat <<EOEXEC |ssh_exec
 set -ex
 
 echo "$E2E_SSH_PUBKEY" >> .ssh/authorized_keys
@@ -100,6 +101,9 @@ echo "Logs:"
 kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
 exit 1
 EOEXEC
+then break; fi
+  sleep ${try}s
+done
 
 scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
   root@$ADDR:/root/.kube/config \
