@@ -3,6 +3,7 @@ package aws
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -323,13 +324,14 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid region %q specified: %v", config.Region, err)
 	}
 
-	if len(config.SecurityGroupIDs) > 0 {
-		_, err := ec2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
-			GroupIds: aws.StringSlice(config.SecurityGroupIDs),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to validate security group id's: %v", err)
-		}
+	if len(config.SecurityGroupIDs) == 0 {
+		return errors.New("no security groups were specified")
+	}
+	_, err = ec2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
+		GroupIds: aws.StringSlice(config.SecurityGroupIDs),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to validate security group id's: %v", err)
 	}
 
 	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region)
@@ -466,21 +468,19 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	}
 	awsInstance := &awsInstance{instance: runOut.Instances[0]}
 
-	if len(config.SecurityGroupIDs) > 0 {
-		// Change to our security group
-		_, modifyInstanceErr := ec2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-			InstanceId: runOut.Instances[0].InstanceId,
-			Groups:     aws.StringSlice(config.SecurityGroupIDs),
+	// Change to our security group
+	_, modifyInstanceErr := ec2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
+		InstanceId: runOut.Instances[0].InstanceId,
+		Groups:     aws.StringSlice(config.SecurityGroupIDs),
+	})
+	if modifyInstanceErr != nil {
+		_, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
+			InstanceIds: []*string{runOut.Instances[0].InstanceId},
 		})
-		if modifyInstanceErr != nil {
-			_, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
-				InstanceIds: []*string{runOut.Instances[0].InstanceId},
-			})
-			if err != nil {
-				return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group id's %v due to %v & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs, modifyInstanceErr))
-			}
-			return nil, awsErrorToTerminalError(modifyInstanceErr, fmt.Sprintf("failed to attach instance %s to security group %v", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
+		if err != nil {
+			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group id's %v due to %v & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs, modifyInstanceErr))
 		}
+		return nil, awsErrorToTerminalError(modifyInstanceErr, fmt.Sprintf("failed to attach instance %s to security group %v", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
 	}
 
 	return awsInstance, nil
