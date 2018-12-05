@@ -478,7 +478,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 			InstanceIds: []*string{runOut.Instances[0].InstanceId},
 		})
 		if err != nil {
-			return nil, awsErrorToTerminalError(err, fmt.Sprintf("failed to attach instance %s to security group id's %v due to %v & delete the created instance", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs, modifyInstanceErr))
+			return nil, awsErrorToTerminalError(modifyInstanceErr, fmt.Sprintf("failed to delete instance %s due to %v after attaching to security groups %v", aws.StringValue(runOut.Instances[0].InstanceId), err, config.SecurityGroupIDs))
 		}
 		return nil, awsErrorToTerminalError(modifyInstanceErr, fmt.Sprintf("failed to attach instance %s to security group %v", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
 	}
