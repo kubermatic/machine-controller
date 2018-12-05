@@ -34,7 +34,7 @@ spec:
             diskSize: 50
             diskType: "gp2"
             securityGroupIDs:
-            - "sg-0310564b3bfa46ec0"
+            - "sg-a2c195ca"
             tags:
             # you have to set this flag to real clusterID when running against our dev or prod
             # otherwise you might have issues with your nodes not joining the cluster
