@@ -1,0 +1,745 @@
+# Monitoring
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubevirt-prometheus-metrics
+  namespace: kube-system
+  labels:
+    prometheus.kubevirt.io: ""
+    kubevirt.io: ""
+spec:
+  ports:
+    - name: metrics
+      port: 443
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    prometheus.kubevirt.io: ""
+---
+# RBAC
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kubevirt.io:admin
+  labels:
+    kubevirt.io: ""
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups:
+      - subresources.kubevirt.io
+    resources:
+      - virtualmachineinstances/console
+      - virtualmachineinstances/vnc
+    verbs:
+      - get
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachineinstances
+      - virtualmachines
+      - virtualmachineinstancepresets
+      - virtualmachineinstancereplicasets
+    verbs:
+      - get
+      - delete
+      - create
+      - update
+      - patch
+      - list
+      - watch
+      - deletecollection
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kubevirt.io:edit
+  labels:
+    kubevirt.io: ""
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups:
+      - subresources.kubevirt.io
+    resources:
+      - virtualmachineinstances/console
+      - virtualmachineinstances/vnc
+    verbs:
+      - get
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachineinstances
+      - virtualmachines
+      - virtualmachineinstancepresets
+      - virtualmachineinstancereplicasets
+    verbs:
+      - get
+      - delete
+      - create
+      - update
+      - patch
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kubevirt.io:view
+  labels:
+    kubevirt.io: ""
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachineinstances
+      - virtualmachines
+      - virtualmachineinstancepresets
+      - virtualmachineinstancereplicasets
+    verbs:
+      - get
+      - list
+      - watch
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: kubevirt-apiserver
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kubevirt-apiserver
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+roleRef:
+  kind: ClusterRole
+  name: kubevirt-apiserver
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kubevirt-apiserver
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kubevirt-apiserver-auth-delegator
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: kubevirt-apiserver
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: kubevirt-apiserver
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+roleRef:
+  kind: Role
+  name: kubevirt-apiserver
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kubevirt-apiserver
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: kubevirt-apiserver
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - delete
+      - update
+      - create
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kubevirt-apiserver
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+rules:
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - validatingwebhookconfigurations
+      - mutatingwebhookconfigurations
+    verbs:
+      - get
+      - create
+      - update
+  - apiGroups:
+      - apiregistration.k8s.io
+    resources:
+      - apiservices
+    verbs:
+      - get
+      - create
+      - update
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    resourceNames:
+      - extension-apiserver-authentication
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - pods/exec
+    verbs:
+      - create
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachineinstances
+      - virtualmachineinstancemigrations
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - limitranges
+    verbs:
+      - watch
+      - list
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachineinstancepresets
+    verbs:
+      - watch
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kubevirt-controller
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+      - configmaps
+      - endpoints
+    verbs:
+      - get
+      - list
+      - watch
+      - delete
+      - update
+      - create
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - update
+      - create
+      - patch
+  - apiGroups:
+      - ''
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+  - apiGroups:
+      - ''
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - apiGroups:
+      - cdi.kubevirt.io
+    resources:
+      - '*'
+    verbs:
+      - '*'
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubevirt-controller
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubevirt-privileged
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kubevirt-controller
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+roleRef:
+  kind: ClusterRole
+  name: kubevirt-controller
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kubevirt-controller
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kubevirt-privileged-cluster-admin
+  namespace: kube-system
+  labels:
+    kubevirt.io: ""
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: kubevirt-privileged
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubevirt.io: ""
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: kubevirt.io:default
+rules:
+- apiGroups:
+    - subresources.kubevirt.io
+  resources:
+    - version
+  verbs:
+    - get
+    - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    kubevirt.io: ""
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  name: kubevirt.io:default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubevirt.io:default
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:authenticated
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:unauthenticated
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: virt-api
+  namespace: kube-system
+  labels:
+    kubevirt.io: "virt-api"
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+      protocol: TCP
+  selector:
+    kubevirt.io: virt-api
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: virt-api
+  namespace: kube-system
+  labels:
+    kubevirt.io: "virt-api"
+spec:
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+        scheduler.alpha.kubernetes.io/tolerations: |
+                  [
+                    {
+                      "key": "CriticalAddonsOnly",
+                      "operator": "Exists"
+                    }
+                  ]
+      labels:
+        kubevirt.io: virt-api
+        prometheus.kubevirt.io: ""
+    spec:
+      serviceAccountName: kubevirt-apiserver
+      containers:
+        - name: virt-api
+          image: docker.io/kubevirt/virt-api:v0.10.0
+          imagePullPolicy: IfNotPresent
+          command:
+              - "virt-api"
+              - "--port"
+              - "8443"
+              - "--subresources-only"
+          ports:
+            - containerPort: 8443
+              name: "virt-api"
+              protocol: "TCP"
+            - containerPort: 8443
+              name: "metrics"
+              protocol: "TCP"
+          readinessProbe:
+            tcpSocket:
+              port: 8443
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+---
+# kubevirt controller
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: virt-controller
+  namespace: kube-system
+  labels:
+    kubevirt.io: "virt-controller"
+spec:
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+        scheduler.alpha.kubernetes.io/tolerations: |
+                  [
+                    {
+                      "key": "CriticalAddonsOnly",
+                      "operator": "Exists"
+                    }
+                  ]
+      labels:
+        kubevirt.io: virt-controller
+        prometheus.kubevirt.io: ""
+    spec:
+      serviceAccountName: kubevirt-controller
+      containers:
+        - name: virt-controller
+          image: docker.io/kubevirt/virt-controller:v0.10.0
+          imagePullPolicy: IfNotPresent
+          command:
+              - "virt-controller"
+              - "--launcher-image"
+              - "docker.io/kubevirt/virt-launcher:v0.10.0"
+              - "--port"
+              - "8443"
+          ports:
+            - containerPort: 8443
+              name: "metrics"
+              protocol: "TCP"
+          livenessProbe:
+            failureThreshold: 8
+            httpGet:
+              scheme: HTTPS
+              port: 8443
+              path: /healthz
+            initialDelaySeconds: 15
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              port: 8443
+              path: /leader
+            initialDelaySeconds: 15
+            timeoutSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+---
+# virt-handler daemon set
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: virt-handler
+  namespace: kube-system
+  labels:
+    kubevirt.io: "virt-handler"
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      name: virt-handler
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+        scheduler.alpha.kubernetes.io/tolerations: |
+                  [
+                    {
+                      "key": "CriticalAddonsOnly",
+                      "operator": "Exists"
+                    }
+                  ]
+      labels:
+        kubevirt.io: virt-handler
+        prometheus.kubevirt.io: ""
+    spec:
+      serviceAccountName: kubevirt-privileged
+      hostPID: true
+      containers:
+        - name: virt-handler
+          ports:
+            - containerPort: 8443
+              name: "metrics"
+              protocol: "TCP"
+          image: docker.io/kubevirt/virt-handler:v0.10.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - "virt-handler"
+            - "-v"
+            - "3"
+            -  "--port"
+            - "8443"
+            - "--hostname-override"
+            - "$(NODE_NAME)"
+            - "--pod-ip-address"
+            - "$(MY_POD_IP)"
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: libvirt-runtimes
+              mountPath: /var/run/kubevirt-libvirt-runtimes
+            - name: virt-share-dir
+              mountPath: /var/run/kubevirt
+            - name: virt-private-dir
+              mountPath: /var/run/kubevirt-private
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+      volumes:
+        - name: libvirt-runtimes
+          hostPath:
+            path: /var/run/kubevirt-libvirt-runtimes
+        - name: virt-share-dir
+          hostPath:
+            path: /var/run/kubevirt
+        - name: virt-private-dir
+          hostPath:
+            path: /var/run/kubevirt-private
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    kubevirt.io: ""
+  name: virtualmachineinstances.kubevirt.io
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  - JSONPath: .status.phase
+    name: Phase
+    type: string
+  - JSONPath: .status.interfaces[0].ipAddress
+    name: IP
+    type: string
+  - JSONPath: .status.nodeName
+    name: NodeName
+    type: string
+  group: kubevirt.io
+  names:
+    kind: VirtualMachineInstance
+    plural: virtualmachineinstances
+    shortNames:
+    - vmi
+    - vmis
+    singular: virtualmachineinstance
+  scope: Namespaced
+  version: v1alpha2
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    kubevirt.io: ""
+  name: virtualmachineinstancereplicasets.kubevirt.io
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.replicas
+    description: Number of desired VirtualMachineInstances
+    name: Desired
+    type: integer
+  - JSONPath: .status.replicas
+    description: Number of managed and not final or deleted VirtualMachineInstances
+    name: Current
+    type: integer
+  - JSONPath: .status.readyReplicas
+    description: Number of managed VirtualMachineInstances which are ready to receive
+      traffic
+    name: Ready
+    type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: kubevirt.io
+  names:
+    kind: VirtualMachineInstanceReplicaSet
+    plural: virtualmachineinstancereplicasets
+    shortNames:
+    - vmirs
+    - vmirss
+    singular: virtualmachineinstancereplicaset
+  scope: Namespaced
+  version: v1alpha2
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    kubevirt.io: ""
+  name: virtualmachineinstancepresets.kubevirt.io
+spec:
+  group: kubevirt.io
+  names:
+    kind: VirtualMachineInstancePreset
+    plural: virtualmachineinstancepresets
+    shortNames:
+    - vmipreset
+    - vmipresets
+    singular: virtualmachineinstancepreset
+  scope: Namespaced
+  version: v1alpha2
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    kubevirt.io: ""
+  name: virtualmachines.kubevirt.io
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  - JSONPath: .spec.running
+    name: Running
+    type: boolean
+  - JSONPath: .spec.volumes[0].name
+    description: Primary Volume
+    name: Volume
+    type: string
+  group: kubevirt.io
+  names:
+    kind: VirtualMachine
+    plural: virtualmachines
+    shortNames:
+    - vm
+    - vms
+    singular: virtualmachine
+  scope: Namespaced
+  version: v1alpha2
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    kubevirt.io: ""
+  name: virtualmachineinstancemigrations.kubevirt.io
+spec:
+  group: kubevirt.io
+  names:
+    kind: VirtualMachineInstanceMigration
+    plural: virtualmachineinstancemigrations
+    shortNames:
+    - vmim
+    - vmims
+    singular: virtualmachineinstancemigration
+  scope: Namespaced
+  version: v1alpha2

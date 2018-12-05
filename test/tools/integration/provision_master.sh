@@ -21,7 +21,8 @@ rsync -avR  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
     root@$ADDR:/root/
 fi
 
-cat <<EOEXEC |ssh_exec
+for try in {1..20}; do
+if cat <<EOEXEC |ssh_exec
 set -ex
 
 echo "$E2E_SSH_PUBKEY" >> .ssh/authorized_keys
@@ -50,7 +51,7 @@ if ! which kubelet; then
 EOF
   apt-get update
   apt-get install -y kubelet=1.12.0-00 kubeadm=1.12.0-00 kubectl=1.12.0-00
-  kubeadm init --kubernetes-version=v1.12.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16
+  kubeadm init --kubernetes-version=v1.12.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
   sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-scheduler.yaml
   sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-controller-manager.yaml
 fi
@@ -100,6 +101,9 @@ echo "Logs:"
 kubectl logs -n kube-system \$(kubectl get pods -n kube-system|egrep '^machine-controller'|awk '{ print \$1}')
 exit 1
 EOEXEC
+then break; fi
+  sleep ${try}s
+done
 
 scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
   root@$ADDR:/root/.kube/config \

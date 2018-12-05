@@ -39,8 +39,11 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		if oldMachine.Spec.Name != machine.Spec.Name && machine.Spec.Name == machine.Name {
 			oldMachine.Spec.Name = machine.Spec.Name
 		}
-		if equal := apiequality.Semantic.DeepEqual(machine.Spec, oldMachine.Spec); !equal {
-			return nil, fmt.Errorf("machine.spec is immutable")
+		// Allow mutation when oldMachine has Initializers on it
+		if oldMachine.Initializers == nil || len(oldMachine.Initializers.Pending) == 0 {
+			if equal := apiequality.Semantic.DeepEqual(machine.Spec, oldMachine.Spec); !equal {
+				return nil, fmt.Errorf("machine.spec is immutable")
+			}
 		}
 	}
 

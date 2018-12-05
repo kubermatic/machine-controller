@@ -146,14 +146,23 @@ type controllerRunOptions struct {
 }
 
 func main() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	// This is also being registerd in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
+	// we have to guard it
+	//TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
+	if flag.Lookup("kubeconfig") == nil {
+		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	}
+	if flag.Lookup("master") == nil {
+		flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	}
 	flag.StringVar(&clusterDNSIPs, "cluster-dns", "10.10.10.10", "Comma-separated list of DNS server IP address.")
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
 
 	flag.Parse()
+	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
+	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
 	ips, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
