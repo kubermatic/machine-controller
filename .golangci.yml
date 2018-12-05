@@ -1,0 +1,23 @@
+run:
+  deadline: 20m
+  build-tags:
+    - e2e
+  skip-dirs:
+    - pkg/client
+    - pkg/machines
+
+linters:
+  enable:
+    - govet
+    - golint
+    - varcheck
+    - structcheck
+    - gosimple
+    - unused
+    - errcheck
+
+issues:
+  exclude:
+  - should have comment or be unexported
+  - should have comment \\(or a comment on this block\\) or be unexported
+  - func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine should be ConvertMachinesV1alpha1MachineToClusterV1alpha1Machine
