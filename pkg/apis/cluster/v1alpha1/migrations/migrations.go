@@ -118,7 +118,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 		existingClusterV1alpha1Machine, err := clusterv1Alpha1Client.ClusterV1alpha1().Machines(
 			convertedClusterv1alpha1Machine.Namespace).Get(convertedClusterv1alpha1Machine.Name, metav1.GetOptions{})
 		if err != nil {
-			// Some random error occured
+			// Some random error occurred
 			if !kerrors.IsNotFound(err) {
 				return fmt.Errorf("failed to check if converted machine %s already exists: %v", convertedClusterv1alpha1Machine.Name, err)
 			}

@@ -262,7 +262,7 @@ func (configVarResolver *ConfigVarResolver) GetConfigVarStringValue(configVar Co
 			return "", fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%v'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
 		}
 		if val, ok := configMap.Data[configVar.ConfigMapKeyRef.Key]; ok {
-			return string(val), nil
+			return val, nil
 		}
 		return "", fmt.Errorf("configmap '%s' in namespace '%s' has no key '%s'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, configVar.ConfigMapKeyRef.Key)
 	}

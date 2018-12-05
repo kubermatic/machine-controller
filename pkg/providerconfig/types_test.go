@@ -104,15 +104,15 @@ func TestConfigVarBoolMarshalling(t *testing.T) {
 func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 
 	testCases := []ConfigVarString{
-		ConfigVarString{Value: "val"},
-		ConfigVarString{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		ConfigVarString{Value: "val", SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		ConfigVarString{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		ConfigVarString{
+		{Value: "val"},
+		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: "val", SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{
 			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},
-		ConfigVarString{
+		{
 			Value:           "val",
 			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
@@ -139,16 +139,16 @@ func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 func TestConfigVarBoolMarshallingAndUnmarshalling(t *testing.T) {
 
 	testCases := []ConfigVarBool{
-		ConfigVarBool{Value: true},
-		ConfigVarBool{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		ConfigVarBool{Value: true, SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		ConfigVarBool{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		ConfigVarBool{Value: true, ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		ConfigVarBool{
+		{Value: true},
+		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: true, SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: true, ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{
 			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},
-		ConfigVarBool{
+		{
 			Value:           true,
 			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},

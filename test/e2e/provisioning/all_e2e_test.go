@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	do_manifest    = "./testdata/machinedeployment-digitalocean.yaml"
-	aws_manifest   = "./testdata/machinedeployment-aws.yaml"
-	azure_manifest = "./testdata/machinedeployment-azure.yaml"
-	hz_manifest    = "./testdata/machinedeployment-hetzner.yaml"
+	DOManifest    = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest   = "./testdata/machinedeployment-aws.yaml"
+	AzureManifest = "./testdata/machinedeployment-azure.yaml"
+	HZManifest    = "./testdata/machinedeployment-hetzner.yaml"
 	//	vs_manifest            = "./testdata/machinedeployment-vsphere.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
-	os_manifest            = "./testdata/machinedeployment-openstack.yaml"
-	os_upgrade_manifest    = "./testdata/machinedeployment-openstack-upgrade.yml"
+	OSManifest             = "./testdata/machinedeployment-openstack.yaml"
+	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest = "./testdata/machine-invalid.yaml"
 	kubevirtManifest       = "./testdata/machinedeployment-kubevirt.yaml"
 )
@@ -60,7 +60,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 func TestOpenstackProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	osAuthUrl := os.Getenv("OS_AUTH_URL")
+	osAuthURL := os.Getenv("OS_AUTH_URL")
 	osDomain := os.Getenv("OS_DOMAIN")
 	osPassword := os.Getenv("OS_PASSWORD")
 	osRegion := os.Getenv("OS_REGION")
@@ -68,12 +68,12 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	osTenant := os.Getenv("OS_TENANT_NAME")
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
-	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
 		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
 	}
 
 	params := []string{
-		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
+		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthURL),
 		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
 		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
 		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
@@ -82,7 +82,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	runScenarios(t, nil, params, os_manifest, fmt.Sprintf("os-%s", *testRunIdentifier))
+	runScenarios(t, nil, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
@@ -100,7 +100,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
-	runScenarios(t, nil, params, do_manifest, fmt.Sprintf("do-%s", *testRunIdentifier))
+	runScenarios(t, nil, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
 }
 
 // TestAWSProvisioning - a test suite that exercises AWS provider
@@ -119,7 +119,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
 	}
-	runScenarios(t, nil, params, aws_manifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+	runScenarios(t, nil, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestAzureProvisioningE2E - a test suite that exercises Azure provider
@@ -144,7 +144,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
 	}
-	runScenarios(t, excludeSelector, params, azure_manifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+	runScenarios(t, excludeSelector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider
@@ -163,7 +163,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
-	runScenarios(t, excludeSelector, params, hz_manifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
+	runScenarios(t, excludeSelector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
 }
 
 // TestVsphereProvisioning - a test suite that exercises vsphere provider
@@ -192,7 +192,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 //}
 
 // TestVsphereStaticIPProvisioningE2E will try to create a node with a VSphere machine
-// whose IP adress is statically assigned.
+// whose IP address is statically assigned.
 //func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 //	t.Parallel()
 //
@@ -235,7 +235,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 	t.Parallel()
 
-	osAuthUrl := os.Getenv("OS_AUTH_URL")
+	osAuthURL := os.Getenv("OS_AUTH_URL")
 	osDomain := os.Getenv("OS_DOMAIN")
 	osPassword := os.Getenv("OS_PASSWORD")
 	osRegion := os.Getenv("OS_REGION")
@@ -243,12 +243,12 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 	osTenant := os.Getenv("OS_TENANT_NAME")
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
-	if osAuthUrl == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
 		t.Fatal("unable to run test, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, OS_TENANT and OS_DOMAIN must be set!")
 	}
 
 	params := []string{
-		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthUrl),
+		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthURL),
 		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
 		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
 		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
@@ -264,7 +264,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, fmt.Sprintf("%s", *testRunIdentifier), params, os_upgrade_manifest, false)
+	testScenario(t, scenario, *testRunIdentifier, params, OSUpgradeManifest, false)
 }
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
@@ -288,5 +288,5 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		kubernetesVersion: "1.10.5",
 		executor:          verifyCreateUpdateAndDelete,
 	}
-	testScenario(t, scenario, fmt.Sprintf("%s", *testRunIdentifier), params, hz_manifest, false)
+	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)
 }

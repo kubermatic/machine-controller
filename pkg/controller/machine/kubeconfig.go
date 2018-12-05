@@ -14,11 +14,11 @@ import (
 
 const (
 	secretTypeBootstrapToken v1.SecretType = "bootstrap.kubernetes.io/token"
-	machineNameLabelKey                    = "machine.k8s.io/machine.name"
-	tokenIDKey                             = "token-id"
-	tokenSecretKey                         = "token-secret"
-	expirationKey                          = "expiration"
-	tokenFormatter                         = "%s.%s"
+	machineNameLabelKey      string        = "machine.k8s.io/machine.name"
+	tokenIDKey               string        = "token-id"
+	tokenSecretKey           string        = "token-secret"
+	expirationKey            string        = "expiration"
+	tokenFormatter           string        = "%s.%s"
 )
 
 func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {

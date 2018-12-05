@@ -1,8 +1,8 @@
 package health
 
 import (
-	"github.com/heptiolabs/healthcheck"
 	"github.com/golang/glog"
+	"github.com/heptiolabs/healthcheck"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
