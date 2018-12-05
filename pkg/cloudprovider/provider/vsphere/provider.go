@@ -75,6 +75,7 @@ type RawConfig struct {
 	Datastore       providerconfig.ConfigVarString `json:"datastore"`
 	CPUs            int32                          `json:"cpus"`
 	MemoryMB        int64                          `json:"memoryMB"`
+	DiskSize        *int64                         `json:"diskSize"`
 	AllowInsecure   providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 
@@ -92,6 +93,7 @@ type Config struct {
 	AllowInsecure   bool
 	CPUs            int32
 	MemoryMB        int64
+	DiskSize        *int64
 }
 
 type Server struct {
@@ -277,6 +279,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 
 	c.CPUs = rawConfig.CPUs
 	c.MemoryMB = rawConfig.MemoryMB
+	c.DiskSize = rawConfig.DiskSize
 
 	return &c, &pconfig, &rawConfig, nil
 }

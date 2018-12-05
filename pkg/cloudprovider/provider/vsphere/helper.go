@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/exec"
 	"text/template"
@@ -78,20 +79,6 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, dc *obje
 		targetVMFolder = datacenterFolders.VmFolder
 	}
 
-	// Create snapshot of the template VM if not already snapshotted.
-	snapshot, err := findSnapshot(ctx, templateVM, snapshotName)
-	if err != nil {
-		if err != errSnapshotNotFound {
-			return nil, fmt.Errorf("failed to find snapshot: %v", err)
-		}
-		snapshot, err = createSnapshot(ctx, templateVM, snapshotName, snapshotDesc)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create snapshot: %v", err)
-		}
-	}
-
-	snapshotRef := snapshot.Reference()
-
 	var vAppAconfig *types.VmConfigSpec
 	if containerLinuxUserdata != "" {
 		userdataBase64 := base64.StdEncoding.EncodeToString([]byte(containerLinuxUserdata))
@@ -140,6 +127,28 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, dc *obje
 	}
 
 	diskUUIDEnabled := true
+	var props mo.VirtualMachine
+	if err := templateVM.Properties(ctx, templateVM.Reference(), nil, &props); err != nil {
+		return nil, fmt.Errorf("error getting VM template reference: %v", err)
+	}
+	l := object.VirtualDeviceList(props.Config.Hardware.Device)
+
+	deviceSpecs := []types.BaseVirtualDeviceConfigSpec{}
+	disks := l.SelectByType((*types.VirtualDisk)(nil))
+	if len(disks) != 1 {
+		return nil, fmt.Errorf("error: number of disks on templateVM != 1, but %d", len(disks))
+	}
+	disk := disks[0].(*types.VirtualDisk)
+	fmt.Printf("disk: %T", disks[0])
+
+	if config.DiskSize != nil {
+		disk.CapacityInBytes = int64(*config.DiskSize * int64(math.Pow(1024, 3)))
+		diskspec := &types.VirtualDeviceConfigSpec{}
+		diskspec.Operation = types.VirtualDeviceConfigSpecOperationEdit
+		diskspec.Device = disk
+		deviceSpecs = append(deviceSpecs, diskspec)
+	}
+
 	desiredConfig := types.VirtualMachineConfigSpec{
 		Flags: &types.VirtualMachineFlagInfo{
 			DiskUuidEnabled: &diskUUIDEnabled,
@@ -150,7 +159,8 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, dc *obje
 	}
 
 	// Create a cloned VM from the template VM's snapshot
-	clonedVMTask, err := templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{Snapshot: &snapshotRef})
+	//we have to specify the disk size here because it cannot be changed after the clone
+	clonedVMTask, err := templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{Config: &types.VirtualMachineConfigSpec{DeviceChange: deviceSpecs}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %v", err)
 	}
