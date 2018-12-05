@@ -8,5 +8,5 @@ $(dirname $0)/../machine-controller \
   -worker-count=50 \
   -logtostderr \
   -v=6 \
-  -cluster-dns=10.10.10.10 \
+  -cluster-dns=172.16.0.10 \
   -internal-listen-address=0.0.0.0:8085

@@ -46,6 +46,22 @@
   version = "v2.15.0"
 
 [[projects]]
+  digest = "1:d8ebbd207f3d3266d4423ce4860c9f3794956306ded6c7ba312ecc69cdfbf04c"
+  name = "github.com/PuerkitoBio/purell"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4"
+  version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:8098cd40cd09879efbf12e33bcd51ead4a66006ac802cd563a66c4f3373b9727"
+  name = "github.com/PuerkitoBio/urlesc"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "de5bf2ad457846296e2031421a34e2568e304e35"
+
+[[projects]]
   branch = "go15"
   digest = "1:8dab0033e231d02909f00a501a1f1ac01e63fd267dcb374a5de71b99ba1ee74f"
   name = "github.com/ajeddeloh/go-json"
@@ -205,6 +221,17 @@
   revision = "6c6132ff69f0f6c088739067407b5d32c52e1d0f"
 
 [[projects]]
+  digest = "1:3537d33c077a9666720dc987fddfecb07270606ac0a58f67abd08e3b252c0a45"
+  name = "github.com/emicklei/go-restful"
+  packages = [
+    ".",
+    "log",
+  ]
+  pruneopts = "NUT"
+  revision = "3eb9738c1697594ea6e71a7156a9bb32ed216cf0"
+  version = "v2.8.0"
+
+[[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
   name = "github.com/ghodss/yaml"
   packages = ["."]
@@ -235,6 +262,38 @@
   pruneopts = "NUT"
   revision = "7536572e8d55209135cd5e7ccf7fce43dca217ab"
   version = "v0.1.0"
+
+[[projects]]
+  digest = "1:260f7ebefc63024c8dfe2c9f1a2935a89fa4213637a1f522f592f80c001cc441"
+  name = "github.com/go-openapi/jsonpointer"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ef5f0afec364d3b9396b7b77b43dbe26bf1f8004"
+  version = "v0.17.2"
+
+[[projects]]
+  digest = "1:98abd61947ff5c7c6fcfec5473d02a4821ed3a2dd99a4fbfdb7925b0dd745546"
+  name = "github.com/go-openapi/jsonreference"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8483a886a90412cd6858df4ea3483dce9c8e35a3"
+  version = "v0.17.2"
+
+[[projects]]
+  digest = "1:dfab391de021809e0041f0ab5648da6b74dd16a685472a1b8c3dc06b3dca1ee2"
+  name = "github.com/go-openapi/spec"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "5bae59e25b21498baea7f9d46e9c147ec106a42e"
+  version = "v0.17.2"
+
+[[projects]]
+  digest = "1:983f95b2fae6fe8fdd361738325ed6090f4f3bd15ce4db745e899fb5b0fdfc46"
+  name = "github.com/go-openapi/swag"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "5899d5c5e619fda5fa86e14795a835f473ca284c"
+  version = "v0.17.2"
 
 [[projects]]
   digest = "1:3c04690dd1d3fad9a36c492c32863fad91bcf822fd95d5c4cae97be1e9abc361"
@@ -270,6 +329,14 @@
   packages = ["lru"]
   pruneopts = "NUT"
   revision = "66deaeb636dff1ac7d938ce666d090556056a4b0"
+
+[[projects]]
+  digest = "1:bc38c7c481812e178d85160472e231c5e1c9a7f5845d67e23ee4e706933c10d8"
+  name = "github.com/golang/mock"
+  packages = ["gomock"]
+  pruneopts = "NUT"
+  revision = "c34cdb4725f4c3844d095133c6e40e448b86589b"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:63ccdfbd20f7ccd2399d0647a7d100b122f79c13bb83da9660b1598396fd9f62"
@@ -360,6 +427,14 @@
   revision = "c38d3807cb5863eb95a857d694f6a4d6b31cde32"
 
 [[projects]]
+  digest = "1:4a0c072e44da763409da72d41492373a034baf2e6d849c76d239b4abdfbb6c49"
+  name = "github.com/gorilla/websocket"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
+  version = "v1.4.0"
+
+[[projects]]
   branch = "master"
   digest = "1:7fdf3223c7372d1ced0b98bf53457c5e89d89aecbad9a77ba9fcc6e01f9e5621"
   name = "github.com/gregjones/httpcache"
@@ -430,6 +505,18 @@
   pruneopts = "NUT"
   revision = "1624edc4454b8682399def8740d46db5e4362ba4"
   version = "v1.1.5"
+
+[[projects]]
+  branch = "master"
+  digest = "1:84a5a2b67486d5d67060ac393aa255d05d24ed5ee41daecd5635ec22657b6492"
+  name = "github.com/mailru/easyjson"
+  packages = [
+    "buffer",
+    "jlexer",
+    "jwriter",
+  ]
+  pruneopts = "NUT"
+  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
 
 [[projects]]
   branch = "master"
@@ -710,7 +797,7 @@
   revision = "79b0c6888797020a994db17c8510466c72fe75d9"
 
 [[projects]]
-  digest = "1:e7071ed636b5422cc51c0e3a6cebc229d6c9fffc528814b519a980641422d619"
+  digest = "1:e33513a825fcd765e97b5de639a2f7547542d1a8245df0cef18e1fd390b778a9"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -727,6 +814,7 @@
     "unicode/cldr",
     "unicode/norm",
     "unicode/rangetable",
+    "width",
   ]
   pruneopts = "NUT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
@@ -1119,11 +1207,47 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e0d6dcb28c42a53c7243bb6380badd17f92fbd8488a075a07e984f91a07c0d23"
+  digest = "1:f4fb3421360af5c51070bfe0c1c7467f8809fa70e278e129f068f5106b5c8a65"
   name = "k8s.io/kube-openapi"
-  packages = ["pkg/util/proto"]
+  packages = [
+    "pkg/common",
+    "pkg/util/proto",
+  ]
   pruneopts = "NUT"
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
+
+[[projects]]
+  digest = "1:a8e45142412cc3a18fb238c1ddd40de356eb6d3073b8d8cdbf2435ae42752e1d"
+  name = "kubevirt.io/containerized-data-importer"
+  packages = [
+    "pkg/apis/datavolumecontroller",
+    "pkg/apis/datavolumecontroller/v1alpha1",
+    "pkg/apis/uploadcontroller",
+    "pkg/apis/uploadcontroller/v1alpha1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/datavolumecontroller/v1alpha1",
+    "pkg/client/clientset/versioned/typed/uploadcontroller/v1alpha1",
+  ]
+  pruneopts = "NUT"
+  revision = "8d7a20b86c9a2ed8ac31e26aab50e362f0c84475"
+  source = "github.com/kubevirt/containerized-data-importer"
+  version = "v1.3.0"
+
+[[projects]]
+  branch = "release-0.10"
+  digest = "1:e8b22ee4b1bdfcbf397a91a98a901707298ccfc9eeeb2858eb4ffb143b80bd46"
+  name = "kubevirt.io/kubevirt"
+  packages = [
+    "pkg/api/v1",
+    "pkg/kubecli",
+    "pkg/precond",
+    "pkg/util/subresources",
+    "pkg/version",
+  ]
+  pruneopts = "NUT"
+  revision = "6ddf4f4e2db4924ac0725676db72bb78acc6cca2"
+  source = "github.com/kubevirt/kubevirt"
 
 [[projects]]
   digest = "1:3799f2cfe7c7047ec4b0db2839f04dd95d0704f65dc5e2ba56bb552936d0c61c"
@@ -1245,6 +1369,7 @@
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/equality",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1/validation",
     "k8s.io/apimachinery/pkg/fields",
@@ -1288,6 +1413,8 @@
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/gengo/examples/defaulter-gen/generators",
+    "kubevirt.io/kubevirt/pkg/api/v1",
+    "kubevirt.io/kubevirt/pkg/kubecli",
     "sigs.k8s.io/cluster-api/pkg/apis",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",
