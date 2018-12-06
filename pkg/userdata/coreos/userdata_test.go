@@ -51,13 +51,13 @@ kPe6XoSbiLm/kxk32T0=
 
 	kubeconfig = &clientcmdapi.Config{
 		Clusters: map[string]*clientcmdapi.Cluster{
-			"": &clientcmdapi.Cluster{
+			"": {
 				Server:                   "https://server:443",
 				CertificateAuthorityData: []byte(pemCertificate),
 			},
 		},
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{
-			"": &clientcmdapi.AuthInfo{
+			"": {
 				Token: "my-token",
 			},
 		},
@@ -218,7 +218,9 @@ func TestProvider_UserData(t *testing.T) {
 
 			golden := filepath.Join("testdata", test.name+".golden")
 			if *update {
-				ioutil.WriteFile(golden, []byte(s), 0644)
+				if err := ioutil.WriteFile(golden, []byte(s), 0644); err != nil {
+					t.Fatalf("failed to write updated fixture %s: %v", golden, err)
+				}
 			}
 			expected, err := ioutil.ReadFile(golden)
 			if err != nil {

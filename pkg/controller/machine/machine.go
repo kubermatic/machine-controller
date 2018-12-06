@@ -490,7 +490,7 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 		m.Finalizers = finalizers.List()
 	})
 
-	return nil
+	return err
 }
 
 func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.Node) bool {
@@ -520,7 +520,7 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 
 	finalizers := sets.NewString(machine.Finalizers...)
 	if finalizers.Has(FinalizerDeleteNode) {
-		machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+		_, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			finalizers.Delete(FinalizerDeleteNode)
 			m.Finalizers = finalizers.List()
 		})
@@ -554,7 +554,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			}
 
 			// Create the instance
-			if providerInstance, err = c.createProviderInstance(prov, machine, userdata); err != nil {
+			if _, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprover")
@@ -565,8 +565,8 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 		}
 
 		// case 2.2: terminal error was returned and manual interaction is required to recover
-		if ok, _, message := cloudprovidererrors.IsTerminalError(err); ok {
-			message = fmt.Sprintf("%v. Unable to create a machine.", err)
+		if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
+			message := fmt.Sprintf("%v. Unable to create a machine.", err)
 			return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to get instance from provider")
 		}
 
@@ -579,7 +579,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 		return err
 	}
 
-	// case 3: retrieving the instance from cloudprovider was successfull
+	// case 3: retrieving the instance from cloudprovider was successful
 	// Emit an event and update .Status.Addresses
 	addresses := providerInstance.Addresses()
 	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", addresses)

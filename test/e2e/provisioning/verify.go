@@ -222,14 +222,13 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 	if err != nil {
 		return fmt.Errorf("unable to remove MachineDeployment %s, due to %v", machineDeployment.Name, err)
 	}
-	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
+	return wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		_, errGetMachineDeployment := clusterClient.ClusterV1alpha1().MachineDeployments(machineDeployment.Namespace).Get(machineDeployment.Name, metav1.GetOptions{})
 		if errGetMachineDeployment != nil && kerrors.IsNotFound(errGetMachineDeployment) {
 			return true, nil
 		}
 		return false, errGetMachineDeployment
 	})
-	return nil
 }
 
 // assureNodeForMachineDeployment according to shouldExists parameter check if a node for machine exists in the system or not

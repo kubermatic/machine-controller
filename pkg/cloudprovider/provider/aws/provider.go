@@ -200,7 +200,9 @@ func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfi
 		return nil, nil, err
 	}
 	rawConfig := RawConfig{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	if err := json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
+	}
 	c := Config{}
 	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "AWS_ACCESS_KEY_ID")
 	if err != nil {
@@ -696,5 +698,5 @@ func awsErrorToTerminalError(err error, msg string) error {
 			return prepareAndReturnError()
 		}
 	}
-	return err
+	return nil
 }

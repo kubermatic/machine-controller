@@ -9,7 +9,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-// Unfortunatelly we can not directly test `EvictNode` as a List with a fieldSelector
+// Unfortunately we can not directly test `EvictNode` as a List with a fieldSelector
 // against a fake client returns nothing
 func TestEvictPods(t *testing.T) {
 	tests := []struct {

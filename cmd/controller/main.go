@@ -146,7 +146,7 @@ type controllerRunOptions struct {
 }
 
 func main() {
-	// This is also being registerd in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
+	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
 	// we have to guard it
 	//TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
 	if flag.Lookup("kubeconfig") == nil {
@@ -196,7 +196,7 @@ func main() {
 	}
 
 	// We do a huge amount of requests when processing some more machines
-	// as this controller still does defaulting and there is no seperate status
+	// as this controller still does defaulting and there is no separate status
 	// object so conflicts happen often which results in retries
 	machineCfg.QPS = 20
 	machineCfg.Burst = 50
@@ -319,7 +319,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// add a seed to the id, so that two processes on the same host don't accidentally both become active
 	id = id + "_" + string(uuid.NewUUID())
 
-	// add worker name to the election lock name to prevent conflicts betwen controllers handling different worker labels
+	// add worker name to the election lock name to prevent conflicts between controllers handling different worker labels
 	leaderName := controllerName
 	if runOptions.name != "" {
 		leaderName = runOptions.name + "-" + leaderName
@@ -436,7 +436,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 }
 
 // createUtilHTTPServer creates a new HTTP server
-func createUtilHTTPServer(kubeClient *kubernetes.Clientset, kubeconfigProvider machinecontroller.KubeconfigProvider, prometheusGatherer prometheus.Gatherer) *http.Server {
+func createUtilHTTPServer(kubeClient kubernetes.Interface, kubeconfigProvider machinecontroller.KubeconfigProvider, prometheusGatherer prometheus.Gatherer) *http.Server {
 	health := healthcheck.NewHandler()
 	health.AddReadinessCheck("apiserver-connection", machinehealth.ApiserverReachable(kubeClient))
 

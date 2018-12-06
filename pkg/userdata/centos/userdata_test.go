@@ -115,8 +115,8 @@ func TestUserDataGeneration(t *testing.T) {
 
 	defaultCloudProvider := &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil}
 	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{
-		"": &clientcmdapi.Cluster{Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": &clientcmdapi.AuthInfo{Token: "my-token"}}}
+		"": {Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": {Token: "my-token"}}}
 	provider := Provider{}
 
 	for _, test := range tests {
