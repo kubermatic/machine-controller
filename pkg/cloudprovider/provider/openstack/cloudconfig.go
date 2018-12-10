@@ -25,7 +25,9 @@ manage-security-groups = {{ .LoadBalancer.ManageSecurityGroups }}
 {{- end }}
 
 [BlockStorage]
+{{- if semverCompare ">=1.9" .Version }}
 ignore-volume-az  = {{ .BlockStorage.IgnoreVolumeAZ }}
+{{- end }}
 trust-device-path = {{ .BlockStorage.TrustDevicePath }}
 bs-version        = {{ .BlockStorage.BSVersion | iniEscape }}
 `
