@@ -35,6 +35,7 @@ func TestCloudConfigToString(t *testing.T) {
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
 				},
+				Version: "1.10.0",
 			},
 		},
 		{
@@ -56,6 +57,7 @@ func TestCloudConfigToString(t *testing.T) {
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
 				},
+				Version: "1.12.0",
 			},
 		},
 	}

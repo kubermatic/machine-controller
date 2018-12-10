@@ -7,7 +7,6 @@ domain-name = "Default"
 region      = "eu-central1"
 
 [LoadBalancer]
-manage-security-groups = true
 
 [BlockStorage]
 ignore-volume-az  = true
