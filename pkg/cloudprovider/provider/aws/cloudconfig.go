@@ -36,8 +36,8 @@ type GlobalOpts struct {
 	RoleARN                     string
 	KubernetesClusterTag        string
 	KubernetesClusterID         string
-	DisableSecurityGroupIngress bool
 	ElbSecurityGroup            string
+	DisableSecurityGroupIngress bool
 	DisableStrictZoneCheck      bool
 }
 
