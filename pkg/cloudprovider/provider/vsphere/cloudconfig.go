@@ -28,7 +28,7 @@ scsicontrollertype = {{ .Disk.SCSIControllerType | iniEscape }}
 server            = {{ .Workspace.VCenterIP | iniEscape }}
 datacenter        = {{ .Workspace.Datacenter | iniEscape }}
 folder            = {{ .Workspace.Folder | iniEscape }}
-default-datastore = {{ .Workspace.DefaultDatastore | iniEscape }}
+datastore         = {{ .Workspace.DefaultDatastore | iniEscape }}
 resourcepool-path = {{ .Workspace.ResourcePoolPath | iniEscape }}
 
 {{ range $name, $vc := .VirtualCenter }}
