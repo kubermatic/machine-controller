@@ -16,7 +16,6 @@ user              = {{ .Global.User | iniEscape }}
 password          = {{ .Global.Password | iniEscape }}
 port              = {{ .Global.VCenterPort | iniEscape }}
 insecure-flag     = {{ .Global.InsecureFlag }}
-port              = {{ .Global.VCenterPort | iniEscape }}
 working-dir       = {{ .Global.WorkingDir | iniEscape }}
 datacenter        = {{ .Global.Datacenter | iniEscape }}
 default-datastore = {{ .Global.DefaultDatastore | iniEscape }}
