@@ -278,7 +278,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 
 	if config.CPUs > 8 {
-		return errors.New("number of CPUs could not be greater than 8")
+		return errors.New("number of CPUs must not be greater than 8")
 	}
 
 	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
