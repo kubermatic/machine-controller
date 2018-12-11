@@ -18,7 +18,7 @@ port              = {{ .Global.VCenterPort | iniEscape }}
 insecure-flag     = {{ .Global.InsecureFlag }}
 working-dir       = {{ .Global.WorkingDir | iniEscape }}
 datacenter        = {{ .Global.Datacenter | iniEscape }}
-default-datastore = {{ .Global.DefaultDatastore | iniEscape }}
+datastore         = {{ .Global.DefaultDatastore | iniEscape }}
 server            = {{ .Global.VCenterIP | iniEscape }}
 
 [Disk]
@@ -28,7 +28,7 @@ scsicontrollertype = {{ .Disk.SCSIControllerType | iniEscape }}
 server            = {{ .Workspace.VCenterIP | iniEscape }}
 datacenter        = {{ .Workspace.Datacenter | iniEscape }}
 folder            = {{ .Workspace.Folder | iniEscape }}
-datastore         = {{ .Workspace.DefaultDatastore | iniEscape }}
+default-datastore = {{ .Workspace.DefaultDatastore | iniEscape }}
 resourcepool-path = {{ .Workspace.ResourcePoolPath | iniEscape }}
 
 {{ range $name, $vc := .VirtualCenter }}
