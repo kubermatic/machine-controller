@@ -12,10 +12,15 @@ import (
 
 const (
 	cloudConfigTpl = `[Global]
-user          = {{ .Global.User | iniEscape }}
-password      = {{ .Global.Password | iniEscape }}
-port          = {{ .Global.VCenterPort | iniEscape }}
-insecure-flag = {{ .Global.InsecureFlag }}
+user              = {{ .Global.User | iniEscape }}
+password          = {{ .Global.Password | iniEscape }}
+port              = {{ .Global.VCenterPort | iniEscape }}
+insecure-flag     = {{ .Global.InsecureFlag }}
+port              = {{ .Global.VCenterPort | iniEscape }}
+working-dir       = {{ .Global.WorkingDir | iniEscape }}
+datacenter        = {{ .Global.Datacenter | iniEscape }}
+default-datastore = {{ .Global.DefaultDatastore | iniEscape }}
+server            = {{ .Global.VCenterIP | iniEscape }}
 
 [Disk]
 scsicontrollertype = {{ .Disk.SCSIControllerType | iniEscape }}
@@ -50,10 +55,14 @@ type DiskOpts struct {
 }
 
 type GlobalOpts struct {
-	User         string `gcfg:"user"`
-	Password     string `gcfg:"password"`
-	InsecureFlag bool   `gcfg:"insecure-flag"`
-	VCenterPort  string `gcfg:"port"`
+	User             string `gcfg:"user"`
+	Password         string `gcfg:"password"`
+	InsecureFlag     bool   `gcfg:"insecure-flag"`
+	VCenterPort      string `gcfg:"port"`
+	WorkingDir       string `gcfg:"working-dir"`
+	Datacenter       string `gcfg:"datacenter"`
+	DefaultDatastore string `gcfg:"default-datastore"`
+	VCenterIP        string `gcfg:"server"`
 }
 
 type VirtualCenterConfig struct {
