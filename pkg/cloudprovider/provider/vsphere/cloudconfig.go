@@ -60,7 +60,7 @@ type GlobalOpts struct {
 	VCenterPort      string `gcfg:"port"`
 	WorkingDir       string `gcfg:"working-dir"`
 	Datacenter       string `gcfg:"datacenter"`
-	DefaultDatastore string `gcfg:"default-datastore"`
+	DefaultDatastore string `gcfg:"datastore"`
 	VCenterIP        string `gcfg:"server"`
 }
 
