@@ -105,6 +105,10 @@ then break; fi
   sleep ${try}s
 done
 
+for try in {1..20}; do
 scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
   root@$ADDR:/root/.kube/config \
   $(go env GOPATH)/src/github.com/kubermatic/machine-controller/.kubeconfig
+  if [[ $? == 0 ]]; then break; fi
+  sleep ${try}s
+done

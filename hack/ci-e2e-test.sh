@@ -9,9 +9,14 @@ function cleanup {
     echo "Cleaning up machines."
     ./test/tools/integration/cleanup_machines.sh
 
-    # Clean up master
-    echo "Clean up master."
-    make -C test/tools/integration destroy
+    for try in {1..20}; do
+      # Clean up master
+      echo "Cleaning up controller, attempt ${try}"
+      make -C test/tools/integration destroy
+      if [[ $? == 0 ]]; then break; fi
+      echo "Sleeping for $try seconds"
+      sleep ${try}s
+    done
 }
 trap cleanup EXIT
 
@@ -20,7 +25,7 @@ export BUILD_ID="${BUILD_ID}"
 # Install dependencies
 echo "Installing dependencies."
 apt update && apt install -y jq rsync unzip &&
-curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl &&
+curl --retry 5  -LO https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl &&
 chmod +x kubectl &&
 mv kubectl /usr/local/bin
 
@@ -28,9 +33,14 @@ mv kubectl /usr/local/bin
 echo "Generating ssh keypairs."
 ssh-keygen -f $HOME/.ssh/id_rsa -P ''
 
-# Create environment at cloud provider
-echo "Creating environment at cloud provider."
-make -C test/tools/integration apply
+for try in {1..20}; do
+  # Create environment at cloud provider
+  echo "Creating environment at cloud provider."
+  make -C test/tools/integration apply
+  if [[ $? == 0 ]]; then break; fi
+  echo "Sleeping for $try seconds"
+  sleep ${try}s
+done
 
 # Build binaries
 echo "Building machine-controller and webhook"
