@@ -1,8 +1,12 @@
 [Global]
-user          = "admin"
-password      = "password"
-port          = ""
-insecure-flag = true
+user              = "admin"
+password          = "password"
+port              = ""
+insecure-flag     = true
+working-dir       = ""
+datacenter        = ""
+datastore         = ""
+server            = ""
 
 [Disk]
 scsicontrollertype = "pvscsi"
