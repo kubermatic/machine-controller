@@ -6,11 +6,10 @@ Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
 
 [Service]
+Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 Restart=always
 StartLimitInterval=0
 RestartSec=10
-
-Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
