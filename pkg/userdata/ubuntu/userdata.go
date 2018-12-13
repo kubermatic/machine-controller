@@ -95,7 +95,7 @@ func (p Provider) UserData(
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
-	baseProvisioningScript, err := GetBaseProvisioningScript(cpName, kubeletVersion)
+	baseProvisioningScript, err := GetBaseProvisioningScript(cpName, kubeletVersion.String())
 	if err != nil {
 		return "", fmt.Errorf("error generating base provisioning script: %v", err)
 	}

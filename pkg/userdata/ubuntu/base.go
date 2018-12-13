@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/Masterminds/semver"
-
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
 
 // GetBaseProvisioningScript will return a bash script which will prepare the Ubuntu 18.04 for Kubernetes.
 // All required binaries & services will be installed, but without cluster specifics like Kubeconfig, CA, etc.
-func GetBaseProvisioningScript(cloudProviderName string, kubeletVersion *semver.Version) (string, error) {
+func GetBaseProvisioningScript(cloudProviderName string, kubeletVersion string) (string, error) {
 	files := []File{
 		{
 			Filename: "/etc/systemd/journald.conf.d/max_disk_use.conf",
@@ -66,7 +64,7 @@ func GetBaseProvisioningScript(cloudProviderName string, kubeletVersion *semver.
 	}{
 		Files:          files,
 		CloudProvider:  cloudProviderName,
-		KubeletVersion: kubeletVersion.String(),
+		KubeletVersion: kubeletVersion,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
