@@ -20,7 +20,7 @@ type kubeletFlagTestCase struct {
 
 func TestKubeletSystemdUnit(t *testing.T) {
 	var tests []kubeletFlagTestCase
-	for _, version := range versions {
+	for _, version := range Versions {
 		tests = append(tests, kubeletFlagTestCase{
 			name:     fmt.Sprintf("version-%s", version.Original()),
 			version:  version,
