@@ -1,18 +1,20 @@
 package admission
 
 import (
+	"log"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"log"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-func validateMachineDeployment(md v1alpha1.MachineDeployment) field.ErrorList {
+// ValidateMachineDeployment validates the given MachineDeployment object by checking for logical or syntax errors
+func ValidateMachineDeployment(md v1alpha1.MachineDeployment) field.ErrorList {
 	log.Printf("Validating fields for MachineDeployment %s\n", md.Name)
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateMachineDeploymentSpec(&md.Spec, field.NewPath("spec"))...)

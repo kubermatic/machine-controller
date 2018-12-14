@@ -19,7 +19,7 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1beta1.AdmissionR
 	machineDeploymentOriginal := machineDeployment.DeepCopy()
 
 	machineDeploymentDefaultingFunction(&machineDeployment)
-	if errs := validateMachineDeployment(machineDeployment); len(errs) > 0 {
+	if errs := ValidateMachineDeployment(machineDeployment); len(errs) > 0 {
 		return nil, fmt.Errorf("validation failed: %v", errs)
 	}
 
