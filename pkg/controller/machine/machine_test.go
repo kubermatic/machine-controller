@@ -9,6 +9,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,6 +17,10 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
+
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	machinefake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
 )
 
 type fakeInstance struct {
@@ -167,4 +172,92 @@ func TestController_GetNode(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
+	tests := []struct {
+		name              string
+		creationTimestamp metav1.Time
+		hasNode           bool
+		hasOwner          bool
+		getsDeleted       bool
+	}{
+		{
+			name:              "machine with node does not get deleted",
+			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
+			hasNode:           true,
+			hasOwner:          false,
+			getsDeleted:       false,
+		},
+		{
+			name:              "machine without owner ref does not get deleted",
+			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
+			hasNode:           false,
+			hasOwner:          false,
+			getsDeleted:       false,
+		},
+		{
+			name:              "machine younger than joinClusterTimeout does not get deleted",
+			creationTimestamp: metav1.Time{Time: time.Now().Add(-9 * time.Minute)},
+			hasNode:           false,
+			hasOwner:          true,
+			getsDeleted:       false,
+		},
+		{
+			name:              "machine older than joinClusterTimout gets deleted",
+			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
+			hasNode:           false,
+			hasOwner:          true,
+			getsDeleted:       true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			machine := &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{CreationTimestamp: test.creationTimestamp}}
+			if test.hasOwner {
+				machine.OwnerReferences = append(machine.OwnerReferences, metav1.OwnerReference{Name: "ms"})
+			}
+
+			node := &corev1.Node{}
+			instance := &fakeInstance{}
+			if test.hasNode {
+				literalNode := getTestNode("test-id", "")
+				node = &literalNode
+				instance.id = "test-id"
+			}
+
+			providerConfig := &providerconfig.Config{CloudProvider: providerconfig.CloudProviderFake}
+
+			kubeClient := kubefake.NewSimpleClientset(node)
+			machineClient := machinefake.NewSimpleClientset(machine)
+
+			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+			nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+			go nodeInformer.Informer().Run(wait.NeverStop)
+			cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced)
+
+			controller := Controller{nodesLister: nodeInformer.Lister(),
+				recorder:      &record.FakeRecorder{},
+				machineClient: machineClient}
+
+			if err := controller.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
+				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
+			}
+
+			var wasDeleted bool
+			for _, action := range machineClient.Actions() {
+				if action.GetVerb() == "delete" {
+					wasDeleted = true
+					break
+				}
+			}
+
+			if wasDeleted != test.getsDeleted {
+				t.Errorf("Machine was deleted: %v, but expectedDeletion: %v", wasDeleted, test.getsDeleted)
+			}
+		})
+	}
+
 }
