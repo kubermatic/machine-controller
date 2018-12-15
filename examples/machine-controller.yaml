@@ -164,6 +164,10 @@ spec:
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -internal-listen-address=0.0.0.0:8085
+            # Machines that fail to join the cluster within this timeout and
+            # are owned by a MachineSet will get deleted so the MachineSet
+            # controller re-creates them
+            - -join-cluster-timeout=10m
           ports:
           - containerPort: 8085
           livenessProbe:
@@ -203,10 +207,6 @@ spec:
             - -logtostderr
             - -v=6
             - -listen-address=0.0.0.0:9876
-            # Machines that fail to join the cluster within this timeout and
-            # are owned by a MachineSet will get deleted so the MachineSet
-            # controller re-creates them
-            - -join-cluster-timeout=10m
           volumeMounts:
             - name: machine-controller-admission-cert
               mountPath: /tmp/cert
