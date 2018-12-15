@@ -67,12 +67,13 @@ import (
 )
 
 var (
-	masterURL     string
-	kubeconfig    string
-	clusterDNSIPs string
-	listenAddress string
-	name          string
-	workerCount   int
+	masterURL          string
+	kubeconfig         string
+	clusterDNSIPs      string
+	listenAddress      string
+	name               string
+	joinClusterTimeout string
+	workerCount        int
 )
 
 const (
@@ -143,6 +144,10 @@ type controllerRunOptions struct {
 
 	// The cfg is used by the migration to conditionally spawn additional clients
 	cfg *restclient.Config
+
+	// The timeout in which machines owned by a MachineSet must join the cluster to avoid being
+	// deleted by the machine-controller
+	joinClusterTimeout time.Duration
 }
 
 func main() {
@@ -159,6 +164,7 @@ func main() {
 	flag.IntVar(&workerCount, "worker-count", 5, "Number of workers to process machines. Using a high number with a lot of machines might cause getting rate-limited from your cloud provider.")
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
+	flag.StringVar(&joinClusterTimeout, "join-cluster-timeout", "", "when set, machines that have an owner and do not join the cluster within the configured duration will be deleted, so the owner re-creats them")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -167,6 +173,14 @@ func main() {
 	ips, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
 		glog.Fatalf("invalid cluster dns specified: %v", err)
+	}
+
+	var parsedJoinClusterTimeout time.Duration
+	if joinClusterTimeout != "" {
+		parsedJoinClusterTimeout, err = time.ParseDuration(joinClusterTimeout)
+		if err != nil {
+			glog.Fatalf("failed to parse join-cluster-timeout as duration: %v", err)
+		}
 	}
 
 	stopCh := signals.SetupSignalHandler()
@@ -237,6 +251,7 @@ func main() {
 		name:                 name,
 		prometheusRegisterer: prometheusRegistry,
 		cfg:                  machineCfg,
+		joinClusterTimeout:   parsedJoinClusterTimeout,
 	}
 
 	kubeInformerFactory.Start(stopCh)
@@ -398,6 +413,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.metrics,
 			runOptions.prometheusRegisterer,
 			runOptions.kubeconfigProvider,
+			runOptions.joinClusterTimeout,
 			runOptions.name,
 		)
 		if err != nil {
