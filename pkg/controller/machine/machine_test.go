@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
@@ -230,15 +231,12 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 
 			providerConfig := &providerconfig.Config{CloudProvider: providerconfig.CloudProviderFake}
 
-			kubeClient := kubefake.NewSimpleClientset(node)
 			machineClient := machinefake.NewSimpleClientset(machine)
 
-			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-			nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-			go nodeInformer.Informer().Run(wait.NeverStop)
-			cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced)
+			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+			nodeIndexer.Add(node)
 
-			controller := Controller{nodesLister: nodeInformer.Lister(),
+			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer),
 				recorder:      &record.FakeRecorder{},
 				machineClient: machineClient}
 
