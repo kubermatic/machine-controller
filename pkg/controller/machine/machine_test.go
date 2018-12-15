@@ -12,10 +12,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
@@ -78,19 +74,11 @@ func TestController_GetNode(t *testing.T) {
 	node1 := getTestNode("1", "aws")
 	node2 := getTestNode("2", "openstack")
 	node3 := getTestNode("3", "")
-
-	nodeList := &corev1.NodeList{
-		Items: []corev1.Node{
-			node1,
-			node2,
-			node3,
-		},
-	}
+	nodeList := []*corev1.Node{&node1, &node2, &node3}
 
 	tests := []struct {
 		name     string
 		instance instance.Instance
-		objects  []runtime.Object
 		resNode  *corev1.Node
 		exists   bool
 		err      error
@@ -103,7 +91,6 @@ func TestController_GetNode(t *testing.T) {
 			exists:   false,
 			err:      nil,
 			instance: &fakeInstance{id: "99", addresses: []string{"192.168.1.99"}},
-			objects:  []runtime.Object{},
 		},
 		{
 			name:     "node not found - no suitable node",
@@ -112,7 +99,6 @@ func TestController_GetNode(t *testing.T) {
 			exists:   false,
 			err:      nil,
 			instance: &fakeInstance{id: "99", addresses: []string{"192.168.1.99"}},
-			objects:  []runtime.Object{nodeList},
 		},
 		{
 			name:     "node found by provider id",
@@ -121,7 +107,6 @@ func TestController_GetNode(t *testing.T) {
 			exists:   true,
 			err:      nil,
 			instance: &fakeInstance{id: "1", addresses: []string{""}},
-			objects:  []runtime.Object{nodeList},
 		},
 		{
 			name:     "node found by internal ip",
@@ -130,7 +115,6 @@ func TestController_GetNode(t *testing.T) {
 			exists:   true,
 			err:      nil,
 			instance: &fakeInstance{id: "3", addresses: []string{"192.168.1.3"}},
-			objects:  []runtime.Object{nodeList},
 		},
 		{
 			name:     "node found by external ip",
@@ -139,19 +123,16 @@ func TestController_GetNode(t *testing.T) {
 			exists:   true,
 			err:      nil,
 			instance: &fakeInstance{id: "3", addresses: []string{"172.16.1.3"}},
-			objects:  []runtime.Object{nodeList},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			client := kubefake.NewSimpleClientset(test.objects...)
-			kubeInformerFactory := kubeinformers.NewSharedInformerFactory(client, time.Second*30)
-			nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-			go nodeInformer.Informer().Run(wait.NeverStop)
-			cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced)
-
-			controller := Controller{nodesLister: nodeInformer.Lister()}
+			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+			for _, node := range nodeList {
+				nodeIndexer.Add(node)
+			}
+			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer)}
 
 			node, exists, err := controller.getNode(test.instance, test.provider)
 			if diff := deep.Equal(err, test.err); diff != nil {
