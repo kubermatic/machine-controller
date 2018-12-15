@@ -631,7 +631,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		}
 	} else {
 		// If the machine has an owner Ref and is older than 10 Minutes, delete it to have it re-created by the MachineSet controller
-		if machine.OwnerReferences != nil && !(c.joinClusterTimeout.Nanoseconds() == 0) && time.Now().Sub(machine.CreationTimestamp.Time) > joinClusterTimeout {
+		if machine.OwnerReferences != nil && !(c.joinClusterTimeout.Nanoseconds() == 0) && time.Since(machine.CreationTimestamp.Time) > joinClusterTimeout {
 			c.recorder.Event(machine, corev1.EventTypeWarning, "JoinClusterTimeoutMachineError", "machine didn't join cluster within expeted timeframe, deleting to trigger re-creation")
 			if err := c.machineClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
 				return fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",

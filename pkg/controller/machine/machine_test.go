@@ -130,7 +130,9 @@ func TestController_GetNode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 			for _, node := range nodeList {
-				nodeIndexer.Add(node)
+				if err := nodeIndexer.Add(node); err != nil {
+					t.Fatalf("failed to add node to nodeIndexer: %v", err)
+				}
 			}
 			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer)}
 
@@ -228,7 +230,9 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			machineClient := machinefake.NewSimpleClientset(machine)
 
 			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-			nodeIndexer.Add(node)
+			if err := nodeIndexer.Add(node); err != nil {
+				t.Fatalf("failed to add node to nodeIndexer: %v", err)
+			}
 
 			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer),
 				recorder:           &record.FakeRecorder{},
