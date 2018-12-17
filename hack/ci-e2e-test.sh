@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 function cleanup {
     set +e
@@ -20,18 +20,26 @@ function cleanup {
 }
 trap cleanup EXIT
 
-export BUILD_ID="${BUILD_ID}"
-
 # Install dependencies
 echo "Installing dependencies."
 apt update && apt install -y jq rsync unzip &&
-curl --retry 5  -LO https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl &&
+curl --retry 5  -LO \
+  https://storage.googleapis.com/kubernetes-release/release/v1.12.4/bin/linux/amd64/kubectl &&
 chmod +x kubectl &&
 mv kubectl /usr/local/bin
 
 # Generate ssh keypair
-echo "Generating ssh keypairs."
-ssh-keygen -f $HOME/.ssh/id_rsa -P ''
+echo "Set permissions for ssh key"
+chmod 0700 $HOME/.ssh
+
+# Initialize terraform
+echo "Initalizing terraform"
+cd test/tools/integration
+make terraform
+cp provider.tf{.disabled,}
+terraform init --input=false --backend-config=key=$BUILD_ID
+terraform import hcloud_ssh_key.machine-controller-e2e machine-controller-e2e
+cd -
 
 for try in {1..20}; do
   # Create environment at cloud provider
