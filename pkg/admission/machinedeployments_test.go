@@ -15,12 +15,12 @@ func TestMachineDeploymentDefaulting(t *testing.T) {
 		isValid           bool
 	}{
 		{
-			name:              "empty MachineDeployment validation should fail",
+			name:              "Empty MachineDeployment validation should fail",
 			machineDeployment: &clusterv1alpha1.MachineDeployment{},
 			isValid:           false,
 		},
 		{
-			name: "minimal MachineDeployment validation should suceed",
+			name: "Minimal MachineDeployment validation should succeed",
 			machineDeployment: &clusterv1alpha1.MachineDeployment{
 				Spec: clusterv1alpha1.MachineDeploymentSpec{
 					Selector: metav1.LabelSelector{
