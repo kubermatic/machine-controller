@@ -109,6 +109,10 @@ func machineDeploymentDefaultingFunction(obj *v1alpha1.MachineDeployment) {
 		obj.Spec.ProgressDeadlineSeconds = new(int32)
 		*obj.Spec.ProgressDeadlineSeconds = 600
 	}
+	if obj.Spec.Strategy == nil {
+		obj.Spec.Strategy = &v1alpha1.MachineDeploymentStrategy{}
+	}
+
 	if obj.Spec.Strategy.Type == "" {
 		obj.Spec.Strategy.Type = common.RollingUpdateMachineDeploymentStrategyType
 	}
