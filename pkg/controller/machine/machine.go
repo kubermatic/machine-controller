@@ -87,6 +87,8 @@ type Controller struct {
 
 	machineCreateDeleteData *cloud.MachineCreateDeleteData
 
+	joinClusterTimeout *time.Duration
+
 	name string
 }
 
@@ -115,6 +117,7 @@ func NewMachineController(
 	metrics *MetricsCollection,
 	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
+	joinClusterTimeout *time.Duration,
 	name string) (*Controller, error) {
 
 	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
@@ -143,6 +146,8 @@ func NewMachineController(
 		clusterDNSIPs:      clusterDNSIPs,
 		metrics:            metrics,
 		kubeconfigProvider: kubeconfigProvider,
+
+		joinClusterTimeout: joinClusterTimeout,
 
 		name: name,
 	}
@@ -622,6 +627,15 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		err = c.updateMachineStatus(machine, node)
 		if err != nil {
 			return fmt.Errorf("failed to update machine status: %v", err)
+		}
+	} else {
+		// If the machine has an owner Ref and is older than 10 Minutes, delete it to have it re-created by the MachineSet controller
+		if machine.OwnerReferences != nil && c.joinClusterTimeout != nil && time.Since(machine.CreationTimestamp.Time) > *c.joinClusterTimeout {
+			c.recorder.Eventf(machine, corev1.EventTypeWarning, "JoinClusterTimeoutMachineError", "machine didn't join cluster within expeted timeframe of %s, deleting to trigger re-creation", c.joinClusterTimeout.String())
+			if err := c.machineClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
+				return fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
+					machine.Namespace, machine.Name, c.joinClusterTimeout.String(), err)
+			}
 		}
 	}
 	return nil

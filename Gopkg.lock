@@ -1250,15 +1250,17 @@
   source = "github.com/kubevirt/kubevirt"
 
 [[projects]]
-  digest = "1:3799f2cfe7c7047ec4b0db2839f04dd95d0704f65dc5e2ba56bb552936d0c61c"
+  digest = "1:9f9213e41a700d98c8b204394214077f015fa84a0e29a955ec04a64b88b62032"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis",
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
     "pkg/client/clientset_generated/clientset",
+    "pkg/client/clientset_generated/clientset/fake",
     "pkg/client/clientset_generated/clientset/scheme",
     "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1",
+    "pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1/fake",
     "pkg/client/informers_generated/externalversions",
     "pkg/client/informers_generated/externalversions/cluster",
     "pkg/client/informers_generated/externalversions/cluster/v1alpha1",
@@ -1419,6 +1421,7 @@
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset",
+    "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake",
     "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme",
     "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions",
     "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1",
