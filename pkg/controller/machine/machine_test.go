@@ -165,7 +165,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 		hasNode           bool
 		hasOwner          bool
 		getsDeleted       bool
-		joinTimeoutConfig time.Duration
+		joinTimeoutConfig *time.Duration
 	}{
 		{
 			name:              "machine with node does not get deleted",
@@ -173,7 +173,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			hasNode:           true,
 			hasOwner:          false,
 			getsDeleted:       false,
-			joinTimeoutConfig: 10 * time.Minute,
+			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
 		{
 			name:              "machine without owner ref does not get deleted",
@@ -181,7 +181,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			hasNode:           false,
 			hasOwner:          false,
 			getsDeleted:       false,
-			joinTimeoutConfig: 10 * time.Minute,
+			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
 		{
 			name:              "machine younger than joinClusterTimeout does not get deleted",
@@ -189,7 +189,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			hasNode:           false,
 			hasOwner:          true,
 			getsDeleted:       false,
-			joinTimeoutConfig: 10 * time.Minute,
+			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
 		{
 			name:              "machine older than joinClusterTimout gets deleted",
@@ -197,15 +197,15 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			hasNode:           false,
 			hasOwner:          true,
 			getsDeleted:       true,
-			joinTimeoutConfig: 10 * time.Minute,
+			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
 		{
-			name:              "zero joinTimeoutConfig results in no deletions",
+			name:              "nil joinTimeoutConfig results in no deletions",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
 			hasNode:           false,
 			hasOwner:          true,
 			getsDeleted:       false,
-			joinTimeoutConfig: time.Duration(0),
+			joinTimeoutConfig: nil,
 		},
 	}
 
@@ -257,4 +257,8 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 		})
 	}
 
+}
+
+func durationPtr(d time.Duration) *time.Duration {
+	return &d
 }

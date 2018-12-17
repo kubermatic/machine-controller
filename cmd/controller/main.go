@@ -147,7 +147,7 @@ type controllerRunOptions struct {
 
 	// The timeout in which machines owned by a MachineSet must join the cluster to avoid being
 	// deleted by the machine-controller
-	joinClusterTimeout time.Duration
+	joinClusterTimeout *time.Duration
 }
 
 func main() {
@@ -175,9 +175,10 @@ func main() {
 		glog.Fatalf("invalid cluster dns specified: %v", err)
 	}
 
-	var parsedJoinClusterTimeout time.Duration
+	var parsedJoinClusterTimeout *time.Duration
 	if joinClusterTimeout != "" {
-		parsedJoinClusterTimeout, err = time.ParseDuration(joinClusterTimeout)
+		parsedJoinClusterTimeoutLiteral, err := time.ParseDuration(joinClusterTimeout)
+		parsedJoinClusterTimeout = &parsedJoinClusterTimeoutLiteral
 		if err != nil {
 			glog.Fatalf("failed to parse join-cluster-timeout as duration: %v", err)
 		}
@@ -251,7 +252,9 @@ func main() {
 		name:                 name,
 		prometheusRegisterer: prometheusRegistry,
 		cfg:                  machineCfg,
-		joinClusterTimeout:   parsedJoinClusterTimeout,
+	}
+	if parsedJoinClusterTimeout != nil {
+		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
 	}
 
 	kubeInformerFactory.Start(stopCh)
