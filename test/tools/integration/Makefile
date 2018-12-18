@@ -18,7 +18,8 @@ terraform:
 		curl https://releases.hashicorp.com/terraform/0.11.11/terraform_0.11.11_linux_amd64.zip \
 			--retry 5 \
 			-o	/tmp/terraform.zip && \
-		unzip -n /tmp/terraform.zip terraform; \
+		unzip -n /tmp/terraform.zip terraform && \
+		mv terraform /usr/local/bin \
 	fi
 
 .terraform: terraform
