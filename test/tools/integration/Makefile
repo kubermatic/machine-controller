@@ -19,7 +19,7 @@ terraform:
 			--retry 5 \
 			-o	/tmp/terraform.zip && \
 		unzip -n /tmp/terraform.zip terraform && \
-		mv terraform /usr/local/bin \
+		mv terraform /usr/local/bin; \
 	fi
 
 .terraform: terraform
