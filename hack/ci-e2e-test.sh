@@ -38,7 +38,8 @@ cd test/tools/integration
 make terraform
 cp provider.tf{.disabled,}
 terraform init --input=false --backend-config=key=$BUILD_ID
-terraform import hcloud_ssh_key.machine-controller-e2e machine-controller-e2e
+export TF_VAR_hcloud_sshkey_content="$(cat ~/.ssh/id_rsa.pub)"
+terraform import hcloud_ssh_key.default machine-controller-e2e
 cd -
 
 for try in {1..20}; do
