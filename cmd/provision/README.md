@@ -40,7 +40,7 @@ Parts which will be covered by cloud-init (or Ignition)
 
 ### Provision
 
-The provision binary will identify the operating system and execute a set of provisioning steps.
+The `provision` binary will identify the operating system and execute a set of provisioning steps.
 
 The provisioning process gets separated into 2 phases:
 - Base provisioning
@@ -63,3 +63,15 @@ The following steps belong into the base provisioning:
 
 This part will:
 - Write & start the kubelet systemd unit 
+
+## Offline usage
+
+The `provision` binary should also be usable for "prebaking" images, which then can be used for offline usage.
+
+## Development process
+
+To make sure the local development version of the `provision` command gets used for new machines created by the local running machine controller,
+a new flag `--provision-source` must be introduced. 
+This flag will instruct the machine controller to download the `provision` binary from the specified location.
+
+For simplicity the `/hack/run-machine-controller.sh` will be updated to include a step which will compile the `provoision` command & upload it to a gcs bucket. 
