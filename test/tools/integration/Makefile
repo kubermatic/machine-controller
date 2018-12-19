@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 BUILD_ID ?= $(USER)-local
 
 USER ?= prow
@@ -10,14 +12,20 @@ else ifeq ($(MAKECMDGOALS),destroy)
 	EXTRA_ARG = -force
 endif
 
+.PHONY: terraform
 terraform:
 	@if ! which terraform; then \
-		curl https://releases.hashicorp.com/terraform/0.11.7/terraform_0.11.7_linux_amd64.zip > /tmp/terraform.zip && \
-		unzip -n /tmp/terraform.zip terraform; \
+		curl https://releases.hashicorp.com/terraform/0.11.11/terraform_0.11.11_linux_amd64.zip \
+			--retry 5 \
+			-o	/tmp/terraform.zip && \
+		unzip -n /tmp/terraform.zip terraform && \
+		mv terraform /usr/local/bin; \
 	fi
 
 .terraform: terraform
-	terraform init >/dev/null 2>&1
+	@if ! ls .terraform &>/dev/null; then \
+		terraform init &>/dev/null; \
+	fi
 
 .PHONY: plan apply destroy
 plan apply destroy: .terraform

@@ -5,7 +5,7 @@ set -x
 
 cd $(dirname $0)
 
-export ADDR=$(cat terraform.tfstate |jq -r '.modules[0].resources["hcloud_server.machine-controller-test"].primary.attributes.ipv4_address')
+export ADDR=$(terraform output -json|jq '.ip.value' -r)
 
 
 ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@$ADDR $@; }

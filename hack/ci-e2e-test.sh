@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 function cleanup {
     set +e
@@ -9,10 +9,13 @@ function cleanup {
     echo "Cleaning up machines."
     ./test/tools/integration/cleanup_machines.sh
 
+    cd test/tools/integration
     for try in {1..20}; do
       # Clean up master
       echo "Cleaning up controller, attempt ${try}"
-      make -C test/tools/integration destroy
+      # Clean up only the server, we want to keep the key as only one key may exist
+      # for a given fingerprint
+      terraform destroy -target=hcloud_server.machine-controller-test -force
       if [[ $? == 0 ]]; then break; fi
       echo "Sleeping for $try seconds"
       sleep ${try}s
@@ -20,27 +23,41 @@ function cleanup {
 }
 trap cleanup EXIT
 
-export BUILD_ID="${BUILD_ID}"
-
 # Install dependencies
 echo "Installing dependencies."
 apt update && apt install -y jq rsync unzip &&
-curl --retry 5  -LO https://storage.googleapis.com/kubernetes-release/release/v1.10.0/bin/linux/amd64/kubectl &&
+curl --retry 5  -LO \
+  https://storage.googleapis.com/kubernetes-release/release/v1.12.4/bin/linux/amd64/kubectl &&
 chmod +x kubectl &&
 mv kubectl /usr/local/bin
 
 # Generate ssh keypair
-echo "Generating ssh keypairs."
-ssh-keygen -f $HOME/.ssh/id_rsa -P ''
+echo "Set permissions for ssh key"
+chmod 0700 $HOME/.ssh
+
+# Initialize terraform
+echo "Initalizing terraform"
+cd test/tools/integration
+make terraform
+cp provider.tf{.disabled,}
+terraform init --input=false --backend-config=key=$BUILD_ID
+export TF_VAR_hcloud_token="${HZ_E2E_TOKEN}"
+export TF_VAR_hcloud_sshkey_content="$(cat ~/.ssh/id_rsa.pub)"
+export TF_VAR_hcloud_test_server_name="machine-controller-test-${BUILD_ID}"
 
 for try in {1..20}; do
+  set +e
   # Create environment at cloud provider
   echo "Creating environment at cloud provider."
-  make -C test/tools/integration apply
+  terraform import hcloud_ssh_key.default 265119
+  terraform apply -auto-approve
   if [[ $? == 0 ]]; then break; fi
   echo "Sleeping for $try seconds"
   sleep ${try}s
 done
+
+set -e
+cd -
 
 # Build binaries
 echo "Building machine-controller and webhook"
