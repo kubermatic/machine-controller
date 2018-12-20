@@ -46,10 +46,11 @@ Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
 
 [Service]
-Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 Restart=always
 StartLimitInterval=0
 RestartSec=10
+
+Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
 {{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs | indent 2 }}
@@ -118,7 +119,6 @@ Requires=kubelet.service
 After=kubelet.service
 
 [Service]
-Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 ExecStart=/opt/bin/health-monitor.sh kubelet
 
 [Install]
@@ -132,7 +132,6 @@ Requires=docker.service
 After=docker.service
 
 [Service]
-Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 ExecStart=/opt/bin/health-monitor.sh container-runtime
 
 [Install]

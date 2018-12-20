@@ -121,6 +121,7 @@ write_files:
     # Make sure we always disable swap - Otherwise the kubelet won't start'.
     systemctl mask swap.target
     swapoff -a
+    export CR_PKG='docker-ce=18.06.0~ce~3-0~ubuntu'
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
@@ -139,11 +140,12 @@ write_files:
       nfs-common \
       socat \
       util-linux \
-      bridge-utils \
-      libapparmor1 \
-      libltdl7 \
-      perl \
+      ${CR_PKG} \
       ipvsadm
+
+    # If something failed during package installation but docker got installed, we need to put it on hold
+    apt-mark hold docker.io || true
+    apt-mark hold docker-ce || true
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
@@ -154,16 +156,6 @@ write_files:
     mkdir -p /etc/kubernetes/manifests
     mkdir -p /etc/cni/net.d
     mkdir -p /opt/cni/bin
-    
-    # docker
-    if [ ! -f /opt/bin/docker ]; then
-        # TODO: Support newer versions. Make sure to validate if the newer containerd version has configuration changes
-        # Newer versions of docker use containterd with a config file - containerd from 17.03 does not support that
-        # we maybe need to manage both ways(flags & config) or wait until we deprecate Kubernetes 1.11 
-        curl -L http://download.docker.com/linux/static/stable/x86_64/docker-17.03.2-ce.tgz | tar -xvzC /opt/ -f -
-        mv /opt/docker/* /opt/bin/
-        rm -rf /opt/docker
-    fi
     
     # cni
     if [ ! -f /opt/cni/bin/loopback ]; then
@@ -180,13 +172,11 @@ write_files:
         chmod +x /opt/bin/health-monitor.sh
     fi
     
-    # Make sure systemd is aware of the new units in /etc/systemd/system
-    systemctl daemon-reload
+
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
-    
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -207,10 +197,11 @@ write_files:
     Documentation=https://kubernetes.io/docs/home/
     
     [Service]
-    Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
     Restart=always
     StartLimitInterval=0
     RestartSec=10
+    
+    Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
     
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
@@ -313,6 +304,13 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
+- path: /etc/systemd/system/docker.service.d/10-storage.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    ExecStart=
+    ExecStart=/usr/bin/dockerd -H fd:// --storage-driver=overlay2
+
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
   content: |
@@ -321,7 +319,6 @@ write_files:
     After=kubelet.service
     
     [Service]
-    Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
     ExecStart=/opt/bin/health-monitor.sh kubelet
     
     [Install]
@@ -336,70 +333,11 @@ write_files:
     After=docker.service
     
     [Service]
-    Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
     ExecStart=/opt/bin/health-monitor.sh container-runtime
     
     [Install]
     WantedBy=multi-user.target
     
-
-- path: /etc/docker/daemon.json
-  permissions: "0644"
-  content: |
-    {
-      "default-runtime": "docker-runc",
-      "runtimes": {
-        "docker-runc": {
-          "path": "/opt/bin/docker-runc"
-        }
-      },
-      "storage-driver": "overlay2",
-      "log-driver": "json-file",
-      "log-opts": {
-        "max-size": "10m",
-        "max-file": "2"
-      }
-    }
-
-- path: /etc/systemd/system/docker.service
-  permissions: "0644"
-  content: |
-    [Unit]
-    Description=Docker Application Container Engine
-    Documentation=https://docs.docker.com
-    After=network-online.target
-    Wants=network-online.target
-    
-    [Service]
-    Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
-    Type=notify
-    # the default is not to use systemd for cgroups because the delegate issues still
-    # exists and systemd currently does not support the cgroup feature set required
-    # for containers run by docker
-    ExecStart=/opt/bin/dockerd
-    ExecReload=/bin/kill -s HUP $MAINPID
-    LimitNOFILE=1048576
-    # Having non-zero Limit*s causes performance problems due to accounting overhead
-    # in the kernel. We recommend using cgroups to do container-local accounting.
-    LimitNPROC=infinity
-    LimitCORE=infinity
-    # Uncomment TasksMax if your systemd version supports it.
-    # Only systemd 226 and above support this version.
-    
-    TasksMax=infinity
-    
-    TimeoutStartSec=0
-    # set delegate yes so that systemd does not reset the cgroups of docker containers
-    Delegate=yes
-    # kill only the docker process, not all processes in the cgroup
-    KillMode=process
-    # restart the docker process if it exits prematurely
-    Restart=on-failure
-    StartLimitBurst=3
-    StartLimitInterval=60s
-    
-    [Install]
-    WantedBy=multi-user.target
 
 runcmd:
 - systemctl enable --now setup.service

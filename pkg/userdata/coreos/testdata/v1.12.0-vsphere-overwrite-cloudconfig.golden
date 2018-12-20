@@ -30,24 +30,10 @@ systemd:
     - name: locksmithd.service
       mask: true
 
+    - name: docker.service
+      enabled: true
 
-    - name: docker.socket
-      mask: true
-
-    - name: download-binaries.service
-      enabled: false
-      contents: |
-        [Unit]
-        Requires=network-online.target
-        After=network-online.target
-        [Service]
-        Type=oneshot
-        ExecStartPre=/opt/bin/download.sh
-        ExecStart=/usr/bin/echo Successfully downloaded all required binaries
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: setup-kubelet.service
+    - name: download-healthcheck-script.service
       enabled: true
       contents: |
         [Unit]
@@ -55,107 +41,24 @@ systemd:
         After=network-online.target
         [Service]
         Type=oneshot
-        ExecStart=/opt/bin/setup.sh
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: containerd.service
-      enabled: false
-      dropins:
-      - name: override.conf
-        contents: |
-          [Unit]
-          Requires=download-binaries.service
-          After=download-binaries.service
-      contents: |
-        [Unit]
-        Description=containerd container runtime
-        Documentation=https://containerd.io
-        After=network.target
-        
-        [Service]
-        Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
-        Delegate=yes
-        ExecStart=/opt/bin/docker-containerd -l unix:///var/run/docker/libcontainerd/docker-containerd.sock --metrics-interval=0 --start-timeout 2m --state-dir /var/run/docker/libcontainerd/containerd --shim /opt/bin/docker-containerd-shim --runtime /opt/bin/docker-runc
-        
-        KillMode=process
-        Restart=always
-        
-        # (lack of) limits from the upstream docker service unit
-        LimitNOFILE=1048576
-        LimitNPROC=infinity
-        LimitCORE=infinity
-        
-        TasksMax=infinity
-        
-        
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: docker.service
-      dropins:
-      - name: containerd.conf
-        contents: |
-          [Unit]
-          After=containerd.service
-          Requires=containerd.service
-          [Service]
-          ExecStart= 
-          ExecStart=/opt/bin/dockerd --containerd=/var/run/docker/libcontainerd/docker-containerd.sock 
-
-      contents: |
-        [Unit]
-        Description=Docker Application Container Engine
-        Documentation=https://docs.docker.com
-        After=network-online.target
-        Wants=network-online.target
-        
-        [Service]
-        Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
-        Type=notify
-        # the default is not to use systemd for cgroups because the delegate issues still
-        # exists and systemd currently does not support the cgroup feature set required
-        # for containers run by docker
-        ExecStart=/opt/bin/dockerd
-        ExecReload=/bin/kill -s HUP $MAINPID
-        LimitNOFILE=1048576
-        # Having non-zero Limit*s causes performance problems due to accounting overhead
-        # in the kernel. We recommend using cgroups to do container-local accounting.
-        LimitNPROC=infinity
-        LimitCORE=infinity
-        # Uncomment TasksMax if your systemd version supports it.
-        # Only systemd 226 and above support this version.
-        
-        TasksMax=infinity
-        
-        TimeoutStartSec=0
-        # set delegate yes so that systemd does not reset the cgroups of docker containers
-        Delegate=yes
-        # kill only the docker process, not all processes in the cgroup
-        KillMode=process
-        # restart the docker process if it exits prematurely
-        Restart=on-failure
-        StartLimitBurst=3
-        StartLimitInterval=60s
-        
+        ExecStart=/opt/bin/download.sh
         [Install]
         WantedBy=multi-user.target
 
     - name: docker-healthcheck.service
-      enabled: false
+      enabled: true
       dropins:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-binaries.service docker.service
-          After=download-binaries.service docker.service
+          Requires=download-healthcheck-script.service
+          After=download-healthcheck-script.service
       contents: |
           [Unit]
           Requires=docker.service
           After=docker.service
           
           [Service]
-          Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
           ExecStart=/opt/bin/health-monitor.sh container-runtime
           
           [Install]
@@ -163,20 +66,19 @@ systemd:
           
 
     - name: kubelet-healthcheck.service
-      enabled: false
+      enabled: true
       dropins:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-binaries.service kubelet.service
-          After=download-binaries.service kubelet.service
+          Requires=download-healthcheck-script.service
+          After=download-healthcheck-script.service
       contents: |
           [Unit]
           Requires=kubelet.service
           After=kubelet.service
           
           [Service]
-          Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
           ExecStart=/opt/bin/health-monitor.sh kubelet
           
           [Install]
@@ -184,12 +86,12 @@ systemd:
           
 
     - name: kubelet.service
-      enabled: false
+      enabled: true
       contents: |
         [Unit]
         Description=Kubernetes Kubelet
-        Requires=docker.service containerd.service
-        After=docker.service containerd.service
+        Requires=docker.service
+        After=docker.service
         [Service]
         TimeoutStartSec=5min
         Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.12.0
@@ -387,6 +289,14 @@ storage:
           PasswordAuthentication no
           ChallengeResponseAuthentication no
 
+    - path: /etc/systemd/system/docker.service.d/10-storage.conf
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          [Service]
+          Environment=DOCKER_OPTS=--storage-driver=overlay2
+
     - path: /opt/bin/download.sh
       filesystem: root
       mode: 0755
@@ -401,16 +311,6 @@ storage:
           mkdir -p /etc/cni/net.d
           mkdir -p /opt/cni/bin
           
-          # docker
-          if [ ! -f /opt/bin/docker ]; then
-              # TODO: Support newer versions. Make sure to validate if the newer containerd version has configuration changes
-              # Newer versions of docker use containterd with a config file - containerd from 17.03 does not support that
-              # we maybe need to manage both ways(flags & config) or wait until we deprecate Kubernetes 1.11 
-              curl -L http://download.docker.com/linux/static/stable/x86_64/docker-17.03.2-ce.tgz | tar -xvzC /opt/ -f -
-              mv /opt/docker/* /opt/bin/
-              rm -rf /opt/docker
-          fi
-          
           # cni
           if [ ! -f /opt/cni/bin/loopback ]; then
               curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
@@ -421,45 +321,3 @@ storage:
               chmod +x /opt/bin/health-monitor.sh
           fi
           
-
-    - path: /opt/bin/setup.sh
-      filesystem: root
-      mode: 0755
-      contents:
-        inline: |
-          #!/bin/bash
-          set -xeuo pipefail
-          # Make sure systemd is aware of the new units in /etc/systemd/system
-          systemctl daemon-reload
-          systemctl enable --now docker
-          systemctl enable --now kubelet
-          systemctl enable --now --no-block kubelet-healthcheck.service
-          systemctl enable --now --no-block docker-healthcheck.service
-          
-
-    - path: /etc/docker/daemon.json
-      filesystem: root
-      mode: 0644
-      contents:
-        inline: |
-          {
-            "default-runtime": "docker-runc",
-            "runtimes": {
-              "docker-runc": {
-                "path": "/opt/bin/docker-runc"
-              }
-            },
-            "storage-driver": "overlay2",
-            "log-driver": "json-file",
-            "log-opts": {
-              "max-size": "10m",
-              "max-file": "2"
-            }
-          }
-
-    - path: /etc/profile.d/opt-bin-path.sh
-      filesystem: root
-      mode: 0644
-      contents:
-        inline: |
-          export PATH="/opt/bin:$PATH"
