@@ -308,6 +308,16 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid volume type %s specified. Supported: %s", config.DiskType, volumeTypes)
 	}
 
+	if config.InstanceType == "" {
+		return fmt.Errorf("instanceType must be specified")
+	}
+
+	// Not the best test as the minimum disk size depends on the AMI
+	// but the best we can do here
+	if config.DiskSize == 0 {
+		return fmt.Errorf("diskSize must be specified and > 0")
+	}
+
 	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
 	if err != nil {
 		return fmt.Errorf("failed to create ec2 client: %v", err)
