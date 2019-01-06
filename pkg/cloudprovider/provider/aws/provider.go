@@ -14,6 +14,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -190,71 +191,71 @@ func getDefaultRootDevicePath(os providerconfig.OperatingSystem) (string, error)
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderConfig) (*Config, *providerconfig.Config, *RawConfig, error) {
 	if s.Value == nil {
-		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	rawConfig := RawConfig{}
 	if err := json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	c := Config{}
 	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "AWS_ACCESS_KEY_ID")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"accessKeyId\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"accessKeyId\" field, error = %v", err)
 	}
 	c.SecretAccessKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.SecretAccessKey, "AWS_SECRET_ACCESS_KEY")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"secretAccessKey\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"secretAccessKey\" field, error = %v", err)
 	}
 	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	c.VpcID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VpcID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	c.SubnetID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SubnetID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	for _, securityGroupIDRaw := range rawConfig.SecurityGroupIDs {
 		securityGroupID, err := p.configVarResolver.GetConfigVarStringValue(securityGroupIDRaw)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		c.SecurityGroupIDs = append(c.SecurityGroupIDs, securityGroupID)
 	}
 	c.InstanceProfile, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceProfile)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	c.AMI, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AMI)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	c.DiskSize = rawConfig.DiskSize
 	c.DiskType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	c.Tags = rawConfig.Tags
 
-	return &c, &pconfig, err
+	return &c, &pconfig, &rawConfig, err
 }
 
 func getSession(id, secret, token, region string) (*session.Session, error) {
@@ -282,11 +283,19 @@ func getEC2client(id, secret, region string) (*ec2.EC2, error) {
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	return spec, nil
+	_, _, rawConfig, err := p.getConfig(spec.ProviderConfig)
+	if err != nil {
+		return spec, err
+	}
+	if rawConfig.DiskType.Value == "" {
+		rawConfig.DiskType.Value = ec2.VolumeTypeStandard
+	}
+	spec.ProviderConfig.Value, err = setProviderConfig(*rawConfig, spec.ProviderConfig)
+	return spec, err
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	config, pc, err := p.getConfig(spec.ProviderConfig)
+	config, pc, _, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -370,7 +379,7 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
-	config, pc, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, pc, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -497,7 +506,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 		return false, err
 	}
 
-	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -525,7 +534,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -572,7 +581,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	c, _, err := p.getConfig(spec.ProviderConfig)
+	c, _, _, err := p.getConfig(spec.ProviderConfig)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -597,7 +606,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
-	c, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err == nil {
 		labels["size"] = c.InstanceType
 		labels["region"] = c.Region
@@ -617,7 +626,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to get instance: %v", err)
 	}
 
-	config, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	config, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -718,4 +727,26 @@ func awsErrorToTerminalError(err error, msg string) error {
 		}
 	}
 	return nil
+}
+
+func setProviderConfig(rawConfig RawConfig, s v1alpha1.ProviderConfig) (*runtime.RawExtension, error) {
+	if s.Value == nil {
+		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+	}
+	pconfig := providerconfig.Config{}
+	err := json.Unmarshal(s.Value.Raw, &pconfig)
+	if err != nil {
+		return nil, err
+	}
+	rawCloudProviderSpec, err := json.Marshal(rawConfig)
+	if err != nil {
+		return nil, err
+	}
+	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
+	rawPconfig, err := json.Marshal(pconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
