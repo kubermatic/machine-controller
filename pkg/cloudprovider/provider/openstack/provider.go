@@ -493,12 +493,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *c
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			if !hasFloatingIPReleaseFinalizer {
 				return true, nil
-			} else {
-				if err := p.cleanupFloatingIP(machine, machineCreateDeleteData.Updater); err != nil {
-					return false, fmt.Errorf("failed to clean up floating ip: %v", err)
-				}
-				return true, nil
 			}
+			if err := p.cleanupFloatingIP(machine, machineCreateDeleteData.Updater); err != nil {
+				return false, fmt.Errorf("failed to clean up floating ip: %v", err)
+			}
+			return true, nil
 		}
 		return false, err
 	}

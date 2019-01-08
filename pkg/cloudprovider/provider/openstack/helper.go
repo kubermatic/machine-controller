@@ -365,7 +365,7 @@ func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1
 		if ip, err = createFloatingIP(client, region, port.ID, floatingIPPool); err != nil {
 			return osErrorToTerminalError(err, "failed to allocate a floating ip")
 		}
-		if machine, err = machineUpdater(machine, func(m *v1alpha1.Machine) {
+		if _, err = machineUpdater(machine, func(m *v1alpha1.Machine) {
 			m.Finalizers = append(m.Finalizers, floatingIPReleaseFinalizer)
 			if m.Annotations == nil {
 				m.Annotations = map[string]string{}
