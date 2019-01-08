@@ -372,7 +372,7 @@ func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1
 			}
 			m.Annotations[floatingIPIDAnnotationKey] = ip.ID
 		}); err != nil {
-			return fmt.Errorf("failed to add floating ip release finalizer after associating floating ip: %v", err)
+			return fmt.Errorf("failed to add floating ip release finalizer after allocating floating ip: %v", err)
 		}
 	} else {
 		freeIP := freeFloatingIps[0]

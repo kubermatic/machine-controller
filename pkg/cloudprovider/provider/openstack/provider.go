@@ -2,7 +2,6 @@ package openstack
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -519,7 +518,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *c
 
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
-		return false, errors.New("failed to get compute client")
+		return false, osErrorToTerminalError(err, "failed to get compute client")
 	}
 
 	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && err.Error() != "Resource not found" {
