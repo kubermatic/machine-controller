@@ -30,6 +30,10 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
+const (
+	floatingIPReleaseFinalizer = "kubermatic.io/release-openstack-floating-ip"
+)
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -349,7 +353,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, machineCreateDeleteData *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -423,7 +427,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 
 	// Find a free FloatingIP or allocate a new one
 	if c.FloatingIPPool != "" {
-		if err := assignFloatingIPToInstance(client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
+		if err := assignFloatingIPToInstance(machineCreateDeleteData.Updater, machine, client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
 			defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %v", server.ID, err)
 		}

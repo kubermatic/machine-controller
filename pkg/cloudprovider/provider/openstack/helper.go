@@ -21,6 +21,10 @@ import (
 	osports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	ossubnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
+
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 var (
@@ -328,7 +332,7 @@ func getFreeFloatingIPs(client *gophercloud.ProviderClient, region string, float
 	return freeFIPs, nil
 }
 
-func assignFloatingIPToInstance(client *gophercloud.ProviderClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
+func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1alpha1.Machine, client *gophercloud.ProviderClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
 	port, err := getInstancePort(client, region, instanceID, network.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get instance port for network %s in region %s: %v", network.ID, region, err)
@@ -360,6 +364,11 @@ func assignFloatingIPToInstance(client *gophercloud.ProviderClient, instanceID, 
 	if len(freeFloatingIps) < 1 {
 		if ip, err = createFloatingIP(client, region, port.ID, floatingIPPool); err != nil {
 			return osErrorToTerminalError(err, "failed to allocate a floating ip")
+		}
+		if machine, err = machineUpdater(machine, func(m *v1alpha1.Machine) {
+			m.Finalizers = append(m.Finalizers, floatingIPReleaseFinalizer)
+		}); err != nil {
+			return fmt.Errorf("failed to add floating ip release finalizer after associating floating ip: %v", err)
 		}
 	} else {
 		freeIP := freeFloatingIps[0]
