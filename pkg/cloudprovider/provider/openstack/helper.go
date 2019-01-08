@@ -332,38 +332,6 @@ func getFreeFloatingIPs(client *gophercloud.ProviderClient, region string, float
 	return freeFIPs, nil
 }
 
-func getFloatingIPIDsForInstance(client *gophercloud.ProviderClient, server *serverWithExt, region, floatingIPPoolName, networkID string) ([]string, error) {
-	port, err := getInstancePort(client, region, server.ID, networkID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get instance port for network %s in region %s: %v", networkID, region, err)
-	}
-	floatingIPPool, err := getNetwork(client, region, floatingIPPoolName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get floating ip pool %q: %v", floatingIPPoolName, err)
-	}
-	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: region})
-	if err != nil {
-		return nil, err
-	}
-
-	allPages, err := osfloatingips.List(netClient, osfloatingips.ListOpts{
-		FloatingNetworkID: floatingIPPool.ID,
-		PortID:            port.ID}).AllPages()
-	if err != nil {
-		return nil, err
-	}
-	allFIPs, err := osfloatingips.ExtractFloatingIPs(allPages)
-	if err != nil {
-		return nil, err
-	}
-	var floatingIPIDs []string
-	for _, floatingIP := range allFIPs {
-		floatingIPIDs = append(floatingIPIDs, floatingIP.ID)
-	}
-
-	return floatingIPIDs, nil
-}
-
 func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1alpha1.Machine, client *gophercloud.ProviderClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
 	port, err := getInstancePort(client, region, instanceID, network.ID)
 	if err != nil {
@@ -399,6 +367,10 @@ func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1
 		}
 		if machine, err = machineUpdater(machine, func(m *v1alpha1.Machine) {
 			m.Finalizers = append(m.Finalizers, floatingIPReleaseFinalizer)
+			if m.Annotations == nil {
+				m.Annotations = map[string]string{}
+			}
+			m.Annotations[floatingIPIDAnnotationKey] = ip.ID
 		}); err != nil {
 			return fmt.Errorf("failed to add floating ip release finalizer after associating floating ip: %v", err)
 		}

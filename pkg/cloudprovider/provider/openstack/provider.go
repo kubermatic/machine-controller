@@ -35,6 +35,7 @@ import (
 
 const (
 	floatingIPReleaseFinalizer = "kubermatic.io/release-openstack-floating-ip"
+	floatingIPIDAnnotationKey  = "kubermatic.io/release-openstack-floating-ip"
 )
 
 type provider struct {
@@ -490,8 +491,15 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *c
 
 	instance, err := p.Get(machine)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound && !hasFloatingIPReleaseFinalizer {
-			return true, nil
+		if err == cloudprovidererrors.ErrInstanceNotFound {
+			if !hasFloatingIPReleaseFinalizer {
+				return true, nil
+			} else {
+				if err := p.cleanupFloatingIP(machine, machineCreateDeleteData.Updater); err != nil {
+					return false, fmt.Errorf("failed to clean up floating ip: %v", err)
+				}
+				return true, nil
+			}
 		}
 		return false, err
 	}
@@ -514,42 +522,15 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *c
 		return false, errors.New("failed to get compute client")
 	}
 
-	var floatingIPIDs []string
-	if hasFloatingIPReleaseFinalizer {
-		assertedInstance := instance.(*osInstance)
-		network, err := getNetwork(client, c.Region, c.Network)
-		if err != nil {
-			return false, fmt.Errorf("failed to get network %s", c.Network)
-		}
-		floatingIPIDs, err = getFloatingIPIDsForInstance(client, assertedInstance.server, c.Region, c.FloatingIPPool, network.ID)
-	}
-
-	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil {
+	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && err.Error() != "Resource not found" {
 		return false, osErrorToTerminalError(err, "failed to delete instance")
 	}
 
-	if len(floatingIPIDs) > 0 {
-		netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
-		if err != nil {
-			return false, fmt.Errorf("failed to create the networkv2 client for region %s: %v", c.Region, err)
-		}
-		for _, floatingIPID := range floatingIPIDs {
-			if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil {
-				return false, fmt.Errorf("failed to delete floating ip %s: %v", floatingIPID, err)
-			}
-		}
+	if hasFloatingIPReleaseFinalizer {
+		return false, p.cleanupFloatingIP(machine, machineCreateDeleteData.Updater)
 	}
 
-	if finalizers := sets.NewString(machine.Finalizers...); finalizers.Has(floatingIPReleaseFinalizer) {
-		finalizers.Delete(floatingIPReleaseFinalizer)
-		if _, err := machineCreateDeleteData.Updater(machine, func(m *v1alpha1.Machine) {
-			m.Finalizers = finalizers.List()
-		}); err != nil {
-			return false, fmt.Errorf("failed to delete %s finalizer from Machine: %v", floatingIPReleaseFinalizer, err)
-		}
-	}
-
-	return true, nil
+	return false, nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
@@ -775,4 +756,43 @@ type forbiddenResponse struct {
 		Message string `json:"message"`
 		Code    int    `json:"code"`
 	} `json:"forbidden"`
+}
+
+func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloud.MachineUpdater) error {
+	var floatingIPID string
+	if val, exists := machine.Annotations[floatingIPIDAnnotationKey]; exists {
+		floatingIPID = val
+	} else {
+		return osErrorToTerminalError(fmt.Errorf("failed to release floating ip"),
+			fmt.Sprintf("%s finalizer exists but %s annotation does not", floatingIPReleaseFinalizer, floatingIPIDAnnotationKey))
+	}
+
+	c, _, _, err := p.getConfig(machine.Spec.ProviderConfig)
+	if err != nil {
+		return cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
+	}
+
+	client, err := getClient(c)
+	if err != nil {
+		return osErrorToTerminalError(err, "failed to get a openstack client")
+	}
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	if err != nil {
+		return fmt.Errorf("failed to create the networkv2 client for region %s: %v", c.Region, err)
+	}
+	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && err.Error() != "Resource not found" {
+		return fmt.Errorf("failed to delete floating ip %s: %v", floatingIPID, err)
+	}
+	if _, err := updater(machine, func(m *v1alpha1.Machine) {
+		finalizers := sets.NewString(m.Finalizers...)
+		finalizers.Delete(floatingIPReleaseFinalizer)
+		m.Finalizers = finalizers.List()
+	}); err != nil {
+		return fmt.Errorf("failed to delete %s finalizer from Machine: %v", floatingIPReleaseFinalizer, err)
+	}
+
+	return nil
 }
