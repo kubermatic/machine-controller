@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
+	osfloatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/pagination"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -24,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -479,10 +482,15 @@ func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, se
 	glog.V(0).Infof("Instance %s got deleted", serverID)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *cloud.MachineCreateDeleteData) (bool, error) {
+	var hasFloatingIPReleaseFinalizer bool
+	if finalizers := sets.NewString(machine.Finalizers...); finalizers.Has(floatingIPReleaseFinalizer) {
+		hasFloatingIPReleaseFinalizer = true
+	}
+
 	instance, err := p.Get(machine)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if err == cloudprovidererrors.ErrInstanceNotFound && !hasFloatingIPReleaseFinalizer {
 			return true, nil
 		}
 		return false, err
@@ -503,14 +511,45 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
-		return false, osErrorToTerminalError(err, "failed to get compute client")
+		return false, errors.New("failed to get compute client")
+	}
+
+	var floatingIPIDs []string
+	if hasFloatingIPReleaseFinalizer {
+		assertedInstance := instance.(*osInstance)
+		network, err := getNetwork(client, c.Region, c.Network)
+		if err != nil {
+			return false, fmt.Errorf("failed to get network %s", c.Network)
+		}
+		floatingIPIDs, err = getFloatingIPIDsForInstance(client, assertedInstance.server, c.Region, c.FloatingIPPool, network.ID)
 	}
 
 	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil {
 		return false, osErrorToTerminalError(err, "failed to delete instance")
 	}
 
-	return false, nil
+	if len(floatingIPIDs) > 0 {
+		netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
+		if err != nil {
+			return false, fmt.Errorf("failed to create the networkv2 client for region %s: %v", c.Region, err)
+		}
+		for _, floatingIPID := range floatingIPIDs {
+			if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil {
+				return false, fmt.Errorf("failed to delete floating ip %s: %v", floatingIPID, err)
+			}
+		}
+	}
+
+	if finalizers := sets.NewString(machine.Finalizers...); finalizers.Has(floatingIPReleaseFinalizer) {
+		finalizers.Delete(floatingIPReleaseFinalizer)
+		if _, err := machineCreateDeleteData.Updater(machine, func(m *v1alpha1.Machine) {
+			m.Finalizers = finalizers.List()
+		}); err != nil {
+			return false, fmt.Errorf("failed to delete %s finalizer from Machine: %v", floatingIPReleaseFinalizer, err)
+		}
+	}
+
+	return true, nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
