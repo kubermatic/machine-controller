@@ -756,10 +756,8 @@ type forbiddenResponse struct {
 }
 
 func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloud.MachineUpdater) error {
-	var floatingIPID string
-	if val, exists := machine.Annotations[floatingIPIDAnnotationKey]; exists {
-		floatingIPID = val
-	} else {
+	floatingIPID, exists := machine.Annotations[floatingIPIDAnnotationKey]
+	if !exists {
 		return osErrorToTerminalError(fmt.Errorf("failed to release floating ip"),
 			fmt.Sprintf("%s finalizer exists but %s annotation does not", floatingIPReleaseFinalizer, floatingIPIDAnnotationKey))
 	}
