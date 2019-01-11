@@ -51,7 +51,12 @@ for try in {1..20}; do
   echo "Creating environment at cloud provider."
   terraform import hcloud_ssh_key.default 265119
   terraform apply -auto-approve
-  if [[ $? == 0 ]]; then break; fi
+  TF_RC=$?
+  if [[ $TF_RC == 0 ]]; then break; fi
+  if [[ $TF_RC != 0 ]] && [[ $try -eq 20 ]]; then
+    echo "Creating cloud provider env failed!"
+    exit 1
+  fi
   echo "Sleeping for $try seconds"
   sleep ${try}s
 done
