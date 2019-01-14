@@ -732,6 +732,12 @@ func awsErrorToTerminalError(err error, msg string) error {
 				Reason:  common.InvalidConfigurationMachineError,
 				Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",
 			}
+		case "OptInRequired":
+			// User has to accept the terms of the AMI
+			return cloudprovidererrors.TerminalError{
+				Reason:  "AMI terms not accepted",
+				Message: err.Error(),
+			}
 		default:
 			return prepareAndReturnError()
 		}
