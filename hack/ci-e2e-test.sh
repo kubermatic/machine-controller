@@ -49,7 +49,7 @@ for try in {1..20}; do
   set +e
   # Create environment at cloud provider
   echo "Creating environment at cloud provider."
-  terraform import hcloud_ssh_key.default 265119
+  terraform import hcloud_ssh_key.default 355488
   terraform apply -auto-approve
   TF_RC=$?
   if [[ $TF_RC == 0 ]]; then break; fi
