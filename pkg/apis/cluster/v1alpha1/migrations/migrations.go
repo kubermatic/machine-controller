@@ -38,7 +38,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 	if err != nil {
 		return fmt.Errorf("failed to construct clusterv1alpha1 client: %v", err)
 	}
-	gvr := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machine"}
+	gvr := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machines"}
 	objects, err := dynamicClient.Resource(gvr).List(metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list machine objects: %v", err)
