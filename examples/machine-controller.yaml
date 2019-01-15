@@ -14,10 +14,10 @@ spec:
   additionalPrinterColumns:
   - name: Provider
     type: string
-    JSONPath: .spec.providerConfig.value.cloudProvider
+    JSONPath: .spec.providerSpec.value.cloudProvider
   - name: OS
     type: string
-    JSONPath: .spec.providerConfig.value.operatingSystem
+    JSONPath: .spec.providerSpec.value.operatingSystem
   - name: Address
     type: string
     JSONPath: .status.addresses[0].address
@@ -48,10 +48,10 @@ spec:
     JSONPath: .spec.replicas
   - name: Provider
     type: string
-    JSONPath: .spec.template.spec.providerConfig.value.cloudProvider
+    JSONPath: .spec.template.spec.providerSpec.value.cloudProvider
   - name: OS
     type: string
-    JSONPath: .spec.template.spec.providerConfig.value.operatingSystem
+    JSONPath: .spec.template.spec.providerSpec.value.operatingSystem
   - name: Age
     type: date
     JSONPath: .metadata.creationTimestamp
@@ -78,10 +78,10 @@ spec:
     JSONPath: .spec.replicas
   - name: Provider
     type: string
-    JSONPath: .spec.template.spec.providerConfig.value.cloudProvider
+    JSONPath: .spec.template.spec.providerSpec.value.cloudProvider
   - name: OS
     type: string
-    JSONPath: .spec.template.spec.providerConfig.value.operatingSystem
+    JSONPath: .spec.template.spec.providerSpec.value.operatingSystem
   - name: Age
     type: date
     JSONPath: .metadata.creationTimestamp

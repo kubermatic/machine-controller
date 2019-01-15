@@ -44,7 +44,7 @@ spec:
       labels:
         foo: bar
     spec:
-      providerConfig:
+      providerSpec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"

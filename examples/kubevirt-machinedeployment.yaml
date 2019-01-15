@@ -20,7 +20,7 @@ spec:
       labels:
         name: foo
     spec:
-      providerConfig:
+      providerSpec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"

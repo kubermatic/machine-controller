@@ -18,7 +18,7 @@ spec:
       labels:
         name: << MACHINE_NAME >>
     spec:
-      providerConfig:
+      providerSpec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"

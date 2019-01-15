@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
 spec:
   spec:
-    providerConfig:
+    providerSpec:
       value:
         sshPublicKeys:
           - "<< YOUR_PUBLIC_KEY >>"
