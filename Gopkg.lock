@@ -1206,6 +1206,14 @@
   revision = "01a732e01d00cb9a81bb0ca050d3e6d2b947927b"
 
 [[projects]]
+  digest = "1:9cc257b3c9ff6a0158c9c661ab6eebda1fe8a4a4453cd5c4044dc9a2ebfb992b"
+  name = "k8s.io/klog"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "a5bc97fbc634d635061f3146511332c7e313a55a"
+  version = "v0.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:f4fb3421360af5c51070bfe0c1c7467f8809fa70e278e129f068f5106b5c8a65"
   name = "k8s.io/kube-openapi"
@@ -1250,7 +1258,7 @@
   source = "github.com/kubevirt/kubevirt"
 
 [[projects]]
-  digest = "1:9f9213e41a700d98c8b204394214077f015fa84a0e29a955ec04a64b88b62032"
+  digest = "1:3c0d8b30119784944e246089e19d94ae58ac40f8d3fec1c8ff9761774a545471"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis",
@@ -1273,7 +1281,7 @@
     "pkg/util",
   ]
   pruneopts = "NUT"
-  revision = "05cb1e663eb4085fbb92321dd1235377c84567f8"
+  revision = "45f1c93260140936c610e56575d7505ba3d52444"
 
 [[projects]]
   digest = "1:9bf88f2082655455535099895e8220704fddbea2e7104b5684c19506c1076b69"
@@ -1306,6 +1314,14 @@
   pruneopts = "NUT"
   revision = "5fd1e9e9fac5261e9ad9d47c375afc014fc31d21"
   version = "v0.1.7"
+
+[[projects]]
+  digest = "1:8730e0150dfb2b7e173890c8b9868e7a273082ef8e39f4940e3506a481cf895c"
+  name = "sigs.k8s.io/yaml"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "fd68e9863619f6ec2fdd8625fe1f02e7c877e480"
+  version = "v1.1.0"
 
 [solve-meta]
   analyzer-name = "dep"
