@@ -50,7 +50,7 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	if err != nil {
 		return err
 	}
-	out.Spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
+	out.Spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 
 	// This currently results in in.Spec.Versions.ContainerRuntime being dropped,
 	// because it was removed from the upstream type in
