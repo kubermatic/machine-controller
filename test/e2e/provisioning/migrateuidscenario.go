@@ -60,15 +60,15 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	machine.Name = machineDeployment.Name
 	machine.Spec.Name = machine.Name
 
-	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
+	providerSpec, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to get provider config: %v", err)
+		return fmt.Errorf("failed to get provideSpec: %v", err)
 	}
 	fakeClient := fake.NewSimpleClientset()
 	skg := providerconfig.NewConfigVarResolver(fakeClient)
-	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+	prov, err := cloudprovider.ForProvider(providerSpec.CloudProvider, skg)
 	if err != nil {
-		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
+		return fmt.Errorf("failed to get cloud provider %q: %v", providerSpec.CloudProvider, err)
 
 	}
 	defaultedSpec, err := prov.AddDefaults(machine.Spec)
