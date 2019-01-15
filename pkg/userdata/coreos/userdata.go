@@ -87,7 +87,7 @@ func (p Provider) UserData(
 
 	data := struct {
 		MachineSpec       clusterv1alpha1.MachineSpec
-		ProviderSpec    *providerconfig.Config
+		ProviderSpec      *providerconfig.Config
 		CoreOSConfig      *Config
 		Kubeconfig        string
 		CloudProvider     string
@@ -98,7 +98,7 @@ func (p Provider) UserData(
 		KubeletVersion    string
 	}{
 		MachineSpec:       spec,
-		ProviderSpec:    pconfig,
+		ProviderSpec:      pconfig,
 		CoreOSConfig:      coreosConfig,
 		Kubeconfig:        kubeconfigString,
 		CloudProvider:     cpName,

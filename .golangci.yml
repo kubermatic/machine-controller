@@ -30,5 +30,6 @@ issues:
   - should have comment or be unexported
   - should have comment \\(or a comment on this block\\) or be unexported
   - func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine should be ConvertMachinesV1alpha1MachineToClusterV1alpha1Machine
+  - func Convert_ProviderConfig_To_ProviderSpec should be ConvertProviderConfigToProviderSpec
   - 'counter\.Set is deprecated: Use NewConstMetric'
   - 'eviction\.go:221:4: the surrounding loop is unconditionally terminated'

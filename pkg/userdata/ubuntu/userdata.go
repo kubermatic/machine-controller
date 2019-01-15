@@ -97,7 +97,7 @@ func (p Provider) UserData(
 
 	data := struct {
 		MachineSpec      clusterv1alpha1.MachineSpec
-		ProviderSpec   *providerconfig.Config
+		ProviderSpec     *providerconfig.Config
 		OSConfig         *Config
 		CloudProvider    string
 		CloudConfig      string
@@ -108,7 +108,7 @@ func (p Provider) UserData(
 		KubernetesCACert string
 	}{
 		MachineSpec:      spec,
-		ProviderSpec:   pconfig,
+		ProviderSpec:     pconfig,
 		OSConfig:         osConfig,
 		CloudProvider:    cpName,
 		CloudConfig:      cpConfig,
