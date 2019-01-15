@@ -17,7 +17,7 @@ import (
 
 type provider struct{}
 
-type CloudProviderConfig struct {
+type CloudProviderSpec struct {
 	PassValidation bool `json:"passValidation"`
 }
 
@@ -45,20 +45,20 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-// Validate returns success or failure based according to its FakeCloudProviderConfig
+// Validate returns success or failure based according to its FakeCloudProviderSpec
 func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	pconfig := providerconfig.Config{}
-	err := json.Unmarshal(machinespec.ProviderConfig.Value.Raw, &pconfig)
+	err := json.Unmarshal(machinespec.ProviderSpec.Value.Raw, &pconfig)
 	if err != nil {
 		return err
 	}
 
-	fakeCloudProviderConfig := CloudProviderConfig{}
-	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &fakeCloudProviderConfig); err != nil {
+	fakeCloudProviderSpec := CloudProviderSpec{}
+	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &fakeCloudProviderSpec); err != nil {
 		return err
 	}
 
-	if fakeCloudProviderConfig.PassValidation {
+	if fakeCloudProviderSpec.PassValidation {
 		glog.V(4).Infof("succeeding validation as requested")
 		return nil
 	}

@@ -38,7 +38,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 	if err != nil {
 		return fmt.Errorf("failed to construct clusterv1alpha1 client: %v", err)
 	}
-	gvr := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Kind: "machine"}
+	gvr := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machine"}
 	objects, err := dynamicClient.Resource(gvr).List(metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list machine objects: %v", err)
@@ -50,7 +50,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 			return fmt.Errorf("failed to marshal unstructured machine %s: %v", object.GetName(), err)
 		}
 
-		convertedMachine, wasConverted, err := conversions.Convert_ProviderConfig_To_ProviderSpec(rawMachines)
+		convertedMachine, wasConverted, err := conversions.Convert_ProviderConfig_To_ProviderSpec(marshalledObject)
 		if err != nil {
 			return fmt.Errorf("failed to convert machine: %v", err)
 		}
@@ -133,7 +133,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 
 		// Some providers need to update the provider instance to the new UID, we get the provider as early as possible
 		// to not fail in a half-migrated state when the providerconfig is invalid
-		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderConfig)
+		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %v", err)
 		}

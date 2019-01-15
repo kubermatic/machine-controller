@@ -145,7 +145,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 			)
 		}
 
-		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
+		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 		if err != nil {
 			runtime.HandleError(fmt.Errorf("failed to determine provider config for machine: %v", err))
 			continue

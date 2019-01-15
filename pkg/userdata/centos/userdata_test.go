@@ -120,9 +120,9 @@ func TestUserDataGeneration(t *testing.T) {
 	provider := Provider{}
 
 	for _, test := range tests {
-		emtpyProviderConfig := clusterv1alpha1.ProviderConfig{
+		emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
 			Value: &runtime.RawExtension{}}
-		test.spec.ProviderConfig = emtpyProviderConfig
+		test.spec.ProviderSpec = emtpyProviderSpec
 		var cloudProvider *fakeCloudConfigProvider
 		if test.cloudProviderName != nil {
 			cloudProvider = &fakeCloudConfigProvider{name: *test.cloudProviderName, config: "{config:true}", err: nil}

@@ -14,7 +14,7 @@ func TestCloudproviderCache(t *testing.T) {
 	cache := New()
 
 	m1 := clusterv1alpha1.MachineSpec{}
-	m1.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m1"}`)}
+	m1.ProviderSpec.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m1"}`)}
 	m1.Name = "hans"
 
 	// Test SET and GET
@@ -73,7 +73,7 @@ func TestCloudproviderCache(t *testing.T) {
 
 	// Test Providerconfig does not get ignored by cache
 	m2 := clusterv1alpha1.MachineSpec{}
-	m2.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m2"}`)}
+	m2.ProviderSpec.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m2"}`)}
 	val, exists, err = cache.Get(m2)
 	if err != nil {
 		t.Fatalf("Error getting m2 from cache: %v", err)
@@ -87,7 +87,7 @@ func TestCloudproviderCache(t *testing.T) {
 
 	// Test error gets properly cached
 	m3 := clusterv1alpha1.MachineSpec{}
-	m3.ProviderConfig.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m3"}`)}
+	m3.ProviderSpec.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m3"}`)}
 	errMsg := "Thou shall not pass"
 	if err := cache.Set(m3, errors.New(errMsg)); err != nil {
 		t.Fatalf("Error setting cache value for m3: %v", err)

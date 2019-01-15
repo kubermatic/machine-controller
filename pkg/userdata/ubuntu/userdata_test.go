@@ -244,18 +244,18 @@ func TestProvider_UserData(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			spec := test.spec
-			rProviderConfig := test.providerConfig
+			rProviderSpec := test.providerConfig
 			osConfigByte, err := json.Marshal(test.osConfig)
 			if err != nil {
 				t.Fatal(err)
 			}
-			rProviderConfig.OperatingSystemSpec = runtime.RawExtension{Raw: osConfigByte}
+			rProviderSpec.OperatingSystemSpec = runtime.RawExtension{Raw: osConfigByte}
 
-			providerConfigRaw, err := json.Marshal(rProviderConfig)
+			providerConfigRaw, err := json.Marshal(rProviderSpec)
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
+			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 			p := Provider{}
 
 			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
