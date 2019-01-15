@@ -21,22 +21,22 @@ func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
 			continue
 		}
-		fixuteJsonBytes, err := yaml.YAMLToJSON(fixtureYamlByte)
+		fixtureJSONBytes, err := yaml.YAMLToJSON(fixtureYamlByte)
 		if err != nil {
 			t.Errorf("failed to convert yaml to json: %v", err)
 			continue
 		}
-		convertedMachine, _, err := Convert_ProviderConfig_To_ProviderSpec(fixuteJsonBytes)
+		convertedMachine, _, err := Convert_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
 		if err != nil {
 			t.Errorf("failed to convert machine from file %s: %v", fixture.Name(), err)
 			continue
 		}
-		convertedMachineJsonBytes, err := json.Marshal(*convertedMachine)
+		convertedMachineJSONBytes, err := json.Marshal(*convertedMachine)
 		if err != nil {
 			t.Errorf("faile to marshal converted machine %s: %v", convertedMachine.Name, err)
 			continue
 		}
-		convertedMachineYamlBytes, err := yaml.JSONToYAML(convertedMachineJsonBytes)
+		convertedMachineYamlBytes, err := yaml.JSONToYAML(convertedMachineJSONBytes)
 		if err != nil {
 			t.Errorf("failed to convert json to yaml: %v", err)
 			continue
