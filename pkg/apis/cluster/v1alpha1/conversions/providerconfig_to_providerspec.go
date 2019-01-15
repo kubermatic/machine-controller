@@ -27,26 +27,29 @@ type machineSpecWithProviderSpecAndProviderConfig struct {
 	ConfigSource      *corev1.NodeConfigSource           `json:"configSource,omitempty"`
 }
 
-func Convert_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alpha1.Machine, error) {
+func Convert_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alpha1.Machine, bool, error) {
+	var wasConverted bool
+
 	superMachine := &machineWithProviderSpecAndProviderConfig{}
 	if err := json.Unmarshal(in, superMachine); err != nil {
-		return nil, fmt.Errorf("error unmarshalling machine object: %v", err)
+		return nil, wasConverted, fmt.Errorf("error unmarshalling machine object: %v", err)
 	}
 	if superMachine.Spec.ProviderConfig != nil && superMachine.Spec.ProviderSpec != nil {
-		return nil, fmt.Errorf("both .spec.providerConfig and .spec.ProviderSpec were non-nil for machine %s", superMachine.Name)
+		return nil, wasConverted, fmt.Errorf("both .spec.providerConfig and .spec.ProviderSpec were non-nil for machine %s", superMachine.Name)
 	}
 	if superMachine.Spec.ProviderConfig != nil {
 		superMachine.Spec.ProviderSpec = superMachine.Spec.ProviderConfig
 		superMachine.Spec.ProviderConfig = nil
+		wasConverted = true
 	}
 
 	machine := &clusterv1alpha1.Machine{}
 	superMachineBytes, err := json.Marshal(superMachine)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal superMachine object for machine %s: %v", superMachine.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to marshal superMachine object for machine %s: %v", superMachine.Name, err)
 	}
 	if err := json.Unmarshal(superMachineBytes, machine); err != nil {
-		return nil, fmt.Errorf("failed to unmarhsla superMachine object for machine %s back into machine object: %v", superMachine.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to unmarhsla superMachine object for machine %s back into machine object: %v", superMachine.Name, err)
 	}
-	return machine, nil
+	return machine, wasConverted, nil
 }

@@ -19,7 +19,7 @@ func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
 			continue
 		}
-		convertedMachine, err := Convert_ProviderConfig_To_ProviderSpec(bt)
+		convertedMachine, _, err := Convert_ProviderConfig_To_ProviderSpec(bt)
 		if err != nil {
 			t.Errorf("failed to convert machine from file %s: %v", fixture.Name(), err)
 			continue

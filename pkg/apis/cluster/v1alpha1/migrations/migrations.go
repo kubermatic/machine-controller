@@ -17,8 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	dynamicclient "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
@@ -26,6 +28,42 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
+
+func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) error {
+	dynamicClient, err := dynamicclient.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to construct dynamic client: %v", err)
+	}
+	clusterClient, err := clusterv1alpha1clientset.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to construct clusterv1alpha1 client: %v", err)
+	}
+	gvr := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Kind: "machine"}
+	objects, err := dynamicClient.Resource(gvr).List(metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list machine objects: %v", err)
+	}
+
+	for _, object := range objects.Items {
+		marshalledObject, err := object.MarshalJSON()
+		if err != nil {
+			return fmt.Errorf("failed to marshal unstructured machine %s: %v", object.GetName(), err)
+		}
+
+		convertedMachine, wasConverted, err := conversions.Convert_ProviderConfig_To_ProviderSpec(rawMachines)
+		if err != nil {
+			return fmt.Errorf("failed to convert machine: %v", err)
+		}
+
+		if wasConverted {
+			if _, err = clusterClient.ClusterV1alpha1().Machines(convertedMachine.Namespace).Update(convertedMachine); err != nil {
+				return fmt.Errorf("failed to update converted machine %s: %v", convertedMachine.Name, err)
+			}
+		}
+	}
+
+	return nil
+}
 
 func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	kubeClient kubernetes.Interface,
