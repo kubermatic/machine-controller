@@ -83,13 +83,13 @@ func TestProvider_UserData(t *testing.T) {
 		spec             clusterv1alpha1.MachineSpec
 		ccProvider       cloud.ConfigProvider
 		osConfig         *Config
-		providerConfig   *providerconfig.Config
+		providerSpec     *providerconfig.Config
 		DNSIPs           []net.IP
 		kubernetesCACert string
 	}{
 		{
 			name: "v1.9.2-disable-auto-update-aws",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -106,7 +106,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "v1.10.3-auto-update-openstack-multiple-dns",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -123,7 +123,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "auto-update-openstack-kubelet-v-version-prefix",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -140,7 +140,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "v1.11.2-vsphere-static-ipconfig",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				Network: &providerconfig.NetworkConfig{
@@ -164,7 +164,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "v1.12.0-vsphere-overwrite-cloudconfig",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider:        "vsphere",
 				OverwriteCloudConfig: stringPtr("my\ncustom\ncloud-config"),
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -192,18 +192,18 @@ func TestProvider_UserData(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			spec := test.spec
-			rProviderSpec := test.providerConfig
+			rProviderSpec := test.providerSpec
 			osConfigByte, err := json.Marshal(test.osConfig)
 			if err != nil {
 				t.Fatal(err)
 			}
 			rProviderSpec.OperatingSystemSpec = runtime.RawExtension{Raw: osConfigByte}
 
-			providerConfigRaw, err := json.Marshal(rProviderSpec)
+			providerSpecRaw, err := json.Marshal(rProviderSpec)
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
+			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerSpecRaw}}
 			p := Provider{}
 
 			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)

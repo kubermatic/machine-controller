@@ -74,7 +74,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.MachineSpec) error {
 	providerConfig, err := providerconfig.GetConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to read machine.Spec.Providerconfig: %v", err)
+		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
 	}
 	skg := providerconfig.NewConfigVarResolver(ad.coreClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)

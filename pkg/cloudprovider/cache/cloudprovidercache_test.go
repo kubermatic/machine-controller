@@ -71,7 +71,7 @@ func TestCloudproviderCache(t *testing.T) {
 		t.Errorf("Expected m1 val to be nil after adding kubelet version but was %s", val)
 	}
 
-	// Test Providerconfig does not get ignored by cache
+	// Test ProviderSpec does not get ignored by cache
 	m2 := clusterv1alpha1.MachineSpec{}
 	m2.ProviderSpec.Value = &runtime.RawExtension{Raw: []byte(`{"key":"m2"}`)}
 	val, exists, err = cache.Get(m2)
