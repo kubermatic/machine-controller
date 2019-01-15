@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	machinecontrolleradmission "github.com/kubermatic/machine-controller/pkg/admission"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
@@ -56,6 +57,12 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 		}
 
 		if wasConverted {
+			if convertedMachine.Annotations == nil {
+				convertedMachine.Annotations = map[string]string{}
+			}
+			// We must set this, otherwise the webhook will deny our update request because modifications to a machines
+			// spec are not allowed
+			convertedMachine.Annotations[machinecontrolleradmission.BypassSpecNoModificationRequirementAnnotation] = "true"
 			if _, err = clusterClient.ClusterV1alpha1().Machines(convertedMachine.Namespace).Update(convertedMachine); err != nil {
 				return fmt.Errorf("failed to update converted machine %s: %v", convertedMachine.Name, err)
 			}
