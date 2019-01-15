@@ -1,0 +1,13 @@
+apiVersion: cluster.k8s.io/v1alpha1
+kind: MachineDeployment
+metadata:
+  creationTimestamp: null
+  name: hetzner-machine
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+  providerSpec: {}
+  versions:
+    kubelet: ""
+status: {}

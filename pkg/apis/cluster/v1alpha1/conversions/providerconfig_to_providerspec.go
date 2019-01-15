@@ -49,7 +49,7 @@ func Convert_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alpha1.Machine
 		return nil, wasConverted, fmt.Errorf("failed to marshal superMachine object for machine %s: %v", superMachine.Name, err)
 	}
 	if err := json.Unmarshal(superMachineBytes, machine); err != nil {
-		return nil, wasConverted, fmt.Errorf("failed to unmarhsla superMachine object for machine %s back into machine object: %v", superMachine.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to unmarshal superMachine object for machine %s back into machine object: %v", superMachine.Name, err)
 	}
 	return machine, wasConverted, nil
 }

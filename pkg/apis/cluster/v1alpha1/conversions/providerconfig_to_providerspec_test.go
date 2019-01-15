@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"testing"
+
+	"github.com/ghodss/yaml"
 )
 
 func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
@@ -14,25 +16,35 @@ func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
 	}
 
 	for _, fixture := range fixtures {
-		bt, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineWithProviderConfig/%s", fixture.Name()))
+		fixtureYamlByte, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineWithProviderConfig/%s", fixture.Name()))
 		if err != nil {
 			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
 			continue
 		}
-		convertedMachine, _, err := Convert_ProviderConfig_To_ProviderSpec(bt)
+		fixuteJsonBytes, err := yaml.YAMLToJSON(fixtureYamlByte)
+		if err != nil {
+			t.Errorf("failed to convert yaml to json: %v", err)
+			continue
+		}
+		convertedMachine, _, err := Convert_ProviderConfig_To_ProviderSpec(fixuteJsonBytes)
 		if err != nil {
 			t.Errorf("failed to convert machine from file %s: %v", fixture.Name(), err)
 			continue
 		}
-		convertedMachineBytes, err := json.Marshal(*convertedMachine)
+		convertedMachineJsonBytes, err := json.Marshal(*convertedMachine)
 		if err != nil {
 			t.Errorf("faile to marshal converted machine %s: %v", convertedMachine.Name, err)
+			continue
+		}
+		convertedMachineYamlBytes, err := yaml.JSONToYAML(convertedMachineJsonBytes)
+		if err != nil {
+			t.Errorf("failed to convert json to yaml: %v", err)
 			continue
 		}
 
 		resultFixturePath := fmt.Sprintf("testdata/migrated_clusterv1alpha1machineWithProviderConfig/%s", fixture.Name())
 		if *update {
-			if err := ioutil.WriteFile(resultFixturePath, convertedMachineBytes, 0644); err != nil {
+			if err := ioutil.WriteFile(resultFixturePath, convertedMachineYamlBytes, 0644); err != nil {
 				t.Errorf("failed to update fixture for machine %s: %v", convertedMachine.Name, err)
 				continue
 			}
@@ -44,8 +56,8 @@ func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			continue
 		}
 
-		if string(convertedMachineBytes) != string(resultFixtureContent) {
-			t.Errorf("Converted Machine does not match fixture, converted machine:\n---\n%s\n---\nFixture:\n---\n%s\n---", string(convertedMachineBytes), string(resultFixtureContent))
+		if string(convertedMachineYamlBytes) != string(resultFixtureContent) {
+			t.Errorf("Converted Machine does not match fixture, converted machine:\n---\n%s\n---\nFixture:\n---\n%s\n---", string(convertedMachineYamlBytes), string(resultFixtureContent))
 		}
 	}
 }

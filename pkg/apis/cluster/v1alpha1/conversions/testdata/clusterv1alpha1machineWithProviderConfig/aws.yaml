@@ -1,0 +1,37 @@
+apiVersion: cluster.k8s.io/v1alpha1
+kind: Machine
+metadata:
+  name: aws-machinedeployment
+  namespace: kube-system
+spec:
+  providerConfig:
+    value:
+      cloudProvider: aws
+      cloudProviderSpec:
+        accessKeyId:
+          secretKeyRef:
+            key: accessKeyId
+            name: machine-controller-aws
+            namespace: kube-system
+        availabilityZone: eu-central-1a
+        diskSize: 50
+        diskType: gp2
+        instanceProfile: kubernetes-v1
+        instanceType: t2.micro
+        region: eu-central-1
+        secretAccessKey:
+          secretKeyRef:
+            key: secretAccessKey
+            name: machine-controller-aws
+            namespace: kube-system
+        subnetId: subnet-2bff4f43
+        tags:
+          KubernetesCluster: 6qsm86c2d
+        vpcId: vpc-819f62e9
+      operatingSystem: coreos
+      operatingSystemSpec:
+        disableAutoUpdate: true
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  versions:
+    kubelet: 1.9.6
