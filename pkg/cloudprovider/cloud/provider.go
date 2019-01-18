@@ -54,10 +54,13 @@ type Provider interface {
 	// All cloud providers that use Machine.UID to uniquely identify resources must implement this
 	MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error
 
-	// GetMetricsForMachines may return a set of metrics for the provided machines. It also may do calls
-	// to the cloud providers api but should try to keep them as little as possible (e.G. by doing one call
-	// for all machines, not one per machine). It is called regularily from the controller
-	// It is assumed that the same set of credentials is used for all machines
+	// SetInstanceNumberForMachines purpose is to set the number of cloud provider instances that exist
+	// for each machine in the provided *GaugeVec, using "namespace/name" of the machine as identifying label value
+	// This func gets called regularly with all machines. It should be implemented in a way that makes as
+	// little API calls as possible, e.G. get all instances from the cloud provider in one call instead of
+	// doing one call per instance. It is assumed that the same set of credentials is used for all machines
+	// Providers which are implemented in a way that its not possible that there is more than one instance
+	// for a machine should just return
 	SetInstanceNumberForMachines(machines clusterv1alpha1.MachineList, metrics *prometheus.GaugeVec) error
 }
 

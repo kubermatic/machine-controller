@@ -155,7 +155,7 @@ func NewMachineController(
 
 	go func() {
 		metricGatheringExecutor := func() {
-			machines, err := machineLister.List(nil)
+			machines, err := machineLister.List(labels.NewSelector())
 			if err != nil {
 				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetInstanceNumberForMachines: %v", err))
 				return
@@ -182,8 +182,8 @@ func NewMachineController(
 			}
 			if err := prov.SetInstanceNumberForMachines(machineList, metrics.InstancesForMachine); err != nil {
 				utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
+				return
 			}
-			return
 
 		}
 		for {
