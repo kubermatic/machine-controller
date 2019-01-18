@@ -164,25 +164,26 @@ func NewMachineController(
 			for _, machine := range machines {
 				machineList.Items = append(machineList.Items, *machine.DeepCopy())
 			}
-
-			if len(machineList.Items) > 0 {
-				// We assume that all machines are on the same provider
-				providerConfig, err := providerconfig.GetConfig(machineList.Items[0].Spec.ProviderConfig)
-				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("failed to get provider configin SetInstanceNumberForMachines: %v", err))
-					return
-				}
-				skg := providerconfig.NewConfigVarResolver(kubeClient)
-				prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
-				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("failed to get cloud provider in SetInstanceNumberForMachines: %q: %v", providerConfig.CloudProvider, err))
-					return
-				}
-				if err := prov.SetInstanceNumberForMachines(machineList, metrics.InstancesForMachine); err != nil {
-					utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
-				}
+			if len(machineList.Items) < 1 {
 				return
 			}
+
+			// We assume that all machines are on the same provider
+			providerConfig, err := providerconfig.GetConfig(machineList.Items[0].Spec.ProviderConfig)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("failed to get provider configin SetInstanceNumberForMachines: %v", err))
+				return
+			}
+			skg := providerconfig.NewConfigVarResolver(kubeClient)
+			prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("failed to get cloud provider in SetInstanceNumberForMachines: %q: %v", providerConfig.CloudProvider, err))
+				return
+			}
+			if err := prov.SetInstanceNumberForMachines(machineList, metrics.InstancesForMachine); err != nil {
+				utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
+			}
+			return
 
 		}
 		for {

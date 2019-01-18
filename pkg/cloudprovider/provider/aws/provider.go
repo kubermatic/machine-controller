@@ -769,5 +769,52 @@ func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.Raw
 }
 
 func (p *provider) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
-	return fmt.Errorf("Not implemented")
+	if len(machines.Items) < 1 {
+		return nil
+	}
+	config, _, _, err := p.getConfig(machines.Items[0].Spec.ProviderConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to parse MachineSpec, due to %v", err)
+	}
+
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	if err != nil {
+		return fmt.Errorf("failed to get EC2 client: %v", err)
+	}
+
+	inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
+	if err != nil {
+		return fmt.Errorf("failed to list EC2 instances: %v", err)
+	}
+	for _, machine := range machines.Items {
+		metrics.WithLabelValues(fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)).Set(
+			getIntanceCountForMachine(machine, inOut.Reservations))
+	}
+
+	return nil
+}
+
+func getIntanceCountForMachine(machine v1alpha1.Machine, reservations []*ec2.Reservation) float64 {
+	var count float64
+	for _, reservation := range reservations {
+		for _, i := range reservation.Instances {
+			if i.State == nil ||
+				i.State.Name == nil ||
+				*i.State.Name == ec2.InstanceStateNameTerminated {
+				continue
+			}
+
+			for _, tag := range i.Tags {
+				if *tag.Key != machineUIDTag {
+					continue
+				}
+
+				if *tag.Value == string(machine.UID) {
+					count = count + 1
+				}
+				break
+			}
+		}
+	}
+	return count
 }
