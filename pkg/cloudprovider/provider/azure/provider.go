@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-04-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -818,4 +819,8 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	}
 
 	return labels, err
+}
+
+func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }

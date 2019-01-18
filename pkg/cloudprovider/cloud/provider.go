@@ -3,6 +3,8 @@ package cloud
 import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"k8s.io/apimachinery/pkg/types"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
@@ -45,11 +47,18 @@ type Provider interface {
 	// about created machines, e.g. instance type, instance size, region
 	// or whatever the provider deems interesting. Should always return
 	// a "size" label.
+	// This should not do any api calls to the cloud provider
 	MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error)
 
 	// MigrateUID is called when the controller migrates types and the UID of the machine object changes
 	// All cloud providers that use Machine.UID to uniquely identify resources must implement this
 	MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error
+
+	// GetMetricsForMachines may return a set of metrics for the provided machines. It also may do calls
+	// to the cloud providers api but should try to keep them as little as possible (e.G. by doing one call
+	// for all machines, not one per machine). It is called regularily from the controller
+	// It is assumed that the same set of credentials is used for all machines
+	GetMetricsForMachines(machines clusterv1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error
 }
 
 // MachineUpdater defines a function to persist an update to a machine

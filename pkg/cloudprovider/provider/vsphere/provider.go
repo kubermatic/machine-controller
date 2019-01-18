@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -635,4 +636,8 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	}
 
 	return labels, err
+}
+
+func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[ktypes.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }

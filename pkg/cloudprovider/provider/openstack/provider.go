@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
@@ -860,4 +861,8 @@ func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1
 
 	glog.V(2).Infof("Successfully assigned the FloatingIP %s to instance %s. Took %f seconds(without the recheck wait period %f seconds). ", ip.FloatingIP, instanceID, secondsTook, floatingReassignIPCheckPeriod.Seconds())
 	return nil
+}
+
+func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }

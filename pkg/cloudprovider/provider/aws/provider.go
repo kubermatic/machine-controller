@@ -8,6 +8,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/golang/glog"
+	gocache "github.com/patrickmn/go-cache"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -17,15 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/golang/glog"
-	gocache "github.com/patrickmn/go-cache"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -765,4 +766,8 @@ func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.Raw
 	}
 
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
+}
+
+func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }

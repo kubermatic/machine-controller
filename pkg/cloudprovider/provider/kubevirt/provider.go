@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -15,10 +17,10 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"k8s.io/apimachinery/pkg/types"
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/kubecli"
 
@@ -352,4 +354,8 @@ func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
 		corev1.ResourceMemory: memoryResource,
 		corev1.ResourceCPU:    cpuResource,
 	}, nil
+}
+
+func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }

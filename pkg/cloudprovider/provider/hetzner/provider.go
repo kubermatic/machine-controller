@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -400,4 +401,8 @@ func hzErrorToTerminalError(err error, msg string) error {
 	}
 
 	return err
+}
+
+func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }

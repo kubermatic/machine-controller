@@ -11,6 +11,7 @@ import (
 
 	"github.com/digitalocean/godo"
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -494,4 +495,8 @@ func doStatusAndErrToTerminalError(status int, err error) error {
 	default:
 		return err
 	}
+}
+
+func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }

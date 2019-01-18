@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -90,4 +91,8 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	return map[string]string{}, nil
+}
+
+func (p *provider) GetMetricsForMachines(_ v1alpha1.MachineList, _ map[types.UID]prometheus.Gauge) error {
+	return fmt.Errorf("Not implemented")
 }
