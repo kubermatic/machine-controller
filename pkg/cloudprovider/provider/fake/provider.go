@@ -93,6 +93,6 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return map[string]string{}, nil
 }
 
-func (p *provider) GetMetricsForMachines(_ v1alpha1.MachineList, _ map[types.UID]prometheus.Gauge) error {
+func (p *provider) SetInstanceNumberForMachines(_ v1alpha1.MachineList, _ *prometheus.GaugeVec) error {
 	return fmt.Errorf("Not implemented")
 }

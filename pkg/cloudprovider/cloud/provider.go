@@ -58,7 +58,7 @@ type Provider interface {
 	// to the cloud providers api but should try to keep them as little as possible (e.G. by doing one call
 	// for all machines, not one per machine). It is called regularily from the controller
 	// It is assumed that the same set of credentials is used for all machines
-	GetMetricsForMachines(machines clusterv1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error
+	SetInstanceNumberForMachines(machines clusterv1alpha1.MachineList, metrics *prometheus.GaugeVec) error
 }
 
 // MachineUpdater defines a function to persist an update to a machine

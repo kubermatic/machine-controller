@@ -28,6 +28,10 @@ func NewMachineControllerMetrics() *MetricsCollection {
 			Name: metricsPrefix + "errors_total",
 			Help: "The total number or unexpected errors the controller encountered",
 		}),
+		InstancesForMachine: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: metricsPrefix + "instances_for_machine",
+			Help: "The number of cloud provider instances for a given machine",
+		}, []string{"machine"}),
 	}
 
 	// Set default values, so that these metrics always show up

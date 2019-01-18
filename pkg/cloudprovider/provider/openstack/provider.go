@@ -863,6 +863,6 @@ func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1
 	return nil
 }
 
-func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+func (p *provider) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
 	return fmt.Errorf("Not implemented")
 }

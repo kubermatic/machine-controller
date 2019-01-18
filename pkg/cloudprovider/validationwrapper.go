@@ -78,6 +78,6 @@ func (w *cachingValidationWrapper) MachineMetricsLabels(machine *v1alpha1.Machin
 	return w.actualProvider.MachineMetricsLabels(machine)
 }
 
-func (w *cachingValidationWrapper) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
-	return fmt.Errorf("Not implemented")
+func (w *cachingValidationWrapper) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
+	return w.actualProvider.SetInstanceNumberForMachines(machines, metrics)
 }

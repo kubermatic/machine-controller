@@ -497,6 +497,6 @@ func doStatusAndErrToTerminalError(status int, err error) error {
 	}
 }
 
-func (p *provider) GetMetricsForMachines(machines v1alpha1.MachineList, metrics map[types.UID]prometheus.Gauge) error {
+func (p *provider) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
 	return fmt.Errorf("Not implemented")
 }
