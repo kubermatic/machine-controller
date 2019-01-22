@@ -225,7 +225,7 @@ func main() {
 		glog.Fatalf("error building kubernetes clientset for leaderElectionClient: %v", err)
 	}
 
-	prometheusRegistry := prometheus.NewRegistry()
+	prometheusRegistry := prometheus.DefaultRegisterer
 
 	// before we acquire a lock we actually warm up caches mirroring the state of the API server
 	clusterInformerFactory := clusterinformers.NewFilteredSharedInformerFactory(machineClient, time.Minute*15, metav1.NamespaceAll, labelSelector(name))
@@ -288,7 +288,7 @@ func main() {
 			kubeClient,
 		))
 
-		s := createUtilHTTPServer(kubeClient, kubeconfigProvider, prometheusRegistry)
+		s := createUtilHTTPServer(kubeClient, kubeconfigProvider, prometheus.DefaultGatherer)
 		g.Add(func() error {
 			return s.ListenAndServe()
 		}, func(err error) {
