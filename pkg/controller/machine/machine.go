@@ -180,7 +180,7 @@ func NewMachineController(
 				utilruntime.HandleError(fmt.Errorf("failed to get cloud provider in SetInstanceNumberForMachines: %q: %v", providerConfig.CloudProvider, err))
 				return
 			}
-			if err := prov.SetInstanceNumberForMachines(machineList, metrics.InstancesForMachine); err != nil {
+			if err := prov.SetMetricsForMachines(machineList); err != nil {
 				utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
 				return
 			}

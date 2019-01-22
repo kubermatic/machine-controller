@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -78,6 +77,6 @@ func (w *cachingValidationWrapper) MachineMetricsLabels(machine *v1alpha1.Machin
 	return w.actualProvider.MachineMetricsLabels(machine)
 }
 
-func (w *cachingValidationWrapper) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
-	return w.actualProvider.SetInstanceNumberForMachines(machines, metrics)
+func (w *cachingValidationWrapper) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+	return w.actualProvider.SetMetricsForMachines(machines)
 }

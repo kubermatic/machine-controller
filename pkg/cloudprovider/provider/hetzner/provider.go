@@ -10,7 +10,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -403,6 +402,6 @@ func hzErrorToTerminalError(err error, msg string) error {
 	return err
 }
 
-func (p *provider) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
+func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }

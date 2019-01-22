@@ -32,13 +32,16 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-var prometheusRegisterer = &sync.Once{}
+var (
+	prometheusRegisterer       = &sync.Once{}
+	metricInstancesForMachines = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "machine_controller_aws_instances_for_machine",
+		Help: "The number of instances at aws for a given machine"}, []string{"machine"})
+)
 
 func init() {
 	prometheusRegisterer.Do(func() {
-		prometheus.MustRegister(prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "machine_controller_aws_instances_for_machine",
-			Help: "The number of instances at aws for a given machine"}, []string{"machine"}))
+		prometheus.MustRegister(metricInstancesForMachines)
 	})
 }
 
@@ -797,7 +800,7 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 		return fmt.Errorf("failed to list EC2 instances: %v", err)
 	}
 	for _, machine := range machines.Items {
-		metrics.WithLabelValues(fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)).Set(
+		metricInstancesForMachines.WithLabelValues(fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)).Set(
 			getIntanceCountForMachine(machine, inOut.Reservations))
 	}
 
