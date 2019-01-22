@@ -64,8 +64,7 @@ const (
 	FinalizerDeleteInstance = "machine-delete-finalizer"
 	FinalizerDeleteNode     = "machine-node-delete-finalizer"
 
-	deletionRetryWaitPeriod  = 10 * time.Second
-	metricRegatherWaitPeriod = 10 * time.Minute
+	deletionRetryWaitPeriod = 10 * time.Second
 
 	NodeOwnerLabelName = "machine-controller/owned-by"
 )
@@ -100,9 +99,8 @@ type KubeconfigProvider interface {
 // MetricsCollection is a struct of all metrics used in
 // this controller.
 type MetricsCollection struct {
-	Workers             prometheus.Gauge
-	Errors              prometheus.Counter
-	InstancesForMachine *prometheus.GaugeVec
+	Workers prometheus.Gauge
+	Errors  prometheus.Counter
 }
 
 // NewMachineController returns a new machine controller
@@ -130,7 +128,7 @@ func NewMachineController(
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	if prometheusRegistry != nil {
-		prometheusRegistry.MustRegister(metrics.Errors, metrics.Workers, metrics.InstancesForMachine)
+		prometheusRegistry.MustRegister(metrics.Errors, metrics.Workers)
 	}
 
 	controller := &Controller{
@@ -152,45 +150,6 @@ func NewMachineController(
 
 		name: name,
 	}
-
-	go func() {
-		metricGatheringExecutor := func() {
-			machines, err := machineLister.List(labels.NewSelector())
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetInstanceNumberForMachines: %v", err))
-				return
-			}
-			var machineList clusterv1alpha1.MachineList
-			for _, machine := range machines {
-				machineList.Items = append(machineList.Items, *machine.DeepCopy())
-			}
-			if len(machineList.Items) < 1 {
-				return
-			}
-
-			// We assume that all machines are on the same provider
-			providerConfig, err := providerconfig.GetConfig(machineList.Items[0].Spec.ProviderConfig)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to get provider configin SetInstanceNumberForMachines: %v", err))
-				return
-			}
-			skg := providerconfig.NewConfigVarResolver(kubeClient)
-			prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to get cloud provider in SetInstanceNumberForMachines: %q: %v", providerConfig.CloudProvider, err))
-				return
-			}
-			if err := prov.SetMetricsForMachines(machineList); err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
-				return
-			}
-
-		}
-		for {
-			metricGatheringExecutor()
-			time.Sleep(metricRegatherWaitPeriod)
-		}
-	}()
 
 	controller.machineCreateDeleteData = &cloud.MachineCreateDeleteData{
 		Updater:  controller.updateMachine,
