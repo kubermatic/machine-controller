@@ -32,6 +32,16 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
+var prometheusRegisterer = &sync.Once{}
+
+func init() {
+	prometheusRegisterer.Do(func() {
+		prometheus.MustRegister(prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "machine_controller_aws_instances_for_machine",
+			Help: "The number of instances at aws for a given machine"}, []string{"machine"}))
+	})
+}
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -768,7 +778,7 @@ func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.Raw
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
-func (p *provider) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
+func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	if len(machines.Items) < 1 {
 		return nil
 	}

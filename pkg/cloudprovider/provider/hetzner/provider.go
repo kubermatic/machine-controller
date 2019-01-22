@@ -404,5 +404,5 @@ func hzErrorToTerminalError(err error, msg string) error {
 }
 
 func (p *provider) SetInstanceNumberForMachines(machines v1alpha1.MachineList, metrics *prometheus.GaugeVec) error {
-	return fmt.Errorf("Not implemented")
+	return nil
 }
