@@ -64,7 +64,7 @@ func (p Provider) UserData(
 
 	pconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get provider config: %v", err)
+		return "", fmt.Errorf("failed to get providerSpec: %v", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {

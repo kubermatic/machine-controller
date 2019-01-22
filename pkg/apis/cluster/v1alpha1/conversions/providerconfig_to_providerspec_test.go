@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	testhelper "github.com/kubermatic/machine-controller/pkg/test"
+
 	"github.com/ghodss/yaml"
 )
 
@@ -42,22 +44,6 @@ func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			continue
 		}
 
-		resultFixturePath := fmt.Sprintf("testdata/migrated_clusterv1alpha1machineWithProviderConfig/%s", fixture.Name())
-		if *update {
-			if err := ioutil.WriteFile(resultFixturePath, convertedMachineYamlBytes, 0644); err != nil {
-				t.Errorf("failed to update fixture for machine %s: %v", convertedMachine.Name, err)
-				continue
-			}
-		}
-
-		resultFixtureContent, err := ioutil.ReadFile(resultFixturePath)
-		if err != nil {
-			t.Errorf("failed to read result fixture for machine %s: %v", convertedMachine.Name, err)
-			continue
-		}
-
-		if string(convertedMachineYamlBytes) != string(resultFixtureContent) {
-			t.Errorf("Converted Machine does not match fixture, converted machine:\n---\n%s\n---\nFixture:\n---\n%s\n---", string(convertedMachineYamlBytes), string(resultFixtureContent))
-		}
+		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineWithProviderConfig/%s", fixture.Name()), string(convertedMachineYamlBytes), *update)
 	}
 }

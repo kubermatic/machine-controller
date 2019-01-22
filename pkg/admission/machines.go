@@ -20,7 +20,7 @@ import (
 // BypassSpecNoModificationRequirementAnnotation is used to bypass the "no machine.spec modification" allowed
 // restriction from the webhook in order to change the spec in some special cases, e.G. for the migration of
 // the `providerConfig` field to `providerSpec`
-const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requrirement"
+const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requirement"
 
 func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
 
@@ -47,8 +47,8 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		// Allow mutation when:
 		// * oldMachine has Initializers on it
 		// * machine has the `MigrationBypassSpecNoModificationRequirementAnnotation` annotation (used for type migration)
-		_, hasBypassSpecNoModificationRequirementAnnotation := machine.Annotations[BypassSpecNoModificationRequirementAnnotation]
-		if (oldMachine.Initializers == nil || len(oldMachine.Initializers.Pending) == 0) && !hasBypassSpecNoModificationRequirementAnnotation {
+		bypassValidationForMigration := machine.Annotations[BypassSpecNoModificationRequirementAnnotation] == "true"
+		if (oldMachine.Initializers == nil || len(oldMachine.Initializers.Pending) == 0) && !bypassValidationForMigration {
 			if equal := apiequality.Semantic.DeepEqual(machine.Spec, oldMachine.Spec); !equal {
 				return nil, fmt.Errorf("machine.spec is immutable")
 			}
