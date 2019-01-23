@@ -17,6 +17,11 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
+// BypassSpecNoModificationRequirementAnnotation is used to bypass the "no machine.spec modification" allowed
+// restriction from the webhook in order to change the spec in some special cases, e.G. for the migration of
+// the `providerConfig` field to `providerSpec`
+const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requirement"
+
 func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
 
 	machine := clusterv1alpha1.Machine{}
@@ -39,13 +44,18 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		if oldMachine.Spec.Name != machine.Spec.Name && machine.Spec.Name == machine.Name {
 			oldMachine.Spec.Name = machine.Spec.Name
 		}
-		// Allow mutation when oldMachine has Initializers on it
-		if oldMachine.Initializers == nil || len(oldMachine.Initializers.Pending) == 0 {
+		// Allow mutation when:
+		// * oldMachine has Initializers on it
+		// * machine has the `MigrationBypassSpecNoModificationRequirementAnnotation` annotation (used for type migration)
+		bypassValidationForMigration := machine.Annotations[BypassSpecNoModificationRequirementAnnotation] == "true"
+		if (oldMachine.Initializers == nil || len(oldMachine.Initializers.Pending) == 0) && !bypassValidationForMigration {
 			if equal := apiequality.Semantic.DeepEqual(machine.Spec, oldMachine.Spec); !equal {
 				return nil, fmt.Errorf("machine.spec is immutable")
 			}
 		}
 	}
+	// Delete the `BypassSpecNoModificationRequirementAnnotation` annotation, it should be valid only once
+	delete(machine.Annotations, BypassSpecNoModificationRequirementAnnotation)
 
 	// Add type revision annotation
 	if _, ok := machine.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName]; !ok {
@@ -72,9 +82,9 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 }
 
 func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.MachineSpec) error {
-	providerConfig, err := providerconfig.GetConfig(spec.ProviderConfig)
+	providerConfig, err := providerconfig.GetConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to read machine.Spec.Providerconfig: %v", err)
+		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
 	}
 	skg := providerconfig.NewConfigVarResolver(ad.coreClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)

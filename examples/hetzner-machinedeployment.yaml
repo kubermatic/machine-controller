@@ -31,7 +31,7 @@ spec:
       labels:
         foo: bar
     spec:
-      providerConfig:
+      providerSpec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
@@ -50,4 +50,4 @@ spec:
           operatingSystemSpec:
             distUpgradeOnBoot: false
       versions:
-        kubelet: 1.9.6
+        kubelet: 1.13.1

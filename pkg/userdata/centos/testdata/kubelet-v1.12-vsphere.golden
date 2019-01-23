@@ -58,7 +58,7 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
-     
+    
     # The normal way of setting it via cloud-init is broken:
     # https://bugs.launchpad.net/cloud-init/+bug/1662542
     hostnamectl set-hostname node1

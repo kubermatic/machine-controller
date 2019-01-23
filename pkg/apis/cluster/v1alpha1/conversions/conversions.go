@@ -15,7 +15,7 @@ import (
 const (
 	TypeRevisionAnnotationName = "machine-controller/machine-type-revision"
 
-	TypeRevisionCurrentVersion = "05cb1e663eb4085fbb92321dd1235377c84567f8"
+	TypeRevisionCurrentVersion = "45f1c93260140936c610e56575d7505ba3d52444"
 )
 
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
@@ -50,7 +50,7 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	if err != nil {
 		return err
 	}
-	out.Spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
+	out.Spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
 
 	// This currently results in in.Spec.Versions.ContainerRuntime being dropped,
 	// because it was removed from the upstream type in

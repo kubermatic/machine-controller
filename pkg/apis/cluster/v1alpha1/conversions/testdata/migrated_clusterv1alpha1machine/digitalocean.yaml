@@ -1,6 +1,6 @@
 metadata:
   annotations:
-    machine-controller/machine-type-revision: 05cb1e663eb4085fbb92321dd1235377c84567f8
+    machine-controller/machine-type-revision: 45f1c93260140936c610e56575d7505ba3d52444
   creationTimestamp: null
   name: digitalocean
   namespace: kube-system
@@ -8,7 +8,7 @@ spec:
   metadata:
     creationTimestamp: null
     name: node1
-  providerConfig:
+  providerSpec:
     value:
       cloudProvider: digitalocean
       cloudProviderSpec:

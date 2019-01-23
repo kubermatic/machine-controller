@@ -369,7 +369,14 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			clusterv1Alpha1Client,
 			runOptions.cfg,
 		); err != nil {
-			glog.Errorf("Migration failed: %v", err)
+			glog.Errorf("Migration to clusterv1alpha1 failed: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+
+		//Migrate providerConfig field to providerSpec field
+		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(runOptions.cfg); err != nil {
+			glog.Errorf("Migration of providerConfig field to providerSpec field failed: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}

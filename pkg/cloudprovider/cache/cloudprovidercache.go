@@ -56,7 +56,7 @@ func (c *CloudproviderCache) Set(machineSpec clusterv1alpha1.MachineSpec, val er
 }
 
 func getID(machineSpec clusterv1alpha1.MachineSpec) (string, error) {
-	b, err := json.Marshal(machineSpec.ProviderConfig)
+	b, err := json.Marshal(machineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal MachineSpec: %v", err)
 	}

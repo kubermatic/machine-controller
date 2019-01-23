@@ -367,7 +367,7 @@ func (c *Controller) syncHandler(key string) error {
 		machine.Spec.Name = machine.Name
 	}
 
-	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
+	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}

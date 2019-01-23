@@ -82,7 +82,7 @@ func getSimpleVersionTests() []userDataTestCase {
 	for _, v := range versions {
 		tests = append(tests, userDataTestCase{
 			name: fmt.Sprintf("version-%s", v.String()),
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -107,7 +107,7 @@ type userDataTestCase struct {
 	spec             clusterv1alpha1.MachineSpec
 	ccProvider       cloud.ConfigProvider
 	osConfig         *Config
-	providerConfig   *providerconfig.Config
+	providerSpec     *providerconfig.Config
 	DNSIPs           []net.IP
 	kubernetesCACert string
 }
@@ -119,7 +119,7 @@ func TestProvider_UserData(t *testing.T) {
 	tests = append(tests, []userDataTestCase{
 		{
 			name: "dist-upgrade-on-boot",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -136,7 +136,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "multiple-dns-servers",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -153,7 +153,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "kubelet-version-without-v-prefix",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -170,7 +170,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "multiple-ssh-keys",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD", "ssh-rsa EEEFFF"},
 			},
@@ -187,7 +187,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "openstack",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -204,7 +204,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "openstack-overwrite-cloud-config",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider:        "openstack",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
@@ -222,7 +222,7 @@ func TestProvider_UserData(t *testing.T) {
 		},
 		{
 			name: "vsphere",
-			providerConfig: &providerconfig.Config{
+			providerSpec: &providerconfig.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
@@ -244,18 +244,18 @@ func TestProvider_UserData(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			spec := test.spec
-			rProviderConfig := test.providerConfig
+			rProviderSpec := test.providerSpec
 			osConfigByte, err := json.Marshal(test.osConfig)
 			if err != nil {
 				t.Fatal(err)
 			}
-			rProviderConfig.OperatingSystemSpec = runtime.RawExtension{Raw: osConfigByte}
+			rProviderSpec.OperatingSystemSpec = runtime.RawExtension{Raw: osConfigByte}
 
-			providerConfigRaw, err := json.Marshal(rProviderConfig)
+			providerSpecRaw, err := json.Marshal(rProviderSpec)
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderConfig = clusterv1alpha1.ProviderConfig{Value: &runtime.RawExtension{Raw: providerConfigRaw}}
+			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerSpecRaw}}
 			p := Provider{}
 
 			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)

@@ -90,47 +90,6 @@ func getIntOrPercent(s *intstr.IntOrString, roundUp bool) (int, error) {
 	return intstr.GetValueFromIntOrPercent(s, 100, roundUp)
 }
 
-func machineDeploymentDefaultingFunction(obj *v1alpha1.MachineDeployment) {
-	// set default field values here
-	log.Printf("Defaulting fields for MachineDeployment %s\n", obj.Name)
-	if obj.Spec.Replicas == nil {
-		obj.Spec.Replicas = new(int32)
-		*obj.Spec.Replicas = 1
-	}
-	if obj.Spec.MinReadySeconds == nil {
-		obj.Spec.MinReadySeconds = new(int32)
-		*obj.Spec.MinReadySeconds = 0
-	}
-	if obj.Spec.RevisionHistoryLimit == nil {
-		obj.Spec.RevisionHistoryLimit = new(int32)
-		*obj.Spec.RevisionHistoryLimit = 1
-	}
-	if obj.Spec.ProgressDeadlineSeconds == nil {
-		obj.Spec.ProgressDeadlineSeconds = new(int32)
-		*obj.Spec.ProgressDeadlineSeconds = 600
-	}
-	if obj.Spec.Strategy == nil {
-		obj.Spec.Strategy = &v1alpha1.MachineDeploymentStrategy{}
-	}
-
-	if obj.Spec.Strategy.Type == "" {
-		obj.Spec.Strategy.Type = common.RollingUpdateMachineDeploymentStrategyType
-	}
-	// Default RollingUpdate strategy only if strategy type is RollingUpdate.
-	if obj.Spec.Strategy.Type == common.RollingUpdateMachineDeploymentStrategyType {
-		if obj.Spec.Strategy.RollingUpdate == nil {
-			obj.Spec.Strategy.RollingUpdate = &v1alpha1.MachineRollingUpdateDeployment{}
-		}
-		if obj.Spec.Strategy.RollingUpdate.MaxSurge == nil {
-			x := intstr.FromInt(1)
-			obj.Spec.Strategy.RollingUpdate.MaxSurge = &x
-		}
-		if obj.Spec.Strategy.RollingUpdate.MaxUnavailable == nil {
-			x := intstr.FromInt(0)
-			obj.Spec.Strategy.RollingUpdate.MaxUnavailable = &x
-		}
-	}
-	if len(obj.Namespace) == 0 {
-		obj.Namespace = metav1.NamespaceDefault
-	}
+func machineDeploymentDefaultingFunction(md *v1alpha1.MachineDeployment) {
+	v1alpha1.PopulateDefaultsMachineDeployment(md)
 }

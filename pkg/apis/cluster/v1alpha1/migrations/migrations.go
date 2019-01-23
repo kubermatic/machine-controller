@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	machinecontrolleradmission "github.com/kubermatic/machine-controller/pkg/admission"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	machinesv1alpha1clientset "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
@@ -17,8 +18,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	dynamicclient "k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
@@ -26,6 +29,48 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 )
+
+func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) error {
+	dynamicClient, err := dynamicclient.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to construct dynamic client: %v", err)
+	}
+	clusterClient, err := clusterv1alpha1clientset.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to construct clusterv1alpha1 client: %v", err)
+	}
+	gvr := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machines"}
+	objects, err := dynamicClient.Resource(gvr).List(metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list machine objects: %v", err)
+	}
+
+	for _, object := range objects.Items {
+		marshalledObject, err := object.MarshalJSON()
+		if err != nil {
+			return fmt.Errorf("failed to marshal unstructured machine %s: %v", object.GetName(), err)
+		}
+
+		convertedMachine, wasConverted, err := conversions.Convert_ProviderConfig_To_ProviderSpec(marshalledObject)
+		if err != nil {
+			return fmt.Errorf("failed to convert machine: %v", err)
+		}
+
+		if wasConverted {
+			if convertedMachine.Annotations == nil {
+				convertedMachine.Annotations = map[string]string{}
+			}
+			// We must set this, otherwise the webhook will deny our update request because modifications to a machines
+			// spec are not allowed
+			convertedMachine.Annotations[machinecontrolleradmission.BypassSpecNoModificationRequirementAnnotation] = "true"
+			if _, err = clusterClient.ClusterV1alpha1().Machines(convertedMachine.Namespace).Update(convertedMachine); err != nil {
+				return fmt.Errorf("failed to update converted machine %s: %v", convertedMachine.Name, err)
+			}
+		}
+	}
+
+	return nil
+}
 
 func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	kubeClient kubernetes.Interface,
@@ -95,7 +140,7 @@ func migrateMachines(kubeClient kubernetes.Interface,
 
 		// Some providers need to update the provider instance to the new UID, we get the provider as early as possible
 		// to not fail in a half-migrated state when the providerconfig is invalid
-		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderConfig)
+		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %v", err)
 		}
