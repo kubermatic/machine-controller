@@ -14,6 +14,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"github.com/golang/glog"
+
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +32,7 @@ import (
 )
 
 func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) error {
+	glog.Infof("Starting to migrate providerConfigs to providerSpecs")
 	dynamicClient, err := dynamicclient.NewForConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to construct dynamic client: %v", err)
@@ -39,24 +41,26 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 	if err != nil {
 		return fmt.Errorf("failed to construct clusterv1alpha1 client: %v", err)
 	}
-	gvr := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machines"}
-	objects, err := dynamicClient.Resource(gvr).List(metav1.ListOptions{})
+
+	machineGVR := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machines"}
+	machineSetGVR := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machinesets"}
+	machineDeploymentsGVR := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machinedeployments"}
+
+	machines, err := dynamicClient.Resource(machineGVR).List(metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list machine objects: %v", err)
 	}
-
-	for _, object := range objects.Items {
-		marshalledObject, err := object.MarshalJSON()
+	for _, machine := range machines.Items {
+		marshalledObject, err := machine.MarshalJSON()
 		if err != nil {
-			return fmt.Errorf("failed to marshal unstructured machine %s: %v", object.GetName(), err)
+			return fmt.Errorf("failed to marshal unstructured machine %s: %v", machine.GetName(), err)
 		}
-
-		convertedMachine, wasConverted, err := conversions.Convert_ProviderConfig_To_ProviderSpec(marshalledObject)
+		convertedMachine, wasConverted, err := conversions.Convert_Machine_ProviderConfig_To_ProviderSpec(marshalledObject)
 		if err != nil {
 			return fmt.Errorf("failed to convert machine: %v", err)
 		}
-
 		if wasConverted {
+			glog.Infof("Converted providerConfig -> providerSpec for machine %s/%s, attempting to update", convertedMachine.Namespace, convertedMachine.Name)
 			if convertedMachine.Annotations == nil {
 				convertedMachine.Annotations = map[string]string{}
 			}
@@ -66,9 +70,55 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 			if _, err = clusterClient.ClusterV1alpha1().Machines(convertedMachine.Namespace).Update(convertedMachine); err != nil {
 				return fmt.Errorf("failed to update converted machine %s: %v", convertedMachine.Name, err)
 			}
+			glog.Infof("Successfully updated machine %s/%s after converting providerConfig -> providerSpec", convertedMachine.Namespace, convertedMachine.Name)
 		}
 	}
 
+	machineSets, err := dynamicClient.Resource(machineSetGVR).List(metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list MachineSets: %v", err)
+	}
+	for _, machineSet := range machineSets.Items {
+		marshalledObject, err := machineSet.MarshalJSON()
+		if err != nil {
+			return fmt.Errorf("failed to marshal unstructured MachineSet %s: %v", machineSet.GetName(), err)
+		}
+		convertedMachineSet, machineSetWasConverted, err := conversions.Convert_MachineSet_ProviderConfig_To_ProviderSpec(marshalledObject)
+		if err != nil {
+			return fmt.Errorf("failed to convert MachineSet %s/%s: %v", machineSet.GetNamespace(), machineSet.GetName(), err)
+		}
+		if machineSetWasConverted {
+			glog.Infof("Converted providerConfig -> providerSpec for MachineSet %s/%s, attempting to update", convertedMachineSet.Namespace, convertedMachineSet.Name)
+			if _, err := clusterClient.ClusterV1alpha1().MachineSets(convertedMachineSet.Namespace).Update(convertedMachineSet); err != nil {
+				return fmt.Errorf("failed to update MachineSet %s/%s after converting providerConfig -> providerSpec: %v", convertedMachineSet.Namespace, convertedMachineSet.Name, err)
+			}
+			glog.Infof("Successfully updated MachineSet %s/%s after converting providerConfig -> providerSpec", convertedMachineSet.Namespace, convertedMachineSet.Name)
+		}
+	}
+
+	machineDeployments, err := dynamicClient.Resource(machineDeploymentsGVR).List(metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list MachineDeplyoments: %v", err)
+	}
+	for _, machineDeployment := range machineDeployments.Items {
+		marshalledObject, err := machineDeployment.MarshalJSON()
+		if err != nil {
+			return fmt.Errorf("failed to marshal unstructured MachineDeployment %s: %v", machineDeployment.GetName(), err)
+		}
+		convertedMachineDeployment, machineDeploymentWasConverted, err := conversions.Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(marshalledObject)
+		if err != nil {
+			return fmt.Errorf("failed to convert MachineDeployment %s/%s: %v", machineDeployment.GetNamespace(), machineDeployment.GetName(), err)
+		}
+		if machineDeploymentWasConverted {
+			glog.Infof("Converted providerConfig -> providerSpec for MachineDeployment %s/%s, attempting to update", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
+			if _, err := clusterClient.ClusterV1alpha1().MachineDeployments(convertedMachineDeployment.Namespace).Update(convertedMachineDeployment); err != nil {
+				return fmt.Errorf("failed to update MachineDeployment %s/%s after converting providerConfig -> providerSpec: %v", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name, err)
+			}
+			glog.Infof("Successfully updated MachineDeployment %s/%s after converting providerConfig -> providerSpec", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
+		}
+	}
+
+	glog.Infof("Successfully migrated providerConfigs to providerSpecs")
 	return nil
 }
 

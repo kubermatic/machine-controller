@@ -118,7 +118,7 @@ func Convert_MachineSet_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alp
 	return machineSet, wasConverted, nil
 }
 
-func Convert_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alpha1.Machine, bool, error) {
+func Convert_Machine_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alpha1.Machine, bool, error) {
 	var wasConverted bool
 
 	superMachine := &machineWithProviderSpecAndProviderConfig{}

@@ -109,7 +109,7 @@ func Test_Convert_Machine_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			t.Errorf("failed to convert yaml to json: %v", err)
 			continue
 		}
-		convertedMachine, wasConverted, err := Convert_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
+		convertedMachine, wasConverted, err := Convert_Machine_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
 		if err != nil {
 			t.Errorf("failed to convert machine from file %s: %v", fixture.Name(), err)
 			continue
