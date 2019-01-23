@@ -1,0 +1,44 @@
+apiVersion: cluster.k8s.io/v1alpha1
+kind: MachineDeployment
+metadata:
+  annotations:
+    machinedeployment.clusters.k8s.io/revision: "1"
+  generateName: kubermatic-gttbxgswnv-
+  generation: 1
+  name: kubermatic-gttbxgswnv-q5rcj
+  namespace: kube-system
+spec:
+  minReadySeconds: 0
+  progressDeadlineSeconds: 600
+  replicas: 3
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      machine: md-gttbxgswnv-nl5s9qs8ww
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        machine: md-gttbxgswnv-nl5s9qs8ww
+    spec:
+      metadata:
+        creationTimestamp: null
+      providerConfig:
+        value:
+          cloudProvider: hetzner
+          cloudProviderSpec:
+            datacenter: nbg1-dc3
+            location: ""
+            serverType: cx31
+            token: ""
+          operatingSystem: ubuntu
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+          sshPublicKeys: []
+      versions:
+        kubelet: 1.11.6

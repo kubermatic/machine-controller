@@ -11,7 +11,88 @@ import (
 	"github.com/ghodss/yaml"
 )
 
-func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
+func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T) {
+	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineDeploymentWithProviderConfig")
+	if err != nil {
+		t.Fatalf("failed to list fixtures: %v", err)
+	}
+
+	for _, fixture := range fixtures {
+		fixtureYamlByte, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineDeploymentWithProviderConfig/%s", fixture.Name()))
+		if err != nil {
+			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
+			continue
+		}
+		fixtureJSONBytes, err := yaml.YAMLToJSON(fixtureYamlByte)
+		if err != nil {
+			t.Errorf("failed to convert yaml to json: %v", err)
+			continue
+		}
+		convertedMachineDeployment, wasConverted, err := Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
+		if err != nil {
+			t.Errorf("failed to convert machineDeployment from file %s: %v", fixture.Name(), err)
+			continue
+		}
+		if !wasConverted {
+			t.Errorf("expected wasConverted to be true but was %t", wasConverted)
+		}
+		convertedMachineDeploymentJSONBytes, err := json.Marshal(*convertedMachineDeployment)
+		if err != nil {
+			t.Errorf("faile to marshal converted machineDeployment %s: %v", convertedMachineDeployment.Name, err)
+			continue
+		}
+		convertedMachineDeploymentYamlBytes, err := yaml.JSONToYAML(convertedMachineDeploymentJSONBytes)
+		if err != nil {
+			t.Errorf("failed to convert json to yaml: %v", err)
+			continue
+		}
+
+		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineDeploymentWithProviderConfig/%s", fixture.Name()), string(convertedMachineDeploymentYamlBytes), *update)
+	}
+}
+
+func Test_Convert_MachineSet_ProviderConfig_To_ProviderSpec(t *testing.T) {
+	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineSetWithProviderConfig")
+	if err != nil {
+		t.Fatalf("failed to list fixtures: %v", err)
+	}
+
+	for _, fixture := range fixtures {
+		fixtureYamlByte, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineSetWithProviderConfig/%s", fixture.Name()))
+		if err != nil {
+			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
+			continue
+		}
+		fixtureJSONBytes, err := yaml.YAMLToJSON(fixtureYamlByte)
+		if err != nil {
+			t.Errorf("failed to convert yaml to json: %v", err)
+			continue
+		}
+		convertedMachineSet, wasConverted, err := Convert_MachineSet_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
+		if err != nil {
+			t.Errorf("failed to convert machineSet from file %s: %v", fixture.Name(), err)
+			continue
+		}
+		if !wasConverted {
+			t.Errorf("expected wasConverted to be true but was %t", wasConverted)
+		}
+
+		convertedMachineSetJSONBytes, err := json.Marshal(*convertedMachineSet)
+		if err != nil {
+			t.Errorf("faile to marshal converted machineSet %s: %v", convertedMachineSet.Name, err)
+			continue
+		}
+		convertedMachineSetYamlBytes, err := yaml.JSONToYAML(convertedMachineSetJSONBytes)
+		if err != nil {
+			t.Errorf("failed to convert json to yaml: %v", err)
+			continue
+		}
+
+		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineSetWithProviderConfig/%s", fixture.Name()), string(convertedMachineSetYamlBytes), *update)
+	}
+}
+
+func Test_Convert_Machine_ProviderConfig_To_ProviderSpec(t *testing.T) {
 	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineWithProviderConfig")
 	if err != nil {
 		t.Fatalf("failed to list fixtures: %v", err)
@@ -28,10 +109,13 @@ func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			t.Errorf("failed to convert yaml to json: %v", err)
 			continue
 		}
-		convertedMachine, _, err := Convert_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
+		convertedMachine, wasConverted, err := Convert_Machine_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
 		if err != nil {
 			t.Errorf("failed to convert machine from file %s: %v", fixture.Name(), err)
 			continue
+		}
+		if !wasConverted {
+			t.Errorf("expected wasConverted to be true but was %t", wasConverted)
 		}
 		convertedMachineJSONBytes, err := json.Marshal(*convertedMachine)
 		if err != nil {
