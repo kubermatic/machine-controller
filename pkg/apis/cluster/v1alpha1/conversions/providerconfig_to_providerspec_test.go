@@ -11,7 +11,44 @@ import (
 	"github.com/ghodss/yaml"
 )
 
-func Test_Convert_ProviderConfig_To_ProviderSpec(t *testing.T) {
+func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T) {
+	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineDeploymentWithProviderConfig")
+	if err != nil {
+		t.Fatalf("failed to list fixtures: %v", err)
+	}
+
+	for _, fixture := range fixtures {
+		fixtureYamlByte, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineDeploymentWithProviderConfig/%s", fixture.Name()))
+		if err != nil {
+			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
+			continue
+		}
+		fixtureJSONBytes, err := yaml.YAMLToJSON(fixtureYamlByte)
+		if err != nil {
+			t.Errorf("failed to convert yaml to json: %v", err)
+			continue
+		}
+		convertedMachineDeployment, _, err := Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(fixtureJSONBytes)
+		if err != nil {
+			t.Errorf("failed to convert machineDeployment from file %s: %v", fixture.Name(), err)
+			continue
+		}
+		convertedMachineDeploymentJSONBytes, err := json.Marshal(*convertedMachineDeployment)
+		if err != nil {
+			t.Errorf("faile to marshal converted machineDeployment %s: %v", convertedMachineDeployment.Name, err)
+			continue
+		}
+		convertedMachineYamlBytes, err := yaml.JSONToYAML(convertedMachineDeploymentJSONBytes)
+		if err != nil {
+			t.Errorf("failed to convert json to yaml: %v", err)
+			continue
+		}
+
+		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineDeploymentWithProviderConfig/%s", fixture.Name()), string(convertedMachineYamlBytes), *update)
+	}
+}
+
+func Test_Convert_Machine_ProviderConfig_To_ProviderSpec(t *testing.T) {
 	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineWithProviderConfig")
 	if err != nil {
 		t.Fatalf("failed to list fixtures: %v", err)
