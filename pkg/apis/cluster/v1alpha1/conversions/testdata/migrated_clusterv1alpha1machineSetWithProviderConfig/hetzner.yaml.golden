@@ -1,0 +1,53 @@
+apiVersion: cluster.k8s.io/v1alpha1
+kind: MachineSet
+metadata:
+  annotations:
+    machinedeployment.clusters.k8s.io/desired-replicas: "3"
+    machinedeployment.clusters.k8s.io/max-replicas: "4"
+    machinedeployment.clusters.k8s.io/revision: "1"
+  creationTimestamp: "2019-01-23T12:59:25Z"
+  generation: 1
+  labels:
+    machine: md-gttbxgswnv-nl5s9qs8ww
+    machine-template-hash: "1950051685"
+  name: kubermatic-gttbxgswnv-q5rcj-5f94495bd9
+  namespace: kube-system
+  ownerReferences:
+  - apiVersion: cluster.k8s.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: MachineDeployment
+    name: kubermatic-gttbxgswnv-q5rcj
+    uid: b5fd92a1-1f0e-11e9-9561-b2d5a2b51b30
+  resourceVersion: "9387"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      machine: md-gttbxgswnv-nl5s9qs8ww
+      machine-template-hash: "1950051685"
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        machine: md-gttbxgswnv-nl5s9qs8ww
+        machine-template-hash: "1950051685"
+    spec:
+      metadata:
+        creationTimestamp: null
+      providerSpec:
+        value:
+          cloudProvider: hetzner
+          cloudProviderSpec:
+            datacenter: nbg1-dc3
+            location: ""
+            serverType: cx31
+            token: ""
+          operatingSystem: ubuntu
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+          sshPublicKeys: []
+      versions:
+        kubelet: 1.11.6
+status:
+  replicas: 0
