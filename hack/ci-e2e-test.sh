@@ -48,6 +48,7 @@ cp provider.tf{.disabled,}
 terraform init --input=false --backend-config=key=$BUILD_ID
 export TF_VAR_hcloud_token="${HZ_E2E_TOKEN}"
 export TF_VAR_hcloud_sshkey_content="$(cat ~/.ssh/id_ed25519.pub)"
+export TF_VAR_hcloud_sshkey_name="$BUILD_ID"
 export TF_VAR_hcloud_test_server_name="machine-controller-test-${BUILD_ID}"
 
 for try in {1..20}; do
@@ -76,7 +77,7 @@ export E2E_SSH_PUBKEY="$(cat ~/.ssh/id_rsa.pub)"
 # Run e2e test
 echo "Running e2e test."
 export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig
-if [[ ! -z "$TESTS_TO_RUN" ]]; then
+if [[ ! -z "$1" ]]; then
   EXTRA_ARGS="-run $TESTS_TO_RUN"
 fi
 go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
