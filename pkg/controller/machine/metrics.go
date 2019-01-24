@@ -95,12 +95,13 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 
 func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.Interface) *MachineCollector {
 
-	// Start periodically calling the providers SetMetricsForMachines
+	// Start periodically calling the providers SetMetricsForMachines in a dedicated go routine
+	skg := providerconfig.NewConfigVarResolver(kubeClient)
 	go func() {
 		metricGatheringExecutor := func() {
 			machines, err := lister.List(labels.NewSelector())
 			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetInstanceNumberForMachines: %v", err))
+				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetMetricsForMachines: %v", err))
 				return
 			}
 			var machineList clusterv1alpha1.MachineList
@@ -111,21 +112,29 @@ func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.In
 				return
 			}
 
-			// We assume that all machines are on the same provider
-			providerConfig, err := providerconfig.GetConfig(machineList.Items[0].Spec.ProviderConfig)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to get provider configin SetInstanceNumberForMachines: %v", err))
-				return
+			providerMachineMap := map[providerconfig.CloudProvider]*clusterv1alpha1.MachineList{}
+			for _, machine := range machines {
+				providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
+				if err != nil {
+					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %v", err))
+					continue
+				}
+				if _, exists := providerMachineMap[providerConfig.CloudProvider]; !exists {
+					providerMachineMap[providerConfig.CloudProvider] = &clusterv1alpha1.MachineList{}
+				}
+				providerMachineMap[providerConfig.CloudProvider].Items = append(providerMachineMap[providerConfig.CloudProvider].Items, *machine)
 			}
-			skg := providerconfig.NewConfigVarResolver(kubeClient)
-			prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
-			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to get cloud provider in SetInstanceNumberForMachines: %q: %v", providerConfig.CloudProvider, err))
-				return
-			}
-			if err := prov.SetMetricsForMachines(machineList); err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
-				return
+
+			for provider, providerMachineList := range providerMachineMap {
+				prov, err := cloudprovider.ForProvider(provider, skg)
+				if err != nil {
+					utilruntime.HandleError(fmt.Errorf("failed to get cloud provider for SetMetricsForMachines:: %q: %v", provider, err))
+					continue
+				}
+				if err := prov.SetMetricsForMachines(*providerMachineList); err != nil {
+					utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
+					continue
+				}
 			}
 
 		}

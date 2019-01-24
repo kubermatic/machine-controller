@@ -281,8 +281,6 @@ func main() {
 	ctx, ctxDone := context.WithCancel(context.Background())
 	var g run.Group
 	{
-		prometheusRegistry.MustRegister(prometheus.NewProcessCollector(os.Getpid(), ""))
-		prometheusRegistry.MustRegister(prometheus.NewGoCollector())
 		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(
 			clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
 			kubeClient,
