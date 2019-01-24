@@ -114,7 +114,7 @@ func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.In
 
 			providerMachineMap := map[providerconfig.CloudProvider]*clusterv1alpha1.MachineList{}
 			for _, machine := range machines {
-				providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderConfig)
+				providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %v", err))
 					continue
@@ -202,7 +202,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 
 		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %v", maachine.Name, err))
+			utilruntime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %v", machine.Name, err))
 			continue
 		}
 

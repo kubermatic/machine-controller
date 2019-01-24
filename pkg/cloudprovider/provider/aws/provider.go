@@ -795,7 +795,7 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	var errors []error
 	credentials := map[string]ec2Credentials{}
 	for _, machine := range machines.Items {
-		config, _, _, err := p.getConfig(machines.Items[0].Spec.ProviderConfig)
+		config, _, _, err := p.getConfig(machines.Items[0].Spec.ProviderSpec)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to parse MachineSpec of machine %s/%s, due to %v", machine.Namespace, machine.Name, err))
 			continue
