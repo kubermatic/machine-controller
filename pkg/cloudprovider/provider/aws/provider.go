@@ -785,23 +785,53 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	if len(machines.Items) < 1 {
 		return nil
 	}
-	config, _, _, err := p.getConfig(machines.Items[0].Spec.ProviderConfig)
-	if err != nil {
-		return fmt.Errorf("Failed to parse MachineSpec, due to %v", err)
+
+	type ec2Credentials struct {
+		acccessKeyID    string
+		secretAccessKey string
+		region          string
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
-	if err != nil {
-		return fmt.Errorf("failed to get EC2 client: %v", err)
+	var errors []error
+	credentials := map[string]ec2Credentials{}
+	for _, machine := range machines.Items {
+		config, _, _, err := p.getConfig(machines.Items[0].Spec.ProviderConfig)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to parse MachineSpec of machine %s/%s, due to %v", machine.Namespace, machine.Name, err))
+			continue
+		}
+
+		// Very simple and very stupid
+		credentials[fmt.Sprintf("%s/%s/%s", config.AccessKeyID, config.SecretAccessKey, config.Region)] = ec2Credentials{
+			acccessKeyID:    config.AccessKeyID,
+			secretAccessKey: config.SecretAccessKey,
+			region:          config.Region,
+		}
+
 	}
 
-	inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
-	if err != nil {
-		return fmt.Errorf("failed to list EC2 instances: %v", err)
+	allReservations := []*ec2.Reservation{}
+	for _, cred := range credentials {
+		ec2Client, err := getEC2client(cred.acccessKeyID, cred.secretAccessKey, cred.region)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to get EC2 client: %v", err))
+			continue
+		}
+		inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
+		if err != nil {
+			errors = append(errors, fmt.Errorf("failed to get EC2 instances: %v", err))
+			continue
+		}
+		allReservations = append(allReservations, inOut.Reservations...)
 	}
+
 	for _, machine := range machines.Items {
 		metricInstancesForMachines.WithLabelValues(fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)).Set(
-			getIntanceCountForMachine(machine, inOut.Reservations))
+			getIntanceCountForMachine(machine, allReservations))
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("errors: %v", errors)
 	}
 
 	return nil
