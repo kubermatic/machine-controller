@@ -77,7 +77,8 @@ export E2E_SSH_PUBKEY="$(cat ~/.ssh/id_rsa.pub)"
 # Run e2e test
 echo "Running e2e test."
 export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig
+EXTRA_ARGS=""
 if [[ ! -z "$1" ]]; then
-  EXTRA_ARGS="-run $TESTS_TO_RUN"
+  EXTRA_ARGS="-run $1"
 fi
 go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
