@@ -462,7 +462,7 @@
   name = "github.com/heptiolabs/healthcheck"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "da5fdee475fb09de87c5d4a50da233b7d28767b1"
+  revision = "6ff867650f40c632367411120275478876202233"
 
 [[projects]]
   digest = "1:8b06854389693e9f6b6c4a21a1f94a39d2bf8ca1f9efb5673e6bd36dea6c89c9"
@@ -599,15 +599,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:03bca087b180bf24c4f9060775f137775550a0834e18f0bca0520a868679dbd7"
+  branch = "master"
+  digest = "1:cfd4dbe556f50e729bb5eede8df869f3979fe10c79e6f30d684cf99ea3de5f94"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
+    "prometheus/internal",
     "prometheus/promhttp",
   ]
   pruneopts = "NUT"
-  revision = "c5b7fccd204277076155f10851dad72b76a49317"
-  version = "v0.8.0"
+  revision = "12af604cf208d3105ced825c65231b4ecf00a8cc"
 
 [[projects]]
   branch = "master"
