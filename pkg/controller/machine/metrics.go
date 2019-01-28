@@ -88,7 +88,7 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 	}, labelNames)
 
 	counter := counterVec.With(labels)
-	counter.Set(float64(value))
+	counter.Add(float64(value))
 
 	return counter
 }

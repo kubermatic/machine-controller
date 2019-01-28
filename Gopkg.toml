@@ -93,10 +93,6 @@ required = [
   branch = "master"
 
 [[constraint]]
-  name = "github.com/prometheus/client_golang"
-  version = "v0.8.*"
-
-[[constraint]]
   name = "github.com/hetznercloud/hcloud-go"
   version = "v1.9.*"
 
