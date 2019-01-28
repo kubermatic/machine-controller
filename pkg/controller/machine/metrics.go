@@ -2,19 +2,24 @@ package controller
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 )
 
-const metricsPrefix = "machine_controller_"
+const (
+	metricsPrefix            = "machine_controller_"
+	metricRegatherWaitPeriod = 10 * time.Minute
+)
 
 // NewMachineControllerMetrics creates new MachineControllerMetrics
 // with default values initialized, so metrics always show up.
@@ -89,6 +94,56 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 }
 
 func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.Interface) *MachineCollector {
+
+	// Start periodically calling the providers SetMetricsForMachines in a dedicated go routine
+	skg := providerconfig.NewConfigVarResolver(kubeClient)
+	go func() {
+		metricGatheringExecutor := func() {
+			machines, err := lister.List(labels.Everything())
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetMetricsForMachines: %v", err))
+				return
+			}
+			var machineList clusterv1alpha1.MachineList
+			for _, machine := range machines {
+				machineList.Items = append(machineList.Items, *machine.DeepCopy())
+			}
+			if len(machineList.Items) < 1 {
+				return
+			}
+
+			providerMachineMap := map[providerconfig.CloudProvider]*clusterv1alpha1.MachineList{}
+			for _, machine := range machines {
+				providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+				if err != nil {
+					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %v", err))
+					continue
+				}
+				if _, exists := providerMachineMap[providerConfig.CloudProvider]; !exists {
+					providerMachineMap[providerConfig.CloudProvider] = &clusterv1alpha1.MachineList{}
+				}
+				providerMachineMap[providerConfig.CloudProvider].Items = append(providerMachineMap[providerConfig.CloudProvider].Items, *machine)
+			}
+
+			for provider, providerMachineList := range providerMachineMap {
+				prov, err := cloudprovider.ForProvider(provider, skg)
+				if err != nil {
+					utilruntime.HandleError(fmt.Errorf("failed to get cloud provider for SetMetricsForMachines:: %q: %v", provider, err))
+					continue
+				}
+				if err := prov.SetMetricsForMachines(*providerMachineList); err != nil {
+					utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
+					continue
+				}
+			}
+
+		}
+		for {
+			metricGatheringExecutor()
+			time.Sleep(metricRegatherWaitPeriod)
+		}
+	}()
+
 	return &MachineCollector{
 		lister:     lister,
 		kubeClient: kubeClient,
@@ -147,19 +202,19 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 
 		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 		if err != nil {
-			runtime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %v", machine.Name, err))
+			utilruntime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %v", machine.Name, err))
 			continue
 		}
 
 		provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, cvr)
 		if err != nil {
-			runtime.HandleError(fmt.Errorf("failed to determine provider provider: %v", err))
+			utilruntime.HandleError(fmt.Errorf("failed to determine provider provider: %v", err))
 			continue
 		}
 
 		labels, err := provider.MachineMetricsLabels(machine)
 		if err != nil {
-			runtime.HandleError(fmt.Errorf("failed to determine machine metrics labels: %v", err))
+			utilruntime.HandleError(fmt.Errorf("failed to determine machine metrics labels: %v", err))
 			continue
 		}
 

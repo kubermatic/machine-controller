@@ -91,3 +91,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	return map[string]string{}, nil
 }
+
+func (p *provider) SetMetricsForMachines(_ v1alpha1.MachineList) error {
+	return nil
+}

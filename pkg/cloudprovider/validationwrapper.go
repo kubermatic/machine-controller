@@ -76,3 +76,7 @@ func (w *cachingValidationWrapper) MigrateUID(m *v1alpha1.Machine, new types.UID
 func (w *cachingValidationWrapper) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	return w.actualProvider.MachineMetricsLabels(machine)
 }
+
+func (w *cachingValidationWrapper) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+	return w.actualProvider.SetMetricsForMachines(machines)
+}

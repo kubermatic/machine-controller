@@ -128,8 +128,7 @@ func NewMachineController(
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	if prometheusRegistry != nil {
-		prometheusRegistry.MustRegister(metrics.Errors)
-		prometheusRegistry.MustRegister(metrics.Workers)
+		prometheusRegistry.MustRegister(metrics.Errors, metrics.Workers)
 	}
 
 	controller := &Controller{
