@@ -821,5 +821,5 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 }
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
-	return fmt.Errorf("Not implemented")
+	return nil
 }

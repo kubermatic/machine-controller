@@ -99,7 +99,7 @@ func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.In
 	skg := providerconfig.NewConfigVarResolver(kubeClient)
 	go func() {
 		metricGatheringExecutor := func() {
-			machines, err := lister.List(labels.NewSelector())
+			machines, err := lister.List(labels.Everything())
 			if err != nil {
 				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetMetricsForMachines: %v", err))
 				return
