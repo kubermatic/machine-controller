@@ -284,6 +284,7 @@ rules:
   resourceNames:
   - machine-controller-ssh-key
   - machine-controller-hetzner
+  - machine-controller-linode
   - machine-controller-digitalocean
   - machine-controller-openstack
   - machine-controller-aws
