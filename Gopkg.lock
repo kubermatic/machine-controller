@@ -507,6 +507,14 @@
   version = "v1.1.5"
 
 [[projects]]
+  digest = "1:a0181b662584429828ccdd68d4dbe09ba7ba7414ef01d54b96f152002802ed72"
+  name = "github.com/linode/linodego"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "42d84d42f3f28fe1fe1823c58c11715241eda24e"
+  version = "v0.7.1"
+
+[[projects]]
   branch = "master"
   digest = "1:84a5a2b67486d5d67060ac393aa255d05d24ed5ee41daecd5635ec22657b6492"
   name = "github.com/mailru/easyjson"
@@ -761,7 +769,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:060b5b850b60c93dd911fc7157ebf149d889d05cf9fb19817a5cbcd2deb5de9f"
+  digest = "1:15ef8efb79f42508d5897139da6bb66119352876b69c213702cdc63b6dabb95b"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -771,6 +779,7 @@
     "http2/hpack",
     "idna",
     "lex/httplex",
+    "publicsuffix",
   ]
   pruneopts = "NUT"
   revision = "d41e8174641f662c5a2d1c7a5f9e828788eb8706"
@@ -877,6 +886,14 @@
   pruneopts = "NUT"
   revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
   version = "v0.9.1"
+
+[[projects]]
+  digest = "1:5e3a62455328b4902b011e84d6c05a5f09e325cc1705bac7269723050e50a0f5"
+  name = "gopkg.in/resty.v1"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "03c09fa32a21b7b27b8dbb3877826c1ab3d2daa2"
+  version = "v1.11.0"
 
 [[projects]]
   digest = "1:b233ad4ec87ac916e7bf5e678e98a2cb9e8b52f6de6ad3e11834fc7a71b8e3bf"
@@ -1363,6 +1380,7 @@
     "github.com/gophercloud/gophercloud/pagination",
     "github.com/heptiolabs/healthcheck",
     "github.com/hetznercloud/hcloud-go/hcloud",
+    "github.com/linode/linodego",
     "github.com/mattbaird/jsonpatch",
     "github.com/oklog/run",
     "github.com/patrickmn/go-cache",
