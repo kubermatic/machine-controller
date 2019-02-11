@@ -1,0 +1,29 @@
+metadata:
+  annotations:
+    machine-controller/machine-type-revision: 45f1c93260140936c610e56575d7505ba3d52444
+  creationTimestamp: null
+  name: linode
+  namespace: kube-system
+spec:
+  metadata:
+    creationTimestamp: null
+    name: node1
+  providerSpec:
+    value:
+      cloudProvider: linode
+      cloudProviderSpec:
+        backups: false
+        private_networking: true
+        region: eu-west
+        size: g6-standard-2
+        tags:
+        - machine-controller
+        token: token
+      operatingSystem: ubuntu
+      operatingSystemSpec:
+        disableAutoUpdate: true
+      sshPublicKeys:
+      - << YOUR_PUBLIC_KEY >>
+  versions:
+    kubelet: v1.9.6
+status: {}

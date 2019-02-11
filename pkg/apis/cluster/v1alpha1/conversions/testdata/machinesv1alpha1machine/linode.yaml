@@ -1,0 +1,26 @@
+apiVersion: "machine.k8s.io/v1alpha1"
+kind: Machine
+metadata:
+  name: linode
+spec:
+  metadata:
+    name: node1
+  providerConfig:
+    sshPublicKeys:
+      - "<< YOUR_PUBLIC_KEY >>"
+    cloudProvider: "linode"
+    cloudProviderSpec:
+      token: "token"
+      region: eu-west
+      size: g6-standard-2
+      backups: false
+      private_networking: true
+      tags:
+        - "machine-controller"
+    operatingSystem: "ubuntu"
+    operatingSystemSpec:
+      disableAutoUpdate: true
+  roles:
+  - "Node"
+  versions:
+    kubelet: "v1.9.6"

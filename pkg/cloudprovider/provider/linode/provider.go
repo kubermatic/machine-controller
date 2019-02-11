@@ -2,6 +2,7 @@ package linode
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,6 +62,7 @@ const (
 	createCheckPeriod           = 10 * time.Second
 	createCheckTimeout          = 5 * time.Minute
 	createCheckFailedWaitPeriod = 10 * time.Second
+	cloudinitStackScriptID      = 392559
 )
 
 type TokenSource struct {
@@ -78,10 +80,19 @@ func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfig.OperatingSystemUbuntu:
 		return "linode/ubuntu18.04", nil
-	case providerconfig.OperatingSystemCoreos:
-		return "linode/containerlinux", nil
-	case providerconfig.OperatingSystemCentOS:
-		return "linode/centos7", nil
+
+		/**
+		// StackScripts not available for CoreOS, and no
+		// other userdata work-around
+		case providerconfig.OperatingSystemCoreos:
+			return "linode/containerlinux", nil
+		**/
+
+		/**
+		// StackScript for CloudInit is not centos7 ready
+		case providerconfig.OperatingSystemCentOS:
+			return "linode/centos7", nil
+		**/
 	}
 	return "", providerconfig.ErrOSNotSupported
 }
@@ -223,6 +234,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		BackupsEnabled: c.Backups,
 		AuthorizedKeys: []string{sshkey.PublicKey},
 		Tags:           append(c.Tags, string(machine.UID)),
+		StackScriptID:  cloudinitStackScriptID,
+		StackScriptData: map[string]string{
+			"userdata": base64.StdEncoding.EncodeToString([]byte(userdata)),
+		},
 	}
 
 	linode, err := client.CreateInstance(ctx, createRequest)
