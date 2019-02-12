@@ -101,7 +101,12 @@ func getClient(token string) linodego.Client {
 	}
 
 	oauthClient := oauth2.NewClient(context.Background(), tokenSource)
-	return linodego.NewClient(oauthClient)
+
+	client := linodego.NewClient(oauthClient)
+	ua := fmt.Sprintf("Kubermatic linodego/%s", linodego.Version)
+	client.SetUserAgent(ua)
+
+	return client
 }
 
 func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
@@ -392,8 +397,7 @@ func (d *linodeInstance) Addresses() []string {
 
 func (d *linodeInstance) Status() instance.Status {
 	switch d.linode.Status {
-	case linodego.InstanceProvisioning:
-	case linodego.InstanceBooting:
+	case linodego.InstanceProvisioning, linodego.InstanceBooting:
 		return instance.StatusCreating
 	case linodego.InstanceRunning:
 		return instance.StatusRunning
