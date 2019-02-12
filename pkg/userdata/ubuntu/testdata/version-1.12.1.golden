@@ -121,7 +121,8 @@ write_files:
     # Make sure we always disable swap - Otherwise the kubelet won't start'.
     systemctl mask swap.target
     swapoff -a
-    export CR_PKG='docker-ce=18.06.0~ce~3-0~ubuntu'
+
+    export CR_PKG='docker-ce=5:18.09.2~3-0~ubuntu-bionic'
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
