@@ -180,9 +180,12 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, LINODE_E2E_TESTS_TOKEN environement variable cannot be empty")
 	}
 
+	// we're shimming userdata through Linode stackscripts, and Linode's coreos does not support stackscripts
+	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
+
 	// act
 	params := []string{fmt.Sprintf("<< LINODE_TOKEN >>=%s", linodeToken)}
-	runScenarios(t, nil, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
+	runScenarios(t, excludeSelector, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
 }
 
 // TestVsphereProvisioning - a test suite that exercises vsphere provider

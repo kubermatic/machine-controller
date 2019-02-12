@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/linode/linodego"
 	"golang.org/x/oauth2"
 
@@ -22,7 +21,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
 
 	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -242,28 +240,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 
 	linode, err := client.CreateInstance(ctx, createRequest)
 	if err != nil {
-		return nil, doStatusAndErrToTerminalError(err)
+		return nil, linodeStatusAndErrToTerminalError(err)
 	}
 
-	//We need to wait until the linode really got created as tags will be only applied when the linode is running
-	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
-		newlinode, err := client.GetInstance(ctx, linode.ID)
-		if err != nil {
-			tErr := doStatusAndErrToTerminalError(err)
-			if isTerminalError, _, _ := cloudprovidererrors.IsTerminalError(tErr); isTerminalError {
-				return true, tErr
-			}
-			//Well just wait 10 sec and hope the linode got started by then...
-			time.Sleep(createCheckFailedWaitPeriod)
-			return false, fmt.Errorf("linode (id='%d') got created but we failed to fetch its status", linode.ID)
-		}
-		if sets.NewString(newlinode.Tags...).Has(string(machine.UID)) {
-			glog.V(6).Infof("linode (id='%d') got fully created", linode.ID)
-			return true, nil
-		}
-		glog.V(6).Infof("waiting until linode (id='%d') got fully created...", linode.ID)
-		return false, nil
-	})
+	linode, err = client.WaitForInstanceStatus(ctx, linode.ID, linodego.InstanceRunning, int(createCheckTimeout/time.Second))
+	if err != nil {
+		return nil, linodeStatusAndErrToTerminalError(err)
+	}
 
 	return &linodeInstance{linode: linode}, err
 }
@@ -294,7 +277,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 
 	err = client.DeleteInstance(ctx, linodeID)
 	if err != nil {
-		return false, doStatusAndErrToTerminalError(err)
+		return false, linodeStatusAndErrToTerminalError(err)
 	}
 
 	return false, nil
@@ -320,7 +303,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	linodes, err := client.ListInstances(ctx, listOptions)
 
 	if err != nil {
-		return nil, doStatusAndErrToTerminalError(err)
+		return nil, linodeStatusAndErrToTerminalError(err)
 	}
 
 	for i, linode := range linodes {
@@ -409,21 +392,26 @@ func (d *linodeInstance) Addresses() []string {
 
 func (d *linodeInstance) Status() instance.Status {
 	switch d.linode.Status {
-	case "new":
+	case linodego.InstanceProvisioning:
+	case linodego.InstanceBooting:
 		return instance.StatusCreating
-	case "active":
+	case linodego.InstanceRunning:
 		return instance.StatusRunning
+	case linodego.InstanceDeleting:
+		return instance.StatusDeleting
 	default:
+		// Cloning, Migrating, Offline, Rebooting,
+		// Rebuilding, Resizing, Restoring, ShuttingDown
 		return instance.StatusUnknown
 	}
 }
 
-// doStatusAndErrToTerminalError judges if the given HTTP status
+// linodeStatusAndErrToTerminalError judges if the given HTTP status
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 
 // if the given error doesn't qualify the error passed as
 // an argument will be returned
-func doStatusAndErrToTerminalError(err error) error {
+func linodeStatusAndErrToTerminalError(err error) error {
 	status := 0
 	if apiErr, ok := err.(*linodego.Error); ok {
 		status = apiErr.Code
