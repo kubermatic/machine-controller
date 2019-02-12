@@ -57,10 +57,8 @@ type Config struct {
 }
 
 const (
-	createCheckPeriod           = 10 * time.Second
-	createCheckTimeout          = 5 * time.Minute
-	createCheckFailedWaitPeriod = 10 * time.Second
-	cloudinitStackScriptID      = 392559
+	createCheckTimeout     = 5 * time.Minute
+	cloudinitStackScriptID = 392559
 )
 
 type TokenSource struct {
