@@ -240,13 +240,6 @@ storage:
           sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
           kPe6XoSbiLm/kxk32T0=
           -----END CERTIFICATE-----
-    - path: /etc/coreos/docker-1.12
-      mode: 0644
-      filesystem: root
-      contents:
-        inline: |
-          yes
-
 
 
     - path: /etc/hostname
