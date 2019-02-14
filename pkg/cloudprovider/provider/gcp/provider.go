@@ -21,6 +21,20 @@ import (
 )
 
 //-----
+// Config
+//-----
+
+// Config contains the configuration of the Provider.
+type Config struct {
+	providerConfig *providerconfig.Config
+}
+
+// newConfig create a Provider configuration out of the passed resolver and spec.
+func newConfig(r *providerconfig.ConfigVarResolver, s v1alpha1.ProviderSpec) (*Config, error) {
+	return nil, errors.New("not yet implemented")
+}
+
+//-----
 // Provider
 //-----
 
@@ -43,6 +57,11 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 // AddDefaults implements the cloud.Provider interface.
 func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return nil, errors.New("not yet implemented")
+}
+
+// Validate implements the cloud.Provider interface.
+func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
+	return errors.New("not yet implemented")
 }
 
 //-----
