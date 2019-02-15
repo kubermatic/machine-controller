@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"cloud.google.com/go/compute/metadata"
+	compute "google.golang.org/api/compute/v1"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -23,9 +23,11 @@ import (
 // Constants
 //-----
 
+// Environment variables for the credentials.
 const (
-	// envGCPProjectID is the environment variable for the project ID.
-	envGCPProjectID = "GOOGLE_PROJECT_ID"
+	envGoogleClientID  = "GOOGLE_CLIENT_ID"
+	envGoogleProjectID = "GOOGLE_PROJECT_ID"
+	envGoogleEmail     = "GOOGLE_EMAIL"
 )
 
 // nyiErr is a temporary error used during implementation. Has to be removed.
@@ -37,13 +39,16 @@ var nyiErr = fmt.Errorf("not yet implemented")
 
 // cloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
+// TODO: Check how to handle private key.
 type cloudProviderSpec struct {
+	ClientID  providerconfig.ConfigVarString `json:"clientID"`
 	ProjectID providerconfig.ConfigVarString `json:"projectID"`
+	Email     providerconfig.ConfigVarString `json:"email"`
 }
 
 // Config contains the configuration of the Provider.
 type Config struct {
-	projectID      string
+	credentials    *Credentials
 	providerConfig *providerconfig.Config
 }
 
@@ -64,13 +69,10 @@ func newConfig(r *providerconfig.ConfigVarResolver, s v1alpha1.ProviderSpec) (*C
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
 	}
+	// TODO: Retrieve credentials out of specification or environment.
 	// Setup configuration.
 	cfg := &Config{
 		providerConfig: providerConfig,
-	}
-	c.projectID, err = r.GetConfigVarStringValueOrEnv(spec.ProjectID, envGCPProjectID)
-	if err != nil {
-		return nil, fmt.Errorf(`failed to get the value of "projectID" field: %v`, err)
 	}
 	return cfg, nil
 }
@@ -106,7 +108,7 @@ func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 //-----
-// Private helpers.
+// Private helpers
 //-----
 
 // userAgentTransport sets the User-Agent header before calling base.
@@ -121,17 +123,17 @@ func (t userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	return t.base.RoundTrip(req)
 }
 
-// connectGCP returns a client for communication with the GCP.
-func connectGCP() (*metadata.Client, error) {
-	c := metadata.NewClient(&http.Client{
+// connectComputeService establishes a service connection to the Compute Engine.
+func connectComputeService(cfg *Config) (*compute.Service, error) {
+	oauthClient := &http.Client{
 		Transport: userAgentTransport{
 			userAgent: "kubermatic-machine-controller",
 			base:      http.DefaultTransport,
 		},
-	})
-	p, err := c.ProjectID()
+	}
+	svc, err := compute.New(oauthClient)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud Platform: %v", err)
 	}
-	return c, nil
+	return svc, nil
 }
