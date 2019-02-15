@@ -9,7 +9,6 @@ package gcp
 //-----
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -21,17 +20,59 @@ import (
 )
 
 //-----
+// Constants
+//-----
+
+const (
+	// envGCPProjectID is the environment variable for the project ID.
+	envGCPProjectID = "GOOGLE_PROJECT_ID"
+)
+
+// nyiErr is a temporary error used during implementation. Has to be removed.
+var nyiErr = fmt.Errorf("not yet implemented")
+
+//-----
 // Config
 //-----
 
+// cloudProviderSpec contains the specification of the cloud provider taken
+// from the provider configuration.
+type cloudProviderSpec struct {
+	ProjectID providerconfig.ConfigVarString `json:"projectID"`
+}
+
 // Config contains the configuration of the Provider.
 type Config struct {
+	projectID      string
 	providerConfig *providerconfig.Config
 }
 
 // newConfig create a Provider configuration out of the passed resolver and spec.
 func newConfig(r *providerconfig.ConfigVarResolver, s v1alpha1.ProviderSpec) (*Config, error) {
-	return nil, errors.New("not yet implemented")
+	// Retrieve provider configuration from machine specification.
+	if s.Value == nil {
+		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+	}
+	providerConfig := providerconfig.Config{}
+	err := json.Unmarshal(s.Value.Raw, &providerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
+	}
+	// Retrieve cloud provider specification from cloud provider specification.
+	spec := cloudProviderSpec{}
+	err = json.Unmarshal(providerConfig.CloudProviderSpec.Raw, &spec)
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
+	}
+	// Setup configuration.
+	cfg := &Config{
+		providerConfig: providerConfig,
+	}
+	c.projectID, err = r.GetConfigVarStringValueOrEnv(spec.ProjectID, envGCPProjectID)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get the value of "projectID" field: %v`, err)
+	}
+	return cfg, nil
 }
 
 //-----
@@ -56,12 +97,12 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 
 // AddDefaults implements the cloud.Provider interface.
 func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	return nil, errors.New("not yet implemented")
+	return nil, nyiErr
 }
 
 // Validate implements the cloud.Provider interface.
 func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
-	return errors.New("not yet implemented")
+	return nyiErr
 }
 
 //-----
