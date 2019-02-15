@@ -190,7 +190,7 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    yum install -y docker-1.13.1 \
+    yum install -y 'docker >= 1.13.1-91' \
       ebtables \
       ethtool \
       nfs-utils \
