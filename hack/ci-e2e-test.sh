@@ -13,9 +13,7 @@ function cleanup {
     for try in {1..20}; do
       # Clean up master
       echo "Cleaning up controller, attempt ${try}"
-      # Clean up only the server, we want to keep the key as only one key may exist
-      # for a given fingerprint
-      terraform destroy -target=hcloud_server.machine-controller-test -force
+      terraform destroy -force
       if [[ $? == 0 ]]; then break; fi
       echo "Sleeping for $try seconds"
       sleep ${try}s
