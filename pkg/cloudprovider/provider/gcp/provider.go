@@ -12,11 +12,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
@@ -36,6 +39,17 @@ const (
 const (
 	osUbuntu = "ubuntu-18.04"
 	osCentOS = "centos-7"
+)
+
+// connectionType describes the kind of GCP connection.
+const connectionType = "service_account"
+
+// driverScopes addresses the parts of the GCP API the provider addresses.
+var (
+	driverScopes = []string{
+		"https://www.googleapis.com/auth/compute",
+		"https://www.googleapis.com/auth/devstorage.full_control",
+	}
 )
 
 // nyiErr is a temporary error used during implementation. Has to be removed.
@@ -119,7 +133,6 @@ var _ cloud.Provider = New(nil)
 // Provider implements the cloud.Provider interface for the Google Cloud Platform.
 type Provider struct {
 	resolver *providerconfig.ConfigVarResolver
-	cfg      *config
 }
 
 // New creates a cloud provider instance for the Google Cloud Platform.
@@ -131,7 +144,8 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 
 // AddDefaults implements the cloud.Provider interface.
 func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	return nil, nyiErr
+	// So far nothing to add.
+	return spec, nil
 }
 
 // Validate implements the cloud.Provider interface.
@@ -176,8 +190,27 @@ func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 			Message: fmt.Sprintf("Invalid or not supported operating system specified %q: %v", cfg.providerConfig.OperatingSystem, err),
 		}
 	}
-	p.cfg = cfg
 	return nil
+}
+
+// Get implements the cloud.Provider interface.
+func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+	// Read configuration.
+	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
+	if err != nil {
+		return nil, errors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec: %v", err),
+		}
+	}
+	// Connect to GCP.
+	svc, err := connectComputeService(cfg)
+	if err != nil {
+		return nil, errors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec: %v", err),
+		}
+	}
 }
 
 //-----
@@ -196,27 +229,24 @@ func nameForOS(os providerconfig.OperatingSystem) (string, error) {
 	return "", providerconfig.ErrOSNotSupported
 }
 
-// userAgentTransport sets the User-Agent header before calling base.
-type userAgentTransport struct {
-	userAgent string
-	base      http.RoundTripper
-}
-
-// RoundTrip implements the http.RoundTripper interface.
-func (t userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("User-Agent", t.userAgent)
-	return t.base.RoundTrip(req)
-}
-
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *Config) (*compute.Service, error) {
-	oauthClient := &http.Client{
-		Transport: userAgentTransport{
-			userAgent: "kubermatic-machine-controller",
-			base:      http.DefaultTransport,
-		},
+	jsonMap := map[string]string{
+		"type":         connectionType,
+		"client_id":    cfg.clientID,
+		"client_email": cfg.email,
+		"private_key":  string(cfg.privateKey),
 	}
-	svc, err := compute.New(oauthClient)
+	jsonBytes, err := json.Marshal(jsonMap)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create credentials: %v", err)
+	}
+	cfg, err := google.JWTConfigFromJSON(jsonBytes, driverScopes...)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	client := cfg.Client(oauth2.NoContext)
+	svc, err := compute.New(client)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud Platform: %v", err)
 	}
