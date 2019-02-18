@@ -25,30 +25,39 @@ import (
 
 // Environment variables for the credentials.
 const (
-	envGoogleClientID  = "GOOGLE_CLIENT_ID"
-	envGoogleProjectID = "GOOGLE_PROJECT_ID"
-	envGoogleEmail     = "GOOGLE_EMAIL"
+	envGoogleClientID   = "GOOGLE_CLIENT_ID"
+	envGoogleProjectID  = "GOOGLE_PROJECT_ID"
+	envGoogleEmail      = "GOOGLE_EMAIL"
+	envGooglePrivateKey = "GOOGLE_PRIVATE_KEY"
 )
 
 // nyiErr is a temporary error used during implementation. Has to be removed.
 var nyiErr = fmt.Errorf("not yet implemented")
 
 //-----
-// Config
+// Cloud Provider Specification
 //-----
 
 // cloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
-// TODO: Check how to handle private key.
+// TODO: Check how to handle private key, it's a []byte.
 type cloudProviderSpec struct {
-	ClientID  providerconfig.ConfigVarString `json:"clientID"`
-	ProjectID providerconfig.ConfigVarString `json:"projectID"`
-	Email     providerconfig.ConfigVarString `json:"email"`
+	ClientID   providerconfig.ConfigVarString `json:"clientID"`
+	ProjectID  providerconfig.ConfigVarString `json:"projectID"`
+	Email      providerconfig.ConfigVarString `json:"email"`
+	PrivateKey providerconfig.ConfigVarString `json:"privateKey"`
 }
+
+//-----
+// Config
+//-----
 
 // Config contains the configuration of the Provider.
 type Config struct {
-	credentials    *Credentials
+	clientID       string
+	projectID      string
+	email          string
+	privateKey     []byte
 	providerConfig *providerconfig.Config
 }
 
@@ -69,10 +78,25 @@ func newConfig(r *providerconfig.ConfigVarResolver, s v1alpha1.ProviderSpec) (*C
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
 	}
-	// TODO: Retrieve credentials out of specification or environment.
 	// Setup configuration.
 	cfg := &Config{
 		providerConfig: providerConfig,
+	}
+	cfg.clientID, err = r.GetConfigVarStringValueOrEnv(spec.ClientID, envGoogleClientID)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client ID: %v", err)
+	}
+	cfg.projectID, err = r.GetConfigVarStringValueOrEnv(spec.ProjectID, envGoogleProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve project ID: %v", err)
+	}
+	cfg.email, err = r.GetConfigVarStringValueOrEnv(spec.Email, envGoogleEmail)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve email: %v", err)
+	}
+	cfg.privateKey, err = r.GetConfigVarStringValueOrEnv(spec.PrivateKey, envGooglePrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve private key: %v", err)
 	}
 	return cfg, nil
 }
