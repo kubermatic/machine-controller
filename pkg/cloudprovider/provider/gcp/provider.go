@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	compute "google.golang.org/api/compute/v1"
+	"google.golang.org/api/compute/v1"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -31,8 +31,21 @@ import (
 const (
 	envGoogleClientID   = "GOOGLE_CLIENT_ID"
 	envGoogleProjectID  = "GOOGLE_PROJECT_ID"
+	envGoogleProjectID  = "GOOGLE_ZONE"
 	envGoogleEmail      = "GOOGLE_EMAIL"
 	envGooglePrivateKey = "GOOGLE_PRIVATE_KEY"
+)
+
+// Possible instance statuses.
+const (
+	statusInstanceProvisioning = "PROVISIONING"
+	statusInstanceRunning      = "RUNNING"
+	statusInstanceStaging      = "STAGING"
+	statusInstanceStopped      = "STOPPED"
+	statusInstanceStopping     = "STOPPING"
+	statusInstanceSuspended    = "SUSPENDED"
+	statusInstanceSuspending   = "SUSPENDING"
+	statusInstanceTerminated   = "TERMINATED"
 )
 
 // Supported operating systems.
@@ -48,7 +61,6 @@ const connectionType = "service_account"
 var (
 	driverScopes = []string{
 		"https://www.googleapis.com/auth/compute",
-		"https://www.googleapis.com/auth/devstorage.full_control",
 	}
 )
 
@@ -64,6 +76,7 @@ var nyiErr = fmt.Errorf("not yet implemented")
 type cloudProviderSpec struct {
 	ClientID   providerconfig.ConfigVarString `json:"clientID"`
 	ProjectID  providerconfig.ConfigVarString `json:"projectID"`
+	Zone       providerconfig.ConfigVarString `json:"zone"`
 	Email      providerconfig.ConfigVarString `json:"email"`
 	PrivateKey providerconfig.ConfigVarString `json:"privateKey"`
 }
@@ -76,6 +89,7 @@ type cloudProviderSpec struct {
 type config struct {
 	clientID       string
 	projectID      string
+	zone           string
 	email          string
 	privateKey     []byte
 	providerConfig *providerconfig.Config
@@ -109,6 +123,10 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.projectID, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ProjectID, envGoogleProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve project ID: %v", err)
+	}
+	cfg.zone, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.Zone, envGoogleZone)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve zone: %v", err)
 	}
 	cfg.email, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.Email, envGoogleEmail)
 	if err != nil {
@@ -171,6 +189,12 @@ func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 			Message: fmt.Sprintf("Project ID is missing"),
 		}
 	}
+	if cfg.zone == "" {
+		return errors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Zone is missing"),
+		}
+	}
 	if cfg.email == "" {
 		return errors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -208,9 +232,73 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, errors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse MachineSpec: %v", err),
+			Message: fmt.Sprintf("Failed to connect: %v", err),
 		}
 	}
+	// Retrieve instance.
+	inst, err := svc.Instances.Get(cfg.projectID, cfg.zone, string(machine.UID)).Do()
+	if err != nil {
+		return nil, errors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to retrieve instance : %v", err),
+		}
+	}
+	return &gcpInstance{
+		inst: inst,
+	}, nil
+}
+
+//-----
+// Instance
+//-----
+
+// gcpInstance implements instance.Instance for the GCP instance.
+type gcpInstance struct {
+	inst *compute.Instance
+}
+
+// Name implements instance.Instance.
+func (gcp *gcpInstance) Name() string {
+	return gcp.inst.Name
+}
+
+// ID implements instance.Instance.
+func (gcp *gcpInstance) ID() string {
+	return strconv.FormatUint(gcp.inst.Id, 10)
+}
+
+// Addresses implements instance.Instance.
+func (gcp *gcpInstance) Addresses() []string {
+	var addrs []string
+	for _, ifc := range gcp.inst.NetworkInterfaces {
+		addrs = append(addrs, ifc.NetworkIP)
+	}
+	return addrs
+}
+
+// Status implements instance.Instance.
+// TODO Check status mapping for staging, delet(ed|ing), suspend(ed|ing).
+func (gcp *gcpInstance) Status() instance.Status {
+	switch gcp.inst.Status {
+	case statusInstanceProvisioning:
+		return instance.StatusCreating
+	case statusInstanceRunning:
+		return instance.StatusRunning
+	case statusInstanceStaging:
+		return instance.StatusCreating
+	case statusInstanceStopped:
+		return instance.StatusDeleted
+	case statusInstanceStopping:
+		return instance.StatusDeleting
+	case statusInstanceSuspended:
+		return instance.StatusDeleted
+	case statusInstanceSuspending:
+		return instance.StatusDeleting
+	case statusInstanceTerminated:
+		return instance.StatusDeleted
+	}
+	// Must not happen.
+	return instance.StatusUnknown
 }
 
 //-----
