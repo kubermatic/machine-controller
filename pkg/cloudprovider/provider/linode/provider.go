@@ -2,12 +2,14 @@ package linode
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/linode/linodego"
@@ -202,6 +204,16 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
+func createRandomPassword() (string, error) {
+	rawRootPass := make([]byte, 50)
+	_, err := rand.Read(rawRootPass)
+	if err != nil {
+		return "", fmt.Errorf("Failed to generate random password")
+	}
+	rootPass := base64.StdEncoding.EncodeToString(rawRootPass)
+	return rootPass, nil
+}
+
 func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
@@ -226,14 +238,24 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 			Message: fmt.Sprintf("Failed to parse MachineSpec, invalid operating system specified %q: %v", pc.OperatingSystem, err),
 		}
 	}
+
+	randomPassword, err := createRandomPassword()
+	if err != nil {
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to generate password for Linode, due to %v", err),
+		}
+	}
+
 	createRequest := linodego.InstanceCreateOptions{
 		Image:          slug,
 		Label:          machine.Spec.Name,
 		Region:         c.Region,
 		Type:           c.Type,
 		PrivateIP:      c.PrivateNetworking,
+		RootPass:       randomPassword,
 		BackupsEnabled: c.Backups,
-		AuthorizedKeys: []string{sshkey.PublicKey},
+		AuthorizedKeys: []string{strings.TrimSpace(sshkey.PublicKey)},
 		Tags:           append(c.Tags, string(machine.UID)),
 		StackScriptID:  cloudinitStackScriptID,
 		StackScriptData: map[string]string{
