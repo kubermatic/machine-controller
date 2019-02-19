@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"reflect"
 	"strings"
@@ -71,6 +72,7 @@ var (
 	kubeconfig         string
 	clusterDNSIPs      string
 	listenAddress      string
+	profiling          bool
 	name               string
 	joinClusterTimeout string
 	workerCount        int
@@ -165,6 +167,7 @@ func main() {
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
 	flag.StringVar(&joinClusterTimeout, "join-cluster-timeout", "", "when set, machines that have an owner and do not join the cluster within the configured duration will be deleted, so the owner re-creats them")
+	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -472,6 +475,13 @@ func createUtilHTTPServer(kubeClient kubernetes.Interface, kubeconfigProvider ma
 	m.Handle("/metrics", promhttp.HandlerFor(prometheusGatherer, promhttp.HandlerOpts{}))
 	m.Handle("/live", http.HandlerFunc(health.LiveEndpoint))
 	m.Handle("/ready", http.HandlerFunc(health.ReadyEndpoint))
+	if profiling {
+		m.HandleFunc("/debug/pprof/", pprof.Index)
+		m.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		m.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		m.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		m.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
 
 	return &http.Server{
 		Addr:         listenAddress,
