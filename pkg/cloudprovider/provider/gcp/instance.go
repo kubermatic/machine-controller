@@ -36,25 +36,25 @@ const (
 // Instance
 //-----
 
-// instance implements instance.Instance for the GCP instance.
-type instance struct {
+// gcpInstance implements instance.Instance for the GCP instance.
+type gcpInstance struct {
 	ci *compute.Instance
 }
 
 // Name implements instance.Instance.
-func (i *instance) Name() string {
-	return i.ci.Name
+func (gi *gcpInstance) Name() string {
+	return gi.ci.Name
 }
 
 // ID implements instance.Instance.
-func (i *instance) ID() string {
-	return strconv.FormatUint(i.ci.Id, 10)
+func (gi *gcpInstance) ID() string {
+	return strconv.FormatUint(gi.ci.Id, 10)
 }
 
 // Addresses implements instance.Instance.
-func (i *instance) Addresses() []string {
+func (gi *gcpInstance) Addresses() []string {
 	var addrs []string
-	for _, ifc := range i.ci.NetworkInterfaces {
+	for _, ifc := range gi.ci.NetworkInterfaces {
 		addrs = append(addrs, ifc.NetworkIP)
 	}
 	return addrs
@@ -62,8 +62,8 @@ func (i *instance) Addresses() []string {
 
 // Status implements instance.Instance.
 // TODO Check status mapping for staging, delet(ed|ing), suspend(ed|ing).
-func (i *instance) Status() instance.Status {
-	switch i.ci.Status {
+func (gi *gcpInstance) Status() instance.Status {
+	switch gi.ci.Status {
 	case statusInstanceProvisioning:
 		return instance.StatusCreating
 	case statusInstanceRunning:

@@ -9,16 +9,11 @@ package gcp
 //-----
 
 import (
+	"encoding/json"
 	"fmt"
-	"net/http"
-	"path"
-	"strconv"
-	"time"
 
-	"github.com/golang/glog"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
@@ -35,7 +30,7 @@ import (
 const (
 	envGoogleClientID   = "GOOGLE_CLIENT_ID"
 	envGoogleProjectID  = "GOOGLE_PROJECT_ID"
-	envGoogleProjectID  = "GOOGLE_ZONE"
+	envGoogleZone       = "GOOGLE_ZONE"
 	envGoogleEmail      = "GOOGLE_EMAIL"
 	envGooglePrivateKey = "GOOGLE_PRIVATE_KEY"
 )
@@ -110,7 +105,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	}
 	// Setup configuration.
 	cfg := &config{
-		providerConfig: providerConfig,
+		providerConfig: &providerConfig,
 	}
 	cfg.clientID, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ClientID, envGoogleClientID)
 	if err != nil {
@@ -167,7 +162,7 @@ func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 // machine's specification.
 func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 	// Read configuration.
-	cfg, err := newConfig(p.resolver, spec)
+	cfg, err := newConfig(p.resolver, spec.ProviderSpec)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
@@ -212,20 +207,20 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errRetrieveInstance, err)
 	}
-	return &instance{inst}, nil
+	return &gcpInstance{inst}, nil
 }
 
 // GetCloudConfig implements the cloud.Provider interface. It returns the cloud provider specific
 // cloud-config, which gets consumed by the kubelet.
-func (p *Provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nyiErr
 }
 
 // Create implements the cloud.Provider interface. It creates a cloud instance according
 // to the given machine.
 func (p *Provider) Create(
-	machine *clusterv1alpha1.Machine,
-	data *MachineCreateDeleteData,
+	machine *v1alpha1.Machine,
+	data *cloud.MachineCreateDeleteData,
 	userdata string,
 ) (instance.Instance, error) {
 	// Read configuration.
@@ -248,7 +243,7 @@ func (p *Provider) Create(
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
-	err = svc.waitOperation(projectID, operation, timeoutNormal)
+	err = svc.waitOperation(cfg.projectID, op, timeoutNormal)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
