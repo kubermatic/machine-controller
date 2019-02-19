@@ -11,7 +11,11 @@ package gcp
 import (
 	"fmt"
 	"net/http"
+	"path"
+	"strconv"
+	"time"
 
+	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
@@ -36,32 +40,24 @@ const (
 	envGooglePrivateKey = "GOOGLE_PRIVATE_KEY"
 )
 
-// Possible instance statuses.
-const (
-	statusInstanceProvisioning = "PROVISIONING"
-	statusInstanceRunning      = "RUNNING"
-	statusInstanceStaging      = "STAGING"
-	statusInstanceStopped      = "STOPPED"
-	statusInstanceStopping     = "STOPPING"
-	statusInstanceSuspended    = "SUSPENDED"
-	statusInstanceSuspending   = "SUSPENDING"
-	statusInstanceTerminated   = "TERMINATED"
-)
-
 // Supported operating systems.
 const (
 	osUbuntu = "ubuntu-18.04"
 	osCentOS = "centos-7"
 )
 
-// connectionType describes the kind of GCP connection.
-const connectionType = "service_account"
-
-// driverScopes addresses the parts of the GCP API the provider addresses.
-var (
-	driverScopes = []string{
-		"https://www.googleapis.com/auth/compute",
-	}
+// Terminal error messages.
+const (
+	errMachineSpec       = "Failed to parse MachineSpec: %v"
+	errOperatingSystem   = "Invalid or not supported operating system specified %q: %v"
+	errConnect           = "Failed to connect: %v"
+	errInvalidClientID   = "Client ID is missing"
+	errInvalidProjectID  = "Project ID is missing"
+	errInvalidZone       = "Zone is missing"
+	errInvalidEmail      = "Email is missing"
+	errInvalidPrivateKey = "Private key is missing"
+	errRetrieveInstance  = "Failed to retrieve instance: %v"
+	errInsertInstance    = "Failed to insert instance: %v"
 )
 
 // nyiErr is a temporary error used during implementation. Has to be removed.
@@ -160,150 +156,117 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 	}
 }
 
-// AddDefaults implements the cloud.Provider interface.
+// AddDefaults implements the cloud.Provider interface. It reads the MachineSpec and
+// applies defaults for provider specific fields
 func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	// So far nothing to add.
 	return spec, nil
 }
 
-// Validate implements the cloud.Provider interface.
+// Validate implements the cloud.Provider interface. It validates the given
+// machine's specification.
 func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, spec)
 	if err != nil {
-		return errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse MachineSpec: %v", err),
-		}
+		return newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Check configured values.
 	if cfg.clientID == "" {
-		return errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Client ID is missing"),
-		}
+		return newError(common.InvalidConfigurationMachineError, errInvalidClientID)
 	}
 	if cfg.projectID == "" {
-		return errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Project ID is missing"),
-		}
+		return newError(common.InvalidConfigurationMachineError, errInvalidProjectID)
 	}
 	if cfg.zone == "" {
-		return errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Zone is missing"),
-		}
+		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
 	}
 	if cfg.email == "" {
-		return errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Email is missing"),
-		}
+		return newError(common.InvalidConfigurationMachineError, errInvalidEmail)
 	}
 	if len(cfg.privateKey) == 0 {
-		return errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Private key is missing"),
-		}
+		return newError(common.InvalidConfigurationMachineError, errInvalidPrivateKey)
 	}
 	_, err = nameForOS(cfg.providerConfig.OperatingSystem)
 	if err != nil {
-		return errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Invalid or not supported operating system specified %q: %v", cfg.providerConfig.OperatingSystem, err),
-		}
+		return newError(common.InvalidConfigurationMachineError, errOperatingSystem, cfg.providerConfig.OperatingSystem, err)
 	}
 	return nil
 }
 
-// Get implements the cloud.Provider interface.
+// Get implements the cloud.Provider interface. It gets a node that is associated
+// with the given machine.
 func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
-		return nil, errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse MachineSpec: %v", err),
-		}
+		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Connect to GCP.
 	svc, err := connectComputeService(cfg)
 	if err != nil {
-		return nil, errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to connect: %v", err),
-		}
+		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
 	// Retrieve instance.
 	inst, err := svc.Instances.Get(cfg.projectID, cfg.zone, string(machine.UID)).Do()
 	if err != nil {
-		return nil, errors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to retrieve instance : %v", err),
-		}
+		return nil, newError(common.InvalidConfigurationMachineError, errRetrieveInstance, err)
 	}
-	return &gcpInstance{
-		inst: inst,
-	}, nil
+	return &instance{inst}, nil
 }
 
-//-----
-// Instance
-//-----
-
-// gcpInstance implements instance.Instance for the GCP instance.
-type gcpInstance struct {
-	inst *compute.Instance
+// GetCloudConfig implements the cloud.Provider interface. It returns the cloud provider specific
+// cloud-config, which gets consumed by the kubelet.
+func (p *Provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+	return "", "", nyiErr
 }
 
-// Name implements instance.Instance.
-func (gcp *gcpInstance) Name() string {
-	return gcp.inst.Name
-}
-
-// ID implements instance.Instance.
-func (gcp *gcpInstance) ID() string {
-	return strconv.FormatUint(gcp.inst.Id, 10)
-}
-
-// Addresses implements instance.Instance.
-func (gcp *gcpInstance) Addresses() []string {
-	var addrs []string
-	for _, ifc := range gcp.inst.NetworkInterfaces {
-		addrs = append(addrs, ifc.NetworkIP)
+// Create implements the cloud.Provider interface. It creates a cloud instance according
+// to the given machine.
+func (p *Provider) Create(
+	machine *clusterv1alpha1.Machine,
+	data *MachineCreateDeleteData,
+	userdata string,
+) (instance.Instance, error) {
+	// Read configuration.
+	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
-	return addrs
-}
-
-// Status implements instance.Instance.
-// TODO Check status mapping for staging, delet(ed|ing), suspend(ed|ing).
-func (gcp *gcpInstance) Status() instance.Status {
-	switch gcp.inst.Status {
-	case statusInstanceProvisioning:
-		return instance.StatusCreating
-	case statusInstanceRunning:
-		return instance.StatusRunning
-	case statusInstanceStaging:
-		return instance.StatusCreating
-	case statusInstanceStopped:
-		return instance.StatusDeleted
-	case statusInstanceStopping:
-		return instance.StatusDeleting
-	case statusInstanceSuspended:
-		return instance.StatusDeleted
-	case statusInstanceSuspending:
-		return instance.StatusDeleting
-	case statusInstanceTerminated:
-		return instance.StatusDeleted
+	_, err = nameForOS(cfg.providerConfig.OperatingSystem)
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errOperatingSystem, cfg.providerConfig.OperatingSystem, err)
 	}
-	// Must not happen.
-	return instance.StatusUnknown
+	// Connect to GCP.
+	svc, err := connectComputeService(cfg)
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
+	}
+	// Create GCP instance spec and insert it.
+	inst := &compute.Instance{}
+	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
+	}
+	err = svc.waitOperation(projectID, operation, timeoutNormal)
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
+	}
+	// Retrieve it to get a full qualified instance.
+	return p.Get(machine)
 }
 
 //-----
 // Private helpers
 //-----
+
+// newError creates a terminal error matching to the provider interface.
+func newError(reason common.MachineStatusError, msg string, args ...interface{}) error {
+	return errors.TerminalError{
+		Reason:  reason,
+		Message: fmt.Sprintf(msg, args...),
+	}
+}
 
 // nameForOS retrieves the operating system out of the provider configuration.
 // Has to be supported.
@@ -315,28 +278,4 @@ func nameForOS(os providerconfig.OperatingSystem) (string, error) {
 		return osCentOS, nil
 	}
 	return "", providerconfig.ErrOSNotSupported
-}
-
-// connectComputeService establishes a service connection to the Compute Engine.
-func connectComputeService(cfg *Config) (*compute.Service, error) {
-	jsonMap := map[string]string{
-		"type":         connectionType,
-		"client_id":    cfg.clientID,
-		"client_email": cfg.email,
-		"private_key":  string(cfg.privateKey),
-	}
-	jsonBytes, err := json.Marshal(jsonMap)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create credentials: %v", err)
-	}
-	cfg, err := google.JWTConfigFromJSON(jsonBytes, driverScopes...)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	client := cfg.Client(oauth2.NoContext)
-	svc, err := compute.New(client)
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to Google Cloud Platform: %v", err)
-	}
-	return svc, nil
 }
