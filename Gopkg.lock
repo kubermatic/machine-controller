@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:4d6f036ea3fe636bcb2e89850bcdc62a771354e157cd51b8b22a2de8562bf663"
+  name = "cloud.google.com/go"
+  packages = ["compute/metadata"]
+  pruneopts = "NUT"
+  revision = "c9474f2f8deb81759839474b6bd1726bbfe1c1c4"
+  version = "v0.36.0"
+
+[[projects]]
   digest = "1:eba67fa6235db217a2a101a2aff04f559848996a044ee60d84b0c6f69e240856"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
@@ -777,11 +785,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2622782f6c2862c32453884e845f0a601c117ba5be21157adb8807b3c0728e68"
+  digest = "1:46bd4e66bfce5e77f08fc2e8dcacc3676e679241ce83d9c150ff0397d686dd44"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "google",
     "internal",
+    "jws",
+    "jwt",
   ]
   pruneopts = "NUT"
   revision = "6881fee410a5daf86371371f9ad451b95e168b71"
@@ -842,13 +853,29 @@
   revision = "94b14834a20132093826ea5e2da5502a13908ad3"
 
 [[projects]]
-  digest = "1:f229c599a645bffd97518107ac89955adfa6d5e5e4efa3e8cadb29789219639f"
+  digest = "1:1edf9643e25781773c02eb82f07839ee680a8883397e99e41845c29d9dd317fb"
+  name = "google.golang.org/api"
+  packages = [
+    "compute/v1",
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
+  ]
+  pruneopts = "NUT"
+  revision = "19e022d8cf43ce81f046bae8cc18c5397cc7732f"
+  version = "v0.1.0"
+
+[[projects]]
+  digest = "1:7206d98ec77c90c72ec2c405181a1dcf86965803b6dbc4f98ceab7a5047c37a9"
   name = "google.golang.org/appengine"
   packages = [
+    ".",
     "internal",
+    "internal/app_identity",
     "internal/base",
     "internal/datastore",
     "internal/log",
+    "internal/modules",
     "internal/remote_api",
     "internal/urlfetch",
     "urlfetch",
@@ -1380,6 +1407,8 @@
     "github.com/vmware/govmomi/vim25/types",
     "golang.org/x/crypto/ssh",
     "golang.org/x/oauth2",
+    "golang.org/x/oauth2/google",
+    "google.golang.org/api/compute/v1",
     "gopkg.in/gcfg.v1",
     "k8s.io/api/admission/v1beta1",
     "k8s.io/api/core/v1",

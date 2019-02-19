@@ -9,6 +9,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/fake"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gcp"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
@@ -31,6 +32,9 @@ var (
 		},
 		providerconfig.CloudProviderOpenstack: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
 			return openstack.New(cvr)
+		},
+		providerconfig.CloudProviderGoogle: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return gcp.New(cvr)
 		},
 		providerconfig.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
 			return hetzner.New(cvr)
