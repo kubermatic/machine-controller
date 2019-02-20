@@ -249,7 +249,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 
 	createRequest := linodego.InstanceCreateOptions{
 		Image:          slug,
-		Label:          machine.Spec.Name,
+		Label:          fmt.Sprintf("%.32s", machine.Spec.Name),
 		Region:         c.Region,
 		Type:           c.Type,
 		PrivateIP:      c.PrivateNetworking,
@@ -308,6 +308,15 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 	return false, nil
 }
 
+func getListOptions(name string) *linodego.ListOptions {
+	filter, _ := json.Marshal(map[string]interface{}{
+		"label": fmt.Sprintf("%.32s", name),
+	})
+
+	listOptions := linodego.NewListOptions(0, string(filter))
+	return listOptions
+}
+
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
@@ -320,11 +329,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	filter, _ := json.Marshal(map[string]interface{}{
-		"label": machine.Spec.Name,
-	})
-
-	listOptions := linodego.NewListOptions(0, string(filter))
+	listOptions := getListOptions(machine.Spec.Name)
 	linodes, err := client.ListInstances(ctx, listOptions)
 
 	if err != nil {
@@ -349,13 +354,14 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to decode providerconfig: %v", err)
 	}
 	client := getClient(c.Token)
-	linodes, err := client.ListInstances(ctx, nil)
+	listOptions := getListOptions(machine.Spec.Name)
+	linodes, err := client.ListInstances(ctx, listOptions)
 	if err != nil {
 		return fmt.Errorf("failed to list linodes: %v", err)
 	}
 
 	for _, linode := range linodes {
-		if linode.Label == machine.Spec.Name && sets.NewString(linode.Tags...).Has(string(machine.UID)) {
+		if sets.NewString(linode.Tags...).Has(string(machine.UID)) {
 			updateOpts := linode.GetUpdateOptions()
 
 			tags := []string{string(new)}
