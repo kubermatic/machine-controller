@@ -177,11 +177,12 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 	// test data
 	linodeToken := os.Getenv("LINODE_E2E_TESTS_TOKEN")
 	if len(linodeToken) == 0 {
-		t.Fatal("unable to run the test suite, LINODE_E2E_TESTS_TOKEN environement variable cannot be empty")
+		t.Fatal("unable to run the test suite, LINODE_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
 	// we're shimming userdata through Linode stackscripts, and Linode's coreos does not support stackscripts
-	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
+	// and the stackscript hasn't been verified for use with centos
+	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
 
 	// act
 	params := []string{fmt.Sprintf("<< LINODE_TOKEN >>=%s", linodeToken)}
