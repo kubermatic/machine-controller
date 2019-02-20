@@ -86,6 +86,25 @@ func connectComputeService(cfg *config) (*service, error) {
 	return &service{svc}, nil
 }
 
+// attachedDisks returns the configured attached disks for an instance creation.
+func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) {
+	// Configure boot disk.
+	sourceImage, err := cfg.sourceImageDescriptor()
+	if err != nil {
+		return nil, err
+	}
+	bootDisk := &compute.AttachedDisk{
+		Boot:       true,
+		AutoDelete: true,
+		InitializeParams: &compute.AttachedDiskInitializeParams{
+			DiskSizeGb:  cfg.diskSize,
+			DiskType:    cfg.diskType,
+			SourceImage: sourceImage,
+		},
+	}
+	return []*compute.AttachedDisk{bootDisk}, nil
+}
+
 // refreshOperation requests a fresh copy of the passed operation containing
 // the updated status.
 func (svc *service) refreshOperation(projectID string, op *compute.Operation) (*compute.Operation, error) {

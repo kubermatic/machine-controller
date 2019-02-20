@@ -9,7 +9,6 @@ package gcp
 //-----
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"google.golang.org/api/compute/v1"
@@ -26,111 +25,25 @@ import (
 // Constants
 //-----
 
-// Environment variables for the configuration.
-const (
-	envGoogleClientID   = "GOOGLE_CLIENT_ID"
-	envGoogleProjectID  = "GOOGLE_PROJECT_ID"
-	envGoogleZone       = "GOOGLE_ZONE"
-	envGoogleEmail      = "GOOGLE_EMAIL"
-	envGooglePrivateKey = "GOOGLE_PRIVATE_KEY"
-)
-
-// Supported operating systems.
-const (
-	osUbuntu = "ubuntu-18.04"
-	osCentOS = "centos-7"
-)
-
 // Terminal error messages.
 const (
-	errMachineSpec       = "Failed to parse MachineSpec: %v"
-	errOperatingSystem   = "Invalid or not supported operating system specified %q: %v"
-	errConnect           = "Failed to connect: %v"
-	errInvalidClientID   = "Client ID is missing"
-	errInvalidProjectID  = "Project ID is missing"
-	errInvalidZone       = "Zone is missing"
-	errInvalidEmail      = "Email is missing"
-	errInvalidPrivateKey = "Private key is missing"
-	errRetrieveInstance  = "Failed to retrieve instance: %v"
-	errInsertInstance    = "Failed to insert instance: %v"
+	errMachineSpec        = "Failed to parse MachineSpec: %v"
+	errOperatingSystem    = "Invalid or not supported operating system specified %q: %v"
+	errConnect            = "Failed to connect: %v"
+	errInvalidClientID    = "Client ID is missing"
+	errInvalidProjectID   = "Project ID is missing"
+	errInvalidEmail       = "Email is missing"
+	errInvalidPrivateKey  = "Private key is missing"
+	errInvalidZone        = "Zone is missing"
+	errInvalidMachineType = "Machine type is missing"
+	errInvalidDiskSize    = "Disk size must be a positive number"
+	errInvalidDiskType    = "Disk type is missing or has wrong type, allowed are 'pd-standard' and 'pd-ssd'"
+	errRetrieveInstance   = "Failed to retrieve instance: %v"
+	errInsertInstance     = "Failed to insert instance: %v"
 )
 
 // nyiErr is a temporary error used during implementation. Has to be removed.
 var nyiErr = fmt.Errorf("not yet implemented")
-
-//-----
-// Cloud Provider Specification
-//-----
-
-// cloudProviderSpec contains the specification of the cloud provider taken
-// from the provider configuration.
-type cloudProviderSpec struct {
-	ClientID   providerconfig.ConfigVarString `json:"clientID"`
-	ProjectID  providerconfig.ConfigVarString `json:"projectID"`
-	Zone       providerconfig.ConfigVarString `json:"zone"`
-	Email      providerconfig.ConfigVarString `json:"email"`
-	PrivateKey providerconfig.ConfigVarString `json:"privateKey"`
-}
-
-//-----
-// Configuration
-//-----
-
-// config contains the configuration of the Provider.
-type config struct {
-	clientID       string
-	projectID      string
-	zone           string
-	email          string
-	privateKey     []byte
-	providerConfig *providerconfig.Config
-}
-
-// newConfig create a Provider configuration out of the passed resolver and spec.
-func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.ProviderSpec) (*config, error) {
-	// Retrieve provider configuration from machine specification.
-	if spec.Value == nil {
-		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
-	}
-	providerConfig := providerconfig.Config{}
-	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
-	}
-	// Retrieve cloud provider specification from cloud provider specification.
-	cpSpec := cloudProviderSpec{}
-	err = json.Unmarshal(providerConfig.CloudProviderSpec.Raw, &cpSpec)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
-	}
-	// Setup configuration.
-	cfg := &config{
-		providerConfig: &providerConfig,
-	}
-	cfg.clientID, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ClientID, envGoogleClientID)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client ID: %v", err)
-	}
-	cfg.projectID, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ProjectID, envGoogleProjectID)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve project ID: %v", err)
-	}
-	cfg.zone, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.Zone, envGoogleZone)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve zone: %v", err)
-	}
-	cfg.email, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.Email, envGoogleEmail)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve email: %v", err)
-	}
-	var pks string
-	pks, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.PrivateKey, envGooglePrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve private key: %v", err)
-	}
-	cfg.privateKey = []byte(pks)
-	return cfg, nil
-}
 
 //-----
 // Provider
@@ -173,16 +86,25 @@ func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 	if cfg.projectID == "" {
 		return newError(common.InvalidConfigurationMachineError, errInvalidProjectID)
 	}
-	if cfg.zone == "" {
-		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
-	}
 	if cfg.email == "" {
 		return newError(common.InvalidConfigurationMachineError, errInvalidEmail)
 	}
 	if len(cfg.privateKey) == 0 {
 		return newError(common.InvalidConfigurationMachineError, errInvalidPrivateKey)
 	}
-	_, err = nameForOS(cfg.providerConfig.OperatingSystem)
+	if cfg.zone == "" {
+		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
+	}
+	if cfg.machineType == "" {
+		return newError(common.InvalidConfigurationMachineError, errInvalidMachineType)
+	}
+	if cfg.diskSize < 1 {
+		return newError(common.InvalidConfigurationMachineError, errInvalidDiskSize)
+	}
+	if !diskTypes[cfg.diskType] {
+		return newError(common.InvalidConfigurationMachineError, errInvalidDiskType)
+	}
+	_, err = cfg.sourceImageDescriptor()
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errOperatingSystem, cfg.providerConfig.OperatingSystem, err)
 	}
@@ -228,17 +150,27 @@ func (p *Provider) Create(
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
-	_, err = nameForOS(cfg.providerConfig.OperatingSystem)
-	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, errOperatingSystem, cfg.providerConfig.OperatingSystem, err)
-	}
 	// Connect to GCP.
 	svc, err := connectComputeService(cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
 	// Create GCP instance spec and insert it.
-	inst := &compute.Instance{}
+	// TODO Instance supports more options; check for those we want to support.
+	disks, err := svc.attachedDisks(cfg)
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
+	}
+	inst := &compute.Instance{
+		Name:        machine.Spec.Name,
+		MachineType: cfg.machineTypeDescriptor(),
+		Disks:       disks,
+		Tags: &compute.Tags{
+			Items: []string{
+				string(machine.UID),
+			},
+		},
+	}
 	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
@@ -261,16 +193,4 @@ func newError(reason common.MachineStatusError, msg string, args ...interface{})
 		Reason:  reason,
 		Message: fmt.Sprintf(msg, args...),
 	}
-}
-
-// nameForOS retrieves the operating system out of the provider configuration.
-// Has to be supported.
-func nameForOS(os providerconfig.OperatingSystem) (string, error) {
-	switch os {
-	case providerconfig.OperatingSystemUbuntu:
-		return osUbuntu, nil
-	case providerconfig.OperatingSystemCentOS:
-		return osCentOS, nil
-	}
-	return "", providerconfig.ErrOSNotSupported
 }
