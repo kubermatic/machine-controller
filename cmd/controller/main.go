@@ -382,7 +382,8 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			return
 		}
 
-		mgr, err := manager.New(runOptions.cfg, manager.Options{})
+		mgrSyncPeriod := 5 * time.Minute
+		mgr, err := manager.New(runOptions.cfg, manager.Options{SyncPeriod: &mgrSyncPeriod})
 		if err != nil {
 			glog.Errorf("failed to start kubebuilder manager: %v", err)
 			runOptions.parentCtxDone()
