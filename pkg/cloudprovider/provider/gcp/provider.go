@@ -10,8 +10,10 @@ package gcp
 
 import (
 	"fmt"
+	"net/http"
 
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
@@ -40,6 +42,7 @@ const (
 	errInvalidDiskType    = "Disk type is missing or has wrong type, allowed are 'pd-standard' and 'pd-ssd'"
 	errRetrieveInstance   = "Failed to retrieve instance: %v"
 	errInsertInstance     = "Failed to insert instance: %v"
+	errDeleteInstance     = "Failed to delete instance: %v"
 )
 
 // nyiErr is a temporary error used during implementation. Has to be removed.
@@ -127,6 +130,11 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	// Retrieve instance.
 	inst, err := svc.Instances.Get(cfg.projectID, cfg.zone, string(machine.UID)).Do()
 	if err != nil {
+		if gerr, ok := err.(*googleapi.Error); ok {
+			if gerr.Code == http.StatusNotFound {
+				return nil, errors.ErrInstanceNotFound
+			}
+		}
 		return nil, newError(common.InvalidConfigurationMachineError, errRetrieveInstance, err)
 	}
 	return &gcpInstance{inst}, nil
@@ -156,7 +164,6 @@ func (p *Provider) Create(
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
 	// Create GCP instance spec and insert it.
-	// TODO Instance supports more options; check for those we want to support.
 	networkInterfaces, err := svc.networkInterfaces(cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
@@ -186,6 +193,33 @@ func (p *Provider) Create(
 	}
 	// Retrieve it to get a full qualified instance.
 	return p.Get(machine)
+}
+
+// Create implements the cloud.Provider interface. It deletes the instance associated with the
+// machine and all associated resources.
+func (p *Provider) Cleanup(
+	machine *v1alpha1.Machine,
+	data *cloud.MachineCreateDeleteData,
+) (bool, error) {
+	// Read configuration.
+	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
+	if err != nil {
+		return false, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
+	}
+	// Connect to GCP.
+	svc, err := connectComputeService(cfg)
+	if err != nil {
+		return false, newError(common.InvalidConfigurationMachineError, errConnect, err)
+	}
+	op, err := svc.Instances.Delete(cfg.projectID, cfg.zone, machine.Spec.Name).Do()
+	if err != nil {
+		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
+	}
+	err = svc.waitOperation(cfg.projectID, op, timeoutNormal)
+	if err != nil {
+		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
+	}
+	return true, nil
 }
 
 //-----
