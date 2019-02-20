@@ -157,14 +157,19 @@ func (p *Provider) Create(
 	}
 	// Create GCP instance spec and insert it.
 	// TODO Instance supports more options; check for those we want to support.
+	networkInterfaces, err := svc.networkInterfaces(cfg)
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
+	}
 	disks, err := svc.attachedDisks(cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	inst := &compute.Instance{
-		Name:        machine.Spec.Name,
-		MachineType: cfg.machineTypeDescriptor(),
-		Disks:       disks,
+		Name:              machine.Spec.Name,
+		MachineType:       cfg.machineTypeDescriptor(),
+		NetworkInterfaces: networkInterfaces,
+		Disks:             disks,
 		Tags: &compute.Tags{
 			Items: []string{
 				string(machine.UID),

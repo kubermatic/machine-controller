@@ -86,9 +86,22 @@ func connectComputeService(cfg *config) (*service, error) {
 	return &service{svc}, nil
 }
 
+// networkInterfaces returns the configured network interfaces for an instance creation.
+func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface, error) {
+	ifc := &compute.NetworkInterface{
+		AccessConfigs: []*compute.AccessConfig{
+			{
+				Name: "External NAT",
+				Type: "ONE_TO_ONE_NAT",
+			},
+		},
+		Network: "global/networks/default",
+	}
+	return []*compute.NetworkInterface{ifc}, nil
+}
+
 // attachedDisks returns the configured attached disks for an instance creation.
 func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) {
-	// Configure boot disk.
 	sourceImage, err := cfg.sourceImageDescriptor()
 	if err != nil {
 		return nil, err
