@@ -337,7 +337,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	}
 
 	for i, linode := range linodes {
-		if linode.Label == machine.Spec.Name && sets.NewString(linode.Tags...).Has(string(machine.UID)) {
+		if sets.NewString(linode.Tags...).Has(string(machine.UID)) {
 			return &linodeInstance{linode: &linodes[i]}, nil
 		}
 	}
