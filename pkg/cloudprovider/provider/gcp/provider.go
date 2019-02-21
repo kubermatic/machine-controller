@@ -222,6 +222,26 @@ func (p *Provider) Cleanup(
 	return true, nil
 }
 
+// MachineMetricsLabels implements the cloud.Provider interface. It returns labels used for the
+// Prometheus metrics about created machines.
+func (p *Provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+	// Read configuration.
+	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
+	if err != nil {
+		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
+	}
+	// Create labels.
+	labels := map[string]string{}
+
+	labels["project"] = c.projectID
+	labels["zone"] = c.zone
+	labels["type"] = c.machineType
+	labels["disksize"] = c.diskSize
+	labels["disktype"] = c.diskType
+
+	return labels, nil
+}
+
 //-----
 // Private helpers
 //-----
