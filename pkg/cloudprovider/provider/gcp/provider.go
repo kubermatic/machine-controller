@@ -288,6 +288,13 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	return nil
 }
 
+// SetMetricsForMachines implements the cloud.Provider interface. It allows providers to
+// provide provider-specific metrics.
+func (p *Provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+	// TODO Check if it makes sense for GCP.
+	return nil
+}
+
 //-----
 // Private helpers
 //-----
