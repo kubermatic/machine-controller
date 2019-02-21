@@ -11,9 +11,11 @@ package gcp
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
@@ -43,6 +45,13 @@ const (
 	errRetrieveInstance   = "Failed to retrieve instance: %v"
 	errInsertInstance     = "Failed to insert instance: %v"
 	errDeleteInstance     = "Failed to delete instance: %v"
+	errSetLabels          = "Failed to set the labels for the new machine UID: %v"
+)
+
+// Instance labels.
+const (
+	labelMachineName = "machine_name"
+	labelMachineUID  = "machine_uid"
 )
 
 // nyiErr is a temporary error used during implementation. Has to be removed.
@@ -172,16 +181,18 @@ func (p *Provider) Create(
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
+	labels := map[string]string{}
+	for k, v := range cfg.labels {
+		labels[k] = v
+	}
+	labels[labelMachineName] = machine.Spec.Name
+	labels[labelMachineUID] = string(machine.UID)
 	inst := &compute.Instance{
 		Name:              machine.Spec.Name,
 		MachineType:       cfg.machineTypeDescriptor(),
 		NetworkInterfaces: networkInterfaces,
 		Disks:             disks,
-		Tags: &compute.Tags{
-			Items: []string{
-				string(machine.UID),
-			},
-		},
+		Labels:            labels,
 	}
 	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
 	if err != nil {
@@ -211,6 +222,7 @@ func (p *Provider) Cleanup(
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
+	// Delete instance.
 	op, err := svc.Instances.Delete(cfg.projectID, cfg.zone, machine.Spec.Name).Do()
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
@@ -233,13 +245,47 @@ func (p *Provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	// Create labels.
 	labels := map[string]string{}
 
-	labels["project"] = c.projectID
-	labels["zone"] = c.zone
-	labels["type"] = c.machineType
-	labels["disksize"] = c.diskSize
-	labels["disktype"] = c.diskType
+	labels["project"] = cfg.projectID
+	labels["zone"] = cfg.zone
+	labels["type"] = cfg.machineType
+	labels["disksize"] = strconv.FormatInt(cfg.diskSize, 10)
+	labels["disktype"] = cfg.diskType
 
 	return labels, nil
+}
+
+// MigrateUID implements the cloud.Provider interface. It is called when the controller migrates types
+// and the UID of the machine object changes.
+func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error {
+	// Read configuration.
+	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
+	if err != nil {
+		return newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
+	}
+	// Connect to GCP.
+	svc, err := connectComputeService(cfg)
+	if err != nil {
+		return newError(common.InvalidConfigurationMachineError, errConnect, err)
+	}
+	// Create new labels and set them.
+	labels := map[string]string{}
+	for k, v := range cfg.labels {
+		labels[k] = v
+	}
+	labels[labelMachineName] = machine.Spec.Name
+	labels[labelMachineUID] = string(newUID)
+	slReq := &compute.InstancesSetLabelsRequest{
+		Labels: labels,
+	}
+	op, err := svc.Instances.SetLabels(cfg.projectID, cfg.zone, machine.Spec.Name, slReq).Do()
+	if err != nil {
+		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
+	}
+	err = svc.waitOperation(cfg.projectID, op, timeoutNormal)
+	if err != nil {
+		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
+	}
+	return nil
 }
 
 //-----

@@ -65,6 +65,7 @@ type cloudProviderSpec struct {
 	MachineType providerconfig.ConfigVarString `json:"machineType"`
 	DiskSize    int64                          `json:"diskSize"`
 	DiskType    providerconfig.ConfigVarString `json:"diskType"`
+	Labels      map[string]string              `json:"labels"`
 }
 
 //-----
@@ -81,6 +82,7 @@ type config struct {
 	machineType    string
 	diskSize       int64
 	diskType       string
+	labels         map[string]string
 	providerConfig *providerconfig.Config
 }
 
@@ -136,6 +138,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve disk type: %v", err)
 	}
+	cfg.labels = cpSpec.Labels
 	return cfg, nil
 }
 
