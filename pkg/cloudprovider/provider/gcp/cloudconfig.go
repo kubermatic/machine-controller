@@ -23,23 +23,26 @@ import (
 // Constants
 //-----
 
-const cloudConfigTemplate = `[global]
-token-url = {{ .Global.TokenURL | iniEscape }}
-token-body = {{ .Global.TokenBody | iniEscape }}
-project-id = {{ .Global.ProjectID | iniEscape }}
-network-project-id = {{ .Global.NetworkProjectID | iniEscape }}
-network-name = {{ .Global.NetworkName | iniEscape }}
-subnetwork-name = {{ .Global.SubnetworkName | iniEscape }}
-secondary-range-name = {{ .Global.SecondaryRangeName | iniEscape }}
-node-tags = {{ StringsJoin .Global.NodeTags ", " }}
-node-instance-prefix = {{ .Global.NodeInstancePrefix | iniEscape }}
-regional = {{ .Global.Regional }}
-multizone = {{ .Global.Multizone }}
-api-endpoint = {{ .Global.APIEndpoint | iniEscape }}
-container-api-endpoint = {{ .Global.ContainerAPIEndpoint | iniEscape }}
-local-zone = {{ .Global.LocalZone | iniEscape }}
-alpha-features = {{ StringsJoin .Global.AlphaFeatures ", " }}
-`
+// cloudConfigTemplate renders the cloud-config in gcfg format. All
+// fields are optional, that's why containing the ifs and the explicit newlines.
+// TODO(mue) Check for mandatory fields and better ways to drop empty fields,
+// e.g. by filtering afterwards.
+const cloudConfigTemplate = "[global]\n" +
+	"{{if .Global.TokenURL}}token-url = {{ .Global.TokenURL | iniEscape }}\n{{end}}" +
+	"{{if .Global.TokenBody}}token-body = {{ .Global.TokenBody | iniEscape }}\n{{end}}" +
+	"{{if .Global.ProjectID}}project-id = {{ .Global.ProjectID | iniEscape }}\n{{end}}" +
+	"{{if .Global.NetworkProjectID}}network-project-id = {{ .Global.NetworkProjectID | iniEscape }}\n{{end}}" +
+	"{{if .Global.NetworkName}}network-name = {{ .Global.NetworkName | iniEscape }}\n{{end}}" +
+	"{{if .Global.SubnetworkName}}subnetwork-name = {{ .Global.SubnetworkName | iniEscape }}\n{{end}}" +
+	"{{if .Global.SecondaryRangeName}}secondary-range-name = {{ .Global.SecondaryRangeName | iniEscape }}\n{{end}}" +
+	"{{if .Global.NodeTags}}node-tags = {{ StringsJoin .Global.NodeTags \", \" }}\n{{end}}" +
+	"{{if .Global.NodeInstancePrefix}}node-instance-prefix = {{ .Global.NodeInstancePrefix | iniEscape }}\n{{end}}" +
+	"{{if .Global.Regional}}regional = {{ .Global.Regional }}\n{{end}}" +
+	"{{if .Global.Multizone}}multizone = {{ .Global.Multizone }}\n{{end}}" +
+	"{{if .Global.APIEndpoint}}api-endpoint = {{ .Global.APIEndpoint | iniEscape }}\n{{end}}" +
+	"{{if .Global.ContainerAPIEndpoint}}container-api-endpoint = {{ .Global.ContainerAPIEndpoint | iniEscape }}\n{{end}}" +
+	"{{if .Global.LocalZone}}local-zone = {{ .Global.LocalZone | iniEscape }}\n{{end}}" +
+	"{{if .Global.AlphaFeatures}}alpha-features = {{ StringsJoin .Global.AlphaFeatures \", \" }}{{end}}"
 
 //-----
 // Cloud Configuration
