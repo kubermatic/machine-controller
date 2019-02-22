@@ -43,6 +43,7 @@ const (
 	errInvalidDiskSize    = "Disk size must be a positive number"
 	errInvalidDiskType    = "Disk type is missing or has wrong type, allowed are 'pd-standard' and 'pd-ssd'"
 	errRetrieveInstance   = "Failed to retrieve instance: %v"
+	errCloudConfig        = "Failed to convert cloud-config to string: %v"
 	errInsertInstance     = "Failed to insert instance: %v"
 	errDeleteInstance     = "Failed to delete instance: %v"
 	errSetLabels          = "Failed to set the labels for the new machine UID: %v"
@@ -76,15 +77,13 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 	}
 }
 
-// AddDefaults implements the cloud.Provider interface. It reads the MachineSpec and
-// applies defaults for provider specific fields
+// AddDefaults reads the MachineSpec and applies defaults for provider specific fields
 func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	// So far nothing to add.
+	// TODO(mue) Check for defaults to apply.
 	return spec, nil
 }
 
-// Validate implements the cloud.Provider interface. It validates the given
-// machine's specification.
+// Validate checks the given machine's specification.
 func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, spec.ProviderSpec)
@@ -123,8 +122,7 @@ func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-// Get implements the cloud.Provider interface. It gets a node that is associated
-// with the given machine.
+// Get retrieves a node instance that is associated with the given machine.
 func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
@@ -149,14 +147,29 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	return &gcpInstance{inst}, nil
 }
 
-// GetCloudConfig implements the cloud.Provider interface. It returns the cloud provider specific
-// cloud-config, which gets consumed by the kubelet.
+// GetCloudConfig returns the cloud provider specific cloud-config for the kubelet.
 func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nyiErr
+	// Read configuration.
+	cfg, err := newConfig(p.resolver, spec.ProviderSpec)
+	if err != nil {
+		return "", "", newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
+	}
+	// Init cloud configuration.
+	// TODO(mue) Check for needed fields and extend configuration.
+	cc := &cloudConfig{
+		Global: global{
+			ProjectID: cfg.projectID,
+			LocalZone: cfg.zone,
+		},
+	}
+	config, err = cc.asString()
+	if err != nil {
+		return "", "", newError(common.InvalidConfigurationMachineError, errCloudConfig, err)
+	}
+	return config, "gce", nil
 }
 
-// Create implements the cloud.Provider interface. It creates a cloud instance according
-// to the given machine.
+// Create inserts a cloud instance according to the given machine.
 func (p *Provider) Create(
 	machine *v1alpha1.Machine,
 	data *cloud.MachineCreateDeleteData,
@@ -206,8 +219,7 @@ func (p *Provider) Create(
 	return p.Get(machine)
 }
 
-// Create implements the cloud.Provider interface. It deletes the instance associated with the
-// machine and all associated resources.
+// Cleanup deletes the instance associated with the machine and all associated resources.
 func (p *Provider) Cleanup(
 	machine *v1alpha1.Machine,
 	data *cloud.MachineCreateDeleteData,
@@ -234,8 +246,7 @@ func (p *Provider) Cleanup(
 	return true, nil
 }
 
-// MachineMetricsLabels implements the cloud.Provider interface. It returns labels used for the
-// Prometheus metrics about created machines.
+// MachineMetricsLabels returns labels used for the  Prometheus metrics about created machines.
 func (p *Provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
@@ -254,8 +265,8 @@ func (p *Provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return labels, nil
 }
 
-// MigrateUID implements the cloud.Provider interface. It is called when the controller migrates types
-// and the UID of the machine object changes.
+// MigrateUID updates the UID of an instance after the controller migrates types
+// and the UID of the machine object changed.
 func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
@@ -288,10 +299,9 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	return nil
 }
 
-// SetMetricsForMachines implements the cloud.Provider interface. It allows providers to
-// provide provider-specific metrics.
+// SetMetricsForMachines allows providers to provide provider-specific metrics.
 func (p *Provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
-	// TODO Check if it makes sense for GCP.
+	// TODO(mue) Check what to return for GCP.
 	return nil
 }
 

@@ -73,12 +73,12 @@ type cloudConfig struct {
 func (cc *cloudConfig) asString() (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
+	funcMap["StringsJoin"] = strings.Join
 
 	tmpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse the cloud config template: %v", err)
 	}
-	tmpl = tmpl.Funcs(template.FuncMap{"StringsJoin": strings.Join})
 
 	buf := &bytes.Buffer{}
 	if err := tmpl.Execute(buf, cc); err != nil {
