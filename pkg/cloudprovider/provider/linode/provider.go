@@ -42,7 +42,6 @@ type RawConfig struct {
 	Region            providerconfig.ConfigVarString   `json:"region"`
 	Type              providerconfig.ConfigVarString   `json:"type"`
 	Backups           providerconfig.ConfigVarBool     `json:"backups"`
-	IPv6              providerconfig.ConfigVarBool     `json:"ipv6"`
 	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
 	Tags              []providerconfig.ConfigVarString `json:"tags"`
 }
@@ -52,9 +51,7 @@ type Config struct {
 	Region            string
 	Type              string
 	Backups           bool
-	IPv6              bool
 	PrivateNetworking bool
-	Monitoring        bool
 	Tags              []string
 }
 
@@ -138,10 +135,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 		return nil, nil, err
 	}
 	c.Backups, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Backups)
-	if err != nil {
-		return nil, nil, err
-	}
-	c.IPv6, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.IPv6)
 	if err != nil {
 		return nil, nil, err
 	}

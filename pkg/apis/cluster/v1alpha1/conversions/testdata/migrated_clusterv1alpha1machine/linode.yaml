@@ -15,7 +15,7 @@ spec:
         backups: false
         private_networking: true
         region: eu-west
-        size: g6-standard-2
+        type: g6-standard-2
         tags:
         - machine-controller
         token: token

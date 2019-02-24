@@ -12,7 +12,7 @@ spec:
     cloudProviderSpec:
       token: "token"
       region: eu-west
-      size: g6-standard-2
+      type: g6-standard-2
       backups: false
       private_networking: true
       tags:
