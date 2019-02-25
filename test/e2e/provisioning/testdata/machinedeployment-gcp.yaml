@@ -1,0 +1,47 @@
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: << MACHINE_NAME >>
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      name: << MACHINE_NAME >>
+  template:
+    metadata:
+      labels:
+        name: << MACHINE_NAME >>
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "gcp"
+          cloudProviderSpec:
+            clientID: "<< GOOGLE_CLIENT_ID >>"
+            projectID: "<< GOOGLE_PROJECT_ID >>"
+            email: "<< GOOGLE_EMAIL >>"
+            privateKey: "<< GOOGLE_PRIVATE_KEY >>"
+            # See https://cloud.google.com/compute/docs/regions-zones/
+            zone: "europe-west3-a"
+            # See https://cloud.google.com/compute/docs/machine-types
+            machineType: "n1-standard-2"
+            # In GB
+            diskSize: 50
+            # Can be 'pd-standard' or 'pd-ssd'
+            diskType: "pd-standard"
+            labels:
+                "KubernetesCluster": "randomString"            
+          # Can be 'ubuntu', 'coreos' or 'centos'
+          operatingSystem: "<< OS_NAME >>"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+      versions:
+        kubelet: "<< KUBERNETES_VERSION >>"
