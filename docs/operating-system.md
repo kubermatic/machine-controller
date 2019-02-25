@@ -10,6 +10,7 @@
 | Openstack | ✓ | ✓  |
 | Digitalocean  | ✓ | ✓ |
 | Hetzner | ✓ | x |
+| Linode | ✓ | x |
 
 ## Configuring a operating system
 
