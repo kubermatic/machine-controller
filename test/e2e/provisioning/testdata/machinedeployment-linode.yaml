@@ -24,13 +24,13 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "linode"
           cloudProviderSpec:
-            token: << LINODE_TOKEN >>
-            region: eu-west
-            type: g6-standard-2
             backups: false
             private_networking: true
+            region: eu-west
             tags:
               - "machine-controller"
+            token: << LINODE_TOKEN >>
+            type: g6-standard-2
           # Can be 'ubuntu'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
