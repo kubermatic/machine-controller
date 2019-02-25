@@ -11,7 +11,6 @@ package gcp
 //-----
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -23,7 +22,7 @@ func TestCloudConfigAsString(t *testing.T) {
 	tests := []struct {
 		name     string
 		config   *cloudConfig
-		contents []string
+		contents string
 	}{
 		{
 			name: "minimum test",
@@ -33,10 +32,9 @@ func TestCloudConfigAsString(t *testing.T) {
 					LocalZone: "my-zone",
 				},
 			},
-			contents: []string{
-				`project-id = "my-project-id"`,
-				`local-zone = "my-zone"`,
-			},
+			contents: "[global]\n" +
+				"project-id = \"my-project-id\"\n" +
+				"local-zone = \"my-zone\"\n",
 		},
 	}
 
@@ -46,10 +44,8 @@ func TestCloudConfigAsString(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to convert to string: %v", err)
 			}
-			for _, c := range test.contents {
-				if !strings.Contains(s, c) {
-					t.Fatalf("output does not contain %q, instead %s", c, s)
-				}
+			if s != test.contents {
+				t.Fatalf("output is not as expected")
 			}
 		})
 	}

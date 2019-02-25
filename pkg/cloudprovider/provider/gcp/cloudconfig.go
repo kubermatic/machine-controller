@@ -42,7 +42,7 @@ const cloudConfigTemplate = "[global]\n" +
 	"{{if .Global.APIEndpoint}}api-endpoint = {{ .Global.APIEndpoint | iniEscape }}\n{{end}}" +
 	"{{if .Global.ContainerAPIEndpoint}}container-api-endpoint = {{ .Global.ContainerAPIEndpoint | iniEscape }}\n{{end}}" +
 	"{{if .Global.LocalZone}}local-zone = {{ .Global.LocalZone | iniEscape }}\n{{end}}" +
-	"{{if .Global.AlphaFeatures}}alpha-features = {{ StringsJoin .Global.AlphaFeatures \", \" }}{{end}}"
+	"{{if .Global.AlphaFeatures}}alpha-features = {{ StringsJoin .Global.AlphaFeatures \", \" }}\n{{end}}"
 
 //-----
 // Cloud Configuration
