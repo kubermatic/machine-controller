@@ -69,6 +69,10 @@ required = [
   version = "v1.1.*"
 
 [[constraint]]
+  name = "github.com/linode/linodego"
+  version = "v0.7.*"
+
+[[constraint]]
   name = "k8s.io/apiextensions-apiserver"
   branch = "release-1.11"
 

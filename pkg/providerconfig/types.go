@@ -37,6 +37,7 @@ const (
 	CloudProviderOpenstack    CloudProvider = "openstack"
 	CloudProviderGoogle       CloudProvider = "gcp"
 	CloudProviderHetzner      CloudProvider = "hetzner"
+	CloudProviderLinode       CloudProvider = "linode"
 	CloudProviderVsphere      CloudProvider = "vsphere"
 	CloudProviderFake         CloudProvider = "fake"
 	CloudProviderKubeVirt     CloudProvider = "kubevirt"

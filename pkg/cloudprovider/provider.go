@@ -12,6 +12,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gcp"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -38,6 +39,9 @@ var (
 		},
 		providerconfig.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
 			return hetzner.New(cvr)
+		},
+		providerconfig.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return linode.New(cvr)
 		},
 		providerconfig.CloudProviderVsphere: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
 			return vsphere.New(cvr)

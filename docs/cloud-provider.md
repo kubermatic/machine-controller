@@ -104,3 +104,23 @@ network: ""
   datacenter: ""
   location: "fsn1"
 ```
+
+## Linode
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+# your linode token
+token: "<< YOUR_LINODE_TOKEN >>"
+# droplet region
+region: "eu-west"
+# droplet size
+type: "g6-standard-2"
+# enable backups for the linode
+backups: false
+# enable private networking for the linode
+private_networking: true
+# add the following tags to the linode
+tags:
+- "machine-controller"
+```
+

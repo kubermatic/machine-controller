@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	DOManifest    = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest   = "./testdata/machinedeployment-aws.yaml"
-	AzureManifest = "./testdata/machinedeployment-azure.yaml"
-	GCPManifest   = "./testdata/machinedeployment-gcp.yaml"
-	HZManifest    = "./testdata/machinedeployment-hetzner.yaml"
+	DOManifest     = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest    = "./testdata/machinedeployment-aws.yaml"
+	AzureManifest  = "./testdata/machinedeployment-azure.yaml"
+	GCPManifest    = "./testdata/machinedeployment-gcp.yaml"
+	HZManifest     = "./testdata/machinedeployment-hetzner.yaml"
+	LinodeManifest = "./testdata/machinedeployment-linode.yaml"
 	//	vs_manifest            = "./testdata/machinedeployment-vsphere.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
 	OSManifest             = "./testdata/machinedeployment-openstack.yaml"
@@ -191,6 +192,28 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 	runScenarios(t, excludeSelector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
+}
+
+// TestLinodeProvisioning - a test suite that exercises Linode provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+//
+// note that tests require  a valid API Token that is read from the LINODE_E2E_TEST_TOKEN environmental variable.
+func TestLinodeProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	linodeToken := os.Getenv("LINODE_E2E_TESTS_TOKEN")
+	if len(linodeToken) == 0 {
+		t.Fatal("unable to run the test suite, LINODE_E2E_TESTS_TOKEN environment variable cannot be empty")
+	}
+
+	// we're shimming userdata through Linode stackscripts, and Linode's coreos does not support stackscripts
+	// and the stackscript hasn't been verified for use with centos
+	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
+
+	// act
+	params := []string{fmt.Sprintf("<< LINODE_TOKEN >>=%s", linodeToken)}
+	runScenarios(t, excludeSelector, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
 }
 
 // TestVsphereProvisioning - a test suite that exercises vsphere provider
