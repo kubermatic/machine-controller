@@ -17,6 +17,7 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/jwt"
 	"google.golang.org/api/compute/v1"
 )
 
@@ -46,13 +47,6 @@ const (
 	statusUp           = "UP"
 )
 
-// driverScopes addresses the parts of the GCP API the provider addresses.
-var (
-	driverScopes = []string{
-		"https://www.googleapis.com/auth/compute",
-	}
-)
-
 //-----
 // Service
 //-----
@@ -64,22 +58,15 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	jsonMap := map[string]string{
-		"type":         connectionType,
-		"client_id":    cfg.clientID,
-		"client_email": cfg.email,
-		"private_key":  string(cfg.privateKey),
+	conf := &jwt.Config{
+		Email:      cfg.email,
+		PrivateKey: cfg.privateKey,
+		Scopes: []string{
+			compute.ComputeScope,
+		},
+		TokenURL: google.JWTTokenURL,
 	}
-	jsonBytes, err := json.Marshal(jsonMap)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create credentials: %v", err)
-	}
-	gcfg, err := google.JWTConfigFromJSON(jsonBytes, driverScopes...)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create credentials: %v", err)
-	}
-	client := gcfg.Client(oauth2.NoContext)
-	svc, err := compute.New(client)
+	svc, err := compute.New(conf.Client(oauth2.NoContext))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud Platform: %v", err)
 	}
