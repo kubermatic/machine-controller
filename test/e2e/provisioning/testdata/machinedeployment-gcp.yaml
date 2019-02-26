@@ -37,7 +37,7 @@ spec:
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-                "KubernetesCluster": "randomString"            
+                "KubernetesCluster": "my-cluster"            
           # Can be 'ubuntu', 'coreos' or 'centos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
