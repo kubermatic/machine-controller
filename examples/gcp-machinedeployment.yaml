@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-gcp
+  namespace: kube-system
+type: Opaque
+stringData:
+  clientID: << GOOGLE_CLIENT_ID >>
+  projectID: << GOOGLE_PROJECT_ID >>
+  email: << GOOGLE_EMAIL >>
+  privateKey: << GOOGLE_PRIVATE_KEY >>
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: gcp-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "aws"
+          cloudProviderSpec:
+            # If empty, can be set via GOOGLE_CLIENT_ID env var
+            clientID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-gcp
+                key: clientID
+            # If empty, can be set via GOOGLE_PROJECT_ID env var
+            projectID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-gcp
+                key: projectID
+            # If empty, can be set via GOOGLE_EMAIL env var
+            email:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-gcp
+                key: email
+            # If empty, can be set via GOOGLE_PRIVATE_KEY env var
+            privateKey:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-gcp
+                key: privateKey
+            # See https://cloud.google.com/compute/docs/regions-zones/
+            zone: "europe-west3-a"
+            # See https://cloud.google.com/compute/docs/machine-types
+            machineType: "n1-standard-2"
+            # In GB
+            diskSize: 50
+            # Can be 'pd-standard' or 'pd-ssd'
+            diskType: "pd-standard"
+            labels:
+              "KubernetesCluster": "my-cluster"            
+              "KubernetesCluster": "6qsm86c2d"
+          # Can be 'ubuntu', 'coreos' or 'centos'
+          operatingSystem: "coreos"
+          operatingSystemSpec:
+            disableAutoUpdate: true
+      versions:
+        kubelet: 1.9.6
