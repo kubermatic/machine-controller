@@ -38,7 +38,7 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "aws"
+          cloudProvider: "gcp"
           cloudProviderSpec:
             # If empty, can be set via GOOGLE_CLIENT_ID env var
             clientID:
