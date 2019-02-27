@@ -190,7 +190,13 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    yum install -y docker-1.13.1 \
+    yum install -y yum-utils
+    yum-config-manager --add-repo \
+      https://download.docker.com/linux/centos/docker-ce.repo
+
+    yum install -y docker-ce \
+      docker-ce-cli \
+      containerd.io \
       ebtables \
       ethtool \
       nfs-utils \
@@ -228,7 +234,7 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
     [Service]
-    Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
+    Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=cgroupfs"
 
 - path: "/etc/kubernetes/cloud-config"
   content: |

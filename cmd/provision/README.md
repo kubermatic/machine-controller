@@ -62,7 +62,7 @@ The following steps belong into the base provisioning:
 #### Join
 
 This part will:
-- Write & start the kubelet systemd unit 
+- Write & start the kubelet systemd unit
 
 ## Offline usage
 
