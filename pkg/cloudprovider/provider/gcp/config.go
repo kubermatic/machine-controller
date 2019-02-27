@@ -11,7 +11,11 @@ package gcp
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/jwt"
+	"google.golang.org/api/compute/v1"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -23,10 +27,7 @@ import (
 
 // Environment variables for the configuration of the GCP project access.
 const (
-	envGoogleClientID   = "GOOGLE_CLIENT_ID"
-	envGoogleProjectID  = "GOOGLE_PROJECT_ID"
-	envGoogleEmail      = "GOOGLE_EMAIL"
-	envGooglePrivateKey = "GOOGLE_PRIVATE_KEY"
+	envGoogleServiceAccount = "GOOGLE_SERVICE_ACCOUNT"
 )
 
 // imageProjects maps the OS to the GCP image projects
@@ -57,15 +58,12 @@ var diskTypes = map[string]bool{
 // cloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
 type cloudProviderSpec struct {
-	ClientID    providerconfig.ConfigVarString `json:"clientID"`
-	ProjectID   providerconfig.ConfigVarString `json:"projectID"`
-	Email       providerconfig.ConfigVarString `json:"email"`
-	PrivateKey  providerconfig.ConfigVarString `json:"privateKey"`
-	Zone        providerconfig.ConfigVarString `json:"zone"`
-	MachineType providerconfig.ConfigVarString `json:"machineType"`
-	DiskSize    int64                          `json:"diskSize"`
-	DiskType    providerconfig.ConfigVarString `json:"diskType"`
-	Labels      map[string]string              `json:"labels"`
+	ServiceAccount providerconfig.ConfigVarString `json:"serviceAccount"`
+	Zone           providerconfig.ConfigVarString `json:"zone"`
+	MachineType    providerconfig.ConfigVarString `json:"machineType"`
+	DiskSize       int64                          `json:"diskSize"`
+	DiskType       providerconfig.ConfigVarString `json:"diskType"`
+	Labels         map[string]string              `json:"labels"`
 }
 
 //-----
@@ -74,15 +72,14 @@ type cloudProviderSpec struct {
 
 // config contains the configuration of the Provider.
 type config struct {
-	clientID       string
+	serviceAccount string
 	projectID      string
-	email          string
-	privateKey     []byte
 	zone           string
 	machineType    string
 	diskSize       int64
 	diskType       string
 	labels         map[string]string
+	jwtConfig      *jwt.Config
 	providerConfig *providerconfig.Config
 }
 
@@ -107,24 +104,14 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg := &config{
 		providerConfig: &providerConfig,
 	}
-	cfg.clientID, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ClientID, envGoogleClientID)
+	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client ID: %v", err)
+		return nil, fmt.Errorf("cannot retrieve service account: %v", err)
 	}
-	cfg.projectID, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ProjectID, envGoogleProjectID)
+	err = cfg.postprocessServiceAccount()
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve project ID: %v", err)
+		return nil, fmt.Errorf("cannot prepare JWT: %v", err)
 	}
-	cfg.email, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.Email, envGoogleEmail)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve email: %v", err)
-	}
-	var pks string
-	pks, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.PrivateKey, envGooglePrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve private key: %v", err)
-	}
-	cfg.privateKey = []byte(pks)
 	cfg.zone, err = resolver.GetConfigVarStringValue(cpSpec.Zone)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve zone: %v", err)
@@ -142,10 +129,37 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	return cfg, nil
 }
 
+// postprocessServiceAccount processes the service account and creates a JWT configuration
+// out of it.
+func (cfg *config) postprocessServiceAccount() error {
+	sam := map[string]string{}
+	err := json.Unmarshal([]byte(cfg.serviceAccount), &sam)
+	if err != nil {
+		return fmt.Errorf("failed unmarshalling service account: %v", err)
+	}
+	sam["private_key"] = strings.Replace(sam["private_key"], "\\n", "\n", -1)
+	cfg.projectID = sam["project_id"]
+	sa, err := json.Marshal(sam)
+	if err != nil {
+		return fmt.Errorf("failed marshalling service account: %v", err)
+	}
+	cfg.jwtConfig, err = google.JWTConfigFromJSON(sa, compute.ComputeScope)
+	if err != nil {
+		return fmt.Errorf("failed preparing JWT: %v", err)
+	}
+	return nil
+}
+
 // machineTypeDescriptor creates the descriptor out of zone and machine type
 // for the machine type of an instance.
 func (cfg *config) machineTypeDescriptor() string {
 	return fmt.Sprintf("zones/%s/machineTypes/%s", cfg.zone, cfg.machineType)
+}
+
+// diskTypeDescriptor creates the descriptor out of zone and disk type
+// for the disk type of an instance.
+func (cfg *config) diskTypeDescriptor() string {
+	return fmt.Sprintf("zones/%s/diskTypes/%s", cfg.zone, cfg.diskType)
 }
 
 // sourceImageDescriptor creates the descriptor out of project and family

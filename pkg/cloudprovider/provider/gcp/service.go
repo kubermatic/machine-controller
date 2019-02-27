@@ -9,15 +9,12 @@ package gcp
 //-----
 
 import (
-	"encoding/json"
 	"fmt"
 	"path"
 	"time"
 
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/jwt"
 	"google.golang.org/api/compute/v1"
 )
 
@@ -26,11 +23,8 @@ import (
 //-----
 
 const (
-	// connectionType describes the kind of GCP connection.
-	connectionType = "service_account"
-
 	// Timeouts.
-	timeoutNormal = 5 * time.Second
+	timeoutNormal = 10 * time.Minute
 )
 
 // GCP operation status.
@@ -58,15 +52,7 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	conf := &jwt.Config{
-		Email:      cfg.email,
-		PrivateKey: cfg.privateKey,
-		Scopes: []string{
-			compute.ComputeScope,
-		},
-		TokenURL: google.JWTTokenURL,
-	}
-	svc, err := compute.New(conf.Client(oauth2.NoContext))
+	svc, err := compute.New(cfg.jwtConfig.Client(oauth2.NoContext))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud Platform: %v", err)
 	}
@@ -98,7 +84,7 @@ func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) 
 		AutoDelete: true,
 		InitializeParams: &compute.AttachedDiskInitializeParams{
 			DiskSizeGb:  cfg.diskSize,
-			DiskType:    cfg.diskType,
+			DiskType:    cfg.diskTypeDescriptor(),
 			SourceImage: sourceImage,
 		},
 	}

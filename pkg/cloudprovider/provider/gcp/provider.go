@@ -31,22 +31,20 @@ import (
 
 // Terminal error messages.
 const (
-	errMachineSpec        = "Failed to parse MachineSpec: %v"
-	errOperatingSystem    = "Invalid or not supported operating system specified %q: %v"
-	errConnect            = "Failed to connect: %v"
-	errInvalidClientID    = "Client ID is missing"
-	errInvalidProjectID   = "Project ID is missing"
-	errInvalidEmail       = "Email is missing"
-	errInvalidPrivateKey  = "Private key is missing"
-	errInvalidZone        = "Zone is missing"
-	errInvalidMachineType = "Machine type is missing"
-	errInvalidDiskSize    = "Disk size must be a positive number"
-	errInvalidDiskType    = "Disk type is missing or has wrong type, allowed are 'pd-standard' and 'pd-ssd'"
-	errRetrieveInstance   = "Failed to retrieve instance: %v"
-	errCloudConfig        = "Failed to convert cloud-config to string: %v"
-	errInsertInstance     = "Failed to insert instance: %v"
-	errDeleteInstance     = "Failed to delete instance: %v"
-	errSetLabels          = "Failed to set the labels for the new machine UID: %v"
+	errMachineSpec           = "Failed to parse MachineSpec: %v"
+	errOperatingSystem       = "Invalid or not supported operating system specified %q: %v"
+	errConnect               = "Failed to connect: %v"
+	errInvalidServiceAccount = "Service account is missing"
+	errInvalidZone           = "Zone is missing"
+	errInvalidMachineType    = "Machine type is missing"
+	errInvalidDiskSize       = "Disk size must be a positive number"
+	errInvalidDiskType       = "Disk type is missing or has wrong type, allowed are 'pd-standard' and 'pd-ssd'"
+	errRetrieveInstance      = "Failed to retrieve instance: %v"
+	errGotTooManyInstances   = "Got more than 1 instance matching the machine UID label"
+	errCloudConfig           = "Failed to convert cloud-config to string: %v"
+	errInsertInstance        = "Failed to insert instance: %v"
+	errDeleteInstance        = "Failed to delete instance: %v"
+	errSetLabels             = "Failed to set the labels for the new machine UID: %v"
 )
 
 // Instance labels.
@@ -91,17 +89,8 @@ func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 		return newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Check configured values.
-	if cfg.clientID == "" {
-		return newError(common.InvalidConfigurationMachineError, errInvalidClientID)
-	}
-	if cfg.projectID == "" {
-		return newError(common.InvalidConfigurationMachineError, errInvalidProjectID)
-	}
-	if cfg.email == "" {
-		return newError(common.InvalidConfigurationMachineError, errInvalidEmail)
-	}
-	if len(cfg.privateKey) == 0 {
-		return newError(common.InvalidConfigurationMachineError, errInvalidPrivateKey)
+	if cfg.serviceAccount == "" {
+		return newError(common.InvalidConfigurationMachineError, errInvalidServiceAccount)
 	}
 	if cfg.zone == "" {
 		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
@@ -135,7 +124,8 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
 	// Retrieve instance.
-	inst, err := svc.Instances.Get(cfg.projectID, cfg.zone, string(machine.UID)).Do()
+	label := fmt.Sprintf("labels.%s=%s", labelMachineUID, machine.UID)
+	insts, err := svc.Instances.List(cfg.projectID, cfg.zone).Filter(label).Do()
 	if err != nil {
 		if gerr, ok := err.(*googleapi.Error); ok {
 			if gerr.Code == http.StatusNotFound {
@@ -144,7 +134,14 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		}
 		return nil, newError(common.InvalidConfigurationMachineError, errRetrieveInstance, err)
 	}
-	return &gcpInstance{inst}, nil
+	if len(insts.Items) == 0 {
+		return nil, errors.ErrInstanceNotFound
+	}
+	if len(insts.Items) > 1 {
+		return nil, newError(common.InvalidConfigurationMachineError, errGotTooManyInstances)
+	}
+	return &gcpInstance{insts.Items[0]}, nil
+
 }
 
 // GetCloudConfig returns the cloud provider specific cloud-config for the kubelet.
@@ -206,6 +203,14 @@ func (p *Provider) Create(
 		NetworkInterfaces: networkInterfaces,
 		Disks:             disks,
 		Labels:            labels,
+		Metadata: &compute.Metadata{
+			Items: []*compute.MetadataItems{
+				{
+					Key:   "user-data",
+					Value: &userdata,
+				},
+			},
+		},
 	}
 	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
 	if err != nil {
@@ -237,13 +242,18 @@ func (p *Provider) Cleanup(
 	// Delete instance.
 	op, err := svc.Instances.Delete(cfg.projectID, cfg.zone, machine.Spec.Name).Do()
 	if err != nil {
+		if gerr, ok := err.(*googleapi.Error); ok {
+			if gerr.Code == http.StatusNotFound {
+				return true, nil
+			}
+		}
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
 	err = svc.waitOperation(cfg.projectID, op, timeoutNormal)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
-	return true, nil
+	return false, nil
 }
 
 // MachineMetricsLabels returns labels used for the  Prometheus metrics about created machines.
