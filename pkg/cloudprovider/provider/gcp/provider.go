@@ -203,6 +203,17 @@ func (p *Provider) Create(
 		NetworkInterfaces: networkInterfaces,
 		Disks:             disks,
 		Labels:            labels,
+		ServiceAccounts: []*compute.ServiceAccounts{
+			{
+				Email: cfg.jwtConfig.Email,
+				Scopes: []string{
+					compute.ComputeScope,
+					compute.DevstorageReadOnlyScope,
+					"https://www.googleapis.com/auth/monitoring",
+					"https://www.googleapis.com/auth/logging.write",
+				},
+			},
+		},
 		Metadata: &compute.Metadata{
 			Items: []*compute.MetadataItems{
 				{
