@@ -1,10 +1,10 @@
 //
-// Google Cloud Platform Provider for the Machine Controller
+// Google Cloud Provider for the Machine Controller
 //
 // Unit Tests
 //
 
-package gcp
+package gce
 
 //-----
 // Imports

@@ -1,8 +1,8 @@
 //
-// Google Cloud Platform Provider for the Machine Controller
+// Google Cloud Provider for the Machine Controller
 //
 
-package gcp
+package gce
 
 //-----
 // Imports

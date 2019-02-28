@@ -1,8 +1,8 @@
 //
-// Google Cloud Platform Provider for the Machine Controller
+// Google Cloud Provider for the Machine Controller
 //
 
-package gcp
+package gce
 
 //-----
 // Imports
@@ -118,7 +118,7 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
-	// Connect to GCP.
+	// Connect to Google compute.
 	svc, err := connectComputeService(cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
@@ -140,8 +140,7 @@ func (p *Provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if len(insts.Items) > 1 {
 		return nil, newError(common.InvalidConfigurationMachineError, errGotTooManyInstances)
 	}
-	return &gcpInstance{insts.Items[0]}, nil
-
+	return &googleInstance{insts.Items[0]}, nil
 }
 
 // GetCloudConfig returns the cloud provider specific cloud-config for the kubelet.
@@ -177,12 +176,12 @@ func (p *Provider) Create(
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
-	// Connect to GCP.
+	// Connect to Google compute.
 	svc, err := connectComputeService(cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
-	// Create GCP instance spec and insert it.
+	// Create Google compute instance spec and insert it.
 	networkInterfaces, err := svc.networkInterfaces(cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
@@ -203,7 +202,7 @@ func (p *Provider) Create(
 		NetworkInterfaces: networkInterfaces,
 		Disks:             disks,
 		Labels:            labels,
-		ServiceAccounts: []*compute.ServiceAccounts{
+		ServiceAccounts: []*compute.ServiceAccount{
 			{
 				Email: cfg.jwtConfig.Email,
 				Scopes: []string{
@@ -245,7 +244,7 @@ func (p *Provider) Cleanup(
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
-	// Connect to GCP.
+	// Connect to Google compute.
 	svc, err := connectComputeService(cfg)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errConnect, err)
@@ -294,7 +293,7 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
-	// Connect to GCP.
+	// Connect to Google compute.
 	svc, err := connectComputeService(cfg)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errConnect, err)
@@ -322,7 +321,7 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 
 // SetMetricsForMachines allows providers to provide provider-specific metrics.
 func (p *Provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
-	// TODO(mue) Check what to return for GCP.
+	// TODO(mue) Check what to return for Google Cloud.
 	return nil
 }
 

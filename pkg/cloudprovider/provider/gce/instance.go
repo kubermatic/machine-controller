@@ -1,8 +1,8 @@
 //
-// Google Cloud Platform Provider for the Machine Controller
+// Google Cloud Provider for the Machine Controller
 //
 
-package gcp
+package gce
 
 //-----
 // Imports
@@ -36,23 +36,23 @@ const (
 // Instance
 //-----
 
-// gcpInstance implements instance.Instance for the GCP instance.
-type gcpInstance struct {
+// googleInstance implements instance.Instance for the Google compute instance.
+type googleInstance struct {
 	ci *compute.Instance
 }
 
 // Name implements instance.Instance.
-func (gi *gcpInstance) Name() string {
+func (gi *googleInstance) Name() string {
 	return gi.ci.Name
 }
 
 // ID implements instance.Instance.
-func (gi *gcpInstance) ID() string {
+func (gi *googleInstance) ID() string {
 	return strconv.FormatUint(gi.ci.Id, 10)
 }
 
 // Addresses implements instance.Instance.
-func (gi *gcpInstance) Addresses() []string {
+func (gi *googleInstance) Addresses() []string {
 	var addrs []string
 	for _, ifc := range gi.ci.NetworkInterfaces {
 		addrs = append(addrs, ifc.NetworkIP)
@@ -62,7 +62,7 @@ func (gi *gcpInstance) Addresses() []string {
 
 // Status implements instance.Instance.
 // TODO Check status mapping for staging, delet(ed|ing), suspend(ed|ing).
-func (gi *gcpInstance) Status() instance.Status {
+func (gi *googleInstance) Status() instance.Status {
 	switch gi.ci.Status {
 	case statusInstanceProvisioning:
 		return instance.StatusCreating

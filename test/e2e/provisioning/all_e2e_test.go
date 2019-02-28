@@ -13,7 +13,7 @@ const (
 	DOManifest     = "./testdata/machinedeployment-digitalocean.yaml"
 	AWSManifest    = "./testdata/machinedeployment-aws.yaml"
 	AzureManifest  = "./testdata/machinedeployment-azure.yaml"
-	GCPManifest    = "./testdata/machinedeployment-gcp.yaml"
+	GCEManifest    = "./testdata/machinedeployment-gce.yaml"
 	HZManifest     = "./testdata/machinedeployment-hetzner.yaml"
 	LinodeManifest = "./testdata/machinedeployment-linode.yaml"
 	//	vs_manifest            = "./testdata/machinedeployment-vsphere.yaml"
@@ -149,30 +149,24 @@ func TestAzureProvisioningE2E(t *testing.T) {
 	runScenarios(t, excludeSelector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
-// TestGCPProvisioningE2E - a test suite that exercises GCP provider
+// TestGCEProvisioningE2E - a test suite that exercises Google Cloud provider
 // by requesting nodes with different combination of container runtime type,
 // container runtime version and the OS flavour.
-func TestGCPProvisioningE2E(t *testing.T) {
+func TestGCEProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// test data
-	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
-	googleProjectID := os.Getenv("GOOGLE_PROJECT_ID")
-	googleEmail := os.Getenv("GOOGLE_EMAIL")
-	googlePrivateKey := os.Getenv("GOOGLE_PRIVATE_KEY")
-	if len(googleClientID) == 0 || len(googleProjectID) == 0 || len(googleEmail) == 0 || len(googlePrivateKey) == 0 {
-		t.Fatal("unable to run the test suite, GOOGLE_CLIENT_ID, GOOGLE_PROJECT_ID, GOOGLE_EMAIL and GOOGLE_PRIVATE_KEY environment variables cannot be empty")
+	googleServiceAccount := os.Getenv("GOOGLE_SERVICE_ACCOUNT")
+	if len(googleServiceAccount) == 0 {
+		t.Fatal("unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
 	}
 
 	excludeSelector := &scenarioSelector{}
 	// act
 	params := []string{
-		fmt.Sprintf("<< GOOGLE_CLIENT_ID >>=%s", googleClientID),
-		fmt.Sprintf("<< GOOGLE_PROJECT_ID >>=%s", googleProjectID),
-		fmt.Sprintf("<< GOOGLE_EMAIL >>=%s", googleEmail),
-		fmt.Sprintf("<< GOOGLE_PRIVATE_KEY >>=%s", googlePrivateKey),
+		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 	}
-	runScenarios(t, excludeSelector, params, GCPManifest, fmt.Sprintf("gcp-%s", *testRunIdentifier))
+	runScenarios(t, excludeSelector, params, GCEManifest, fmt.Sprintf("gce-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider

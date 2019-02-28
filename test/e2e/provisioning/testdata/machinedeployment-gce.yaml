@@ -22,7 +22,7 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "gcp"
+          cloudProvider: "gce"
           cloudProviderSpec:
             # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var
             serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
@@ -35,7 +35,7 @@ spec:
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-                "Kubernetes_cluster": "my-cluster"            
+                "kubernetes_cluster": "my-cluster"            
           # Can be 'ubuntu', 'coreos' or 'centos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:

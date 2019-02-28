@@ -1,8 +1,8 @@
 //
-// Google Cloud Platform Provider for the Machine Controller
+// Google Cloud Provider for the Machine Controller
 //
 
-package gcp
+package gce
 
 //-----
 // Imports
@@ -25,26 +25,26 @@ import (
 // Constants
 //-----
 
-// Environment variables for the configuration of the GCP project access.
+// Environment variables for the configuration of the Google Cloud project access.
 const (
 	envGoogleServiceAccount = "GOOGLE_SERVICE_ACCOUNT"
 )
 
-// imageProjects maps the OS to the GCP image projects
+// imageProjects maps the OS to the Google Cloud image projects
 var imageProjects = map[providerconfig.OperatingSystem]string{
 	providerconfig.OperatingSystemCoreos: "coreos-cloud",
 	providerconfig.OperatingSystemUbuntu: "ubuntu-os-cloud",
 	providerconfig.OperatingSystemCentOS: "centos-cloud",
 }
 
-// imageFamilies maps the OS to the GCP image projects
+// imageFamilies maps the OS to the Google Cloud image projects
 var imageFamilies = map[providerconfig.OperatingSystem]string{
 	providerconfig.OperatingSystemCoreos: "coreos-stable",
 	providerconfig.OperatingSystemUbuntu: "ubuntu-1804-lts",
 	providerconfig.OperatingSystemCentOS: "centos-7",
 }
 
-// diskTypes are the disk types of the GCP. Map is used for
+// diskTypes are the disk types of the Google Cloud. Map is used for
 // validation.
 var diskTypes = map[string]bool{
 	"pd-standard": true,

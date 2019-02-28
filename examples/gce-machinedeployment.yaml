@@ -3,7 +3,7 @@ kind: Secret
 metadata:
   # If you change the namespace/name, you must also
   # adjust the rbac rules
-  name: machine-controller-gcp
+  name: machine-controller-gce
   namespace: kube-system
 type: Opaque
 stringData:
@@ -12,7 +12,7 @@ stringData:
 apiVersion: "cluster.k8s.io/v1alpha1"
 kind: MachineDeployment
 metadata:
-  name: gcp-machinedeployment
+  name: gce-machinedeployment
   namespace: kube-system
 spec:
   paused: false
@@ -35,7 +35,7 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "gcp"
+          cloudProvider: "gce"
           cloudProviderSpec:
             # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var
             serviceAccount:
@@ -52,7 +52,7 @@ spec:
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-              "Kubernetes_cluster": "my-cluster"
+              "kubernetes_cluster": "my-cluster"
           # Can be 'ubuntu', 'coreos' or 'centos'
           operatingSystem: "coreos"
           operatingSystemSpec:

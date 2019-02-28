@@ -1,8 +1,8 @@
 //
-// Google Cloud Platform Provider for the Machine Controller
+// Google Cloud Provider for the Machine Controller
 //
 
-package gcp
+package gce
 
 //-----
 // Imports
@@ -27,7 +27,7 @@ const (
 	timeoutNormal = 10 * time.Minute
 )
 
-// GCP operation status.
+// Google compute operation status.
 const (
 	statusDone         = "DONE"
 	statusDown         = "DOWN"
@@ -45,7 +45,7 @@ const (
 // Service
 //-----
 
-// service wraps a GCP compute service for the extension with helper methods.
+// service wraps a GCE compute service for the extension with helper methods.
 type service struct {
 	*compute.Service
 }
@@ -54,7 +54,7 @@ type service struct {
 func connectComputeService(cfg *config) (*service, error) {
 	svc, err := compute.New(cfg.jwtConfig.Client(oauth2.NoContext))
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to Google Cloud Platform: %v", err)
+		return nil, fmt.Errorf("cannot connect to Google Cloud: %v", err)
 	}
 	return &service{svc}, nil
 }
@@ -106,7 +106,7 @@ func (svc *service) refreshOperation(projectID string, op *compute.Operation) (*
 	}
 }
 
-// waitOperation waits for a GCP operation to be completed or timed out.
+// waitOperation waits for a GCE operation to be completed or timed out.
 func (svc *service) waitOperation(projectID string, op *compute.Operation, timeout time.Duration) (err error) {
 	started := time.Now()
 	waiting := 100 * time.Millisecond
@@ -116,23 +116,23 @@ func (svc *service) waitOperation(projectID string, op *compute.Operation, timeo
 			if op.Error != nil {
 				// Operation failed.
 				for _, err := range op.Error.Errors {
-					glog.Errorf("GCP operation %q error: (%s) %s", op.Name, err.Code, err.Message)
+					glog.Errorf("GCE operation %q error: (%s) %s", op.Name, err.Code, err.Message)
 				}
-				return fmt.Errorf("GCP operation %q failed", op.Name)
+				return fmt.Errorf("GCE operation %q failed", op.Name)
 			}
 			return nil
 		}
 		// If not done grant some growing time.
 		if time.Now().Sub(started) > timeout {
 			// Operation timed out.
-			return fmt.Errorf("GCP operation %q timed out after %d seconds", op.Name, time.Now().Sub(started)/time.Second)
+			return fmt.Errorf("GCE operation %q timed out after %d seconds", op.Name, time.Now().Sub(started)/time.Second)
 		}
 		time.Sleep(waiting)
 		waiting = waiting * 2
 		// Refresh operation to gather new status.
 		op, err = svc.refreshOperation(projectID, op)
 		if err != nil {
-			return fmt.Errorf("GCP operation %q refreshing failed: %v", op.Name, err)
+			return fmt.Errorf("GCE operation %q refreshing failed: %v", op.Name, err)
 		}
 	}
 }
