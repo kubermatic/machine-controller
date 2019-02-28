@@ -24,10 +24,8 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "gcp"
           cloudProviderSpec:
-            clientID: "<< GOOGLE_CLIENT_ID >>"
-            projectID: "<< GOOGLE_PROJECT_ID >>"
-            email: "<< GOOGLE_EMAIL >>"
-            privateKey: "<< GOOGLE_PRIVATE_KEY >>"
+            # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var
+            serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
             # See https://cloud.google.com/compute/docs/regions-zones/
             zone: "europe-west3-a"
             # See https://cloud.google.com/compute/docs/machine-types
@@ -37,7 +35,7 @@ spec:
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-                "KubernetesCluster": "my-cluster"            
+                "Kubernetes_cluster": "my-cluster"            
           # Can be 'ubuntu', 'coreos' or 'centos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:

@@ -7,10 +7,7 @@ metadata:
   namespace: kube-system
 type: Opaque
 stringData:
-  clientID: << GOOGLE_CLIENT_ID >>
-  projectID: << GOOGLE_PROJECT_ID >>
-  email: << GOOGLE_EMAIL >>
-  privateKey: << GOOGLE_PRIVATE_KEY >>
+  serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
 ---
 apiVersion: "cluster.k8s.io/v1alpha1"
 kind: MachineDeployment
@@ -40,30 +37,12 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "gcp"
           cloudProviderSpec:
-            # If empty, can be set via GOOGLE_CLIENT_ID env var
-            clientID:
+            # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var
+            serviceAccount:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-gcp
-                key: clientID
-            # If empty, can be set via GOOGLE_PROJECT_ID env var
-            projectID:
-              secretKeyRef:
-                namespace: kube-system
-                name: machine-controller-gcp
-                key: projectID
-            # If empty, can be set via GOOGLE_EMAIL env var
-            email:
-              secretKeyRef:
-                namespace: kube-system
-                name: machine-controller-gcp
-                key: email
-            # If empty, can be set via GOOGLE_PRIVATE_KEY env var
-            privateKey:
-              secretKeyRef:
-                namespace: kube-system
-                name: machine-controller-gcp
-                key: privateKey
+                key: serviceAccount
             # See https://cloud.google.com/compute/docs/regions-zones/
             zone: "europe-west3-a"
             # See https://cloud.google.com/compute/docs/machine-types
@@ -73,7 +52,7 @@ spec:
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-              "KubernetesCluster": "my-cluster"
+              "Kubernetes_cluster": "my-cluster"
           # Can be 'ubuntu', 'coreos' or 'centos'
           operatingSystem: "coreos"
           operatingSystemSpec:
