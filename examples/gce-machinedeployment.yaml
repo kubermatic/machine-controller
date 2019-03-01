@@ -41,7 +41,7 @@ spec:
             serviceAccount:
               secretKeyRef:
                 namespace: kube-system
-                name: machine-controller-gcp
+                name: machine-controller-gce
                 key: serviceAccount
             # See https://cloud.google.com/compute/docs/regions-zones/
             zone: "europe-west3-a"

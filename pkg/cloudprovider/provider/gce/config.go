@@ -132,12 +132,14 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 // postprocessServiceAccount processes the service account and creates a JWT configuration
 // out of it.
 func (cfg *config) postprocessServiceAccount() error {
+	if strings.Contains(cfg.serviceAccount, "\\n") {
+		cfg.serviceAccount = strings.Replace(cfg.serviceAccount, "\\n", "\n", -1)
+	}
 	sam := map[string]string{}
 	err := json.Unmarshal([]byte(cfg.serviceAccount), &sam)
 	if err != nil {
 		return fmt.Errorf("failed unmarshalling service account: %v", err)
 	}
-	sam["private_key"] = strings.Replace(sam["private_key"], "\\n", "\n", -1)
 	cfg.projectID = sam["project_id"]
 	sa, err := json.Marshal(sam)
 	if err != nil {
