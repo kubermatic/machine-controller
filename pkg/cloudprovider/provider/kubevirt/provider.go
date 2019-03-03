@@ -1,6 +1,7 @@
 package kubevirt
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -18,9 +19,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
-	"kubevirt.io/kubevirt/pkg/kubecli"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -133,19 +134,20 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
+	client, err := client.New(&c.Config, client.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
+	ctx := context.Background()
 
-	virtualMachineInstance, err := client.VirtualMachineInstance(c.Namespace).Get(machine.Name, &metav1.GetOptions{})
-	if err != nil {
+	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
+	if err := client.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
-
 	}
+
 	// Deletion takes some time, so consider the VMI as deleted as soon as it has a DeletionTimestamp
 	// because once the node got into status not ready its informers wont fire again
 	// With the current approach we may run into a conflict when creating the VMI again, however this
@@ -160,7 +162,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
-		if err := client.VirtualMachine(c.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
+		if err := client.Delete(ctx, virtualMachineInstance); err != nil {
 			return nil, fmt.Errorf("failed to delete failed VMI %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -187,13 +189,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
 		return fmt.Errorf("CoreOS is not supported")
 	}
-	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
+	client, err := client.New(&c.Config, client.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
 	// Check if we can reach the API of the target cluster
-	_, err = client.VirtualMachineInstance(c.Namespace).Get("not-expected-to-exist", &metav1.GetOptions{})
-	if err != nil && !kerrors.IsNotFound(err) {
+	vmi := &kubevirtv1.VirtualMachineInstance{}
+	if err := client.Get(context.Background(), types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
 		return fmt.Errorf("failed to request VirtualMachineInstances: %v", err)
 	}
 
@@ -288,30 +290,28 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		},
 	}
 
-	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
+	client, err := client.New(&c.Config, client.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
+	ctx := context.Background()
 
-	createdVMI, err := client.VirtualMachineInstance(virtualMachineInstance.Namespace).
-		Create(virtualMachineInstance)
-	if err != nil {
+	if err := client.Create(ctx, virtualMachineInstance); err != nil {
 		return nil, fmt.Errorf("failed to create vmi: %v", err)
 	}
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            userdataSecretName,
-			Namespace:       createdVMI.Namespace,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(createdVMI, kubevirtv1.VirtualMachineInstanceGroupVersionKind)},
+			Namespace:       virtualMachineInstance.Namespace,
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachineInstance, kubevirtv1.VirtualMachineInstanceGroupVersionKind)},
 		},
 		Data: map[string][]byte{"userdata": []byte(userdata)},
 	}
-	_, err = client.CoreV1().Secrets(secret.Namespace).Create(secret)
-	if err != nil {
+	if err := client.Create(ctx, secret); err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
-	return &kubeVirtServer{vmi: *createdVMI}, nil
+	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
 
 }
 
@@ -323,12 +323,14 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	client, err := kubecli.GetKubevirtClientFromRESTConfig(&c.Config)
+	client, err := client.New(&c.Config, client.Options{})
 	if err != nil {
 		return false, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
-	_, err = client.VirtualMachineInstance(c.Namespace).Get(machine.Name, &metav1.GetOptions{})
-	if err != nil {
+	ctx := context.Background()
+
+	vmi := &kubevirtv1.VirtualMachineInstance{}
+	if err := client.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vmi); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
@@ -336,7 +338,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 		return true, nil
 	}
 
-	return false, client.VirtualMachineInstance(c.Namespace).Delete(machine.Name, &metav1.DeleteOptions{})
+	return false, client.Delete(ctx, vmi)
 }
 
 func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
