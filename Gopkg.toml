@@ -14,6 +14,10 @@ required = [
     non-go = false
     unused-packages = false
 
+[[override]]
+  name = "github.com/prometheus/client_golang"
+  version = "^0.9.0"
+
 [[constraint]]
   name = "kubevirt.io/kubevirt"
   branch = "release-0.10"
@@ -42,23 +46,23 @@ required = [
 
 [[override]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.11"
+  branch = "release-1.13"
 
 [[override]]
   name = "k8s.io/api"
-  branch = "release-1.11"
+  branch = "release-1.13"
 
 [[override]]
   name = "k8s.io/client-go"
-  branch = "release-8.0"
+  version = "kubernetes-1.13.1"
 
 [[override]]
   name = "k8s.io/apiserver"
-  branch = "release-1.11"
+  branch = "release-1.13"
 
 [[override]]
   name = "k8s.io/code-generator"
-  branch = "release-1.11"
+  branch = "release-1.13"
 
 [[override]]
   name = "k8s.io/gengo"
@@ -74,7 +78,7 @@ required = [
 
 [[constraint]]
   name = "k8s.io/apiextensions-apiserver"
-  branch = "release-1.11"
+  branch = "release-1.13"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
@@ -110,7 +114,7 @@ required = [
 
 [[constraint]]
   name = "sigs.k8s.io/cluster-api"
-  revision = "45f1c93260140936c610e56575d7505ba3d52444"
+  revision = "813b1fec840d79b37fe86778237b6db6d1cb959d"
 
 [[constraint]]
   name = "gopkg.in/gcfg.v1"
