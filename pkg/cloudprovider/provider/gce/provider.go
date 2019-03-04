@@ -53,9 +53,6 @@ const (
 	labelMachineUID  = "machine_uid"
 )
 
-// nyiErr is a temporary error used during implementation. Has to be removed.
-var nyiErr = fmt.Errorf("not yet implemented")
-
 //-----
 // Provider
 //-----

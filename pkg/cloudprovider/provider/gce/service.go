@@ -29,16 +29,7 @@ const (
 
 // Google compute operation status.
 const (
-	statusDone         = "DONE"
-	statusDown         = "DOWN"
-	statusPending      = "PENDING"
-	statusProvisioning = "PROVISIONING"
-	statusRunning      = "RUNNING"
-	statusStaging      = "STAGING"
-	statusStopped      = "STOPPED"
-	statusStopping     = "STOPPING"
-	statusTerminated   = "TERMINATED"
-	statusUp           = "UP"
+	statusDone = "DONE"
 )
 
 //-----
@@ -123,9 +114,9 @@ func (svc *service) waitOperation(projectID string, op *compute.Operation, timeo
 			return nil
 		}
 		// If not done grant some growing time.
-		if time.Now().Sub(started) > timeout {
+		if time.Since(started) > timeout {
 			// Operation timed out.
-			return fmt.Errorf("GCE operation %q timed out after %d seconds", op.Name, time.Now().Sub(started)/time.Second)
+			return fmt.Errorf("GCE operation %q timed out after %d seconds", op.Name, time.Since(started)/time.Second)
 		}
 		time.Sleep(waiting)
 		waiting = waiting * 2
