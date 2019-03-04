@@ -106,12 +106,8 @@ func (in *MachineSpec) DeepCopyInto(out *MachineSpec) {
 	out.Versions = in.Versions
 	if in.ConfigSource != nil {
 		in, out := &in.ConfigSource, &out.ConfigSource
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(v1.NodeConfigSource)
-			(*in).DeepCopyInto(*out)
-		}
+		*out = new(v1.NodeConfigSource)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -131,40 +127,24 @@ func (in *MachineStatus) DeepCopyInto(out *MachineStatus) {
 	*out = *in
 	if in.NodeRef != nil {
 		in, out := &in.NodeRef, &out.NodeRef
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(v1.ObjectReference)
-			**out = **in
-		}
+		*out = new(v1.ObjectReference)
+		**out = **in
 	}
 	in.LastUpdated.DeepCopyInto(&out.LastUpdated)
 	if in.Versions != nil {
 		in, out := &in.Versions, &out.Versions
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MachineVersionInfo)
-			**out = **in
-		}
+		*out = new(MachineVersionInfo)
+		**out = **in
 	}
 	if in.ErrorReason != nil {
 		in, out := &in.ErrorReason, &out.ErrorReason
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(MachineStatusError)
-			**out = **in
-		}
+		*out = new(MachineStatusError)
+		**out = **in
 	}
 	if in.ErrorMessage != nil {
 		in, out := &in.ErrorMessage, &out.ErrorMessage
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(string)
-			**out = **in
-		}
+		*out = new(string)
+		**out = **in
 	}
 	return
 }

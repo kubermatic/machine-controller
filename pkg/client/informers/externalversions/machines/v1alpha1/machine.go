@@ -24,7 +24,7 @@ import (
 	versioned "github.com/kubermatic/machine-controller/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/kubermatic/machine-controller/pkg/client/informers/externalversions/internalinterfaces"
 	v1alpha1 "github.com/kubermatic/machine-controller/pkg/client/listers/machines/v1alpha1"
-	machines_v1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -69,7 +69,7 @@ func NewFilteredMachineInformer(client versioned.Interface, resyncPeriod time.Du
 				return client.MachineV1alpha1().Machines().Watch(options)
 			},
 		},
-		&machines_v1alpha1.Machine{},
+		&machinesv1alpha1.Machine{},
 		resyncPeriod,
 		indexers,
 	)
@@ -80,7 +80,7 @@ func (f *machineInformer) defaultInformer(client versioned.Interface, resyncPeri
 }
 
 func (f *machineInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&machines_v1alpha1.Machine{}, f.defaultInformer)
+	return f.factory.InformerFor(&machinesv1alpha1.Machine{}, f.defaultInformer)
 }
 
 func (f *machineInformer) Lister() v1alpha1.MachineLister {
