@@ -66,7 +66,7 @@ required = [
 
 [[override]]
   name = "k8s.io/gengo"
-  revision = "01a732e01d00cb9a81bb0ca050d3e6d2b947927b"
+  revision = "0689ccc1d7d65d9dd1bedcc3b0b1ed7df91ba266"
 
 [[constraint]]
   name = "github.com/digitalocean/godo"
