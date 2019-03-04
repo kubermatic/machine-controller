@@ -331,14 +331,6 @@
   revision = "66deaeb636dff1ac7d938ce666d090556056a4b0"
 
 [[projects]]
-  digest = "1:bc38c7c481812e178d85160472e231c5e1c9a7f5845d67e23ee4e706933c10d8"
-  name = "github.com/golang/mock"
-  packages = ["gomock"]
-  pruneopts = "NUT"
-  revision = "c34cdb4725f4c3844d095133c6e40e448b86589b"
-  version = "v1.1.1"
-
-[[projects]]
   digest = "1:63ccdfbd20f7ccd2399d0647a7d100b122f79c13bb83da9660b1598396fd9f62"
   name = "github.com/golang/protobuf"
   packages = [
@@ -425,14 +417,6 @@
   ]
   pruneopts = "NUT"
   revision = "c38d3807cb5863eb95a857d694f6a4d6b31cde32"
-
-[[projects]]
-  digest = "1:4a0c072e44da763409da72d41492373a034baf2e6d849c76d239b4abdfbb6c49"
-  name = "github.com/gorilla/websocket"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
-  version = "v1.4.0"
 
 [[projects]]
   branch = "master"
@@ -1243,17 +1227,11 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
-  digest = "1:a8e45142412cc3a18fb238c1ddd40de356eb6d3073b8d8cdbf2435ae42752e1d"
+  digest = "1:b08090946952cd290d95494732c1a588ca1796e52c3d5382ffd0f67cb9754f4b"
   name = "kubevirt.io/containerized-data-importer"
   packages = [
     "pkg/apis/datavolumecontroller",
     "pkg/apis/datavolumecontroller/v1alpha1",
-    "pkg/apis/uploadcontroller",
-    "pkg/apis/uploadcontroller/v1alpha1",
-    "pkg/client/clientset/versioned",
-    "pkg/client/clientset/versioned/scheme",
-    "pkg/client/clientset/versioned/typed/datavolumecontroller/v1alpha1",
-    "pkg/client/clientset/versioned/typed/uploadcontroller/v1alpha1",
   ]
   pruneopts = "NUT"
   revision = "8d7a20b86c9a2ed8ac31e26aab50e362f0c84475"
@@ -1262,14 +1240,11 @@
 
 [[projects]]
   branch = "release-0.10"
-  digest = "1:e8b22ee4b1bdfcbf397a91a98a901707298ccfc9eeeb2858eb4ffb143b80bd46"
+  digest = "1:452617fbc46d453dc35684a1e2dd70a09b64e77ee29ba647458adb4e53d8acf0"
   name = "kubevirt.io/kubevirt"
   packages = [
     "pkg/api/v1",
-    "pkg/kubecli",
     "pkg/precond",
-    "pkg/util/subresources",
-    "pkg/version",
   ]
   pruneopts = "NUT"
   revision = "6ddf4f4e2db4924ac0725676db72bb78acc6cca2"
@@ -1452,7 +1427,6 @@
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/gengo/examples/defaulter-gen/generators",
     "kubevirt.io/kubevirt/pkg/api/v1",
-    "kubevirt.io/kubevirt/pkg/kubecli",
     "sigs.k8s.io/cluster-api/pkg/apis",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",
@@ -1463,6 +1437,7 @@
     "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1",
     "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment",
     "sigs.k8s.io/cluster-api/pkg/controller/machineset",
+    "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/manager",
   ]
   solver-name = "gps-cdcl"
