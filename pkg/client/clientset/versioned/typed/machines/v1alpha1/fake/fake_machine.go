@@ -59,7 +59,7 @@ func (c *FakeMachines) List(opts v1.ListOptions) (result *v1alpha1.MachineList, 
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.MachineList{}
+	list := &v1alpha1.MachineList{ListMeta: obj.(*v1alpha1.MachineList).ListMeta}
 	for _, item := range obj.(*v1alpha1.MachineList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
@@ -123,7 +123,7 @@ func (c *FakeMachines) DeleteCollection(options *v1.DeleteOptions, listOptions v
 // Patch applies the patch and returns the patched machine.
 func (c *FakeMachines) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Machine, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(machinesResource, name, data, subresources...), &v1alpha1.Machine{})
+		Invokes(testing.NewRootPatchSubresourceAction(machinesResource, name, pt, data, subresources...), &v1alpha1.Machine{})
 	if obj == nil {
 		return nil, err
 	}

@@ -360,7 +360,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// to stop the leader election library might cause synchronization issues.
 	// imagine that a user wants to shutdown the app but since there is no way of telling the library to stop it will eventually run `runController` method
 	// and bad things can happen - the fact it works at the moment doesn't mean it will in the future
-	runController := func(stopChannel <-chan struct{}) {
+	runController := func(_ context.Context) {
 
 		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
 		clusterv1Alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(runOptions.cfg)
@@ -405,7 +405,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			return
 		}
 		go func() {
-			if err := mgr.Start(stopChannel); err != nil {
+			if err := mgr.Start(runOptions.parentCtx.Done()); err != nil {
 				glog.Errorf("failed to start kubebuilder manager: %v", err)
 				runOptions.parentCtxDone()
 				return
@@ -457,7 +457,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	if err != nil {
 		return err
 	}
-	go le.Run()
+	go le.Run(runOptions.parentCtx)
 
 	<-runOptions.parentCtx.Done()
 	return nil
