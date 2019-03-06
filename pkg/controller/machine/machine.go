@@ -64,6 +64,12 @@ const (
 	FinalizerDeleteInstance = "machine-delete-finalizer"
 	FinalizerDeleteNode     = "machine-node-delete-finalizer"
 
+	// AnnotationMachineUninitialized indicates that a machine is not yet
+	// ready to be worked on by the machine-controller. The machine-controller
+	// will ignore all machines that have this anotation with any value
+	// Its value should consist of one or more initializers, separated by a comma
+	AnnotationMachineUninitialized = "machine-controller.kubermatic.io/initializers"
+
 	deletionRetryWaitPeriod = 10 * time.Second
 
 	NodeOwnerLabelName = "machine-controller/owned-by"
@@ -356,6 +362,12 @@ func (c *Controller) syncHandler(key string) error {
 		}
 		return err
 	}
+
+	if listerMachine.Annotations[AnnotationMachineUninitialized] != "" {
+		glog.V(4).Infof("Ignoring machine %q because it has a non-emtpy %q annotation", listerMachine.Name, AnnotationMachineUninitialized)
+		return nil
+	}
+
 	machine := listerMachine.DeepCopy()
 
 	// This must stay in the controller, it can not be moved into the webhook
