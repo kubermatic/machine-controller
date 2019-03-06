@@ -4,10 +4,6 @@
 
 package gce
 
-//-----
-// Imports
-//-----
-
 import (
 	"fmt"
 	"path"
@@ -16,25 +12,19 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-//-----
-// Constants
-//-----
-
 const (
-	// Timeouts.
-	timeoutNormal = 10 * time.Minute
+	// Interval and timeout for polling.
+	pollInterval = 5 * time.Second
+	pollTimeout  = 5 * time.Minute
 )
 
 // Google compute operation status.
 const (
 	statusDone = "DONE"
 )
-
-//-----
-// Service
-//-----
 
 // service wraps a GCE compute service for the extension with helper methods.
 type service struct {
@@ -82,6 +72,31 @@ func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) 
 	return []*compute.AttachedDisk{bootDisk}, nil
 }
 
+// waitOperation waits for a GCE operation to be completed or timed out.
+func (svc *service) waitOperation(projectID string, op *compute.Operation) error {
+	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
+		// Check if done (successfully).
+		if op.Status == statusDone {
+			if op.Error != nil {
+				// Operation failed.
+				for _, err := range op.Error.Errors {
+					glog.Errorf("GCE operation %q error: (%s) %s", op.Name, err.Code, err.Message)
+				}
+				return false, fmt.Errorf("GCE operation %q failed", op.Name)
+			}
+			return true, nil
+		}
+		// Refresh operation to gather new status.
+		var err error
+		op, err = svc.refreshOperation(projectID, op)
+		if err != nil {
+			return false, fmt.Errorf("GCE operation %q refreshing failed: %v", op.Name, err)
+		}
+		// Not yet done.
+		return false, nil
+	})
+}
+
 // refreshOperation requests a fresh copy of the passed operation containing
 // the updated status.
 func (svc *service) refreshOperation(projectID string, op *compute.Operation) (*compute.Operation, error) {
@@ -94,36 +109,5 @@ func (svc *service) refreshOperation(projectID string, op *compute.Operation) (*
 		return svc.RegionOperations.Get(projectID, region, op.Name).Do()
 	default:
 		return svc.GlobalOperations.Get(projectID, op.Name).Do()
-	}
-}
-
-// waitOperation waits for a GCE operation to be completed or timed out.
-func (svc *service) waitOperation(projectID string, op *compute.Operation, timeout time.Duration) (err error) {
-	started := time.Now()
-	waiting := 100 * time.Millisecond
-	for {
-		// Check if done (successfully).
-		if op.Status == statusDone {
-			if op.Error != nil {
-				// Operation failed.
-				for _, err := range op.Error.Errors {
-					glog.Errorf("GCE operation %q error: (%s) %s", op.Name, err.Code, err.Message)
-				}
-				return fmt.Errorf("GCE operation %q failed", op.Name)
-			}
-			return nil
-		}
-		// If not done grant some growing time.
-		if time.Since(started) > timeout {
-			// Operation timed out.
-			return fmt.Errorf("GCE operation %q timed out after %d seconds", op.Name, time.Since(started)/time.Second)
-		}
-		time.Sleep(waiting)
-		waiting = waiting * 2
-		// Refresh operation to gather new status.
-		op, err = svc.refreshOperation(projectID, op)
-		if err != nil {
-			return fmt.Errorf("GCE operation %q refreshing failed: %v", op.Name, err)
-		}
 	}
 }

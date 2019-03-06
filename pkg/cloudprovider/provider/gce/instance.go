@@ -4,10 +4,6 @@
 
 package gce
 
-//-----
-// Imports
-//-----
-
 import (
 	"strconv"
 
@@ -15,10 +11,6 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 )
-
-//-----
-// Constants
-//-----
 
 // Possible instance statuses.
 const (
@@ -31,10 +23,6 @@ const (
 	statusInstanceSuspending   = "SUSPENDING"
 	statusInstanceTerminated   = "TERMINATED"
 )
-
-//-----
-// Instance
-//-----
 
 // googleInstance implements instance.Instance for the Google compute instance.
 type googleInstance struct {

@@ -4,10 +4,6 @@
 
 package gce
 
-//-----
-// Imports
-//-----
-
 import (
 	"fmt"
 	"net/http"
@@ -24,10 +20,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
-
-//-----
-// Constants
-//-----
 
 // Terminal error messages.
 const (
@@ -53,10 +45,6 @@ const (
 	labelMachineUID  = "machine_uid"
 )
 
-//-----
-// Provider
-//-----
-
 // Compile time verification of Provider implementing cloud.Provider.
 var _ cloud.Provider = New(nil)
 
@@ -74,8 +62,20 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 
 // AddDefaults reads the MachineSpec and applies defaults for provider specific fields
 func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	// TODO(mue) Check for defaults to apply.
-	return spec, nil
+	// Read cloud provider spec.
+	cpSpec, _, err := newCloudProviderSpec(spec.ProviderSpec)
+	if err != nil {
+		return spec, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
+	}
+	// Check and set defaults.
+	if cpSpec.DiskSize == 0 {
+		cpSpec.DiskSize = defaultDiskSize
+	}
+	if cpSpec.DiskType.Value == "" {
+		cpSpec.DiskType.Value = defaultDiskType
+	}
+	spec.ProviderSpec.Value, err = cpSpec.updateProviderSpec(spec.ProviderSpec)
+	return spec, err
 }
 
 // Validate checks the given machine's specification.
@@ -148,7 +148,6 @@ func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Init cloud configuration.
-	// TODO(mue) Check for needed fields and extend configuration.
 	cc := &cloudConfig{
 		Global: global{
 			ProjectID: cfg.projectID,
@@ -223,7 +222,7 @@ func (p *Provider) Create(
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
-	err = svc.waitOperation(cfg.projectID, op, timeoutNormal)
+	err = svc.waitOperation(cfg.projectID, op)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
@@ -256,7 +255,7 @@ func (p *Provider) Cleanup(
 		}
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
-	err = svc.waitOperation(cfg.projectID, op, timeoutNormal)
+	err = svc.waitOperation(cfg.projectID, op)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
@@ -309,7 +308,7 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
-	err = svc.waitOperation(cfg.projectID, op, timeoutNormal)
+	err = svc.waitOperation(cfg.projectID, op)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
@@ -321,10 +320,6 @@ func (p *Provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	// TODO(mue) Check what to return for Google Cloud.
 	return nil
 }
-
-//-----
-// Private helpers
-//-----
 
 // newError creates a terminal error matching to the provider interface.
 func newError(reason common.MachineStatusError, msg string, args ...interface{}) error {

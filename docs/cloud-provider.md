@@ -100,20 +100,17 @@ network: ""
 ### machine.spec.providerConfig.cloudProviderSpec
 
 ```yaml
-clientID: "<< GOOGLE_CLIENT_ID >>"
-projectID: "<< GOOGLE_PROJECT_ID >>"
-email: "<< GOOGLE_EMAIL >>"
-privateKey: "<< GOOGLE_PRIVATE_KEY >>"
+serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
 # See https://cloud.google.com/compute/docs/regions-zones/
 zone: "europe-west3-a"
 # See https://cloud.google.com/compute/docs/machine-types
 machineType: "n1-standard-2"
 # In GB
-diskSize: 50
+diskSize: 25
 # Can be 'pd-standard' or 'pd-ssd'
 diskType: "pd-standard"
 labels:
-    "KubernetesCluster": "my-cluster"            
+    "kubernetesCluster": "my-cluster"            
 ```
 
 ## Hetzner cloud

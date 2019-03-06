@@ -6,17 +6,9 @@
 
 package gce
 
-//-----
-// Imports
-//-----
-
 import (
 	"testing"
 )
-
-//-----
-// Tests
-//-----
 
 func TestCloudConfigAsString(t *testing.T) {
 	tests := []struct {
@@ -49,5 +41,4 @@ func TestCloudConfigAsString(t *testing.T) {
 			}
 		})
 	}
-
 }

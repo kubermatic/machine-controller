@@ -4,10 +4,6 @@
 
 package gce
 
-//-----
-// Imports
-//-----
-
 import (
 	"encoding/json"
 	"fmt"
@@ -16,14 +12,11 @@ import (
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
 	"google.golang.org/api/compute/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
-
-//-----
-// Constants
-//-----
 
 // Environment variables for the configuration of the Google Cloud project access.
 const (
@@ -51,9 +44,11 @@ var diskTypes = map[string]bool{
 	"pd-ssd":      true,
 }
 
-//-----
-// Cloud Provider Specification
-//-----
+// Default values for disk type and size (in GB).
+const (
+	defaultDiskType = "pd-standard"
+	defaultDiskSize = 25
+)
 
 // cloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
@@ -66,9 +61,49 @@ type cloudProviderSpec struct {
 	Labels         map[string]string              `json:"labels"`
 }
 
-//-----
-// Configuration
-//-----
+// newCloudProviderSpec creates a cloud provider specification out of the
+// given ProviderSpec.
+func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*cloudProviderSpec, *providerconfig.Config, error) {
+	// Retrieve provider configuration from machine specification.
+	if spec.Value == nil {
+		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+	}
+	providerConfig := providerconfig.Config{}
+	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
+	}
+	// Retrieve cloud provider specification from cloud provider specification.
+	cpSpec := &cloudProviderSpec{}
+	err = json.Unmarshal(providerConfig.CloudProviderSpec.Raw, cpSpec)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
+	}
+	return cpSpec, &providerConfig, nil
+}
+
+// updateProviderSpec updates the given provider spec with changed
+// configuration values.
+func (cpSpec *cloudProviderSpec) updateProviderSpec(spec v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+	if spec.Value == nil {
+		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+	}
+	providerConfig := providerconfig.Config{}
+	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
+	if err != nil {
+		return nil, err
+	}
+	rawCPSpec, err := json.Marshal(cpSpec)
+	if err != nil {
+		return nil, err
+	}
+	providerConfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCPSpec}
+	rawProviderConfig, err := json.Marshal(providerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return &runtime.RawExtension{Raw: rawProviderConfig}, nil
+}
 
 // config contains the configuration of the Provider.
 type config struct {
@@ -83,26 +118,16 @@ type config struct {
 	providerConfig *providerconfig.Config
 }
 
-// newConfig create a Provider configuration out of the passed resolver and spec.
+// newConfig creates a Provider configuration out of the passed resolver and spec.
 func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.ProviderSpec) (*config, error) {
-	// Retrieve provider configuration from machine specification.
-	if spec.Value == nil {
-		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
-	}
-	providerConfig := providerconfig.Config{}
-	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
+	// Create cloud provider spec.
+	cpSpec, providerConfig, err := newCloudProviderSpec(spec)
 	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
-	}
-	// Retrieve cloud provider specification from cloud provider specification.
-	cpSpec := cloudProviderSpec{}
-	err = json.Unmarshal(providerConfig.CloudProviderSpec.Raw, &cpSpec)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
+		return nil, err
 	}
 	// Setup configuration.
 	cfg := &config{
-		providerConfig: &providerConfig,
+		providerConfig: providerConfig,
 	}
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
 	if err != nil {
