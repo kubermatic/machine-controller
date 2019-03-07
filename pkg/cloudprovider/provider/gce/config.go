@@ -166,14 +166,7 @@ func (cfg *config) postprocessServiceAccount() error {
 	if err != nil {
 		return fmt.Errorf("failed unmarshalling service account: %v", err)
 	}
-	// if strings.Contains(sam["private_key"], "\\n") {
-	//	sam["private_key"] = strings.Replace(sam["private_key"], "\\n", "\n", -1)
-	// }
 	cfg.projectID = sam["project_id"]
-	// sa, err := json.Marshal(sam)
-	// if err != nil {
-	//	return fmt.Errorf("failed marshalling service account: %v", err)
-	// }
 	cfg.jwtConfig, err = google.JWTConfigFromJSON(sa, compute.ComputeScope)
 	if err != nil {
 		return fmt.Errorf("failed preparing JWT: %v", err)
