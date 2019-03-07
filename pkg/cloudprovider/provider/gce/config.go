@@ -5,9 +5,9 @@
 package gce
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
@@ -157,19 +157,23 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 // postprocessServiceAccount processes the service account and creates a JWT configuration
 // out of it.
 func (cfg *config) postprocessServiceAccount() error {
+	sa, err := base64.StdEncoding.DecodeString(cfg.serviceAccount)
+	if err != nil {
+		return fmt.Errorf("failed to decode base64 service account: %v", err)
+	}
 	sam := map[string]string{}
-	err := json.Unmarshal([]byte(cfg.serviceAccount), &sam)
+	err = json.Unmarshal(sa, &sam)
 	if err != nil {
 		return fmt.Errorf("failed unmarshalling service account: %v", err)
 	}
-	if strings.Contains(sam["private_key"], "\\n") {
-		sam["private_key"] = strings.Replace(sam["private_key"], "\\n", "\n", -1)
-	}
+	// if strings.Contains(sam["private_key"], "\\n") {
+	//	sam["private_key"] = strings.Replace(sam["private_key"], "\\n", "\n", -1)
+	// }
 	cfg.projectID = sam["project_id"]
-	sa, err := json.Marshal(sam)
-	if err != nil {
-		return fmt.Errorf("failed marshalling service account: %v", err)
-	}
+	// sa, err := json.Marshal(sam)
+	// if err != nil {
+	//	return fmt.Errorf("failed marshalling service account: %v", err)
+	// }
 	cfg.jwtConfig, err = google.JWTConfigFromJSON(sa, compute.ComputeScope)
 	if err != nil {
 		return fmt.Errorf("failed preparing JWT: %v", err)
