@@ -25,7 +25,8 @@ spec:
           cloudProvider: "gce"
           cloudProviderSpec:
             # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var
-            serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
+            serviceAccount: |
+              << GOOGLE_SERVICE_ACCOUNT >>
             # See https://cloud.google.com/compute/docs/regions-zones/
             zone: "europe-west3-a"
             # See https://cloud.google.com/compute/docs/machine-types
