@@ -3,11 +3,9 @@
 package provisioning
 
 import (
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -157,16 +155,11 @@ func TestAzureProvisioningE2E(t *testing.T) {
 func TestGCEProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	// Test data. The Google Service Account is a JSON containing a key with an
-	// encoded multiline string. As environment the backslash is double encoded
-	// so it has to be encoded back. Also the provider expects the service
-	// account base64 encoded for the same reason.
+	// Test data.
 	googleServiceAccount := os.Getenv("GOOGLE_SERVICE_ACCOUNT")
 	if len(googleServiceAccount) == 0 {
 		t.Fatal("unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
 	}
-	googleServiceAccount = strings.Replace(googleServiceAccount, "\\n", "\n", -1)
-	googleServiceAccount = base64.StdEncoding.EncodeToString([]byte(googleServiceAccount))
 
 	// Act.
 	excludeSelector := &scenarioSelector{}
