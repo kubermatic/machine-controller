@@ -165,7 +165,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	if len(googleServiceAccount) == 0 {
 		t.Fatal("unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
 	}
-	googleServiceAccount = strings.Replace(googleServiceAccount, "\\n", "\n")
+	googleServiceAccount = strings.Replace(googleServiceAccount, "\\n", "\n", -1)
 	googleServiceAccount = base64.StdEncoding.EncodeToString([]byte(googleServiceAccount))
 
 	// Act.
