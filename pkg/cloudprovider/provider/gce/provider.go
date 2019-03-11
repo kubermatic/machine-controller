@@ -294,6 +294,11 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
+	// Retrieve instance.
+	inst, err := p.Get(machine)
+	if err != nil {
+		return err
+	}
 	// Create new labels and set them.
 	labels := map[string]string{}
 	for k, v := range cfg.labels {
@@ -304,11 +309,11 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	slReq := &compute.InstancesSetLabelsRequest{
 		Labels: labels,
 	}
-	op, err := svc.Instances.SetLabels(cfg.projectID, cfg.zone, machine.Spec.Name, slReq).Do()
+	op, err := svc.Instances.SetLabels(cfg.projectID, cfg.zone, inst.Name(), slReq).Do()
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
-	err = svc.waitGlobalOperation(cfg, op.Name)
+	err = svc.waitZoneOperation(cfg, op.Name)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
