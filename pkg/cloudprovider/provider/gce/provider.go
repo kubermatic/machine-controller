@@ -308,7 +308,7 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
-	err = svc.waitZoneOperation(cfg, op.Name)
+	err = svc.waitGlobalOperation(cfg, op.Name)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}

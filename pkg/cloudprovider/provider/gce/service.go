@@ -70,10 +70,17 @@ func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) 
 	return []*compute.AttachedDisk{bootDisk}, nil
 }
 
-// waitZoneOperation waits for a GCE operation in a zone go be completed or timed out.
+// waitZoneOperation waits for a GCE operation in a zone to be completed or timed out.
 func (svc *service) waitZoneOperation(cfg *config, opName string) error {
 	return svc.waitOperation(func() (*compute.Operation, error) {
 		return svc.ZoneOperations.Get(cfg.projectID, cfg.zone, opName).Do()
+	})
+}
+
+// waitGlobalOperation waits for a GCE operation globally to be completed or timed out.
+func (svc *service) waitGlobalOperation(cfg *config, opName string) error {
+	return svc.waitOperation(func() (*compute.Operation, error) {
+		return svc.GlobalOperations.Get(cfg.projectID, opName).Do()
 	})
 }
 
