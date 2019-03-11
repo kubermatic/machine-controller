@@ -77,13 +77,6 @@ func (svc *service) waitZoneOperation(cfg *config, opName string) error {
 	})
 }
 
-// waitGlobalOperation waits for a GCE operation globally to be completed or timed out.
-func (svc *service) waitGlobalOperation(cfg *config, opName string) error {
-	return svc.waitOperation(func() (*compute.Operation, error) {
-		return svc.GlobalOperations.Get(cfg.projectID, opName).Do()
-	})
-}
-
 // waitOperation waits for a GCE operation to be completed or timed out.
 func (svc *service) waitOperation(refreshOperation func() (*compute.Operation, error)) error {
 	var op *compute.Operation
