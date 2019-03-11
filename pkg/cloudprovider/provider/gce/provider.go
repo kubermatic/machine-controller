@@ -299,17 +299,18 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	if err != nil {
 		return err
 	}
+	ci := inst.(*googleInstance).ci
 	// Create new labels and set them.
-	labels := map[string]string{}
-	for k, v := range cfg.labels {
-		labels[k] = v
+	labels := ci.Labels
+	if labels == nil {
+		labels = map[string]string{}
 	}
-	labels[labelMachineName] = machine.Spec.Name
 	labels[labelMachineUID] = string(newUID)
-	slReq := &compute.InstancesSetLabelsRequest{
-		Labels: labels,
+	req := &compute.InstancesSetLabelsRequest{
+		Labels:           labels,
+		LabelFingerprint: ci.LabelFingerprint,
 	}
-	op, err := svc.Instances.SetLabels(cfg.projectID, cfg.zone, inst.Name(), slReq).Do()
+	op, err := svc.Instances.SetLabels(cfg.projectID, cfg.zone, inst.Name(), req).Do()
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
