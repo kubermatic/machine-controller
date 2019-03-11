@@ -222,7 +222,7 @@ func (p *Provider) Create(
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
-	err = svc.waitOperation(cfg.projectID, op)
+	err = svc.waitZoneOperation(cfg, op.Name)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
@@ -255,7 +255,7 @@ func (p *Provider) Cleanup(
 		}
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
-	err = svc.waitOperation(cfg.projectID, op)
+	err = svc.waitZoneOperation(cfg, op.Name)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
@@ -308,7 +308,7 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
-	err = svc.waitOperation(cfg.projectID, op)
+	err = svc.waitZoneOperation(cfg, op.Name)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}

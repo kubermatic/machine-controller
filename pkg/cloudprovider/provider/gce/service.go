@@ -6,10 +6,8 @@ package gce
 
 import (
 	"fmt"
-	"path"
 	"time"
 
-	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -72,42 +70,32 @@ func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) 
 	return []*compute.AttachedDisk{bootDisk}, nil
 }
 
+// waitZoneOperation waits for a GCE operation in a zone go be completed or timed out.
+func (svc *service) waitZoneOperation(cfg *config, opName string) error {
+	return svc.waitOperation(func() (*compute.Operation, error) {
+		return svc.ZoneOperations.Get(cfg.projectID, cfg.zone, opName).Do()
+	})
+}
+
 // waitOperation waits for a GCE operation to be completed or timed out.
-func (svc *service) waitOperation(projectID string, op *compute.Operation) error {
+func (svc *service) waitOperation(refreshOperation func() (*compute.Operation, error)) error {
+	var op *compute.Operation
+	var err error
+
 	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
+		op, err = refreshOperation()
+		if err != nil {
+			return false, err
+		}
 		// Check if done (successfully).
 		if op.Status == statusDone {
 			if op.Error != nil {
 				// Operation failed.
-				for _, err := range op.Error.Errors {
-					glog.Errorf("GCE operation %q error: (%s) %s", op.Name, err.Code, err.Message)
-				}
-				return false, fmt.Errorf("GCE operation %q failed", op.Name)
+				return false, fmt.Errorf("GCE operation failed: %v", *op.Error.Errors[0])
 			}
 			return true, nil
-		}
-		// Refresh operation to gather new status.
-		var err error
-		op, err = svc.refreshOperation(projectID, op)
-		if err != nil {
-			return false, fmt.Errorf("GCE operation %q refreshing failed: %v", op.Name, err)
 		}
 		// Not yet done.
 		return false, nil
 	})
-}
-
-// refreshOperation requests a fresh copy of the passed operation containing
-// the updated status.
-func (svc *service) refreshOperation(projectID string, op *compute.Operation) (*compute.Operation, error) {
-	switch {
-	case op.Zone != "":
-		zone := path.Base(op.Zone)
-		return svc.ZoneOperations.Get(projectID, zone, op.Name).Do()
-	case op.Region != "":
-		region := path.Base(op.Region)
-		return svc.RegionOperations.Get(projectID, region, op.Name).Do()
-	default:
-		return svc.GlobalOperations.Get(projectID, op.Name).Do()
-	}
 }
