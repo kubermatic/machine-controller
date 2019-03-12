@@ -110,10 +110,13 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
 
-	gopath := os.Getenv("GOPATH")
-	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
+	kubeConfig := os.Getenv("KUBECONFIG")
+	if kubeConfig == "" {
+		gopath := os.Getenv("GOPATH")
+		projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
 
-	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
+		kubeConfig = filepath.Join(projectDir, ".kubeconfig")
+	}
 
 	// the golang test runtime waits for individual subtests to complete before reporting the status.
 	// if one of them is blocking/waiting and the global timeout is reached the status will not be reported/visible.
