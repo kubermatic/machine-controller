@@ -89,6 +89,10 @@ locally, the following steps are required:
 * Run `make e2e-cluster` to get a simple kubeadm cluster on Hetzner
 * Run `hack/run-machine-controller.sh` to locally run the machine-controller for your freshly created cluster
 
+If you want to use an existing cluster to test against, you can simply set the `KUBECONFIG` environment variable.
+In this case, first make sure that a kubeconfig created by `make e2e-cluster` at `$(go env GOPATH)/src/github.com/kubermatic/machine-controller/.kubeconfig`
+doesn't exist, since the tests will default to this hardcoded path and only use the env var as fallback.
+
 Now you can either
 
 * Run the tests for all providers via
