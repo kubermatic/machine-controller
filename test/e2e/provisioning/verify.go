@@ -138,15 +138,16 @@ func createAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 	if err != nil {
 		return nil, err
 	}
+	var pollErr error
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
-		pollErr := assureNodeForMachineDeployment(machineDeployment, kubeClient, clusterClient, true)
+		pollErr = assureNodeForMachineDeployment(machineDeployment, kubeClient, clusterClient, true)
 		if pollErr == nil {
 			return true, nil
 		}
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %v", machineDeployment.Name, err)
+		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %v (%v)", machineDeployment.Name, err, pollErr)
 	}
 	glog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 

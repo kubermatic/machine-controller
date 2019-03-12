@@ -27,14 +27,12 @@ const (
 var imageProjects = map[providerconfig.OperatingSystem]string{
 	providerconfig.OperatingSystemCoreos: "coreos-cloud",
 	providerconfig.OperatingSystemUbuntu: "ubuntu-os-cloud",
-	providerconfig.OperatingSystemCentOS: "centos-cloud",
 }
 
 // imageFamilies maps the OS to the Google Cloud image projects
 var imageFamilies = map[providerconfig.OperatingSystem]string{
 	providerconfig.OperatingSystemCoreos: "coreos-stable",
 	providerconfig.OperatingSystemUbuntu: "ubuntu-1804-lts",
-	providerconfig.OperatingSystemCentOS: "centos-7",
 }
 
 // diskTypes are the disk types of the Google Cloud. Map is used for
