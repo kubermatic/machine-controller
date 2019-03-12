@@ -161,8 +161,8 @@ func TestGCEProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
 	}
 
-	// Act.
-	excludeSelector := &scenarioSelector{}
+	// Act. GCE does not support CentOS.
+	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
 	params := []string{
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 	}
