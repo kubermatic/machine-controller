@@ -110,12 +110,18 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
 
-	kubeConfig := os.Getenv("KUBECONFIG")
-	if kubeConfig == "" {
-		gopath := os.Getenv("GOPATH")
-		projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
+	// default kubeconfig to the hardcoded path at which `make e2e-cluster` creates its new kubeconfig
+	gopath := os.Getenv("GOPATH")
+	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
+	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 
-		kubeConfig = filepath.Join(projectDir, ".kubeconfig")
+	if _, err := os.Stat(kubeConfig); err == nil {
+		// it exists at hardcoded path
+	} else if os.IsNotExist(err) {
+		// it doesn't exist, fall back to $KUBECONFIG
+		kubeConfig = os.Getenv("KUBECONFIG")
+	} else {
+		t.Fatal(err)
 	}
 
 	// the golang test runtime waits for individual subtests to complete before reporting the status.
