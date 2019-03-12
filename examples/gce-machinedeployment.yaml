@@ -53,7 +53,7 @@ spec:
             diskType: "pd-standard"
             labels:
               "kubernetes_cluster": "my-cluster"
-          # Can be 'ubuntu', 'coreos' or 'centos'
+          # Can be 'ubuntu' or 'coreos'
           operatingSystem: "coreos"
           operatingSystemSpec:
             disableAutoUpdate: true

@@ -36,7 +36,7 @@ spec:
             diskType: "pd-standard"
             labels:
                 "kubernetes_cluster": "gce-test-cluster"            
-          # Can be 'ubuntu', 'coreos' or 'centos'
+          # Can be 'ubuntu' or 'coreos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
