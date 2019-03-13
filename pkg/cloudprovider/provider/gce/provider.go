@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"cloud.google.com/go/logging"
+	"cloud.google.com/go/monitoring/apiv3"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	"k8s.io/apimachinery/pkg/types"
@@ -201,12 +203,12 @@ func (p *Provider) Create(
 		ServiceAccounts: []*compute.ServiceAccount{
 			{
 				Email: cfg.jwtConfig.Email,
-				Scopes: []string{
+				Scopes: append(
+					monitoring.DefaultAuthScopes(),
 					compute.ComputeScope,
 					compute.DevstorageReadOnlyScope,
-					"https://www.googleapis.com/auth/monitoring",
-					"https://www.googleapis.com/auth/logging.write",
-				},
+					logging.WriteScope,
+				),
 			},
 		},
 		Metadata: &compute.Metadata{
