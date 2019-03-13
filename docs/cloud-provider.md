@@ -95,6 +95,24 @@ region: ""
 network: ""
 ```
 
+## Google Cloud Platform
+
+### machine.spec.providerConfig.cloudProviderSpec
+
+```yaml
+serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
+# See https://cloud.google.com/compute/docs/regions-zones/
+zone: "europe-west3-a"
+# See https://cloud.google.com/compute/docs/machine-types
+machineType: "n1-standard-2"
+# In GB
+diskSize: 25
+# Can be 'pd-standard' or 'pd-ssd'
+diskType: "pd-standard"
+labels:
+    "kubernetesCluster": "my-cluster"            
+```
+
 ## Hetzner cloud
 
 ### machine.spec.providerConfig.cloudProviderSpec

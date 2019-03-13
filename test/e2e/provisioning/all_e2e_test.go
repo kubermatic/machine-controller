@@ -13,6 +13,7 @@ const (
 	DOManifest     = "./testdata/machinedeployment-digitalocean.yaml"
 	AWSManifest    = "./testdata/machinedeployment-aws.yaml"
 	AzureManifest  = "./testdata/machinedeployment-azure.yaml"
+	GCEManifest    = "./testdata/machinedeployment-gce.yaml"
 	HZManifest     = "./testdata/machinedeployment-hetzner.yaml"
 	LinodeManifest = "./testdata/machinedeployment-linode.yaml"
 	//	vs_manifest            = "./testdata/machinedeployment-vsphere.yaml"
@@ -146,6 +147,26 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
 	}
 	runScenarios(t, excludeSelector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+}
+
+// TestGCEProvisioningE2E - a test suite that exercises Google Cloud provider
+// by requesting nodes with different combination of container runtime type,
+// container runtime version and the OS flavour.
+func TestGCEProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// Test data.
+	googleServiceAccount := os.Getenv("GOOGLE_SERVICE_ACCOUNT")
+	if len(googleServiceAccount) == 0 {
+		t.Fatal("unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
+	}
+
+	// Act. GCE does not support CentOS.
+	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
+	params := []string{
+		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
+	}
+	runScenarios(t, excludeSelector, params, GCEManifest, fmt.Sprintf("gce-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider

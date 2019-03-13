@@ -9,6 +9,7 @@
 | AWS | ✓ | ✓ |
 | Openstack | ✓ | ✓  |
 | Digitalocean  | ✓ | ✓ |
+| Google Cloud Platform | ✓ | ✓ |
 | Hetzner | ✓ | x |
 | Linode | ✓ | x |
 
