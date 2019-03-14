@@ -3,9 +3,11 @@ package openstack
 import (
 	"flag"
 	"testing"
+	"time"
 
 	"gopkg.in/gcfg.v1"
 
+	"github.com/kubermatic/machine-controller/pkg/ini"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 )
 
@@ -56,6 +58,15 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
+					CreateMonitor:        true,
+					FloatingNetworkID:    "ext-net",
+					LBMethod:             "",
+					LBProvider:           "",
+					LBVersion:            "",
+					MonitorDelay:         ini.Duration{Duration: 30 * time.Second},
+					MonitorMaxRetries:    5,
+					MonitorTimeout:       ini.Duration{Duration: 30 * time.Second},
+					SubnetID:             "some-subnet-id",
 				},
 				Version: "1.12.0",
 			},

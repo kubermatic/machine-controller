@@ -7,6 +7,15 @@ domain-name = "Default"
 region      = "eu-central1"
 
 [LoadBalancer]
+lb-version = "v2"
+subnet-id = "some-subnet-id"
+floating-network-id = "ext-net"
+lb-method = "ROUND_ROBIN"
+lb-provider = ""
+create-monitor = true
+monitor-delay = 30s
+monitor-timeout = 30s
+monitor-max-retries = 5
 manage-security-groups = true
 
 [BlockStorage]
