@@ -1,3 +1,7 @@
+//
+// Userdata manager for plugin handling from machine controller side.
+//
+
 package manager
 
 // Plugin manages the communication to one plugin. It
