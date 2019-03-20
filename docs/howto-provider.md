@@ -79,11 +79,11 @@ For each cloud provider a unique string constant has to be defined in file `type
 
 ## Integrate provider into CI
 
-_<TBD>_
+_(TBD)_
 
 ## Add example manifest
 
-_<TBD>_
+_(TBD)_
 
 ## References
 
