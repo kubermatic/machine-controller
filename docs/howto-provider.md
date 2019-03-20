@@ -59,14 +59,14 @@ MigrateUID(machine *v1alpha1.Machine, new types.UID) error
 `MigrateUID` is called when the controller migrates types and the UID of the machine object changes. All cloud providers that use `Machine.UID` to uniquely identify resources must implement this.
 
 ```go
-SetMetricsForMachines(machines clusterv1alpha1.MachineList) error
+SetMetricsForMachines(machines v1alpha1.MachineList) error
 ```
 
 `SetMetricsForMachines` allows providers to provide provider-specific metrics. This may be implemented as no-op.
 
 ### Implementation hints
 
-Provider implementations are located in individual packages in `github.com/kubermatic/machine-controller/pkg/cloudprovider/provider`. Here see e.g. `hetzner` as a straight and good understandable implementation. Other implementation are there too, helping to understand the needed tasks inside and around the `Provider` interface implementation.
+Provider implementations are located in individual packages in `github.com/kubermatic/machine-controller/pkg/cloudprovider/provider`. Here see e.g. `hetzner` as a straight and good understandable implementation. Other implementations are there too, helping to understand the needed tasks inside and around the `Provider` interface implementation.
 
 When retrieving the individual configuration from the provider specification a type for unmarshalling is needed. Here first the provider configuration is read and based on it the individual values of the configuration are retrieved. Typically the access data (token, ID/key combination, document with all information) alternatively can be passed via an environment cariable. According
 methods of the used `providerconfig.ConfigVarResolver` do support this.
@@ -79,4 +79,15 @@ For each cloud provider a unique string constant has to be defined in file `type
 
 ## Integrate provider into CI
 
+_<TBD>_
+
 ## Add example manifest
+
+_<TBD>_
+
+## References
+
+- [Cloud Provider Interface](https://github.com/kubermatic/machine-controller/blob/master/pkg/cloudprovider/cloud/provider.go)
+- [Implementation for Hetzner](https://github.com/kubermatic/machine-controller/blob/master/pkg/cloudprovider/provider/hetzner/provider.go)
+- [Cloud Provider Type Definition](https://github.com/kubermatic/machine-controller/blob/master/pkg/providerconfig/types.go)
+- [Registration of supported Cloud Providers](https://github.com/kubermatic/machine-controller/blob/master/pkg/cloudprovider/provider.go)
