@@ -18,13 +18,13 @@ AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error)
 Validate(spec v1alpha1.MachineSpec) error
 ```
 
-`Validate` validates the given machine's specification. In case of any error a "terminal" error should be set. See `v1alpha1.MachineStatus` for more info.
+`Validate` validates the given machine's specification. In case of any error a _terminal error_ should be set. See `v1alpha1.MachineStatus` for more info.
 
 ```go
 Get(machine *v1alpha1.Machine) (instance.Instance, error)
 ```
 
-`Get` gets a node that is associated with the given machine. Note that this method can return a so called "terminal" error, which indicates that a manual interaction is required to recover from this state. See `v1alpha1.MachineStatus` for more info and `errors.TerminalError type. 
+`Get` gets a node that is associated with the given machine. Note that this method can return a so called _terminal error_, which indicates that a manual interaction is required to recover from this state. See `v1alpha1.MachineStatus` for more info and `errors.TerminalError` type. 
 
 In case the instance cannot be found, the returned error has to be `github.com/kubermatic/machine-controller/pkg/cloudprovider/errors.ErrInstanceNotFound` for proper evaluation by the machine controller.
 
