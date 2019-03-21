@@ -1,6 +1,6 @@
 # How-to add a Provider
 
-**Task of a Provider implementation is building a bridge between the machine controller and a cloud API. This mainly means creating, configuring, retrieving, and deleting of machine instances. To do so a defined interface has to be implemented and integrated. Additionally the new provider has to integrated into the CI and an example manifest has to be provided.**
+**Task of a provider implementation is building a bridge between the machine controller and a cloud API. This mainly means creating, configuring, retrieving, and deleting of machine instances. To do so a defined interface has to be implemented and integrated. Additionally the new provider has to provide an example manifest and finally integrated into the CI.**
 
 ## Implement the interface
 
@@ -77,13 +77,15 @@ For creation of new machines the support of the possible information has to be c
 
 For each cloud provider a unique string constant has to be defined in file `types.go` in package `github.com/kubermatic/machine-controller/pkg/providerconfig`. Registration based on this constant is done in file `provider.go` in package `github.com/kubermatic/machine-controller/pkg/cloudprovider`.
 
-## Integrate provider into CI
-
-_(TBD)_
-
 ## Add example manifest
 
-_(TBD)_
+For documentation of the different configuration options an according example manifest with helpful comments has to be added to `github.com/kubermatic/machine-controller/examples`. Naming scheme is `<package-name>-machinedeployment.yaml`. 
+
+## Integrate provider into CI
+
+Like the example manifest a more concrete one named `machinedeployment-<package-name>.yaml` has to be added to `github.com/kubermatic/machine-controller/test/e2e/provisioning/testdata`. Additionally file `all_e2e_test.go` in package `github.com/kubermatic/machine-controller/test/e2e/provisioning` containes all provider tests. Like the existing ones the test for the new provider has to be placed here. Mainly it's the retrieval of test data, especially the access data, from the environment and the starting of the test scenarios.
+
+Now the provider is ready to be added into the project for CI tests.
 
 ## References
 
