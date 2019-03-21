@@ -35,5 +35,11 @@ func ForOS(os providerconfig.OperatingSystem) (Provider, error) {
 }
 
 type Provider interface {
-	UserData(spec clusterv1alpha1.MachineSpec, kubeconfig *clientcmdapi.Config, ccProvider cloud.ConfigProvider, clusterDNSIPs []net.IP) (string, error)
+	UserData(
+		spec clusterv1alpha1.MachineSpec,
+		kubeconfig *clientcmdapi.Config,
+		ccProvider cloud.ConfigProvider,
+		clusterDNSIPs []net.IP,
+		externalCloudProvider bool,
+	) (string, error)
 }

@@ -86,6 +86,7 @@ func TestProvider_UserData(t *testing.T) {
 		providerSpec     *providerconfig.Config
 		DNSIPs           []net.IP
 		kubernetesCACert string
+		external         bool
 	}{
 		{
 			name: "v1.9.2-disable-auto-update-aws",
@@ -103,6 +104,24 @@ func TestProvider_UserData(t *testing.T) {
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
 			osConfig:         &Config{DisableAutoUpdate: true},
+		},
+		{
+			name: "v1.9.2-disable-auto-update-aws-external",
+			providerSpec: &providerconfig.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.9.2",
+				},
+			},
+			ccProvider:       &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig:         &Config{DisableAutoUpdate: true},
+			external:         true,
 		},
 		{
 			name: "v1.10.3-auto-update-openstack-multiple-dns",
@@ -206,7 +225,7 @@ func TestProvider_UserData(t *testing.T) {
 			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerSpecRaw}}
 			p := Provider{}
 
-			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
+			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs, test.external)
 			if err != nil {
 				t.Fatal(err)
 			}

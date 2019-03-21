@@ -110,6 +110,7 @@ type userDataTestCase struct {
 	providerSpec     *providerconfig.Config
 	DNSIPs           []net.IP
 	kubernetesCACert string
+	external         bool
 }
 
 func TestProvider_UserData(t *testing.T) {
@@ -258,7 +259,7 @@ func TestProvider_UserData(t *testing.T) {
 			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerSpecRaw}}
 			p := Provider{}
 
-			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
+			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs, test.external)
 			if err != nil {
 				t.Fatal(err)
 			}

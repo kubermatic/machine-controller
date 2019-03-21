@@ -68,14 +68,15 @@ import (
 )
 
 var (
-	masterURL          string
-	kubeconfig         string
-	clusterDNSIPs      string
-	listenAddress      string
-	profiling          bool
-	name               string
-	joinClusterTimeout string
-	workerCount        int
+	masterURL             string
+	kubeconfig            string
+	clusterDNSIPs         string
+	listenAddress         string
+	profiling             bool
+	name                  string
+	joinClusterTimeout    string
+	workerCount           int
+	externalCloudProvider bool
 )
 
 const (
@@ -150,6 +151,9 @@ type controllerRunOptions struct {
 	// The timeout in which machines owned by a MachineSet must join the cluster to avoid being
 	// deleted by the machine-controller
 	joinClusterTimeout *time.Duration
+
+	// Flag to initialize kubelets with --cloud-provider=external
+	externalCloudProvider bool
 }
 
 func main() {
@@ -168,6 +172,7 @@ func main() {
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
 	flag.StringVar(&joinClusterTimeout, "join-cluster-timeout", "", "when set, machines that have an owner and do not join the cluster within the configured duration will be deleted, so the owner re-creats them")
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
+	flag.BoolVar(&externalCloudProvider, "external-cloud-provider", false, "when set, kubelets will receive --cloud-provider=external flag")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -239,22 +244,23 @@ func main() {
 
 	kubeconfigProvider := clusterinfo.New(cfg, kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(), defaultKubeInformerFactory.Core().V1().Endpoints().Lister())
 	runOptions := controllerRunOptions{
-		kubeClient:           kubeClient,
-		extClient:            extClient,
-		machineClient:        machineClient,
-		metrics:              machinecontroller.NewMachineControllerMetrics(),
-		clusterDNSIPs:        ips,
-		leaderElectionClient: leaderElectionClient,
-		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
-		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
-		secretSystemNsLister: kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
-		pvLister:             kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
-		machineInformer:      clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
-		machineLister:        clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
-		kubeconfigProvider:   kubeconfigProvider,
-		name:                 name,
-		prometheusRegisterer: prometheusRegistry,
-		cfg:                  machineCfg,
+		kubeClient:            kubeClient,
+		extClient:             extClient,
+		machineClient:         machineClient,
+		metrics:               machinecontroller.NewMachineControllerMetrics(),
+		clusterDNSIPs:         ips,
+		leaderElectionClient:  leaderElectionClient,
+		nodeInformer:          kubeInformerFactory.Core().V1().Nodes().Informer(),
+		nodeLister:            kubeInformerFactory.Core().V1().Nodes().Lister(),
+		secretSystemNsLister:  kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
+		pvLister:              kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
+		machineInformer:       clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
+		machineLister:         clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
+		kubeconfigProvider:    kubeconfigProvider,
+		name:                  name,
+		prometheusRegisterer:  prometheusRegistry,
+		cfg:                   machineCfg,
+		externalCloudProvider: externalCloudProvider,
 	}
 	if parsedJoinClusterTimeout != nil {
 		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
@@ -426,6 +432,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.prometheusRegisterer,
 			runOptions.kubeconfigProvider,
 			runOptions.joinClusterTimeout,
+			runOptions.externalCloudProvider,
 			runOptions.name,
 		)
 		if err != nil {
