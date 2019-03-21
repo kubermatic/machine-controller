@@ -64,6 +64,7 @@ func TestUserDataGeneration(t *testing.T) {
 		spec              clusterv1alpha1.MachineSpec
 		clusterDNSIPs     []net.IP
 		cloudProviderName *string
+		external          bool
 	}{
 		{
 			name: "kubelet-v1.9-aws",
@@ -102,6 +103,16 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
+			name: "kubelet-v1.12-aws-external",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.12.0",
+				},
+			},
+			external: true,
+		},
+		{
 			name: "kubelet-v1.12-vsphere",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -130,7 +141,7 @@ func TestUserDataGeneration(t *testing.T) {
 			cloudProvider = defaultCloudProvider
 		}
 
-		s, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs)
+		s, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs, test.external)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}

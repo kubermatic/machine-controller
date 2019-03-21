@@ -95,6 +95,8 @@ type Controller struct {
 
 	joinClusterTimeout *time.Duration
 
+	externalCloudProvider bool
+
 	name string
 }
 
@@ -124,6 +126,7 @@ func NewMachineController(
 	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
 	joinClusterTimeout *time.Duration,
+	externalCloudProvider bool,
 	name string) (*Controller, error) {
 
 	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
@@ -153,6 +156,8 @@ func NewMachineController(
 		kubeconfigProvider: kubeconfigProvider,
 
 		joinClusterTimeout: joinClusterTimeout,
+
+		externalCloudProvider: externalCloudProvider,
 
 		name: name,
 	}
@@ -563,7 +568,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
-			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
+			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs, c.externalCloudProvider)
 			if err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "UserdataRenderingFailed", "Userdata rendering failed: %v", err)
 				return fmt.Errorf("failed get userdata: %v", err)
