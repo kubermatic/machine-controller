@@ -9,6 +9,7 @@
 package manager
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"strings"
@@ -32,25 +33,30 @@ var (
 	// correct ones are installed.
 	ErrPluginNotFound = errors.New("no user data plugin for the given operating system found")
 
+	// cancel allows a graceful shutdown via context.
+	cancel func()
+
 	// plugins contains all found and successfully started plugins.
 	plugins map[providerconfig.OperatingSystem]*plugin
 )
 
 // init creates the central manager instance.
 func init() {
-	plugins = make(map[providerconfig.OperatingSystem]*plugin)
-	files, err := ioutil.ReadDir(".")
-	if err != nil {
-		// TODO Only logging or exit the machine controller?
-	}
-	for i, file := range files {
-		if strings.HasPrefix(file.Name(), pluginPrefix) {
-			p, err := newPlugin(file.Name(), basePort+i)
-			if err != nil {
-				// TODO Log and skip.
-			}
-			plugins[p.OperatingSystem()] = p
+	var ctx context.Context
+
+	ctx, cancel = context.WithCancel(ctx.Background())
+	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
+
+	for i, os := range []providerconfig.OperatingSystem{
+		providerconfig.OperatingSystemCentOS,
+		providerconfig.OperatingSystemCoreos,
+		providerconfig.OperatingSystemUbuntu,
+	} {
+		plugin, err := newPlugin(ctx, os, basePort+i)
+		if err != nil {
+			// TODO Log error.
 		}
+		plugins[os] = plugin
 	}
 }
 
@@ -60,4 +66,10 @@ func ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
 		return nil, ErrPluginNotFound
 	}
 	return p, nil
+}
+
+// Stop kills and derigisters all plugins.
+func Stop() {
+	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
+	cancel()
 }
