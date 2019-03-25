@@ -18,15 +18,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
-const (
-	// basePort is the first dynamic port for a found plugin.
-	// TODO Range has to be defined.
-	basePort = 60000
-
-	// pluginPrefix has to be the prefix of all plugin filenames.
-	pluginPrefix = "machine-controller-userdata-"
-)
-
 var (
 	// ErrPluginNotFound describes an invalid operating system for
 	// a user data plugin. Here directory has to be checked if
@@ -52,7 +43,8 @@ func init() {
 		providerconfig.OperatingSystemCoreos,
 		providerconfig.OperatingSystemUbuntu,
 	} {
-		plugin, err := newPlugin(ctx, os, basePort+i)
+		// TODO Handle debug flag.
+		plugin, err := newPlugin(ctx, os, true)
 		if err != nil {
 			// TODO Log error.
 		}

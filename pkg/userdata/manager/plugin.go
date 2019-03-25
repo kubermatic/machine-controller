@@ -7,9 +7,12 @@ package manager
 import (
 	"context"
 	"net"
+	"net/rpc"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
@@ -17,35 +20,46 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 )
 
+const (
+	// Interval and timeout for plugin connection polling.
+	pollInterval = 20 * time.Millisecond
+	pollTimeout  = 5 * time.Second
+
+	// pluginPrefix has to be the prefix of all plugin filenames.
+	pluginPrefix = "machine-controller-userdata-"
+)
+
 // Plugin manages the communication to one plugin. It is instantiated
 // by the manager based on the directory scanning.
 type Plugin struct {
-	ctx  context.Context
-	os   providerconfig.OperatingSystem
-	port int
+	ctx    context.Context
+	os     providerconfig.OperatingSystem
+	debug  bool
+	cancel func()
+	client *rpc.Client
 }
 
 // newPlugin creates a new plugin manager. It starts the named
-// binary and connects to it via gRPC.
-func newPlugin(ctx context.Context, os providerconfig.OperatingSystem, port int) (*Plugin, error) {
+// binary and connects to it via net/rpc.
+func newPlugin(ctx context.Context, os providerconfig.OperatingSystem, debug bool) (*Plugin, error) {
+	pluginCtx, cancel := context.WithCancel(ctx)
 	p := &Plugin{
-		ctx:  ctx,
-		os:   os,
-		port: port,
+		ctx:    pluginCtx,
+		os:     os,
+		debug:  debug,
+		cancel: cancel,
 	}
-	// Try starting the plugin.
-	// TODO Add debug flag if wanted.
-	plugin, err := findPlugin(pluginPrefix + string(p.os))
-	if err != nil {
-		return nil, err
-	}
-	argv := []string{"-listen-port", strconv.Itoa(p.port)}
-	cmd := exec.CommandContext(p.ctx, plugin, argv...)
-	// TODO stdout/stderr.
-	if err := cmd.Start(); err != nil {
+	if err = p.startPlugin(); err != nil {
 		return nil, err
 	}
 	return p, nil
+}
+
+// Stop terminates the plugin by closing the client and cancel the
+// plugin context.
+func (p *Plugin) Stop() error {
+	defer p.cancel()
+	return p.client.Close()
 }
 
 // OperatingSystem returns the operating system this plugin is
@@ -63,6 +77,47 @@ func (p *Plugin) UserData(
 	clusterDNSIPs []net.IP,
 ) (string, error) {
 	return "", nil
+}
+
+// startPlugin tries to find the find the according file
+// and start it as child process of the machine controlle.
+func (p *Plugin) startPlugin() error {
+	name := pluginPrefix + string(p.os)
+	plugin, err := findPlugin(name)
+	if err != nil {
+		return err
+	}
+	address = "/tmp/" + name + ".sock"
+	// Delete probabely remaining socket file, error can be ignored.
+	os.Remove(address)
+	// Start the plugin.
+	argv := []string{"-address", address}
+	if p.debug {
+		argv = append(argv, "-debug")
+	}
+	cmd := exec.CommandContext(p.ctx, plugin, argv...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid: true,
+		}
+	} else {
+		cmd.SysProcAttr.Setpgid = true
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	// Wait to connect the fresh started plugin.
+	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
+		client, err := rpc.DialHTTP("unix", p.address)
+		if err != nil {
+			p.client = client
+			return true, nil
+		}
+		// Not yet done.
+		return false, nil
+	})
 }
 
 // findPlugin searches for the plugin executable in machine controller
