@@ -6,6 +6,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/rpc"
 	"os/exec"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
 const (
@@ -76,7 +78,21 @@ func (p *Plugin) UserData(
 	ccProvider cloud.ConfigProvider,
 	clusterDNSIPs []net.IP,
 ) (string, error) {
-	return "", nil
+	req := &plugin.UserDataRequest{
+		MachineSpec: spec,
+		KubeConfig:  kubeconfig,
+		CloudConfig: ccProvider,
+		DNSIPs:      cluserDNSIPs,
+	}
+	var repl plugin.UserDataResponse
+	err = client.Call("Plugin.UserData", req, &repl)
+	if err != nil {
+		return "", err
+	}
+	if resp.Err != "" {
+		return "", errors.New(resp.Err)
+	}
+	return resp.UserData, nil
 }
 
 // startPlugin tries to find the find the according file
@@ -110,7 +126,7 @@ func (p *Plugin) startPlugin() error {
 	}
 	// Wait to connect the fresh started plugin.
 	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		client, err := rpc.DialHTTP("unix", p.address)
+		client, err := rpc.DialHTTPPath("unix", p.address, plugin.RPCPath)
 		if err != nil {
 			p.client = client
 			return true, nil

@@ -23,45 +23,66 @@ var (
 	// a user data plugin. Here directory has to be checked if
 	// correct ones are installed.
 	ErrPluginNotFound = errors.New("no user data plugin for the given operating system found")
-
-	// cancel allows a graceful shutdown via context.
-	cancel func()
-
-	// plugins contains all found and successfully started plugins.
-	plugins map[providerconfig.OperatingSystem]*plugin
 )
 
-// init creates the central manager instance.
-func init() {
-	var ctx context.Context
+// Manager is responsible for starting and stopping all plugins.
+type Manager struct {
+	mu      sync.Mutex
+	ctx     context.Context
+	cancel  func()
+	plugins map[providerconfig.OperatingSystem]*Plugin
+}
 
-	ctx, cancel = context.WithCancel(ctx.Background())
-	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
+// manager is the single instance of the plugin manager.
+var manager *Manager
 
+// New creates a new manager instance or returns the already
+// existing.
+func New(ctx context.Context, debug bool) *Manager {
+	// TODO Handle race condition.
+	if manager != nil {
+		return manager
+	}
+	managerCtx, cancel := context.WithCancel(ctx)
+	m := &Manager{
+		ctx:     managerCtx,
+		cancel:  cancel,
+		plugins: make(map[providerconfig.OperatingSystem]*Plugin),
+	}
 	for i, os := range []providerconfig.OperatingSystem{
 		providerconfig.OperatingSystemCentOS,
 		providerconfig.OperatingSystemCoreos,
 		providerconfig.OperatingSystemUbuntu,
 	} {
-		// TODO Handle debug flag.
-		plugin, err := newPlugin(ctx, os, true)
+		plugin, err := newPlugin(ctx, os, debug)
 		if err != nil {
 			// TODO Log error.
 		}
-		plugins[os] = plugin
+		m.plugins[os] = plugin
 	}
+	manager = m
+	return manager
 }
 
 // ForOS returns the plugin for the given operating system.
-func ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
-	if p, found = providers[os]; !found {
+func (m *Manager) ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
+	if p, found = m.plugins[os]; !found {
 		return nil, ErrPluginNotFound
 	}
 	return p, nil
 }
 
 // Stop kills and derigisters all plugins.
-func Stop() {
-	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
-	cancel()
+func (m *Manager) Stop() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var serr error
+	for _, p := range m.Plugins {
+		if err := p.Stop(); err != nil {
+			serr = err
+		}
+	}
+	m.plugins = make(map[providerconfig.OperatingSystem]*Plugin)
+	m.cancel()
+	return serr
 }
