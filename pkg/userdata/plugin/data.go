@@ -1,5 +1,5 @@
 //
-// Core userdata plugin.
+// Core UserData plugin.
 //
 
 package plugin

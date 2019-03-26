@@ -1,5 +1,5 @@
 //
-// Core userdata plugin.
+// Core UserData plugin.
 //
 
 // Package plugin provides the communication net/rpc types
@@ -43,7 +43,7 @@ type Handler struct {
 }
 
 // UserData receives the RPC message and calls the provider.
-func (h *Handler) UserData(req *UserdataRequest, resp *UserdataResponse) error {
+func (h *Handler) UserData(req *UserDataRequest, resp *UserDataResponse) error {
 	userData, err := h.provider.UserData(
 		req.MachineSpec,
 		req.KubeConfig,
@@ -69,26 +69,30 @@ type Plugin struct {
 	server   *rpc.Server
 }
 
-// New creates and starts a new plugin. Debug flag is not yet handled.
-func New(provider Provider, address string, debug bool) (*Plugin, error) {
+// New creates a new plugin. Debug flag is not yet handled.
+func New(provider Provider, address string, debug bool) *Plugin {
 	p := &Plugin{
 		handler: &Handler{provider},
 		address: address,
 		debug:   debug,
 		server:  rpc.NewServer(),
 	}
-	l, err := net.Listen("unix", p.address)
-	if err != nil {
-		return nil, err
-	}
-	p.listener = l
 	p.server.HandleHTTP(RPCPath, DebugPath)
 	p.server.RegisterName("Plugin", p.handler)
-	go http.Serve(l, nil)
-	return p, nil
+	return p
+}
+
+// Start starts the plugin and blocks.
+func (p *Plugin) Start() error {
+	l, err := net.Listen("unix", p.address)
+	if err != nil {
+		return err
+	}
+	p.listener = l
+	return http.Serve(p.listener, nil)
 }
 
 // Stop closes open network listeners.
 func (p *Plugin) Stop() error {
-	p.listener.Close()
+	return p.listener.Close()
 }

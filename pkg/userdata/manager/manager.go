@@ -1,11 +1,10 @@
 //
-// Userdata manager for plugin handling from machine controller side.
+// UserData plugin manager.
 //
 
-// Package manager provides the communication gPRC client-part
-// for userdata plugins. It checks for available plugin binaries,
-// starts those with accoding arguments and registers them for
-// usage.
+// Package manager provides managing, starting, stopping, and
+// communication with the individual UserData plugins. It's used
+// inside the machine controller.
 package manager
 
 import (
