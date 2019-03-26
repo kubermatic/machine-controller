@@ -60,17 +60,20 @@ func (p *stubCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 	return p.config, p.name, p.err
 }
 
+// userDataTestCase contains the data for a table-driven test.
+type userDataTestCase struct {
+	name              string
+	spec              clusterv1alpha1.MachineSpec
+	clusterDNSIPs     []net.IP
+	cloudProviderName *string
+}
+
 // TestUserDataGeneration runs the data generation for different
 // environments.
 func TestUserDataGeneration(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name              string
-		spec              clusterv1alpha1.MachineSpec
-		clusterDNSIPs     []net.IP
-		cloudProviderName *string
-	}{
+	tests := []userDataTestCase{
 		{
 			name: "kubelet-v1.9-aws",
 			spec: clusterv1alpha1.MachineSpec{
