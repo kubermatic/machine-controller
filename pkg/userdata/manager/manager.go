@@ -8,10 +8,9 @@
 package manager
 
 import (
-	"context"
 	"errors"
-	"io/ioutil"
-	"strings"
+	"flag"
+	"log"
 	"sync"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -24,64 +23,71 @@ var (
 	ErrPluginNotFound = errors.New("no user data plugin for the given operating system found")
 )
 
-// Manager is responsible for starting and stopping all plugins.
-type Manager struct {
-	mu      sync.Mutex
-	ctx     context.Context
-	cancel  func()
+var (
+	// mu avoids race conditions for the global manager.
+	mu sync.Mutex
+
+	// debug contains the debug flag, default is false.
+	debug bool
+
+	// plugins contains the registered plugins.
 	plugins map[providerconfig.OperatingSystem]*Plugin
-}
+)
 
-// manager is the single instance of the plugin manager.
-var manager *Manager
+// init  tries to find and start the plugins.
+func init() {
+	flag.BoolVar(&debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
 
-// New creates a new manager instance or returns the already
-// existing.
-func New(ctx context.Context, debug bool) *Manager {
-	// TODO Handle race condition.
-	if manager != nil {
-		return manager
-	}
-	managerCtx, cancel := context.WithCancel(ctx)
-	m := &Manager{
-		ctx:     managerCtx,
-		cancel:  cancel,
-		plugins: make(map[providerconfig.OperatingSystem]*Plugin),
-	}
-	for i, os := range []providerconfig.OperatingSystem{
+	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
+
+	for _, os := range []providerconfig.OperatingSystem{
 		providerconfig.OperatingSystemCentOS,
 		providerconfig.OperatingSystemCoreos,
 		providerconfig.OperatingSystemUbuntu,
 	} {
-		plugin, err := newPlugin(ctx, os, debug)
+		plugin, err := newPlugin(os, debug)
 		if err != nil {
-			// TODO Log error.
+			log.Printf("cannot start plugin '%v': %v", os, err)
+			continue
 		}
-		m.plugins[os] = plugin
+		plugins[os] = plugin
 	}
-	manager = m
-	return manager
 }
 
 // ForOS returns the plugin for the given operating system.
-func (m *Manager) ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
-	if p, found = m.plugins[os]; !found {
+func ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if p, found = plugins[os]; !found {
 		return nil, ErrPluginNotFound
 	}
+
 	return p, nil
 }
 
+// Supports answers if the userdata manager supports the
+func Supports(os providerconfig.OperatingSystem) bool {
+	mu.Lock()
+	defer mu.Unlock()
+
+	_, found := plugins[os]
+
+	return found
+}
+
 // Stop kills and derigisters all plugins.
-func (m *Manager) Stop() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func Stop() error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	var serr error
-	for _, p := range m.Plugins {
+	for _, p := range plugins {
 		if err := p.Stop(); err != nil {
 			serr = err
 		}
 	}
-	m.plugins = make(map[providerconfig.OperatingSystem]*Plugin)
-	m.cancel()
+	plugins = nil
+
 	return serr
 }

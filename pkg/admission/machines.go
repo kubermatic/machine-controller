@@ -92,9 +92,9 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}
 
-	// Verify operating system
-	if _, err := userdata.ForOS(providerConfig.OperatingSystem); err != nil {
-		return fmt.Errorf("failed to get OS '%s': %v", providerConfig.OperatingSystem, err)
+	// Verify operating system.
+	if !userdata.Supports(providerConfig.OperatingSystem) {
+		return fmt.Errorf("failed to get OS '%s': plugin not found", providerConfig.OperatingSystem)
 	}
 
 	// Check kubelet version

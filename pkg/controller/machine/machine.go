@@ -25,15 +25,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/node/eviction"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata"
 	"github.com/prometheus/client_golang/prometheus"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -52,12 +44,19 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	machinescheme "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme"
 	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/node/eviction"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata/manager"
 )
 
 const (
@@ -109,7 +108,7 @@ type MetricsCollection struct {
 	Errors  prometheus.Counter
 }
 
-// NewMachineController returns a new machine controller
+// NewMachineController returns a new machine controller.
 func NewMachineController(
 	kubeClient kubernetes.Interface,
 	machineClient clusterv1alpha1clientset.Interface,
@@ -124,8 +123,8 @@ func NewMachineController(
 	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
 	joinClusterTimeout *time.Duration,
-	name string) (*Controller, error) {
-
+	name string,
+) (*Controller, error) {
 	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
@@ -393,15 +392,15 @@ func (c *Controller) syncHandler(key string) error {
 		return c.deleteMachine(prov, machine)
 	}
 
-	// step 3: essentially creates an instance for the given machine
-	userdataProvider, err := userdata.ForOS(providerConfig.OperatingSystem)
+	// Step 3: Essentially creates an instance for the given machine.
+	userdataPlugin, err := manager.ForOS(providerConfig.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
 	}
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
 	if machine.Status.NodeRef == nil {
-		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
+		return c.ensureInstanceExistsForMachine(prov, machine, userdataPlugin, providerConfig)
 	}
 
 	node, err := c.getNodeByNodeRef(machine.Status.NodeRef)
@@ -425,7 +424,7 @@ func (c *Controller) syncHandler(key string) error {
 		}
 	} else {
 		// Node is not ready anymore? Maybe it got deleted
-		return c.ensureInstanceExistsForMachine(prov, machine, userdataProvider, providerConfig)
+		return c.ensureInstanceExistsForMachine(prov, machine, userdataPlugin, providerConfig)
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
@@ -545,7 +544,7 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 	return err
 }
 
-func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdataProvider userdata.Provider, providerConfig *providerconfig.Config) error {
+func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdataPlugin *manager.Plugin, providerConfig *providerconfig.Config) error {
 	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
 	providerInstance, err := prov.Get(machine)
@@ -563,7 +562,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
-			userdata, err := userdataProvider.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
+			userdata, err := userdataPlugin.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs)
 			if err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "UserdataRenderingFailed", "Userdata rendering failed: %v", err)
 				return fmt.Errorf("failed get userdata: %v", err)
