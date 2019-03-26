@@ -18,9 +18,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 )
 
-var update = flag.Bool("update", false, "update .golden files")
+var (
+	update = flag.Bool("update", false, "update .golden files")
 
-var pemCertificate = `-----BEGIN CERTIFICATE-----
+	pemCertificate = `-----BEGIN CERTIFICATE-----
 MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
 BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
 A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
@@ -46,6 +47,7 @@ UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
 sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
 kPe6XoSbiLm/kxk32T0=
 -----END CERTIFICATE-----`
+)
 
 // stubCloudConfigProvider simulates cloud config provider for test.
 type stubCloudConfigProvider struct {
