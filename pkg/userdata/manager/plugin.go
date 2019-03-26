@@ -1,5 +1,5 @@
 //
-// Userdata manager for plugin handling from machine controller side.
+// UserData plugin manager.
 //
 
 package manager
