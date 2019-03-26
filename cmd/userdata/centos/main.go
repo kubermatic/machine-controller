@@ -13,8 +13,11 @@ import (
 
 func main() {
 	// Parse flags.
-	var address = flag.String("address", "/tmp/machine-controller-userdata-centos.sock", "Unix domain socket for the CentOS UserData plugin")
-	var debug = flag.Bool("debug", false, "Switch for enabling the plugin debugging")
+	var address string
+	var debug bool
+
+	flag.StringVar(&address, "address", "/tmp/machine-controller-userdata-centos.sock", "Unix domain socket for the CentOS UserData plugin")
+	flag.BoolVar(&debug, "debug", false, "Switch for enabling the plugin debugging")
 	flag.Parse()
 
 	// Instantiate provider and start plugin.

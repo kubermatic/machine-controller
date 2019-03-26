@@ -30,7 +30,7 @@ type Config struct {
 func loadConfig(r runtime.RawExtension) (*Config, error) {
 	cfg := Config{}
 	if len(r.Raw) == 0 {
-		return &p, nil
+		return &cfg, nil
 	}
 	if err := json.Unmarshal(r.Raw, &cfg); err != nil {
 		return nil, err
