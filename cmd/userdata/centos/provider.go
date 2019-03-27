@@ -6,37 +6,20 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"text/template"
 
 	"github.com/Masterminds/semver"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
+	"github.com/kubermatic/machine-controller/pkg/userdata/os"
 )
-
-// Config contains the provider configuration.
-type Config struct {
-	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
-}
-
-func loadConfig(r runtime.RawExtension) (*Config, error) {
-	cfg := Config{}
-	if len(r.Raw) == 0 {
-		return &cfg, nil
-	}
-	if err := json.Unmarshal(r.Raw, &cfg); err != nil {
-		return nil, err
-	}
-	return &cfg, nil
-}
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
 type Provider struct{}
@@ -76,7 +59,7 @@ func (p Provider) UserData(
 		return "", errors.New("static IP config is not supported with CentOS")
 	}
 
-	osConfig, err := loadConfig(pconfig.OperatingSystemSpec)
+	centosConfig, err := os.LoadCentOSConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse OperatingSystemSpec: '%v'", err)
 	}
@@ -99,7 +82,7 @@ func (p Provider) UserData(
 	data := struct {
 		MachineSpec      clusterv1alpha1.MachineSpec
 		ProviderSpec     *providerconfig.Config
-		OSConfig         *Config
+		OSConfig         *os.CentOSConfig
 		CloudProvider    string
 		CloudConfig      string
 		KubeletVersion   string
@@ -110,7 +93,7 @@ func (p Provider) UserData(
 	}{
 		MachineSpec:      spec,
 		ProviderSpec:     pconfig,
-		OSConfig:         osConfig,
+		OSConfig:         centosConfig,
 		CloudProvider:    cpName,
 		CloudConfig:      cpConfig,
 		KubeletVersion:   kubeletVersion.String(),

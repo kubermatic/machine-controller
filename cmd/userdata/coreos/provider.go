@@ -6,37 +6,19 @@ package main
 
 import (
   "bytes"
-  "encoding/json"
   "fmt"
   "net"
   "text/template"
 
   "github.com/Masterminds/semver"
-  "k8s.io/apimachinery/pkg/runtime"
   clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
   clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
   "github.com/kubermatic/machine-controller/pkg/providerconfig"
   "github.com/kubermatic/machine-controller/pkg/userdata/cloud"
   userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
+  "github.com/kubermatic/machine-controller/pkg/userdata/os"
 )
-
-// Config contains the provider configuration.
-type Config struct {
-  DisableAutoUpdate bool `json:"disableAutoUpdate"`
-}
-
-func loadConfig(r runtime.RawExtension) (*Config, error) {
-  cfg := Config{}
-  if len(r.Raw) == 0 {
-    return &cfg, nil
-  }
-
-  if err := json.Unmarshal(r.Raw, &cfg); err != nil {
-    return nil, err
-  }
-  return &cfg, nil
-}
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
 type Provider struct{}
@@ -72,7 +54,7 @@ func (p Provider) UserData(
     cpConfig = *pconfig.OverwriteCloudConfig
   }
 
-  coreosConfig, err := loadConfig(pconfig.OperatingSystemSpec)
+  coreosConfig, err := os.LoadCoreOSConfig(pconfig.OperatingSystemSpec)
   if err != nil {
     return "", fmt.Errorf("failed to get coreos config from provider config: %v", err)
   }
@@ -90,7 +72,7 @@ func (p Provider) UserData(
   data := struct {
     MachineSpec       clusterv1alpha1.MachineSpec
     ProviderSpec      *providerconfig.Config
-    CoreOSConfig      *Config
+    CoreOSConfig      *os.CoreOSConfig
     Kubeconfig        string
     CloudProvider     string
     CloudConfig       string
