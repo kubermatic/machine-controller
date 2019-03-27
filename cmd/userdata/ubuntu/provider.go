@@ -18,7 +18,7 @@ import (
   "github.com/kubermatic/machine-controller/pkg/providerconfig"
   "github.com/kubermatic/machine-controller/pkg/userdata/cloud"
   userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
-  "github.com/kubermatic/machine-controller/pkg/userdata/os"
+  "github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 )
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
@@ -59,7 +59,7 @@ func (p Provider) UserData(
     return "", errors.New("static IP config is not supported with Ubuntu")
   }
 
-  ubuntuConfig, err := os.LoadUbuntuConfig(pconfig.OperatingSystemSpec)
+  ubuntuConfig, err := ubuntu.LoadConfig(pconfig.OperatingSystemSpec)
   if err != nil {
     return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
   }
@@ -82,7 +82,7 @@ func (p Provider) UserData(
   data := struct {
     MachineSpec      clusterv1alpha1.MachineSpec
     ProviderSpec     *providerconfig.Config
-    OSConfig         *os.UbuntuConfig
+    OSConfig         *ubuntu.Config
     CloudProvider    string
     CloudConfig      string
     ClusterDNSIPs    []net.IP

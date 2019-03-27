@@ -16,8 +16,8 @@ import (
 
   "github.com/kubermatic/machine-controller/pkg/providerconfig"
   "github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+  "github.com/kubermatic/machine-controller/pkg/userdata/coreos"
   userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
-  "github.com/kubermatic/machine-controller/pkg/userdata/os"
 )
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
@@ -54,7 +54,7 @@ func (p Provider) UserData(
     cpConfig = *pconfig.OverwriteCloudConfig
   }
 
-  coreosConfig, err := os.LoadCoreOSConfig(pconfig.OperatingSystemSpec)
+  coreosConfig, err := coreos.LoadConfig(pconfig.OperatingSystemSpec)
   if err != nil {
     return "", fmt.Errorf("failed to get coreos config from provider config: %v", err)
   }
@@ -72,7 +72,7 @@ func (p Provider) UserData(
   data := struct {
     MachineSpec       clusterv1alpha1.MachineSpec
     ProviderSpec      *providerconfig.Config
-    CoreOSConfig      *os.CoreOSConfig
+    CoreOSConfig      *coreos.Config
     Kubeconfig        string
     CloudProvider     string
     CloudConfig       string

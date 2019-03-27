@@ -16,9 +16,9 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
-	"github.com/kubermatic/machine-controller/pkg/userdata/os"
 )
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
@@ -59,7 +59,7 @@ func (p Provider) UserData(
 		return "", errors.New("static IP config is not supported with CentOS")
 	}
 
-	centosConfig, err := os.LoadCentOSConfig(pconfig.OperatingSystemSpec)
+	centosConfig, err := centos.LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse OperatingSystemSpec: '%v'", err)
 	}
@@ -82,7 +82,7 @@ func (p Provider) UserData(
 	data := struct {
 		MachineSpec      clusterv1alpha1.MachineSpec
 		ProviderSpec     *providerconfig.Config
-		OSConfig         *os.CentOSConfig
+		OSConfig         *centos.Config
 		CloudProvider    string
 		CloudConfig      string
 		KubeletVersion   string

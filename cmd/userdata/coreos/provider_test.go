@@ -21,7 +21,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-	"github.com/kubermatic/machine-controller/pkg/userdata/os"
+	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
 )
 
 var (
@@ -85,7 +85,7 @@ type userDataTestCase struct {
 	name             string
 	spec             clusterv1alpha1.MachineSpec
 	ccProvider       cloud.ConfigProvider
-	osConfig         *os.CoreOSConfig
+	osConfig         *coreos.Config
 	providerSpec     *providerconfig.Config
 	DNSIPs           []net.IP
 	kubernetesCACert string
@@ -115,7 +115,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &os.CoreOSConfig{
+			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
 		},
@@ -140,7 +140,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			kubernetesCACert: "CACert",
-			osConfig: &os.CoreOSConfig{
+			osConfig: &coreos.Config{
 				DisableAutoUpdate: false,
 			},
 		},
@@ -165,7 +165,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &os.CoreOSConfig{
+			osConfig: &coreos.Config{
 				DisableAutoUpdate: false,
 			},
 		},
@@ -197,7 +197,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &os.CoreOSConfig{
+			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
 		},
@@ -228,7 +228,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &os.CoreOSConfig{
+			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
 		},
