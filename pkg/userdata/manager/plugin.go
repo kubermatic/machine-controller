@@ -5,13 +5,15 @@
 package manager
 
 import (
-	"context"
 	"errors"
 	"net"
 	"net/rpc"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
+	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -34,24 +36,19 @@ const (
 // Plugin manages the communication to one plugin. It is instantiated
 // by the manager based on the directory scanning.
 type Plugin struct {
-	ctx    context.Context
 	os     providerconfig.OperatingSystem
 	debug  bool
-	cancel func()
 	client *rpc.Client
 }
 
 // newPlugin creates a new plugin manager. It starts the named
 // binary and connects to it via net/rpc.
-func newPlugin(ctx context.Context, os providerconfig.OperatingSystem, debug bool) (*Plugin, error) {
-	pluginCtx, cancel := context.WithCancel(ctx)
+func newPlugin(os providerconfig.OperatingSystem, debug bool) (*Plugin, error) {
 	p := &Plugin{
-		ctx:    pluginCtx,
-		os:     os,
-		debug:  debug,
-		cancel: cancel,
+		os:    os,
+		debug: debug,
 	}
-	if err = p.startPlugin(); err != nil {
+	if err := p.startPlugin(); err != nil {
 		return nil, err
 	}
 	return p, nil
@@ -60,7 +57,6 @@ func newPlugin(ctx context.Context, os providerconfig.OperatingSystem, debug boo
 // Stop terminates the plugin by closing the client and cancel the
 // plugin context.
 func (p *Plugin) Stop() error {
-	defer p.cancel()
 	return p.client.Close()
 }
 
@@ -82,10 +78,10 @@ func (p *Plugin) UserData(
 		MachineSpec: spec,
 		KubeConfig:  kubeconfig,
 		CloudConfig: ccProvider,
-		DNSIPs:      cluserDNSIPs,
+		DNSIPs:      clusterDNSIPs,
 	}
-	var repl plugin.UserDataResponse
-	err = client.Call("Plugin.UserData", req, &repl)
+	var resp plugin.UserDataResponse
+	err := p.client.Call("Plugin.UserData", req, &resp)
 	if err != nil {
 		return "", err
 	}
@@ -99,11 +95,11 @@ func (p *Plugin) UserData(
 // and start it as child process of the machine controlle.
 func (p *Plugin) startPlugin() error {
 	name := pluginPrefix + string(p.os)
-	plugin, err := findPlugin(name)
+	fqpn, err := findPlugin(name)
 	if err != nil {
 		return err
 	}
-	address = "/tmp/" + name + ".sock"
+	address := "/tmp/" + name + ".sock"
 	// Delete probabely remaining socket file, error can be ignored.
 	os.Remove(address)
 	// Start the plugin.
@@ -111,7 +107,7 @@ func (p *Plugin) startPlugin() error {
 	if p.debug {
 		argv = append(argv, "-debug")
 	}
-	cmd := exec.CommandContext(p.ctx, plugin, argv...)
+	cmd := exec.Command(fqpn, argv...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if cmd.SysProcAttr == nil {
@@ -126,7 +122,7 @@ func (p *Plugin) startPlugin() error {
 	}
 	// Wait to connect the fresh started plugin.
 	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		client, err := rpc.DialHTTPPath("unix", p.address, plugin.RPCPath)
+		client, err := rpc.DialHTTPPath("unix", address, plugin.RPCPath)
 		if err != nil {
 			p.client = client
 			return true, nil
@@ -136,17 +132,17 @@ func (p *Plugin) startPlugin() error {
 	})
 }
 
-// findPlugin searches for the plugin executable in machine controller
-// directory, in working directory, and in path.
+// findPlugin searches for the full qualified plugin name in
+// machine controller directory, in working directory, and in path.
 func findPlugin(filename string) (string, error) {
 	// Create list to search in.
 	ownDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	workingDir, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	dirs := []string{ownDir, workingDir}
 	path := os.Getenv("PATH")
@@ -154,12 +150,12 @@ func findPlugin(filename string) (string, error) {
 	dirs = append(dirs, pathDirs...)
 	// Now take a look.
 	for _, dir := range dirs {
-		plugin := dir + string(os.PathSeparator) + filename
-		_, err := os.Stat(plugin)
+		fqpn := dir + string(os.PathSeparator) + filename
+		_, err := os.Stat(fqpn)
 		if os.IsNotExist(err) {
 			continue
 		}
-		return plugin, nil
+		return fqpn, nil
 	}
 	return "", ErrPluginNotFound
 }

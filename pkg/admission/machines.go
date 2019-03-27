@@ -9,7 +9,7 @@ import (
 	clusterv1alpha1conversions "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata"
+	"github.com/kubermatic/machine-controller/pkg/userdata/manager"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -93,7 +93,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 	}
 
 	// Verify operating system.
-	if !userdata.Supports(providerConfig.OperatingSystem) {
+	if !manager.Supports(providerConfig.OperatingSystem) {
 		return fmt.Errorf("failed to get OS '%s': plugin not found", providerConfig.OperatingSystem)
 	}
 

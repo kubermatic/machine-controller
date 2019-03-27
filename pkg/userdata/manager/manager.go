@@ -59,6 +59,7 @@ func ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	var found bool
 	if p, found = plugins[os]; !found {
 		return nil, ErrPluginNotFound
 	}
