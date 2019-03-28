@@ -169,7 +169,12 @@ func (p *Plugin) isRunning(address string) (string, error) {
 // machine controller directory, in working directory, and in path.
 func findPlugin(filename string) (string, error) {
 	// Create list to search in.
-	ownDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	executable, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	ownDir, _ := filepath.Split(executable)
+	ownDir, err = filepath.Abs(ownDir)
 	if err != nil {
 		return "", err
 	}
