@@ -5,20 +5,20 @@
 package main
 
 import (
-  "bytes"
-  "errors"
-  "fmt"
-  "net"
-  "text/template"
+	"bytes"
+	"errors"
+	"fmt"
+	"net"
+	"text/template"
 
-  "github.com/Masterminds/semver"
-  clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-  clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"github.com/Masterminds/semver"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
-  "github.com/kubermatic/machine-controller/pkg/providerconfig"
-  "github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-  userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
-  "github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
+	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 )
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
@@ -26,93 +26,93 @@ type Provider struct{}
 
 // UserData renders user-data template to string.
 func (p Provider) UserData(
-  spec clusterv1alpha1.MachineSpec,
-  kubeconfig *clientcmdapi.Config,
-  ccProvider cloud.ConfigProvider,
-  clusterDNSIPs []net.IP,
-  externalCloudProvider bool,
+	spec clusterv1alpha1.MachineSpec,
+	kubeconfig *clientcmdapi.Config,
+	ccProvider cloud.ConfigProvider,
+	clusterDNSIPs []net.IP,
+	externalCloudProvider bool,
 ) (string, error) {
 
-  tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
-  if err != nil {
-    return "", fmt.Errorf("failed to parse user-data template: %v", err)
-  }
+	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+	}
 
-  kubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
-  if err != nil {
-    return "", fmt.Errorf("invalid kubelet version: %v", err)
-  }
+	kubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
+	if err != nil {
+		return "", fmt.Errorf("invalid kubelet version: %v", err)
+	}
 
-  cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
-  if err != nil {
-    return "", fmt.Errorf("failed to get cloud config: %v", err)
-  }
+	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
+	if err != nil {
+		return "", fmt.Errorf("failed to get cloud config: %v", err)
+	}
 
-  pconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
-  if err != nil {
-    return "", fmt.Errorf("failed to get providerSpec: %v", err)
-  }
+	pconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
+	if err != nil {
+		return "", fmt.Errorf("failed to get providerSpec: %v", err)
+	}
 
-  if pconfig.OverwriteCloudConfig != nil {
-    cpConfig = *pconfig.OverwriteCloudConfig
-  }
+	if pconfig.OverwriteCloudConfig != nil {
+		cpConfig = *pconfig.OverwriteCloudConfig
+	}
 
-  if pconfig.Network != nil {
-    return "", errors.New("static IP config is not supported with Ubuntu")
-  }
+	if pconfig.Network != nil {
+		return "", errors.New("static IP config is not supported with Ubuntu")
+	}
 
-  ubuntuConfig, err := ubuntu.LoadConfig(pconfig.OperatingSystemSpec)
-  if err != nil {
-    return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
-  }
+	ubuntuConfig, err := ubuntu.LoadConfig(pconfig.OperatingSystemSpec)
+	if err != nil {
+		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
+	}
 
-  serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(kubeconfig)
-  if err != nil {
-    return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
-  }
+	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
+	}
 
-  kubeconfigString, err := userdatahelper.StringifyKubeconfig(kubeconfig)
-  if err != nil {
-    return "", err
-  }
+	kubeconfigString, err := userdatahelper.StringifyKubeconfig(kubeconfig)
+	if err != nil {
+		return "", err
+	}
 
-  kubernetesCACert, err := userdatahelper.GetCACert(kubeconfig)
-  if err != nil {
-    return "", fmt.Errorf("error extracting cacert: %v", err)
-  }
+	kubernetesCACert, err := userdatahelper.GetCACert(kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("error extracting cacert: %v", err)
+	}
 
-  data := struct {
-    MachineSpec      clusterv1alpha1.MachineSpec
-    ProviderSpec     *providerconfig.Config
-    OSConfig         *ubuntu.Config
-    CloudProvider    string
-    CloudConfig      string
-    ClusterDNSIPs    []net.IP
-    ServerAddr       string
-    KubeletVersion   string
-    Kubeconfig       string
-    KubernetesCACert string
-    IsExternal       bool
-  }{
-    MachineSpec:      spec,
-    ProviderSpec:     pconfig,
-    OSConfig:         ubuntuConfig,
-    CloudProvider:    cpName,
-    CloudConfig:      cpConfig,
-    ClusterDNSIPs:    clusterDNSIPs,
-    ServerAddr:       serverAddr,
-    KubeletVersion:   kubeletVersion.String(),
-    Kubeconfig:       kubeconfigString,
-    KubernetesCACert: kubernetesCACert,
-    IsExternal:       externalCloudProvider,
-  }
-  b := &bytes.Buffer{}
-  err = tmpl.Execute(b, data)
-  if err != nil {
-    return "", fmt.Errorf("failed to execute user-data template: %v", err)
-  }
+	data := struct {
+		MachineSpec      clusterv1alpha1.MachineSpec
+		ProviderSpec     *providerconfig.Config
+		OSConfig         *ubuntu.Config
+		CloudProvider    string
+		CloudConfig      string
+		ClusterDNSIPs    []net.IP
+		ServerAddr       string
+		KubeletVersion   string
+		Kubeconfig       string
+		KubernetesCACert string
+		IsExternal       bool
+	}{
+		MachineSpec:      spec,
+		ProviderSpec:     pconfig,
+		OSConfig:         ubuntuConfig,
+		CloudProvider:    cpName,
+		CloudConfig:      cpConfig,
+		ClusterDNSIPs:    clusterDNSIPs,
+		ServerAddr:       serverAddr,
+		KubeletVersion:   kubeletVersion.String(),
+		Kubeconfig:       kubeconfigString,
+		KubernetesCACert: kubernetesCACert,
+		IsExternal:       externalCloudProvider,
+	}
+	b := &bytes.Buffer{}
+	err = tmpl.Execute(b, data)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute user-data template: %v", err)
+	}
 
-  return b.String(), nil
+	return b.String(), nil
 }
 
 // UserData template.

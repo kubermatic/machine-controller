@@ -88,7 +88,6 @@ type userDataTestCase struct {
 	osConfig              *coreos.Config
 	providerSpec          *providerconfig.Config
 	DNSIPs                []net.IP
-	kubernetesCACert      string
 	externalCloudProvider bool
 }
 
@@ -115,8 +114,7 @@ func TestUserDataGeneration(t *testing.T) {
 				config: "{aws-config:true}",
 				err:    nil,
 			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
 			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
@@ -138,8 +136,7 @@ func TestUserDataGeneration(t *testing.T) {
 				config: "{aws-config:true}",
 				err:    nil,
 			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
 			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
@@ -164,8 +161,7 @@ func TestUserDataGeneration(t *testing.T) {
 				config: "{openstack-config:true}",
 				err:    nil,
 			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
-			kubernetesCACert: "CACert",
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			osConfig: &coreos.Config{
 				DisableAutoUpdate: false,
 			},
@@ -189,8 +185,7 @@ func TestUserDataGeneration(t *testing.T) {
 				config: "{openstack-config:true}",
 				err:    nil,
 			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
 			osConfig: &coreos.Config{
 				DisableAutoUpdate: false,
 			},
@@ -221,8 +216,7 @@ func TestUserDataGeneration(t *testing.T) {
 				config: "{vsphere-config:true}",
 				err:    nil,
 			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
 			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
@@ -252,8 +246,7 @@ func TestUserDataGeneration(t *testing.T) {
 				config: "{vsphere-config:true}",
 				err:    nil,
 			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
 			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
