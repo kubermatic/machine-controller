@@ -133,6 +133,8 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		providerConfig: providerConfig,
 		labels:         cpSpec.Labels,
 		diskSize:       cpSpec.DiskSize,
+		network:        cpSpec.Network.Value,
+		subnetwork:     cpSpec.Subnetwork.Value,
 	}
 
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
