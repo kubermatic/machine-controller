@@ -24,6 +24,10 @@ const (
 	statusDone = "DONE"
 )
 
+const (
+	defaultNetwork = "global/networks/default"
+)
+
 // service wraps a GCE compute service for the extension with helper methods.
 type service struct {
 	*compute.Service
@@ -40,6 +44,12 @@ func connectComputeService(cfg *config) (*service, error) {
 
 // networkInterfaces returns the configured network interfaces for an instance creation.
 func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface, error) {
+	network := cfg.network
+
+	if cfg.network == "" && cfg.subnetwork == "" {
+		network = defaultNetwork
+	}
+
 	ifc := &compute.NetworkInterface{
 		AccessConfigs: []*compute.AccessConfig{
 			{
@@ -47,8 +57,10 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 				Type: "ONE_TO_ONE_NAT",
 			},
 		},
-		Network: "global/networks/default",
+		Network:    network,
+		Subnetwork: cfg.subnetwork,
 	}
+
 	return []*compute.NetworkInterface{ifc}, nil
 }
 
