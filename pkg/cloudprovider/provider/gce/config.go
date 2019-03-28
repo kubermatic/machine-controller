@@ -133,8 +133,6 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		providerConfig: providerConfig,
 		labels:         cpSpec.Labels,
 		diskSize:       cpSpec.DiskSize,
-		network:        cpSpec.Network.Value,
-		subnetwork:     cpSpec.Subnetwork.Value,
 	}
 
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
@@ -160,6 +158,16 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.diskType, err = resolver.GetConfigVarStringValue(cpSpec.DiskType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve disk type: %v", err)
+	}
+
+	cfg.network, err = resolver.GetConfigVarStringValue(cpSpec.Network)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve network: %v", err)
+	}
+
+	cfg.subnetwork, err = resolver.GetConfigVarStringValue(cpSpec.Subnetwork)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve network: %v", err)
 	}
 
 	return cfg, nil
