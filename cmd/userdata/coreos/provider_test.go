@@ -82,19 +82,21 @@ func (p *stubCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 
 // userDataTestCase contains the data for a table-driven test.
 type userDataTestCase struct {
-	name             string
-	spec             clusterv1alpha1.MachineSpec
-	ccProvider       cloud.ConfigProvider
-	osConfig         *coreos.Config
-	providerSpec     *providerconfig.Config
-	DNSIPs           []net.IP
-	kubernetesCACert string
+	name                  string
+	spec                  clusterv1alpha1.MachineSpec
+	ccProvider            cloud.ConfigProvider
+	osConfig              *coreos.Config
+	providerSpec          *providerconfig.Config
+	DNSIPs                []net.IP
+	kubernetesCACert      string
+	externalCloudProvider bool
 }
 
 // TestUserDataGeneration runs the data generation for different
 // environments.
 func TestUserDataGeneration(t *testing.T) {
 	t.Parallel()
+
 	tests := []userDataTestCase{
 		{
 			name: "v1.9.2-disable-auto-update-aws",
@@ -118,6 +120,30 @@ func TestUserDataGeneration(t *testing.T) {
 			osConfig: &coreos.Config{
 				DisableAutoUpdate: true,
 			},
+		},
+		{
+			name: "v1.9.2-disable-auto-update-aws-external",
+			providerSpec: &providerconfig.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.9.2",
+				},
+			},
+			ccProvider: &stubCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &coreos.Config{
+				DisableAutoUpdate: true,
+			},
+			externalCloudProvider: true,
 		},
 		{
 			name: "v1.10.3-auto-update-openstack-multiple-dns",
@@ -257,7 +283,7 @@ func TestUserDataGeneration(t *testing.T) {
 			}
 			provider := Provider{}
 
-			s, err := provider.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
+			s, err := provider.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs, test.externalCloudProvider)
 			if err != nil {
 				t.Fatal(err)
 			}

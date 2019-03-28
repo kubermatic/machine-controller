@@ -30,6 +30,7 @@ func (p Provider) UserData(
 	kubeconfig *clientcmdapi.Config,
 	ccProvider cloud.ConfigProvider,
 	clusterDNSIPs []net.IP,
+	externalCloudProvider bool,
 ) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
@@ -90,6 +91,7 @@ func (p Provider) UserData(
 		ServerAddr       string
 		Kubeconfig       string
 		KubernetesCACert string
+		IsExternal       bool
 	}{
 		MachineSpec:      spec,
 		ProviderSpec:     pconfig,
@@ -101,6 +103,7 @@ func (p Provider) UserData(
 		ServerAddr:       serverAddr,
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
+		IsExternal:       externalCloudProvider,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -209,7 +212,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs | indent 4 }}
+{{ kubeletSystemdUnit .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |

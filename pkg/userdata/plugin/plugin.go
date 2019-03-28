@@ -34,6 +34,7 @@ type Provider interface {
 		kubeconfig *clientcmdapi.Config,
 		ccProvider cloud.ConfigProvider,
 		clusterDNSIPs []net.IP,
+		externalCloudProvider bool,
 	) (string, error)
 }
 
@@ -49,6 +50,7 @@ func (h *Handler) UserData(req *UserDataRequest, resp *UserDataResponse) error {
 		req.KubeConfig,
 		req.CloudConfig,
 		req.DNSIPs,
+		req.ExternalCloudProvider,
 	)
 	resp.UserData = userData
 	if err != nil {

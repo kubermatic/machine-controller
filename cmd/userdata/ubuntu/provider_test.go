@@ -85,13 +85,14 @@ func (p *stubCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 
 // userDataTestCase contains the data for a table-driven test.
 type userDataTestCase struct {
-	name             string
-	spec             clusterv1alpha1.MachineSpec
-	ccProvider       cloud.ConfigProvider
-	osConfig         *ubuntu.Config
-	providerSpec     *providerconfig.Config
-	DNSIPs           []net.IP
-	kubernetesCACert string
+	name                  string
+	spec                  clusterv1alpha1.MachineSpec
+	ccProvider            cloud.ConfigProvider
+	osConfig              *ubuntu.Config
+	providerSpec          *providerconfig.Config
+	DNSIPs                []net.IP
+	kubernetesCACert      string
+	externalCloudProvider bool
 }
 
 func simpleVersionTests() []userDataTestCase {
@@ -343,7 +344,7 @@ func TestUserDataGeneration(t *testing.T) {
 			}
 			provider := Provider{}
 
-			s, err := provider.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs)
+			s, err := provider.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs, test.externalCloudProvider)
 			if err != nil {
 				t.Fatal(err)
 			}

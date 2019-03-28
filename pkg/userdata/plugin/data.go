@@ -15,11 +15,11 @@ import (
 
 // UserDataRequest is sent to the plugins by the manager.
 type UserDataRequest struct {
-	MachineSpec   clusterv1alpha1.MachineSpec
-	KubeConfig    *clientcmdapi.Config
-	CloudConfig   cloud.ConfigProvider
-	CloudProvider string
-	DNSIPs        []net.IP
+	MachineSpec           clusterv1alpha1.MachineSpec
+	KubeConfig            *clientcmdapi.Config
+	CloudConfig           cloud.ConfigProvider
+	DNSIPs                []net.IP
+	ExternalCloudProvider bool
 }
 
 // UserDataResponse will be responded.

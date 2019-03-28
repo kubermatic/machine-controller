@@ -6,22 +6,6 @@ passwd:
         - ssh-rsa AAABBB
         - ssh-rsa CCCDDD
         
-networkd:
-  units:
-    - name: static-nic.network
-      contents: |
-        [Match]
-        # Because of difficulty predicting specific NIC names on different cloud providers,
-        # we only support static addressing on VSphere. There should be a single NIC attached
-        # that we will match by name prefix 'en' which denotes ethernet devices.
-        Name=en*
-
-        [Network]
-        DHCP=no
-        Address=192.168.81.4/24
-        Gateway=192.168.81.1
-        DNS=8.8.8.8
-        
 
 systemd:
   units:
@@ -94,7 +78,7 @@ systemd:
         After=docker.service
         [Service]
         TimeoutStartSec=5min
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.11.2
+        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.9.2
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --insecure-options=image \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
@@ -129,9 +113,7 @@ systemd:
           --rotate-certificates=true \
           --cert-dir=/etc/kubernetes/pki \
           --authentication-token-webhook=true \
-          --cloud-provider=vsphere \
-          --cloud-config=/etc/kubernetes/cloud-config \
-          --hostname-override=node1 \
+          --cloud-provider=external \
           --read-only-port=0 \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
@@ -229,7 +211,7 @@ storage:
       mode: 0400
       contents:
         inline: |
-          {vsphere-config:true}
+          {aws-config:true}
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
@@ -264,11 +246,6 @@ storage:
           -----END CERTIFICATE-----
 
 
-    - path: /etc/hostname
-      filesystem: root
-      mode: 0600
-      contents:
-        inline: 'node1'
 
     - path: /etc/ssh/sshd_config
       filesystem: root

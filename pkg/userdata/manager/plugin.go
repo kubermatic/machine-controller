@@ -73,12 +73,14 @@ func (p *Plugin) UserData(
 	kubeconfig *clientcmdapi.Config,
 	ccProvider cloud.ConfigProvider,
 	clusterDNSIPs []net.IP,
+	externalCloudProvider bool,
 ) (string, error) {
 	req := &plugin.UserDataRequest{
-		MachineSpec: spec,
-		KubeConfig:  kubeconfig,
-		CloudConfig: ccProvider,
-		DNSIPs:      clusterDNSIPs,
+		MachineSpec:           spec,
+		KubeConfig:            kubeconfig,
+		CloudConfig:           ccProvider,
+		DNSIPs:                clusterDNSIPs,
+		ExternalCloudProvider: externalCloudProvider,
 	}
 	var resp plugin.UserDataResponse
 	err := p.client.Call("Plugin.UserData", req, &resp)

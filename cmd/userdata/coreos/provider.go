@@ -29,7 +29,9 @@ func (p Provider) UserData(
   kubeconfig *clientcmdapi.Config,
   ccProvider cloud.ConfigProvider,
   clusterDNSIPs []net.IP,
+  externalCloudProvider bool,
 ) (string, error) {
+
   tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
   if err != nil {
     return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -80,6 +82,7 @@ func (p Provider) UserData(
     ClusterDNSIPs     []net.IP
     KubernetesCACert  string
     KubeletVersion    string
+    IsExternal        bool
   }{
     MachineSpec:       spec,
     ProviderSpec:      pconfig,
@@ -91,6 +94,7 @@ func (p Provider) UserData(
     ClusterDNSIPs:     clusterDNSIPs,
     KubernetesCACert:  kubernetesCACert,
     KubeletVersion:    kubeletVersion.String(),
+    IsExternal:        externalCloudProvider,
   }
   b := &bytes.Buffer{}
   err = tmpl.Execute(b, data)
@@ -205,7 +209,7 @@ systemd:
         ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
-{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs | indent 10 }}
+{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
