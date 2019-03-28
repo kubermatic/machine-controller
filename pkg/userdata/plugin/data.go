@@ -13,6 +13,16 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 )
 
+// PingRequest is sent if the manager restarts to test if a
+// plugin is running.
+type PingRequest struct {
+}
+
+// PingResponse will be responded.
+type PingResponse struct {
+	Executable string
+}
+
 // UserDataRequest is sent to the plugins by the manager.
 type UserDataRequest struct {
 	MachineSpec           clusterv1alpha1.MachineSpec

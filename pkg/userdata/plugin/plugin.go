@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -43,7 +44,18 @@ type Handler struct {
 	provider Provider
 }
 
-// UserData receives the RPC message and calls the provider.
+// Ping receives the Ping RPC message and checks the full qualified
+// plugin name.
+func (h *Handler) Ping(req *PingRequest, resp *PingResponse) error {
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	resp.Executable = executable
+	return nil
+}
+
+// UserData receives the UserData RPC message and calls the provider.
 func (h *Handler) UserData(req *UserDataRequest, resp *UserDataResponse) error {
 	userData, err := h.provider.UserData(
 		req.MachineSpec,

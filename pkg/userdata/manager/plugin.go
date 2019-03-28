@@ -6,6 +6,7 @@ package manager
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/rpc"
 	"os"
@@ -102,6 +103,19 @@ func (p *Plugin) startPlugin() error {
 		return err
 	}
 	address := "/tmp/" + name + ".sock"
+	// Check if there is a running plugin with matching filename.
+	executable, err := p.isRunning(address)
+	if err != nil {
+		return err
+	}
+	if executable == fqpn {
+		// Matching plugins, so reuse.
+		return nil
+	}
+	if executable != "" {
+		// Ouch, some different binary!
+		return fmt.Errorf("cannot reuse plugin, want '%s', got '%s'", fqpn, executable)
+	}
 	// Delete probabely remaining socket file, error can be ignored.
 	os.Remove(address)
 	// Start the plugin.
@@ -132,6 +146,23 @@ func (p *Plugin) startPlugin() error {
 		// Not yet done.
 		return false, nil
 	})
+}
+
+// isRunning checks if it can connect a running plugin and if the
+// filename is matching.
+func (p *Plugin) isRunning(address string) (string, error) {
+	client, err := rpc.DialHTTPPath("unix", address, plugin.RPCPath)
+	if err != nil {
+		return "", nil
+	}
+	p.client = client
+	req := plugin.PingRequest{}
+	var resp plugin.PingResponse
+	err = p.client.Call("Plugin.Ping", req, &resp)
+	if err != nil {
+		return "", err
+	}
+	return resp.Executable, nil
 }
 
 // findPlugin searches for the full qualified plugin name in
