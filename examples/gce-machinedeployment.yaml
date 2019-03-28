@@ -49,6 +49,11 @@ spec:
             machineType: "n1-standard-2"
             # In GB
             diskSize: 50
+            # The name or self_link of the network and subnetwork to attach this interface to;
+            # either of both can be provided, otherwise default network will taken
+            # in case if both empty — default network will be used
+            network: "my-cool-network"
+            subnetwork: "my-cool-subnetwork"
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:

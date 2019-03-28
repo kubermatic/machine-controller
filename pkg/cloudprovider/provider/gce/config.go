@@ -56,6 +56,8 @@ type cloudProviderSpec struct {
 	MachineType    providerconfig.ConfigVarString `json:"machineType"`
 	DiskSize       int64                          `json:"diskSize"`
 	DiskType       providerconfig.ConfigVarString `json:"diskType"`
+	Network        providerconfig.ConfigVarString `json:"network"`
+	Subnetwork     providerconfig.ConfigVarString `json:"subnetwork"`
 	Labels         map[string]string              `json:"labels"`
 }
 
@@ -111,6 +113,8 @@ type config struct {
 	machineType    string
 	diskSize       int64
 	diskType       string
+	network        string
+	subnetwork     string
 	labels         map[string]string
 	jwtConfig      *jwt.Config
 	providerConfig *providerconfig.Config
@@ -123,32 +127,49 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	if err != nil {
 		return nil, err
 	}
+
 	// Setup configuration.
 	cfg := &config{
 		providerConfig: providerConfig,
+		labels:         cpSpec.Labels,
+		diskSize:       cpSpec.DiskSize,
 	}
+
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve service account: %v", err)
 	}
+
 	err = cfg.postprocessServiceAccount()
 	if err != nil {
 		return nil, fmt.Errorf("cannot prepare JWT: %v", err)
 	}
+
 	cfg.zone, err = resolver.GetConfigVarStringValue(cpSpec.Zone)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve zone: %v", err)
 	}
+
 	cfg.machineType, err = resolver.GetConfigVarStringValue(cpSpec.MachineType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve machine type: %v", err)
 	}
-	cfg.diskSize = cpSpec.DiskSize
+
 	cfg.diskType, err = resolver.GetConfigVarStringValue(cpSpec.DiskType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve disk type: %v", err)
 	}
-	cfg.labels = cpSpec.Labels
+
+	cfg.network, err = resolver.GetConfigVarStringValue(cpSpec.Network)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve network: %v", err)
+	}
+
+	cfg.subnetwork, err = resolver.GetConfigVarStringValue(cpSpec.Subnetwork)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve subnetwork: %v", err)
+	}
+
 	return cfg, nil
 }
 
