@@ -167,7 +167,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 
 	cfg.subnetwork, err = resolver.GetConfigVarStringValue(cpSpec.Subnetwork)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve network: %v", err)
+		return nil, fmt.Errorf("cannot retrieve subnetwork: %v", err)
 	}
 
 	return cfg, nil
