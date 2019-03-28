@@ -8,6 +8,7 @@
 package plugin
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -92,7 +93,9 @@ func New(provider Provider, address string, debug bool) *Plugin {
 		server:  rpc.NewServer(),
 	}
 	p.server.HandleHTTP(RPCPath, DebugPath)
-	p.server.RegisterName("Plugin", p.handler)
+	if err := p.server.RegisterName("Plugin", p.handler); err != nil {
+		panic(fmt.Errorf("cannot register plugin: %v", err))
+	}
 	return p
 }
 
