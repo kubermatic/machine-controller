@@ -83,6 +83,8 @@ if [[ "${1:-deploy_machine_controller}"  == "do-not-deploy-machine-controller" ]
 fi
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
+  # TODO Remove after tests.
+  docker exec -ti kubermatic/machine-controller:latest /usr/bin/ls /usr/local/bin/
   sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/machine-controller.yaml
   make deploy
   touch machine-controller-deployed
