@@ -7,6 +7,7 @@ package manager
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/rpc"
 	"os"
@@ -168,6 +169,7 @@ func (p *Plugin) isRunning(address string) (string, error) {
 // findPlugin searches for the full qualified plugin name in
 // machine controller directory, in working directory, and in path.
 func findPlugin(filename string) (string, error) {
+	log.Printf("looking for plugin '%s'", filename)
 	// Create list to search in.
 	executable, err := os.Executable()
 	if err != nil {
@@ -189,11 +191,13 @@ func findPlugin(filename string) (string, error) {
 	// Now take a look.
 	for _, dir := range dirs {
 		fqpn := dir + string(os.PathSeparator) + filename
+		log.Printf("checking '%s'", fqpn)
 		_, err := os.Stat(fqpn)
 		if os.IsNotExist(err) {
 			continue
 		}
 		return fqpn, nil
 	}
+	log.Printf("did not find '%s'", filename)
 	return "", ErrPluginNotFound
 }
