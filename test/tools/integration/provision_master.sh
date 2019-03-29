@@ -83,8 +83,6 @@ if [[ "${1:-deploy_machine_controller}"  == "do-not-deploy-machine-controller" ]
 fi
 if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
-  # TODO Remove after tests.
-  docker exec -ti kubermatic/machine-controller:latest /usr/bin/ls /usr/local/bin/
   sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/machine-controller.yaml
   make deploy
   touch machine-controller-deployed
@@ -93,6 +91,8 @@ fi
 for try in {1..10}; do
   if kubectl get pods -n kube-system|egrep '^machine-controller'|grep -v webhook|grep Running; then
     echo "Success!"
+    # TODO Remove after tests.
+    docker exec -ti kubermatic/machine-controller:latest /usr/bin/ls /usr/local/bin/
     exit 0
   fi
   sleep 10s
