@@ -108,7 +108,7 @@ func (p *Plugin) handleUnknownRequest(reqCmd string) error {
 	if reqCmd == "" {
 		resp.Err = "no request command given"
 	} else {
-		resp.Err = fmt.Sprintf("unknown request command '%s'")
+		resp.Err = fmt.Sprintf("unknown request command '%s'", reqCmd)
 	}
 	return p.printResponse(resp)
 }
