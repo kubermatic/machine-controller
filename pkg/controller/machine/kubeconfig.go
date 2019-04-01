@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -22,9 +24,19 @@ const (
 )
 
 func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
-	token, err := c.createBootstrapToken(name)
-	if err != nil {
-		return nil, err
+	var token string
+	var err error
+
+	if c.bootstrapTokenServiceAccountName != nil {
+		token, err = c.getTokenFromServiceAccount(*c.bootstrapTokenServiceAccountName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %v", c.bootstrapTokenServiceAccountName.Namespace, c.bootstrapTokenServiceAccountName.Name, err)
+		}
+	} else {
+		token, err = c.createBootstrapToken(name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create bootstrap token: %v", err)
+		}
 	}
 
 	infoKubeconfig, err := c.kubeconfigProvider.GetKubeconfig()
@@ -41,6 +53,24 @@ func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 	}
 
 	return outConfig, nil
+}
+
+func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
+	sa, err := c.kubeClient.CoreV1().ServiceAccounts(name.Namespace).Get(name.Name, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	for _, serviceAccountSecretName := range sa.Secrets {
+		serviceAccountSecret, err := c.kubeClient.CoreV1().Secrets(name.Namespace).Get(serviceAccountSecretName.Name, metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		if serviceAccountSecret.Type != v1.SecretTypeServiceAccountToken {
+			continue
+		}
+		return string(serviceAccountSecret.Data["token"]), nil
+	}
+	return "", errors.New("no serviceAccountSecret found")
 }
 
 func (c *Controller) createBootstrapToken(name string) (string, error) {
