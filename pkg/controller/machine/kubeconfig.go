@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -15,12 +15,12 @@ import (
 )
 
 const (
-	secretTypeBootstrapToken v1.SecretType = "bootstrap.kubernetes.io/token"
-	machineNameLabelKey      string        = "machine.k8s.io/machine.name"
-	tokenIDKey               string        = "token-id"
-	tokenSecretKey           string        = "token-secret"
-	expirationKey            string        = "expiration"
-	tokenFormatter           string        = "%s.%s"
+	secretTypeBootstrapToken corev1.SecretType = "bootstrap.kubernetes.io/token"
+	machineNameLabelKey      string            = "machine.k8s.io/machine.name"
+	tokenIDKey               string            = "token-id"
+	tokenSecretKey           string            = "token-secret"
+	expirationKey            string            = "expiration"
+	tokenFormatter           string            = "%s.%s"
 )
 
 func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
@@ -65,10 +65,10 @@ func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (stri
 		if err != nil {
 			return "", err
 		}
-		if serviceAccountSecret.Type != v1.SecretTypeServiceAccountToken {
+		if serviceAccountSecret.Type != corev1.SecretTypeServiceAccountToken {
 			continue
 		}
-		return string(serviceAccountSecret.Data["token"]), nil
+		return string(serviceAccountSecret.Data[corev1.ServiceAccountTokenKey]), nil
 	}
 	return "", errors.New("no serviceAccountSecret found")
 }
@@ -85,7 +85,7 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 	tokenID := rand.String(6)
 	tokenSecret := rand.String(16)
 
-	secret := v1.Secret{
+	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   fmt.Sprintf("bootstrap-token-%s", tokenID),
 			Labels: map[string]string{machineNameLabelKey: name},
@@ -110,7 +110,7 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
 }
 
-func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (string, error) {
+func (c *Controller) updateSecretExpirationAndGetToken(secret *corev1.Secret) (string, error) {
 	if secret.Data == nil {
 		secret.Data = map[string][]byte{}
 	}
@@ -137,7 +137,7 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *v1.Secret) (strin
 	return token, nil
 }
 
-func (c *Controller) getSecretIfExists(name string) (*v1.Secret, error) {
+func (c *Controller) getSecretIfExists(name string) (*corev1.Secret, error) {
 	req, err := labels.NewRequirement(machineNameLabelKey, selection.Equals, []string{name})
 	if err != nil {
 		return nil, err
