@@ -37,6 +37,8 @@ var (
 // init  checks the plugin debug flag.
 func init() {
 	flag.BoolVar(&debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
+
+	loadPlugins()
 }
 
 // ForOS returns the plugin for the given operating system.
