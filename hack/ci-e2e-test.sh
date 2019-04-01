@@ -34,6 +34,7 @@ echo "Building machine-controller and webhook"
 make machine-controller webhook
 
 # Copy individual plugins with success control.
+echo "Copying machine-controller plugins"
 cp machine-controller-userdata-centos /usr/local/bin
 cp machine-controller-userdata-coreos /usr/local/bin
 cp machine-controller-userdata-ubuntu /usr/local/bin
@@ -85,4 +86,5 @@ EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then
   EXTRA_ARGS="-run $1"
 fi
+ls -l /usr/local/bin/machine-controller-*
 go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
