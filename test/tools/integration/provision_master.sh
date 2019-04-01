@@ -91,8 +91,6 @@ fi
 for try in {1..10}; do
   if kubectl get pods -n kube-system|egrep '^machine-controller'|grep -v webhook|grep Running; then
     echo "Success!"
-    # TODO Remove after tests.
-    docker exec -ti kubermatic/machine-controller:latest /usr/bin/ls /usr/local/bin/
     exit 0
   fi
   sleep 10s
