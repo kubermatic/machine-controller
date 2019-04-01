@@ -182,6 +182,20 @@ func NewMachineController(
 			if newNode.ResourceVersion == oldNode.ResourceVersion {
 				return
 			}
+			// Dont do anything if the ready condition hasnt changed
+			for _, newCondition := range newNode.Status.Conditions {
+				if newCondition.Type != corev1.NodeReady {
+					continue
+				}
+				for _, oldCondition := range oldNode.Status.Conditions {
+					if oldCondition.Type != corev1.NodeReady {
+						continue
+					}
+					if newCondition.Status == oldCondition.Status {
+						return
+					}
+				}
+			}
 			controller.handleObject(new)
 		},
 		DeleteFunc: controller.handleObject,
