@@ -13,7 +13,7 @@
 
 # Features
 ## What works
-- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, VMWare Vsphere, Hetzner cloud and Kubevirt (experimental)
+- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, VMWare Vsphere, Linode, Hetzner cloud and Kubevirt (experimental)
 - Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions (not all distributions work on all providers)
 
 ## What does not work
