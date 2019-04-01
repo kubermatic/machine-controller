@@ -34,30 +34,19 @@ var (
 	plugins map[providerconfig.OperatingSystem]*Plugin
 )
 
-// init  tries to find and start the plugins.
+// init  checks the plugin debug flag.
 func init() {
 	flag.BoolVar(&debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
-
-	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
-
-	for _, os := range []providerconfig.OperatingSystem{
-		providerconfig.OperatingSystemCentOS,
-		providerconfig.OperatingSystemCoreos,
-		providerconfig.OperatingSystemUbuntu,
-	} {
-		plugin, err := newPlugin(os, debug)
-		if err != nil {
-			log.Printf("cannot start plugin '%v': %v", os, err)
-			continue
-		}
-		plugins[os] = plugin
-	}
 }
 
 // ForOS returns the plugin for the given operating system.
 func ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
 	mu.Lock()
 	defer mu.Unlock()
+
+	if plugins == nil {
+		loadPlugins()
+	}
 
 	var found bool
 	if p, found = plugins[os]; !found {
@@ -91,4 +80,22 @@ func Stop() error {
 	plugins = nil
 
 	return serr
+}
+
+// loadPlugins lazily loads the plugins on initial usage.
+func loadPlugins() {
+	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
+
+	for _, os := range []providerconfig.OperatingSystem{
+		providerconfig.OperatingSystemCentOS,
+		providerconfig.OperatingSystemCoreos,
+		providerconfig.OperatingSystemUbuntu,
+	} {
+		plugin, err := newPlugin(os, debug)
+		if err != nil {
+			log.Printf("cannot start plugin '%v': %v", os, err)
+			continue
+		}
+		plugins[os] = plugin
+	}
 }
