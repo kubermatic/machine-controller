@@ -2,9 +2,8 @@
 // UserData plugin manager.
 //
 
-// Package manager provides managing, starting, stopping, and
-// communication with the individual UserData plugins. It's used
-// inside the machine controller.
+// Package manager provides the instantiation and
+// running of the plugins on machine controller side.
 package manager
 
 import (
@@ -37,8 +36,6 @@ var (
 // init  checks the plugin debug flag.
 func init() {
 	flag.BoolVar(&debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
-
-	loadPlugins()
 }
 
 // ForOS returns the plugin for the given operating system.
@@ -68,22 +65,6 @@ func Supports(os providerconfig.OperatingSystem) bool {
 	return found
 }
 
-// Stop kills and derigisters all plugins.
-func Stop() error {
-	mu.Lock()
-	defer mu.Unlock()
-
-	var serr error
-	for _, p := range plugins {
-		if err := p.Stop(); err != nil {
-			serr = err
-		}
-	}
-	plugins = nil
-
-	return serr
-}
-
 // loadPlugins lazily loads the plugins on initial usage.
 func loadPlugins() {
 	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
@@ -95,7 +76,7 @@ func loadPlugins() {
 	} {
 		plugin, err := newPlugin(os, debug)
 		if err != nil {
-			log.Printf("cannot start plugin '%v': %v", os, err)
+			log.Printf("cannot use plugin '%v': %v", os, err)
 			continue
 		}
 		plugins[os] = plugin

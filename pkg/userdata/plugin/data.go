@@ -13,17 +13,17 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 )
 
-// PingRequest is sent if the manager restarts to test if a
-// plugin is running.
-type PingRequest struct {
-}
+const (
+	// EnvRequest names the environment variable signalling the
+	// plugin which request the caller wants to have answered.
+	EnvRequest = "REQUEST"
 
-// PingResponse will be responded.
-type PingResponse struct {
-	Executable string
-}
+	// EnvUserDataRequest names the environment variable containing
+	// the user data request.
+	EnvUserDataRequest = "USER_DATA_REQUEST"
+)
 
-// UserDataRequest is sent to the plugins by the manager.
+// UserDataRequest requests user data with the given arguments.
 type UserDataRequest struct {
 	MachineSpec           clusterv1alpha1.MachineSpec
 	KubeConfig            *clientcmdapi.Config
@@ -32,8 +32,13 @@ type UserDataRequest struct {
 	ExternalCloudProvider bool
 }
 
-// UserDataResponse will be responded.
+// UserDataResponse contains the responded user data.
 type UserDataResponse struct {
 	UserData string
 	Err      string
+}
+
+// ErrorResponse contains a single responded error.
+type ErrorResponse struct {
+	Err string
 }

@@ -2,30 +2,21 @@
 // Core UserData plugin.
 //
 
-// Package plugin provides the communication net/rpc types
-// as well as the data exchange types. Both then have to
-// be used by the plugin implementations.
+// Package plugin provides the plugin side of the plugin mechanism.
+// Individual plugins have to implement the provider interface,
+// pass it to a new plugin instance, and call run.
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
-	"net/rpc"
 	"os"
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-)
-
-const (
-	// RPCPath is the path for the RPC handler.
-	RPCPath = "/machine-controller-plugin-rpc"
-
-	// DebugPath is the path for the RPC debug handler.
-	DebugPath = "/machine-controller-plugin-debug"
 )
 
 // Provider defines the interface each plugin has to implement
@@ -45,17 +36,6 @@ type Handler struct {
 	provider Provider
 }
 
-// Ping receives the Ping RPC message and checks the full qualified
-// plugin name.
-func (h *Handler) Ping(req *PingRequest, resp *PingResponse) error {
-	executable, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	resp.Executable = executable
-	return nil
-}
-
 // UserData receives the UserData RPC message and calls the provider.
 func (h *Handler) UserData(req *UserDataRequest, resp *UserDataResponse) error {
 	userData, err := h.provider.UserData(
@@ -72,44 +52,72 @@ func (h *Handler) UserData(req *UserDataRequest, resp *UserDataResponse) error {
 	return nil
 }
 
-// Plugin implements the RPC server for the individual plugins. Those
-// got to pass their individual userdata providers as well as their
-// Unix socket address and debug flag their executable receives by the
-// plugin manager.
+// Plugin implements a convenient helper to map the request to the given
+// provider and return the response.
 type Plugin struct {
-	handler  *Handler
-	address  string
+	provider Provider
 	debug    bool
-	listener net.Listener
-	server   *rpc.Server
 }
 
 // New creates a new plugin. Debug flag is not yet handled.
-func New(provider Provider, address string, debug bool) *Plugin {
-	p := &Plugin{
-		handler: &Handler{provider},
-		address: address,
-		debug:   debug,
-		server:  rpc.NewServer(),
+func New(provider Provider, debug bool) *Plugin {
+	return &Plugin{
+		provider: provider,
+		debug:    debug,
 	}
-	p.server.HandleHTTP(RPCPath, DebugPath)
-	if err := p.server.RegisterName("Plugin", p.handler); err != nil {
-		panic(fmt.Errorf("cannot register plugin: %v", err))
-	}
-	return p
 }
 
-// Start starts the plugin and blocks.
-func (p *Plugin) Start() error {
-	l, err := net.Listen("unix", p.address)
+// Run looks for the given request and executes it.
+func (p *Plugin) Run() error {
+	reqCmd := os.Getenv(EnvRequest)
+	switch reqCmd {
+	case EnvUserDataRequest:
+		return p.handleUserDataRequest()
+	default:
+		return p.handleUnknownRequest(reqCmd)
+	}
+}
+
+// handleUserDataRequest handles the request for user data.
+func (p *Plugin) handleUserDataRequest() error {
+	reqEnv := os.Getenv(EnvUserDataRequest)
+	var req UserDataRequest
+	err := json.Unmarshal([]byte(reqEnv), &req)
 	if err != nil {
 		return err
 	}
-	p.listener = l
-	return http.Serve(p.listener, nil)
+	userData, err := p.provider.UserData(
+		req.MachineSpec,
+		req.KubeConfig,
+		req.CloudConfig,
+		req.DNSIPs,
+		req.ExternalCloudProvider,
+	)
+	var resp UserDataResponse
+	if err != nil {
+		resp.Err = err.Error()
+	} else {
+		resp.UserData = userData
+	}
+	return p.printResponse(resp)
 }
 
-// Stop closes open network listeners.
-func (p *Plugin) Stop() error {
-	return p.listener.Close()
+// handleUnknownRequest handles unknown requests.
+func (p *Plugin) handleUnknownRequest(reqCmd string) error {
+	var resp ErrorResponse
+	if reqCmd == "" {
+		resp.Err = "no request command given"
+	} else {
+		resp.Err = fmt.Sprintf("unknown request command '%s'")
+	}
+	return p.printResponse(resp)
+}
+
+func (p *Plugin) printResponse(resp interface{}) error {
+	bs, err := json.Marshal(resp)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s", string(bs))
+	return nil
 }

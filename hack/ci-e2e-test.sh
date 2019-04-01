@@ -86,5 +86,4 @@ EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then
   EXTRA_ARGS="-run $1"
 fi
-ls -l /usr/local/bin/machine-controller-*
 go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
