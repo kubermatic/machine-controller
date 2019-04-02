@@ -90,10 +90,10 @@ func (p *Plugin) UserData(
 		fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)),
 	}
 	// Execute command.
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("output error: %v", err)
-		return "", err
+		return "", fmt.Errorf("failed to execute command %q: output: %q error: %q", p.command, string(out), err)
 	}
 	log.Printf("output: %v", out)
 	var resp plugin.UserDataResponse
@@ -140,8 +140,11 @@ func (p *Plugin) findPlugin() error {
 		command := dir + string(os.PathSeparator) + filename
 		log.Printf("checking '%s'", command)
 		_, err := os.Stat(command)
-		if os.IsNotExist(err) {
-			continue
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("error when looking for %q: %v", command, err)
 		}
 		p.command = command
 		log.Printf("found '%s'", command)
