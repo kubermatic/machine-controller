@@ -23,6 +23,10 @@ import (
 )
 
 const (
+	// envPluginDir names the environment variable containing
+	// a user defined location of the plugins.
+	envPluginDir = "MACHINE_CONTROLLER_USERDATA_PLUGIN_DIR"
+
 	// pluginPrefix has to be the prefix of all plugin filenames.
 	pluginPrefix = "machine-controller-userdata-"
 )
@@ -88,8 +92,10 @@ func (p *Plugin) UserData(
 	// Execute command.
 	out, err := cmd.Output()
 	if err != nil {
+		log.Printf("output error: %v", err)
 		return "", err
 	}
+	log.Printf("output: %v", out)
 	var resp plugin.UserDataResponse
 	err = json.Unmarshal(out, &resp)
 	if err != nil {
@@ -106,6 +112,11 @@ func (p *Plugin) findPlugin() error {
 	filename := pluginPrefix + string(p.os)
 	log.Printf("looking for plugin '%s'", filename)
 	// Create list to search in.
+	var dirs []string
+	envDir := os.Getenv(envPluginDir)
+	if envDir != "" {
+		dirs = append(dirs, envDir)
+	}
 	executable, err := os.Executable()
 	if err != nil {
 		return err
@@ -115,11 +126,12 @@ func (p *Plugin) findPlugin() error {
 	if err != nil {
 		return err
 	}
+	dirs = append(dirs, ownDir)
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	dirs := []string{ownDir, workingDir}
+	dirs = append(dirs, workingDir)
 	path := os.Getenv("PATH")
 	pathDirs := strings.Split(path, string(os.PathListSeparator))
 	dirs = append(dirs, pathDirs...)
@@ -132,6 +144,7 @@ func (p *Plugin) findPlugin() error {
 			continue
 		}
 		p.command = command
+		log.Printf("found '%s'", command)
 		return nil
 	}
 	log.Printf("did not find '%s'", filename)
