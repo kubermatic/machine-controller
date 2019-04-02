@@ -7,7 +7,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
@@ -19,9 +18,6 @@ func main() {
 
 	flag.BoolVar(&debug, "debug", false, "Switch for enabling the plugin debugging")
 	flag.Parse()
-
-	req := os.Getenv(plugin.EnvUserDataRequest)
-	ioutil.WriteFile("/tmp/machine-controller-userdata-ubuntu.log", []byte(req), 0644)
 
 	// Instantiate provider and start plugin.
 	var provider = &Provider{}

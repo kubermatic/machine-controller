@@ -344,7 +344,12 @@ func TestUserDataGeneration(t *testing.T) {
 			}
 			provider := Provider{}
 
-			s, err := provider.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs, test.externalCloudProvider)
+			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(spec)
+			if err != nil {
+				t.Fatalf("failed to get cloud config: %v", err)
+			}
+
+			s, err := provider.UserData(spec, kubeconfig, cloudConfig, cloudProviderName, test.DNSIPs, test.externalCloudProvider)
 			if err != nil {
 				t.Fatal(err)
 			}
