@@ -16,7 +16,6 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 )
@@ -28,7 +27,7 @@ type Provider struct{}
 func (p Provider) UserData(
 	spec clusterv1alpha1.MachineSpec,
 	kubeconfig *clientcmdapi.Config,
-	ccProvider cloud.ConfigProvider,
+	cloudConfig, cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
 ) (string, error) {
@@ -43,18 +42,13 @@ func (p Provider) UserData(
 		return "", fmt.Errorf("invalid kubelet version: %v", err)
 	}
 
-	cpConfig, cpName, err := ccProvider.GetCloudConfig(spec)
-	if err != nil {
-		return "", fmt.Errorf("failed to get cloud config: %v", err)
-	}
-
 	pconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get providerSpec: %v", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {
-		cpConfig = *pconfig.OverwriteCloudConfig
+		cloudConfig = *pconfig.OverwriteCloudConfig
 	}
 
 	if pconfig.Network != nil {
@@ -97,8 +91,8 @@ func (p Provider) UserData(
 		MachineSpec:      spec,
 		ProviderSpec:     pconfig,
 		OSConfig:         ubuntuConfig,
-		CloudProvider:    cpName,
-		CloudConfig:      cpConfig,
+		CloudProvider:    cloudProviderName,
+		CloudConfig:      cloudConfig,
 		ClusterDNSIPs:    clusterDNSIPs,
 		ServerAddr:       serverAddr,
 		KubeletVersion:   kubeletVersion.String(),

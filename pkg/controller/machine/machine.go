@@ -568,7 +568,11 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
-			userdata, err := userdataPlugin.UserData(machine.Spec, kubeconfig, prov, c.clusterDNSIPs, c.externalCloudProvider)
+			cloudConfig, cloudProviderName, err := prov.GetCloudConfig(machine.Spec)
+			if err != nil {
+				return fmt.Errorf("failed to render cloud config: %v", err)
+			}
+			userdata, err := userdataPlugin.UserData(machine.Spec, kubeconfig, cloudConfig, cloudProviderName, c.clusterDNSIPs, c.externalCloudProvider)
 			if err != nil {
 				c.recorder.Eventf(machine, corev1.EventTypeWarning, "UserdataRenderingFailed", "Userdata rendering failed: %v", err)
 				return fmt.Errorf("failed get userdata: %v", err)

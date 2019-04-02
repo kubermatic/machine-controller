@@ -9,8 +9,6 @@ import (
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 )
 
 const (
@@ -27,7 +25,8 @@ const (
 type UserDataRequest struct {
 	MachineSpec           clusterv1alpha1.MachineSpec
 	KubeConfig            *clientcmdapi.Config
-	CloudConfig           cloud.ConfigProvider
+	CloudProviderName     string
+	CloudConfig           string
 	DNSIPs                []net.IP
 	ExternalCloudProvider bool
 }

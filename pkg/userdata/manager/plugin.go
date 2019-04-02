@@ -18,7 +18,6 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
@@ -63,7 +62,7 @@ func (p *Plugin) OperatingSystem() providerconfig.OperatingSystem {
 func (p *Plugin) UserData(
 	spec clusterv1alpha1.MachineSpec,
 	kubeconfig *clientcmdapi.Config,
-	ccProvider cloud.ConfigProvider,
+	cloudConfig, cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
 ) (string, error) {
@@ -77,7 +76,8 @@ func (p *Plugin) UserData(
 	req := plugin.UserDataRequest{
 		MachineSpec:           spec,
 		KubeConfig:            kubeconfig,
-		CloudConfig:           ccProvider,
+		CloudProviderName:     cloudProviderName,
+		CloudConfig:           cloudConfig,
 		DNSIPs:                clusterDNSIPs,
 		ExternalCloudProvider: externalCloudProvider,
 	}
