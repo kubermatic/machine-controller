@@ -29,7 +29,7 @@ var (
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfig.OperatingSystemUbuntu): "Ubuntu 18.04 LTS - 2018-08-10",
+		string(providerconfig.OperatingSystemUbuntu): "kubermatic-e2e-ubuntu",
 		string(providerconfig.OperatingSystemCoreos): "coreos",
 		string(providerconfig.OperatingSystemCentOS): "centos",
 	}
