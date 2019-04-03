@@ -17,7 +17,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/userdata"
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
@@ -62,7 +62,7 @@ func (p *Plugin) UserData(
 	}
 	cmd := exec.Command(p.command, argv...)
 	// Set environment.
-	req := userdata.UserDataRequest{
+	req := plugin.UserDataRequest{
 		MachineSpec:           spec,
 		KubeConfig:            kubeconfig,
 		CloudProviderName:     cloudProviderName,
@@ -75,15 +75,15 @@ func (p *Plugin) UserData(
 		return "", err
 	}
 	cmd.Env = []string{
-		fmt.Sprintf("%s=%s", userdata.EnvRequest, userdata.EnvUserDataRequest),
-		fmt.Sprintf("%s=%s", userdata.EnvUserDataRequest, string(reqj)),
+		fmt.Sprintf("%s=%s", plugin.EnvRequest, plugin.EnvUserDataRequest),
+		fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)),
 	}
 	// Execute command.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to execute command %q: output: %q error: %q", p.command, string(out), err)
 	}
-	var resp userdata.UserDataResponse
+	var resp plugin.UserDataResponse
 	err = json.Unmarshal(out, &resp)
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func (p *Plugin) findPlugin(name string) error {
 	glog.Infof("looking for plugin '%s'", filename)
 	// Create list to search in.
 	var dirs []string
-	envDir := os.Getenv(userdata.EnvPluginDir)
+	envDir := os.Getenv(plugin.EnvPluginDir)
 	if envDir != "" {
 		dirs = append(dirs, envDir)
 	}

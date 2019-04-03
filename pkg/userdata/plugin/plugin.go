@@ -16,7 +16,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/userdata"
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 )
 
 // Provider defines the interface each plugin has to implement
@@ -49,9 +49,9 @@ func New(provider Provider, debug bool) *Plugin {
 
 // Run looks for the given request and executes it.
 func (p *Plugin) Run() error {
-	reqCmd := os.Getenv(userdata.EnvRequest)
+	reqCmd := os.Getenv(plugin.EnvRequest)
 	switch reqCmd {
-	case userdata.EnvUserDataRequest:
+	case plugin.EnvUserDataRequest:
 		return p.handleUserDataRequest()
 	default:
 		return p.handleUnknownRequest(reqCmd)
@@ -60,8 +60,8 @@ func (p *Plugin) Run() error {
 
 // handleUserDataRequest handles the request for user data.
 func (p *Plugin) handleUserDataRequest() error {
-	reqEnv := os.Getenv(userdata.EnvUserDataRequest)
-	var req userdata.UserDataRequest
+	reqEnv := os.Getenv(plugin.EnvUserDataRequest)
+	var req plugin.UserDataRequest
 	err := json.Unmarshal([]byte(reqEnv), &req)
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func (p *Plugin) handleUserDataRequest() error {
 		req.DNSIPs,
 		req.ExternalCloudProvider,
 	)
-	var resp userdata.UserDataResponse
+	var resp plugin.UserDataResponse
 	if err != nil {
 		resp.Err = err.Error()
 	} else {
@@ -85,7 +85,7 @@ func (p *Plugin) handleUserDataRequest() error {
 
 // handleUnknownRequest handles unknown requests.
 func (p *Plugin) handleUnknownRequest(reqCmd string) error {
-	var resp userdata.ErrorResponse
+	var resp plugin.ErrorResponse
 	if reqCmd == "" {
 		resp.Err = "no request command given"
 	} else {

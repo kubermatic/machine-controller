@@ -2,7 +2,7 @@
 // Environment and serialisation types for UserData plugins.
 //
 
-package userdata
+package plugin
 
 import (
 	"net"
