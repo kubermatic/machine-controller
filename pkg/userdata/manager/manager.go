@@ -9,8 +9,9 @@ package manager
 import (
 	"errors"
 	"flag"
-	"log"
 	"sync"
+
+	"github.com/golang/glog"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
@@ -78,7 +79,7 @@ func loadPlugins() {
 	} {
 		plugin, err := newPlugin(os, debug)
 		if err != nil {
-			log.Printf("cannot use plugin '%v': %v", os, err)
+			glog.Errorf("cannot use plugin '%v': %v", os, err)
 			continue
 		}
 		plugins[os] = plugin

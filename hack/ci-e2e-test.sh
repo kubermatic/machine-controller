@@ -35,9 +35,7 @@ make machine-controller webhook
 
 # Copy individual plugins with success control.
 echo "Copying machine-controller plugins"
-cp machine-controller-userdata-centos /usr/local/bin
-cp machine-controller-userdata-coreos /usr/local/bin
-cp machine-controller-userdata-ubuntu /usr/local/bin
+cp machine-controller-userdata-* /usr/local/bin
 ls -l /usr/local/bin
 
 # Generate ssh keypair

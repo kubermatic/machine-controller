@@ -49,14 +49,14 @@ kPe6XoSbiLm/kxk32T0=
 -----END CERTIFICATE-----`
 )
 
-// stubCloudConfigProvider simulates cloud config provider for test.
-type stubCloudConfigProvider struct {
+// fakeCloudConfigProvider simulates cloud config provider for test.
+type fakeCloudConfigProvider struct {
 	config string
 	name   string
 	err    error
 }
 
-func (p *stubCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return p.config, p.name, p.err
 }
 
@@ -133,7 +133,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 	}
 
-	defaultCloudProvider := &stubCloudConfigProvider{
+	defaultCloudProvider := &fakeCloudConfigProvider{
 		name:   "aws",
 		config: "{aws-config:true}",
 		err:    nil,
@@ -158,9 +158,9 @@ func TestUserDataGeneration(t *testing.T) {
 			Value: &runtime.RawExtension{},
 		}
 		test.spec.ProviderSpec = emtpyProviderSpec
-		var cloudProvider *stubCloudConfigProvider
+		var cloudProvider *fakeCloudConfigProvider
 		if test.cloudProviderName != nil {
-			cloudProvider = &stubCloudConfigProvider{
+			cloudProvider = &fakeCloudConfigProvider{
 				name:   *test.cloudProviderName,
 				config: "{config:true}",
 				err:    nil,

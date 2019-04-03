@@ -6,8 +6,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"os"
+
+	"github.com/golang/glog"
 
 	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
@@ -24,7 +24,6 @@ func main() {
 	var p = plugin.New(provider, debug)
 
 	if err := p.Run(); err != nil {
-		fmt.Printf("error running CoreOS plugin: %v", err)
-		os.Exit(-1)
+		glog.Fatalf("error running CoreOS plugin: %v", err)
 	}
 }

@@ -15,6 +15,8 @@ import (
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/userdata"
 )
 
 // Provider defines the interface each plugin has to implement
@@ -23,32 +25,11 @@ type Provider interface {
 	UserData(
 		spec clusterv1alpha1.MachineSpec,
 		kubeconfig *clientcmdapi.Config,
-		cloudConfig, cloudProviderName string,
+		cloudConfig string,
+		cloudProviderName string,
 		clusterDNSIPs []net.IP,
 		externalCloudProvider bool,
 	) (string, error)
-}
-
-// Handler cares dispatching of the RPC calls to the given Provider.
-type Handler struct {
-	provider Provider
-}
-
-// UserData receives the UserData RPC message and calls the provider.
-func (h *Handler) UserData(req *UserDataRequest, resp *UserDataResponse) error {
-	userData, err := h.provider.UserData(
-		req.MachineSpec,
-		req.KubeConfig,
-		req.CloudConfig,
-		req.CloudProviderName,
-		req.DNSIPs,
-		req.ExternalCloudProvider,
-	)
-	resp.UserData = userData
-	if err != nil {
-		resp.Err = err.Error()
-	}
-	return nil
 }
 
 // Plugin implements a convenient helper to map the request to the given
@@ -68,9 +49,9 @@ func New(provider Provider, debug bool) *Plugin {
 
 // Run looks for the given request and executes it.
 func (p *Plugin) Run() error {
-	reqCmd := os.Getenv(EnvRequest)
+	reqCmd := os.Getenv(userdata.EnvRequest)
 	switch reqCmd {
-	case EnvUserDataRequest:
+	case userdata.EnvUserDataRequest:
 		return p.handleUserDataRequest()
 	default:
 		return p.handleUnknownRequest(reqCmd)
@@ -79,8 +60,8 @@ func (p *Plugin) Run() error {
 
 // handleUserDataRequest handles the request for user data.
 func (p *Plugin) handleUserDataRequest() error {
-	reqEnv := os.Getenv(EnvUserDataRequest)
-	var req UserDataRequest
+	reqEnv := os.Getenv(userdata.EnvUserDataRequest)
+	var req userdata.UserDataRequest
 	err := json.Unmarshal([]byte(reqEnv), &req)
 	if err != nil {
 		return err
@@ -93,7 +74,7 @@ func (p *Plugin) handleUserDataRequest() error {
 		req.DNSIPs,
 		req.ExternalCloudProvider,
 	)
-	var resp UserDataResponse
+	var resp userdata.UserDataResponse
 	if err != nil {
 		resp.Err = err.Error()
 	} else {
@@ -104,7 +85,7 @@ func (p *Plugin) handleUserDataRequest() error {
 
 // handleUnknownRequest handles unknown requests.
 func (p *Plugin) handleUnknownRequest(reqCmd string) error {
-	var resp ErrorResponse
+	var resp userdata.ErrorResponse
 	if reqCmd == "" {
 		resp.Err = "no request command given"
 	} else {
@@ -113,6 +94,7 @@ func (p *Plugin) handleUnknownRequest(reqCmd string) error {
 	return p.printResponse(resp)
 }
 
+// printResponse marshals the respons and prints it to stdout.
 func (p *Plugin) printResponse(resp interface{}) error {
 	bs, err := json.Marshal(resp)
 	if err != nil {

@@ -7,25 +7,21 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/golang/glog"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/userdata"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
 const (
-	// envPluginDir names the environment variable containing
-	// a user defined location of the plugins.
-	envPluginDir = "MACHINE_CONTROLLER_USERDATA_PLUGIN_DIR"
-
 	// pluginPrefix has to be the prefix of all plugin filenames.
 	pluginPrefix = "machine-controller-userdata-"
 )
@@ -33,7 +29,6 @@ const (
 // Plugin looks for the plugin executable and calls it for
 // each request.
 type Plugin struct {
-	os      providerconfig.OperatingSystem
 	debug   bool
 	command string
 }
@@ -42,19 +37,12 @@ type Plugin struct {
 // binary and connects to it via net/rpc.
 func newPlugin(os providerconfig.OperatingSystem, debug bool) (*Plugin, error) {
 	p := &Plugin{
-		os:    os,
 		debug: debug,
 	}
-	if err := p.findPlugin(); err != nil {
+	if err := p.findPlugin(string(os)); err != nil {
 		return nil, err
 	}
 	return p, nil
-}
-
-// OperatingSystem returns the operating system this plugin is
-// responsible for.
-func (p *Plugin) OperatingSystem() providerconfig.OperatingSystem {
-	return p.os
 }
 
 // UserData retrieves the user data of the given resource via
@@ -62,7 +50,8 @@ func (p *Plugin) OperatingSystem() providerconfig.OperatingSystem {
 func (p *Plugin) UserData(
 	spec clusterv1alpha1.MachineSpec,
 	kubeconfig *clientcmdapi.Config,
-	cloudConfig, cloudProviderName string,
+	cloudConfig string,
+	cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
 ) (string, error) {
@@ -73,7 +62,7 @@ func (p *Plugin) UserData(
 	}
 	cmd := exec.Command(p.command, argv...)
 	// Set environment.
-	req := plugin.UserDataRequest{
+	req := userdata.UserDataRequest{
 		MachineSpec:           spec,
 		KubeConfig:            kubeconfig,
 		CloudProviderName:     cloudProviderName,
@@ -86,17 +75,15 @@ func (p *Plugin) UserData(
 		return "", err
 	}
 	cmd.Env = []string{
-		fmt.Sprintf("%s=%s", plugin.EnvRequest, plugin.EnvUserDataRequest),
-		fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)),
+		fmt.Sprintf("%s=%s", userdata.EnvRequest, userdata.EnvUserDataRequest),
+		fmt.Sprintf("%s=%s", userdata.EnvUserDataRequest, string(reqj)),
 	}
 	// Execute command.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("output error: %v", err)
 		return "", fmt.Errorf("failed to execute command %q: output: %q error: %q", p.command, string(out), err)
 	}
-	log.Printf("output: %v", out)
-	var resp plugin.UserDataResponse
+	var resp userdata.UserDataResponse
 	err = json.Unmarshal(out, &resp)
 	if err != nil {
 		return "", err
@@ -108,12 +95,12 @@ func (p *Plugin) UserData(
 }
 
 // findPlugin tries to find the executable of the plugin.
-func (p *Plugin) findPlugin() error {
-	filename := pluginPrefix + string(p.os)
-	log.Printf("looking for plugin '%s'", filename)
+func (p *Plugin) findPlugin(name string) error {
+	filename := pluginPrefix + name
+	glog.Infof("looking for plugin '%s'", filename)
 	// Create list to search in.
 	var dirs []string
-	envDir := os.Getenv(envPluginDir)
+	envDir := os.Getenv(userdata.EnvPluginDir)
 	if envDir != "" {
 		dirs = append(dirs, envDir)
 	}
@@ -138,7 +125,7 @@ func (p *Plugin) findPlugin() error {
 	// Now take a look.
 	for _, dir := range dirs {
 		command := dir + string(os.PathSeparator) + filename
-		log.Printf("checking '%s'", command)
+		glog.Infof("checking '%s'", command)
 		_, err := os.Stat(command)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -147,9 +134,9 @@ func (p *Plugin) findPlugin() error {
 			return fmt.Errorf("error when looking for %q: %v", command, err)
 		}
 		p.command = command
-		log.Printf("found '%s'", command)
+		glog.Infof("found '%s'", command)
 		return nil
 	}
-	log.Printf("did not find '%s'", filename)
+	glog.Errorf("did not find '%s'", filename)
 	return ErrPluginNotFound
 }
