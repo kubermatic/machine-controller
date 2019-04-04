@@ -29,9 +29,9 @@ var (
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfig.OperatingSystemUbuntu): "kubermatic-e2e-ubuntu",
-		string(providerconfig.OperatingSystemCoreos): "coreos",
-		string(providerconfig.OperatingSystemCentOS): "centos",
+		string(providerconfig.OperatingSystemUbuntu): "machine-controller-e2e-ubuntu",
+		string(providerconfig.OperatingSystemCoreos): "machine-controller-e2e-coreos",
+		string(providerconfig.OperatingSystemCentOS): "machine-controller-e2e-centos",
 	}
 )
 

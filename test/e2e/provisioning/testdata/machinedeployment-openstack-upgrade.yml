@@ -28,7 +28,7 @@ spec:
             username: "<< USERNAME >>"
             password: "<< PASSWORD >>"
             tenantName: "<< TENANT_NAME >>"
-            image: "kubermatic-e2e-ubuntu"
+            image: "machine-controller-e2e-ubuntu"
             flavor: "m1.small"
             floatingIpPool: ""
             domainName: "<< DOMAIN_NAME >>"
