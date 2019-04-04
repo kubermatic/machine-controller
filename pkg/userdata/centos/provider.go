@@ -2,7 +2,7 @@
 // UserData plugin for CentOS.
 //
 
-package main
+package centos
 
 import (
 	"bytes"
@@ -16,7 +16,6 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
 
@@ -55,7 +54,7 @@ func (p Provider) UserData(
 		return "", errors.New("static IP config is not supported with CentOS")
 	}
 
-	centosConfig, err := centos.LoadConfig(pconfig.OperatingSystemSpec)
+	centosConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse OperatingSystemSpec: '%v'", err)
 	}

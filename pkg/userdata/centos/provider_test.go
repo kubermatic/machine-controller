@@ -2,7 +2,7 @@
 // UserData plugin for CentOS.
 //
 
-package main
+package coreos
 
 import (
 	"flag"

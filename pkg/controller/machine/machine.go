@@ -56,8 +56,8 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/manager"
-	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
+	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
+	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
 const (
@@ -399,7 +399,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Step 3: Essentially creates an instance for the given machine.
-	userdataPlugin, err := manager.ForOS(providerConfig.OperatingSystem)
+	userdataPlugin, err := userdatamanager.ForOS(providerConfig.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
 	}
@@ -550,7 +550,7 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 	return err
 }
 
-func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdataPlugin plugin.Provider, providerConfig *providerconfig.Config) error {
+func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfig.Config) error {
 	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
 	providerInstance, err := prov.Get(machine)

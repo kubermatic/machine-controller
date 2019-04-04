@@ -2,7 +2,7 @@
 // UserData plugin for Ubuntu.
 //
 
-package main
+package ubuntu
 
 import (
   "bytes"
@@ -17,7 +17,6 @@ import (
 
   "github.com/kubermatic/machine-controller/pkg/providerconfig"
   userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
-  "github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 )
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
@@ -56,7 +55,7 @@ func (p Provider) UserData(
     return "", errors.New("static IP config is not supported with Ubuntu")
   }
 
-  ubuntuConfig, err := ubuntu.LoadConfig(pconfig.OperatingSystemSpec)
+  ubuntuConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
   if err != nil {
     return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
   }

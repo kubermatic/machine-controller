@@ -39,7 +39,7 @@ type Plugin struct {
 	debug    bool
 }
 
-// New creates a new plugin. Debug flag is not yet handled.
+// New creates a new plugin.
 func New(provider Provider, debug bool) *Plugin {
 	return &Plugin{
 		provider: provider,

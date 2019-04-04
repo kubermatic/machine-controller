@@ -2,7 +2,7 @@
 // UserData plugin for CentOS.
 //
 
-package main
+package coreos
 
 import (
 	"encoding/json"
@@ -21,7 +21,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
 )
 
 var (
@@ -85,7 +84,7 @@ type userDataTestCase struct {
 	name                  string
 	spec                  clusterv1alpha1.MachineSpec
 	ccProvider            cloud.ConfigProvider
-	osConfig              *coreos.Config
+	osConfig              *Config
 	providerSpec          *providerconfig.Config
 	DNSIPs                []net.IP
 	externalCloudProvider bool
@@ -115,7 +114,7 @@ func TestUserDataGeneration(t *testing.T) {
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &coreos.Config{
+			osConfig: &Config{
 				DisableAutoUpdate: true,
 			},
 		},
@@ -137,7 +136,7 @@ func TestUserDataGeneration(t *testing.T) {
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &coreos.Config{
+			osConfig: &Config{
 				DisableAutoUpdate: true,
 			},
 			externalCloudProvider: true,
@@ -162,7 +161,7 @@ func TestUserDataGeneration(t *testing.T) {
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
-			osConfig: &coreos.Config{
+			osConfig: &Config{
 				DisableAutoUpdate: false,
 			},
 		},
@@ -186,7 +185,7 @@ func TestUserDataGeneration(t *testing.T) {
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &coreos.Config{
+			osConfig: &Config{
 				DisableAutoUpdate: false,
 			},
 		},
@@ -217,7 +216,7 @@ func TestUserDataGeneration(t *testing.T) {
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &coreos.Config{
+			osConfig: &Config{
 				DisableAutoUpdate: true,
 			},
 		},
@@ -247,7 +246,7 @@ func TestUserDataGeneration(t *testing.T) {
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &coreos.Config{
+			osConfig: &Config{
 				DisableAutoUpdate: true,
 			},
 		},

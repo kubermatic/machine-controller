@@ -2,7 +2,7 @@
 // UserData plugin for Ubuntu.
 //
 
-package main
+package ubuntu
 
 import (
 	"encoding/json"
@@ -21,7 +21,6 @@ import (
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 )
 
 var (
@@ -88,7 +87,7 @@ type userDataTestCase struct {
 	name                  string
 	spec                  clusterv1alpha1.MachineSpec
 	ccProvider            cloud.ConfigProvider
-	osConfig              *ubuntu.Config
+	osConfig              *Config
 	providerSpec          *providerconfig.Config
 	DNSIPs                []net.IP
 	kubernetesCACert      string
@@ -126,7 +125,7 @@ func simpleVersionTests() []userDataTestCase {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
 		})
@@ -163,7 +162,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: true,
 			},
 		},
@@ -188,7 +187,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
 		},
@@ -213,7 +212,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
 		},
@@ -238,7 +237,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
 		},
@@ -263,7 +262,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
 		},
@@ -289,7 +288,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
 		},
@@ -315,7 +314,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig: &ubuntu.Config{
+			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
 		},
