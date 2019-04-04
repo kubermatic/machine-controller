@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
+	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,6 +74,8 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 	}
 	// Enforce the kube-system namespace, otherwise cleanup wont work
 	newMachineDeployment.Namespace = "kube-system"
+	// Dont evict during testing
+	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{eviction.SkipEvictionAnnotationKey: "true"}
 
 	return kubeClient, clusterClient, newMachineDeployment, nil
 }
@@ -92,6 +95,8 @@ func prepareMachine(kubeConfig, manifestPath string, parameters []string) (kuber
 	}
 	// Enforce the kube-system namespace, otherwise cleanup wont work
 	newMachine.Namespace = "kube-system"
+	// Dont evict during testing
+	newMachine.Spec.Annotations = map[string]string{eviction.SkipEvictionAnnotationKey: "true"}
 
 	return kubeClient, clusterClient, newMachine, nil
 }
