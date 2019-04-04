@@ -12,10 +12,6 @@ import (
 )
 
 const (
-	// EnvRequest names the environment variable signalling the
-	// plugin which request the caller wants to have answered.
-	EnvRequest = "REQUEST"
-
 	// EnvUserDataRequest names the environment variable containing
 	// the user data request.
 	EnvUserDataRequest = "MACHINE_CONTROLLER_USER_DATA_REQUEST"

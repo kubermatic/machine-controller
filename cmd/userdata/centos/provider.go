@@ -27,7 +27,8 @@ type Provider struct{}
 func (p Provider) UserData(
 	spec clusterv1alpha1.MachineSpec,
 	kubeconfig *clientcmdapi.Config,
-	cloudConfig, cloudProviderName string,
+	cloudConfig string,
+	cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
 ) (string, error) {

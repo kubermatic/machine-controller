@@ -49,19 +49,14 @@ func New(provider Provider, debug bool) *Plugin {
 
 // Run looks for the given request and executes it.
 func (p *Plugin) Run() error {
-	reqCmd := os.Getenv(plugin.EnvRequest)
-	if reqCmd != plugin.EnvUserDataRequest {
+	reqEnv := os.Getenv(plugin.EnvUserDataRequest)
+	if reqEnv == "" {
 		resp := plugin.ErrorResponse{
-			Err: fmt.Sprintf("unknown or no command"),
+			Err: fmt.Sprintf("environment variable '%s' not set", plugin.EnvUserDataRequest),
 		}
 		return p.printResponse(resp)
 	}
-	return p.handleUserDataRequest()
-}
-
-// handleUserDataRequest handles the request for user data.
-func (p *Plugin) handleUserDataRequest() error {
-	reqEnv := os.Getenv(plugin.EnvUserDataRequest)
+	// Handle the request for user data.
 	var req plugin.UserDataRequest
 	err := json.Unmarshal([]byte(reqEnv), &req)
 	if err != nil {

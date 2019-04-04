@@ -75,7 +75,6 @@ func (p *Plugin) UserData(
 		return "", err
 	}
 	cmd.Env = []string{
-		fmt.Sprintf("%s=%s", plugin.EnvRequest, plugin.EnvUserDataRequest),
 		fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)),
 	}
 	// Execute command.
