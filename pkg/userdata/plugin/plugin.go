@@ -50,12 +50,13 @@ func New(provider Provider, debug bool) *Plugin {
 // Run looks for the given request and executes it.
 func (p *Plugin) Run() error {
 	reqCmd := os.Getenv(plugin.EnvRequest)
-	switch reqCmd {
-	case plugin.EnvUserDataRequest:
-		return p.handleUserDataRequest()
-	default:
-		return p.handleUnknownRequest(reqCmd)
+	if reqCmd != plugin.EnvUserDataRequest {
+		resp := plugin.ErrorResponse{
+			Err: fmt.Sprintf("unknown or no command"),
+		}
+		return p.printResponse(resp)
 	}
+	return p.handleUserDataRequest()
 }
 
 // handleUserDataRequest handles the request for user data.
@@ -79,17 +80,6 @@ func (p *Plugin) handleUserDataRequest() error {
 		resp.Err = err.Error()
 	} else {
 		resp.UserData = userData
-	}
-	return p.printResponse(resp)
-}
-
-// handleUnknownRequest handles unknown requests.
-func (p *Plugin) handleUnknownRequest(reqCmd string) error {
-	var resp plugin.ErrorResponse
-	if reqCmd == "" {
-		resp.Err = "no request command given"
-	} else {
-		resp.Err = fmt.Sprintf("unknown request command '%s'", reqCmd)
 	}
 	return p.printResponse(resp)
 }

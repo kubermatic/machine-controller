@@ -73,13 +73,13 @@ const (
 	defaultVersion = "1.11.3"
 )
 
-type stubCloudConfigProvider struct {
+type fakeCloudConfigProvider struct {
 	config string
 	name   string
 	err    error
 }
 
-func (p *stubCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return p.config, p.name, p.err
 }
 
@@ -119,7 +119,7 @@ func simpleVersionTests() []userDataTestCase {
 					Kubelet: v.String(),
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "",
 				config: "",
 				err:    nil,
@@ -156,7 +156,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: defaultVersion,
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "",
 				config: "",
 				err:    nil,
@@ -181,7 +181,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: defaultVersion,
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "",
 				config: "",
 				err:    nil,
@@ -206,7 +206,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.11.3",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "",
 				config: "",
 				err:    nil,
@@ -231,7 +231,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.11.3",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "",
 				config: "",
 				err:    nil,
@@ -256,7 +256,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: defaultVersion,
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "openstack",
 				config: "{openstack-config:true}",
 				err:    nil,
@@ -282,7 +282,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "v1.11.3",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "openstack",
 				config: "{openstack-config:true}",
 				err:    nil,
@@ -308,7 +308,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "v1.11.3",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "vsphere",
 				config: "{vsphere-config:true}",
 				err:    nil,

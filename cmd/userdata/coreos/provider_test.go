@@ -69,14 +69,14 @@ kPe6XoSbiLm/kxk32T0=
 	}
 )
 
-// stubCloudConfigProvider simulates cloud config provider for test.
-type stubCloudConfigProvider struct {
+// fakeCloudConfigProvider simulates cloud config provider for test.
+type fakeCloudConfigProvider struct {
 	config string
 	name   string
 	err    error
 }
 
-func (p *stubCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return p.config, p.name, p.err
 }
 
@@ -109,7 +109,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.9.2",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "aws",
 				config: "{aws-config:true}",
 				err:    nil,
@@ -131,7 +131,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.9.2",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "aws",
 				config: "{aws-config:true}",
 				err:    nil,
@@ -156,7 +156,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.10.3",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "openstack",
 				config: "{openstack-config:true}",
 				err:    nil,
@@ -180,7 +180,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "v1.9.2",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "openstack",
 				config: "{openstack-config:true}",
 				err:    nil,
@@ -211,7 +211,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.11.2",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "vsphere",
 				config: "{vsphere-config:true}",
 				err:    nil,
@@ -241,7 +241,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "v1.12.0",
 				},
 			},
-			ccProvider: &stubCloudConfigProvider{
+			ccProvider: &fakeCloudConfigProvider{
 				name:   "vsphere",
 				config: "{vsphere-config:true}",
 				err:    nil,
