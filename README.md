@@ -8,13 +8,17 @@
   - [Creating a machine](#creating-a-machine)
 - [Cloud provider](/docs/cloud-provider.md)
 - [Operating system](/docs/operating-system.md)
+  - [OpenStack images](/docs/openstack-images.md)
 - [Container runtimes](/docs/container_runtime.md)
 - [Development](#development)
+- E2E
+  - [Infra](/docs/e2e-infra.md)
+
 
 # Features
 ## What works
 - Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, VMWare Vsphere, Linode, Hetzner cloud and Kubevirt (experimental)
-- Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions (not all distributions work on all providers)
+- Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
 ## What does not work
 - Master creation (Not planned at the moment)
