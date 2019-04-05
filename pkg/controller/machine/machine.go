@@ -31,6 +31,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -99,6 +100,8 @@ type Controller struct {
 	externalCloudProvider bool
 
 	name string
+
+	bootstrapTokenServiceAccountName *types.NamespacedName
 }
 
 type KubeconfigProvider interface {
@@ -128,7 +131,8 @@ func NewMachineController(
 	kubeconfigProvider KubeconfigProvider,
 	joinClusterTimeout *time.Duration,
 	externalCloudProvider bool,
-	name string) (*Controller, error) {
+	name string,
+	bootstrapTokenServiceAccountName *types.NamespacedName) (*Controller, error) {
 
 	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
@@ -161,6 +165,8 @@ func NewMachineController(
 		externalCloudProvider: externalCloudProvider,
 
 		name: name,
+
+		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
 	}
 
 	controller.machineCreateDeleteData = &cloud.MachineCreateDeleteData{
@@ -188,6 +194,20 @@ func NewMachineController(
 			oldNode := old.(*corev1.Node)
 			if newNode.ResourceVersion == oldNode.ResourceVersion {
 				return
+			}
+			// Dont do anything if the ready condition hasnt changed
+			for _, newCondition := range newNode.Status.Conditions {
+				if newCondition.Type != corev1.NodeReady {
+					continue
+				}
+				for _, oldCondition := range oldNode.Status.Conditions {
+					if oldCondition.Type != corev1.NodeReady {
+						continue
+					}
+					if newCondition.Status == oldCondition.Status {
+						return
+					}
+				}
 			}
 			controller.handleObject(new)
 		},
