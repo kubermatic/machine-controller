@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"cloud.google.com/go/logging"
-	"cloud.google.com/go/monitoring/apiv3"
+	monitoring "cloud.google.com/go/monitoring/apiv3"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	"k8s.io/apimachinery/pkg/types"
@@ -200,6 +200,9 @@ func (p *Provider) Create(
 		NetworkInterfaces: networkInterfaces,
 		Disks:             disks,
 		Labels:            labels,
+		Scheduling: &compute.Scheduling{
+			Preemptible: cfg.preemptible,
+		},
 		ServiceAccounts: []*compute.ServiceAccount{
 			{
 				Email: cfg.jwtConfig.Email,
