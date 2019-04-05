@@ -12,5 +12,5 @@ resource "hcloud_server" "machine-controller-test" {
   image       = "ubuntu-18.04"
   server_type = "cx41"
   ssh_keys    = ["${hcloud_ssh_key.default.id}"]
-  location    = "hel1"
+  location    = "nbg1"
 }
