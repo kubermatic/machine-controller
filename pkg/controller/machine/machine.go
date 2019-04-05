@@ -666,12 +666,17 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		}
 	} else {
 		// If the machine has an owner Ref and is older than 10 Minutes, delete it to have it re-created by the MachineSet controller
-		if machine.OwnerReferences != nil && c.joinClusterTimeout != nil && time.Since(machine.CreationTimestamp.Time) > *c.joinClusterTimeout {
-			c.recorder.Eventf(machine, corev1.EventTypeWarning, "JoinClusterTimeoutMachineError", "machine didn't join cluster within expeted timeframe of %s, deleting to trigger re-creation", c.joinClusterTimeout.String())
-			if err := c.machineClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
-				return fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
-					machine.Namespace, machine.Name, c.joinClusterTimeout.String(), err)
+		// Check if the machine is a potential candidate for triggering deletion
+		if c.joinClusterTimeout != nil && machine.OwnerReferences != nil {
+			if time.Since(machine.CreationTimestamp.Time) > *c.joinClusterTimeout {
+				if err := c.machineClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
+					return fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
+						machine.Namespace, machine.Name, c.joinClusterTimeout.String(), err)
+				}
+				return nil
 			}
+			// Recheck on the machine soonish, because if it never joins no informer triggers
+			c.enqueueMachineAfter(machine, 5*time.Minute)
 		}
 	}
 	return nil

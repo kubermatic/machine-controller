@@ -15,6 +15,7 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	machinefake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
@@ -237,7 +238,9 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer),
 				recorder:           &record.FakeRecorder{},
 				machineClient:      machineClient,
-				joinClusterTimeout: test.joinTimeoutConfig}
+				joinClusterTimeout: test.joinTimeoutConfig,
+				workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
+			}
 
 			if err := controller.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
 				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
