@@ -675,7 +675,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 				}
 				return nil
 			}
-			// Recheck on the machine soonish, because if it never joins no informer triggers
+			// Re-enqueue the machine, because if it never joins the cluster nothing will trigger another sync on it once the timeout is reached
 			c.enqueueMachineAfter(machine, 5*time.Minute)
 		}
 	}
