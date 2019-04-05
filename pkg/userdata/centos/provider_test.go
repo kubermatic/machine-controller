@@ -2,7 +2,7 @@
 // UserData plugin for CentOS.
 //
 
-package coreos
+package centos
 
 import (
 	"flag"
@@ -141,7 +141,7 @@ func TestUserDataGeneration(t *testing.T) {
 	kubeconfig := &clientcmdapi.Config{
 		Clusters: map[string]*clientcmdapi.Cluster{
 			"": {
-				Server:                   "https://server:443",
+				Server: "https://server:443",
 				CertificateAuthorityData: []byte(pemCertificate),
 			},
 		},

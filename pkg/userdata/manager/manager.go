@@ -9,7 +9,6 @@ package manager
 import (
 	"errors"
 	"flag"
-	"sync"
 
 	"github.com/golang/glog"
 
@@ -17,71 +16,60 @@ import (
 )
 
 var (
+	// ErrLocatingPlugins is returned when a new manager cannot locate
+	// the plugins for the supported operating systems.
+	ErrLocatingPlugins = errors.New("one or more user data plugins not found")
+
 	// ErrPluginNotFound describes an invalid operating system for
 	// a user data plugin. Here directory has to be checked if
 	// correct ones are installed.
 	ErrPluginNotFound = errors.New("no user data plugin for the given operating system found")
-)
 
-var (
-	// mu avoids race conditions for the global manager.
-	mu sync.Mutex
-
-	// debug contains the debug flag, default is false.
-	debug bool
-
-	// plugins contains the registered plugins.
-	plugins map[providerconfig.OperatingSystem]*Plugin
-)
-
-// init  checks the plugin debug flag.
-func init() {
-	flag.BoolVar(&debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
-
-	loadPlugins()
-}
-
-// ForOS returns the plugin for the given operating system.
-func ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	if plugins == nil {
-		loadPlugins()
-	}
-
-	var found bool
-	if p, found = plugins[os]; !found {
-		return nil, ErrPluginNotFound
-	}
-
-	return p, nil
-}
-
-// Supports answers if the userdata manager supports the
-func Supports(os providerconfig.OperatingSystem) bool {
-	mu.Lock()
-	defer mu.Unlock()
-
-	_, found := plugins[os]
-
-	return found
-}
-
-// loadPlugins lazily loads the plugins on initial usage.
-func loadPlugins() {
-	plugins = make(map[providerconfig.OperatingSystem]*Plugin)
-
-	for _, os := range []providerconfig.OperatingSystem{
+	// supportedOS contains a list of operating systems the machine
+	// controller supports.
+	supportedOS = []providerconfig.OperatingSystem{
 		providerconfig.OperatingSystemCentOS,
 		providerconfig.OperatingSystemCoreos,
 		providerconfig.OperatingSystemUbuntu,
-	} {
-		plugin, err := newPlugin(os, debug)
+	}
+)
+
+// Manager inits and manages the userdata plugins.
+type Manager struct {
+	debug   bool
+	plugins map[providerconfig.OperatingSystem]*Plugin
+}
+
+// New returns an initialised plugin manager.
+func New() (*Manager, error) {
+	m := &Manager{
+		plugins: make(map[providerconfig.OperatingSystem]*Plugin),
+	}
+	flag.BoolVar(&m.debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
+	m.locatePlugins()
+	if len(m.plugins) < len(supportedOS) {
+		return nil, ErrLocatingPlugins
+	}
+	return m, nil
+}
+
+// ForOS returns the plugin for the given operating system.
+func (m *Manager) ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
+	var found bool
+	if p, found = m.plugins[os]; !found {
+		return nil, ErrPluginNotFound
+	}
+	return p, nil
+}
+
+// locatePlugins tries to find the plugins and inits their wrapper.
+func (m *Manager) locatePlugins() {
+	for _, os := range supportedOS {
+		plugin, err := newPlugin(os, m.debug)
 		if err != nil {
 			glog.Errorf("cannot use plugin '%v': %v", os, err)
 			continue
 		}
-		plugins[os] = plugin
+		m.plugins[os] = plugin
 	}
 }

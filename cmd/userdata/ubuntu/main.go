@@ -10,6 +10,7 @@ import (
 	"github.com/golang/glog"
 
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
+	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 )
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	// Instantiate provider and start plugin.
-	var provider = &Provider{}
+	var provider = &ubuntu.Provider{}
 	var p = userdataplugin.New(provider, debug)
 
 	if err := p.Run(); err != nil {

@@ -78,7 +78,7 @@ func (p Provider) UserData(
   data := struct {
     MachineSpec      clusterv1alpha1.MachineSpec
     ProviderSpec     *providerconfig.Config
-    OSConfig         *ubuntu.Config
+    OSConfig         *Config
     CloudProvider    string
     CloudConfig      string
     ClusterDNSIPs    []net.IP

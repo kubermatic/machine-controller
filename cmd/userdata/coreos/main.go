@@ -10,6 +10,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
+	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
@@ -21,7 +22,7 @@ func main() {
 	flag.Parse()
 
 	// Instantiate provider and start plugin.
-	var provider = &Provider{}
+	var provider = &coreos.Provider{}
 	var p = userdataplugin.New(convert.NewIgnition(provider), debug)
 
 	if err := p.Run(); err != nil {

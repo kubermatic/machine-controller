@@ -92,6 +92,7 @@ type Controller struct {
 	kubeconfigProvider KubeconfigProvider
 
 	machineCreateDeleteData *cloud.MachineCreateDeleteData
+	userDataManager         *userdatamanager.Manager
 
 	joinClusterTimeout *time.Duration
 
@@ -166,6 +167,12 @@ func NewMachineController(
 		Updater:  controller.updateMachine,
 		PVLister: pvLister,
 	}
+
+	m, err := userdatamanager.New()
+	if err != nil {
+		return nil, err
+	}
+	controller.userDataManager = m
 
 	machineInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueMachine,
@@ -399,7 +406,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Step 3: Essentially creates an instance for the given machine.
-	userdataPlugin, err := userdatamanager.ForOS(providerConfig.OperatingSystem)
+	userdataPlugin, err := c.userDataManager.ForOS(providerConfig.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("failed to userdata provider for '%s': %v", providerConfig.OperatingSystem, err)
 	}

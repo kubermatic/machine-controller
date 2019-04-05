@@ -125,12 +125,16 @@ func (p *Plugin) findPlugin(name string) error {
 	for _, dir := range dirs {
 		command := dir + string(os.PathSeparator) + filename
 		glog.Infof("checking '%s'", command)
-		_, err := os.Stat(command)
+		fi, err := os.Stat(command)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
 			return fmt.Errorf("error when looking for %q: %v", command, err)
+		}
+		if fi.IsDir() || (fi.Mode()&0111 == 0) {
+			glog.Infof("found '%s', but is no executable", command)
+			continue
 		}
 		p.command = command
 		glog.Infof("found '%s'", command)

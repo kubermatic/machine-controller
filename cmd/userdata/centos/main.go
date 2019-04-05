@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
@@ -20,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	// Instantiate provider and start plugin.
-	var provider = &Provider{}
+	var provider = &centos.Provider{}
 	var p = userdataplugin.New(provider, debug)
 
 	if err := p.Run(); err != nil {

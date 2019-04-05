@@ -77,7 +77,7 @@ func (p Provider) UserData(
 	data := struct {
 		MachineSpec      clusterv1alpha1.MachineSpec
 		ProviderSpec     *providerconfig.Config
-		OSConfig         *centos.Config
+		OSConfig         *Config
 		CloudProvider    string
 		CloudConfig      string
 		KubeletVersion   string
