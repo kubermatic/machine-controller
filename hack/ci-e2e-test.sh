@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -o monitor
 
 function cleanup {
     set +e

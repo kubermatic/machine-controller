@@ -666,15 +666,29 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		}
 	} else {
 		// If the machine has an owner Ref and is older than 10 Minutes, delete it to have it re-created by the MachineSet controller
-		if machine.OwnerReferences != nil && c.joinClusterTimeout != nil && time.Since(machine.CreationTimestamp.Time) > *c.joinClusterTimeout {
-			c.recorder.Eventf(machine, corev1.EventTypeWarning, "JoinClusterTimeoutMachineError", "machine didn't join cluster within expeted timeframe of %s, deleting to trigger re-creation", c.joinClusterTimeout.String())
-			if err := c.machineClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
-				return fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
-					machine.Namespace, machine.Name, c.joinClusterTimeout.String(), err)
+		// Check if the machine is a potential candidate for triggering deletion
+		if c.joinClusterTimeout != nil && ownerReferencesHasMachineSetKind(machine.OwnerReferences) {
+			if time.Since(machine.CreationTimestamp.Time) > *c.joinClusterTimeout {
+				if err := c.machineClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
+					return fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
+						machine.Namespace, machine.Name, c.joinClusterTimeout.String(), err)
+				}
+				return nil
 			}
+			// Re-enqueue the machine, because if it never joins the cluster nothing will trigger another sync on it once the timeout is reached
+			c.enqueueMachineAfter(machine, 5*time.Minute)
 		}
 	}
 	return nil
+}
+
+func ownerReferencesHasMachineSetKind(ownerReferences []metav1.OwnerReference) bool {
+	for _, ownerReference := range ownerReferences {
+		if ownerReference.Kind == "MachineSet" {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, machine *clusterv1alpha1.Machine) error {

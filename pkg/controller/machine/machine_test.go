@@ -15,6 +15,7 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	machinefake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
@@ -163,6 +164,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 		name              string
 		creationTimestamp metav1.Time
 		hasNode           bool
+		ownerReferences   []metav1.OwnerReference
 		hasOwner          bool
 		getsDeleted       bool
 		joinTimeoutConfig *time.Duration
@@ -171,7 +173,6 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			name:              "machine with node does not get deleted",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
 			hasNode:           true,
-			hasOwner:          false,
 			getsDeleted:       false,
 			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
@@ -179,7 +180,6 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			name:              "machine without owner ref does not get deleted",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
 			hasNode:           false,
-			hasOwner:          false,
 			getsDeleted:       false,
 			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
@@ -187,6 +187,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			name:              "machine younger than joinClusterTimeout does not get deleted",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-9 * time.Minute)},
 			hasNode:           false,
+			ownerReferences:   []metav1.OwnerReference{{Name: "owner", Kind: "MachineSet"}},
 			hasOwner:          true,
 			getsDeleted:       false,
 			joinTimeoutConfig: durationPtr(10 * time.Minute),
@@ -195,15 +196,23 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			name:              "machine older than joinClusterTimout gets deleted",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
 			hasNode:           false,
-			hasOwner:          true,
+			ownerReferences:   []metav1.OwnerReference{{Name: "owner", Kind: "MachineSet"}},
 			getsDeleted:       true,
+			joinTimeoutConfig: durationPtr(10 * time.Minute),
+		},
+		{
+			name:              "machine older than joinClusterTimout doesnt get deletet when ownerReference.Kind != MachineSet",
+			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
+			hasNode:           false,
+			ownerReferences:   []metav1.OwnerReference{{Name: "owner", Kind: "Cat"}},
+			getsDeleted:       false,
 			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
 		{
 			name:              "nil joinTimeoutConfig results in no deletions",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
 			hasNode:           false,
-			hasOwner:          true,
+			ownerReferences:   []metav1.OwnerReference{{Name: "owner", Kind: "MachineSet"}},
 			getsDeleted:       false,
 			joinTimeoutConfig: nil,
 		},
@@ -212,10 +221,9 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			machine := &clusterv1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{CreationTimestamp: test.creationTimestamp}}
-			if test.hasOwner {
-				machine.OwnerReferences = append(machine.OwnerReferences, metav1.OwnerReference{Name: "ms"})
-			}
+				ObjectMeta: metav1.ObjectMeta{
+					CreationTimestamp: test.creationTimestamp,
+					OwnerReferences:   test.ownerReferences}}
 
 			node := &corev1.Node{}
 			instance := &fakeInstance{}
@@ -237,7 +245,9 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer),
 				recorder:           &record.FakeRecorder{},
 				machineClient:      machineClient,
-				joinClusterTimeout: test.joinTimeoutConfig}
+				joinClusterTimeout: test.joinTimeoutConfig,
+				workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
+			}
 
 			if err := controller.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
 				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
