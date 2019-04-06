@@ -42,7 +42,7 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 
 lint:
 	./hack/verify-type-revision-annotation-const.sh
-	golangci-lint run
+	golangci-lint run -v
 
 docker-image: machine-controller webhook
 	docker build -t $(IMAGE_NAME) .
