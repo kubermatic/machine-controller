@@ -97,7 +97,7 @@ func (p *Plugin) UserData(
 // findPlugin tries to find the executable of the plugin.
 func (p *Plugin) findPlugin(name string) error {
 	filename := pluginPrefix + name
-	glog.Infof("looking for plugin '%s'", filename)
+	glog.Infof("looking for plugin %q", filename)
 	// Create list to search in.
 	var dirs []string
 	envDir := os.Getenv(plugin.EnvPluginDir)
@@ -125,7 +125,7 @@ func (p *Plugin) findPlugin(name string) error {
 	// Now take a look.
 	for _, dir := range dirs {
 		command := dir + string(os.PathSeparator) + filename
-		glog.Infof("checking '%s'", command)
+		glog.V(3).Infof("checking %q", command)
 		fi, err := os.Stat(command)
 		if err != nil {
 			if os.IsNotExist(err) {
