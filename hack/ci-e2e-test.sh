@@ -34,6 +34,11 @@ mv kubectl /usr/local/bin
 echo "Building machine-controller and webhook"
 make machine-controller webhook
 
+# Copy individual plugins with success control.
+echo "Copying machine-controller plugins"
+cp machine-controller-userdata-* /usr/local/bin
+ls -l /usr/local/bin
+
 # Generate ssh keypair
 echo "Generating ssh keypair"
 chmod 0700 $HOME/.ssh

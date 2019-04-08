@@ -6,15 +6,13 @@ import (
 
 	"github.com/golang/glog"
 
+	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+
 	clusterv1alpha1conversions "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata"
-
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
-
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 // BypassSpecNoModificationRequirementAnnotation is used to bypass the "no machine.spec modification" allowed
@@ -92,8 +90,8 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}
 
-	// Verify operating system
-	if _, err := userdata.ForOS(providerConfig.OperatingSystem); err != nil {
+	// Verify operating system.
+	if _, err := ad.userDataManager.ForOS(providerConfig.OperatingSystem); err != nil {
 		return fmt.Errorf("failed to get OS '%s': %v", providerConfig.OperatingSystem, err)
 	}
 
