@@ -174,7 +174,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 
 	cfg.preemptible, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve preemptive: %v", err)
+		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
 	}
 
 	return cfg, nil

@@ -54,6 +54,8 @@ spec:
             # in case if both empty — default network will be used
             network: "my-cool-network"
             subnetwork: "my-cool-subnetwork"
+            # See https://cloud.google.com/compute/docs/instances/preemptible
+            preemptible: false
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
@@ -63,4 +65,4 @@ spec:
           operatingSystemSpec:
             disableAutoUpdate: true
       versions:
-        kubelet: 1.9.6
+        kubelet: 1.13.5
