@@ -274,15 +274,6 @@ storage:
           [Service]
           Environment=DOCKER_OPTS=--storage-driver=overlay2
 
-    - path: /etc/systemd/system/kubelet.service.d/11-cgroups.conf
-      filesystem: root
-      mode: 0644
-      contents:
-        inline: |
-          [Service]
-          CPUAccounting=true
-          MemoryAccounting=true
-
     - path: /opt/bin/download.sh
       filesystem: root
       mode: 0755
