@@ -58,6 +58,7 @@ type cloudProviderSpec struct {
 	DiskType       providerconfig.ConfigVarString `json:"diskType"`
 	Network        providerconfig.ConfigVarString `json:"network"`
 	Subnetwork     providerconfig.ConfigVarString `json:"subnetwork"`
+	Preemptible    providerconfig.ConfigVarBool   `json:"preemptible"`
 	Labels         map[string]string              `json:"labels"`
 }
 
@@ -115,6 +116,7 @@ type config struct {
 	diskType       string
 	network        string
 	subnetwork     string
+	preemptible    bool
 	labels         map[string]string
 	jwtConfig      *jwt.Config
 	providerConfig *providerconfig.Config
@@ -168,6 +170,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.subnetwork, err = resolver.GetConfigVarStringValue(cpSpec.Subnetwork)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve subnetwork: %v", err)
+	}
+
+	cfg.preemptible, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
 	}
 
 	return cfg, nil

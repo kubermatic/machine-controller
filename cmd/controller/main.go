@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -68,15 +69,16 @@ import (
 )
 
 var (
-	masterURL             string
-	kubeconfig            string
-	clusterDNSIPs         string
-	listenAddress         string
-	profiling             bool
-	name                  string
-	joinClusterTimeout    string
-	workerCount           int
-	externalCloudProvider bool
+	masterURL                        string
+	kubeconfig                       string
+	clusterDNSIPs                    string
+	listenAddress                    string
+	profiling                        bool
+	name                             string
+	joinClusterTimeout               string
+	workerCount                      int
+	externalCloudProvider            bool
+	bootstrapTokenServiceAccountName string
 )
 
 const (
@@ -133,6 +135,10 @@ type controllerRunOptions struct {
 	// name of the controller. When set the controller will only process machines with the label "machine.k8s.io/controller": name
 	name string
 
+	// Name of the ServiceAccount from which the bootstrap token secret will be fetched. A bootstrap token will be created
+	// if this is nil
+	bootstrapTokenServiceAccountName *types.NamespacedName
+
 	// parentCtx carries a cancellation signal
 	parentCtx context.Context
 
@@ -171,6 +177,7 @@ func main() {
 	flag.StringVar(&listenAddress, "internal-listen-address", "127.0.0.1:8085", "The address on which the http server will listen on. The server exposes metrics on /metrics, liveness check on /live and readiness check on /ready")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
 	flag.StringVar(&joinClusterTimeout, "join-cluster-timeout", "", "when set, machines that have an owner and do not join the cluster within the configured duration will be deleted, so the owner re-creats them")
+	flag.StringVar(&bootstrapTokenServiceAccountName, "bootstrap-token-service-account-name", "", "When set use the service account token from this SA as bootstrap token instead of creating a temporary one. Passed in namespace/name format")
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
 	flag.BoolVar(&externalCloudProvider, "external-cloud-provider", false, "when set, kubelets will receive --cloud-provider=external flag")
 
@@ -264,6 +271,14 @@ func main() {
 	}
 	if parsedJoinClusterTimeout != nil {
 		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
+	}
+
+	if bootstrapTokenServiceAccountName != "" {
+		flagParts := strings.Split(bootstrapTokenServiceAccountName, "/")
+		if flagPartsLen := len(flagParts); flagPartsLen != 2 {
+			glog.Fatalf("Splitting the bootstrap-token-service-account-name flag value in '/' returned %d parts, expected exactly two", flagPartsLen)
+		}
+		runOptions.bootstrapTokenServiceAccountName = &types.NamespacedName{Namespace: flagParts[0], Name: flagParts[1]}
 	}
 
 	kubeInformerFactory.Start(stopCh)
@@ -434,6 +449,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.joinClusterTimeout,
 			runOptions.externalCloudProvider,
 			runOptions.name,
+			runOptions.bootstrapTokenServiceAccountName,
 		)
 		if err != nil {
 			glog.Errorf("failed to create machine-controller: %v", err)

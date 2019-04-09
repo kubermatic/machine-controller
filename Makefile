@@ -33,6 +33,18 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 		-ldflags '-s -w' \
 		-o machine-controller \
 		github.com/kubermatic/machine-controller/cmd/controller
+	go build -v \
+		-ldflags '-s -w' \
+		-o machine-controller-userdata-centos \
+		github.com/kubermatic/machine-controller/cmd/userdata/centos
+	go build -v \
+		-ldflags '-s -w' \
+		-o machine-controller-userdata-coreos \
+		github.com/kubermatic/machine-controller/cmd/userdata/coreos
+	go build -v \
+		-ldflags '-s -w' \
+		-o machine-controller-userdata-ubuntu \
+		github.com/kubermatic/machine-controller/cmd/userdata/ubuntu
 
 webhook: $(shell find cmd pkg -name '*.go') vendor
 	go build -v \
@@ -42,7 +54,7 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 
 lint:
 	./hack/verify-type-revision-annotation-const.sh
-	golangci-lint run
+	golangci-lint run -v
 
 docker-image: machine-controller webhook
 	docker build -t $(IMAGE_NAME) .

@@ -4,14 +4,14 @@
 
 ### Cloud provider
 
-|   | Ubuntu | Container Linux |
+|   | Ubuntu | Container Linux | CentOS |
 |---|---|---|
-| AWS | ✓ | ✓ |
-| Openstack | ✓ | ✓  |
-| Digitalocean  | ✓ | ✓ |
-| Google Cloud Platform | ✓ | ✓ |
-| Hetzner | ✓ | x |
-| Linode | ✓ | x |
+| AWS | ✓ | ✓ | ✓ |
+| Openstack | ✓ | ✓ | ✓ |
+| Digitalocean  | ✓ | ✓ | ✓ |
+| Google Cloud Platform | ✓ | ✓ | x |
+| Hetzner | ✓ | x | ✓ |
+| Linode | ✓ | x | x |
 
 ## Configuring a operating system
 
@@ -88,4 +88,35 @@ spec:
           operatingSystemSpec:
             # disable auto update
             disableAutoUpdate: true
+```
+
+### CentOS
+
+```yaml
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: machine1
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          ...
+          operatingSystem: "centos"
 ```

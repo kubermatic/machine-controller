@@ -1,3 +1,7 @@
+//
+// UserData plugin for Ubuntu.
+//
+
 package ubuntu
 
 import (
@@ -7,22 +11,22 @@ import (
 	"net"
 	"testing"
 
-	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-
-	testhelper "github.com/kubermatic/machine-controller/pkg/test"
-
 	"github.com/Masterminds/semver"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	testhelper "github.com/kubermatic/machine-controller/pkg/test"
+	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 )
 
 var (
+	update = flag.Bool("update", false, "update .golden files")
+
 	pemCertificate = `-----BEGIN CERTIFICATE-----
 MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
 BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
@@ -50,8 +54,19 @@ sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
 kPe6XoSbiLm/kxk32T0=
 -----END CERTIFICATE-----`
 
-	kubeconfig = &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{"": {Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": {Token: "my-token"}}}
+	kubeconfig = &clientcmdapi.Config{
+		Clusters: map[string]*clientcmdapi.Cluster{
+			"": {
+				Server:                   "https://server:443",
+				CertificateAuthorityData: []byte(pemCertificate),
+			},
+		},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{
+			"": {
+				Token: "my-token",
+			},
+		},
+	}
 )
 
 const (
@@ -68,9 +83,19 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 	return p.config, p.name, p.err
 }
 
-var update = flag.Bool("update", false, "update .golden files")
+// userDataTestCase contains the data for a table-driven test.
+type userDataTestCase struct {
+	name                  string
+	spec                  clusterv1alpha1.MachineSpec
+	ccProvider            cloud.ConfigProvider
+	osConfig              *Config
+	providerSpec          *providerconfig.Config
+	DNSIPs                []net.IP
+	kubernetesCACert      string
+	externalCloudProvider bool
+}
 
-func getSimpleVersionTests() []userDataTestCase {
+func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
 		semver.MustParse("v1.9.10"),
 		semver.MustParse("v1.10.10"),
@@ -87,36 +112,35 @@ func getSimpleVersionTests() []userDataTestCase {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: v.String(),
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: false},
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		})
 	}
 
 	return tests
 }
 
-type userDataTestCase struct {
-	name             string
-	spec             clusterv1alpha1.MachineSpec
-	ccProvider       cloud.ConfigProvider
-	osConfig         *Config
-	providerSpec     *providerconfig.Config
-	DNSIPs           []net.IP
-	kubernetesCACert string
-	external         bool
-}
-
-func TestProvider_UserData(t *testing.T) {
+// TestUserDataGeneration runs the data generation for different
+// environments.
+func TestUserDataGeneration(t *testing.T) {
 	t.Parallel()
 
-	tests := getSimpleVersionTests()
+	tests := simpleVersionTests()
 	tests = append(tests, []userDataTestCase{
 		{
 			name: "dist-upgrade-on-boot",
@@ -125,15 +149,23 @@ func TestProvider_UserData(t *testing.T) {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: defaultVersion,
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: true},
+			osConfig: &Config{
+				DistUpgradeOnBoot: true,
+			},
 		},
 		{
 			name: "multiple-dns-servers",
@@ -142,15 +174,23 @@ func TestProvider_UserData(t *testing.T) {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: defaultVersion,
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: false},
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		},
 		{
 			name: "kubelet-version-without-v-prefix",
@@ -159,15 +199,23 @@ func TestProvider_UserData(t *testing.T) {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.11.3",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: false},
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		},
 		{
 			name: "multiple-ssh-keys",
@@ -176,15 +224,23 @@ func TestProvider_UserData(t *testing.T) {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD", "ssh-rsa EEEFFF"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.11.3",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "", config: "", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: false},
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		},
 		{
 			name: "openstack",
@@ -193,15 +249,23 @@ func TestProvider_UserData(t *testing.T) {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: defaultVersion,
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: false},
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		},
 		{
 			name: "openstack-overwrite-cloud-config",
@@ -211,15 +275,23 @@ func TestProvider_UserData(t *testing.T) {
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "v1.11.3",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: false},
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		},
 		{
 			name: "vsphere",
@@ -229,42 +301,60 @@ func TestProvider_UserData(t *testing.T) {
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "v1.11.3",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "vsphere", config: "{vsphere-config:true}", err: nil},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
 			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
 			kubernetesCACert: "CACert",
-			osConfig:         &Config{DistUpgradeOnBoot: false},
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		},
 	}...)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			spec := test.spec
 			rProviderSpec := test.providerSpec
 			osConfigByte, err := json.Marshal(test.osConfig)
 			if err != nil {
 				t.Fatal(err)
 			}
-			rProviderSpec.OperatingSystemSpec = runtime.RawExtension{Raw: osConfigByte}
+			rProviderSpec.OperatingSystemSpec = runtime.RawExtension{
+				Raw: osConfigByte,
+			}
 
 			providerSpecRaw, err := json.Marshal(rProviderSpec)
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerSpecRaw}}
-			p := Provider{}
+			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{
+				Value: &runtime.RawExtension{
+					Raw: providerSpecRaw,
+				},
+			}
+			provider := Provider{}
 
-			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs, test.external)
+			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(spec)
+			if err != nil {
+				t.Fatalf("failed to get cloud config: %v", err)
+			}
+
+			s, err := provider.UserData(spec, kubeconfig, cloudConfig, cloudProviderName, test.DNSIPs, test.externalCloudProvider)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			//Check if we can gzip it
+			// Check if we can gzip it.
 			if _, err := convert.GzipString(s); err != nil {
 				t.Fatal(err)
 			}
@@ -274,6 +364,7 @@ func TestProvider_UserData(t *testing.T) {
 	}
 }
 
+// stringPtr returns pointer to given string.
 func stringPtr(str string) *string {
 	return &str
 }

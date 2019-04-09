@@ -71,6 +71,17 @@ func TestCloudConfigToString(t *testing.T) {
 				Version: "1.12.0",
 			},
 		},
+		{
+			name: "bs-defaulting-config",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					AuthURL: "https://127.0.0.1:8443",
+				},
+				BlockStorage: BlockStorageOpts{},
+				LoadBalancer: LoadBalancerOpts{},
+				Version:      "1.10.0",
+			},
+		},
 	}
 
 	for _, test := range tests {

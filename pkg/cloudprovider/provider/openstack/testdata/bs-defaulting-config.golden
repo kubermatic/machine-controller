@@ -1,0 +1,19 @@
+[Global]
+auth-url    = "https://127.0.0.1:8443"
+username    = ""
+password    = ""
+tenant-name = ""
+domain-name = ""
+region      = ""
+
+[LoadBalancer]
+lb-version = "v2"
+subnet-id = ""
+floating-network-id = ""
+lb-method = "ROUND_ROBIN"
+lb-provider = ""
+
+[BlockStorage]
+ignore-volume-az  = false
+trust-device-path = false
+bs-version        = "auto"

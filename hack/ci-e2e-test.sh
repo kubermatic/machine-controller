@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -o monitor
 
 function cleanup {
     set +e
@@ -32,6 +33,11 @@ mv kubectl /usr/local/bin
 # Build binaries
 echo "Building machine-controller and webhook"
 make machine-controller webhook
+
+# Copy individual plugins with success control.
+echo "Copying machine-controller plugins"
+cp machine-controller-userdata-* /usr/local/bin
+ls -l /usr/local/bin
 
 # Generate ssh keypair
 echo "Generating ssh keypair"

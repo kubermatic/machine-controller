@@ -1,3 +1,7 @@
+//
+// UserData plugin for CentOS.
+//
+
 package centos
 
 import (
@@ -5,19 +9,19 @@ import (
 	"net"
 	"testing"
 
-	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
-
-	"k8s.io/apimachinery/pkg/runtime"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 )
 
-var pemCertificate = `-----BEGIN CERTIFICATE-----
+var (
+	update = flag.Bool("update", false, "update .golden files")
+
+	pemCertificate = `-----BEGIN CERTIFICATE-----
 MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
 BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
 A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
@@ -43,7 +47,9 @@ UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
 sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
 kPe6XoSbiLm/kxk32T0=
 -----END CERTIFICATE-----`
+)
 
+// fakeCloudConfigProvider simulates cloud config provider for test.
 type fakeCloudConfigProvider struct {
 	config string
 	name   string
@@ -54,18 +60,21 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 	return p.config, p.name, p.err
 }
 
-var update = flag.Bool("update", false, "update .golden files")
+// userDataTestCase contains the data for a table-driven test.
+type userDataTestCase struct {
+	name                  string
+	spec                  clusterv1alpha1.MachineSpec
+	clusterDNSIPs         []net.IP
+	cloudProviderName     *string
+	externalCloudProvider bool
+}
 
+// TestUserDataGeneration runs the data generation for different
+// environments.
 func TestUserDataGeneration(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name              string
-		spec              clusterv1alpha1.MachineSpec
-		clusterDNSIPs     []net.IP
-		cloudProviderName *string
-		external          bool
-	}{
+	tests := []userDataTestCase{
 		{
 			name: "kubelet-v1.9-aws",
 			spec: clusterv1alpha1.MachineSpec{
@@ -110,7 +119,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.12.0",
 				},
 			},
-			external: true,
+			externalCloudProvider: true,
 		},
 		{
 			name: "kubelet-v1.12-vsphere",
@@ -124,29 +133,52 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 	}
 
-	defaultCloudProvider := &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil}
-	kubeconfig := &clientcmdapi.Config{Clusters: map[string]*clientcmdapi.Cluster{
-		"": {Server: "https://server:443", CertificateAuthorityData: []byte(pemCertificate)}},
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{"": {Token: "my-token"}}}
+	defaultCloudProvider := &fakeCloudConfigProvider{
+		name:   "aws",
+		config: "{aws-config:true}",
+		err:    nil,
+	}
+	kubeconfig := &clientcmdapi.Config{
+		Clusters: map[string]*clientcmdapi.Cluster{
+			"": {
+				Server:                   "https://server:443",
+				CertificateAuthorityData: []byte(pemCertificate),
+			},
+		},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{
+			"": {
+				Token: "my-token",
+			},
+		},
+	}
 	provider := Provider{}
 
 	for _, test := range tests {
 		emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
-			Value: &runtime.RawExtension{}}
+			Value: &runtime.RawExtension{},
+		}
 		test.spec.ProviderSpec = emtpyProviderSpec
 		var cloudProvider *fakeCloudConfigProvider
 		if test.cloudProviderName != nil {
-			cloudProvider = &fakeCloudConfigProvider{name: *test.cloudProviderName, config: "{config:true}", err: nil}
+			cloudProvider = &fakeCloudConfigProvider{
+				name:   *test.cloudProviderName,
+				config: "{config:true}",
+				err:    nil,
+			}
 		} else {
 			cloudProvider = defaultCloudProvider
 		}
+		cloudConfig, cloudProviderName, err := cloudProvider.GetCloudConfig(test.spec)
+		if err != nil {
+			t.Fatalf("failed to get cloud config: %v", err)
+		}
 
-		s, err := provider.UserData(test.spec, kubeconfig, cloudProvider, test.clusterDNSIPs, test.external)
+		s, err := provider.UserData(test.spec, kubeconfig, cloudConfig, cloudProviderName, test.clusterDNSIPs, test.externalCloudProvider)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}
 
-		//Check if we can gzip it
+		// Check if we can gzip it.
 		if _, err := convert.GzipString(s); err != nil {
 			t.Fatal(err)
 		}
@@ -155,6 +187,7 @@ func TestUserDataGeneration(t *testing.T) {
 	}
 }
 
+// stringPtr returns pointer to given string.
 func stringPtr(a string) *string {
 	return &a
 }

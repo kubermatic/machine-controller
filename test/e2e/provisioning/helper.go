@@ -17,9 +17,10 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.11.7"),
-		semver.MustParse("v1.12.5"),
-		semver.MustParse("v1.13.3"),
+		semver.MustParse("v1.11.9"),
+		semver.MustParse("v1.12.7"),
+		semver.MustParse("v1.13.5"),
+		semver.MustParse("v1.14.0"),
 	}
 
 	operatingSystems = []providerconfig.OperatingSystem{
@@ -29,9 +30,9 @@ var (
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfig.OperatingSystemUbuntu): "Ubuntu 18.04 LTS - 2018-08-10",
-		string(providerconfig.OperatingSystemCoreos): "coreos",
-		string(providerconfig.OperatingSystemCentOS): "centos",
+		string(providerconfig.OperatingSystemUbuntu): "machine-controller-e2e-ubuntu",
+		string(providerconfig.OperatingSystemCoreos): "machine-controller-e2e-coreos",
+		string(providerconfig.OperatingSystemCentOS): "machine-controller-e2e-centos",
 	}
 )
 

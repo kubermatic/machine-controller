@@ -1,3 +1,7 @@
+//
+// UserData plugin for CentOS.
+//
+
 package coreos
 
 import (
@@ -8,20 +12,21 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-
 	"github.com/pmezard/go-difflib/difflib"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 )
 
 var (
+	update = flag.Bool("update", false, "update .golden files")
+
 	pemCertificate = `-----BEGIN CERTIFICATE-----
 MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
 BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
@@ -64,6 +69,7 @@ kPe6XoSbiLm/kxk32T0=
 	}
 )
 
+// fakeCloudConfigProvider simulates cloud config provider for test.
 type fakeCloudConfigProvider struct {
 	config string
 	name   string
@@ -74,20 +80,23 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 	return p.config, p.name, p.err
 }
 
-var update = flag.Bool("update", false, "update .golden files")
+// userDataTestCase contains the data for a table-driven test.
+type userDataTestCase struct {
+	name                  string
+	spec                  clusterv1alpha1.MachineSpec
+	ccProvider            cloud.ConfigProvider
+	osConfig              *Config
+	providerSpec          *providerconfig.Config
+	DNSIPs                []net.IP
+	externalCloudProvider bool
+}
 
-func TestProvider_UserData(t *testing.T) {
+// TestUserDataGeneration runs the data generation for different
+// environments.
+func TestUserDataGeneration(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name             string
-		spec             clusterv1alpha1.MachineSpec
-		ccProvider       cloud.ConfigProvider
-		osConfig         *Config
-		providerSpec     *providerconfig.Config
-		DNSIPs           []net.IP
-		kubernetesCACert string
-		external         bool
-	}{
+
+	tests := []userDataTestCase{
 		{
 			name: "v1.9.2-disable-auto-update-aws",
 			providerSpec: &providerconfig.Config{
@@ -100,10 +109,15 @@ func TestProvider_UserData(t *testing.T) {
 					Kubelet: "1.9.2",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig:         &Config{DisableAutoUpdate: true},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
 		},
 		{
 			name: "v1.9.2-disable-auto-update-aws-external",
@@ -117,11 +131,16 @@ func TestProvider_UserData(t *testing.T) {
 					Kubelet: "1.9.2",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "aws", config: "{aws-config:true}", err: nil},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig:         &Config{DisableAutoUpdate: true},
-			external:         true,
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
+			externalCloudProvider: true,
 		},
 		{
 			name: "v1.10.3-auto-update-openstack-multiple-dns",
@@ -130,15 +149,22 @@ func TestProvider_UserData(t *testing.T) {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.10.3",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
-			kubernetesCACert: "CACert",
-			osConfig:         &Config{DisableAutoUpdate: false},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			osConfig: &Config{
+				DisableAutoUpdate: false,
+			},
 		},
 		{
 			name: "auto-update-openstack-kubelet-v-version-prefix",
@@ -147,15 +173,22 @@ func TestProvider_UserData(t *testing.T) {
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "v1.9.2",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "openstack", config: "{openstack-config:true}", err: nil},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig:         &Config{DisableAutoUpdate: false},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: false,
+			},
 		},
 		{
 			name: "v1.11.2-vsphere-static-ipconfig",
@@ -171,15 +204,22 @@ func TestProvider_UserData(t *testing.T) {
 				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.11.2",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "vsphere", config: "{vsphere-config:true}", err: nil},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig:         &Config{DisableAutoUpdate: true},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
 		},
 		{
 			name: "v1.12.0-vsphere-overwrite-cloudconfig",
@@ -201,10 +241,15 @@ func TestProvider_UserData(t *testing.T) {
 					Kubelet: "v1.12.0",
 				},
 			},
-			ccProvider:       &fakeCloudConfigProvider{name: "vsphere", config: "{vsphere-config:true}", err: nil},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig:         &Config{DisableAutoUpdate: true},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
 		},
 	}
 
@@ -216,21 +261,32 @@ func TestProvider_UserData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			rProviderSpec.OperatingSystemSpec = runtime.RawExtension{Raw: osConfigByte}
+			rProviderSpec.OperatingSystemSpec = runtime.RawExtension{
+				Raw: osConfigByte,
+			}
 
 			providerSpecRaw, err := json.Marshal(rProviderSpec)
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{Value: &runtime.RawExtension{Raw: providerSpecRaw}}
-			p := Provider{}
+			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{
+				Value: &runtime.RawExtension{
+					Raw: providerSpecRaw,
+				},
+			}
+			provider := Provider{}
 
-			s, err := p.UserData(spec, kubeconfig, test.ccProvider, test.DNSIPs, test.external)
+			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(spec)
+			if err != nil {
+				t.Fatalf("failed to get cloud config: %v", err)
+			}
+
+			s, err := provider.UserData(spec, kubeconfig, cloudConfig, cloudProviderName, test.DNSIPs, test.externalCloudProvider)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			// Check if we can convert it to ignition
+			// Check if we can convert it to ignition.
 			if _, err := convert.ToIgnition(s); err != nil {
 				t.Fatal(err)
 			}
@@ -265,6 +321,7 @@ func TestProvider_UserData(t *testing.T) {
 	}
 }
 
+// stringPtr returns pointer to given string.
 func stringPtr(str string) *string {
 	return &str
 }

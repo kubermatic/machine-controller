@@ -17,7 +17,7 @@ done
 
 if [[ "${1:-deploy_machine_controller}"  != "do-not-deploy-machine-controller" ]]; then
 rsync -avR  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../.././{Makefile,examples/machine-controller.yaml,machine-controller,Dockerfile,webhook} \
+    ../../.././{Makefile,examples/machine-controller.yaml,machine-controller,machine-controller-userdata-centos,machine-controller-userdata-coreos,machine-controller-userdata-ubuntu,Dockerfile,webhook} \
     root@$ADDR:/root/
 fi
 
@@ -50,8 +50,8 @@ if ! which kubelet; then
   deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
   apt-get update
-  apt-get install -y kubelet=1.13.5-00 kubeadm=1.13.5-00 kubectl=1.13.5-00
-  kubeadm init --kubernetes-version=v1.13.5 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
+  apt-get install -y kubelet=1.14.0-00 kubeadm=1.14.0-00 kubectl=1.14.0-00
+  kubeadm init --kubernetes-version=v1.14.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
   sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-scheduler.yaml
   sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-controller-manager.yaml
 fi

@@ -16,17 +16,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+
+	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 )
 
 type admissionData struct {
-	coreClient kubernetes.Interface
+	coreClient      kubernetes.Interface
+	userDataManager *userdatamanager.Manager
 }
 
 var jsonPatch = admissionv1beta1.PatchTypeJSONPatch
 
-func New(listenAddress string, coreClient kubernetes.Interface) *http.Server {
+func New(listenAddress string, coreClient kubernetes.Interface, um *userdatamanager.Manager) *http.Server {
 	m := http.NewServeMux()
-	ad := &admissionData{coreClient: coreClient}
+	ad := &admissionData{
+		coreClient:      coreClient,
+		userDataManager: um,
+	}
 	m.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))
 	m.HandleFunc("/machines", handleFuncFactory(ad.mutateMachines))
 	m.HandleFunc("/healthz", healthZHandler)
