@@ -214,6 +214,12 @@ write_files:
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
 
+- path: "/etc/systemd/system/kubelet.service.d/11-cgroups.conf"
+  content: |
+    [Service]
+    CPUAccounting=true
+    MemoryAccounting=true
+
 - path: "/etc/kubernetes/cloud-config"
   content: |
 {{ .CloudConfig | indent 4 }}
