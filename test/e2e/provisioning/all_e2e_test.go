@@ -26,6 +26,7 @@ const (
 	AzureManifest  = "./testdata/machinedeployment-azure.yaml"
 	GCEManifest    = "./testdata/machinedeployment-gce.yaml"
 	HZManifest     = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest = "./testdata/machinedeployment-packet.yaml"
 	LinodeManifest = "./testdata/machinedeployment-linode.yaml"
 	//	vs_manifest            = "./testdata/machinedeployment-vsphere.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
@@ -197,6 +198,33 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 	runScenarios(t, excludeSelector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
+}
+
+// TestPacketProvisioning - a test suite that exercises Packet provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestPacketProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	apiKey := os.Getenv("PACKET_API_KEY")
+	if len(apiKey) == 0 {
+		t.Fatal("unable to run the test suite, PACKET_API_KEY environment variable cannot be empty")
+	}
+
+	projectID := os.Getenv("PACKET_PROJECT_ID")
+	if len(projectID) == 0 {
+		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
+	}
+
+	// Packet supports all
+	excludeSelector := &scenarioSelector{}
+
+	// act
+	params := []string{
+		fmt.Sprintf("<< PACKET_API_KEY >>=%s", apiKey),
+		fmt.Sprintf("<< PACKET_PROJECT_ID >>=%s", projectID),
+	}
+	runScenarios(t, excludeSelector, params, PacketManifest, fmt.Sprintf("packet-%s", *testRunIdentifier))
 }
 
 // TestLinodeProvisioning - a test suite that exercises Linode provider

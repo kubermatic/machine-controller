@@ -14,6 +14,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/packet"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
@@ -48,6 +49,9 @@ var (
 		},
 		providerconfig.CloudProviderAzure: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
 			return azure.New(cvr)
+		},
+		providerconfig.CloudProviderPacket: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
+			return packet.New(cvr)
 		},
 		providerconfig.CloudProviderFake: func(cvr *providerconfig.ConfigVarResolver) cloud.Provider {
 			return fake.New(cvr)
