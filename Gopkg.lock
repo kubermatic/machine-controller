@@ -594,6 +594,13 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:acbfa5b756ccf1060157ab2d6d68111f0316cc77ecf372a6aedd3d0c3e6b21b4"
+  name = "github.com/packethost/packngo"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "a02c426e4888c0bb39c3abcf249c8d048e2c6e40"
+
+[[projects]]
   digest = "1:748946761cf99c8b73cef5a3c0ee3e040859dd713a20cece0d0e0dc04e6ceca7"
   name = "github.com/patrickmn/go-cache"
   packages = ["."]
@@ -1557,6 +1564,7 @@
     "github.com/linode/linodego",
     "github.com/mattbaird/jsonpatch",
     "github.com/oklog/run",
+    "github.com/packethost/packngo",
     "github.com/patrickmn/go-cache",
     "github.com/pborman/uuid",
     "github.com/pmezard/go-difflib/difflib",
