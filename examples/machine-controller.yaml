@@ -160,7 +160,7 @@ spec:
           command:
             - /usr/local/bin/machine-controller
             - -logtostderr
-            - -v=6
+            - -v=3
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -internal-listen-address=0.0.0.0:8085

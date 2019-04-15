@@ -27,7 +27,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	machineOriginal := machine.DeepCopy()
-	glog.V(4).Infof("Defaulting and validating machine %s/%s", machine.Namespace, machine.Name)
+	glog.V(3).Infof("Defaulting and validating machine %s/%s", machine.Namespace, machine.Name)
 
 	// Mutating .Spec is never allowed
 	// Only hidden exception: the machine-controller may set the .Spec.Name to .Metadata.Name

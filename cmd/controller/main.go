@@ -548,9 +548,9 @@ func readinessChecks(kubeconfigProvider machinecontroller.KubeconfigProvider) ma
 // createRecorder creates a new event recorder which is later used by the leader election
 // library to broadcast events
 func createRecorder(kubeClient *kubernetes.Clientset) record.EventRecorder {
-	glog.V(4).Info("creating event broadcaster")
+	glog.V(3).Info("creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.V(4).Infof)
+	eventBroadcaster.StartLogging(glog.V(3).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerName})
 }
