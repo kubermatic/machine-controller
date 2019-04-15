@@ -59,11 +59,11 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	}
 
 	if fakeCloudProviderSpec.PassValidation {
-		glog.V(4).Infof("succeeding validation as requested")
+		glog.V(3).Infof("succeeding validation as requested")
 		return nil
 	}
 
-	glog.V(4).Infof("failing validation as requested")
+	glog.V(3).Infof("failing validation as requested")
 	return fmt.Errorf("failing validation as requested")
 }
 

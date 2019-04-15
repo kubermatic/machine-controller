@@ -233,13 +233,13 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	}
 
 	if c.Region == "" {
-		glog.V(4).Infof("Trying to default region for machine '%s'...", spec.Name)
+		glog.V(3).Infof("Trying to default region for machine '%s'...", spec.Name)
 		regions, err := getRegions(client)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to get regions")
 		}
 		if len(regions) == 1 {
-			glog.V(4).Infof("Defaulted region for machine '%s' to '%s'", spec.Name, regions[0].ID)
+			glog.V(3).Infof("Defaulted region for machine '%s' to '%s'", spec.Name, regions[0].ID)
 			rawConfig.Region.Value = regions[0].ID
 		} else {
 			return spec, fmt.Errorf("could not default region because got '%v' results", len(regions))
@@ -247,25 +247,25 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	}
 
 	if c.AvailabilityZone == "" {
-		glog.V(4).Infof("Trying to default availability zone for machine '%s'...", spec.Name)
+		glog.V(3).Infof("Trying to default availability zone for machine '%s'...", spec.Name)
 		availabilityZones, err := getAvailabilityZones(client, c.Region)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to get availability zones")
 		}
 		if len(availabilityZones) == 1 {
-			glog.V(4).Infof("Defaulted availability zone for machine '%s' to '%s'", spec.Name, availabilityZones[0].ZoneName)
+			glog.V(3).Infof("Defaulted availability zone for machine '%s' to '%s'", spec.Name, availabilityZones[0].ZoneName)
 			rawConfig.AvailabilityZone.Value = availabilityZones[0].ZoneName
 		}
 	}
 
 	if c.Network == "" {
-		glog.V(4).Infof("Trying to default network for machine '%s'...", spec.Name)
+		glog.V(3).Infof("Trying to default network for machine '%s'...", spec.Name)
 		net, err := getDefaultNetwork(client, c.Region)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to default network")
 		}
 		if net != nil {
-			glog.V(4).Infof("Defaulted network for machine '%s' to '%s'", spec.Name, net.Name)
+			glog.V(3).Infof("Defaulted network for machine '%s' to '%s'", spec.Name, net.Name)
 			// Use the id as the name may not be unique
 			rawConfig.Network.Value = net.ID
 		}
@@ -286,7 +286,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			return spec, osErrorToTerminalError(err, "error defaulting subnet")
 		}
 		if subnet != nil {
-			glog.V(4).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
+			glog.V(3).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
 			rawConfig.Subnet.Value = *subnet
 		}
 	}

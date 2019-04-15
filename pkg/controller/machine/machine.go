@@ -139,7 +139,7 @@ func NewMachineController(
 		return nil, err
 	}
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.V(4).Infof)
+	eventBroadcaster.StartLogging(glog.V(3).Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 
 	if prometheusRegistry != nil {
@@ -397,7 +397,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	if listerMachine.Annotations[AnnotationMachineUninitialized] != "" {
-		glog.V(4).Infof("Ignoring machine %q because it has a non-emtpy %q annotation", listerMachine.Name, AnnotationMachineUninitialized)
+		glog.V(3).Infof("Ignoring machine %q because it has a non-emtpy %q annotation", listerMachine.Name, AnnotationMachineUninitialized)
 		return nil
 	}
 
@@ -441,7 +441,7 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
 		if kerrors.IsNotFound(err) {
-			glog.V(4).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
+			glog.V(3).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
 			_, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 				m.Status.NodeRef = nil
 			})
@@ -588,7 +588,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 
 		// case 2.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			glog.V(4).Infof("Validated machine spec of %s", machine.Name)
+			glog.V(3).Infof("Validated machine spec of %s", machine.Name)
 
 			kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
 			if err != nil {
@@ -613,7 +613,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 				return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprover")
 			}
 			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
-			glog.V(4).Infof("Created machine %s at cloud provider", machine.Name)
+			glog.V(3).Infof("Created machine %s at cloud provider", machine.Name)
 			return nil
 		}
 
@@ -670,7 +670,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 			}); err != nil {
 				return fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
 			}
-			glog.V(4).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
+			glog.V(3).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
 		}
 		err = c.updateMachineStatus(machine, node)
 		if err != nil {
@@ -741,7 +741,7 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
 		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTaintsUpdated", "Successfully updated labels/annotations/taints")
-		glog.V(4).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
+		glog.V(3).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
 	}
 
 	return nil
@@ -838,7 +838,7 @@ func (c *Controller) handleObject(obj interface{}) {
 			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
 			return
 		}
-		glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
+		glog.V(3).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 
 	machinesList, err := c.machinesLister.List(labels.Everything())
@@ -914,7 +914,7 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 		}); err != nil {
 			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
 		}
-		glog.V(4).Infof("Added delete finalizer to machine %s", machine.Name)
+		glog.V(3).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
 	return machine, nil
 }
