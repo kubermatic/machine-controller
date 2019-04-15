@@ -238,11 +238,10 @@ write_files:
 - path: /etc/systemd/system/kubelet.service.d/11-cgroups.conf
   filesystem: root
   mode: 0644
-  contents:
-    inline:
-      [Service]
-      CPUAccounting=true
-      MemoryAccounting=true
+  content: |
+    [Service]
+    CPUAccounting=true
+    MemoryAccounting=true
 
 - path: "/etc/kubernetes/cloud-config"
   content: |

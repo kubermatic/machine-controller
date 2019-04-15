@@ -315,7 +315,7 @@ storage:
       filesystem: root
       mode: 0644
       contents:
-        inline:
+        inline: |
           [Service]
           CPUAccounting=true
           MemoryAccounting=true
