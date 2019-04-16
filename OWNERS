@@ -5,3 +5,6 @@ approvers:
 
 reviewers:
   - machine-controller-maintainers
+
+labels:
+  - team/lifecycle
