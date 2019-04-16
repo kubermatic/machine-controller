@@ -119,7 +119,7 @@ write_files:
     RestartSec=10
     CPUAccounting=true
     MemoryAccounting=true
-
+    
     Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
     
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
