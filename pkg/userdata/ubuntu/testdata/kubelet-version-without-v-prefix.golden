@@ -236,14 +236,6 @@ write_files:
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
 
-- path: /etc/systemd/system/kubelet.service.d/11-cgroups.conf
-  filesystem: root
-  mode: 0644
-  content: |
-    [Service]
-    CPUAccounting=true
-    MemoryAccounting=true
-
 - path: "/etc/kubernetes/cloud-config"
   content: |
     

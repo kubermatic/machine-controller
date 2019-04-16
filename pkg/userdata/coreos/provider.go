@@ -182,6 +182,8 @@ systemd:
         After=docker.service
         [Service]
         TimeoutStartSec=5min
+        CPUAccounting=true
+        MemoryAccounting=true
         Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:{{ .HyperkubeImageTag }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --insecure-options=image \
@@ -310,15 +312,6 @@ storage:
         inline: |
           [Service]
           Environment=DOCKER_OPTS=--storage-driver=overlay2
-
-    - path: /etc/systemd/system/kubelet.service.d/11-cgroups.conf
-      filesystem: root
-      mode: 0644
-      contents:
-        inline: |
-          [Service]
-          CPUAccounting=true
-          MemoryAccounting=true
 
     - path: /opt/bin/download.sh
       filesystem: root
