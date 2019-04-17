@@ -2,6 +2,7 @@ package admission
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -58,19 +59,8 @@ func TestValidatePublicKeys(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := validatePublicKeys(test.keys)
-			if err != nil {
-				if test.err == nil {
-					// We got an error but did not expected it
-					t.Errorf("Got an error while not expected one: %v", err)
-				}
-				if err.Error() != test.err.Error() {
-					t.Errorf("Got an error '%v' while expected it to be: %v", err, test.err)
-				}
-			} else {
-				if test.err != nil {
-					// We got an error but did not expected it
-					t.Errorf("Got no error while expected one to be returned: %v", test.err)
-				}
+			if fmt.Sprint(err) != fmt.Sprint(test.err) {
+				t.Errorf("Expected error to be %v instead got %v", test.err, err)
 			}
 		})
 	}

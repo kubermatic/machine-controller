@@ -121,10 +121,9 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 
 func validatePublicKeys(keys []string) error {
 	for _, s := range keys {
-		//_, err := ssh.ParsePublicKey([]byte(s))
 		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(s))
 		if err != nil {
-			return fmt.Errorf("invalid public key '%s': %v", s, err)
+			return fmt.Errorf("invalid public key %q: %v", s, err)
 		}
 	}
 
