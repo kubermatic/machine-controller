@@ -44,7 +44,7 @@ func TestValidatePublicKeys(t *testing.T) {
 		{
 			name: "invalid key",
 			keys: []string{"some invalid key"},
-			err:  errors.New("invalid public key 'some invalid key': ssh: no key found"),
+			err:  errors.New(`invalid public key "some invalid key": ssh: no key found`),
 		},
 		{
 			name: "one of many is invalid",
@@ -52,7 +52,7 @@ func TestValidatePublicKeys(t *testing.T) {
 				validRSA1024Key,
 				"some invalid key",
 			},
-			err: errors.New("invalid public key 'some invalid key': ssh: no key found"),
+			err: errors.New(`invalid public key "some invalid key": ssh: no key found`),
 		},
 	}
 
@@ -60,7 +60,7 @@ func TestValidatePublicKeys(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := validatePublicKeys(test.keys)
 			if fmt.Sprint(err) != fmt.Sprint(test.err) {
-				t.Errorf("Expected error to be %v instead got %v", test.err, err)
+				t.Errorf("Expected error to be\n%v\ninstead got\n%v", test.err, err)
 			}
 		})
 	}
