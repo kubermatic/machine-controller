@@ -48,6 +48,8 @@ Documentation=https://kubernetes.io/docs/home/
 Restart=always
 StartLimitInterval=0
 RestartSec=10
+CPUAccounting=true
+MemoryAccounting=true
 
 Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 
