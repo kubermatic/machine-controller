@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2019 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -251,22 +251,22 @@ func main() {
 
 	kubeconfigProvider := clusterinfo.New(cfg, kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(), defaultKubeInformerFactory.Core().V1().Endpoints().Lister())
 	runOptions := controllerRunOptions{
-		kubeClient:            kubeClient,
-		extClient:             extClient,
-		machineClient:         machineClient,
-		metrics:               machinecontroller.NewMachineControllerMetrics(),
-		clusterDNSIPs:         ips,
-		leaderElectionClient:  leaderElectionClient,
-		nodeInformer:          kubeInformerFactory.Core().V1().Nodes().Informer(),
-		nodeLister:            kubeInformerFactory.Core().V1().Nodes().Lister(),
-		secretSystemNsLister:  kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
-		pvLister:              kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
-		machineInformer:       clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
-		machineLister:         clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
-		kubeconfigProvider:    kubeconfigProvider,
-		name:                  name,
-		prometheusRegisterer:  prometheusRegistry,
-		cfg:                   machineCfg,
+		kubeClient:           kubeClient,
+		extClient:            extClient,
+		machineClient:        machineClient,
+		metrics:              machinecontroller.NewMachineControllerMetrics(),
+		clusterDNSIPs:        ips,
+		leaderElectionClient: leaderElectionClient,
+		nodeInformer:         kubeInformerFactory.Core().V1().Nodes().Informer(),
+		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
+		secretSystemNsLister: kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
+		pvLister:             kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
+		machineInformer:      clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
+		machineLister:        clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
+		kubeconfigProvider:   kubeconfigProvider,
+		name:                 name,
+		prometheusRegisterer: prometheusRegistry,
+		cfg:                  machineCfg,
 		externalCloudProvider: externalCloudProvider,
 	}
 	if parsedJoinClusterTimeout != nil {
