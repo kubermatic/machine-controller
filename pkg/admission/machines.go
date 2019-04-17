@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"golang.org/x/crypto/ssh"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -100,6 +101,11 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("Kubelet version must be set")
 	}
 
+	// Validate SSH keys
+	if err := validatePublicKeys(providerConfig.SSHPublicKeys); err != nil {
+		return fmt.Errorf("Invalid public keys specified: %v", err)
+	}
+
 	defaultedSpec, err := prov.AddDefaults(*spec)
 	if err != nil {
 		return fmt.Errorf("failed to default machineSpec: %v", err)
@@ -108,6 +114,18 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 
 	if err := prov.Validate(*spec); err != nil {
 		return fmt.Errorf("validation failed: %v", err)
+	}
+
+	return nil
+}
+
+func validatePublicKeys(keys []string) error {
+	for _, s := range keys {
+		//_, err := ssh.ParsePublicKey([]byte(s))
+		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(s))
+		if err != nil {
+			return fmt.Errorf("invalid public key '%s': %v", s, err)
+		}
 	}
 
 	return nil
