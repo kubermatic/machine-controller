@@ -182,8 +182,7 @@ systemd:
         After=docker.service
         [Service]
         TimeoutStartSec=5min
-        CPUAccounting=true
-        MemoryAccounting=true
+        Slice=kubernetes.slice
         Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:{{ .HyperkubeImageTag }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --insecure-options=image \
@@ -321,4 +320,25 @@ storage:
           #!/bin/bash
           set -xeuo pipefail
 {{ downloadBinariesScript .KubeletVersion false | indent 10 }}
+
+    - path: {{ kubernetesSlicePath }}
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+{{ kubernetesSlice | indent 10 }}
+
+    - path: {{ dockerSliceDropinPath }}
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+{{ dockerSliceDropin | indent 10 }}
+
+    - path: {{ containerdSliceDropinPath }}
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+{{ containerdSliceDropin | indent 10 }}
 `

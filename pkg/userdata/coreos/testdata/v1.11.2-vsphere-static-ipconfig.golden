@@ -60,10 +60,10 @@ systemd:
           
           [Service]
           ExecStart=/opt/bin/health-monitor.sh container-runtime
+          Slice=kubernetes.slice
           
           [Install]
           WantedBy=multi-user.target
-          
 
     - name: kubelet-healthcheck.service
       enabled: true
@@ -80,6 +80,7 @@ systemd:
           
           [Service]
           ExecStart=/opt/bin/health-monitor.sh kubelet
+          Slice=kubernetes.slice
           
           [Install]
           WantedBy=multi-user.target
@@ -94,8 +95,7 @@ systemd:
         After=docker.service
         [Service]
         TimeoutStartSec=5min
-        CPUAccounting=true
-        MemoryAccounting=true
+        Slice=kubernetes.slice
         Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.11.2
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --insecure-options=image \
@@ -140,7 +140,11 @@ systemd:
           --anonymous-auth=false \
           --protect-kernel-defaults=true \
           --cluster-dns=10.10.10.10 \
-          --cluster-domain=cluster.local
+          --cluster-domain=cluster.local \
+          --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+          --kube-reserved-cgroup=kubernetes.slice \
+          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+          --system-reserved-cgroup=system.slice
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
@@ -323,3 +327,31 @@ storage:
               chmod +x /opt/bin/health-monitor.sh
           fi
           
+
+    - path: /etc/systemd/system/kubernetes.slice
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Kubelet & Docker Slice
+          Before=slices.target
+          [Slice]
+          CPUAccounting=true
+          MemoryAccounting=true
+
+    - path: /etc/systemd/system/docker.service.d/10-slice.conf
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          [Service]
+          Slice=kubernetes.slice
+
+    - path: /etc/systemd/system/containerd.service.d/10-slice.conf
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          [Service]
+          Slice=kubernetes.slice

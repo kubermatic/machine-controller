@@ -19,6 +19,12 @@ func TxtFuncMap() template.FuncMap {
 	funcMap["journalDConfig"] = JournalDConfig
 	funcMap["kubeletHealthCheckSystemdUnit"] = KubeletHealthCheckSystemdUnit
 	funcMap["containerRuntimeHealthCheckSystemdUnit"] = ContainerRuntimeHealthCheckSystemdUnit
+	funcMap["kubernetesSlice"] = KubernetesSlice
+	funcMap["kubernetesSlicePath"] = KubernetesSlicePath
+	funcMap["dockerSliceDropin"] = DockerSliceDropin
+	funcMap["dockerSliceDropinPath"] = DockerSliceDropinPath
+	funcMap["containerdSliceDropin"] = ContainerdSliceDropin
+	funcMap["containerdSliceDropinPath"] = ContainerdSliceDropinPath
 
 	return funcMap
 }

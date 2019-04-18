@@ -202,8 +202,7 @@ write_files:
     Restart=always
     StartLimitInterval=0
     RestartSec=10
-    CPUAccounting=true
-    MemoryAccounting=true
+    Slice=kubernetes.slice
     
     Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
     
@@ -228,7 +227,11 @@ write_files:
       --anonymous-auth=false \
       --protect-kernel-defaults=true \
       --cluster-dns=10.10.10.10 \
-      --cluster-domain=cluster.local
+      --cluster-domain=cluster.local \
+      --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+      --kube-reserved-cgroup=kubernetes.slice \
+      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+      --system-reserved-cgroup=system.slice
     
     [Install]
     WantedBy=multi-user.target
@@ -325,6 +328,7 @@ write_files:
     
     [Service]
     ExecStart=/opt/bin/health-monitor.sh kubelet
+    Slice=kubernetes.slice
     
     [Install]
     WantedBy=multi-user.target
@@ -339,10 +343,32 @@ write_files:
     
     [Service]
     ExecStart=/opt/bin/health-monitor.sh container-runtime
+    Slice=kubernetes.slice
     
     [Install]
     WantedBy=multi-user.target
-    
+
+- path: /etc/systemd/system/kubernetes.slice
+  permissions: "0644"
+  content: |
+    [Unit]
+    Description=Kubelet & Docker Slice
+    Before=slices.target
+    [Slice]
+    CPUAccounting=true
+    MemoryAccounting=true
+
+- path: /etc/systemd/system/docker.service.d/10-slice.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    Slice=kubernetes.slice
+
+- path: /etc/systemd/system/containerd.service.d/10-slice.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    Slice=kubernetes.slice
 
 runcmd:
 - systemctl enable --now setup.service
