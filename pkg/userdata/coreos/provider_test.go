@@ -73,7 +73,7 @@ kPe6XoSbiLm/kxk32T0=
 	kubeconfig = &clientcmdapi.Config{
 		Clusters: map[string]*clientcmdapi.Cluster{
 			"": {
-				Server: "https://server:443",
+				Server:                   "https://server:443",
 				CertificateAuthorityData: []byte(pemCertificate),
 			},
 		},
