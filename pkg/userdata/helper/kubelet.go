@@ -37,9 +37,7 @@ const (
 --cluster-dns={{ .ClusterDNSIPs | join "," }} \
 --cluster-domain=cluster.local \
 --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
---kube-reserved-cgroup=kubernetes.slice \
---system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
---system-reserved-cgroup=system.slice`
+--system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi`
 
 	kubeletSystemdUnitTpl = `[Unit]
 After=docker.service
@@ -54,7 +52,6 @@ StartLimitInterval=0
 RestartSec=10
 CPUAccounting=true
 MemoryAccounting=true
-Slice=kubernetes.slice
 
 Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 
@@ -146,7 +143,6 @@ After=kubelet.service
 
 [Service]
 ExecStart=/opt/bin/health-monitor.sh kubelet
-Slice=kubernetes.slice
 
 [Install]
 WantedBy=multi-user.target
@@ -161,45 +157,7 @@ After=docker.service
 
 [Service]
 ExecStart=/opt/bin/health-monitor.sh container-runtime
-Slice=kubernetes.slice
 
 [Install]
 WantedBy=multi-user.target`
-}
-
-// KubernetesSlice returns the slice used for the Kubelet and docker
-func KubernetesSlice() string {
-	return `[Unit]
-Description=Kubelet & Docker Slice
-Before=slices.target
-[Slice]
-CPUAccounting=true
-MemoryAccounting=true`
-}
-
-// KubernetesSlicePath returns the path in which KubeletSlice should be placed
-func KubernetesSlicePath() string {
-	return "/etc/systemd/system/kubernetes.slice"
-}
-
-// DockerSliceDropin returns the dropin to confiugre the slice on Docker
-func DockerSliceDropin() string {
-	return `[Service]
-Slice=kubernetes.slice`
-}
-
-// DockerSliceDropinPath returns the path for the docker slice dropin
-func DockerSliceDropinPath() string {
-	return "/etc/systemd/system/docker.service.d/10-slice.conf"
-}
-
-// ContainerdSliceDropin returns the dropin to confiugre the slice on Docker
-func ContainerdSliceDropin() string {
-	return `[Service]
-Slice=kubernetes.slice`
-}
-
-// ContainerdSliceDropinPath returns the path for the docker slice dropin
-func ContainerdSliceDropinPath() string {
-	return "/etc/systemd/system/containerd.service.d/10-slice.conf"
 }

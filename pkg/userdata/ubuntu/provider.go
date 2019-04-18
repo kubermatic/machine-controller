@@ -332,21 +332,6 @@ write_files:
   content: |
 {{ containerRuntimeHealthCheckSystemdUnit | indent 4 }}
 
-- path: {{ kubernetesSlicePath }}
-  permissions: "0644"
-  content: |
-{{ kubernetesSlice | indent 4 }}
-
-- path: {{ dockerSliceDropinPath }}
-  permissions: "0644"
-  content: |
-{{ dockerSliceDropin | indent 4 }}
-
-- path: {{ containerdSliceDropinPath }}
-  permissions: "0644"
-  content: |
-{{ containerdSliceDropin | indent 4 }}
-
 runcmd:
 - systemctl enable --now setup.service
 `
