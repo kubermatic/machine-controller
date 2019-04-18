@@ -63,7 +63,6 @@ systemd:
           
           [Install]
           WantedBy=multi-user.target
-          
 
     - name: kubelet-healthcheck.service
       enabled: true
@@ -139,7 +138,9 @@ systemd:
           --anonymous-auth=false \
           --protect-kernel-defaults=true \
           --cluster-dns=10.10.10.10 \
-          --cluster-domain=cluster.local
+          --cluster-domain=cluster.local \
+          --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10

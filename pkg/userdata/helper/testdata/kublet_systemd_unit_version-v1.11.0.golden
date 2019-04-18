@@ -35,7 +35,9 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --anonymous-auth=false \
   --protect-kernel-defaults=true \
   --cluster-dns=10.10.10.10 \
-  --cluster-domain=cluster.local
+  --cluster-domain=cluster.local \
+  --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 
 [Install]
 WantedBy=multi-user.target
