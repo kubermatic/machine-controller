@@ -7,7 +7,18 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/golang/glog"
+
+	"k8s.io/client-go/kubernetes/scheme"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
+
+func init() {
+	if err := clusterv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
+		glog.Fatalf("failed to add clusterv1alpha1 to scheme: %v", err)
+	}
+}
 
 const (
 	DOManifest     = "./testdata/machinedeployment-digitalocean.yaml"

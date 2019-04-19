@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -115,9 +114,6 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (ctrlruntimec
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create Client: %v", err)
-	}
-	if err := clusterv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
-		return nil, "", fmt.Errorf("failed to add clusterv1alpha1 to scheme: %v", err)
 	}
 
 	// prepare the manifest
