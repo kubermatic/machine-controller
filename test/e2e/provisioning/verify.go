@@ -347,10 +347,10 @@ func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment,
 	// Ensure we actually have an object from the KubeAPI and not just the result of the yaml parsing, as the latter
 	// can not be the owner of anything due to missing UID
 	if machineDeployment.ResourceVersion == "" {
-		machineDeployment := &clusterv1alpha1.MachineDeployment{}
-		if err := client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, machineDeployment); err != nil {
+		nn := types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}
+		if err := client.Get(context.Background(), nn, machineDeployment); err != nil {
 			if !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to get MachineDeployment %s: %v", machineDeployment.Name, err)
+				return nil, fmt.Errorf("failed to get MachineDeployment %s: %v", nn.Name, err)
 			}
 			return nil, nil
 		}
