@@ -614,6 +614,8 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			}
 			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			glog.V(3).Infof("Created machine %s at cloud provider", machine.Name)
+			// Reqeue the machine to make sure we notice if creation failed silently
+			c.enqueueMachineAfter(machine, 30*time.Second)
 			return nil
 		}
 
