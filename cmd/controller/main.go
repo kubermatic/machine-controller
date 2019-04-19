@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,12 +60,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"sigs.k8s.io/cluster-api/pkg/apis"
+	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 	machinedeploymentcontroller "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment"
 	machinesetcontroller "sigs.k8s.io/cluster-api/pkg/controller/machineset"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -101,6 +105,9 @@ type controllerRunOptions struct {
 
 	// machineClient a client that knows how to consume Machine resources
 	machineClient *clusterv1alpha1clientset.Clientset
+
+	// dynamicClient is a client that knows how to consume everything
+	dynamicClient ctrlruntimeclient.Client
 
 	// this essentially sets the cluster DNS IP addresses. The list is passed to kubelet and then down to pods.
 	clusterDNSIPs []net.IP
@@ -201,6 +208,17 @@ func main() {
 
 	stopCh := signals.SetupSignalHandler()
 
+	// Needed for migrations
+	if err := machinesv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		glog.Fatalf("failed to add machinesv1alpha1 api to scheme: %v", err)
+	}
+	if err := apiextensionsv1beta1.AddToScheme(scheme.Scheme); err != nil {
+		glog.Fatalf("failed to add apiextensionv1beta1 api to scheme: %v", err)
+	}
+	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+	}
+
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
 		glog.Fatalf("error building kubeconfig: %v", err)
@@ -223,6 +241,11 @@ func main() {
 	extClient, err := apiextclient.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("error building kubernetes clientset for extClient: %v", err)
+	}
+
+	dynamicClient, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
+	if err != nil {
+		glog.Fatalf("error building ctrlruntime client: %v", err)
 	}
 
 	// We do a huge amount of requests when processing some more machines
@@ -254,6 +277,7 @@ func main() {
 		kubeClient:            kubeClient,
 		extClient:             extClient,
 		machineClient:         machineClient,
+		dynamicClient:         dynamicClient,
 		metrics:               machinecontroller.NewMachineControllerMetrics(),
 		clusterDNSIPs:         ips,
 		leaderElectionClient:  leaderElectionClient,
@@ -381,16 +405,10 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// to stop the leader election library might cause synchronization issues.
 	// imagine that a user wants to shutdown the app but since there is no way of telling the library to stop it will eventually run `runController` method
 	// and bad things can happen - the fact it works at the moment doesn't mean it will in the future
-	runController := func(_ context.Context) {
+	runController := func(ctx context.Context) {
 
 		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
-		clusterv1Alpha1Client := clusterv1alpha1clientset.NewForConfigOrDie(runOptions.cfg)
-		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
-			runOptions.kubeClient,
-			runOptions.extClient,
-			clusterv1Alpha1Client,
-			runOptions.cfg,
-		); err != nil {
+		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, runOptions.dynamicClient, runOptions.kubeClient); err != nil {
 			glog.Errorf("Migration to clusterv1alpha1 failed: %v", err)
 			runOptions.parentCtxDone()
 			return
