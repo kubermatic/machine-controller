@@ -34,3 +34,4 @@ issues:
   - func Convert_Machine_ProviderConfig_To_ProviderSpec should be ConvertMachineProviderConfigToProviderSpec
   - 'counter\.Set is deprecated: Use NewConstMetric'
   - 'eviction\.go:221:4: the surrounding loop is unconditionally terminated'
+  - '`client` can be `github.com/kubermatic/machine-controller/vendor/sigs.k8s.io/controller-runtime/pkg/client.Reader`'
