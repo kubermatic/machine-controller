@@ -239,15 +239,29 @@ func deleteAndAssure(machineDeployment *v1alpha1.MachineDeployment,
 
 // assureNodeForMachineDeployment according to shouldExists parameter check if a node for machine exists in the system or not
 // this method examines OwnerReference of each node.
-func assureNodeForMachineDeployment(machineDeployment *v1alpha1.MachineDeployment, kubeClient kubernetes.Interface, clusterClient clientset.Interface, shouldExists bool) error {
-	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
+func assureNodeForMachineDeployment(machineDeployment *v1alpha1.MachineDeployment, kubeClient kubernetes.Interface, clusterClient clientset.Interface, shouldExist bool) error {
 
 	machines, err := getMatchingMachines(machineDeployment, clusterClient)
 	if err != nil {
 		return fmt.Errorf("failed to list Machines: %v", err)
+	}
+
+	if shouldExist {
+		if len(machines) == 0 {
+			return fmt.Errorf("expected to find a node for MachineDeployment %q but it has no Machine", machineDeployment.Name)
+		}
+
+		for _, machine := range machines {
+			if len(machine.Status.Addresses) == 0 {
+				return fmt.Errorf("expected to find a node for MachineDeployment %q but Machine %q has no address yet, indicating instance creation at the provider failed", machineDeployment.Name, machine.Name)
+			}
+		}
+
+	}
+
+	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list Nodes: %v", err)
 	}
 
 	nodeForMachineExists := false
@@ -260,8 +274,8 @@ func assureNodeForMachineDeployment(machineDeployment *v1alpha1.MachineDeploymen
 		}
 	}
 
-	if shouldExists != nodeForMachineExists {
-		return fmt.Errorf("expeced a node in the system to exists=%v but have found a node in the current cluster=%v", shouldExists, nodeForMachineExists)
+	if shouldExist != nodeForMachineExists {
+		return fmt.Errorf("expeced node to exists=%v but could find node=%v", shouldExist, nodeForMachineExists)
 	}
 	return nil
 }
