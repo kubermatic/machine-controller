@@ -35,3 +35,4 @@ issues:
   - 'counter\.Set is deprecated: Use NewConstMetric'
   - 'eviction\.go:221:4: the surrounding loop is unconditionally terminated'
   - '`client` can be `github.com/kubermatic/machine-controller/vendor/sigs.k8s.io/controller-runtime/pkg/client.Reader`'
+  - '`client` can be `github.com/kubermatic/machine-controller/vendor/sigs.k8s.io/controller-runtime/pkg/client.StatusWriter`'
