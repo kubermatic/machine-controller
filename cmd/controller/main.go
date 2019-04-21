@@ -61,7 +61,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	"sigs.k8s.io/cluster-api/pkg/apis"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
@@ -425,11 +424,6 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 		mgr, err := manager.New(runOptions.cfg, manager.Options{SyncPeriod: &mgrSyncPeriod})
 		if err != nil {
 			glog.Errorf("failed to start kubebuilder manager: %v", err)
-			runOptions.parentCtxDone()
-			return
-		}
-		if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-			glog.Errorf("failed to add api schemes to kubebuilder manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
