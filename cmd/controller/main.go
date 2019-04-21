@@ -106,8 +106,8 @@ type controllerRunOptions struct {
 	// machineClient a client that knows how to consume Machine resources
 	machineClient *clusterv1alpha1clientset.Clientset
 
-	// dynamicClient is a client that knows how to consume everything
-	dynamicClient ctrlruntimeclient.Client
+	// ctrlruntimeclient is a client that knows how to consume everything
+	ctrlruntimeClient ctrlruntimeclient.Client
 
 	// this essentially sets the cluster DNS IP addresses. The list is passed to kubelet and then down to pods.
 	clusterDNSIPs []net.IP
@@ -243,7 +243,7 @@ func main() {
 		glog.Fatalf("error building kubernetes clientset for extClient: %v", err)
 	}
 
-	dynamicClient, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
+	ctrlruntimeClient, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
 		glog.Fatalf("error building ctrlruntime client: %v", err)
 	}
@@ -277,7 +277,7 @@ func main() {
 		kubeClient:            kubeClient,
 		extClient:             extClient,
 		machineClient:         machineClient,
-		dynamicClient:         dynamicClient,
+		ctrlruntimeClient:     ctrlruntimeClient,
 		metrics:               machinecontroller.NewMachineControllerMetrics(),
 		clusterDNSIPs:         ips,
 		leaderElectionClient:  leaderElectionClient,
@@ -408,14 +408,14 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	runController := func(ctx context.Context) {
 
 		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
-		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, runOptions.dynamicClient, runOptions.kubeClient); err != nil {
+		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, runOptions.ctrlruntimeClient, runOptions.kubeClient); err != nil {
 			glog.Errorf("Migration to clusterv1alpha1 failed: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 
 		//Migrate providerConfig field to providerSpec field
-		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, runOptions.cfg, runOptions.dynamicClient); err != nil {
+		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, runOptions.cfg, runOptions.ctrlruntimeClient); err != nil {
 			glog.Errorf("Migration of providerConfig field to providerSpec field failed: %v", err)
 			runOptions.parentCtxDone()
 			return
