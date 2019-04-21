@@ -415,7 +415,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 		}
 
 		//Migrate providerConfig field to providerSpec field
-		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(runOptions.cfg); err != nil {
+		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, runOptions.cfg, runOptions.dynamicClient); err != nil {
 			glog.Errorf("Migration of providerConfig field to providerSpec field failed: %v", err)
 			runOptions.parentCtxDone()
 			return

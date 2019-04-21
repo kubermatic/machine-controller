@@ -28,21 +28,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
-	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) error {
+func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *restclient.Config, client ctrlruntimeclient.Client) error {
 	glog.Infof("Starting to migrate providerConfigs to providerSpecs")
 	dynamicClient, err := dynamicclient.NewForConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to construct dynamic client: %v", err)
-	}
-	clusterClient, err := clusterv1alpha1clientset.NewForConfig(config)
-	if err != nil {
-		return fmt.Errorf("failed to construct clusterv1alpha1 client: %v", err)
 	}
 
 	machineGVR := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machines"}
@@ -70,7 +64,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 			// We must set this, otherwise the webhook will deny our update request because modifications to a machines
 			// spec are not allowed
 			convertedMachine.Annotations[machinecontrolleradmission.BypassSpecNoModificationRequirementAnnotation] = "true"
-			if _, err = clusterClient.ClusterV1alpha1().Machines(convertedMachine.Namespace).Update(convertedMachine); err != nil {
+			if err := client.Update(ctx, convertedMachine); err != nil {
 				return fmt.Errorf("failed to update converted machine %s: %v", convertedMachine.Name, err)
 			}
 			glog.Infof("Successfully updated machine %s/%s after converting providerConfig -> providerSpec", convertedMachine.Namespace, convertedMachine.Name)
@@ -92,7 +86,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 		}
 		if machineSetWasConverted {
 			glog.Infof("Converted providerConfig -> providerSpec for MachineSet %s/%s, attempting to update", convertedMachineSet.Namespace, convertedMachineSet.Name)
-			if _, err := clusterClient.ClusterV1alpha1().MachineSets(convertedMachineSet.Namespace).Update(convertedMachineSet); err != nil {
+			if err := client.Update(ctx, convertedMachineSet); err != nil {
 				return fmt.Errorf("failed to update MachineSet %s/%s after converting providerConfig -> providerSpec: %v", convertedMachineSet.Namespace, convertedMachineSet.Name, err)
 			}
 			glog.Infof("Successfully updated MachineSet %s/%s after converting providerConfig -> providerSpec", convertedMachineSet.Namespace, convertedMachineSet.Name)
@@ -114,7 +108,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(config *restclient.Config) er
 		}
 		if machineDeploymentWasConverted {
 			glog.Infof("Converted providerConfig -> providerSpec for MachineDeployment %s/%s, attempting to update", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
-			if _, err := clusterClient.ClusterV1alpha1().MachineDeployments(convertedMachineDeployment.Namespace).Update(convertedMachineDeployment); err != nil {
+			if err := client.Update(ctx, convertedMachineDeployment); err != nil {
 				return fmt.Errorf("failed to update MachineDeployment %s/%s after converting providerConfig -> providerSpec: %v", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name, err)
 			}
 			glog.Infof("Successfully updated MachineDeployment %s/%s after converting providerConfig -> providerSpec", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
@@ -194,7 +188,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 		// We will set that to whats finally in the apisever, be that a created a clusterv1alpha1machine
 		// or a preexisting one, because the migration got interrupted
 		// It is required to set the ownerRef of the node
-		var owningClusterV1Alpha1Machine *clusterv1alpha1.Machine
+		var finalClusterV1Alpha1Machine *clusterv1alpha1.Machine
 
 		// Do a get first to cover the case the new machine was already created but then something went wrong
 		// If that is the case and the clusterv1alpha1machine != machinesv1alpha1machine we error out and the operator
@@ -203,8 +197,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 
 		existingClusterV1alpha1Machine := &clusterv1alpha1.Machine{}
-		client.Get(
-			ctx,
+		err = client.Get(ctx,
 			types.NamespacedName{Namespace: convertedClusterv1alpha1Machine.Namespace, Name: convertedClusterv1alpha1Machine.Name},
 			existingClusterV1alpha1Machine)
 		if err != nil {
@@ -222,7 +215,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			}
 			glog.Infof("Successfully created machine.cluster.k8s.io/v1alpha1 %s/%s",
 				convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
-			owningClusterV1Alpha1Machine = convertedClusterv1alpha1Machine
+			finalClusterV1Alpha1Machine = convertedClusterv1alpha1Machine
 		} else {
 			// ClusterV1alpha1Machine already exists
 			if !equality.Semantic.DeepEqual(convertedClusterv1alpha1Machine.Spec, existingClusterV1alpha1Machine.Spec) {
@@ -241,33 +234,33 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			}
 			glog.Infof("Successfully updated existing machine.cluster.k8s.io/v1alpha1 %s/%s",
 				existingClusterV1alpha1Machine.Namespace, existingClusterV1alpha1Machine.Name)
-			owningClusterV1Alpha1Machine = existingClusterV1alpha1Machine
+			finalClusterV1Alpha1Machine = existingClusterV1alpha1Machine
 		}
 
 		// We have to ensure there is an ownerRef to our clusterv1alpha1.Machine on the node if it exists
 		// and that there is no ownerRef to the old machine anymore
-		if err := ensureClusterV1Alpha1NodeOwnership(ctx, owningClusterV1Alpha1Machine, client); err != nil {
+		if err := ensureClusterV1Alpha1NodeOwnership(ctx, finalClusterV1Alpha1Machine, client); err != nil {
 			return err
 		}
 
-		if sets.NewString(owningClusterV1Alpha1Machine.Finalizers...).Has(machinecontroller.FinalizerDeleteInstance) {
+		if sets.NewString(finalClusterV1Alpha1Machine.Finalizers...).Has(machinecontroller.FinalizerDeleteInstance) {
 			glog.Infof("Attempting to update the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
-			newMachineWithOldUID := owningClusterV1Alpha1Machine.DeepCopy()
+			newMachineWithOldUID := finalClusterV1Alpha1Machine.DeepCopy()
 			newMachineWithOldUID.UID = machinesV1Alpha1Machine.UID
-			if err := prov.MigrateUID(newMachineWithOldUID, owningClusterV1Alpha1Machine.UID); err != nil {
+			if err := prov.MigrateUID(newMachineWithOldUID, finalClusterV1Alpha1Machine.UID); err != nil {
 				return fmt.Errorf("running the provider migration for the UID failed: %v", err)
 			}
 			// Block until we can actually GET the instance with the new UID
 			var isMigrated bool
 			for i := 0; i < 100; i++ {
-				if _, err := prov.Get(owningClusterV1Alpha1Machine); err == nil {
+				if _, err := prov.Get(finalClusterV1Alpha1Machine); err == nil {
 					isMigrated = true
 					break
 				}
 				time.Sleep(10 * time.Second)
 			}
 			if !isMigrated {
-				return fmt.Errorf("failed to GET instance for machine %s after UID migration", owningClusterV1Alpha1Machine.Name)
+				return fmt.Errorf("failed to GET instance for machine %s after UID migration", finalClusterV1Alpha1Machine.Name)
 			}
 			glog.Infof("Successfully updated the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		}
