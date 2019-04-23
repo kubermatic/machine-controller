@@ -65,6 +65,7 @@ type RawConfig struct {
 	Subnet           providerconfig.ConfigVarString   `json:"subnet"`
 	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
 	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
+	TrustDevicePath  providerconfig.ConfigVarBool     `json:"trustDevicePath"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags map[string]string `json:"tags"`
 }
@@ -86,6 +87,7 @@ type Config struct {
 	Subnet           string
 	FloatingIPPool   string
 	AvailabilityZone string
+	TrustDevicePath  bool
 
 	Tags map[string]string
 }
@@ -172,6 +174,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 		return nil, nil, nil, err
 	}
 	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	c.TrustDevicePath, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -642,7 +648,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		},
 		BlockStorage: BlockStorageOpts{
 			BSVersion:       "auto",
-			TrustDevicePath: false,
+			TrustDevicePath: c.TrustDevicePath,
 			IgnoreVolumeAZ:  true,
 		},
 		Version: spec.Versions.Kubelet,
