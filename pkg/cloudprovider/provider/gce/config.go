@@ -64,9 +64,9 @@ const (
 	defaultDiskSize = 25
 )
 
-// cloudProviderSpec contains the specification of the cloud provider taken
+// CloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
-type cloudProviderSpec struct {
+type CloudProviderSpec struct {
 	ServiceAccount providerconfig.ConfigVarString `json:"serviceAccount"`
 	Zone           providerconfig.ConfigVarString `json:"zone"`
 	MachineType    providerconfig.ConfigVarString `json:"machineType"`
@@ -80,7 +80,7 @@ type cloudProviderSpec struct {
 
 // newCloudProviderSpec creates a cloud provider specification out of the
 // given ProviderSpec.
-func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*cloudProviderSpec, *providerconfig.Config, error) {
+func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*CloudProviderSpec, *providerconfig.Config, error) {
 	// Retrieve provider configuration from machine specification.
 	if spec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
@@ -91,7 +91,7 @@ func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*cloudProviderSpec, *prov
 		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
 	}
 	// Retrieve cloud provider specification from cloud provider specification.
-	cpSpec := &cloudProviderSpec{}
+	cpSpec := &CloudProviderSpec{}
 	err = json.Unmarshal(providerConfig.CloudProviderSpec.Raw, cpSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
@@ -101,7 +101,7 @@ func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*cloudProviderSpec, *prov
 
 // updateProviderSpec updates the given provider spec with changed
 // configuration values.
-func (cpSpec *cloudProviderSpec) updateProviderSpec(spec v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func (cpSpec *CloudProviderSpec) updateProviderSpec(spec v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if spec.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
