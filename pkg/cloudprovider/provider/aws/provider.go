@@ -462,7 +462,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 
 	var instanceMarketOptions *ec2.InstanceMarketOptionsRequest
 	if config.IsSpotInstance != nil && *config.IsSpotInstance {
-		instanceMarketOptions = &ec2.InstanceMarketOptionsRequest{MarketType: aws.String("spot")}
+		instanceMarketOptions = &ec2.InstanceMarketOptionsRequest{MarketType: aws.String(ec2.MarketTypeSpot)}
 	}
 
 	instanceRequest := &ec2.RunInstancesInput{
