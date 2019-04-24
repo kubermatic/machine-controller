@@ -11,9 +11,12 @@
   - [OpenStack images](/docs/openstack-images.md)
 - [Container runtimes](/docs/container_runtime.md)
 - [Development](#development)
+
 - E2E
   - [Infra](/docs/e2e-infra.md)
-
+- [TroubleShooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Changelog](#changelog)
 
 # Features
 ## What works
@@ -114,3 +117,33 @@ __Note:__ After finishing testing, please clean up after yourself:
 
 You can also insert your ssh key into the created instances by editing the manifests in
 [`test/e2e/provisioning/testdata/`](test/e2e/provisioning/testdata)
+
+# Troubleshooting
+
+If you encounter issues [file an issue][1] or talk to us on the [#kubermatic channel][2] on the [Kubermatic Slack][3].
+
+# Contributing
+
+Thanks for taking the time to join our community and start contributing!
+
+### Before you start
+
+* Please familiarize yourself with the [Code of Conduct][4] before contributing.
+* See [CONTRIBUTING.md][5] for instructions on the developer certificate of origin that we require.
+* Read how [we're using ZenHub][6] for project and roadmap planning
+
+### Pull requests
+
+* We welcome pull requests. Feel free to dig through the [issues][1] and jump in.
+
+# Changelog
+
+See [the list of releases][7] to find out about feature changes.
+
+[1]: https://github.com/kubermatic/machine-controller/issues
+[2]: https://kubermatic.slack.com/messages/kubermatic
+[3]: http://slack.kubermatic.io/
+[4]: code-of-conduct.md
+[5]: CONTRIBUTING.md
+[6]: Zenhub.md
+[7]: https://github.com/kubermatic/machine-controller/releases
