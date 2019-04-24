@@ -90,7 +90,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 				}
 				return fmt.Errorf("failed to get machine %s before creating it: %v", machine.Name, err)
 			}
-			_, err := prov.Create(machine, machineCreateDeleteData, "#cloud-config")
+			_, err := prov.Create(machine, machineCreateDeleteData, "#cloud-config\n")
 			if err != nil {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
