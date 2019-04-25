@@ -89,20 +89,16 @@ type Controller struct {
 	workqueue workqueue.RateLimitingInterface
 	recorder  record.EventRecorder
 
-	clusterDNSIPs      []net.IP
-	metrics            *MetricsCollection
-	kubeconfigProvider KubeconfigProvider
-
-	machineCreateDeleteData *cloud.MachineCreateDeleteData
-	userDataManager         *userdatamanager.Manager
-
-	joinClusterTimeout *time.Duration
-
-	externalCloudProvider bool
-
-	name string
-
+	clusterDNSIPs                    []net.IP
+	metrics                          *MetricsCollection
+	kubeconfigProvider               KubeconfigProvider
+	machineCreateDeleteData          *cloud.MachineCreateDeleteData
+	userDataManager                  *userdatamanager.Manager
+	joinClusterTimeout               *time.Duration
+	externalCloudProvider            bool
+	name                             string
 	bootstrapTokenServiceAccountName *types.NamespacedName
+	skipEvictionAfter                time.Duration
 }
 
 type KubeconfigProvider interface {
@@ -133,7 +129,9 @@ func NewMachineController(
 	joinClusterTimeout *time.Duration,
 	externalCloudProvider bool,
 	name string,
-	bootstrapTokenServiceAccountName *types.NamespacedName) (*Controller, error) {
+	bootstrapTokenServiceAccountName *types.NamespacedName,
+	skipEvictionAfter time.Duration,
+) (*Controller, error) {
 
 	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
@@ -157,17 +155,14 @@ func NewMachineController(
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
 
-		clusterDNSIPs:      clusterDNSIPs,
-		metrics:            metrics,
-		kubeconfigProvider: kubeconfigProvider,
-
-		joinClusterTimeout: joinClusterTimeout,
-
-		externalCloudProvider: externalCloudProvider,
-
-		name: name,
-
+		clusterDNSIPs:                    clusterDNSIPs,
+		metrics:                          metrics,
+		kubeconfigProvider:               kubeconfigProvider,
+		joinClusterTimeout:               joinClusterTimeout,
+		externalCloudProvider:            externalCloudProvider,
+		name:                             name,
 		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
+		skipEvictionAfter:                skipEvictionAfter,
 	}
 
 	controller.machineCreateDeleteData = &cloud.MachineCreateDeleteData{
@@ -478,17 +473,42 @@ func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 	})
 }
 
+// evictIfNecessary checks if the machine has a node and evicts it if necessary
+func (c *Controller) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error) {
+	// If the deletion got triggered a few hours ago, skip eviction.
+	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
+	if time.Since(machine.DeletionTimestamp.Time) > c.skipEvictionAfter {
+		glog.V(0).Infof("Skipping eviction for machine %q since the deletion got triggered %.2f minutes ago", machine.Name, c.skipEvictionAfter.Minutes())
+		return false, nil
+	}
+
+	// No node - Nothing to evict
+	if machine.Status.NodeRef == nil {
+		glog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
+		return false, nil
+	}
+
+	if _, err := c.nodesLister.Get(machine.Status.NodeRef.Name); err != nil {
+		// Node does not exist  - Nothing to evict
+		if kerrors.IsNotFound(err) {
+			glog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get node %q", machine.Status.NodeRef.Name)
+	}
+
+	return true, nil
+}
+
 // deleteMachine makes sure that an instance has gone in a series of steps.
 func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
-	if machine.Status.NodeRef != nil {
-		_, err := c.nodesLister.Get(machine.Status.NodeRef.Name)
-		if err != nil {
-			if !kerrors.IsNotFound(err) {
-				return fmt.Errorf("failed to get node %s for machine %s/%s: %v", machine.Status.NodeRef.Name, machine.Namespace, machine.Name, err)
-			}
-			// if kerrors.IsNotFound(err) => continue by deleting cloud provider instance
-			// only if err == nil => evict node
-		} else if err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run(); err != nil {
+	shouldEvict, err := c.shouldEvict(machine)
+	if err != nil {
+		return err
+	}
+
+	if shouldEvict {
+		if err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run(); err != nil {
 			return fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
 		}
 	}
