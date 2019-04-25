@@ -468,6 +468,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.externalCloudProvider,
 			runOptions.name,
 			runOptions.bootstrapTokenServiceAccountName,
+			runOptions.skipEvictionAfter,
 		)
 		if err != nil {
 			glog.Errorf("failed to create machine-controller: %v", err)
