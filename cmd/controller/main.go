@@ -82,6 +82,7 @@ var (
 	workerCount                      int
 	externalCloudProvider            bool
 	bootstrapTokenServiceAccountName string
+	skipEvictionAfter                time.Duration
 )
 
 const (
@@ -166,6 +167,9 @@ type controllerRunOptions struct {
 
 	// Flag to initialize kubelets with --cloud-provider=external
 	externalCloudProvider bool
+
+	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
+	skipEvictionAfter time.Duration
 }
 
 func main() {
@@ -186,6 +190,7 @@ func main() {
 	flag.StringVar(&bootstrapTokenServiceAccountName, "bootstrap-token-service-account-name", "", "When set use the service account token from this SA as bootstrap token instead of creating a temporary one. Passed in namespace/name format")
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
 	flag.BoolVar(&externalCloudProvider, "external-cloud-provider", false, "when set, kubelets will receive --cloud-provider=external flag")
+	flag.DurationVar(&skipEvictionAfter, "skip-eviction-after", 2*time.Hour, "Skips the eviction if a machine is not gone after the specified duration.")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -291,6 +296,7 @@ func main() {
 		prometheusRegisterer:  prometheusRegistry,
 		cfg:                   machineCfg,
 		externalCloudProvider: externalCloudProvider,
+		skipEvictionAfter:     skipEvictionAfter,
 	}
 	if parsedJoinClusterTimeout != nil {
 		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
@@ -462,6 +468,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.externalCloudProvider,
 			runOptions.name,
 			runOptions.bootstrapTokenServiceAccountName,
+			runOptions.skipEvictionAfter,
 		)
 		if err != nil {
 			glog.Errorf("failed to create machine-controller: %v", err)

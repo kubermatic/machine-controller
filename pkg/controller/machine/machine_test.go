@@ -22,6 +22,10 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -287,4 +291,104 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 
 func durationPtr(d time.Duration) *time.Duration {
 	return &d
+}
+
+func TestControllerShouldEvict(t *testing.T) {
+	threeHoursAgo := metav1.NewTime(time.Now().Add(-3 * time.Hour))
+	now := metav1.Now()
+
+	tests := []struct {
+		name         string
+		machine      *clusterv1alpha1.Machine
+		existingNode *corev1.Node
+		shouldEvict  bool
+	}{
+		{
+			name:        "skip eviction due to eviction timeout",
+			shouldEvict: false,
+			existingNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &threeHoursAgo,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:        "skip eviction due to no nodeRef",
+			shouldEvict: false,
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &now,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: nil,
+				},
+			},
+		},
+		{
+			name:        "skip eviction due to already gone node",
+			shouldEvict: false,
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &now,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "non-existing-node"},
+				},
+			},
+		},
+		{
+			name:        "Do eviction",
+			shouldEvict: true,
+			existingNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &now,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var objects []runtime.Object
+			if test.existingNode != nil {
+				objects = append(objects, test.existingNode)
+			}
+
+			kubeClient := fake.NewSimpleClientset(objects...)
+			informerFactory := informers.NewSharedInformerFactory(kubeClient, 5*time.Minute)
+
+			ctrl := &Controller{
+				nodesLister:       informerFactory.Core().V1().Nodes().Lister(),
+				skipEvictionAfter: 2 * time.Hour,
+			}
+
+			informerFactory.Start(wait.NeverStop)
+			informerFactory.WaitForCacheSync(wait.NeverStop)
+
+			shouldEvict, err := ctrl.shouldEvict(test.machine)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if shouldEvict != test.shouldEvict {
+				t.Errorf("Expected shouldEvict to be %v but got %v instead", test.shouldEvict, shouldEvict)
+			}
+		})
+	}
 }
