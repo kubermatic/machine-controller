@@ -35,7 +35,8 @@ spec:
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-                "kubernetes_cluster": "gce-test-cluster"            
+                "kubernetes_cluster": "gce-test-cluster"
+            assignPublicIPAddress: true
           # Can be 'ubuntu' or 'coreos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:

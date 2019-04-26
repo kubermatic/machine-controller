@@ -67,14 +67,15 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 	}
 
 	ifc := &compute.NetworkInterface{
-		AccessConfigs: []*compute.AccessConfig{
-			{
-				Name: "External NAT",
-				Type: "ONE_TO_ONE_NAT",
-			},
-		},
 		Network:    network,
 		Subnetwork: cfg.subnetwork,
+	}
+
+	if cfg.assignPublicIPAddress {
+		ifc.AccessConfigs = []*compute.AccessConfig{{
+			Name: "External NAT",
+			Type: "ONE_TO_ONE_NAT",
+		}}
 	}
 
 	return []*compute.NetworkInterface{ifc}, nil

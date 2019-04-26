@@ -60,6 +60,8 @@ spec:
             diskType: "pd-standard"
             labels:
               "kubernetes_cluster": "my-cluster"
+            # Whether to assign a public IP Address. Required for Internet access
+            assignPublicIPAddress: true
           # Can be 'ubuntu' or 'coreos'
           operatingSystem: "coreos"
           operatingSystemSpec:
