@@ -67,15 +67,16 @@ const (
 // CloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
 type CloudProviderSpec struct {
-	ServiceAccount providerconfig.ConfigVarString `json:"serviceAccount"`
-	Zone           providerconfig.ConfigVarString `json:"zone"`
-	MachineType    providerconfig.ConfigVarString `json:"machineType"`
-	DiskSize       int64                          `json:"diskSize"`
-	DiskType       providerconfig.ConfigVarString `json:"diskType"`
-	Network        providerconfig.ConfigVarString `json:"network"`
-	Subnetwork     providerconfig.ConfigVarString `json:"subnetwork"`
-	Preemptible    providerconfig.ConfigVarBool   `json:"preemptible"`
-	Labels         map[string]string              `json:"labels"`
+	ServiceAccount        providerconfig.ConfigVarString `json:"serviceAccount"`
+	Zone                  providerconfig.ConfigVarString `json:"zone"`
+	MachineType           providerconfig.ConfigVarString `json:"machineType"`
+	DiskSize              int64                          `json:"diskSize"`
+	DiskType              providerconfig.ConfigVarString `json:"diskType"`
+	Network               providerconfig.ConfigVarString `json:"network"`
+	Subnetwork            providerconfig.ConfigVarString `json:"subnetwork"`
+	Preemptible           providerconfig.ConfigVarBool   `json:"preemptible"`
+	Labels                map[string]string              `json:"labels"`
+	AssignPublicIPAddress providerconfig.ConfigVarBool   `json:"assignPublicIPAddress"`
 }
 
 // newCloudProviderSpec creates a cloud provider specification out of the
@@ -124,18 +125,19 @@ func (cpSpec *CloudProviderSpec) updateProviderSpec(spec v1alpha1.ProviderSpec) 
 
 // config contains the configuration of the Provider.
 type config struct {
-	serviceAccount string
-	projectID      string
-	zone           string
-	machineType    string
-	diskSize       int64
-	diskType       string
-	network        string
-	subnetwork     string
-	preemptible    bool
-	labels         map[string]string
-	jwtConfig      *jwt.Config
-	providerConfig *providerconfig.Config
+	serviceAccount        string
+	projectID             string
+	zone                  string
+	machineType           string
+	diskSize              int64
+	diskType              string
+	network               string
+	subnetwork            string
+	preemptible           bool
+	labels                map[string]string
+	jwtConfig             *jwt.Config
+	providerConfig        *providerconfig.Config
+	assignPublicIPAddress bool
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -191,6 +193,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.preemptible, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
+	}
+
+	cfg.assignPublicIPAddress, err = resolver.GetConfigVarBoolValue(cpSpec.AssignPublicIPAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
 	}
 
 	return cfg, nil
