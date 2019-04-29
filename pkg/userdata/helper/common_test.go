@@ -22,7 +22,7 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-var update = flag.Bool("update", false, "update .golden files")
+var update = flag.Bool("update", false, "update testdata files")
 
 var (
 	versions = []*semver.Version{

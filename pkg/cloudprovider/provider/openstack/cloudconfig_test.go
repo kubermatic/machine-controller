@@ -27,7 +27,7 @@ import (
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 )
 
-var update = flag.Bool("update", false, "update .golden files")
+var update = flag.Bool("update", false, "update testdata files")
 
 func TestCloudConfigToString(t *testing.T) {
 	tests := []struct {

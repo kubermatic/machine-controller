@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	update = flag.Bool("update", false, "update .golden files")
+	update = flag.Bool("update", false, "update testdata files")
 
 	pemCertificate = `-----BEGIN CERTIFICATE-----
 MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV

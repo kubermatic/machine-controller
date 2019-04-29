@@ -41,7 +41,7 @@ import (
 )
 
 var (
-	update = flag.Bool("update", false, "update .golden files")
+	update = flag.Bool("update", false, "update testdata files")
 
 	pemCertificate = `-----BEGIN CERTIFICATE-----
 MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
@@ -307,7 +307,7 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			golden := filepath.Join("testdata", test.name+".golden")
+			golden := filepath.Join("testdata", test.name+".yaml")
 			if *update {
 				if err := ioutil.WriteFile(golden, []byte(s), 0644); err != nil {
 					t.Fatalf("failed to write updated fixture %s: %v", golden, err)
@@ -315,7 +315,7 @@ func TestUserDataGeneration(t *testing.T) {
 			}
 			expected, err := ioutil.ReadFile(golden)
 			if err != nil {
-				t.Errorf("failed to read .golden file: %v", err)
+				t.Errorf("failed to read testdata file: %v", err)
 			}
 
 			diff := difflib.UnifiedDiff{
