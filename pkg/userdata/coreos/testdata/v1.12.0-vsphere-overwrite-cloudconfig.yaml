@@ -4,7 +4,7 @@ passwd:
       ssh_authorized_keys:
         - ssh-rsa AAABBB
         - ssh-rsa CCCDDD
- 
+
 networkd:
   units:
     - name: static-nic.network
@@ -323,4 +323,3 @@ storage:
               curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
               chmod +x /opt/bin/health-monitor.sh
           fi
-

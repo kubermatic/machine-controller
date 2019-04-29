@@ -150,7 +150,7 @@ storage:
           ip_vs_wrr
           ip_vs_sh
           nf_conntrack_ipv4
- 
+
 
     - path: /etc/sysctl.d/k8s.conf
       filesystem: root
@@ -293,9 +293,8 @@ storage:
           if [ ! -f /opt/cni/bin/loopback ]; then
               curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
           fi
-          
+
           if [[ ! -x /opt/bin/health-monitor.sh ]]; then
               curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
               chmod +x /opt/bin/health-monitor.sh
           fi
-

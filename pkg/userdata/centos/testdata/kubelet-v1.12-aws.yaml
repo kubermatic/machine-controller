@@ -63,7 +63,6 @@ write_files:
     swapoff -a
 
 
-
     yum install -y docker-1.13.1 \
       ebtables \
       ethtool \

@@ -63,7 +63,6 @@ write_files:
     swapoff -a
 
 
-
     yum install -y docker-1.13.1 \
       ebtables \
       ethtool \
@@ -115,7 +114,7 @@ write_files:
     [Unit]
     After=docker.service
     Requires=docker.service
-    
+
     Description=kubelet: The Kubernetes Node Agent
     Documentation=https://kubernetes.io/docs/home/
 
