@@ -76,6 +76,7 @@ type CloudProviderSpec struct {
 	Subnetwork            providerconfig.ConfigVarString `json:"subnetwork"`
 	Preemptible           providerconfig.ConfigVarBool   `json:"preemptible"`
 	Labels                map[string]string              `json:"labels"`
+	Tags                  []string                       `json:"tags"`
 	AssignPublicIPAddress providerconfig.ConfigVarBool   `json:"assignPublicIPAddress"`
 }
 
@@ -135,6 +136,7 @@ type config struct {
 	subnetwork            string
 	preemptible           bool
 	labels                map[string]string
+	tags                  []string
 	jwtConfig             *jwt.Config
 	providerConfig        *providerconfig.Config
 	assignPublicIPAddress bool
@@ -152,6 +154,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg := &config{
 		providerConfig: providerConfig,
 		labels:         cpSpec.Labels,
+		tags:           cpSpec.Tags,
 		diskSize:       cpSpec.DiskSize,
 	}
 
