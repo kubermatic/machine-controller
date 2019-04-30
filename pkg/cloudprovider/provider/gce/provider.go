@@ -238,6 +238,9 @@ func (p *Provider) Create(
 				},
 			},
 		},
+		Tags: &compute.Tags{
+			Items: cfg.tags,
+		},
 	}
 	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
 	if err != nil {
