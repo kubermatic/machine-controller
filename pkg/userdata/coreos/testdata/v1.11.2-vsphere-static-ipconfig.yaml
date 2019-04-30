@@ -265,7 +265,6 @@ storage:
           kPe6XoSbiLm/kxk32T0=
           -----END CERTIFICATE-----
 
-
     - path: /etc/hostname
       filesystem: root
       mode: 0600
