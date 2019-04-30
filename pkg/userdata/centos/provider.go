@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"text/template"
 
 	"github.com/Masterminds/semver"
@@ -121,7 +122,8 @@ func (p Provider) UserData(
 	if err != nil {
 		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
-	return b.String(), nil
+	clean := regexp.MustCompile(`(?m)^[ \t]+$`).ReplaceAllString(b.String(), "")
+	return clean, nil
 }
 
 // UserData template.
@@ -189,7 +191,6 @@ write_files:
     cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
-
     {{ if ne .CloudProvider "aws" }}
     # The normal way of setting it via cloud-init is broken:
     # https://bugs.launchpad.net/cloud-init/+bug/1662542

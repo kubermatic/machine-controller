@@ -65,7 +65,6 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
-
     # The normal way of setting it via cloud-init is broken:
     # https://bugs.launchpad.net/cloud-init/+bug/1662542
     hostnamectl set-hostname node1
