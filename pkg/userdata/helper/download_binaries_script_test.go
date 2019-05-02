@@ -31,8 +31,8 @@ func TestDownloadBinariesScript(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-
-			test.CompareOutput(t, name, script, *update)
+			goldenName := name + ".golden"
+			test.CompareOutput(t, goldenName, script, *update)
 		})
 	}
 }

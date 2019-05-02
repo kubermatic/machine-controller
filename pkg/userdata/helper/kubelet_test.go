@@ -81,8 +81,8 @@ func TestKubeletSystemdUnit(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-
-			testhelper.CompareOutput(t, name, out, *update)
+			goldenName := name + ".golden"
+			testhelper.CompareOutput(t, goldenName, out, *update)
 		})
 	}
 }
