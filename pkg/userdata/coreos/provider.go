@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"fmt"
 	"net"
-	"regexp"
 	"text/template"
 
 	"github.com/Masterminds/semver"
@@ -113,8 +112,7 @@ func (p Provider) UserData(
 	if err != nil {
 		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
-	clean := regexp.MustCompile(`(?m)^[ \t]+$`).ReplaceAllString(b.String(), "")
-	return clean, nil
+	return userdatahelper.CleanupTemplateOutput(b.String())
 }
 
 // UserData template.
