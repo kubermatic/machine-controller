@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
@@ -62,8 +63,8 @@ func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T)
 			t.Errorf("failed to convert json to yaml: %v", err)
 			continue
 		}
-
-		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineDeploymentWithProviderConfig/%s", fixture.Name()), string(convertedMachineDeploymentYamlBytes), *update)
+		golden := strings.TrimSuffix(fixture.Name(), ".yaml")
+		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineDeploymentWithProviderConfig/%s", golden), string(convertedMachineDeploymentYamlBytes), *update)
 	}
 }
 
@@ -103,8 +104,8 @@ func Test_Convert_MachineSet_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			t.Errorf("failed to convert json to yaml: %v", err)
 			continue
 		}
-
-		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineSetWithProviderConfig/%s", fixture.Name()), string(convertedMachineSetYamlBytes), *update)
+		golden := strings.TrimSuffix(fixture.Name(), ".yaml")
+		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineSetWithProviderConfig/%s", golden), string(convertedMachineSetYamlBytes), *update)
 	}
 }
 
@@ -143,7 +144,7 @@ func Test_Convert_Machine_ProviderConfig_To_ProviderSpec(t *testing.T) {
 			t.Errorf("failed to convert json to yaml: %v", err)
 			continue
 		}
-
-		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineWithProviderConfig/%s", fixture.Name()), string(convertedMachineYamlBytes), *update)
+		golden := strings.TrimSuffix(fixture.Name(), ".yaml")
+		testhelper.CompareOutput(t, fmt.Sprintf("migrated_clusterv1alpha1machineWithProviderConfig/%s", golden), string(convertedMachineYamlBytes), *update)
 	}
 }
