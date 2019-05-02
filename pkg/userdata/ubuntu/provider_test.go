@@ -374,8 +374,8 @@ func TestUserDataGeneration(t *testing.T) {
 			if _, err := convert.GzipString(s); err != nil {
 				t.Fatal(err)
 			}
-
-			testhelper.CompareOutput(t, test.name, s, *update)
+			goldenName := test.name + ".yaml"
+			testhelper.CompareOutput(t, goldenName, s, *update)
 		})
 	}
 }

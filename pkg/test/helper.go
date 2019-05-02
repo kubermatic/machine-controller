@@ -25,7 +25,7 @@ import (
 )
 
 func CompareOutput(t *testing.T, name, output string, update bool) {
-	golden, err := filepath.Abs(filepath.Join("testdata", name+".yaml"))
+	golden, err := filepath.Abs(filepath.Join("testdata", name))
 	if err != nil {
 		t.Fatalf("failed to get absolute path to testdata file: %v", err)
 	}

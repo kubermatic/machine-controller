@@ -23,12 +23,8 @@ package coreos
 import (
 	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"net"
-	"path/filepath"
 	"testing"
-
-	"github.com/pmezard/go-difflib/difflib"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +32,7 @@ import (
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 )
@@ -306,33 +303,8 @@ func TestUserDataGeneration(t *testing.T) {
 			if _, err := convert.ToIgnition(s); err != nil {
 				t.Fatal(err)
 			}
-
-			golden := filepath.Join("testdata", test.name+".yaml")
-			if *update {
-				if err := ioutil.WriteFile(golden, []byte(s), 0644); err != nil {
-					t.Fatalf("failed to write updated fixture %s: %v", golden, err)
-				}
-			}
-			expected, err := ioutil.ReadFile(golden)
-			if err != nil {
-				t.Errorf("failed to read testdata file: %v", err)
-			}
-
-			diff := difflib.UnifiedDiff{
-				A:        difflib.SplitLines(string(expected)),
-				B:        difflib.SplitLines(s),
-				FromFile: "Fixture",
-				ToFile:   "Current",
-				Context:  3,
-			}
-			diffStr, err := difflib.GetUnifiedDiffString(diff)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diffStr != "" {
-				t.Errorf("got diff between expected and actual result: \n%s\n", diffStr)
-			}
+			goldenName := test.name + ".yaml"
+			testhelper.CompareOutput(t, goldenName, s, *update)
 		})
 	}
 }
