@@ -75,7 +75,7 @@ type RawConfig struct {
 	Datastore       providerconfig.ConfigVarString `json:"datastore"`
 	CPUs            int32                          `json:"cpus"`
 	MemoryMB        int64                          `json:"memoryMB"`
-	DiskSize        *int64                         `json:"diskSize"`
+	DiskSizeGB      *int64                         `json:"diskSizeGB"`
 	AllowInsecure   providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 
@@ -93,7 +93,7 @@ type Config struct {
 	AllowInsecure   bool
 	CPUs            int32
 	MemoryMB        int64
-	DiskSize        *int64
+	DiskSizeGB      *int64
 }
 
 type Server struct {
@@ -279,7 +279,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 
 	c.CPUs = rawConfig.CPUs
 	c.MemoryMB = rawConfig.MemoryMB
-	c.DiskSize = rawConfig.DiskSize
+	c.DiskSizeGB = rawConfig.DiskSizeGB
 
 	return &c, &pconfig, &rawConfig, nil
 }
@@ -321,6 +321,25 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	if _, err := finder.ClusterComputeResource(ctx, config.Cluster); err != nil {
 		return fmt.Errorf("failed to get cluster: %s: %v", config.Cluster, err)
+	}
+
+	templateVM, err := finder.VirtualMachine(ctx, config.TemplateVMName)
+	if err != nil {
+		return fmt.Errorf("failed to get template vm %q: %v", config.TemplateVMName, err)
+	}
+
+	disks, err := getDisksFromVM(ctx, templateVM)
+	if err != nil {
+		return fmt.Errorf("failed to get disks from VM: %v", err)
+	}
+	if diskLen := len(disks); diskLen != 1 {
+		return fmt.Errorf("expected vm to have exactly one disk, had %d", diskLen)
+	}
+
+	if config.DiskSizeGB != nil {
+		if err := validateDiskResizing(disks, *config.DiskSizeGB); err != nil {
+			return err
+		}
 	}
 
 	return nil

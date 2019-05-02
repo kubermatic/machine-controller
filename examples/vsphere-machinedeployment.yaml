@@ -55,7 +55,9 @@ spec:
             # Can also be set via the env var 'VSPHERE_ALLOW_INSECURE' on the machine-controller
             allowInsecure: true
             cpus: 2
-            MemoryMB: 2048
+            memoryMB: 2048
+            # Resize the root disk to this size. Must be bigger than the existing size
+            diskSizeGB: 10
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false
