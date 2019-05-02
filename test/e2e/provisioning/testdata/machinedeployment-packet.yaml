@@ -27,7 +27,7 @@ spec:
             apiKey: << PACKET_API_KEY >>
             projectID: << PACKET_PROJECT_ID >>
             instanceType: "t1.small.x86"
-            facilities: 
+            facilities:
             - "ewr1"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:

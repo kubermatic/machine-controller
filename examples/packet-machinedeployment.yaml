@@ -45,7 +45,7 @@ spec:
                 key: apiKey
             instanceType: "t1.small.x86"
             projectID: "<< PROJECT_ID >>"
-            facilities: 
+            facilities:
             - "ewr1"
           operatingSystem: "ubuntu"
           operatingSystemSpec:

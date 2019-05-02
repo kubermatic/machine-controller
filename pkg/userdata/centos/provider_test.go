@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	update = flag.Bool("update", false, "update .golden files")
+	update = flag.Bool("update", false, "update testdata files")
 
 	pemCertificate = `-----BEGIN CERTIFICATE-----
 MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
@@ -198,8 +198,8 @@ func TestUserDataGeneration(t *testing.T) {
 		if _, err := convert.GzipString(s); err != nil {
 			t.Fatal(err)
 		}
-
-		testhelper.CompareOutput(t, test.name, s, *update)
+		goldenName := test.name + ".yaml"
+		testhelper.CompareOutput(t, goldenName, s, *update)
 	}
 }
 

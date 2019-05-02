@@ -1,19 +1,13 @@
-
 passwd:
   users:
     - name: core
       ssh_authorized_keys:
         - ssh-rsa AAABBB
         - ssh-rsa CCCDDD
-        
+
 
 systemd:
   units:
-    - name: update-engine.service
-      mask: true
-    - name: locksmithd.service
-      mask: true
-
     - name: docker.service
       enabled: true
 
@@ -41,10 +35,10 @@ systemd:
           [Unit]
           Requires=docker.service
           After=docker.service
-          
+
           [Service]
           ExecStart=/opt/bin/health-monitor.sh container-runtime
-          
+
           [Install]
           WantedBy=multi-user.target
 
@@ -60,13 +54,13 @@ systemd:
           [Unit]
           Requires=kubelet.service
           After=kubelet.service
-          
+
           [Service]
           ExecStart=/opt/bin/health-monitor.sh kubelet
-          
+
           [Install]
           WantedBy=multi-user.target
-          
+
 
     - name: kubelet.service
       enabled: true
@@ -79,7 +73,7 @@ systemd:
         TimeoutStartSec=5min
         CPUAccounting=true
         MemoryAccounting=true
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.9.2
+        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.10.3
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --insecure-options=image \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
@@ -114,14 +108,15 @@ systemd:
           --rotate-certificates=true \
           --cert-dir=/etc/kubernetes/pki \
           --authentication-token-webhook=true \
-          --cloud-provider=aws \
+          --cloud-provider=openstack \
           --cloud-config=/etc/kubernetes/cloud-config \
+          --hostname-override=node1 \
           --read-only-port=0 \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
           --anonymous-auth=false \
           --protect-kernel-defaults=true \
-          --cluster-dns=10.10.10.10 \
+          --cluster-dns=10.10.10.10,10.10.10.11,10.10.10.12 \
           --cluster-domain=cluster.local \
           --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
           --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
@@ -140,7 +135,7 @@ storage:
         inline: |
           [Journal]
           SystemMaxUse=5G
-          
+
 
     - path: /etc/modules-load.d/k8s.conf
       filesystem: root
@@ -152,7 +147,7 @@ storage:
           ip_vs_wrr
           ip_vs_sh
           nf_conntrack_ipv4
-          
+
 
     - path: /etc/sysctl.d/k8s.conf
       filesystem: root
@@ -166,7 +161,7 @@ storage:
           net.ipv4.ip_forward = 1
           vm.overcommit_memory = 1
           fs.inotify.max_user_watches = 1048576
-          
+
 
     - path: /proc/sys/kernel/panic_on_oops
       filesystem: root
@@ -208,14 +203,14 @@ storage:
           - name: ""
             user:
               token: my-token
-          
+
 
     - path: /etc/kubernetes/cloud-config
       filesystem: root
       mode: 0400
       contents:
         inline: |
-          {aws-config:true}
+          {openstack-config:true}
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
@@ -249,7 +244,11 @@ storage:
           kPe6XoSbiLm/kxk32T0=
           -----END CERTIFICATE-----
 
-
+    - path: /etc/hostname
+      filesystem: root
+      mode: 0600
+      contents:
+        inline: 'node1'
 
     - path: /etc/ssh/sshd_config
       filesystem: root
@@ -291,14 +290,13 @@ storage:
           mkdir -p /etc/kubernetes/manifests
           mkdir -p /etc/cni/net.d
           mkdir -p /opt/cni/bin
-          
+
           # cni
           if [ ! -f /opt/cni/bin/loopback ]; then
               curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
           fi
-          
+
           if [[ ! -x /opt/bin/health-monitor.sh ]]; then
               curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
               chmod +x /opt/bin/health-monitor.sh
           fi
-          

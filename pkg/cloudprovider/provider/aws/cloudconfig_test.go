@@ -25,7 +25,7 @@ import (
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 )
 
-var update = flag.Bool("update", false, "update .golden files")
+var update = flag.Bool("update", false, "update testdata files")
 
 func TestCloudConfigToString(t *testing.T) {
 	tests := []struct {
@@ -63,8 +63,8 @@ func TestCloudConfigToString(t *testing.T) {
 			if err := gcfg.ReadStringInto(nc, s); err != nil {
 				t.Fatalf("failed to load string into config object: %v", err)
 			}
-
-			testhelper.CompareOutput(t, test.name, s, *update)
+			goldenName := test.name + ".golden"
+			testhelper.CompareOutput(t, goldenName, s, *update)
 		})
 	}
 }

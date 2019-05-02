@@ -25,9 +25,9 @@ import (
 )
 
 func CompareOutput(t *testing.T, name, output string, update bool) {
-	golden, err := filepath.Abs(filepath.Join("testdata", name+".golden"))
+	golden, err := filepath.Abs(filepath.Join("testdata", name))
 	if err != nil {
-		t.Fatalf("failed to get absolute path to goldan file: %v", err)
+		t.Fatalf("failed to get absolute path to testdata file: %v", err)
 	}
 	if update {
 		if err := ioutil.WriteFile(golden, []byte(output), 0644); err != nil {
@@ -36,7 +36,7 @@ func CompareOutput(t *testing.T, name, output string, update bool) {
 	}
 	expected, err := ioutil.ReadFile(golden)
 	if err != nil {
-		t.Fatalf("failed to read .golden file: %v", err)
+		t.Fatalf("failed to read testdata file: %v", err)
 	}
 
 	diff := difflib.UnifiedDiff{

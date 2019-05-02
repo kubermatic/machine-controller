@@ -564,7 +564,7 @@ spec:
             - "virt-handler"
             - "-v"
             - "3"
-            -  "--port"
+            - "--port"
             - "8443"
             - "--hostname-override"
             - "$(NODE_NAME)"
