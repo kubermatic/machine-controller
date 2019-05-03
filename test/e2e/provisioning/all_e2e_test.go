@@ -37,14 +37,14 @@ func init() {
 }
 
 const (
-	DOManifest     = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest    = "./testdata/machinedeployment-aws.yaml"
-	AzureManifest  = "./testdata/machinedeployment-azure.yaml"
-	GCEManifest    = "./testdata/machinedeployment-gce.yaml"
-	HZManifest     = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest = "./testdata/machinedeployment-packet.yaml"
-	LinodeManifest = "./testdata/machinedeployment-linode.yaml"
-	//	vs_manifest            = "./testdata/machinedeployment-vsphere.yaml"
+	DOManifest      = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest     = "./testdata/machinedeployment-aws.yaml"
+	AzureManifest   = "./testdata/machinedeployment-azure.yaml"
+	GCEManifest     = "./testdata/machinedeployment-gce.yaml"
+	HZManifest      = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest  = "./testdata/machinedeployment-packet.yaml"
+	LinodeManifest  = "./testdata/machinedeployment-linode.yaml"
+	VSPhereManifest = "./testdata/machinedeployment-vsphere.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
 	OSManifest             = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
@@ -267,28 +267,28 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 
 // TestVsphereProvisioning - a test suite that exercises vsphere provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-//func TestVsphereProvisioningE2E(t *testing.T) {
-//	t.Parallel()
-//
-//	// test data
-//	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
-//	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
-//	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
-//	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
-//	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
-//		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
-//	}
-//
-//	excludeSelector := &scenarioSelector{}
-//
-//	// act
-//	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
-//		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
-//		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
-//		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
-//	}
-//	runScenarios(t, excludeSelector, params, vs_manifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
-//}
+func TestVsphereProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
+	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
+	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
+	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
+	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	}
+
+	excludeSelector := &scenarioSelector{}
+
+	// act
+	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
+		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
+		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
+		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
+	}
+	runScenarios(t, excludeSelector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+}
 
 // TestVsphereStaticIPProvisioningE2E will try to create a node with a VSphere machine
 // whose IP address is statically assigned.
