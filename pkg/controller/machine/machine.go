@@ -307,42 +307,35 @@ func (c *Controller) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.
 }
 
 func (c *Controller) updateMachine(machine *clusterv1alpha1.Machine, modify func(*clusterv1alpha1.Machine)) (*clusterv1alpha1.Machine, error) {
-	var updatedMachine *clusterv1alpha1.Machine
-
 	// Both machine and updatedMachine can be nil later on, so we store the namespace and name here
 	namespace := machine.Namespace
 	name := machine.Name
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		var getErr, retryErr error
+		var err error
 
-		// Apply modifications
-		// machine could be nil here if the get after a failed update failed
-		if machine == nil {
-			machine, getErr = c.machineClient.ClusterV1alpha1().Machines(namespace).Get(name, metav1.GetOptions{})
-			if getErr != nil {
-				return getErr
-			}
+		machine, err = c.machinesLister.Machines(namespace).Get(name)
+		if err != nil {
+			return err
 		}
+		machine = machine.DeepCopy()
+
+		// Modify machine, only try to UPDATE when the modification results in a change
+		unmodifiedMachine := machine.DeepCopy()
 		modify(machine)
-
-		// Update the machine, if that fails, get the latest version from the api
-		// we deliberately try to update first via the provided machine object
-		// to not have at least one get call per update as we do a lot of updates
-		// which gets us ratelimited very quickly which then creates issues when there is an actual conflict
-		updatedMachine, retryErr = c.machineClient.ClusterV1alpha1().Machines(namespace).Update(machine)
-		if retryErr != nil {
-			//Get latest version from API
-			machine, getErr = c.machineClient.ClusterV1alpha1().Machines(namespace).Get(name, metav1.GetOptions{})
-			if getErr != nil {
-				return getErr
-			}
-			return retryErr
+		if equality.Semantic.DeepEqual(unmodifiedMachine, machine) {
+			return nil
 		}
-		return retryErr
 
+		// Update the machine
+		machine, err = c.machineClient.ClusterV1alpha1().Machines(namespace).Update(machine)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 
-	return updatedMachine, err
+	return machine, err
 }
 
 // updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not
@@ -555,6 +548,7 @@ func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *c
 	}
 
 	machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(FinalizerDeleteInstance)
 		m.Finalizers = finalizers.List()
 	})
@@ -590,6 +584,7 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 	finalizers := sets.NewString(machine.Finalizers...)
 	if finalizers.Has(FinalizerDeleteNode) {
 		_, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+			finalizers := sets.NewString(m.Finalizers...)
 			finalizers.Delete(FinalizerDeleteNode)
 			m.Finalizers = finalizers.List()
 		})
