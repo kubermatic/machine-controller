@@ -358,7 +358,6 @@ func (c *Controller) updateMachineError(machine *clusterv1alpha1.Machine, reason
 // and at the same time terminal error will be returned to the caller
 // otherwise it will return formatted error according to errMsg
 func (c *Controller) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.Machine, stReason common.MachineStatusError, stMessage string, err error, errMsg string) error {
-	c.recorder.Eventf(machine, corev1.EventTypeWarning, string(stReason), stMessage)
 	if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
 		if _, errNested := c.updateMachineError(machine, stReason, stMessage); errNested != nil {
 			return fmt.Errorf("failed to update machine error after due to %v, terminal error = %v", errNested, stMessage)
@@ -397,6 +396,16 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	machine := listerMachine.DeepCopy()
+	if err := c.sync(machine); err != nil {
+		// We have no guarantee that machine is non-nil after reconciliation
+		machine := listerMachine.DeepCopy()
+		glog.Errorf("Failed to reconcile machine %q: %v", machine.Name, err)
+		c.recorder.Eventf(machine, corev1.EventTypeWarning, "ReconcilingError", "%v", err)
+	}
+	return err
+}
+
+func (c *Controller) sync(machine *clusterv1alpha1.Machine) error {
 
 	// This must stay in the controller, it can not be moved into the webhook
 	// as the webhook does not get the name of machineset controller generated
@@ -514,7 +523,6 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 	}
 
 	if err := c.deleteCloudProviderInstance(prov, machine); err != nil {
-		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete instance at cloud provider: %v", err)
 		return err
 	}
 
@@ -528,7 +536,6 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 	}
 
 	if err := c.deleteNodeForMachine(machine); err != nil {
-		c.recorder.Eventf(machine, corev1.EventTypeWarning, "DeletionFailed", "Failed to delete node: %v", err)
 		return err
 	}
 
@@ -612,7 +619,6 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 
 			kubeconfig, err := c.createBootstrapKubeconfig(machine.Name)
 			if err != nil {
-				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateBootstrapKubeconfigFailed", "Creating bootstrap kubeconfig failed: %v", err)
 				return fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
@@ -622,13 +628,11 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine
 			}
 			userdata, err := userdataPlugin.UserData(machine.Spec, kubeconfig, cloudConfig, cloudProviderName, c.clusterDNSIPs, c.externalCloudProvider)
 			if err != nil {
-				c.recorder.Eventf(machine, corev1.EventTypeWarning, "UserdataRenderingFailed", "Userdata rendering failed: %v", err)
 				return fmt.Errorf("failed get userdata: %v", err)
 			}
 
 			// Create the instance
 			if _, err = c.createProviderInstance(prov, machine, userdata); err != nil {
-				c.recorder.Eventf(machine, corev1.EventTypeWarning, "CreateInstanceFailed", "Instance creation failed: %v", err)
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprover")
 			}
