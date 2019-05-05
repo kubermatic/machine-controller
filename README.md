@@ -146,4 +146,4 @@ See [the list of releases][7] to find out about feature changes.
 [4]: code-of-conduct.md
 [5]: CONTRIBUTING.md
 [6]: Zenhub.md
-[7]: https://github.com/kubermatic/machine-controller/releases
+[7]: https://github.com/kubermatic/machine-controller/releasestest
