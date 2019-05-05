@@ -168,7 +168,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem, region 
 	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
 	amiID, found := cache.Get(cacheKey)
 	if found {
-		glog.V(3).Info("found AMI-ID %q for OperatingSystem %q in cache", amiID, os)
+		glog.V(3).Infof("found AMI-ID %q for OperatingSystem %q in cache", amiID.(string), os)
 		return amiID.(string), nil
 	}
 
