@@ -168,7 +168,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem, region 
 	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
 	amiID, found := cache.Get(cacheKey)
 	if found {
-		glog.V(3).Info("found AMI-ID in cache!")
+		glog.V(3).Info("found AMI-ID %q for OperatingSystem %q in cache", amiID, os)
 		return amiID.(string), nil
 	}
 
@@ -316,12 +316,23 @@ func getEC2client(id, secret, region string) (*ec2.EC2, error) {
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	_, _, rawConfig, err := p.getConfig(spec.ProviderSpec)
+	config, providerConfig, rawConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, err
 	}
 	if rawConfig.DiskType.Value == "" {
 		rawConfig.DiskType.Value = ec2.VolumeTypeStandard
+	}
+	if rawConfig.AMI.Value == "" {
+		client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+		if err != nil {
+			return spec, fmt.Errorf("failed to create ec2 client: %v", err)
+		}
+		ami, err := getDefaultAMIID(client, providerConfig.OperatingSystem, config.Region)
+		if err != nil {
+			return spec, fmt.Errorf("fauled to get AMI for Operating System %q: %v", providerConfig.OperatingSystem, err)
+		}
+		rawConfig.AMI.Value = ami
 	}
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
 	return spec, err
@@ -441,14 +452,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	}
 
 	amiID := config.AMI
-	if amiID == "" {
-		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region); err != nil {
-			return nil, cloudprovidererrors.TerminalError{
-				Reason:  common.InvalidConfigurationMachineError,
-				Message: fmt.Sprintf("Invalid Region and Operating System configuration: %v", err),
-			}
-		}
-	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
 		// Gzip the userdata in case we don't use CoreOS.
