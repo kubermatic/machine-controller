@@ -166,13 +166,13 @@ func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Init cloud configuration.
-	cc := &cloudConfig{
-		Global: global{
+	cc := &CloudConfig{
+		Global: GlobalOpts{
 			ProjectID: cfg.projectID,
 			LocalZone: cfg.zone,
 		},
 	}
-	config, err = cc.asString()
+	config, err = cc.AsString()
 	if err != nil {
 		return "", "", newError(common.InvalidConfigurationMachineError, errCloudConfig, err)
 	}

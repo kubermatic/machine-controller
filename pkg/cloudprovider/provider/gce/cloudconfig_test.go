@@ -29,13 +29,13 @@ import (
 func TestCloudConfigAsString(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   *cloudConfig
+		config   *CloudConfig
 		contents string
 	}{
 		{
 			name: "minimum test",
-			config: &cloudConfig{
-				Global: global{
+			config: &CloudConfig{
+				Global: GlobalOpts{
 					ProjectID: "my-project-id",
 					LocalZone: "my-zone",
 				},
@@ -48,7 +48,7 @@ func TestCloudConfigAsString(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s, err := test.config.asString()
+			s, err := test.config.AsString()
 			if err != nil {
 				t.Fatalf("failed to convert to string: %v", err)
 			}
