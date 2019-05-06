@@ -106,7 +106,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, *pro
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
 	}
-	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ProjectID)
+	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"projectID\" field, error = %v", err)
 	}
