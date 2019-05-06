@@ -520,6 +520,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 		},
 	}
 
+	bytes, err := json.Marshal(instanceRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal instance request: %v", err)
+	}
+	glog.Infof("Instance request for machine %q: %s", machine.Name, string(bytes))
+
 	runOut, err := ec2Client.RunInstances(instanceRequest)
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed create instance at aws")
