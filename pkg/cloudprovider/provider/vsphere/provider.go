@@ -385,6 +385,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		}()
 
 		if err := uploadAndAttachISO(ctx, finder, virtualMachine, localUserdataIsoFilePath, config.Datastore); err != nil {
+			if osErr := os.Remove(localUserdataIsoFilePath); osErr != nil {
+				glog.V(3).Infof("failed to remove ISO after upload failure: %v", osErr)
+			}
 			return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to upload and attach userdata iso: %v", err))
 		}
 	}
