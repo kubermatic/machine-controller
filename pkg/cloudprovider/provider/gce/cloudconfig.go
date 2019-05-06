@@ -36,19 +36,19 @@ const cloudConfigTemplate = "[global]\n" +
 	"project-id = {{ .Global.ProjectID | iniEscape }}\n" +
 	"local-zone = {{ .Global.LocalZone | iniEscape }}\n"
 
-// global contains the values of the global section of the cloud configuration.
-type global struct {
+// GlobalOpts contains the values of the global section of the cloud configuration.
+type GlobalOpts struct {
 	ProjectID string
 	LocalZone string
 }
 
-// cloudConfig contains only the section global.
-type cloudConfig struct {
-	Global global
+// CloudConfig contains only the section global.
+type CloudConfig struct {
+	Global GlobalOpts
 }
 
-// asString renders the cloud configuration as string.
-func (cc *cloudConfig) asString() (string, error) {
+// AsString renders the cloud configuration as string.
+func (cc *CloudConfig) AsString() (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
 
