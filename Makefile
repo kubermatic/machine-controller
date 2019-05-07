@@ -136,4 +136,4 @@ check-dependencies:
 	# We need mercurial for bitbucket.org/ww/goautoneg, otherwise dep hangs forever
 	which hg >/dev/null 2>&1 || apt update && apt install -y mercurial
 	dep version || go get -u github.com/golang/dep/cmd/dep
-	dep status
+	dep check
