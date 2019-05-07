@@ -361,12 +361,13 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 }
 
 func (c *Controller) createProviderInstance(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
-	// Ensure finalizer is there
-	machine, err := c.ensureDeleteFinalizerExists(machine)
+	instance, err := prov.Create(machine, c.machineCreateDeleteData, userdata)
 	if err != nil {
 		return nil, err
 	}
-	return prov.Create(machine, c.machineCreateDeleteData, userdata)
+	// Ensure finalizer is there
+	_, err = c.ensureDeleteFinalizerExists(machine)
+	return instance, err
 }
 
 func (c *Controller) syncHandler(key string) error {
