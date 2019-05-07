@@ -432,3 +432,30 @@ func removeFloppyDevice(ctx context.Context, virtualMachine *object.VirtualMachi
 
 	return nil
 }
+
+func getValueForField(ctx context.Context, vm *object.VirtualMachine, fieldName string) (string, error) {
+	var mvm mo.VirtualMachine
+	if err := vm.Properties(ctx, vm.Reference(), nil, &mvm); err != nil {
+		return "", fmt.Errorf("failed to get properties: %v", err)
+	}
+
+	var key int32
+	for _, availableField := range mvm.AvailableField {
+		if availableField.Name == fieldName {
+			key = availableField.Key
+			break
+		}
+	}
+
+	for _, value := range mvm.Value {
+		if value.GetCustomFieldValue().Key == key {
+			stringVal, ok := value.(*types.CustomFieldStringValue)
+			if ok {
+				return stringVal.Value, nil
+			}
+			break
+		}
+	}
+
+	return "", nil
+}

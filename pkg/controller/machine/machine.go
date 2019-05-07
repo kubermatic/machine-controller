@@ -274,6 +274,7 @@ func (c *Controller) processNextWorkItem() bool {
 
 	glog.V(6).Infof("Processing machine: %s", key)
 	err := c.syncHandler(key.(string))
+	glog.V(6).Infof("Finished processing machine %s", key)
 	if err == nil {
 		// Every time we successfully sync a Machine, we should check if we should remove the error if its set
 		c.clearMachineError(key.(string))
@@ -698,7 +699,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 			return fmt.Errorf("failed to update machine status: %v", err)
 		}
 	} else {
-		// If the machine has an owner Ref and is older than 10 Minutes, delete it to have it re-created by the MachineSet controller
+		// If the machine has an owner Ref and joinClusterTimeout is configured and reached, delete it to have it re-created by the MachineSet controller
 		// Check if the machine is a potential candidate for triggering deletion
 		if c.joinClusterTimeout != nil && ownerReferencesHasMachineSetKind(machine.OwnerReferences) {
 			if time.Since(machine.CreationTimestamp.Time) > *c.joinClusterTimeout {
