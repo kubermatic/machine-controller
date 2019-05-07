@@ -386,12 +386,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 
 		if err := uploadAndAttachISO(ctx, finder, virtualMachine, localUserdataIsoFilePath, config.Datastore); err != nil {
 			// Destroy VM to avoid a leftover.
-			destroyTask, err := virtualMachine.Destroy(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
+			destroyTask, vmErr := virtualMachine.Destroy(ctx)
+			if vmErr != nil {
+				return nil, fmt.Errorf("failed to destroy vm %s after failing upload and attach userdata iso: %v / %v", virtualMachine.Name(), err, vmErr)
 			}
-			if err := destroyTask.Wait(ctx); err != nil {
-				return nil, fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
+			if vmErr := destroyTask.Wait(ctx); vmErr != nil {
+				return nil, fmt.Errorf("failed to destroy vm %s after failing upload and attach userdata iso: %v / %v", virtualMachine.Name(), err, vmErr)
 			}
 			return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to upload and attach userdata iso: %v", err))
 		}
