@@ -27,12 +27,13 @@ import (
 )
 
 type kubeletFlagTestCase struct {
-	name          string
-	version       *semver.Version
-	dnsIPs        []net.IP
-	hostname      string
-	cloudProvider string
-	external      bool
+	name           string
+	version        *semver.Version
+	dnsIPs         []net.IP
+	hostname       string
+	cloudProvider  string
+	external       bool
+	hasCloudConfig bool
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -40,17 +41,19 @@ func TestKubeletSystemdUnit(t *testing.T) {
 	for _, version := range versions {
 		tests = append(tests,
 			kubeletFlagTestCase{
-				name:     fmt.Sprintf("version-%s", version.Original()),
-				version:  version,
-				dnsIPs:   []net.IP{net.ParseIP("10.10.10.10")},
-				hostname: "some-test-node",
+				name:           fmt.Sprintf("version-%s", version.Original()),
+				version:        version,
+				dnsIPs:         []net.IP{net.ParseIP("10.10.10.10")},
+				hostname:       "some-test-node",
+				hasCloudConfig: true,
 			},
 			kubeletFlagTestCase{
-				name:     fmt.Sprintf("version-%s-external", version.Original()),
-				version:  version,
-				dnsIPs:   []net.IP{net.ParseIP("10.10.10.10")},
-				hostname: "some-test-node",
-				external: true,
+				name:           fmt.Sprintf("version-%s-external", version.Original()),
+				version:        version,
+				dnsIPs:         []net.IP{net.ParseIP("10.10.10.10")},
+				hostname:       "some-test-node",
+				external:       true,
+				hasCloudConfig: true,
 			},
 		)
 	}
@@ -77,9 +80,9 @@ func TestKubeletSystemdUnit(t *testing.T) {
 	for _, test := range tests {
 		name := fmt.Sprintf("kublet_systemd_unit_%s", test.name)
 		t.Run(name, func(t *testing.T) {
-			out, err := KubeletSystemdUnit(test.version.String(), test.cloudProvider, test.hostname, test.dnsIPs, test.external)
+			out, err := KubeletSystemdUnit(test.version.String(), test.cloudProvider, test.hostname, test.dnsIPs, test.external, test.hasCloudConfig)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 			goldenName := name + ".golden"
 			testhelper.CompareOutput(t, goldenName, out, *update)

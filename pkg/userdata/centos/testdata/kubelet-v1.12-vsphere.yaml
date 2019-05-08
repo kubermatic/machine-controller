@@ -170,7 +170,6 @@ write_files:
   content: |
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
-
 - path: "/etc/kubernetes/cloud-config"
   content: |
     {config:true}

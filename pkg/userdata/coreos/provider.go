@@ -220,7 +220,7 @@ systemd:
         ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
-{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 10 }}
+{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal (ne .CloudConfig "")| indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
@@ -278,12 +278,14 @@ storage:
         inline: |
 {{ .Kubeconfig | indent 10 }}
 
+{{- if .CloudConfig }}
     - path: /etc/kubernetes/cloud-config
       filesystem: root
       mode: 0400
       contents:
         inline: |
 {{ .CloudConfig | indent 10 }}
+{{- end}}
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root

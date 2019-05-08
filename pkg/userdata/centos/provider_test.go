@@ -170,36 +170,38 @@ func TestUserDataGeneration(t *testing.T) {
 	provider := Provider{}
 
 	for _, test := range tests {
-		emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
-			Value: &runtime.RawExtension{},
-		}
-		test.spec.ProviderSpec = emtpyProviderSpec
-		var cloudProvider *fakeCloudConfigProvider
-		if test.cloudProviderName != nil {
-			cloudProvider = &fakeCloudConfigProvider{
-				name:   *test.cloudProviderName,
-				config: "{config:true}",
-				err:    nil,
+		t.Run(test.name, func(t *testing.T) {
+			emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
+				Value: &runtime.RawExtension{},
 			}
-		} else {
-			cloudProvider = defaultCloudProvider
-		}
-		cloudConfig, cloudProviderName, err := cloudProvider.GetCloudConfig(test.spec)
-		if err != nil {
-			t.Fatalf("failed to get cloud config: %v", err)
-		}
+			test.spec.ProviderSpec = emtpyProviderSpec
+			var cloudProvider *fakeCloudConfigProvider
+			if test.cloudProviderName != nil {
+				cloudProvider = &fakeCloudConfigProvider{
+					name:   *test.cloudProviderName,
+					config: "{config:true}",
+					err:    nil,
+				}
+			} else {
+				cloudProvider = defaultCloudProvider
+			}
+			cloudConfig, cloudProviderName, err := cloudProvider.GetCloudConfig(test.spec)
+			if err != nil {
+				t.Fatalf("failed to get cloud config: %v", err)
+			}
 
-		s, err := provider.UserData(test.spec, kubeconfig, cloudConfig, cloudProviderName, test.clusterDNSIPs, test.externalCloudProvider)
-		if err != nil {
-			t.Errorf("error getting userdata: '%v'", err)
-		}
+			s, err := provider.UserData(test.spec, kubeconfig, cloudConfig, cloudProviderName, test.clusterDNSIPs, test.externalCloudProvider)
+			if err != nil {
+				t.Fatalf("error getting userdata: '%v'", err)
+			}
 
-		// Check if we can gzip it.
-		if _, err := convert.GzipString(s); err != nil {
-			t.Fatal(err)
-		}
-		goldenName := test.name + ".yaml"
-		testhelper.CompareOutput(t, goldenName, s, *update)
+			// Check if we can gzip it.
+			if _, err := convert.GzipString(s); err != nil {
+				t.Fatal(err)
+			}
+			goldenName := test.name + ".yaml"
+			testhelper.CompareOutput(t, goldenName, s, *update)
+		})
 	}
 }
 
