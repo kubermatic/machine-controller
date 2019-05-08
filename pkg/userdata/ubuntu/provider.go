@@ -293,18 +293,16 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal (ne .CloudConfig "")| indent 4 }}
+{{ kubeletSystemdUnit .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
 
-{{- if .CloudConfig }}
 - path: "/etc/kubernetes/cloud-config"
   content: |
 {{ .CloudConfig | indent 4 }}
-{{- end }}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   content: |

@@ -224,6 +224,7 @@ storage:
             user:
               token: my-token
 
+
     - path: /etc/kubernetes/cloud-config
       filesystem: root
       mode: 0400

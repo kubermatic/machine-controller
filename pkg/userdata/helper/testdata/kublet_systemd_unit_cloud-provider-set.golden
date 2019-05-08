@@ -29,6 +29,7 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --cert-dir=/etc/kubernetes/pki \
   --authentication-token-webhook=true \
   --cloud-provider=aws \
+  --cloud-config=/etc/kubernetes/cloud-config \
   --read-only-port=0 \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \

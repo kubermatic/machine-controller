@@ -671,7 +671,60 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "vsphere", nil
+	c, _, _, err := p.getConfig(spec.ProviderSpec)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	passedURL := c.VSphereURL
+	// Required because url.Parse returns an empty string for the hostname if there was no schema
+	if !strings.HasPrefix(passedURL, "https://") {
+		passedURL = "https://" + passedURL
+	}
+
+	u, err := url.Parse(passedURL)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse '%s' as url: %v", passedURL, err)
+	}
+
+	workingDir := c.Folder
+	// Default to basedir
+	if workingDir == "" {
+		workingDir = fmt.Sprintf("/%s/vm", c.Datacenter)
+	}
+
+	cc := &CloudConfig{
+		Global: GlobalOpts{
+			User:         c.Username,
+			Password:     c.Password,
+			InsecureFlag: c.AllowInsecure,
+			VCenterPort:  u.Port(),
+		},
+		Disk: DiskOpts{
+			SCSIControllerType: "pvscsi",
+		},
+		Workspace: WorkspaceOpts{
+			Datacenter:       c.Datacenter,
+			VCenterIP:        u.Hostname(),
+			DefaultDatastore: c.Datastore,
+			Folder:           workingDir,
+		},
+		VirtualCenter: map[string]*VirtualCenterConfig{
+			u.Hostname(): {
+				VCenterPort: u.Port(),
+				Datacenters: c.Datacenter,
+				User:        c.Username,
+				Password:    c.Password,
+			},
+		},
+	}
+
+	s, err := CloudConfigToString(cc)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %v", err)
+	}
+
+	return s, "vsphere", nil
 }
 
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {

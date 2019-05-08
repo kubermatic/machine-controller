@@ -242,6 +242,10 @@ write_files:
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
 
+- path: "/etc/kubernetes/cloud-config"
+  content: |
+
+
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   content: |
     apiVersion: v1
