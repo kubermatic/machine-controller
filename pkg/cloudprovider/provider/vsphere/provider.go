@@ -48,6 +48,13 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
+const (
+	// We set this field on the virtual machine to the name of
+	// the machine to indicate creation succeeded.
+	// If this is not set correctly, .Get will delete the instance
+	creationCompleteFieldName = "kubernetes-worker-complete"
+)
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -406,6 +413,24 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		return nil, fmt.Errorf("error when waiting for vm powerOn task: %v", err)
 	}
 
+	// Add a custom field to indicate to our Get that creation succeeded
+	// If the field is not set, Get will delete the instance
+	customFieldManager, err := object.GetCustomFieldsManager(client.Client)
+	key, err := customFieldManager.FindKey(ctx, creationCompleteFieldName)
+	if err != nil {
+		if !strings.Contains(err.Error(), "key name not found") {
+			return nil, fmt.Errorf("error trying to get field with key %q: %v", creationCompleteFieldName, err)
+		}
+		field, err := customFieldManager.Add(ctx, creationCompleteFieldName, "VirtualMachine", nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add field %q: %v", creationCompleteFieldName, err)
+		}
+		key = field.Key
+	}
+	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), key, machine.Spec.Name); err != nil {
+		return nil, fmt.Errorf("failed to set field %q to value %q: %v", creationCompleteFieldName, machine.Spec.Name, err)
+	}
+
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
@@ -510,6 +535,9 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloud.MachineCreateD
 		filemanager := datastore.NewFileManager(dc, false)
 
 		if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {
+			if err.Error() == fmt.Sprintf("File [%s] %s was not found", datastore.Name(), virtualMachine.Name()) {
+				return true, nil
+			}
 			return false, fmt.Errorf("failed to delete storage of deleted instance %s: %v", virtualMachine.Name(), err)
 		}
 	}
@@ -519,8 +547,9 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloud.MachineCreateD
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+	ctx := context.Background()
 
-	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -530,7 +559,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
 	}
 	defer func() {
-		if lerr := client.Logout(context.TODO()); lerr != nil {
+		if lerr := client.Logout(ctx); lerr != nil {
 			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
 		}
 	}()
@@ -539,7 +568,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get datacenter finder: %v", err)
 	}
-	virtualMachine, err := finder.VirtualMachine(context.TODO(), machine.Spec.Name)
+	virtualMachine, err := finder.VirtualMachine(ctx, machine.Spec.Name)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -547,9 +576,64 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		return nil, fmt.Errorf("failed to get server: %v", err)
 	}
 
-	powerState, err := virtualMachine.PowerState(context.TODO())
+	powerState, err := virtualMachine.PowerState(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get powerstate: %v", err)
+	}
+
+	// Check if the creationCompleteFieldName is set to machine.Spec.Name.
+	// If that is not the case, the creation didn't complete successfully and
+	// we must delete the instance so it gets recreated
+	fieldValue, err := getValueForField(ctx, virtualMachine, creationCompleteFieldName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get value for field: %v", err)
+	}
+	if fieldValue != machine.Spec.Name {
+		// TODO: This should leverage .Cleanup, but we can currently not do that,
+		// because .Cleanup needs cloud.MachineCreateDeleteData which we don't have here
+		if powerState == types.VirtualMachinePowerStatePoweredOn {
+			powerOffTask, err := virtualMachine.PowerOff(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to power off instance %q whose creation didn't complete: %v",
+					virtualMachine.Name(), err)
+			}
+			if err := powerOffTask.Wait(ctx); err != nil {
+				return nil, fmt.Errorf("failed to wait for instance %q whose creation didn't complete to be powered off: %v",
+					virtualMachine.Name(), err)
+			}
+		}
+		destroyTask, err := virtualMachine.Destroy(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete instance %q whose creation didn't complete: %v",
+				virtualMachine.Name(), err)
+		}
+		if err := destroyTask.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("failed to wait for deletion of instance %q whose creation didn't complete: %v",
+				virtualMachine.Name(), err)
+		}
+		if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
+			datastore, err := finder.Datastore(ctx, config.Datastore)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get datastore %s for instance %q whose creation didn't complete: %v",
+					config.Datastore, virtualMachine.Name(), err)
+			}
+			dc, err := finder.Datacenter(ctx, config.Datacenter)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get vsphere datacenter for instance %q whose creation didn't complete: %v",
+					virtualMachine.Name(), err)
+			}
+			finder.SetDatacenter(dc)
+			filemanager := datastore.NewFileManager(dc, false)
+
+			if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {
+				if err.Error() == fmt.Sprintf("File [%s] %s was not found", datastore.Name(), virtualMachine.Name()) {
+					return nil, cloudprovidererrors.ErrInstanceNotFound
+				}
+				return nil, fmt.Errorf("failed to delete storage of deleted instance %q whose cretion didn't complete: %v",
+					virtualMachine.Name(), err)
+			}
+		}
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
 	var status instance.Status
@@ -560,28 +644,31 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 		status = instance.StatusUnknown
 	}
 
-	isGuestToolsRunning, err := virtualMachine.IsToolsRunning(context.TODO())
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
-	}
+	// virtualMachine.IsToolsRunning panics when executed on a VM that is not powered on
 	addresses := []string{}
-	if isGuestToolsRunning {
-		var moVirtualMachine mo.VirtualMachine
-		pc := property.DefaultCollector(client.Client)
-		if err := pc.RetrieveOne(context.TODO(), virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine); err != nil {
-			return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
+	if powerState == types.VirtualMachinePowerStatePoweredOn {
+		isGuestToolsRunning, err := virtualMachine.IsToolsRunning(context.TODO())
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
 		}
+		if isGuestToolsRunning {
+			var moVirtualMachine mo.VirtualMachine
+			pc := property.DefaultCollector(client.Client)
+			if err := pc.RetrieveOne(context.TODO(), virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine); err != nil {
+				return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
+			}
 
-		for _, nic := range moVirtualMachine.Guest.Net {
-			for _, address := range nic.IpAddress {
-				// Exclude ipv6 link-local addresses and default Docker bridge
-				if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
-					addresses = append(addresses, address)
+			for _, nic := range moVirtualMachine.Guest.Net {
+				for _, address := range nic.IpAddress {
+					// Exclude ipv6 link-local addresses and default Docker bridge
+					if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
+						addresses = append(addresses, address)
+					}
 				}
 			}
+		} else {
+			glog.V(3).Infof("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
 		}
-	} else {
-		glog.V(3).Infof("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
 	}
 
 	return Server{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil
