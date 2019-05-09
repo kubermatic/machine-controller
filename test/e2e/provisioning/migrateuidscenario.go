@@ -24,8 +24,8 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -54,7 +54,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	}
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
-	machineCreateDeleteData := &cloud.MachineCreateDeleteData{
+	machineCreateDeleteData := &cloudprovidertypes.MachineCreateDeleteData{
 		Updater:  machineUpdater,
 		PVLister: pvLister,
 	}

@@ -33,9 +33,9 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
@@ -64,7 +64,7 @@ const (
 )
 
 // Compile time verification of Provider implementing cloud.Provider.
-var _ cloud.Provider = New(nil)
+var _ cloudprovidertypes.Provider = New(nil)
 
 // Provider implements the cloud.Provider interface for the Google Cloud Platform.
 type Provider struct {
@@ -182,7 +182,7 @@ func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 // Create inserts a cloud instance according to the given machine.
 func (p *Provider) Create(
 	machine *v1alpha1.Machine,
-	data *cloud.MachineCreateDeleteData,
+	data *cloudprovidertypes.MachineCreateDeleteData,
 	userdata string,
 ) (instance.Instance, error) {
 	// Read configuration.
@@ -257,7 +257,7 @@ func (p *Provider) Create(
 // Cleanup deletes the instance associated with the machine and all associated resources.
 func (p *Provider) Cleanup(
 	machine *v1alpha1.Machine,
-	data *cloud.MachineCreateDeleteData,
+	data *cloudprovidertypes.MachineCreateDeleteData,
 ) (bool, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
