@@ -34,12 +34,16 @@ import (
 // fields are optional, that's why containing the ifs and the explicit newlines.
 const cloudConfigTemplate = "[global]\n" +
 	"project-id = {{ .Global.ProjectID | iniEscape }}\n" +
-	"local-zone = {{ .Global.LocalZone | iniEscape }}\n"
+	"local-zone = {{ .Global.LocalZone | iniEscape }}\n" +
+	"multizone = {{ .Global.MultiZone }}\n" +
+	"regional = {{ .Global.Regional }}\n"
 
 // GlobalOpts contains the values of the global section of the cloud configuration.
 type GlobalOpts struct {
 	ProjectID string
 	LocalZone string
+	MultiZone bool
+	Regional  bool
 }
 
 // CloudConfig contains only the section global.
