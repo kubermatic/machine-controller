@@ -38,11 +38,15 @@ func TestCloudConfigAsString(t *testing.T) {
 				Global: GlobalOpts{
 					ProjectID: "my-project-id",
 					LocalZone: "my-zone",
+					MultiZone: true,
+					Regional:  true,
 				},
 			},
 			contents: "[global]\n" +
 				"project-id = \"my-project-id\"\n" +
-				"local-zone = \"my-zone\"\n",
+				"local-zone = \"my-zone\"\n" +
+				"multizone = true\n" +
+				"regional = true\n",
 		},
 	}
 
