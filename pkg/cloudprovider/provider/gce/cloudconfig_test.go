@@ -40,6 +40,7 @@ func TestCloudConfigAsString(t *testing.T) {
 					LocalZone:      "my-zone",
 					NetworkName:    "my-cool-network",
 					SubnetworkName: "my-cool-subnetwork",
+					TokenURL:       "nil",
 					MultiZone:      true,
 					Regional:       true,
 				},
@@ -49,6 +50,7 @@ func TestCloudConfigAsString(t *testing.T) {
 				"local-zone = \"my-zone\"\n" +
 				"network-name = \"my-cool-network\"\n" +
 				"subnetwork-name = \"my-cool-subnetwork\"\n" +
+				"token-url = \"nil\"\n" +
 				"multizone = true\n" +
 				"regional = true\n",
 		},
