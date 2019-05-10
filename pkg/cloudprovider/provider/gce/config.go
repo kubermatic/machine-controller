@@ -78,6 +78,8 @@ type CloudProviderSpec struct {
 	Labels                map[string]string              `json:"labels"`
 	Tags                  []string                       `json:"tags"`
 	AssignPublicIPAddress providerconfig.ConfigVarBool   `json:"assignPublicIPAddress"`
+	MultiZone             providerconfig.ConfigVarBool   `json:"multizone"`
+	Regional              providerconfig.ConfigVarBool   `json:"regional"`
 }
 
 // newCloudProviderSpec creates a cloud provider specification out of the
@@ -140,6 +142,8 @@ type config struct {
 	jwtConfig             *jwt.Config
 	providerConfig        *providerconfig.Config
 	assignPublicIPAddress bool
+	multizone             bool
+	regional              bool
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -199,6 +203,16 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	}
 
 	cfg.assignPublicIPAddress, err = resolver.GetConfigVarBoolValue(cpSpec.AssignPublicIPAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+	}
+
+	cfg.multizone, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+	}
+
+	cfg.regional, err = resolver.GetConfigVarBoolValue(cpSpec.Regional)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
 	}

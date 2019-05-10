@@ -36,15 +36,19 @@ func TestCloudConfigAsString(t *testing.T) {
 			name: "minimum test",
 			config: &CloudConfig{
 				Global: GlobalOpts{
-					ProjectID: "my-project-id",
-					LocalZone: "my-zone",
-					MultiZone: true,
-					Regional:  true,
+					ProjectID:      "my-project-id",
+					LocalZone:      "my-zone",
+					NetworkName:    "my-cool-network",
+					SubnetworkName: "my-cool-subnetwork",
+					MultiZone:      true,
+					Regional:       true,
 				},
 			},
 			contents: "[global]\n" +
 				"project-id = \"my-project-id\"\n" +
 				"local-zone = \"my-zone\"\n" +
+				"network-name = \"my-cool-network\"\n" +
+				"subnetwork-name = \"my-cool-subnetwork\"\n" +
 				"multizone = true\n" +
 				"regional = true\n",
 		},
