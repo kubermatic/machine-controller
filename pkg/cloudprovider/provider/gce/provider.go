@@ -168,8 +168,12 @@ func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	// Init cloud configuration.
 	cc := &CloudConfig{
 		Global: GlobalOpts{
-			ProjectID: cfg.projectID,
-			LocalZone: cfg.zone,
+			ProjectID:      cfg.projectID,
+			LocalZone:      cfg.zone,
+			MultiZone:      cfg.multizone,
+			Regional:       cfg.regional,
+			NetworkName:    cfg.network,
+			SubnetworkName: cfg.subnetwork,
 		},
 	}
 	config, err = cc.AsString()

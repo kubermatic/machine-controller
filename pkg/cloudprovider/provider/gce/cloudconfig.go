@@ -35,15 +35,19 @@ import (
 const cloudConfigTemplate = "[global]\n" +
 	"project-id = {{ .Global.ProjectID | iniEscape }}\n" +
 	"local-zone = {{ .Global.LocalZone | iniEscape }}\n" +
+	"network-name = {{ .Global.NetworkName | iniEscape }}\n" +
+	"subnetwork-name = {{ .Global.SubnetworkName | iniEscape }}\n" +
 	"multizone = {{ .Global.MultiZone }}\n" +
 	"regional = {{ .Global.Regional }}\n"
 
 // GlobalOpts contains the values of the global section of the cloud configuration.
 type GlobalOpts struct {
-	ProjectID string
-	LocalZone string
-	MultiZone bool
-	Regional  bool
+	ProjectID      string
+	LocalZone      string
+	NetworkName    string
+	SubnetworkName string
+	MultiZone      bool
+	Regional       bool
 }
 
 // CloudConfig contains only the section global.
