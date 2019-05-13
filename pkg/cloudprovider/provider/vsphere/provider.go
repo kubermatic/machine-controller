@@ -53,6 +53,9 @@ const (
 	// the machine to indicate creation succeeded.
 	// If this is not set correctly, .Get will delete the instance
 	creationCompleteFieldName = "kubernetes-worker-complete"
+	// machineUIDFieldName is the name of the field in which we
+	// store the machines UID
+	machineUIDFieldName = "kubernetes-machine-uid"
 )
 
 type provider struct {
@@ -438,34 +441,45 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	// Add a custom field to indicate to our Get that creation succeeded
 	// If the field is not set, Get will delete the instance
 	customFieldManager, err := object.GetCustomFieldsManager(client.Client)
-	key, err := customFieldManager.FindKey(ctx, creationCompleteFieldName)
 	if err != nil {
-		if !strings.Contains(err.Error(), "key name not found") {
-			return nil, fmt.Errorf("error trying to get field with key %q: %v", creationCompleteFieldName, err)
-		}
-		field, err := customFieldManager.Add(ctx, creationCompleteFieldName, "VirtualMachine", nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add field %q: %v", creationCompleteFieldName, err)
-		}
-		key = field.Key
+		return nil, fmt.Errorf("failed to get customFieldManager: %v", err)
 	}
-	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), key, machine.Spec.Name); err != nil {
+	machineUIDFieldKey, err := createOrGetFieldIndex(ctx, machineUIDFieldName, customFieldManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get field key for field %q: %v", machineUIDFieldName, err)
+	}
+	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), machineUIDFieldKey, string(machine.UID)); err != nil {
+		return nil, fmt.Errorf("failed to set field %q to value %q: %v", machineUIDFieldKey, string(machine.UID), err)
+	}
+	creationCompleteFieldKey, err := createOrGetFieldIndex(ctx, creationCompleteFieldName, customFieldManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get field key for field %q: %v", creationCompleteFieldName, err)
+	}
+	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), creationCompleteFieldKey, machine.Spec.Name); err != nil {
 		return nil, fmt.Errorf("failed to set field %q to value %q: %v", creationCompleteFieldName, machine.Spec.Name, err)
 	}
 
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
+func createOrGetFieldIndex(ctx context.Context, fieldName string, customFieldManager *object.CustomFieldsManager) (int32, error) {
+	key, err := customFieldManager.FindKey(ctx, fieldName)
+	if err != nil {
+		if !strings.Contains(err.Error(), "key name not found") {
+			return 0, fmt.Errorf("error trying to get field with key %q: %v", fieldName, err)
+		}
+		field, err := customFieldManager.Add(ctx, fieldName, "VirtualMachine", nil, nil)
+		if err != nil {
+			return 0, fmt.Errorf("failed to add field %q: %v", fieldName, err)
+		}
+		key = field.Key
+	}
+	return key, nil
+}
+
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	if _, err := p.Get(machine, data); err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			return true, nil
-		}
-		return false, fmt.Errorf("failed to get instance: %v", err)
-	}
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
@@ -493,9 +507,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 	finder.SetDatacenter(dc)
 
-	virtualMachine, err := finder.VirtualMachine(ctx, machine.Spec.Name)
+	virtualMachine, err := p.get(ctx, machine, finder)
 	if err != nil {
-		return false, fmt.Errorf("failed to get virtual machine object: %v", err)
+		if cloudprovidererrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, fmt.Errorf("failed to get instance from vSphere: %v", err)
 	}
 
 	powerState, err := virtualMachine.PowerState(ctx)
@@ -565,13 +582,13 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	glog.V(2).Infof("Successfully destroyed vm %s", virtualMachine.Name())
-	return false, nil
+	return true, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	ctx := context.Background()
 
-	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -590,72 +607,49 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	if err != nil {
 		return nil, fmt.Errorf("failed to get datacenter finder: %v", err)
 	}
-	virtualMachine, err := finder.VirtualMachine(ctx, machine.Spec.Name)
+	virtualMachineList, err := finder.VirtualMachineList(ctx, machine.Spec.Name)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
-		return nil, fmt.Errorf("failed to get server: %v", err)
+		return nil, fmt.Errorf("failed to list virtual machines: %v", err)
+	}
+
+	var virtualMachine *object.VirtualMachine
+	for _, virtualMachineItem := range virtualMachineList {
+		// Check if the creationCompleteFieldName is set to machine.UID
+		// If that is not the case, the creation didn't complete successfully and
+		// we must delete the instance so it gets recreated
+		creationCompleteFieldValue, err := getValueForField(ctx,
+			virtualMachineItem, creationCompleteFieldName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get value for field: %v", err)
+		}
+		machineCreationCompletedSuccessfully := creationCompleteFieldValue == machine.Spec.Name
+		if !machineCreationCompletedSuccessfully {
+			glog.V(4).Infof("Cleaning up instance %q whose creation didn't complete", machine.Spec.Name)
+			if _, err := p.Cleanup(machine, data); err != nil {
+				return nil, fmt.Errorf("failed to delete instance whose creation didn't complete: %v", err)
+			}
+			continue
+		}
+
+		machineUIDFieldValue, err := getValueForField(ctx, virtualMachineItem, machineUIDFieldName)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get value for field %q: %v", machineUIDFieldName, err)
+		}
+		if machineUIDFieldValue == string(machine.UID) {
+			virtualMachine = virtualMachineItem
+			break
+		}
+	}
+	if virtualMachine == nil {
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
 	powerState, err := virtualMachine.PowerState(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get powerstate: %v", err)
-	}
-
-	// Check if the creationCompleteFieldName is set to machine.Spec.Name.
-	// If that is not the case, the creation didn't complete successfully and
-	// we must delete the instance so it gets recreated
-	fieldValue, err := getValueForField(ctx, virtualMachine, creationCompleteFieldName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get value for field: %v", err)
-	}
-	if fieldValue != machine.Spec.Name {
-		// TODO: This should leverage .Cleanup, but we can currently not do that,
-		// because .Cleanup needs cloud.ProviderData which we don't have here
-		if powerState == types.VirtualMachinePowerStatePoweredOn {
-			powerOffTask, err := virtualMachine.PowerOff(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to power off instance %q whose creation didn't complete: %v",
-					virtualMachine.Name(), err)
-			}
-			if err := powerOffTask.Wait(ctx); err != nil {
-				return nil, fmt.Errorf("failed to wait for instance %q whose creation didn't complete to be powered off: %v",
-					virtualMachine.Name(), err)
-			}
-		}
-		destroyTask, err := virtualMachine.Destroy(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to delete instance %q whose creation didn't complete: %v",
-				virtualMachine.Name(), err)
-		}
-		if err := destroyTask.Wait(ctx); err != nil {
-			return nil, fmt.Errorf("failed to wait for deletion of instance %q whose creation didn't complete: %v",
-				virtualMachine.Name(), err)
-		}
-		if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
-			datastore, err := finder.Datastore(ctx, config.Datastore)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get datastore %s for instance %q whose creation didn't complete: %v",
-					config.Datastore, virtualMachine.Name(), err)
-			}
-			dc, err := finder.Datacenter(ctx, config.Datacenter)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get vsphere datacenter for instance %q whose creation didn't complete: %v",
-					virtualMachine.Name(), err)
-			}
-			finder.SetDatacenter(dc)
-			filemanager := datastore.NewFileManager(dc, false)
-
-			if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {
-				if err.Error() == fmt.Sprintf("File [%s] %s was not found", datastore.Name(), virtualMachine.Name()) {
-					return nil, cloudprovidererrors.ErrInstanceNotFound
-				}
-				return nil, fmt.Errorf("failed to delete storage of deleted instance %q whose cretion didn't complete: %v",
-					virtualMachine.Name(), err)
-			}
-		}
-		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
 	var status instance.Status
@@ -697,6 +691,46 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
+	ctx := context.Background()
+
+	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	if err != nil {
+		return fmt.Errorf("failed to get vsphere client: '%v'", err)
+	}
+	defer func() {
+		if lerr := client.Logout(ctx); lerr != nil {
+			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
+		}
+	}()
+
+	finder, err := getDatacenterFinder(config.Datacenter, client)
+	if err != nil {
+		return fmt.Errorf("failed to get datacenter finder: %v", err)
+	}
+	virtualMachine, err := p.get(ctx, machine, finder)
+	if err != nil {
+		if cloudprovidererrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get instance from vSphere: %v", err)
+	}
+
+	customFieldManager, err := object.GetCustomFieldsManager(client.Client)
+	if err != nil {
+		return fmt.Errorf("failed to get customFieldManager: %v", err)
+	}
+	machineUIDFieldKey, err := createOrGetFieldIndex(ctx, machineUIDFieldName, customFieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to get field key for field %q: %v", machineUIDFieldName, err)
+	}
+	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), machineUIDFieldKey, string(new)); err != nil {
+		return fmt.Errorf("failed to set field %q to value %q: %v", machineUIDFieldKey, string(new), err)
+	}
 	return nil
 }
 
@@ -772,4 +806,26 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
+}
+
+func (p *provider) get(ctx context.Context, machine *v1alpha1.Machine, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
+	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, machine.Spec.Name)
+	if err != nil {
+		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
+			return nil, cloudprovidererrors.ErrInstanceNotFound
+		}
+		return nil, fmt.Errorf("failed to list virtual machines: %v", err)
+	}
+
+	for _, virtualMachine := range virtualMachineList {
+		machineUIDFieldValue, err := getValueForField(ctx, virtualMachine, machineUIDFieldName)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get value for field %q: %v", machineUIDFieldName, err)
+		}
+		if machineUIDFieldValue == string(machine.UID) {
+			return virtualMachine, nil
+		}
+	}
+
+	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
