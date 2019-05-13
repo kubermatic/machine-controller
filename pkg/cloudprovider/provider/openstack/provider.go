@@ -34,9 +34,9 @@ import (
 	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/pagination"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -59,7 +59,7 @@ type provider struct {
 }
 
 // New returns a openstack provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -379,7 +379,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, machineCreateDeleteData *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, machineCreateDeleteData *cloudprovidertypes.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -505,7 +505,7 @@ func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, se
 	glog.V(0).Infof("Instance %s got deleted", serverID)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *cloud.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
 	var hasFloatingIPReleaseFinalizer bool
 	if finalizers := sets.NewString(machine.Finalizers...); finalizers.Has(floatingIPReleaseFinalizer) {
 		hasFloatingIPReleaseFinalizer = true
@@ -778,7 +778,7 @@ type forbiddenResponse struct {
 	} `json:"forbidden"`
 }
 
-func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloud.MachineUpdater) error {
+func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudprovidertypes.MachineUpdater) error {
 	floatingIPID, exists := machine.Annotations[floatingIPIDAnnotationKey]
 	if !exists {
 		return osErrorToTerminalError(fmt.Errorf("failed to release floating ip"),
@@ -815,7 +815,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloud.Ma
 	return nil
 }
 
-func assignFloatingIPToInstance(machineUpdater cloud.MachineUpdater, machine *v1alpha1.Machine, client *gophercloud.ProviderClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
+func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater, machine *v1alpha1.Machine, client *gophercloud.ProviderClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
 	port, err := getInstancePort(client, region, instanceID, network.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get instance port for network %s in region %s: %v", network.ID, region, err)

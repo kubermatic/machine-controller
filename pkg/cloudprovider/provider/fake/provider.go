@@ -22,8 +22,8 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -53,7 +53,7 @@ func (f CloudProviderInstance) Status() instance.Status {
 }
 
 // New returns a fake cloud provider
-func New(_ *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
 
@@ -92,11 +92,11 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, er
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(_ *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, _ string) (instance.Instance, error) {
+func (p *provider) Create(_ *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData, _ string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) Cleanup(_ *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(_ *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
 	return true, nil
 }
 

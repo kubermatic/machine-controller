@@ -29,10 +29,10 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -48,7 +48,7 @@ type provider struct {
 }
 
 // New returns a digitalocean provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -271,7 +271,7 @@ func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (st
 	return newDoKey.Fingerprint, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -343,7 +343,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	return &doInstance{droplet: droplet}, err
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
 	instance, err := p.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {

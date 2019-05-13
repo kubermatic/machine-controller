@@ -53,9 +53,9 @@ import (
 	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
@@ -92,7 +92,7 @@ type Controller struct {
 	clusterDNSIPs                    []net.IP
 	metrics                          *MetricsCollection
 	kubeconfigProvider               KubeconfigProvider
-	machineCreateDeleteData          *cloud.MachineCreateDeleteData
+	machineCreateDeleteData          *cloudprovidertypes.MachineCreateDeleteData
 	userDataManager                  *userdatamanager.Manager
 	joinClusterTimeout               *time.Duration
 	externalCloudProvider            bool
@@ -165,7 +165,7 @@ func NewMachineController(
 		skipEvictionAfter:                skipEvictionAfter,
 	}
 
-	controller.machineCreateDeleteData = &cloud.MachineCreateDeleteData{
+	controller.machineCreateDeleteData = &cloudprovidertypes.MachineCreateDeleteData{
 		Updater:  controller.updateMachine,
 		PVLister: pvLister,
 	}
@@ -361,7 +361,7 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 	return fmt.Errorf("%s, due to %v", errMsg, err)
 }
 
-func (c *Controller) createProviderInstance(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (c *Controller) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	instance, err := prov.Create(machine, c.machineCreateDeleteData, userdata)
 	if err != nil {
 		return nil, err
@@ -505,7 +505,7 @@ func (c *Controller) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 }
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
-func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
+func (c *Controller) deleteMachine(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) error {
 	shouldEvict, err := c.shouldEvict(machine)
 	if err != nil {
 		return err
@@ -537,7 +537,7 @@ func (c *Controller) deleteMachine(prov cloud.Provider, machine *clusterv1alpha1
 	return nil
 }
 
-func (c *Controller) deleteCloudProviderInstance(prov cloud.Provider, machine *clusterv1alpha1.Machine) error {
+func (c *Controller) deleteCloudProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) error {
 	finalizers := sets.NewString(machine.Finalizers...)
 	if !finalizers.Has(FinalizerDeleteInstance) {
 		return nil
@@ -602,7 +602,7 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 	return err
 }
 
-func (c *Controller) ensureInstanceExistsForMachine(prov cloud.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfig.Config) error {
+func (c *Controller) ensureInstanceExistsForMachine(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfig.Config) error {
 	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
 	providerInstance, err := prov.Get(machine)

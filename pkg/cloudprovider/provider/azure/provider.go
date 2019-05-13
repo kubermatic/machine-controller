@@ -29,10 +29,10 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/glog"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
@@ -151,7 +151,7 @@ func getOSImageReference(os providerconfig.OperatingSystem) (*compute.ImageRefer
 }
 
 // New returns a digitalocean provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -342,7 +342,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -490,7 +490,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse MachineSpec: %v", err)

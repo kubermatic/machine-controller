@@ -38,9 +38,9 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	ktypes "k8s.io/apimachinery/pkg/types"
@@ -65,7 +65,7 @@ type netDeviceAndBackingInfo struct {
 }
 
 // New returns a VSphere provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -359,7 +359,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -456,7 +456,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

@@ -27,10 +27,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -48,7 +48,7 @@ type provider struct {
 }
 
 // New returns a Hetzner provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -156,7 +156,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -208,6 +208,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		return nil, hzErrorToTerminalError(err, "failed to get server type")
 	}
 
+	// We generate a temporary SSH key here, because otherwise Hetzner creates
+	// a password and sends it via E-Mail to the account owner, which can be quite
+	// spammy. No one will ever get access to the private key.
 	sshkey, err := ssh.NewKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
@@ -242,7 +245,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
 	instance, err := p.Get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
