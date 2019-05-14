@@ -54,7 +54,6 @@ type RawConfig struct {
 	BillingCycle providerconfig.ConfigVarString   `json:"billingCycle"`
 	InstanceType providerconfig.ConfigVarString   `json:"instanceType"`
 	Facilities   []providerconfig.ConfigVarString `json:"facilities"`
-	OS           providerconfig.ConfigVarString   `json:"os"`
 	Tags         []providerconfig.ConfigVarString `json:"tags"`
 }
 
@@ -64,7 +63,6 @@ type Config struct {
 	BillingCycle string
 	InstanceType string
 	Facilities   []string
-	OS           string
 	Tags         []string
 }
 
