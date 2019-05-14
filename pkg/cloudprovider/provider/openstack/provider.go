@@ -18,6 +18,7 @@ package openstack
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -324,6 +325,14 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	if c.Image == "" {
+		return errors.New("image must be configured")
+	}
+
+	if c.Flavor == "" {
+		return errors.New("flavor must be configured")
 	}
 
 	client, err := getClient(c)
