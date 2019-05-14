@@ -77,7 +77,7 @@ type CloudProviderSpec struct {
 	Preemptible           providerconfig.ConfigVarBool   `json:"preemptible"`
 	Labels                map[string]string              `json:"labels"`
 	Tags                  []string                       `json:"tags"`
-	AssignPublicIPAddress providerconfig.ConfigVarBool   `json:"assignPublicIPAddress"`
+	AssignPublicIPAddress *providerconfig.ConfigVarBool  `json:"assignPublicIPAddress"`
 	MultiZone             providerconfig.ConfigVarBool   `json:"multizone"`
 	Regional              providerconfig.ConfigVarBool   `json:"regional"`
 }
@@ -202,9 +202,14 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
 	}
 
-	cfg.assignPublicIPAddress, err = resolver.GetConfigVarBoolValue(cpSpec.AssignPublicIPAddress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+	// make it true by default
+	cfg.assignPublicIPAddress = true
+
+	if cpSpec.AssignPublicIPAddress != nil {
+		cfg.assignPublicIPAddress, err = resolver.GetConfigVarBoolValue(*cpSpec.AssignPublicIPAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+		}
 	}
 
 	cfg.multizone, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
