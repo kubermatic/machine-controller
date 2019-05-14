@@ -214,12 +214,12 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 
 	cfg.multizone, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+		return nil, fmt.Errorf("failed to retrieve multizone: %v", err)
 	}
 
 	cfg.regional, err = resolver.GetConfigVarBoolValue(cpSpec.Regional)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+		return nil, fmt.Errorf("failed to retrieve regional: %v", err)
 	}
 
 	return cfg, nil
