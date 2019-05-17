@@ -129,6 +129,7 @@ type RawConfig struct {
 	AMI          providerconfig.ConfigVarString `json:"ami"`
 	DiskSize     int64                          `json:"diskSize"`
 	DiskType     providerconfig.ConfigVarString `json:"diskType"`
+	DiskIops     *int64                         `json:"diskIops"`
 	Tags         map[string]string              `json:"tags"`
 }
 
@@ -149,6 +150,7 @@ type Config struct {
 	AMI          string
 	DiskSize     int64
 	DiskType     string
+	DiskIops     *int64
 	Tags         map[string]string
 }
 
@@ -300,6 +302,19 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if c.DiskType == ec2.VolumeTypeIo1 {
+		if c.DiskIops == nil {
+			return nil, nil, nil, fmt.Errorf("Missing required field `diskIops`")
+		}
+		iops := *c.DiskIops
+
+		if iops < 100 || iops > 64000 {
+			return nil, nil, nil, fmt.Errorf("Invalid value for `diskIops` (min: 100, max: 64000)")
+		}
+
+		c.DiskIops = rawConfig.DiskIops
+	}
+
 	c.Tags = rawConfig.Tags
 	c.IsSpotInstance = rawConfig.IsSpotInstance
 
