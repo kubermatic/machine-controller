@@ -7,7 +7,7 @@ metadata:
   namespace: kube-system
 type: Opaque
 stringData:
-  accessKeyId: << AWS_ACCESS_KEY_ID >
+  accessKeyId: << AWS_ACCESS_KEY_ID >>
   secretAccessKey: << AWS_SECRET_ACCESS_KEY >>
 ---
 apiVersion: "cluster.k8s.io/v1alpha1"
