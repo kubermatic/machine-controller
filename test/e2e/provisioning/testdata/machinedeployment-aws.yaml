@@ -33,6 +33,8 @@ spec:
             instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
+            ## Only application if diskType = io1 
+            diskIops: 500
             securityGroupIDs:
             - "sg-a2c195ca"
             tags:
