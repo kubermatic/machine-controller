@@ -303,10 +303,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 		return nil, nil, nil, err
 	}
 	if c.DiskType == ec2.VolumeTypeIo1 {
-		if c.DiskIops == nil {
+		if rawConfig.DiskIops == nil {
 			return nil, nil, nil, fmt.Errorf("Missing required field `diskIops`")
 		}
-		iops := *c.DiskIops
+		iops := *rawConfig.DiskIops
 
 		if iops < 100 || iops > 64000 {
 			return nil, nil, nil, fmt.Errorf("Invalid value for `diskIops` (min: 100, max: 64000)")
