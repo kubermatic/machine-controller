@@ -477,7 +477,7 @@ func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 	})
 }
 
-// evictIfNecessary checks if the machine has a node and evicts it if necessary
+// shouldEvict checks if the machine has a node and needs to be evicted before deletion
 func (c *Controller) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error) {
 	// If the deletion got triggered a few hours ago, skip eviction.
 	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
@@ -499,6 +499,23 @@ func (c *Controller) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to get node %q", machine.Status.NodeRef.Name)
+	}
+
+	// All existing machines in status deleting - No eviction target
+	machineList, err := c.machinesLister.List(labels.Everything())
+	if err != nil {
+		return false, fmt.Errorf("failed to list all machines: %v", err)
+	}
+	found := false
+	for _, machine := range machineList {
+		if machine.DeletionTimestamp == nil {
+			found = true
+			break
+		}
+	}
+	if !found {
+		glog.V(4).Infof("Skipping eviction for machine %q since all machines are in deletion progress", machine.Name)
+		return false, nil
 	}
 
 	return true, nil
