@@ -129,7 +129,7 @@ type RawConfig struct {
 	AMI          providerconfig.ConfigVarString `json:"ami"`
 	DiskSize     int64                          `json:"diskSize"`
 	DiskType     providerconfig.ConfigVarString `json:"diskType"`
-	DiskIops     *int64                         `json:"diskIops"`
+	DiskIops     *int64                         `json:"diskIops,omitempty"`
 	Tags         map[string]string              `json:"tags"`
 }
 
