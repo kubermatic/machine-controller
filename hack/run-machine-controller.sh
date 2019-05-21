@@ -18,8 +18,8 @@ set -e
 
 make -C $(dirname $0)/.. machine-controller
 $(dirname $0)/../machine-controller \
-  -kubeconfig=$(dirname $0)/../.kubeconfig \
-  -worker-count=50 \
+  -kubeconfig=$HOME/.kube/config \
+  -worker-count=1 \
   -logtostderr \
   -v=6 \
   -cluster-dns=172.16.0.10 \

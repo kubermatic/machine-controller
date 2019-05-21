@@ -521,6 +521,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Ma
 					VolumeSize:          aws.Int64(config.DiskSize),
 					DeleteOnTermination: aws.Bool(true),
 					VolumeType:          aws.String(config.DiskType),
+					Iops:                config.DiskIops,
 				},
 			},
 		},
