@@ -43,19 +43,19 @@ type Provider interface {
 	// See v1alpha1.MachineStatus for more info and TerminalError type
 	//
 	// In case the instance cannot be found, github.com/kubermatic/machine-controller/pkg/cloudprovider/errors/ErrInstanceNotFound will be returned
-	Get(machine *clusterv1alpha1.Machine) (instance.Instance, error)
+	Get(machine *clusterv1alpha1.Machine, data *ProviderData) (instance.Instance, error)
 
 	// GetCloudConfig will return the cloud provider specific cloud-config, which gets consumed by the kubelet
 	GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error)
 
 	// Create creates a cloud instance according to the given machine
-	Create(machine *clusterv1alpha1.Machine, data *MachineCreateDeleteData, userdata string) (instance.Instance, error)
+	Create(machine *clusterv1alpha1.Machine, data *ProviderData, userdata string) (instance.Instance, error)
 
 	// Cleanup will delete the instance associated with the machine and all associated resources.
 	// If all resources have been cleaned up, true will be returned.
 	// In case the cleanup involves ansynchronous deletion of resources & those resources are not gone yet,
 	// false should be returned. This is to indicate that the cleanup is not done, but needs to be called again at a later point
-	Cleanup(machine *clusterv1alpha1.Machine, data *MachineCreateDeleteData) (bool, error)
+	Cleanup(machine *clusterv1alpha1.Machine, data *ProviderData) (bool, error)
 
 	// MachineMetricsLabels returns labels used for the Prometheus metrics
 	// about created machines, e.g. instance type, instance size, region
@@ -76,8 +76,8 @@ type Provider interface {
 // MachineUpdater defines a function to persist an update to a machine
 type MachineUpdater func(*clusterv1alpha1.Machine, func(*clusterv1alpha1.Machine)) (*clusterv1alpha1.Machine, error)
 
-// MachineCreateDeleteData is the struct the cloud providers get when creating or deleting an instance
-type MachineCreateDeleteData struct {
+// ProviderData is the struct the cloud providers get when creating or deleting an instance
+type ProviderData struct {
 	Updater  MachineUpdater
 	PVLister listerscorev1.PersistentVolumeLister
 }

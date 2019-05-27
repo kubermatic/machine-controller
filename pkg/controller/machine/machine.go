@@ -92,7 +92,7 @@ type Controller struct {
 	clusterDNSIPs                    []net.IP
 	metrics                          *MetricsCollection
 	kubeconfigProvider               KubeconfigProvider
-	machineCreateDeleteData          *cloudprovidertypes.MachineCreateDeleteData
+	machineCreateDeleteData          *cloudprovidertypes.ProviderData
 	userDataManager                  *userdatamanager.Manager
 	joinClusterTimeout               *time.Duration
 	externalCloudProvider            bool
@@ -165,7 +165,7 @@ func NewMachineController(
 		skipEvictionAfter:                skipEvictionAfter,
 	}
 
-	controller.machineCreateDeleteData = &cloudprovidertypes.MachineCreateDeleteData{
+	controller.machineCreateDeleteData = &cloudprovidertypes.ProviderData{
 		Updater:  controller.updateMachine,
 		PVLister: pvLister,
 	}

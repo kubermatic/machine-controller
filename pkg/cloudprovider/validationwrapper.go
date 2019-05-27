@@ -64,8 +64,8 @@ func (w *cachingValidationWrapper) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 // Get just calls the underlying cloudproviders Get
-func (w *cachingValidationWrapper) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	return w.actualProvider.Get(machine)
+func (w *cachingValidationWrapper) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return w.actualProvider.Get(machine, data)
 }
 
 // GetCloudConfig just calls the underlying cloudproviders GetCloudConfig
@@ -74,12 +74,12 @@ func (w *cachingValidationWrapper) GetCloudConfig(spec v1alpha1.MachineSpec) (st
 }
 
 // Create just calls the underlying cloudproviders Create
-func (w *cachingValidationWrapper) Create(m *v1alpha1.Machine, mcd *cloudprovidertypes.MachineCreateDeleteData, cloudConfig string) (instance.Instance, error) {
+func (w *cachingValidationWrapper) Create(m *v1alpha1.Machine, mcd *cloudprovidertypes.ProviderData, cloudConfig string) (instance.Instance, error) {
 	return w.actualProvider.Create(m, mcd, cloudConfig)
 }
 
 // Cleanup just calls the underlying cloudproviders Cleanup
-func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
+func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloudprovidertypes.ProviderData) (bool, error) {
 	return w.actualProvider.Cleanup(m, mcd)
 }
 
