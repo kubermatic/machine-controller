@@ -92,7 +92,7 @@ type Controller struct {
 	clusterDNSIPs                    []net.IP
 	metrics                          *MetricsCollection
 	kubeconfigProvider               KubeconfigProvider
-	machineCreateDeleteData          *cloudprovidertypes.ProviderData
+	providerData                     *cloudprovidertypes.ProviderData
 	userDataManager                  *userdatamanager.Manager
 	joinClusterTimeout               *time.Duration
 	externalCloudProvider            bool
@@ -121,11 +121,11 @@ func NewMachineController(
 	machineInformer cache.SharedIndexInformer,
 	machineLister clusterlistersv1alpha1.MachineLister,
 	secretSystemNsLister listerscorev1.SecretLister,
-	pvLister listerscorev1.PersistentVolumeLister,
 	clusterDNSIPs []net.IP,
 	metrics *MetricsCollection,
 	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
+	providerData *cloudprovidertypes.ProviderData,
 	joinClusterTimeout *time.Duration,
 	externalCloudProvider bool,
 	name string,
@@ -158,16 +158,12 @@ func NewMachineController(
 		clusterDNSIPs:                    clusterDNSIPs,
 		metrics:                          metrics,
 		kubeconfigProvider:               kubeconfigProvider,
+		providerData:                     providerData,
 		joinClusterTimeout:               joinClusterTimeout,
 		externalCloudProvider:            externalCloudProvider,
 		name:                             name,
 		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
 		skipEvictionAfter:                skipEvictionAfter,
-	}
-
-	controller.machineCreateDeleteData = &cloudprovidertypes.ProviderData{
-		Updater:  controller.updateMachine,
-		PVLister: pvLister,
 	}
 
 	m, err := userdatamanager.New()
@@ -253,11 +249,10 @@ func (c *Controller) clearMachineError(key string) {
 	machine := listerMachine.DeepCopy()
 
 	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
-		_, err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+		if err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Status.ErrorMessage = nil
 			m.Status.ErrorReason = nil
-		})
-		if err != nil {
+		}); err != nil {
 			utilruntime.HandleError(fmt.Errorf("failed to update machine: %v", err))
 			return
 		}
@@ -307,41 +302,13 @@ func (c *Controller) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.
 	return listerNode.DeepCopy(), nil
 }
 
-func (c *Controller) updateMachine(machine *clusterv1alpha1.Machine, modify func(*clusterv1alpha1.Machine)) (*clusterv1alpha1.Machine, error) {
-	// Both machine and updatedMachine can be nil later on, so we store the namespace and name here
-	namespace := machine.Namespace
-	name := machine.Name
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		var err error
-
-		machine, err = c.machinesLister.Machines(namespace).Get(name)
-		if err != nil {
-			return err
-		}
-		machine = machine.DeepCopy()
-
-		// Modify machine, only try to UPDATE when the modification results in a change
-		unmodifiedMachine := machine.DeepCopy()
-		modify(machine)
-		if equality.Semantic.DeepEqual(unmodifiedMachine, machine) {
-			return nil
-		}
-
-		// Update the machine
-		machine, err = c.machineClient.ClusterV1alpha1().Machines(namespace).Update(machine)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	return machine, err
+func (c *Controller) updateMachine(m *clusterv1alpha1.Machine, modify ...cloudprovidertypes.MachineModifier) error {
+	return c.providerData.Updater(m, modify...)
 }
 
 // updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not
 // this essentially overwrites previous values
-func (c *Controller) updateMachineError(machine *clusterv1alpha1.Machine, reason common.MachineStatusError, message string) (*clusterv1alpha1.Machine, error) {
+func (c *Controller) updateMachineError(machine *clusterv1alpha1.Machine, reason common.MachineStatusError, message string) error {
 	return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.ErrorMessage = &message
 		m.Status.ErrorReason = &reason
@@ -353,7 +320,7 @@ func (c *Controller) updateMachineError(machine *clusterv1alpha1.Machine, reason
 // otherwise it will return formatted error according to errMsg
 func (c *Controller) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.Machine, stReason common.MachineStatusError, stMessage string, err error, errMsg string) error {
 	if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
-		if _, errNested := c.updateMachineError(machine, stReason, stMessage); errNested != nil {
+		if errNested := c.updateMachineError(machine, stReason, stMessage); errNested != nil {
 			return fmt.Errorf("failed to update machine error after due to %v, terminal error = %v", errNested, stMessage)
 		}
 		return err
@@ -362,7 +329,7 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 }
 
 func (c *Controller) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
-	instance, err := prov.Create(machine, c.machineCreateDeleteData, userdata)
+	instance, err := prov.Create(machine, c.providerData, userdata)
 	if err != nil {
 		return nil, err
 	}
@@ -441,10 +408,9 @@ func (c *Controller) sync(machine *clusterv1alpha1.Machine) error {
 		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
 		if kerrors.IsNotFound(err) {
 			glog.V(3).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
-			_, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+			return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 				m.Status.NodeRef = nil
 			})
-			return err
 		}
 		return fmt.Errorf("failed to check if node for machine exists: '%s'", err)
 	}
@@ -452,7 +418,7 @@ func (c *Controller) sync(machine *clusterv1alpha1.Machine) error {
 	if c.nodeIsReady(node) {
 		// We must do this to ensure the informers in the machineSet and machineDeployment controller
 		// get triggered as soon as a ready node exists for a machine
-		if machine, err = c.ensureMachineHasNodeReadyCondition(machine); err != nil {
+		if err := c.ensureMachineHasNodeReadyCondition(machine); err != nil {
 			return fmt.Errorf("failed to set nodeReady condition on machine: %v", err)
 		}
 	} else {
@@ -464,10 +430,10 @@ func (c *Controller) sync(machine *clusterv1alpha1.Machine) error {
 	return c.ensureNodeLabelsAnnotationsAndTaints(node, machine)
 }
 
-func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
+func (c *Controller) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1.Machine) error {
 	for _, condition := range machine.Status.Conditions {
 		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-			return machine, nil
+			return nil
 		}
 	}
 	return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
@@ -544,7 +510,7 @@ func (c *Controller) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 	}
 
 	// Delete the instance
-	completelyGone, err := prov.Cleanup(machine, c.machineCreateDeleteData)
+	completelyGone, err := prov.Cleanup(machine, c.providerData)
 	if err != nil {
 		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, FinalizerDeleteInstance)
 		return c.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
@@ -556,13 +522,11 @@ func (c *Controller) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 		return nil
 	}
 
-	machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+	return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(FinalizerDeleteInstance)
 		m.Finalizers = finalizers.List()
 	})
-
-	return err
 }
 
 func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.Node) bool {
@@ -590,22 +554,20 @@ func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 		}
 	}
 
-	finalizers := sets.NewString(machine.Finalizers...)
-	if finalizers.Has(FinalizerDeleteNode) {
-		_, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+	return c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+		finalizers := sets.NewString(m.Finalizers...)
+		if finalizers.Has(FinalizerDeleteNode) {
 			finalizers := sets.NewString(m.Finalizers...)
 			finalizers.Delete(FinalizerDeleteNode)
 			m.Finalizers = finalizers.List()
-		})
-	}
-
-	return err
+		}
+	})
 }
 
 func (c *Controller) ensureInstanceExistsForMachine(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfig.Config) error {
 	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
-	providerInstance, err := prov.Get(machine)
+	providerInstance, err := prov.Get(machine, c.providerData)
 
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
@@ -664,10 +626,9 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloudprovidertypes.Prov
 	for _, address := range addresses {
 		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address})
 	}
-	machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+	if err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Addresses = machineAddresses
-	})
-	if err != nil {
+	}); err != nil {
 		return fmt.Errorf("failed to update machine after setting .status.addresses: %v", err)
 	}
 	return c.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
@@ -783,7 +744,7 @@ func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 	if !equality.Semantic.DeepEqual(machine.Status.NodeRef, ref) ||
 		machine.Status.Versions == nil ||
 		machine.Status.Versions.Kubelet != node.Status.NodeInfo.KubeletVersion {
-		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+		if err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			m.Status.NodeRef = ref
 			m.Status.Versions = &clusterv1alpha1.MachineVersionInfo{Kubelet: node.Status.NodeInfo.KubeletVersion}
 		}); err != nil {
@@ -928,8 +889,7 @@ func (c *Controller) ReadinessChecks() map[string]healthcheck.Check {
 
 func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
 	if !sets.NewString(machine.Finalizers...).Has(FinalizerDeleteInstance) {
-		var err error
-		if machine, err = c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+		if err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 			finalizers := sets.NewString(m.Finalizers...)
 			finalizers.Insert(FinalizerDeleteInstance)
 			finalizers.Insert(FinalizerDeleteNode)

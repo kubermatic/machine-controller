@@ -813,7 +813,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && err.Error() != "Resource not found" {
 		return fmt.Errorf("failed to delete floating ip %s: %v", floatingIPID, err)
 	}
-	if _, err := updater(machine, func(m *v1alpha1.Machine) {
+	if err := updater(machine, func(m *v1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(floatingIPReleaseFinalizer)
 		m.Finalizers = finalizers.List()
@@ -857,7 +857,7 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 		if ip, err = createFloatingIP(client, region, port.ID, floatingIPPool); err != nil {
 			return osErrorToTerminalError(err, "failed to allocate a floating ip")
 		}
-		if _, err = machineUpdater(machine, func(m *v1alpha1.Machine) {
+		if err := machineUpdater(machine, func(m *v1alpha1.Machine) {
 			m.Finalizers = append(m.Finalizers, floatingIPReleaseFinalizer)
 			if m.Annotations == nil {
 				m.Annotations = map[string]string{}

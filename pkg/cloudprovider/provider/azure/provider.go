@@ -371,12 +371,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 	if config.AssignPublicIP {
-		if !kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-			if machine, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+		if err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+			if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerPublicIP) {
 				updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerPublicIP)
-			}); err != nil {
-				return nil, err
 			}
+		}); err != nil {
+			return nil, err
 		}
 		publicIP, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
 		if err != nil {
@@ -384,12 +384,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if !kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
-		if machine, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerNIC) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerNIC)
-		}); err != nil {
-			return nil, err
 		}
+	}); err != nil {
+		return nil, err
 	}
 	iface, err := createOrUpdateNetworkInterface(context.TODO(), ifaceName, machine.UID, config, publicIP)
 	if err != nil {
@@ -442,20 +442,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	glog.Infof("Creating machine %q", machine.Spec.Name)
-	if !kuberneteshelper.HasFinalizer(machine, finalizerDisks) {
-		if machine, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerDisks) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerDisks)
-		}); err != nil {
-			return nil, err
 		}
-	}
-	if !kuberneteshelper.HasFinalizer(machine, finalizerVM) {
-		if machine, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+		if !kuberneteshelper.HasFinalizer(machine, finalizerVM) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerVM)
-		}); err != nil {
-			return nil, err
 		}
+	}); err != nil {
+		return nil, err
 	}
+
 	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Spec.Name, vmSpec)
 	if err != nil {
 		return nil, fmt.Errorf("trying to create a VM: %v", err)
@@ -506,37 +503,37 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	if machine, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
 	}); err != nil {
 		return false, err
 	}
 
 	glog.Infof("deleting disks of VM %q", machine.Name)
-	if err = deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
+	if err := deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
 	}
-	if machine, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerDisks)
 	}); err != nil {
 		return false, err
 	}
 
 	glog.Infof("deleting network interfaces of VM %q", machine.Name)
-	if err = deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
+	if err := deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
 	}
-	if machine, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerNIC)
 	}); err != nil {
 		return false, err
 	}
 
 	glog.Infof("deleting public IP addresses of VM %q", machine.Name)
-	if err = deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
+	if err := deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
 	}
-	if _, err = data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Updater(machine, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerPublicIP)
 	}); err != nil {
 		return false, err
@@ -560,7 +557,7 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 
 	for list.NotDone() {
 		allServers = append(allServers, list.Values()...)
-		if err = list.Next(); err != nil {
+		if err := list.Next(); err != nil {
 			return nil, fmt.Errorf("failed to iterate the result list: %s", err)
 		}
 	}
