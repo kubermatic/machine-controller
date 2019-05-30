@@ -5,7 +5,7 @@
 ### Cloud provider
 
 |   | Ubuntu | Container Linux | CentOS |
-|---|---|---|
+|---|---|---|---|
 | AWS | ✓ | ✓ | ✓ |
 | Openstack | ✓ | ✓ | ✓ |
 | Digitalocean  | ✓ | ✓ | ✓ |
