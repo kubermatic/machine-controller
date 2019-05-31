@@ -17,6 +17,7 @@ limitations under the License.
 package provisioning
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/clientcmd"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
@@ -52,10 +54,14 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	if err != nil {
 		return fmt.Errorf("error building kubernetes clientset: %v", err)
 	}
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
+	if err != nil {
+		return fmt.Errorf("failed to construct ctrlruntimeclient: %v", err)
+	}
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
-	machineCreateDeleteData := &cloudprovidertypes.MachineCreateDeleteData{
-		Updater:  machineUpdater,
+	providerData := &cloudprovidertypes.ProviderData{
+		Update:   cloudprovidertypes.GetMachineUpdater(context.Background(), client),
 		PVLister: pvLister,
 	}
 
@@ -96,7 +102,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	// Step 0: Create instance with old UID
 	maxTries := 15
 	for i := 0; i < maxTries; i++ {
-		_, err := prov.Get(machine)
+		_, err := prov.Get(machine, providerData)
 		if err != nil {
 			if err != cloudprovidererrors.ErrInstanceNotFound {
 				if i < maxTries-1 {
@@ -106,7 +112,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 				}
 				return fmt.Errorf("failed to get machine %s before creating it: %v", machine.Name, err)
 			}
-			_, err := prov.Create(machine, machineCreateDeleteData, "#cloud-config\n")
+			_, err := prov.Create(machine, providerData, "#cloud-config\n")
 			if err != nil {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
@@ -121,7 +127,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 1: Verify we can successfully get the instance
 	for i := 0; i < maxTries; i++ {
-		if _, err := prov.Get(machine); err != nil {
+		if _, err := prov.Get(machine, providerData); err != nil {
 			if i < maxTries-1 {
 				glog.V(4).Infof("failed to get instance for machine %s before migrating on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
@@ -148,7 +154,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 3: Verify we can successfully get the instance with the new UID
 	for i := 0; i < maxTries; i++ {
-		if _, err := prov.Get(machine); err != nil {
+		if _, err := prov.Get(machine, providerData); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
 				glog.V(4).Infof("failed to get instance for machine %s after migrating on try %v with err=%v, will retry", machine.Name, i, err)
@@ -163,7 +169,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	for i := 0; i < maxTries; i++ {
 
 		// Deletion part 0: Delete and continue on err if there are tries left
-		done, err := prov.Cleanup(machine, machineCreateDeleteData)
+		done, err := prov.Cleanup(machine, providerData)
 		if err != nil {
 			if i < maxTries-1 {
 				glog.V(4).Infof("Failed to delete machine %s on try %v with err=%v, will retry", machine.Name, i, err)
@@ -179,7 +185,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 		}
 
 		// Deletion part 1: Get and continue if err != cloudprovidererrors.ErrInstanceNotFound if there are tries left
-		_, err = prov.Get(machine)
+		_, err = prov.Get(machine, providerData)
 		if err != nil && err == cloudprovidererrors.ErrInstanceNotFound {
 			break
 		}
@@ -193,9 +199,4 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	}
 
 	return nil
-}
-
-func machineUpdater(machine *v1alpha1.Machine, updater func(*v1alpha1.Machine)) (*v1alpha1.Machine, error) {
-	updater(machine)
-	return machine, nil
 }

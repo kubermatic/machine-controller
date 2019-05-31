@@ -52,6 +52,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
@@ -412,8 +413,21 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// and bad things can happen - the fact it works at the moment doesn't mean it will in the future
 	runController := func(ctx context.Context) {
 
+		mgrSyncPeriod := 5 * time.Minute
+		mgr, err := manager.New(runOptions.cfg, manager.Options{SyncPeriod: &mgrSyncPeriod})
+		if err != nil {
+			glog.Errorf("failed to create manager: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+
+		providerData := &cloudprovidertypes.ProviderData{
+			PVLister: runOptions.pvLister,
+			Update:   cloudprovidertypes.GetMachineUpdater(ctx, mgr.GetClient()),
+		}
+
 		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
-		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, runOptions.ctrlruntimeClient, runOptions.kubeClient); err != nil {
+		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, runOptions.ctrlruntimeClient, runOptions.kubeClient, providerData); err != nil {
 			glog.Errorf("Migration to clusterv1alpha1 failed: %v", err)
 			runOptions.parentCtxDone()
 			return
@@ -426,13 +440,6 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			return
 		}
 
-		mgrSyncPeriod := 5 * time.Minute
-		mgr, err := manager.New(runOptions.cfg, manager.Options{SyncPeriod: &mgrSyncPeriod})
-		if err != nil {
-			glog.Errorf("failed to start kubebuilder manager: %v", err)
-			runOptions.parentCtxDone()
-			return
-		}
 		if err := machinesetcontroller.Add(mgr); err != nil {
 			glog.Errorf("failed to add MachineSet controller to manager: %v", err)
 			runOptions.parentCtxDone()
@@ -459,11 +466,11 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.machineInformer,
 			runOptions.machineLister,
 			runOptions.secretSystemNsLister,
-			runOptions.pvLister,
 			runOptions.clusterDNSIPs,
 			runOptions.metrics,
 			runOptions.prometheusRegisterer,
 			runOptions.kubeconfigProvider,
+			providerData,
 			runOptions.joinClusterTimeout,
 			runOptions.externalCloudProvider,
 			runOptions.name,

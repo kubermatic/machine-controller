@@ -388,7 +388,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, machineCreateDeleteData *cloudprovidertypes.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -462,7 +462,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, machineCreateDeleteData *cl
 
 	// Find a free FloatingIP or allocate a new one
 	if c.FloatingIPPool != "" {
-		if err := assignFloatingIPToInstance(machineCreateDeleteData.Updater, machine, client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
+		if err := assignFloatingIPToInstance(data.Update, machine, client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
 			defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %v", server.ID, err)
 		}
@@ -514,17 +514,17 @@ func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, se
 	glog.V(0).Infof("Instance %s got deleted", serverID)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	var hasFloatingIPReleaseFinalizer bool
 	if finalizers := sets.NewString(machine.Finalizers...); finalizers.Has(floatingIPReleaseFinalizer) {
 		hasFloatingIPReleaseFinalizer = true
 	}
 
-	instance, err := p.Get(machine)
+	instance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			if hasFloatingIPReleaseFinalizer {
-				if err := p.cleanupFloatingIP(machine, machineCreateDeleteData.Updater); err != nil {
+				if err := p.cleanupFloatingIP(machine, data.Update); err != nil {
 					return false, fmt.Errorf("failed to clean up floating ip: %v", err)
 				}
 			}
@@ -556,13 +556,13 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, machineCreateDeleteData *c
 	}
 
 	if hasFloatingIPReleaseFinalizer {
-		return false, p.cleanupFloatingIP(machine, machineCreateDeleteData.Updater)
+		return false, p.cleanupFloatingIP(machine, data.Update)
 	}
 
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -813,7 +813,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && err.Error() != "Resource not found" {
 		return fmt.Errorf("failed to delete floating ip %s: %v", floatingIPID, err)
 	}
-	if _, err := updater(machine, func(m *v1alpha1.Machine) {
+	if err := updater(machine, func(m *v1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(floatingIPReleaseFinalizer)
 		m.Finalizers = finalizers.List()
@@ -857,7 +857,7 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 		if ip, err = createFloatingIP(client, region, port.ID, floatingIPPool); err != nil {
 			return osErrorToTerminalError(err, "failed to allocate a floating ip")
 		}
-		if _, err = machineUpdater(machine, func(m *v1alpha1.Machine) {
+		if err := machineUpdater(machine, func(m *v1alpha1.Machine) {
 			m.Finalizers = append(m.Finalizers, floatingIPReleaseFinalizer)
 			if m.Annotations == nil {
 				m.Annotations = map[string]string{}

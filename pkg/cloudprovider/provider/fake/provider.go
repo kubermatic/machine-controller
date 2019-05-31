@@ -83,7 +83,7 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	return fmt.Errorf("failing validation as requested")
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
@@ -92,11 +92,11 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, er
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(_ *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData, _ string) (instance.Instance, error) {
+func (p *provider) Create(_ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, _ string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) Cleanup(_ *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(_ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	return true, nil
 }
 

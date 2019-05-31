@@ -359,7 +359,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -456,11 +456,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Machi
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.MachineCreateDeleteData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if _, err := p.Get(machine); err != nil {
+	if _, err := p.Get(machine, data); err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
 		}
@@ -568,7 +568,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.M
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -612,7 +612,7 @@ func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
 	}
 	if fieldValue != machine.Spec.Name {
 		// TODO: This should leverage .Cleanup, but we can currently not do that,
-		// because .Cleanup needs cloud.MachineCreateDeleteData which we don't have here
+		// because .Cleanup needs cloud.ProviderData which we don't have here
 		if powerState == types.VirtualMachinePowerStatePoweredOn {
 			powerOffTask, err := virtualMachine.PowerOff(ctx)
 			if err != nil {
