@@ -71,6 +71,8 @@ func (p *Plugin) UserData(
 	cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
+	nodeHttpProxy string,
+	nodeImageRegistry string,
 ) (string, error) {
 	// Prepare command.
 	var argv []string
@@ -86,6 +88,8 @@ func (p *Plugin) UserData(
 		CloudConfig:           cloudConfig,
 		DNSIPs:                clusterDNSIPs,
 		ExternalCloudProvider: externalCloudProvider,
+		NodeHttpProxy:         nodeHttpProxy,
+		NodeImageRegistry:     nodeImageRegistry,
 	}
 	reqj, err := json.Marshal(req)
 	if err != nil {

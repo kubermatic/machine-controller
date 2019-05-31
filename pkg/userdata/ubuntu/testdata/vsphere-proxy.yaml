@@ -1,18 +1,24 @@
 #cloud-config
 
 hostname: node1
+# Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name
 
 
 ssh_pwauth: no
+
 ssh_authorized_keys:
 - "ssh-rsa AAABBB"
-- "ssh-rsa CCCDDD"
-- "ssh-rsa EEEFFF"
 
 write_files:
 - path: "/etc/environment"
   content: |
     PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+    HTTP_PROXY=http://192.168.100.100:3128
+    http_proxy=http://192.168.100.100:3128
+    HTTPS_PROXY=http://192.168.100.100:3128
+    https_proxy=http://192.168.100.100:3128
+    NO_PROXY=localhost,127.0.0.1
+    no_proxy=localhost,127.0.0.1
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -115,11 +121,15 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
+
+    # As we added some modules and don't want to reboot, restart the service
     systemctl restart systemd-modules-load.service
     sysctl --system
 
     apt-key add /opt/docker.asc
     apt-get update
+
+    # Make sure we always disable swap - Otherwise the kubelet won't start'.
     cp /etc/fstab /etc/fstab.orig
     cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
     mv /etc/fstab.noswap /etc/fstab
@@ -145,21 +155,28 @@ write_files:
       socat \
       util-linux \
       ${CR_PKG} \
-      ipvsadm
+      ipvsadm \
+      open-vm-tools
+
+    # If something failed during package installation but docker got installed, we need to put it on hold
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
 
+    #setup some common directories
     mkdir -p /opt/bin/
     mkdir -p /var/lib/calico
     mkdir -p /etc/kubernetes/manifests
     mkdir -p /etc/cni/net.d
     mkdir -p /opt/cni/bin
+
+    # cni
     if [ ! -f /opt/cni/bin/loopback ]; then
         curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
     fi
+    # kubelet
     if [ ! -f /opt/bin/kubelet ]; then
         curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.11.3/bin/linux/amd64/kubelet
         chmod +x /opt/bin/kubelet
@@ -217,6 +234,8 @@ write_files:
       --rotate-certificates=true \
       --cert-dir=/etc/kubernetes/pki \
       --authentication-token-webhook=true \
+      --cloud-provider=vsphere \
+      --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --read-only-port=0 \
       --exit-on-lock-contention \
@@ -225,6 +244,7 @@ write_files:
       --protect-kernel-defaults=true \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local \
+      --pod-infra-container-image="192.168.100.100:5000/machine-controller/pause:3.1" \
       --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
       --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 
@@ -238,7 +258,9 @@ write_files:
 
 - path: "/etc/kubernetes/cloud-config"
   content: |
-
+    custom
+    cloud
+    config
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   content: |
@@ -311,7 +333,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"storage-driver":"overlay2","insecure-registries":[]}
+    {"storage-driver":"overlay2","insecure-registries":["192.168.100.100:5000"]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

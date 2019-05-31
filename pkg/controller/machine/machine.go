@@ -103,6 +103,8 @@ type Controller struct {
 	name                             string
 	bootstrapTokenServiceAccountName *types.NamespacedName
 	skipEvictionAfter                time.Duration
+	nodeHttpProxy                    string
+	nodeImageRegistry                string
 }
 
 type KubeconfigProvider interface {
@@ -135,6 +137,8 @@ func NewMachineController(
 	name string,
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
+	nodeHttpProxy string,
+	nodeImageRegistry string,
 ) (*Controller, error) {
 
 	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
@@ -168,6 +172,8 @@ func NewMachineController(
 		name:                             name,
 		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
 		skipEvictionAfter:                skipEvictionAfter,
+		nodeHttpProxy:                    nodeHttpProxy,
+		nodeImageRegistry:                nodeImageRegistry,
 	}
 
 	m, err := userdatamanager.New()
@@ -619,7 +625,16 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloudprovidertypes.Prov
 			if err != nil {
 				return fmt.Errorf("failed to render cloud config: %v", err)
 			}
-			userdata, err := userdataPlugin.UserData(machine.Spec, kubeconfig, cloudConfig, cloudProviderName, c.clusterDNSIPs, c.externalCloudProvider)
+			userdata, err := userdataPlugin.UserData(
+				machine.Spec,
+				kubeconfig,
+				cloudConfig,
+				cloudProviderName,
+				c.clusterDNSIPs,
+				c.externalCloudProvider,
+				c.nodeHttpProxy,
+				c.nodeImageRegistry,
+			)
 			if err != nil {
 				return fmt.Errorf("failed get userdata: %v", err)
 			}

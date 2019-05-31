@@ -14,7 +14,7 @@
 
 SHELL = /bin/bash
 
-GO_VERSION = 1.10.3
+GO_VERSION = 1.12.5
 
 export CGO_ENABLED := 0
 

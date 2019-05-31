@@ -130,8 +130,22 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
+    - name: docker.service
+      enabled: true
+      dropins:
+      - name: 10-environment.conf
+        contents: |
+          [Service]
+          EnvironmentFile=/etc/environment
+
 storage:
   files:
+    - path: /etc/environment
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root
       mode: 0644
@@ -268,13 +282,12 @@ storage:
           PasswordAuthentication no
           ChallengeResponseAuthentication no
 
-    - path: /etc/systemd/system/docker.service.d/10-storage.conf
+    - path: /etc/docker/daemon.json
       filesystem: root
       mode: 0644
       contents:
         inline: |
-          [Service]
-          Environment=DOCKER_OPTS=--storage-driver=overlay2
+          {"storage-driver":"overlay2","insecure-registries":[]}
 
     - path: /opt/bin/download.sh
       filesystem: root

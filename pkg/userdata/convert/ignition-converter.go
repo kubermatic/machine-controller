@@ -43,8 +43,19 @@ func (j *Ignition) UserData(
 	cloudConfig, cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
+	nodeHttpProxy string,
+	nodeImageRegistry string,
 ) (string, error) {
-	before, err := j.p.UserData(spec, kubeconfig, cloudConfig, cloudProviderName, clusterDNSIPs, externalCloudProvider)
+	before, err := j.p.UserData(
+		spec,
+		kubeconfig,
+		cloudConfig,
+		cloudProviderName,
+		clusterDNSIPs,
+		externalCloudProvider,
+		nodeHttpProxy,
+		nodeImageRegistry,
+	)
 	if err != nil {
 		return "", err
 	}

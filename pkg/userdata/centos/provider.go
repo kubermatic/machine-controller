@@ -47,6 +47,8 @@ func (p Provider) UserData(
 	cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
+	nodeHttpProxy string,
+	nodeImageRegistry string,
 ) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
@@ -92,29 +94,33 @@ func (p Provider) UserData(
 	}
 
 	data := struct {
-		MachineSpec      clusterv1alpha1.MachineSpec
-		ProviderSpec     *providerconfig.Config
-		OSConfig         *Config
-		CloudProvider    string
-		CloudConfig      string
-		KubeletVersion   string
-		ClusterDNSIPs    []net.IP
-		ServerAddr       string
-		Kubeconfig       string
-		KubernetesCACert string
-		IsExternal       bool
+		MachineSpec       clusterv1alpha1.MachineSpec
+		ProviderSpec      *providerconfig.Config
+		OSConfig          *Config
+		CloudProvider     string
+		CloudConfig       string
+		KubeletVersion    string
+		ClusterDNSIPs     []net.IP
+		ServerAddr        string
+		Kubeconfig        string
+		KubernetesCACert  string
+		IsExternal        bool
+		NodeHttpProxy     string
+		NodeImageRegistry string
 	}{
-		MachineSpec:      spec,
-		ProviderSpec:     pconfig,
-		OSConfig:         centosConfig,
-		CloudProvider:    cloudProviderName,
-		CloudConfig:      cloudConfig,
-		KubeletVersion:   kubeletVersion.String(),
-		ClusterDNSIPs:    clusterDNSIPs,
-		ServerAddr:       serverAddr,
-		Kubeconfig:       kubeconfigString,
-		KubernetesCACert: kubernetesCACert,
-		IsExternal:       externalCloudProvider,
+		MachineSpec:       spec,
+		ProviderSpec:      pconfig,
+		OSConfig:          centosConfig,
+		CloudProvider:     cloudProviderName,
+		CloudConfig:       cloudConfig,
+		KubeletVersion:    kubeletVersion.String(),
+		ClusterDNSIPs:     clusterDNSIPs,
+		ServerAddr:        serverAddr,
+		Kubeconfig:        kubeconfigString,
+		KubernetesCACert:  kubernetesCACert,
+		IsExternal:        externalCloudProvider,
+		NodeHttpProxy:     nodeHttpProxy,
+		NodeImageRegistry: nodeImageRegistry,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -146,6 +152,12 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
+- path: "/etc/environment"
+  content: |
+{{- if .NodeHttpProxy }}
+{{ proxyEnvironment .NodeHttpProxy | indent 4 }}
+{{- end }}
+
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
 {{ journalDConfig | indent 4 }}
@@ -228,7 +240,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 4 }}
+{{ kubeletSystemdUnit .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal .NodeImageRegistry | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
@@ -260,6 +272,7 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
+    EnvironmentFile=/etc/environment
     ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
 - path: "/etc/profile.d/opt-bin-path.sh"
@@ -276,6 +289,19 @@ write_files:
   permissions: "0644"
   content: |
 {{ containerRuntimeHealthCheckSystemdUnit | indent 4 }}
+
+{{- if .NodeImageRegistry }}
+- path: /run/containers/registries.conf
+  permissions: "0644"
+  content: |
+    INSECURE_REGISTRY="--insecure-registry {{ .NodeImageRegistry }}"
+{{- end}}
+
+- path: /etc/systemd/system/docker.service.d/environment.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    EnvironmentFile=/etc/environment
 
 runcmd:
 - systemctl enable --now setup.service

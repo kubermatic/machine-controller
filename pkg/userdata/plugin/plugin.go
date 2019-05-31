@@ -45,6 +45,8 @@ type Provider interface {
 		cloudProviderName string,
 		clusterDNSIPs []net.IP,
 		externalCloudProvider bool,
+		nodeHttpProxy string,
+		nodeImageRegistry string,
 	) (string, error)
 }
 
@@ -85,6 +87,8 @@ func (p *Plugin) Run() error {
 		req.CloudProviderName,
 		req.DNSIPs,
 		req.ExternalCloudProvider,
+		req.NodeHttpProxy,
+		req.NodeImageRegistry,
 	)
 	var resp plugin.UserDataResponse
 	if err != nil {

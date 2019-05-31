@@ -46,6 +46,8 @@ func (p Provider) UserData(
 	cloudProviderName string,
 	clusterDNSIPs []net.IP,
 	externalCloudProvider bool,
+	nodeHttpProxy string,
+	nodeImageRegistry string,
 ) (string, error) {
 
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
@@ -94,6 +96,8 @@ func (p Provider) UserData(
 		KubernetesCACert  string
 		KubeletVersion    string
 		IsExternal        bool
+		NodeHttpProxy     string
+		NodeImageRegistry string
 	}{
 		MachineSpec:       spec,
 		ProviderSpec:      pconfig,
@@ -106,6 +110,8 @@ func (p Provider) UserData(
 		KubernetesCACert:  kubernetesCACert,
 		KubeletVersion:    kubeletVersion.String(),
 		IsExternal:        externalCloudProvider,
+		NodeHttpProxy:     nodeHttpProxy,
+		NodeImageRegistry: nodeImageRegistry,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -155,6 +161,15 @@ systemd:
     - name: docker.service
       enabled: true
 
+{{- if .NodeHttpProxy }}
+    - name: update-engine.service
+      dropins:
+        - name: 50-proxy.conf
+          contents: |
+            [Service]
+            Environment=ALL_PROXY={{ .NodeHttpProxy }}
+{{- end }}
+
     - name: download-healthcheck-script.service
       enabled: true
       contents: |
@@ -200,9 +215,13 @@ systemd:
         TimeoutStartSec=5min
         CPUAccounting=true
         MemoryAccounting=true
+{{- if .NodeHttpProxy }}
+        Environment=KUBELET_IMAGE=docker://{{ .NodeImageRegistry }}/machine-controller/hyperkube-amd64:{{ .HyperkubeImageTag }}
+{{- else }}
         Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:{{ .HyperkubeImageTag }}
+{{- end }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
-          --insecure-options=image \
+          --insecure-options=image{{ if .NodeImageRegistry }},http{{ end }} \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
           --mount volume=resolv,target=/etc/resolv.conf \
           --volume cni-bin,kind=host,source=/opt/cni/bin \
@@ -222,15 +241,32 @@ systemd:
         ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
-{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 10 }}
+{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal .NodeImageRegistry | indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
         [Install]
         WantedBy=multi-user.target
 
+    - name: docker.service
+      enabled: true
+      dropins:
+      - name: 10-environment.conf
+        contents: |
+          [Service]
+          EnvironmentFile=/etc/environment
+
 storage:
   files:
+    - path: /etc/environment
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+{{- if .NodeHttpProxy }}
+{{ proxyEnvironment .NodeHttpProxy | indent 10 }}
+{{- end }}
+
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root
       mode: 0644
@@ -320,13 +356,12 @@ storage:
           PasswordAuthentication no
           ChallengeResponseAuthentication no
 
-    - path: /etc/systemd/system/docker.service.d/10-storage.conf
+    - path: /etc/docker/daemon.json
       filesystem: root
       mode: 0644
       contents:
         inline: |
-          [Service]
-          Environment=DOCKER_OPTS=--storage-driver=overlay2
+{{ dockerConfig .NodeImageRegistry | indent 10 }}
 
     - path: /opt/bin/download.sh
       filesystem: root
@@ -335,4 +370,8 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
+          {{- if .NodeHttpProxy }}
+          source /etc/environment
+          export HTTP_PROXY HTTPS_PROXY
+          {{- end }}
 {{ downloadBinariesScript .KubeletVersion false | indent 10 }}`

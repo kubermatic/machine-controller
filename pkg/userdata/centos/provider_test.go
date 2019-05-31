@@ -83,6 +83,8 @@ type userDataTestCase struct {
 	clusterDNSIPs         []net.IP
 	cloudProviderName     *string
 	externalCloudProvider bool
+	httpProxy             string
+	imageRegistry         string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -147,6 +149,18 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			cloudProviderName: stringPtr("vsphere"),
 		},
+		{
+			name: "kubelet-v1.12-vsphere-proxy",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.12.0",
+				},
+			},
+			cloudProviderName: stringPtr("vsphere"),
+			httpProxy:         "http://192.168.100.100:3128",
+			imageRegistry:     "192.168.100.100:5000",
+		},
 	}
 
 	defaultCloudProvider := &fakeCloudConfigProvider{
@@ -189,7 +203,16 @@ func TestUserDataGeneration(t *testing.T) {
 			t.Fatalf("failed to get cloud config: %v", err)
 		}
 
-		s, err := provider.UserData(test.spec, kubeconfig, cloudConfig, cloudProviderName, test.clusterDNSIPs, test.externalCloudProvider)
+		s, err := provider.UserData(
+			test.spec,
+			kubeconfig,
+			cloudConfig,
+			cloudProviderName,
+			test.clusterDNSIPs,
+			test.externalCloudProvider,
+			test.httpProxy,
+			test.imageRegistry,
+		)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}

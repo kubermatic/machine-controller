@@ -84,6 +84,8 @@ var (
 	externalCloudProvider            bool
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
+	nodeHttpProxy                    string
+	nodeImageRegistry                string
 )
 
 const (
@@ -171,6 +173,11 @@ type controllerRunOptions struct {
 
 	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
 	skipEvictionAfter time.Duration
+
+	// If set, this proxy will be configured on all nodes.
+	nodeHttpProxy string
+	// If set, this image registry will be used for pulling all required images on the node
+	nodeImageRegistry string
 }
 
 func main() {
@@ -192,6 +199,8 @@ func main() {
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
 	flag.BoolVar(&externalCloudProvider, "external-cloud-provider", false, "when set, kubelets will receive --cloud-provider=external flag")
 	flag.DurationVar(&skipEvictionAfter, "skip-eviction-after", 2*time.Hour, "Skips the eviction if a machine is not gone after the specified duration.")
+	flag.StringVar(&nodeHttpProxy, "node-http-proxy", "", "If set, this proxy will be configured on all nodes.")
+	flag.StringVar(&nodeImageRegistry, "node-image-registry", "", "If set, this image registry will be used for pulling all required images on the node.")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -298,6 +307,8 @@ func main() {
 		cfg:                   machineCfg,
 		externalCloudProvider: externalCloudProvider,
 		skipEvictionAfter:     skipEvictionAfter,
+		nodeHttpProxy:         nodeHttpProxy,
+		nodeImageRegistry:     nodeImageRegistry,
 	}
 	if parsedJoinClusterTimeout != nil {
 		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
@@ -476,6 +487,8 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.name,
 			runOptions.bootstrapTokenServiceAccountName,
 			runOptions.skipEvictionAfter,
+			runOptions.nodeHttpProxy,
+			runOptions.nodeImageRegistry,
 		)
 		if err != nil {
 			glog.Errorf("failed to create machine-controller: %v", err)

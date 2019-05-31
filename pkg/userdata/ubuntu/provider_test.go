@@ -109,6 +109,8 @@ type userDataTestCase struct {
 	DNSIPs                []net.IP
 	kubernetesCACert      string
 	externalCloudProvider bool
+	httpProxy             string
+	imageRegistry         string
 }
 
 func simpleVersionTests() []userDataTestCase {
@@ -335,6 +337,34 @@ func TestUserDataGeneration(t *testing.T) {
 				DistUpgradeOnBoot: false,
 			},
 		},
+		{
+			name: "vsphere-proxy",
+			providerSpec: &providerconfig.Config{
+				CloudProvider:        "vsphere",
+				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
+				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.11.3",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
+			httpProxy:     "http://192.168.100.100:3128",
+			imageRegistry: "192.168.100.100:5000",
+		},
 	}...)
 
 	for _, test := range tests {
@@ -365,7 +395,16 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
-			s, err := provider.UserData(spec, kubeconfig, cloudConfig, cloudProviderName, test.DNSIPs, test.externalCloudProvider)
+			s, err := provider.UserData(
+				spec,
+				kubeconfig,
+				cloudConfig,
+				cloudProviderName,
+				test.DNSIPs,
+				test.externalCloudProvider,
+				test.httpProxy,
+				test.imageRegistry,
+			)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -45,6 +45,8 @@ type UserDataRequest struct {
 	CloudConfig           string
 	DNSIPs                []net.IP
 	ExternalCloudProvider bool
+	NodeHttpProxy         string
+	NodeImageRegistry     string
 }
 
 // UserDataResponse contains the responded user data.
