@@ -52,6 +52,13 @@ const (
 	finalizerVM       = "kubermatic.io/cleanup-azure-vm"
 )
 
+const (
+	envClientID       = "AZURE_CLIENT_ID"
+	envClientSecret   = "AZURE_CLIENT_SECRET"
+	envTenantID       = "AZURE_TENANT_ID"
+	envSubscriptionID = "AZURE_SUBSCRIPTION_ID"
+)
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -171,22 +178,22 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfig.
 	}
 
 	c := config{}
-	c.SubscriptionID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.SubscriptionID)
+	c.SubscriptionID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.SubscriptionID, envSubscriptionID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"subscriptionID\" field, error = %v", err)
 	}
 
-	c.TenantID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.TenantID)
+	c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.TenantID, envTenantID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"tenantID\" field, error = %v", err)
 	}
 
-	c.ClientID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ClientID)
+	c.ClientID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.ClientID, envClientID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"clientID\" field, error = %v", err)
 	}
 
-	c.ClientSecret, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ClientSecret)
+	c.ClientSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.ClientSecret, envClientSecret)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"clientSecret\" field, error = %v", err)
 	}
