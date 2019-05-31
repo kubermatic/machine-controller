@@ -303,7 +303,7 @@ func (c *Controller) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.
 }
 
 func (c *Controller) updateMachine(m *clusterv1alpha1.Machine, modify ...cloudprovidertypes.MachineModifier) error {
-	return c.providerData.Updater(m, modify...)
+	return c.providerData.Update(m, modify...)
 }
 
 // updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not

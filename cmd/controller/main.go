@@ -423,7 +423,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 
 		providerData := &cloudprovidertypes.ProviderData{
 			PVLister: runOptions.pvLister,
-			Updater:  cloudprovidertypes.GetMachineUpdater(ctx, mgr.GetClient()),
+			Update:   cloudprovidertypes.GetMachineUpdater(ctx, mgr.GetClient()),
 		}
 
 		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine

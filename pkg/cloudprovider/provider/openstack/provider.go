@@ -462,7 +462,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	// Find a free FloatingIP or allocate a new one
 	if c.FloatingIPPool != "" {
-		if err := assignFloatingIPToInstance(data.Updater, machine, client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
+		if err := assignFloatingIPToInstance(data.Update, machine, client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
 			defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %v", server.ID, err)
 		}
@@ -524,7 +524,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			if hasFloatingIPReleaseFinalizer {
-				if err := p.cleanupFloatingIP(machine, data.Updater); err != nil {
+				if err := p.cleanupFloatingIP(machine, data.Update); err != nil {
 					return false, fmt.Errorf("failed to clean up floating ip: %v", err)
 				}
 			}
@@ -556,7 +556,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	if hasFloatingIPReleaseFinalizer {
-		return false, p.cleanupFloatingIP(machine, data.Updater)
+		return false, p.cleanupFloatingIP(machine, data.Update)
 	}
 
 	return false, nil

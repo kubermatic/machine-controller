@@ -86,7 +86,7 @@ type MachineUpdater func(*clusterv1alpha1.Machine, ...MachineModifier) error
 
 // ProviderData is the struct the cloud providers get when creating or deleting an instance
 type ProviderData struct {
-	Updater  MachineUpdater
+	Update   MachineUpdater
 	PVLister listerscorev1.PersistentVolumeLister
 }
 

@@ -61,7 +61,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
 	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 	providerData := &cloudprovidertypes.ProviderData{
-		Updater:  cloudprovidertypes.GetMachineUpdater(context.Background(), client),
+		Update:   cloudprovidertypes.GetMachineUpdater(context.Background(), client),
 		PVLister: pvLister,
 	}
 
