@@ -19,6 +19,7 @@ systemd:
         After=network-online.target
         [Service]
         Type=oneshot
+        EnvironmentFile=-/etc/environment
         ExecStart=/opt/bin/download.sh
         [Install]
         WantedBy=multi-user.target
@@ -132,15 +133,10 @@ systemd:
       - name: 10-environment.conf
         contents: |
           [Service]
-          EnvironmentFile=/etc/environment
+          EnvironmentFile=-/etc/environment
 
 storage:
   files:
-    - path: /etc/environment
-      filesystem: root
-      mode: 0644
-      contents:
-        inline: |
 
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root

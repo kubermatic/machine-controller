@@ -46,6 +46,7 @@ systemd:
         After=network-online.target
         [Service]
         Type=oneshot
+        EnvironmentFile=-/etc/environment
         ExecStart=/opt/bin/download.sh
         [Install]
         WantedBy=multi-user.target
@@ -159,7 +160,7 @@ systemd:
       - name: 10-environment.conf
         contents: |
           [Service]
-          EnvironmentFile=/etc/environment
+          EnvironmentFile=-/etc/environment
 
 storage:
   files:
@@ -330,8 +331,6 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
-          source /etc/environment
-          export HTTP_PROXY HTTPS_PROXY
           #setup some common directories
           mkdir -p /opt/bin/
           mkdir -p /var/lib/calico

@@ -178,6 +178,7 @@ systemd:
         After=network-online.target
         [Service]
         Type=oneshot
+        EnvironmentFile=-/etc/environment
         ExecStart=/opt/bin/download.sh
         [Install]
         WantedBy=multi-user.target
@@ -254,16 +255,16 @@ systemd:
       - name: 10-environment.conf
         contents: |
           [Service]
-          EnvironmentFile=/etc/environment
+          EnvironmentFile=-/etc/environment
 
 storage:
   files:
+{{- if .NodeHttpProxy }}
     - path: /etc/environment
       filesystem: root
       mode: 0644
       contents:
         inline: |
-{{- if .NodeHttpProxy }}
 {{ proxyEnvironment .NodeHttpProxy | indent 10 }}
 {{- end }}
 
@@ -370,8 +371,4 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
-          {{- if .NodeHttpProxy }}
-          source /etc/environment
-          export HTTP_PROXY HTTPS_PROXY
-          {{- end }}
 {{ downloadBinariesScript .KubeletVersion false | indent 10 }}`

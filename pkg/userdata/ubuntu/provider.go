@@ -148,10 +148,10 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
+{{- if .NodeHttpProxy }}
 - path: "/etc/environment"
   content: |
     PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
-{{- if .NodeHttpProxy }}
 {{ proxyEnvironment .NodeHttpProxy | indent 4 }}
 {{- end }}
 
@@ -340,7 +340,7 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
-    EnvironmentFile=/etc/environment
+    EnvironmentFile=-/etc/environment
     ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
 - path: "/etc/profile.d/opt-bin-path.sh"
@@ -367,7 +367,7 @@ write_files:
   permissions: "0644"
   content: |
     [Service]
-    EnvironmentFile=/etc/environment
+    EnvironmentFile=-/etc/environment
 
 runcmd:
 - systemctl enable --now setup.service

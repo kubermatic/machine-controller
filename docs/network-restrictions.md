@@ -10,6 +10,8 @@ This will set the following environment variables via /etc/environment on all no
 - HTTPS_PROXY
 - NO_PROXY (Will always be set to `localhost,127.0.0.1`)
 
+Additionally, the proxy will be configured as `--insecure-registry` on the Docker daemon.
+
 # Using a custom image registry
 
 If docker/OCI images can only be accessed using a dedicated registry, you can let the machine-controller configure all new nodes to use a own registry.
