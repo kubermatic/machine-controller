@@ -1,11 +1,9 @@
 #cloud-config
 
 hostname: node1
-# Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name
 
 
 ssh_pwauth: no
-
 ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 
@@ -111,15 +109,11 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
-
-    # As we added some modules and don't want to reboot, restart the service
     systemctl restart systemd-modules-load.service
     sysctl --system
 
     apt-key add /opt/docker.asc
     apt-get update
-
-    # Make sure we always disable swap - Otherwise the kubelet won't start'.
     cp /etc/fstab /etc/fstab.orig
     cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
     mv /etc/fstab.noswap /etc/fstab
@@ -146,8 +140,6 @@ write_files:
       util-linux \
       ${CR_PKG} \
       ipvsadm
-
-    # If something failed during package installation but docker got installed, we need to put it on hold
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
@@ -155,18 +147,14 @@ write_files:
       reboot
     fi
 
-    #setup some common directories
     mkdir -p /opt/bin/
     mkdir -p /var/lib/calico
     mkdir -p /etc/kubernetes/manifests
     mkdir -p /etc/cni/net.d
     mkdir -p /opt/cni/bin
-
-    # cni
     if [ ! -f /opt/cni/bin/loopback ]; then
         curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
     fi
-    # kubelet
     if [ ! -f /opt/bin/kubelet ]; then
         curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.11.3/bin/linux/amd64/kubelet
         chmod +x /opt/bin/kubelet
