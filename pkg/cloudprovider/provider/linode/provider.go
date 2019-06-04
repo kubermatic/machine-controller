@@ -54,12 +54,12 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type RawConfig struct {
-	Token             providerconfig.ConfigVarString   `json:"token"`
+	Token             providerconfig.ConfigVarString   `json:"token,omitempty"`
 	Region            providerconfig.ConfigVarString   `json:"region"`
 	Type              providerconfig.ConfigVarString   `json:"type"`
 	Backups           providerconfig.ConfigVarBool     `json:"backups"`
 	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
-	Tags              []providerconfig.ConfigVarString `json:"tags"`
+	Tags              []providerconfig.ConfigVarString `json:"tags,omitempty"`
 }
 
 type Config struct {

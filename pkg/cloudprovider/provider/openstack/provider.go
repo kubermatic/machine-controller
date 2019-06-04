@@ -66,25 +66,25 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 
 type RawConfig struct {
 	// Auth details
-	IdentityEndpoint providerconfig.ConfigVarString `json:"identityEndpoint"`
-	Username         providerconfig.ConfigVarString `json:"username"`
-	Password         providerconfig.ConfigVarString `json:"password"`
-	DomainName       providerconfig.ConfigVarString `json:"domainName"`
-	TenantName       providerconfig.ConfigVarString `json:"tenantName"`
-	TokenID          providerconfig.ConfigVarString `json:"tokenId"`
-	Region           providerconfig.ConfigVarString `json:"region"`
+	IdentityEndpoint providerconfig.ConfigVarString `json:"identityEndpoint,omitempty"`
+	Username         providerconfig.ConfigVarString `json:"username,omitempty"`
+	Password         providerconfig.ConfigVarString `json:"password,omitempty"`
+	DomainName       providerconfig.ConfigVarString `json:"domainName,omitempty"`
+	TenantName       providerconfig.ConfigVarString `json:"tenantName,omitempty"`
+	TokenID          providerconfig.ConfigVarString `json:"tokenId,omitempty"`
+	Region           providerconfig.ConfigVarString `json:"region,omitempty"`
 
 	// Machine details
 	Image            providerconfig.ConfigVarString   `json:"image"`
 	Flavor           providerconfig.ConfigVarString   `json:"flavor"`
-	SecurityGroups   []providerconfig.ConfigVarString `json:"securityGroups"`
-	Network          providerconfig.ConfigVarString   `json:"network"`
-	Subnet           providerconfig.ConfigVarString   `json:"subnet"`
-	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
-	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
+	SecurityGroups   []providerconfig.ConfigVarString `json:"securityGroups,omitempty"`
+	Network          providerconfig.ConfigVarString   `json:"network,omitempty"`
+	Subnet           providerconfig.ConfigVarString   `json:"subnet,omitempty"`
+	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool,omitempty"`
+	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone,omitempty"`
 	TrustDevicePath  providerconfig.ConfigVarBool     `json:"trustDevicePath"`
 	// This tag is related to server metadata, not compute server's tag
-	Tags map[string]string `json:"tags"`
+	Tags map[string]string `json:"tags,omitempty"`
 }
 
 type Config struct {

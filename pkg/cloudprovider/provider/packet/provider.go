@@ -49,12 +49,12 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type RawConfig struct {
-	APIKey       providerconfig.ConfigVarString   `json:"apiKey"`
-	ProjectID    providerconfig.ConfigVarString   `json:"projectID"`
+	APIKey       providerconfig.ConfigVarString   `json:"apiKey,omitempty"`
+	ProjectID    providerconfig.ConfigVarString   `json:"projectID,omitempty"`
 	BillingCycle providerconfig.ConfigVarString   `json:"billingCycle"`
 	InstanceType providerconfig.ConfigVarString   `json:"instanceType"`
 	Facilities   []providerconfig.ConfigVarString `json:"facilities"`
-	Tags         []providerconfig.ConfigVarString `json:"tags"`
+	Tags         []providerconfig.ConfigVarString `json:"tags,omitempty"`
 }
 
 type Config struct {

@@ -71,18 +71,18 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 
 type RawConfig struct {
 	TemplateVMName  providerconfig.ConfigVarString `json:"templateVMName"`
-	TemplateNetName providerconfig.ConfigVarString `json:"templateNetName"`
-	VMNetName       providerconfig.ConfigVarString `json:"vmNetName"`
-	Username        providerconfig.ConfigVarString `json:"username"`
-	Password        providerconfig.ConfigVarString `json:"password"`
-	VSphereURL      providerconfig.ConfigVarString `json:"vsphereURL"`
+	TemplateNetName providerconfig.ConfigVarString `json:"templateNetName,omitempty"`
+	VMNetName       providerconfig.ConfigVarString `json:"vmNetName,omitempty"`
+	Username        providerconfig.ConfigVarString `json:"username,omitempty"`
+	Password        providerconfig.ConfigVarString `json:"password,omitempty"`
+	VSphereURL      providerconfig.ConfigVarString `json:"vsphereURL,omitempty"`
 	Datacenter      providerconfig.ConfigVarString `json:"datacenter"`
 	Cluster         providerconfig.ConfigVarString `json:"cluster"`
-	Folder          providerconfig.ConfigVarString `json:"folder"`
+	Folder          providerconfig.ConfigVarString `json:"folder,omitempty"`
 	Datastore       providerconfig.ConfigVarString `json:"datastore"`
 	CPUs            int32                          `json:"cpus"`
 	MemoryMB        int64                          `json:"memoryMB"`
-	DiskSizeGB      *int64                         `json:"diskSizeGB"`
+	DiskSizeGB      *int64                         `json:"diskSizeGB,omitempty"`
 	AllowInsecure   providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 

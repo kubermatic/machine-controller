@@ -53,7 +53,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type RawConfig struct {
-	Config        providerconfig.ConfigVarString `json:"config"`
+	Config        providerconfig.ConfigVarString `json:"config,omitempty"`
 	CPUs          providerconfig.ConfigVarString `json:"cpus"`
 	Memory        providerconfig.ConfigVarString `json:"memory"`
 	RegistryImage providerconfig.ConfigVarString `json:"registryImage"`
