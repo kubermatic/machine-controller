@@ -248,6 +248,18 @@
   revision = "6c6132ff69f0f6c088739067407b5d32c52e1d0f"
 
 [[projects]]
+  digest = "1:78fae849a8a0261bdaf300edc2b7c7b32e7126d8b1e8a04a4fdbdead8fbadcd7"
+  name = "github.com/docker/distribution"
+  packages = [
+    ".",
+    "digestset",
+    "reference",
+  ]
+  pruneopts = "NUT"
+  revision = "2461543d988979529609e8cb6fca9ca190dc48da"
+  version = "v2.7.1"
+
+[[projects]]
   digest = "1:3537d33c077a9666720dc987fddfecb07270606ac0a58f67abd08e3b252c0a45"
   name = "github.com/emicklei/go-restful"
   packages = [
@@ -588,6 +600,25 @@
   pruneopts = "NUT"
   revision = "4dadeb3030eda0273a12382bb2348ffc7c9d1a39"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:e0cc8395ea893c898ff5eb0850f4d9851c1f57c78c232304a026379a47a552d0"
+  name = "github.com/opencontainers/go-digest"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
+  version = "v1.0.0-rc1"
+
+[[projects]]
+  digest = "1:11db38d694c130c800d0aefb502fb02519e514dc53d9804ce51d1ad25ec27db6"
+  name = "github.com/opencontainers/image-spec"
+  packages = [
+    "specs-go",
+    "specs-go/v1",
+  ]
+  pruneopts = "NUT"
+  revision = "d60099175f88c47cd379c4738d158884749ed235"
+  version = "v1.0.1"
 
 [[projects]]
   digest = "1:acbfa5b756ccf1060157ab2d6d68111f0316cc77ecf372a6aedd3d0c3e6b21b4"
@@ -1535,6 +1566,7 @@
     "github.com/aws/aws-sdk-go/service/iam",
     "github.com/coreos/container-linux-config-transpiler/config",
     "github.com/digitalocean/godo",
+    "github.com/docker/distribution",
     "github.com/ghodss/yaml",
     "github.com/go-test/deep",
     "github.com/golang/glog",

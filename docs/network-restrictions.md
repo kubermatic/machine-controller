@@ -8,29 +8,38 @@ For this the following flag must be set on the machine-controller side:
 This will set the following environment variables via /etc/environment on all nodes (lower & uppercase):
 - HTTP_PROXY
 - HTTPS_PROXY
-- NO_PROXY (Will always be set to `localhost,127.0.0.1`)
 
-Additionally, the proxy will be configured as `--insecure-registry` on the Docker daemon.
+`NO_PROXY` can be configured using a dedicated flag:
+```bash
+-node-no-proxy="10.0.0.0/24"
+```
 
 # Using a custom image registry
 
-If docker/OCI images can only be accessed using a dedicated registry, you can let the machine-controller configure all new nodes to use a own registry.
-For this the following flag must be set on the machine-controller side:
+Except for custom workload, the kubelet requires access to the "pause" container.
+This container is being used to keep the network namespace for each Pod alive.
+
+By default the image `k8s.gcr.io/pause:3.1`* will be used.
+If that image won't be accessible from the node, a custom image can be specified on the machine-controller:
 ```bash
--node-image-registry="192.168.1.1:5000"
+-node-pause-image="192.168.1.1:5000/kubernetes/pause:3.1"
 ```
-This will instruct the nodes to only pull images, which are required by the Kubelet and the OS, from this repository.
 
-The following images are currently being required by the Kubelet & OS:
-- `k8s.gcr.io/pause:3.1`
-  When a custom registry like `192.168.1.1:5000` is specified the full image name will be: `192.168.1.1/machine-controller/pause:3.1`
-- `k8s.gcr.io/hyperkube-amd64:v1.10.3` (The tag matches the used Kubernetes version)
-  When a custom registry like `192.168.1.1:5000` is specified the full image name will be: `192.168.1.1/machine-controller/hyperkube-amd64:v1.12.0`
+For ContainerLinux nodes the [hyperkube](https://github.com/kubernetes/kubernetes/tree/master/cluster/images/hyperkube) image must be accessible as well.
+This is due to the usage of the [kubelet-wrapper](https://github.com/coreos/coreos-kubernetes/blob/master/Documentation/kubelet-wrapper.md).
 
-## Retag images
-
-A simple helper script to push the images can be found in the hack folder: [../hack/retag-images.sh](../hack/retag-images.sh)
+By default the image `k8s.gcr.io/hyperkube-amd64` will be used.
+If that image won't be accessible from the node, a custom image can be specified on the machine-controller:
 ```bash
-# Pulls, retags & pushes the above mentioned images
-./hack/retag-images.sh my-awesome-registry:5000 v1.14.2
+# Do not set a tag. The tag depends on the used Kubernetes version of a machine.
+# Example:
+# A Node using v1.14.2 would use 192.168.1.1:5000/kubernetes/hyperkube-amd64:v1.14.2
+-node-hyperkube-image="192.168.1.1:5000/kubernetes/hyperkube-amd64"
+```
+
+# Insecure registries
+
+If nodes require access to insecure registries, all registries must be specified via a flag:
+```bash
+--node-insecure-registries="192.168.1.1:5000,10.0.0.1:5000"
 ```

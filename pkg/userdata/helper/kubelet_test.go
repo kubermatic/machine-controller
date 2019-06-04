@@ -33,7 +33,7 @@ type kubeletFlagTestCase struct {
 	hostname      string
 	cloudProvider string
 	external      bool
-	imageRegistry string
+	pauseImage    string
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -74,12 +74,12 @@ func TestKubeletSystemdUnit(t *testing.T) {
 			cloudProvider: "aws",
 		},
 		{
-			name:          "image-registry-set",
+			name:          "pause-image-set",
 			version:       semver.MustParse("v1.13.5"),
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
-			imageRegistry: "192.168.100.100",
+			pauseImage:    "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 	}...)
 
@@ -92,7 +92,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 				test.hostname,
 				test.dnsIPs,
 				test.external,
-				test.imageRegistry,
+				test.pauseImage,
 			)
 			if err != nil {
 				t.Error(err)

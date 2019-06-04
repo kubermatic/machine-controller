@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -110,7 +111,9 @@ type userDataTestCase struct {
 	kubernetesCACert      string
 	externalCloudProvider bool
 	httpProxy             string
-	imageRegistry         string
+	noProxy               string
+	insecureRegistries    []string
+	pauseImage            string
 }
 
 func simpleVersionTests() []userDataTestCase {
@@ -362,14 +365,15 @@ func TestUserDataGeneration(t *testing.T) {
 			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
-			httpProxy:     "http://192.168.100.100:3128",
-			imageRegistry: "192.168.100.100:5000",
+			httpProxy:          "http://192.168.100.100:3128",
+			noProxy:            "192.168.1.0/24",
+			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 	}...)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			spec := test.spec
 			rProviderSpec := test.providerSpec
 			osConfigByte, err := json.Marshal(test.osConfig)
 			if err != nil {
@@ -383,28 +387,31 @@ func TestUserDataGeneration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{
+			test.spec.ProviderSpec = clusterv1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{
 					Raw: providerSpecRaw,
 				},
 			}
 			provider := Provider{}
 
-			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(spec)
+			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(test.spec)
 			if err != nil {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
-			s, err := provider.UserData(
-				spec,
-				kubeconfig,
-				cloudConfig,
-				cloudProviderName,
-				test.DNSIPs,
-				test.externalCloudProvider,
-				test.httpProxy,
-				test.imageRegistry,
-			)
+			req := plugin.UserDataRequest{
+				MachineSpec:           test.spec,
+				Kubeconfig:            kubeconfig,
+				CloudConfig:           cloudConfig,
+				CloudProviderName:     cloudProviderName,
+				DNSIPs:                test.DNSIPs,
+				ExternalCloudProvider: test.externalCloudProvider,
+				HTTPProxy:             test.httpProxy,
+				NoProxy:               test.noProxy,
+				InsecureRegistries:    test.insecureRegistries,
+				PauseImage:            test.pauseImage,
+			}
+			s, err := provider.UserData(req)
 			if err != nil {
 				t.Fatal(err)
 			}

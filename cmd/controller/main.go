@@ -29,7 +29,6 @@ import (
 	"strings"
 	"time"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,17 +48,20 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/docker/distribution/reference"
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
+	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/signals"
-	"github.com/oklog/run"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -84,8 +86,12 @@ var (
 	externalCloudProvider            bool
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
-	nodeHttpProxy                    string
-	nodeImageRegistry                string
+
+	nodeHTTPProxy          string
+	nodeNoProxy            string
+	nodeInsecureRegistries string
+	nodePauseImage         string
+	nodeHyperkubeImage     string
 )
 
 const (
@@ -111,9 +117,6 @@ type controllerRunOptions struct {
 
 	// ctrlruntimeclient is a client that knows how to consume everything
 	ctrlruntimeClient ctrlruntimeclient.Client
-
-	// this essentially sets the cluster DNS IP addresses. The list is passed to kubelet and then down to pods.
-	clusterDNSIPs []net.IP
 
 	// metrics a struct that holds all metrics we want to collect
 	metrics *machinecontroller.MetricsCollection
@@ -174,10 +177,7 @@ type controllerRunOptions struct {
 	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
 	skipEvictionAfter time.Duration
 
-	// If set, this proxy will be configured on all nodes.
-	nodeHttpProxy string
-	// If set, this image registry will be used for pulling all required images on the node
-	nodeImageRegistry string
+	node machinecontroller.NodeSettings
 }
 
 func main() {
@@ -199,14 +199,17 @@ func main() {
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
 	flag.BoolVar(&externalCloudProvider, "external-cloud-provider", false, "when set, kubelets will receive --cloud-provider=external flag")
 	flag.DurationVar(&skipEvictionAfter, "skip-eviction-after", 2*time.Hour, "Skips the eviction if a machine is not gone after the specified duration.")
-	flag.StringVar(&nodeHttpProxy, "node-http-proxy", "", "If set, this proxy will be configured on all nodes.")
-	flag.StringVar(&nodeImageRegistry, "node-image-registry", "", "If set, this image registry will be used for pulling all required images on the node.")
+	flag.StringVar(&nodeHTTPProxy, "node-http-proxy", "", "If set, this proxy will be configured on all nodes.")
+	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1,127.0.0.0/", "If set, this proxy will be configured on all nodes.")
+	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
+	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
+	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag.")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
-	ips, err := parseClusterDNSIPs(clusterDNSIPs)
+	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
 		glog.Fatalf("invalid cluster dns specified: %v", err)
 	}
@@ -231,6 +234,14 @@ func main() {
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+	}
+	// Check if the hyperkube image has a tag set
+	hyperkubeImageRef, err := reference.Parse(nodeHyperkubeImage)
+	if err != nil {
+		glog.Fatalf("failed to parse --node-hyperkube-image %s: %v", nodeHyperkubeImage, err)
+	}
+	if _, ok := hyperkubeImageRef.(reference.NamedTagged); ok {
+		glog.Fatalf("--node-hyperkube-image must not contain a tag. The tag will be dynamically set for each Machine.")
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -288,12 +299,12 @@ func main() {
 
 	kubeconfigProvider := clusterinfo.New(cfg, kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(), defaultKubeInformerFactory.Core().V1().Endpoints().Lister())
 	runOptions := controllerRunOptions{
-		kubeClient:            kubeClient,
-		extClient:             extClient,
-		machineClient:         machineClient,
-		ctrlruntimeClient:     ctrlruntimeClient,
-		metrics:               machinecontroller.NewMachineControllerMetrics(),
-		clusterDNSIPs:         ips,
+		kubeClient:        kubeClient,
+		extClient:         extClient,
+		machineClient:     machineClient,
+		ctrlruntimeClient: ctrlruntimeClient,
+		metrics:           machinecontroller.NewMachineControllerMetrics(),
+
 		leaderElectionClient:  leaderElectionClient,
 		nodeInformer:          kubeInformerFactory.Core().V1().Nodes().Informer(),
 		nodeLister:            kubeInformerFactory.Core().V1().Nodes().Lister(),
@@ -307,11 +318,20 @@ func main() {
 		cfg:                   machineCfg,
 		externalCloudProvider: externalCloudProvider,
 		skipEvictionAfter:     skipEvictionAfter,
-		nodeHttpProxy:         nodeHttpProxy,
-		nodeImageRegistry:     nodeImageRegistry,
+		node: machinecontroller.NodeSettings{
+			ClusterDNSIPs:  clusterDNSIPs,
+			HTTPProxy:      nodeHTTPProxy,
+			NoProxy:        nodeNoProxy,
+			HyperkubeImage: nodeHyperkubeImage,
+			PauseImage:     nodePauseImage,
+		},
 	}
 	if parsedJoinClusterTimeout != nil {
 		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
+	}
+
+	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
+		runOptions.node.InsecureRegistries = append(runOptions.node.InsecureRegistries, strings.TrimSpace(registry))
 	}
 
 	if bootstrapTokenServiceAccountName != "" {
@@ -477,7 +497,6 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.machineInformer,
 			runOptions.machineLister,
 			runOptions.secretSystemNsLister,
-			runOptions.clusterDNSIPs,
 			runOptions.metrics,
 			runOptions.prometheusRegisterer,
 			runOptions.kubeconfigProvider,
@@ -487,8 +506,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.name,
 			runOptions.bootstrapTokenServiceAccountName,
 			runOptions.skipEvictionAfter,
-			runOptions.nodeHttpProxy,
-			runOptions.nodeImageRegistry,
+			runOptions.node,
 		)
 		if err != nil {
 			glog.Errorf("failed to create machine-controller: %v", err)

@@ -98,26 +98,24 @@ type dockerConfig struct {
 }
 
 // DockerConfig returns the docker daemon.json
-func DockerConfig(registry string) (string, error) {
+func DockerConfig(registries []string) (string, error) {
 	cfg := dockerConfig{
-		StorageDriver: "overlay2",
+		StorageDriver:      "overlay2",
+		InsecureRegistries: registries,
 	}
-
-	// Make sure we always allocate an empty slice to avoid having `null` inside the result json
-	cfg.InsecureRegistries = []string{}
-	if registry != "" {
-		cfg.InsecureRegistries = append(cfg.InsecureRegistries, registry)
+	if registries == nil {
+		cfg.InsecureRegistries = []string{}
 	}
 
 	b, err := json.Marshal(cfg)
 	return string(b), err
 }
 
-func ProxyEnvironment(proxy string) string {
+func ProxyEnvironment(proxy, noProxy string) string {
 	return fmt.Sprintf(`HTTP_PROXY=%s
 http_proxy=%s
 HTTPS_PROXY=%s
 https_proxy=%s
-NO_PROXY=localhost,127.0.0.1
-no_proxy=localhost,127.0.0.1`, proxy, proxy, proxy, proxy)
+NO_PROXY=%s
+no_proxy=%s`, proxy, proxy, proxy, proxy, noProxy, noProxy)
 }

@@ -54,8 +54,8 @@ const (
 --protect-kernel-defaults=true \
 --cluster-dns={{ .ClusterDNSIPs | join "," }} \
 --cluster-domain=cluster.local \
-{{- if .ImageRegistry }}
---pod-infra-container-image="{{ .ImageRegistry }}/machine-controller/pause:3.1" \
+{{- if .PauseImage }}
+--pod-infra-container-image={{ .PauseImage }} \
 {{- end }}
 --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
 --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi`
@@ -77,7 +77,7 @@ MemoryAccounting=true
 Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
 
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
-{{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .ImageRegistry | indent 2 }}
+{{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .PauseImage | indent 2 }}
 
 [Install]
 WantedBy=multi-user.target`
@@ -99,7 +99,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet
-func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, imageRegistry string) (string, error) {
+func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %v", err)
@@ -111,14 +111,14 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 		Hostname       string
 		ClusterDNSIPs  []net.IP
 		IsExternal     bool
-		ImageRegistry  string
+		PauseImage     string
 	}{
 		KubeletVersion: kubeletVersion,
 		CloudProvider:  cloudProvider,
 		Hostname:       hostname,
 		ClusterDNSIPs:  dnsIPs,
 		IsExternal:     external,
-		ImageRegistry:  imageRegistry,
+		PauseImage:     pauseImage,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -130,7 +130,7 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 }
 
 // KubeletFlags returns the kubelet flags
-func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, imageRegistry string) (string, error) {
+func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string) (string, error) {
 	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %v", err)
@@ -142,14 +142,14 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		ClusterDNSIPs  []net.IP
 		KubeletVersion string
 		IsExternal     bool
-		ImageRegistry  string
+		PauseImage     string
 	}{
 		CloudProvider:  cloudProvider,
 		Hostname:       hostname,
 		ClusterDNSIPs:  dnsIPs,
 		KubeletVersion: version,
 		IsExternal:     external,
-		ImageRegistry:  imageRegistry,
+		PauseImage:     pauseImage,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)

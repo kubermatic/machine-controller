@@ -36,7 +36,7 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --protect-kernel-defaults=true \
   --cluster-dns=10.10.10.10 \
   --cluster-domain=cluster.local \
-  --pod-infra-container-image="192.168.100.100/machine-controller/pause:3.1" \
+  --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
   --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
   --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 

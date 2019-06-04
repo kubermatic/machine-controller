@@ -25,6 +25,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -84,7 +85,9 @@ type userDataTestCase struct {
 	cloudProviderName     *string
 	externalCloudProvider bool
 	httpProxy             string
-	imageRegistry         string
+	noProxy               string
+	insecureRegistries    []string
+	pauseImage            string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -157,9 +160,11 @@ func TestUserDataGeneration(t *testing.T) {
 					Kubelet: "1.12.0",
 				},
 			},
-			cloudProviderName: stringPtr("vsphere"),
-			httpProxy:         "http://192.168.100.100:3128",
-			imageRegistry:     "192.168.100.100:5000",
+			cloudProviderName:  stringPtr("vsphere"),
+			httpProxy:          "http://192.168.100.100:3128",
+			noProxy:            "192.168.1.0/24",
+			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 	}
 
@@ -203,16 +208,19 @@ func TestUserDataGeneration(t *testing.T) {
 			t.Fatalf("failed to get cloud config: %v", err)
 		}
 
-		s, err := provider.UserData(
-			test.spec,
-			kubeconfig,
-			cloudConfig,
-			cloudProviderName,
-			test.clusterDNSIPs,
-			test.externalCloudProvider,
-			test.httpProxy,
-			test.imageRegistry,
-		)
+		req := plugin.UserDataRequest{
+			MachineSpec:           test.spec,
+			Kubeconfig:            kubeconfig,
+			CloudConfig:           cloudConfig,
+			CloudProviderName:     cloudProviderName,
+			DNSIPs:                test.clusterDNSIPs,
+			ExternalCloudProvider: test.externalCloudProvider,
+			HTTPProxy:             test.httpProxy,
+			NoProxy:               test.noProxy,
+			InsecureRegistries:    test.insecureRegistries,
+			PauseImage:            test.pauseImage,
+		}
+		s, err := provider.UserData(req)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}

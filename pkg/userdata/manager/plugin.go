@@ -23,16 +23,12 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/golang/glog"
-
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -64,16 +60,7 @@ func newPlugin(os providerconfig.OperatingSystem, debug bool) (*Plugin, error) {
 
 // UserData retrieves the user data of the given resource via
 // plugin handling the communication.
-func (p *Plugin) UserData(
-	spec clusterv1alpha1.MachineSpec,
-	kubeconfig *clientcmdapi.Config,
-	cloudConfig string,
-	cloudProviderName string,
-	clusterDNSIPs []net.IP,
-	externalCloudProvider bool,
-	nodeHttpProxy string,
-	nodeImageRegistry string,
-) (string, error) {
+func (p *Plugin) UserData(req plugin.UserDataRequest) (string, error) {
 	// Prepare command.
 	var argv []string
 	if p.debug {
@@ -81,16 +68,6 @@ func (p *Plugin) UserData(
 	}
 	cmd := exec.Command(p.command, argv...)
 	// Set environment.
-	req := plugin.UserDataRequest{
-		MachineSpec:           spec,
-		KubeConfig:            kubeconfig,
-		CloudProviderName:     cloudProviderName,
-		CloudConfig:           cloudConfig,
-		DNSIPs:                clusterDNSIPs,
-		ExternalCloudProvider: externalCloudProvider,
-		NodeHttpProxy:         nodeHttpProxy,
-		NodeImageRegistry:     nodeImageRegistry,
-	}
 	reqj, err := json.Marshal(req)
 	if err != nil {
 		return "", err

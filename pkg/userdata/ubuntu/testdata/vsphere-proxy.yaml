@@ -17,8 +17,8 @@ write_files:
     http_proxy=http://192.168.100.100:3128
     HTTPS_PROXY=http://192.168.100.100:3128
     https_proxy=http://192.168.100.100:3128
-    NO_PROXY=localhost,127.0.0.1
-    no_proxy=localhost,127.0.0.1
+    NO_PROXY=192.168.1.0/24
+    no_proxy=192.168.1.0/24
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -244,7 +244,7 @@ write_files:
       --protect-kernel-defaults=true \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local \
-      --pod-infra-container-image="192.168.100.100:5000/machine-controller/pause:3.1" \
+      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
       --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
       --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 
@@ -333,7 +333,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"storage-driver":"overlay2","insecure-registries":["192.168.100.100:5000"]}
+    {"storage-driver":"overlay2","insecure-registries":["192.168.100.100:5000","10.0.0.1:5000"]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
