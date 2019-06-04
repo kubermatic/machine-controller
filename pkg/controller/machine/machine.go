@@ -75,6 +75,10 @@ const (
 	deletionRetryWaitPeriod = 10 * time.Second
 
 	NodeOwnerLabelName = "machine-controller/owned-by"
+
+	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
+	// cluster-api provider to match Nodes to Machines
+	AnnotationAutoscalerIdentifier = "cluster.k8s.io/machine"
 )
 
 // Controller is the controller implementation for machine resources
@@ -702,6 +706,11 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 			annotationsUpdated = true
 			node.Annotations[k] = v
 		}
+	}
+	autoscalerAnnotationValue := fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)
+	if node.Annotations[AnnotationAutoscalerIdentifier] != autoscalerAnnotationValue {
+		node.Annotations[AnnotationAutoscalerIdentifier] = autoscalerAnnotationValue
+		annotationsUpdated = true
 	}
 
 	taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
