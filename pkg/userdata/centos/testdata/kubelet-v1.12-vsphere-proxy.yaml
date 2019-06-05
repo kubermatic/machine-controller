@@ -1,7 +1,6 @@
 #cloud-config
 
 hostname: node1
-# Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name
 
 
 ssh_pwauth: no
@@ -63,19 +62,13 @@ write_files:
     set -xeuo pipefail
 
     setenforce 0 || true
-
-    # As we added some modules and don't want to reboot, restart the service
     systemctl restart systemd-modules-load.service
     sysctl --system
-
-    # Make sure we always disable swap - Otherwise the kubelet won't start
     cp /etc/fstab /etc/fstab.orig
     cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
-    # The normal way of setting it via cloud-init is broken:
-    # https://bugs.launchpad.net/cloud-init/+bug/1662542
     hostnamectl set-hostname node1
 
 
@@ -91,18 +84,14 @@ write_files:
       ipvsadm \
       open-vm-tools
 
-    #setup some common directories
     mkdir -p /opt/bin/
     mkdir -p /var/lib/calico
     mkdir -p /etc/kubernetes/manifests
     mkdir -p /etc/cni/net.d
     mkdir -p /opt/cni/bin
-
-    # cni
     if [ ! -f /opt/cni/bin/loopback ]; then
         curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
     fi
-    # kubelet
     if [ ! -f /opt/bin/kubelet ]; then
         curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.12.0/bin/linux/amd64/kubelet
         chmod +x /opt/bin/kubelet
