@@ -471,7 +471,37 @@ func (c *Controller) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 		return false, fmt.Errorf("failed to get node %q", machine.Status.NodeRef.Name)
 	}
 
-	return true, nil
+	// We must check if an eviction is actually possible and only then return true
+	// An eviction is possible when either:
+	// * There is at least one machine without a valid NodeRef because that means it probably just got created
+	// * There is at least one Node that is schedulable (`.Spec.Unschedulable == false`)
+	machines, err := c.machinesLister.List(labels.Everything())
+	if err != nil {
+		return false, fmt.Errorf("failed to get machines from lister: %v", err)
+	}
+	for _, machine := range machines {
+		if machine.Status.NodeRef == nil {
+			return true, nil
+		}
+	}
+	nodes, err := c.nodesLister.List(labels.Everything())
+	if err != nil {
+		return false, fmt.Errorf("failed to get nodes from lister: %v", err)
+	}
+	for _, node := range nodes {
+		// Don't consider our own node a valid target
+		if node.Name == machine.Status.NodeRef.Name {
+			continue
+		}
+		if !node.Spec.Unschedulable {
+			return true, nil
+		}
+	}
+
+	// If we arrived here we didn't find any machine without a NodeRef and we didn't
+	// find any node that is schedulable, so eviction cant succeed
+	glog.V(4).Infof("Skipping eviction for machine %q since there is no possible target for an eviction", machine.Name)
+	return false, nil
 }
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
