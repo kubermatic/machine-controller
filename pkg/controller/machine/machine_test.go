@@ -39,6 +39,7 @@ import (
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	machinefake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
+	machineinformer "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 )
 
 type fakeInstance struct {
@@ -298,19 +299,20 @@ func TestControllerShouldEvict(t *testing.T) {
 	now := metav1.Now()
 
 	tests := []struct {
-		name         string
-		machine      *clusterv1alpha1.Machine
-		existingNode *corev1.Node
-		shouldEvict  bool
+		name               string
+		machine            *clusterv1alpha1.Machine
+		additionalMachines []runtime.Object
+		existingNodes      []runtime.Object
+		shouldEvict        bool
 	}{
 		{
 			name:        "skip eviction due to eviction timeout",
 			shouldEvict: false,
-			existingNode: &corev1.Node{
+			existingNodes: []runtime.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				},
-			},
+			}},
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &threeHoursAgo,
@@ -345,12 +347,31 @@ func TestControllerShouldEvict(t *testing.T) {
 			},
 		},
 		{
-			name:        "Do eviction",
-			shouldEvict: true,
-			existingNode: &corev1.Node{
+			name: "Skip eviction due to no available target",
+			existingNodes: []runtime.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				},
+			}},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &now,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:        "Eviction possible because of second node",
+			shouldEvict: true,
+			existingNodes: []runtime.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				}}, &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eviction-destination",
+				}},
 			},
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
@@ -361,20 +382,49 @@ func TestControllerShouldEvict(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "Eviction possible because of machine without noderef",
+			shouldEvict: true,
+			existingNodes: []runtime.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				}}, &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eviction-destination",
+				}},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &now,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+			additionalMachines: []runtime.Object{
+				&clusterv1alpha1.Machine{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "new-machine-without-a-node",
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var objects []runtime.Object
-			if test.existingNode != nil {
-				objects = append(objects, test.existingNode)
-			}
 
-			kubeClient := fake.NewSimpleClientset(objects...)
+			kubeClient := fake.NewSimpleClientset(test.existingNodes...)
+			if test.additionalMachines == nil {
+				test.additionalMachines = []runtime.Object{}
+			}
+			machinefake := machinefake.NewSimpleClientset(append(test.additionalMachines, test.machine)...)
 			informerFactory := informers.NewSharedInformerFactory(kubeClient, 5*time.Minute)
+			machineInformerFactory := machineinformer.NewSharedInformerFactory(machinefake, 5*time.Minute)
 
 			ctrl := &Controller{
 				nodesLister:       informerFactory.Core().V1().Nodes().Lister(),
+				machinesLister:    machineInformerFactory.Cluster().V1alpha1().Machines().Lister(),
 				skipEvictionAfter: 2 * time.Hour,
 			}
 
