@@ -178,6 +178,7 @@ func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			Regional:       cfg.regional,
 			NetworkName:    cfg.network,
 			SubnetworkName: cfg.subnetwork,
+			NodeTags:       cfg.tags,
 		},
 	}
 	config, err = cc.AsString()

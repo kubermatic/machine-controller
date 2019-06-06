@@ -43,6 +43,7 @@ func TestCloudConfigAsString(t *testing.T) {
 					TokenURL:       "nil",
 					MultiZone:      true,
 					Regional:       true,
+					NodeTags:       []string{"tag1", "tag2"},
 				},
 			},
 			contents: "[global]\n" +
@@ -52,7 +53,9 @@ func TestCloudConfigAsString(t *testing.T) {
 				"subnetwork-name = \"my-cool-subnetwork\"\n" +
 				"token-url = \"nil\"\n" +
 				"multizone = true\n" +
-				"regional = true\n",
+				"regional = true\n" +
+				"node-tags = \"tag1\"\n" +
+				"node-tags = \"tag2\"\n",
 		},
 	}
 
