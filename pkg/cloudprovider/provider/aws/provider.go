@@ -113,24 +113,24 @@ var (
 )
 
 type RawConfig struct {
-	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyId"`
-	SecretAccessKey providerconfig.ConfigVarString `json:"secretAccessKey"`
+	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyId,omitempty"`
+	SecretAccessKey providerconfig.ConfigVarString `json:"secretAccessKey,omitempty"`
 
 	Region           providerconfig.ConfigVarString `json:"region"`
 	AvailabilityZone providerconfig.ConfigVarString `json:"availabilityZone"`
 
 	VpcID            providerconfig.ConfigVarString   `json:"vpcId"`
 	SubnetID         providerconfig.ConfigVarString   `json:"subnetId"`
-	SecurityGroupIDs []providerconfig.ConfigVarString `json:"securityGroupIDs"`
+	SecurityGroupIDs []providerconfig.ConfigVarString `json:"securityGroupIDs,omitempty"`
 	InstanceProfile  providerconfig.ConfigVarString   `json:"instanceProfile"`
 	IsSpotInstance   *bool                            `json:"isSpotInstance,omitempty"`
 
-	InstanceType providerconfig.ConfigVarString `json:"instanceType"`
+	InstanceType providerconfig.ConfigVarString `json:"instanceType,omitempty"`
 	AMI          providerconfig.ConfigVarString `json:"ami"`
 	DiskSize     int64                          `json:"diskSize"`
-	DiskType     providerconfig.ConfigVarString `json:"diskType"`
+	DiskType     providerconfig.ConfigVarString `json:"diskType,omitempty"`
 	DiskIops     *int64                         `json:"diskIops,omitempty"`
-	Tags         map[string]string              `json:"tags"`
+	Tags         map[string]string              `json:"tags,omitempty"`
 }
 
 type Config struct {

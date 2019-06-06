@@ -67,7 +67,7 @@ const (
 // CloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
 type CloudProviderSpec struct {
-	ServiceAccount        providerconfig.ConfigVarString `json:"serviceAccount"`
+	ServiceAccount        providerconfig.ConfigVarString `json:"serviceAccount,omitempty"`
 	Zone                  providerconfig.ConfigVarString `json:"zone"`
 	MachineType           providerconfig.ConfigVarString `json:"machineType"`
 	DiskSize              int64                          `json:"diskSize"`
@@ -75,9 +75,9 @@ type CloudProviderSpec struct {
 	Network               providerconfig.ConfigVarString `json:"network"`
 	Subnetwork            providerconfig.ConfigVarString `json:"subnetwork"`
 	Preemptible           providerconfig.ConfigVarBool   `json:"preemptible"`
-	Labels                map[string]string              `json:"labels"`
-	Tags                  []string                       `json:"tags"`
-	AssignPublicIPAddress *providerconfig.ConfigVarBool  `json:"assignPublicIPAddress"`
+	Labels                map[string]string              `json:"labels,omitempty"`
+	Tags                  []string                       `json:"tags,omitempty"`
+	AssignPublicIPAddress *providerconfig.ConfigVarBool  `json:"assignPublicIPAddress,omitempty"`
 	MultiZone             providerconfig.ConfigVarBool   `json:"multizone"`
 	Regional              providerconfig.ConfigVarBool   `json:"regional"`
 }

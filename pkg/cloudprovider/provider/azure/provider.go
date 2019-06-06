@@ -65,14 +65,14 @@ type provider struct {
 
 // RawConfig is a direct representation of an Azure machine object's configuration
 type RawConfig struct {
-	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID"`
-	TenantID       providerconfig.ConfigVarString `json:"tenantID"`
-	ClientID       providerconfig.ConfigVarString `json:"clientID"`
-	ClientSecret   providerconfig.ConfigVarString `json:"clientSecret"`
+	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID,omitempty"`
+	TenantID       providerconfig.ConfigVarString `json:"tenantID,omitempty"`
+	ClientID       providerconfig.ConfigVarString `json:"clientID,omitempty"`
+	ClientSecret   providerconfig.ConfigVarString `json:"clientSecret,omitempty"`
 
 	Location          providerconfig.ConfigVarString `json:"location"`
 	ResourceGroup     providerconfig.ConfigVarString `json:"resourceGroup"`
-	VMSize            providerconfig.ConfigVarString `json:"vmSize"`
+	VMSize            providerconfig.ConfigVarString `json:"vmSizei"`
 	VNetName          providerconfig.ConfigVarString `json:"vnetName"`
 	SubnetName        providerconfig.ConfigVarString `json:"subnetName"`
 	RouteTableName    providerconfig.ConfigVarString `json:"routeTableName"`
@@ -80,7 +80,7 @@ type RawConfig struct {
 	SecurityGroupName providerconfig.ConfigVarString `json:"securityGroupName"`
 
 	AssignPublicIP providerconfig.ConfigVarBool `json:"assignPublicIP"`
-	Tags           map[string]string            `json:"tags"`
+	Tags           map[string]string            `json:"tags,omitempty"`
 }
 
 type config struct {
