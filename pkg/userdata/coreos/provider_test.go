@@ -264,6 +264,29 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate: true,
 			},
 		},
+		{
+			name: "v1.15.0-vsphere",
+			providerSpec: &providerconfig.Config{
+				CloudProvider: "vsphere",
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.15.0-beta.2",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
+		},
 	}
 
 	for _, test := range tests {
