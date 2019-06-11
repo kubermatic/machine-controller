@@ -322,7 +322,7 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate: true,
 			},
 			httpProxy:          "http://192.168.100.100:3128",
-			noProxy:            "192.168.1.0/24",
+			noProxy:            "192.168.1.0",
 			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 			hyperkubeImage:     "192.168.100.100:5000/kubernetes/hyperkube",

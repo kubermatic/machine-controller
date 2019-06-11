@@ -12,8 +12,8 @@ write_files:
     http_proxy=http://192.168.100.100:3128
     HTTPS_PROXY=http://192.168.100.100:3128
     https_proxy=http://192.168.100.100:3128
-    NO_PROXY=192.168.1.0/24
-    no_proxy=192.168.1.0/24
+    NO_PROXY=192.168.1.0
+    no_proxy=192.168.1.0
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
