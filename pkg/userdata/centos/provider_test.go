@@ -25,6 +25,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -83,6 +84,10 @@ type userDataTestCase struct {
 	clusterDNSIPs         []net.IP
 	cloudProviderName     *string
 	externalCloudProvider bool
+	httpProxy             string
+	noProxy               string
+	insecureRegistries    []string
+	pauseImage            string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -147,6 +152,20 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			cloudProviderName: stringPtr("vsphere"),
 		},
+		{
+			name: "kubelet-v1.12-vsphere-proxy",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.12.0",
+				},
+			},
+			cloudProviderName:  stringPtr("vsphere"),
+			httpProxy:          "http://192.168.100.100:3128",
+			noProxy:            "192.168.1.0",
+			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
+		},
 	}
 
 	defaultCloudProvider := &fakeCloudConfigProvider{
@@ -189,7 +208,19 @@ func TestUserDataGeneration(t *testing.T) {
 			t.Fatalf("failed to get cloud config: %v", err)
 		}
 
-		s, err := provider.UserData(test.spec, kubeconfig, cloudConfig, cloudProviderName, test.clusterDNSIPs, test.externalCloudProvider)
+		req := plugin.UserDataRequest{
+			MachineSpec:           test.spec,
+			Kubeconfig:            kubeconfig,
+			CloudConfig:           cloudConfig,
+			CloudProviderName:     cloudProviderName,
+			DNSIPs:                test.clusterDNSIPs,
+			ExternalCloudProvider: test.externalCloudProvider,
+			HTTPProxy:             test.httpProxy,
+			NoProxy:               test.noProxy,
+			InsecureRegistries:    test.insecureRegistries,
+			PauseImage:            test.pauseImage,
+		}
+		s, err := provider.UserData(req)
 		if err != nil {
 			t.Errorf("error getting userdata: '%v'", err)
 		}

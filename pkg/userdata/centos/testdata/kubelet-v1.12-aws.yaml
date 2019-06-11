@@ -4,6 +4,7 @@
 ssh_pwauth: no
 
 write_files:
+
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
     [Journal]
@@ -216,6 +217,7 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
     ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
 - path: "/etc/profile.d/opt-bin-path.sh"
@@ -249,6 +251,12 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
+
+- path: /etc/systemd/system/docker.service.d/environment.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    EnvironmentFile=-/etc/environment
 
 runcmd:
 - systemctl enable --now setup.service

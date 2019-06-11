@@ -26,6 +26,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -102,6 +103,11 @@ type userDataTestCase struct {
 	providerSpec          *providerconfig.Config
 	DNSIPs                []net.IP
 	externalCloudProvider bool
+	httpProxy             string
+	noProxy               string
+	insecureRegistries    []string
+	pauseImage            string
+	hyperkubeImage        string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -287,11 +293,44 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate: true,
 			},
 		},
+		{
+			name: "v1.12.0-vsphere-proxy",
+			providerSpec: &providerconfig.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfig.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfig.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.12.0",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
+			httpProxy:          "http://192.168.100.100:3128",
+			noProxy:            "192.168.1.0",
+			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
+			hyperkubeImage:     "192.168.100.100:5000/kubernetes/hyperkube",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			spec := test.spec
 			rProviderSpec := test.providerSpec
 			osConfigByte, err := json.Marshal(test.osConfig)
 			if err != nil {
@@ -305,19 +344,33 @@ func TestUserDataGeneration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			spec.ProviderSpec = clusterv1alpha1.ProviderSpec{
+			test.spec.ProviderSpec = clusterv1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{
 					Raw: providerSpecRaw,
 				},
 			}
 			provider := Provider{}
 
-			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(spec)
+			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(test.spec)
 			if err != nil {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
-			s, err := provider.UserData(spec, kubeconfig, cloudConfig, cloudProviderName, test.DNSIPs, test.externalCloudProvider)
+			req := plugin.UserDataRequest{
+				MachineSpec:           test.spec,
+				Kubeconfig:            kubeconfig,
+				CloudConfig:           cloudConfig,
+				CloudProviderName:     cloudProviderName,
+				DNSIPs:                test.DNSIPs,
+				ExternalCloudProvider: test.externalCloudProvider,
+				HTTPProxy:             test.httpProxy,
+				NoProxy:               test.noProxy,
+				InsecureRegistries:    test.insecureRegistries,
+				PauseImage:            test.pauseImage,
+				HyperkubeImage:        test.hyperkubeImage,
+			}
+
+			s, err := provider.UserData(req)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/prometheus/client_golang/prometheus"
 
 	corev1 "k8s.io/api/core/v1"
@@ -93,7 +94,6 @@ type Controller struct {
 	workqueue workqueue.RateLimitingInterface
 	recorder  record.EventRecorder
 
-	clusterDNSIPs                    []net.IP
 	metrics                          *MetricsCollection
 	kubeconfigProvider               KubeconfigProvider
 	providerData                     *cloudprovidertypes.ProviderData
@@ -103,6 +103,22 @@ type Controller struct {
 	name                             string
 	bootstrapTokenServiceAccountName *types.NamespacedName
 	skipEvictionAfter                time.Duration
+	nodeSettings                     NodeSettings
+}
+
+type NodeSettings struct {
+	// Translates to --cluster-dns on the kubelet
+	ClusterDNSIPs []net.IP
+	// If set, this proxy will be configured on all nodes.
+	HTTPProxy string
+	// If set this will be set as NO_PROXY on the node
+	NoProxy string
+	// If set, this image registry will be used for pulling all required images on the node
+	InsecureRegistries []string
+	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it
+	PauseImage string
+	// The hyperkube image to use. Currently only Container Linux uses it
+	HyperkubeImage string
 }
 
 type KubeconfigProvider interface {
@@ -125,7 +141,6 @@ func NewMachineController(
 	machineInformer cache.SharedIndexInformer,
 	machineLister clusterlistersv1alpha1.MachineLister,
 	secretSystemNsLister listerscorev1.SecretLister,
-	clusterDNSIPs []net.IP,
 	metrics *MetricsCollection,
 	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
@@ -135,6 +150,7 @@ func NewMachineController(
 	name string,
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
+	nodeSettings NodeSettings,
 ) (*Controller, error) {
 
 	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
@@ -159,7 +175,6 @@ func NewMachineController(
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
 
-		clusterDNSIPs:                    clusterDNSIPs,
 		metrics:                          metrics,
 		kubeconfigProvider:               kubeconfigProvider,
 		providerData:                     providerData,
@@ -168,6 +183,7 @@ func NewMachineController(
 		name:                             name,
 		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
 		skipEvictionAfter:                skipEvictionAfter,
+		nodeSettings:                     nodeSettings,
 	}
 
 	m, err := userdatamanager.New()
@@ -619,7 +635,21 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloudprovidertypes.Prov
 			if err != nil {
 				return fmt.Errorf("failed to render cloud config: %v", err)
 			}
-			userdata, err := userdataPlugin.UserData(machine.Spec, kubeconfig, cloudConfig, cloudProviderName, c.clusterDNSIPs, c.externalCloudProvider)
+
+			req := plugin.UserDataRequest{
+				MachineSpec:           machine.Spec,
+				Kubeconfig:            kubeconfig,
+				CloudConfig:           cloudConfig,
+				CloudProviderName:     cloudProviderName,
+				ExternalCloudProvider: c.externalCloudProvider,
+				DNSIPs:                c.nodeSettings.ClusterDNSIPs,
+				InsecureRegistries:    c.nodeSettings.InsecureRegistries,
+				PauseImage:            c.nodeSettings.PauseImage,
+				HyperkubeImage:        c.nodeSettings.HyperkubeImage,
+				NoProxy:               c.nodeSettings.NoProxy,
+				HTTPProxy:             c.nodeSettings.HTTPProxy,
+			}
+			userdata, err := userdataPlugin.UserData(req)
 			if err != nil {
 				return fmt.Errorf("failed get userdata: %v", err)
 			}

@@ -8,6 +8,7 @@ ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 
 write_files:
+
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
     [Journal]
@@ -294,6 +295,7 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
     ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
 - path: "/etc/profile.d/opt-bin-path.sh"
@@ -301,12 +303,10 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/systemd/system/docker.service.d/10-storage.conf
+- path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    [Service]
-    ExecStart=
-    ExecStart=/usr/bin/dockerd -H fd:// --storage-driver=overlay2
+    {"storage-driver":"overlay2","insecure-registries":[]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -334,6 +334,12 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
+
+- path: /etc/systemd/system/docker.service.d/environment.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    EnvironmentFile=-/etc/environment
 
 runcmd:
 - systemctl enable --now setup.service

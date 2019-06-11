@@ -140,3 +140,6 @@ required = [
   name = "github.com/packethost/packngo"
   revision = "a02c426e4888c0bb39c3abcf249c8d048e2c6e40"
 
+[[constraint]]
+  name = "github.com/docker/distribution"
+  version = "v2.7.1"

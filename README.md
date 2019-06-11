@@ -6,6 +6,7 @@
 - [Running](#running)
   - [Requirements](#requirements)
   - [Creating a machine](#creating-a-machine)
+  - [Special network restrictions](#network-restrictions.md)
 - [Cloud provider](/docs/cloud-provider.md)
 - [Operating system](/docs/operating-system.md)
   - [OpenStack images](/docs/openstack-images.md)
