@@ -87,6 +87,7 @@ type userDataTestCase struct {
 	httpProxy             string
 	noProxy               string
 	insecureRegistries    []string
+	registryMirrors       []string
 	pauseImage            string
 }
 
@@ -218,6 +219,7 @@ func TestUserDataGeneration(t *testing.T) {
 			HTTPProxy:             test.httpProxy,
 			NoProxy:               test.noProxy,
 			InsecureRegistries:    test.insecureRegistries,
+			RegistryMirrors:       test.registryMirrors,
 			PauseImage:            test.pauseImage,
 		}
 		s, err := provider.UserData(req)

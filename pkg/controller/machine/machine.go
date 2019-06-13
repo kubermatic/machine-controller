@@ -107,17 +107,19 @@ type Controller struct {
 }
 
 type NodeSettings struct {
-	// Translates to --cluster-dns on the kubelet
+	// Translates to --cluster-dns on the kubelet.
 	ClusterDNSIPs []net.IP
 	// If set, this proxy will be configured on all nodes.
 	HTTPProxy string
-	// If set this will be set as NO_PROXY on the node
+	// If set this will be set as NO_PROXY on the node.
 	NoProxy string
-	// If set, this image registry will be used for pulling all required images on the node
+	// If set, this image registry will be used for pulling all required images on the node.
 	InsecureRegistries []string
-	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it
+	// If set, these mirrors will be take for pulling all required images on the node.
+	RegistryMirrors []string
+	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it.
 	PauseImage string
-	// The hyperkube image to use. Currently only Container Linux uses it
+	// The hyperkube image to use. Currently only Container Linux uses it.
 	HyperkubeImage string
 }
 
@@ -644,6 +646,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloudprovidertypes.Prov
 				ExternalCloudProvider: c.externalCloudProvider,
 				DNSIPs:                c.nodeSettings.ClusterDNSIPs,
 				InsecureRegistries:    c.nodeSettings.InsecureRegistries,
+				RegistryMirrors:       c.nodeSettings.RegistryMirrors,
 				PauseImage:            c.nodeSettings.PauseImage,
 				HyperkubeImage:        c.nodeSettings.HyperkubeImage,
 				NoProxy:               c.nodeSettings.NoProxy,
