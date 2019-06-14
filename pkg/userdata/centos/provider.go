@@ -268,11 +268,16 @@ write_files:
   content: |
 {{ containerRuntimeHealthCheckSystemdUnit | indent 4 }}
 
-{{- if .InsecureRegistries }}
+{{- if or .InsecureRegistries .RegistryMirrors }}
 - path: /run/containers/registries.conf
   permissions: "0644"
   content: |
-    INSECURE_REGISTRY="--insecure-registry {{ .InsecureRegistries | join " --insecure-registry "}}"
+    {{- if .InsecureRegistries}}
+    INSECURE_REGISTRY="{{range .InsecureRegistries}}--insecure-registry {{.}} {{end}}"
+    {{- end}}
+    {{- if .RegistryMirrors}}
+    REGISTRIES="{{range .RegistryMirrors}}--registry-mirror {{.}} {{end}}"
+    {{- end}}
 {{- end}}
 
 - path: /etc/systemd/system/docker.service.d/environment.conf
