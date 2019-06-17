@@ -75,15 +75,16 @@ type RawConfig struct {
 	Region           providerconfig.ConfigVarString `json:"region,omitempty"`
 
 	// Machine details
-	Image            providerconfig.ConfigVarString   `json:"image"`
-	Flavor           providerconfig.ConfigVarString   `json:"flavor"`
-	SecurityGroups   []providerconfig.ConfigVarString `json:"securityGroups,omitempty"`
-	Network          providerconfig.ConfigVarString   `json:"network,omitempty"`
-	Subnet           providerconfig.ConfigVarString   `json:"subnet,omitempty"`
-	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool,omitempty"`
-	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone,omitempty"`
-	TrustDevicePath  providerconfig.ConfigVarBool     `json:"trustDevicePath"`
-	RootDiskSizeGB   *int                             `json:"rootDiskSizeGB"`
+	Image                 providerconfig.ConfigVarString   `json:"image"`
+	Flavor                providerconfig.ConfigVarString   `json:"flavor"`
+	SecurityGroups        []providerconfig.ConfigVarString `json:"securityGroups,omitempty"`
+	Network               providerconfig.ConfigVarString   `json:"network,omitempty"`
+	Subnet                providerconfig.ConfigVarString   `json:"subnet,omitempty"`
+	FloatingIPPool        providerconfig.ConfigVarString   `json:"floatingIpPool,omitempty"`
+	AvailabilityZone      providerconfig.ConfigVarString   `json:"availabilityZone,omitempty"`
+	TrustDevicePath       providerconfig.ConfigVarBool     `json:"trustDevicePath"`
+	RootDiskSizeGB        *int                             `json:"rootDiskSizeGB"`
+	NodeVolumeAttachLimit *uint                            `json:"nodeVolumeAttachLimit"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags map[string]string `json:"tags,omitempty"`
 }
@@ -98,15 +99,16 @@ type Config struct {
 	Region           string
 
 	// Machine details
-	Image            string
-	Flavor           string
-	SecurityGroups   []string
-	Network          string
-	Subnet           string
-	FloatingIPPool   string
-	AvailabilityZone string
-	TrustDevicePath  bool
-	RootDiskSizeGB   *int
+	Image                 string
+	Flavor                string
+	SecurityGroups        []string
+	Network               string
+	Subnet                string
+	FloatingIPPool        string
+	AvailabilityZone      string
+	TrustDevicePath       bool
+	RootDiskSizeGB        *int
+	NodeVolumeAttachLimit *uint
 
 	Tags map[string]string
 }
@@ -201,6 +203,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 		return nil, nil, nil, err
 	}
 	c.RootDiskSizeGB = rawConfig.RootDiskSizeGB
+	c.NodeVolumeAttachLimit = rawConfig.NodeVolumeAttachLimit
 	c.Tags = rawConfig.Tags
 	if c.Tags == nil {
 		c.Tags = map[string]string{}
@@ -703,6 +706,9 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			IgnoreVolumeAZ:  true,
 		},
 		Version: spec.Versions.Kubelet,
+	}
+	if c.NodeVolumeAttachLimit != nil {
+		cc.BlockStorage.NodeVolumeAttachLimit = *c.NodeVolumeAttachLimit
 	}
 
 	s, err := CloudConfigToString(cc)
