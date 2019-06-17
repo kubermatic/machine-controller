@@ -46,9 +46,10 @@ func TestCloudConfigToString(t *testing.T) {
 					Region:     "eu-central1",
 				},
 				BlockStorage: BlockStorageOpts{
-					BSVersion:       "v2",
-					IgnoreVolumeAZ:  true,
-					TrustDevicePath: true,
+					BSVersion:             "v2",
+					IgnoreVolumeAZ:        true,
+					TrustDevicePath:       true,
+					NodeVolumeAttachLimit: 25,
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
@@ -68,9 +69,10 @@ func TestCloudConfigToString(t *testing.T) {
 					Region:     "eu-central1",
 				},
 				BlockStorage: BlockStorageOpts{
-					BSVersion:       "v2",
-					IgnoreVolumeAZ:  true,
-					TrustDevicePath: true,
+					BSVersion:             "v2",
+					IgnoreVolumeAZ:        true,
+					TrustDevicePath:       true,
+					NodeVolumeAttachLimit: 25,
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,

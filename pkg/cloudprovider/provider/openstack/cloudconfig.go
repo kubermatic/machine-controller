@@ -58,6 +58,9 @@ ignore-volume-az  = {{ .BlockStorage.IgnoreVolumeAZ }}
 {{- end }}
 trust-device-path = {{ .BlockStorage.TrustDevicePath }}
 bs-version        = {{ default "auto" .BlockStorage.BSVersion | iniEscape }}
+{{- if .BlockStorage.NodeVolumeAttachLimit }}
+node-volume-attach-limit = {{ default 256 .BlockStorage.NodeVolumeAttachLimit }}
+{{- end }}
 `
 )
 
@@ -75,9 +78,10 @@ type LoadBalancerOpts struct {
 }
 
 type BlockStorageOpts struct {
-	BSVersion       string `gcfg:"bs-version"`
-	TrustDevicePath bool   `gcfg:"trust-device-path"`
-	IgnoreVolumeAZ  bool   `gcfg:"ignore-volume-az"`
+	BSVersion             string `gcfg:"bs-version"`
+	TrustDevicePath       bool   `gcfg:"trust-device-path"`
+	IgnoreVolumeAZ        bool   `gcfg:"ignore-volume-az"`
+	NodeVolumeAttachLimit uint   `gcfg:"node-volume-attach-limit"`
 }
 
 type GlobalOpts struct {
