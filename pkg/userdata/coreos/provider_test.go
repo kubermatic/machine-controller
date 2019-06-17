@@ -139,6 +139,50 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
+			name: "v1.9.2-disable-locksmith-aws",
+			providerSpec: &providerconfig.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.9.2",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableLocksmithD: true,
+			},
+		},
+		{
+			name: "v1.9.2-disable-update-engine-aws",
+			providerSpec: &providerconfig.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.9.2",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableUpdateEngine: true,
+			},
+		},
+		{
 			name: "v1.9.2-disable-auto-update-aws-external",
 			providerSpec: &providerconfig.Config{
 				CloudProvider: "aws",
