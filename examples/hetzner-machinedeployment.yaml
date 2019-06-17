@@ -44,8 +44,12 @@ spec:
                 name: machine-controller-hetzner
                 key: token
             serverType: "cx21"
+            # Optional
             datacenter: ""
             location: "fsn1"
+            # Optional
+            labels:
+              my: label
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false
