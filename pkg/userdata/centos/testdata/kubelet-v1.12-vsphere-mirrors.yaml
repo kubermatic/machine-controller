@@ -103,6 +103,7 @@ write_files:
     fi
 
     systemctl enable --now vmtoolsd.service
+    sed -i 's/journald/json-file/g' /etc/sysconfig/docker
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -134,6 +135,7 @@ write_files:
     MemoryAccounting=true
 
     Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+    EnvironmentFile=-/etc/environment
 
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
