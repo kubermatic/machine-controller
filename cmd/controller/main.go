@@ -338,15 +338,13 @@ func main() {
 	}
 
 	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
-		trimmedRegistry := strings.TrimSpace(registry)
-		if trimmedRegistry != "" {
+		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {
 			runOptions.node.InsecureRegistries = append(runOptions.node.InsecureRegistries, trimmedRegistry)
 		}
 	}
 
 	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
-		trimmedMirror := strings.TrimSpace(mirror)
-		if trimmedMirror != "" {
+		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
 			runOptions.node.RegistryMirrors = append(runOptions.node.RegistryMirrors, trimmedMirror)
 		}
 	}
