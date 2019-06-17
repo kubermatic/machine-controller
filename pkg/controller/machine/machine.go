@@ -113,7 +113,7 @@ type NodeSettings struct {
 	HTTPProxy string
 	// If set this will be set as NO_PROXY on the node.
 	NoProxy string
-	// If set, this image registry will be used for pulling all required images on the node.
+	// If set, those registries will be configured as insecure on the container runtime.
 	InsecureRegistries []string
 	// If set, these mirrors will be take for pulling all required images on the node.
 	RegistryMirrors []string
@@ -375,7 +375,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	if listerMachine.Annotations[AnnotationMachineUninitialized] != "" {
-		glog.V(3).Infof("Ignoring machine %q because it has a non-emtpy %q annotation", listerMachine.Name, AnnotationMachineUninitialized)
+		glog.V(3).Infof("Ignoring machine %q because it has a non-empty %q annotation", listerMachine.Name, AnnotationMachineUninitialized)
 		return nil
 	}
 
