@@ -6,7 +6,6 @@ systemd:
       mask: true
     - name: locksmithd.service
       mask: true
-
     - name: docker.service
       enabled: true
 
