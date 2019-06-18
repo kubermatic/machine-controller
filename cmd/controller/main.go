@@ -181,8 +181,7 @@ type controllerRunOptions struct {
 	node machinecontroller.NodeSettings
 }
 
-// parseFlags encapsulates the parsing of all flags.
-func parseFlags() {
+func main() {
 	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
 	// we have to guard it
 	//TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
@@ -211,10 +210,6 @@ func parseFlags() {
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
-}
-
-func main() {
-	parseFlags()
 
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {

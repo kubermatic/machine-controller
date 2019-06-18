@@ -37,3 +37,4 @@ issues:
   - '`client` can be `github.com/kubermatic/machine-controller/vendor/sigs.k8s.io/controller-runtime/pkg/client.Reader`'
   - '`client` can be `github.com/kubermatic/machine-controller/vendor/sigs.k8s.io/controller-runtime/pkg/client.StatusWriter`'
   - 'cyclomatic complexity 31 of func `verifyMigrateUID` is high'
+  - 'cyclomatic complexity 31 of func `main` is high'
