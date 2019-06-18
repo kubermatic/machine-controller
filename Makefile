@@ -60,6 +60,15 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 		-o machine-controller-userdata-ubuntu \
 		github.com/kubermatic/machine-controller/cmd/userdata/ubuntu
 
+webhook-docker:
+	@docker run --rm \
+		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD/.buildcache:/cache \
+		-e GOCACHE=/cache \
+		-w /go/src/github.com/kubermatic/machine-controller \
+		golang:$(GO_VERSION) \
+			make webhook
+
 webhook: $(shell find cmd pkg -name '*.go') vendor
 	go build -v \
 		-ldflags '-s -w' \
@@ -70,7 +79,11 @@ lint:
 	./hack/verify-type-revision-annotation-const.sh
 	golangci-lint run -v
 
-docker-image: machine-controller webhook
+docker-image: machine-controller webhook docker-image-nodep
+
+docker-image-docker: machine-controller-docker webhook-docker docker-image-nodep
+
+docker-image-nodep:
 	docker build -t $(IMAGE_NAME) .
 	docker push $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
