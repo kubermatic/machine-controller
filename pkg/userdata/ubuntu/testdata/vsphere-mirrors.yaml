@@ -8,6 +8,15 @@ ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 
 write_files:
+- path: "/etc/environment"
+  content: |
+    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+    HTTP_PROXY=http://192.168.100.100:3128
+    http_proxy=http://192.168.100.100:3128
+    HTTPS_PROXY=http://192.168.100.100:3128
+    https_proxy=http://192.168.100.100:3128
+    NO_PROXY=192.168.1.0
+    no_proxy=192.168.1.0
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -140,7 +149,8 @@ write_files:
       socat \
       util-linux \
       ${CR_PKG} \
-      ipvsadm
+      ipvsadm \
+      open-vm-tools
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
     if [[ -e /var/run/reboot-required ]]; then
@@ -213,6 +223,8 @@ write_files:
       --rotate-certificates=true \
       --cert-dir=/etc/kubernetes/pki \
       --authentication-token-webhook=true \
+      --cloud-provider=vsphere \
+      --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --read-only-port=0 \
       --exit-on-lock-contention \
@@ -221,6 +233,7 @@ write_files:
       --protect-kernel-defaults=true \
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local \
+      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
       --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
       --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 
@@ -234,7 +247,9 @@ write_files:
 
 - path: "/etc/kubernetes/cloud-config"
   content: |
-
+    custom
+    cloud
+    config
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   content: |
@@ -307,7 +322,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
+    {"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":["https://registry.docker-cn.com"]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

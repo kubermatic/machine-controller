@@ -90,6 +90,7 @@ var (
 	nodeHTTPProxy          string
 	nodeNoProxy            string
 	nodeInsecureRegistries string
+	nodeRegistryMirrors    string
 	nodePauseImage         string
 	nodeHyperkubeImage     string
 )
@@ -202,6 +203,7 @@ func main() {
 	flag.StringVar(&nodeHTTPProxy, "node-http-proxy", "", "If set, it configures the 'HTTP_PROXY' & 'HTTPS_PROXY' environment variable on the nodes.")
 	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1", "If set, it configures the 'NO_PROXY' environment variable on the nodes.")
 	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
+	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag.")
 
@@ -331,8 +333,14 @@ func main() {
 	}
 
 	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
-		if strings.TrimSpace(registry) != "" {
-			runOptions.node.InsecureRegistries = append(runOptions.node.InsecureRegistries)
+		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {
+			runOptions.node.InsecureRegistries = append(runOptions.node.InsecureRegistries, trimmedRegistry)
+		}
+	}
+
+	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
+		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
+			runOptions.node.RegistryMirrors = append(runOptions.node.RegistryMirrors, trimmedMirror)
 		}
 	}
 

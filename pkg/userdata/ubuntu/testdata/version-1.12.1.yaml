@@ -306,7 +306,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"storage-driver":"overlay2","insecure-registries":[]}
+    {"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

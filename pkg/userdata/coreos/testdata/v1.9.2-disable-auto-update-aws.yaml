@@ -283,7 +283,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-          {"storage-driver":"overlay2","insecure-registries":[]}
+          {"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
 
     - path: /opt/bin/download.sh
       filesystem: root

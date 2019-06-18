@@ -113,6 +113,7 @@ type userDataTestCase struct {
 	httpProxy             string
 	noProxy               string
 	insecureRegistries    []string
+	registryMirrors       []string
 	pauseImage            string
 }
 
@@ -370,6 +371,36 @@ func TestUserDataGeneration(t *testing.T) {
 			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
+		{
+			name: "vsphere-mirrors",
+			providerSpec: &providerconfig.Config{
+				CloudProvider:        "vsphere",
+				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
+				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.11.3",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
+			httpProxy:       "http://192.168.100.100:3128",
+			noProxy:         "192.168.1.0",
+			registryMirrors: []string{"https://registry.docker-cn.com"},
+			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
+		},
 	}...)
 
 	for _, test := range tests {
@@ -409,6 +440,7 @@ func TestUserDataGeneration(t *testing.T) {
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
 				InsecureRegistries:    test.insecureRegistries,
+				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 			}
 			s, err := provider.UserData(req)

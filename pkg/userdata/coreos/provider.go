@@ -355,7 +355,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ dockerConfig .InsecureRegistries | indent 10 }}
+{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 10 }}
 
     - path: /opt/bin/download.sh
       filesystem: root
