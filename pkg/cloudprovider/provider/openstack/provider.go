@@ -663,9 +663,10 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			ManageSecurityGroups: true,
 		},
 		BlockStorage: BlockStorageOpts{
-			BSVersion:       "auto",
-			TrustDevicePath: c.TrustDevicePath,
-			IgnoreVolumeAZ:  true,
+			BSVersion:             "auto",
+			TrustDevicePath:       c.TrustDevicePath,
+			IgnoreVolumeAZ:        true,
+			NodeVolumeAttachLimit: 25,
 		},
 		Version: spec.Versions.Kubelet,
 	}
