@@ -530,8 +530,13 @@ func (c *Controller) deleteMachine(prov cloudprovidertypes.Provider, machine *cl
 	}
 
 	if shouldEvict {
-		if err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run(); err != nil {
+		evictedSomething, err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run()
+		if err != nil {
 			return fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
+		}
+		if evictedSomething {
+			c.enqueueMachineAfter(machine, 10*time.Second)
+			return nil
 		}
 	}
 
