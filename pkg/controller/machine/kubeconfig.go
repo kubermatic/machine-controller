@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -158,18 +159,19 @@ func (c *Controller) getSecretIfExists(name string) (*corev1.Secret, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	selector := labels.NewSelector().Add(*req)
-	secrets, err := c.secretSystemNsLister.List(selector)
-	if err != nil {
+	secrets := &corev1.SecretList{}
+	if err := c.client.List(c.ctx, &ctrlruntimeclient.ListOptions{
+		Namespace:     metav1.NamespaceSystem,
+		LabelSelector: selector}, secrets); err != nil {
 		return nil, err
 	}
 
-	if len(secrets) == 0 {
+	if len(secrets.Items) == 0 {
 		return nil, nil
 	}
-	if len(secrets) > 1 {
-		return nil, fmt.Errorf("expected to find exactly one secret for the given machine name =%s but found %d", name, len(secrets))
+	if len(secrets.Items) > 1 {
+		return nil, fmt.Errorf("expected to find exactly one secret for the given machine name =%s but found %d", name, len(secrets.Items))
 	}
-	return secrets[0], nil
+	return &secrets.Items[0], nil
 }

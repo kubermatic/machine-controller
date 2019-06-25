@@ -501,14 +501,11 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 
 		machineController, err := machinecontroller.NewMachineController(
 			runOptions.kubeClient,
-			runOptions.machineClient,
-			runOptions.nodeInformer,
-			runOptions.nodeLister,
-			runOptions.machineInformer,
-			runOptions.machineLister,
-			runOptions.secretSystemNsLister,
+			mgr.GetClient(),
 			runOptions.metrics,
 			runOptions.prometheusRegisterer,
+			runOptions.machineInformer,
+			runOptions.nodeInformer,
 			runOptions.kubeconfigProvider,
 			providerData,
 			runOptions.joinClusterTimeout,

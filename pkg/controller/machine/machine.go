@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -33,6 +34,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -40,7 +42,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
@@ -49,9 +50,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
 	machinescheme "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme"
-	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -84,12 +84,9 @@ const (
 
 // Controller is the controller implementation for machine resources
 type Controller struct {
-	kubeClient    kubernetes.Interface
-	machineClient clusterv1alpha1clientset.Interface
-
-	nodesLister          listerscorev1.NodeLister
-	machinesLister       clusterlistersv1alpha1.MachineLister
-	secretSystemNsLister listerscorev1.SecretLister
+	ctx        context.Context
+	kubeClient kubernetes.Interface
+	client     ctrlruntimeclient.Client
 
 	workqueue workqueue.RateLimitingInterface
 	recorder  record.EventRecorder
@@ -137,14 +134,11 @@ type MetricsCollection struct {
 // NewMachineController returns a new machine controller.
 func NewMachineController(
 	kubeClient kubernetes.Interface,
-	machineClient clusterv1alpha1clientset.Interface,
-	nodeInformer cache.SharedIndexInformer,
-	nodeLister listerscorev1.NodeLister,
-	machineInformer cache.SharedIndexInformer,
-	machineLister clusterlistersv1alpha1.MachineLister,
-	secretSystemNsLister listerscorev1.SecretLister,
+	client ctrlruntimeclient.Client,
 	metrics *MetricsCollection,
 	prometheusRegistry prometheus.Registerer,
+	machineInformer cache.SharedIndexInformer,
+	nodeInformer cache.SharedIndexInformer,
 	kubeconfigProvider KubeconfigProvider,
 	providerData *cloudprovidertypes.ProviderData,
 	joinClusterTimeout *time.Duration,
@@ -167,12 +161,8 @@ func NewMachineController(
 	}
 
 	controller := &Controller{
-		kubeClient:  kubeClient,
-		nodesLister: nodeLister,
-
-		machineClient:        machineClient,
-		machinesLister:       machineLister,
-		secretSystemNsLister: secretSystemNsLister,
+		kubeClient: kubeClient,
+		client:     client,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
@@ -263,12 +253,11 @@ func (c *Controller) clearMachineError(key string) {
 		utilruntime.HandleError(fmt.Errorf("failed to split metaNamespaceKey: %v", err))
 		return
 	}
-	listerMachine, err := c.machinesLister.Machines(namespace).Get(name)
-	if err != nil {
+	machine := &clusterv1alpha1.Machine{}
+	if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, machine); err != nil {
 		utilruntime.HandleError(fmt.Errorf("failed to get Machine from lister: %v", err))
 		return
 	}
-	machine := listerMachine.DeepCopy()
 
 	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
 		if err := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
@@ -317,11 +306,11 @@ func (c *Controller) nodeIsReady(node *corev1.Node) bool {
 }
 
 func (c *Controller) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.Node, error) {
-	listerNode, err := c.nodesLister.Get(nodeRef.Name)
-	if err != nil {
+	node := &corev1.Node{}
+	if err := c.client.Get(c.ctx, types.NamespacedName{Name: nodeRef.Name}, node); err != nil {
 		return nil, err
 	}
-	return listerNode.DeepCopy(), nil
+	return node, nil
 }
 
 func (c *Controller) updateMachine(m *clusterv1alpha1.Machine, modify ...cloudprovidertypes.MachineModifier) error {
@@ -365,8 +354,8 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return fmt.Errorf("failed to split metaNamespaceKey: %v", err)
 	}
-	listerMachine, err := c.machinesLister.Machines(namespace).Get(name)
-	if err != nil {
+	machine := &clusterv1alpha1.Machine{}
+	if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, machine); err != nil {
 		if kerrors.IsNotFound(err) {
 			glog.V(2).Infof("machine '%s' in work queue no longer exists", key)
 			return nil
@@ -374,17 +363,16 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	if listerMachine.Annotations[AnnotationMachineUninitialized] != "" {
-		glog.V(3).Infof("Ignoring machine %q because it has a non-empty %q annotation", listerMachine.Name, AnnotationMachineUninitialized)
+	if machine.Annotations[AnnotationMachineUninitialized] != "" {
+		glog.V(3).Infof("Ignoring machine %q because it has a non-empty %q annotation", machine.Name, AnnotationMachineUninitialized)
 		return nil
 	}
 
-	machine := listerMachine.DeepCopy()
+	recorderMachine := machine.DeepCopy()
 	if err := c.sync(machine); err != nil {
 		// We have no guarantee that machine is non-nil after reconciliation
-		machine := listerMachine.DeepCopy()
-		glog.Errorf("Failed to reconcile machine %q: %v", machine.Name, err)
-		c.recorder.Eventf(machine, corev1.EventTypeWarning, "ReconcilingError", "%v", err)
+		glog.Errorf("Failed to reconcile machine %q: %v", recorderMachine.Name, err)
+		c.recorder.Eventf(recorderMachine, corev1.EventTypeWarning, "ReconcilingError", "%v", err)
 	}
 	return err
 }
@@ -480,7 +468,8 @@ func (c *Controller) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 		return false, nil
 	}
 
-	if _, err := c.nodesLister.Get(machine.Status.NodeRef.Name); err != nil {
+	node := &corev1.Node{}
+	if err := c.client.Get(c.ctx, types.NamespacedName{Name: machine.Status.NodeRef.Name}, node); err != nil {
 		// Node does not exist  - Nothing to evict
 		if kerrors.IsNotFound(err) {
 			glog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
@@ -493,20 +482,20 @@ func (c *Controller) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 	// An eviction is possible when either:
 	// * There is at least one machine without a valid NodeRef because that means it probably just got created
 	// * There is at least one Node that is schedulable (`.Spec.Unschedulable == false`)
-	machines, err := c.machinesLister.List(labels.Everything())
-	if err != nil {
+	machines := &clusterv1alpha1.MachineList{}
+	if err := c.client.List(c.ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
 		return false, fmt.Errorf("failed to get machines from lister: %v", err)
 	}
-	for _, machine := range machines {
+	for _, machine := range machines.Items {
 		if machine.Status.NodeRef == nil {
 			return true, nil
 		}
 	}
-	nodes, err := c.nodesLister.List(labels.Everything())
-	if err != nil {
+	nodes := &corev1.NodeList{}
+	if err := c.client.List(c.ctx, &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
 		return false, fmt.Errorf("failed to get nodes from lister: %v", err)
 	}
-	for _, node := range nodes {
+	for _, node := range nodes.Items {
 		// Don't consider our own node a valid target
 		if node.Name == machine.Status.NodeRef.Name {
 			continue
@@ -530,7 +519,7 @@ func (c *Controller) deleteMachine(prov cloudprovidertypes.Provider, machine *cl
 	}
 
 	if shouldEvict {
-		evictedSomething, err := eviction.New(machine.Status.NodeRef.Name, c.nodesLister, c.kubeClient).Run()
+		evictedSomething, err := eviction.New(c.ctx, machine.Status.NodeRef.Name, c.client, c.kubeClient).Run()
 		if err != nil {
 			return fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
 		}
@@ -600,13 +589,18 @@ func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.N
 }
 
 func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
-	nodesList, err := c.nodesLister.ListWithPredicate(ownedNodesPredicateFactory(machine))
+	requirement, err := labels.NewRequirement(NodeOwnerLabelName, selection.Equals, []string{string(machine.UID)})
 	if err != nil {
+		return fmt.Errorf("failed to parse requirement: %v", err)
+	}
+	listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: labels.NewSelector().Add(*requirement)}
+	nodes := &corev1.NodeList{}
+	if err := c.client.List(c.ctx, listOpts, nodes); err != nil {
 		return fmt.Errorf("failed to list nodes: %v", err)
 	}
 
-	for _, node := range nodesList {
-		if err := c.kubeClient.CoreV1().Nodes().Delete(node.Name, nil); err != nil {
+	for _, node := range nodes.Items {
+		if err := c.client.Delete(c.ctx, &node); err != nil {
 			return err
 		}
 	}
@@ -737,7 +731,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		// Check if the machine is a potential candidate for triggering deletion
 		if c.joinClusterTimeout != nil && ownerReferencesHasMachineSetKind(machine.OwnerReferences) {
 			if time.Since(machine.CreationTimestamp.Time) > *c.joinClusterTimeout {
-				if err := c.machineClient.ClusterV1alpha1().Machines(machine.Namespace).Delete(machine.Name, &metav1.DeleteOptions{}); err != nil {
+				if err := c.client.Delete(c.ctx, machine); err != nil {
 					return fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
 						machine.Namespace, machine.Name, c.joinClusterTimeout.String(), err)
 				}
@@ -836,14 +830,14 @@ func (c *Controller) getNode(instance instance.Instance, provider providerconfig
 	if instance == nil {
 		return nil, false, fmt.Errorf("getNode called with nil provider instance")
 	}
-	nodes, err := c.nodesLister.List(labels.Everything())
-	if err != nil {
+	nodes := &corev1.NodeList{}
+	if err := c.client.List(c.ctx, &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
 		return nil, false, err
 	}
 
 	// We trim leading slashes in raw ID, since we always want three slashes in full ID
 	providerID := fmt.Sprintf("%s:///%s", provider, strings.TrimLeft(instance.ID(), "/"))
-	for _, node := range nodes {
+	for _, node := range nodes.Items {
 		if provider == providerconfig.CloudProviderAzure {
 			// Azure IDs are case-insensitive
 			if strings.EqualFold(node.Spec.ProviderID, providerID) {
@@ -902,8 +896,8 @@ func (c *Controller) handleObject(obj interface{}) {
 		glog.V(3).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 
-	machinesList, err := c.machinesLister.List(labels.Everything())
-	if err != nil {
+	machinesList := &clusterv1alpha1.MachineList{}
+	if err := c.client.List(c.ctx, &ctrlruntimeclient.ListOptions{}, machinesList); err != nil {
 		utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
 		return
 	}
@@ -916,14 +910,14 @@ func (c *Controller) handleObject(obj interface{}) {
 	if !exists {
 		// We get triggered by node{Add,Update}, so enqeue machines if they
 		// have no nodeRef yet to make matching happen ASAP
-		for _, machine := range machinesList {
+		for _, machine := range machinesList.Items {
 			if machine.Status.NodeRef == nil {
 				c.enqueueMachine(machine)
 			}
 		}
 	}
 
-	for _, machine := range machinesList {
+	for _, machine := range machinesList.Items {
 		if string(machine.UID) == ownerUIDString {
 			glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), machine.Name)
 			c.enqueueMachine(machine)
