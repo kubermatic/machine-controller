@@ -30,7 +30,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -109,9 +108,6 @@ const (
 type controllerRunOptions struct {
 	// kubeClient a client that knows how to consume kubernetes API
 	kubeClient *kubernetes.Clientset
-
-	// extClient a client that knows how to consume kubernetes extension API
-	extClient *apiextclient.Clientset
 
 	// machineClient a client that knows how to consume Machine resources
 	machineClient *clusterv1alpha1clientset.Clientset
@@ -265,11 +261,6 @@ func main() {
 		glog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
 	}
 
-	extClient, err := apiextclient.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for extClient: %v", err)
-	}
-
 	ctrlruntimeClient, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
 		glog.Fatalf("error building ctrlruntime client: %v", err)
@@ -302,7 +293,6 @@ func main() {
 	kubeconfigProvider := clusterinfo.New(cfg, kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(), defaultKubeInformerFactory.Core().V1().Endpoints().Lister())
 	runOptions := controllerRunOptions{
 		kubeClient:        kubeClient,
-		extClient:         extClient,
 		machineClient:     machineClient,
 		ctrlruntimeClient: ctrlruntimeClient,
 		metrics:           machinecontroller.NewMachineControllerMetrics(),

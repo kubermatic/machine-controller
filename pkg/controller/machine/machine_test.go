@@ -17,29 +17,26 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/go-test/deep"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	machinefake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
-	machineinformer "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 )
 
 type fakeInstance struct {
@@ -150,13 +147,12 @@ func TestController_GetNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+			nodes := []runtime.Object{}
 			for _, node := range nodeList {
-				if err := nodeIndexer.Add(node); err != nil {
-					t.Fatalf("failed to add node to nodeIndexer: %v", err)
-				}
+				nodes = append(nodes, node)
 			}
-			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer)}
+			client := ctrlruntimefake.NewFakeClient(nodes...)
+			controller := Controller{client: client}
 
 			node, exists, err := controller.getNode(test.instance, test.provider)
 			if diff := deep.Equal(err, test.err); diff != nil {
@@ -243,6 +239,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			machine := &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:              "my-machine",
 					CreationTimestamp: test.creationTimestamp,
 					OwnerReferences:   test.ownerReferences}}
 
@@ -256,16 +253,11 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 
 			providerConfig := &providerconfig.Config{CloudProvider: providerconfig.CloudProviderFake}
 
-			machineClient := machinefake.NewSimpleClientset(machine)
+			client := ctrlruntimefake.NewFakeClient(node, machine)
 
-			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-			if err := nodeIndexer.Add(node); err != nil {
-				t.Fatalf("failed to add node to nodeIndexer: %v", err)
-			}
-
-			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer),
+			controller := Controller{
+				client:             client,
 				recorder:           &record.FakeRecorder{},
-				machineClient:      machineClient,
 				joinClusterTimeout: test.joinTimeoutConfig,
 				workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 			}
@@ -274,13 +266,8 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
 			}
 
-			var wasDeleted bool
-			for _, action := range machineClient.Actions() {
-				if action.GetVerb() == "delete" {
-					wasDeleted = true
-					break
-				}
-			}
+			err := client.Get(context.Background(), types.NamespacedName{Name: machine.Name}, &clusterv1alpha1.Machine{})
+			wasDeleted := kerrors.IsNotFound(err)
 
 			if wasDeleted != test.getsDeleted {
 				t.Errorf("Machine was deleted: %v, but expectedDeletion: %v", wasDeleted, test.getsDeleted)
@@ -414,22 +401,15 @@ func TestControllerShouldEvict(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			kubeClient := fake.NewSimpleClientset(test.existingNodes...)
-			if test.additionalMachines == nil {
-				test.additionalMachines = []runtime.Object{}
-			}
-			machinefake := machinefake.NewSimpleClientset(append(test.additionalMachines, test.machine)...)
-			informerFactory := informers.NewSharedInformerFactory(kubeClient, 5*time.Minute)
-			machineInformerFactory := machineinformer.NewSharedInformerFactory(machinefake, 5*time.Minute)
+			objects := []runtime.Object{test.machine}
+			objects = append(objects, test.existingNodes...)
+			objects = append(objects, test.additionalMachines...)
+			client := ctrlruntimefake.NewFakeClient(objects...)
 
 			ctrl := &Controller{
-				nodesLister:       informerFactory.Core().V1().Nodes().Lister(),
-				machinesLister:    machineInformerFactory.Cluster().V1alpha1().Machines().Lister(),
+				client:            client,
 				skipEvictionAfter: 2 * time.Hour,
 			}
-
-			informerFactory.Start(wait.NeverStop)
-			informerFactory.WaitForCacheSync(wait.NeverStop)
 
 			shouldEvict, err := ctrl.shouldEvict(test.machine)
 			if err != nil {
