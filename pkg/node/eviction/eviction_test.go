@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -50,15 +51,17 @@ func TestEvictPods(t *testing.T) {
 
 	for _, test := range tests {
 		var literalPods []corev1.Pod
+		var podNames []types.NamespacedName
 		for _, pod := range test.Pods {
-			literalPods = append(literalPods, *(pod.(*corev1.Pod)))
+			metaPod := pod.(metav1.Object)
+			podNames = append(podNames, types.NamespacedName{Namespace: metaPod.GetNamespace(), Name: metaPod.GetName()})
 		}
 		client := kubefake.NewSimpleClientset(test.Pods...)
 
 		t.Run(test.Name, func(t *testing.T) {
 
-			ne := &NodeEviction{client: client, nodeName: "node1"}
-			if errs := ne.evictPods(literalPods); len(errs) > 0 {
+			ne := &NodeEviction{kubeClient: client, nodeName: "node1"}
+			if errs := ne.evictPods(podNames); len(errs) > 0 {
 				t.Fatalf("Got unexpected errors=%v when running evictPods", errs)
 			}
 
