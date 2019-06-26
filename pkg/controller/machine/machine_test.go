@@ -23,21 +23,28 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/golang/glog"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
+	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
+
+func init(){
+	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+	}
+}
 
 type fakeInstance struct {
 	name      string
