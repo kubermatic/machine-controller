@@ -3,19 +3,16 @@
 # Table of Contents
 
 - [Features](#features)
-- [Running](#running)
-  - [Requirements](#requirements)
-  - [Creating a machine](#creating-a-machine)
-  - [Special network restrictions](#network-restrictions.md)
+- [Quickstart](#Quickstart)
+  - [Deployment](#Deploy-the-machine-controller)
+  - [Creating a machineDeployment](#Creating-a-machineDeployment)
+  - [Special network restrictions](/docs/network-restrictions.md)
 - [Cloud provider](/docs/cloud-provider.md)
 - [Operating system](/docs/operating-system.md)
   - [OpenStack images](/docs/openstack-images.md)
-- [Container runtimes](/docs/container_runtime.md)
 - [Development](#development)
 - [How to add a new provider](docs/howto-provider.md)
-
-- E2E
-  - [Infra](/docs/e2e-infra.md)
+- [E2E Infra](/docs/e2e-infra.md)
 - [TroubleShooting](#troubleshooting)
 - [Contributing](#contributing)
 - [Changelog](#changelog)
