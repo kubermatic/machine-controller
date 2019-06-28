@@ -112,6 +112,15 @@ func (client *ServiceClient) Delete(url string, opts *RequestOpts) (*http.Respon
 	return client.Request("DELETE", url, opts)
 }
 
+// Head calls `Request` with the "HEAD" HTTP verb.
+func (client *ServiceClient) Head(url string, opts *RequestOpts) (*http.Response, error) {
+	if opts == nil {
+		opts = new(RequestOpts)
+	}
+	client.initReqOpts(url, nil, nil, opts)
+	return client.Request("HEAD", url, opts)
+}
+
 func (client *ServiceClient) setMicroversionHeader(opts *RequestOpts) {
 	switch client.Type {
 	case "compute":
@@ -120,6 +129,10 @@ func (client *ServiceClient) setMicroversionHeader(opts *RequestOpts) {
 		opts.MoreHeaders["X-OpenStack-Manila-API-Version"] = client.Microversion
 	case "volume":
 		opts.MoreHeaders["X-OpenStack-Volume-API-Version"] = client.Microversion
+	case "baremetal":
+		opts.MoreHeaders["X-OpenStack-Ironic-API-Version"] = client.Microversion
+	case "baremetal-introspection":
+		opts.MoreHeaders["X-OpenStack-Ironic-Inspector-API-Version"] = client.Microversion
 	}
 
 	if client.Type != "" {
