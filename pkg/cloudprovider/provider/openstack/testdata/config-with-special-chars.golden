@@ -3,6 +3,7 @@ auth-url    = "https://127.0.0.1:8443"
 username    = "admin"
 password    = ".)\\^x[tt0L@};p<KJ|f.VQ]7r9u;\"ZF|"
 tenant-name = "Test"
+tenant-id   = ""
 domain-name = "Default"
 region      = "eu-central1"
 
