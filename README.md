@@ -12,6 +12,7 @@
   - [OpenStack images](/docs/openstack-images.md)
 - [Container runtimes](/docs/container_runtime.md)
 - [Development](#development)
+- [How to add a new provider](docs/howto-provider.md)
 
 - E2E
   - [Infra](/docs/e2e-infra.md)
