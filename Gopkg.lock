@@ -440,15 +440,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:34e3882ed9973f53f247699828e8e2e8da7242cbcb18d5c4b56645ff15d47c68"
+  digest = "1:dc5be045e1e3bc620aeedca3beab6324e728da25ac0775dac3e0c69dd957f05d"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
     "internal",
     "openstack",
     "openstack/compute/v2/extensions/availabilityzones",
+    "openstack/compute/v2/extensions/bootfromvolume",
     "openstack/compute/v2/extensions/extendedstatus",
-    "openstack/compute/v2/extensions/keypairs",
     "openstack/compute/v2/flavors",
     "openstack/compute/v2/images",
     "openstack/compute/v2/servers",
@@ -466,7 +466,7 @@
     "pagination",
   ]
   pruneopts = "NUT"
-  revision = "c38d3807cb5863eb95a857d694f6a4d6b31cde32"
+  revision = "2949719e825824850b54d993d4654feb0b6dd9df"
 
 [[projects]]
   branch = "master"
@@ -1561,8 +1561,8 @@
     "github.com/gophercloud/gophercloud",
     "github.com/gophercloud/gophercloud/openstack",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones",
+    "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus",
-    "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/flavors",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/images",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/servers",
