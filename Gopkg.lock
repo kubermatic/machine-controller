@@ -440,15 +440,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:44b7680eb7ebaab83063ddfb287cf3b2e2de0f1b9b21295cc4aafda5d3bbeb0a"
+  digest = "1:dc5be045e1e3bc620aeedca3beab6324e728da25ac0775dac3e0c69dd957f05d"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
     "internal",
     "openstack",
     "openstack/compute/v2/extensions/availabilityzones",
+    "openstack/compute/v2/extensions/bootfromvolume",
     "openstack/compute/v2/extensions/extendedstatus",
-    "openstack/compute/v2/extensions/keypairs",
     "openstack/compute/v2/flavors",
     "openstack/compute/v2/images",
     "openstack/compute/v2/servers",
@@ -1561,8 +1561,8 @@
     "github.com/gophercloud/gophercloud",
     "github.com/gophercloud/gophercloud/openstack",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones",
+    "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus",
-    "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/flavors",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/images",
     "github.com/gophercloud/gophercloud/openstack/compute/v2/servers",
