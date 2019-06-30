@@ -19,6 +19,7 @@ package openstack
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -74,14 +75,15 @@ type RawConfig struct {
 	Region           providerconfig.ConfigVarString `json:"region"`
 
 	// Machine details
-	Image            providerconfig.ConfigVarString   `json:"image"`
-	Flavor           providerconfig.ConfigVarString   `json:"flavor"`
-	SecurityGroups   []providerconfig.ConfigVarString `json:"securityGroups"`
-	Network          providerconfig.ConfigVarString   `json:"network"`
-	Subnet           providerconfig.ConfigVarString   `json:"subnet"`
-	FloatingIPPool   providerconfig.ConfigVarString   `json:"floatingIpPool"`
-	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone"`
-	TrustDevicePath  providerconfig.ConfigVarBool     `json:"trustDevicePath"`
+	Image                 providerconfig.ConfigVarString   `json:"image"`
+	Flavor                providerconfig.ConfigVarString   `json:"flavor"`
+	SecurityGroups        []providerconfig.ConfigVarString `json:"securityGroups"`
+	Network               providerconfig.ConfigVarString   `json:"network"`
+	Subnet                providerconfig.ConfigVarString   `json:"subnet"`
+	FloatingIPPool        providerconfig.ConfigVarString   `json:"floatingIpPool"`
+	AvailabilityZone      providerconfig.ConfigVarString   `json:"availabilityZone"`
+	TrustDevicePath       providerconfig.ConfigVarBool     `json:"trustDevicePath"`
+	NodeVolumeAttachLimit providerconfig.ConfigVarString   `json:"nodeVolumeAttachLimit"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags map[string]string `json:"tags"`
 }
@@ -96,14 +98,15 @@ type Config struct {
 	Region           string
 
 	// Machine details
-	Image            string
-	Flavor           string
-	SecurityGroups   []string
-	Network          string
-	Subnet           string
-	FloatingIPPool   string
-	AvailabilityZone string
-	TrustDevicePath  bool
+	Image                 string
+	Flavor                string
+	SecurityGroups        []string
+	Network               string
+	Subnet                string
+	FloatingIPPool        string
+	AvailabilityZone      string
+	TrustDevicePath       bool
+	NodeVolumeAttachLimit uint
 
 	Tags map[string]string
 }
@@ -196,6 +199,19 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	c.TrustDevicePath, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	nval, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.NodeVolumeAttachLimit)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if len(nval) == 0 {
+		c.NodeVolumeAttachLimit = 256
+	} else {
+		nvalUint, err := strconv.ParseUint(nval, 10, 0)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to parse integer nodeVolumeAttachLimit, error = %v", err)
+		}
+		c.NodeVolumeAttachLimit = uint(nvalUint)
 	}
 	c.Tags = rawConfig.Tags
 	if c.Tags == nil {
@@ -311,6 +327,10 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			glog.V(3).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
 			rawConfig.Subnet.Value = *subnet
 		}
+	}
+
+	if c.NodeVolumeAttachLimit == 0 {
+		rawConfig.NodeVolumeAttachLimit.Value = "256"
 	}
 
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
@@ -666,7 +686,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			BSVersion:             "auto",
 			TrustDevicePath:       c.TrustDevicePath,
 			IgnoreVolumeAZ:        true,
-			NodeVolumeAttachLimit: 25,
+			NodeVolumeAttachLimit: c.NodeVolumeAttachLimit,
 		},
 		Version: spec.Versions.Kubelet,
 	}
