@@ -19,7 +19,6 @@ package openstack
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -83,7 +82,7 @@ type RawConfig struct {
 	FloatingIPPool        providerconfig.ConfigVarString   `json:"floatingIpPool"`
 	AvailabilityZone      providerconfig.ConfigVarString   `json:"availabilityZone"`
 	TrustDevicePath       providerconfig.ConfigVarBool     `json:"trustDevicePath"`
-	NodeVolumeAttachLimit providerconfig.ConfigVarString   `json:"nodeVolumeAttachLimit"`
+	NodeVolumeAttachLimit *uint                            `json:"nodeVolumeAttachLimit"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags map[string]string `json:"tags"`
 }
@@ -106,7 +105,7 @@ type Config struct {
 	FloatingIPPool        string
 	AvailabilityZone      string
 	TrustDevicePath       bool
-	NodeVolumeAttachLimit uint
+	NodeVolumeAttachLimit *uint
 
 	Tags map[string]string
 }
@@ -200,19 +199,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	nval, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.NodeVolumeAttachLimit)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if len(nval) == 0 {
-		c.NodeVolumeAttachLimit = 256
-	} else {
-		nvalUint, err := strconv.ParseUint(nval, 10, 0)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to parse integer nodeVolumeAttachLimit, error = %v", err)
-		}
-		c.NodeVolumeAttachLimit = uint(nvalUint)
-	}
+	c.NodeVolumeAttachLimit = rawConfig.NodeVolumeAttachLimit
 	c.Tags = rawConfig.Tags
 	if c.Tags == nil {
 		c.Tags = map[string]string{}
@@ -327,10 +314,6 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			glog.V(3).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
 			rawConfig.Subnet.Value = *subnet
 		}
-	}
-
-	if c.NodeVolumeAttachLimit == 0 {
-		rawConfig.NodeVolumeAttachLimit.Value = "256"
 	}
 
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
@@ -683,12 +666,16 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			ManageSecurityGroups: true,
 		},
 		BlockStorage: BlockStorageOpts{
-			BSVersion:             "auto",
-			TrustDevicePath:       c.TrustDevicePath,
-			IgnoreVolumeAZ:        true,
-			NodeVolumeAttachLimit: c.NodeVolumeAttachLimit,
+			BSVersion:       "auto",
+			TrustDevicePath: c.TrustDevicePath,
+			IgnoreVolumeAZ:  true,
 		},
 		Version: spec.Versions.Kubelet,
+	}
+	if c.NodeVolumeAttachLimit != nil {
+		cc.BlockStorage.NodeVolumeAttachLimit = *c.NodeVolumeAttachLimit
+	} else {
+		cc.BlockStorage.NodeVolumeAttachLimit = 256
 	}
 
 	s, err := CloudConfigToString(cc)
