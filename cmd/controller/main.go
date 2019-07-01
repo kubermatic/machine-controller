@@ -492,6 +492,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 		machineController, err := machinecontroller.NewMachineController(
 			runOptions.kubeClient,
 			mgr.GetClient(),
+			mgr.GetRecorder("machine-controller"),
 			runOptions.metrics,
 			runOptions.prometheusRegisterer,
 			runOptions.machineInformer,

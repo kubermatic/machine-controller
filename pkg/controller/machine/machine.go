@@ -41,7 +41,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
@@ -50,7 +49,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	machinescheme "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/scheme"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
@@ -135,6 +133,7 @@ type MetricsCollection struct {
 func NewMachineController(
 	kubeClient kubernetes.Interface,
 	client ctrlruntimeclient.Client,
+	recorder record.EventRecorder,
 	metrics *MetricsCollection,
 	prometheusRegistry prometheus.Registerer,
 	machineInformer cache.SharedIndexInformer,
@@ -149,13 +148,6 @@ func NewMachineController(
 	nodeSettings NodeSettings,
 ) (*Controller, error) {
 
-	if err := machinescheme.AddToScheme(scheme.Scheme); err != nil {
-		return nil, err
-	}
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.V(3).Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-
 	if prometheusRegistry != nil {
 		prometheusRegistry.MustRegister(metrics.Errors, metrics.Workers)
 	}
@@ -165,7 +157,7 @@ func NewMachineController(
 		client:     client,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
-		recorder:  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "machine-controller"}),
+		recorder:  recorder,
 
 		metrics:                          metrics,
 		kubeconfigProvider:               kubeconfigProvider,
