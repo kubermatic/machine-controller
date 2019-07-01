@@ -29,8 +29,8 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
@@ -42,7 +42,7 @@ const (
 )
 
 type NodeEviction struct {
-	ctx context.Context
+	ctx        context.Context
 	nodeName   string
 	client     ctrlruntimeclient.Client
 	kubeClient kubernetes.Interface
@@ -51,7 +51,7 @@ type NodeEviction struct {
 // New returns a new NodeEviction
 func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeEviction {
 	return &NodeEviction{
-		ctx: ctx,
+		ctx:        ctx,
 		nodeName:   nodeName,
 		client:     client,
 		kubeClient: kubeClient,
@@ -129,8 +129,8 @@ func (ne *NodeEviction) getFilteredPods() ([]types.NamespacedName, error) {
 	pods := &unstructured.UnstructuredList{}
 	pods.SetKind("Pod")
 	listOpts := &ctrlruntimeclient.ListOptions{
-		Raw: &metav1.ListOptions {
-		FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": ne.nodeName}).String(),
+		Raw: &metav1.ListOptions{
+			FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": ne.nodeName}).String(),
 		},
 	}
 	if err := ne.client.List(ne.ctx, listOpts, pods); err != nil {

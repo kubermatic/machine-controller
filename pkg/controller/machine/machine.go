@@ -575,19 +575,6 @@ func (c *Controller) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 	})
 }
 
-func ownedNodesPredicateFactory(machine *clusterv1alpha1.Machine) func(*corev1.Node) bool {
-	return func(node *corev1.Node) bool {
-		labels := node.GetLabels()
-		if labels == nil {
-			return false
-		}
-		if ownerUID, exists := labels[NodeOwnerLabelName]; exists && string(machine.UID) == ownerUID {
-			return true
-		}
-		return false
-	}
-}
-
 func (c *Controller) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
 	requirement, err := labels.NewRequirement(NodeOwnerLabelName, selection.Equals, []string{string(machine.UID)})
 	if err != nil {
