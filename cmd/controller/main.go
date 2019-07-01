@@ -366,10 +366,7 @@ func main() {
 	ctx, ctxDone := context.WithCancel(context.Background())
 	var g run.Group
 	{
-		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(
-			clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
-			kubeClient,
-		))
+		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(ctx, ctrlruntimeClient))
 
 		s := createUtilHTTPServer(kubeClient, kubeconfigProvider, prometheus.DefaultGatherer)
 		g.Add(func() error {

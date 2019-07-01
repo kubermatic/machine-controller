@@ -383,7 +383,7 @@ func (c *Controller) sync(machine *clusterv1alpha1.Machine) error {
 	if err != nil {
 		return fmt.Errorf("failed to get provider config: %v", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(c.kubeClient)
+	skg := providerconfig.NewConfigVarResolver(c.ctx, c.client)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)

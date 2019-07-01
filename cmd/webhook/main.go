@@ -20,11 +20,11 @@ import (
 	"flag"
 
 	"github.com/golang/glog"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/kubermatic/machine-controller/pkg/admission"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -54,9 +54,9 @@ func main() {
 		glog.Fatalf("error building kubeconfig: %v", err)
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
+		glog.Fatalf("failed to build client: %v", err)
 	}
 
 	um, err := userdatamanager.New()
@@ -64,7 +64,7 @@ func main() {
 		glog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
-	s := admission.New(admissionListenAddress, kubeClient, um)
+	s := admission.New(admissionListenAddress, client, um)
 	if err := s.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath); err != nil {
 		glog.Fatalf("Failed to start server: %v", err)
 	}

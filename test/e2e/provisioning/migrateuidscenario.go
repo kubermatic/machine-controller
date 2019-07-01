@@ -33,9 +33,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
@@ -86,8 +86,8 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	if err != nil {
 		return fmt.Errorf("failed to get provideSpec: %v", err)
 	}
-	fakeClient := fake.NewSimpleClientset()
-	skg := providerconfig.NewConfigVarResolver(fakeClient)
+	fakeClient := fakectrlruntimeclient.NewFakeClient()
+	skg := providerconfig.NewConfigVarResolver(context.Background(), fakeClient)
 	prov, err := cloudprovider.ForProvider(providerSpec.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerSpec.CloudProvider, err)
