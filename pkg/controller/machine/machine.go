@@ -351,13 +351,26 @@ func (c *Controller) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 }
 
 func (c *Controller) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
+	// Ensure finalizer is there
+	_, err := c.ensureDeleteFinalizerExists(machine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add %q finalizer: %v", FinalizerDeleteInstance, err)
+	}
 	instance, err := prov.Create(machine, c.providerData, userdata)
 	if err != nil {
+		// Remove the finalizer if creation failed. We always add it initially to be 100% sure
+		// its there if an instance was created
+		if updateMachineError := c.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+			if s := sets.NewString(m.Finalizers...); s.Has(FinalizerDeleteInstance) {
+				s.Delete(FinalizerDeleteInstance)
+			}
+		}); updateMachineError != nil {
+			return nil, fmt.Errorf("failed to remove %q finalizer with err=%q after instance creation failed with err=%q",
+				FinalizerDeleteInstance, updateMachineError, err)
+		}
 		return nil, err
 	}
-	// Ensure finalizer is there
-	_, err = c.ensureDeleteFinalizerExists(machine)
-	return instance, err
+	return instance, nil
 }
 
 func (c *Controller) syncHandler(key string) error {
