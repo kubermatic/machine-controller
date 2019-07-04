@@ -173,8 +173,8 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}
 
 	if virtualMachineInstance.Status.Phase == kubevirtv1.Failed ||
-		// The VMI enters phase succeeded if someone issues a kubectl
-		// delete pod on the virt-launcher pod it runs in
+	// The VMI enters phase succeeded if someone issues a kubectl
+	// delete pod on the virt-launcher pod it runs in
 		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
@@ -267,7 +267,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 				Devices: kubevirtv1.Devices{
 					Disks: []kubevirtv1.Disk{
 						{
-							Name:       "registryDisk",
+							Name:       "containerdisk",
+							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+						},
+						{
+							Name:       "emptydisk",
 							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
 						},
 						{
@@ -285,13 +289,21 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 			Volumes: []kubevirtv1.Volume{
 				{
-					Name: "registryvolume",
+					Name: "containerdisk",
 					VolumeSource: kubevirtv1.VolumeSource{
 						ContainerDisk: &kubevirtv1.ContainerDiskSource{Image: c.RegistryImage},
 					},
 				},
 				{
-					Name: "cloudinitvolume",
+					Name: "emptydisk",
+					VolumeSource: kubevirtv1.VolumeSource{
+						EmptyDisk: &kubevirtv1.EmptyDiskSource{
+							Capacity: resource.Quantity{Format: "2Gi"},
+						},
+					},
+				},
+				{
+					Name: "cloudinitdisk",
 					VolumeSource: kubevirtv1.VolumeSource{
 						CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
 							UserDataSecretRef: &corev1.LocalObjectReference{
