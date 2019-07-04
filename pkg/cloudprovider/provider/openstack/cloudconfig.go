@@ -59,7 +59,7 @@ ignore-volume-az  = {{ .BlockStorage.IgnoreVolumeAZ }}
 trust-device-path = {{ .BlockStorage.TrustDevicePath }}
 bs-version        = {{ default "auto" .BlockStorage.BSVersion | iniEscape }}
 {{- if .BlockStorage.NodeVolumeAttachLimit }}
-node-volume-attach-limit = {{ default 256 .BlockStorage.NodeVolumeAttachLimit }}
+node-volume-attach-limit = {{ .BlockStorage.NodeVolumeAttachLimit }}
 {{- end }}
 `
 )

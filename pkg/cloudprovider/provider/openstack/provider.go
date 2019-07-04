@@ -674,8 +674,6 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	}
 	if c.NodeVolumeAttachLimit != nil {
 		cc.BlockStorage.NodeVolumeAttachLimit = *c.NodeVolumeAttachLimit
-	} else {
-		cc.BlockStorage.NodeVolumeAttachLimit = 256
 	}
 
 	s, err := CloudConfigToString(cc)
