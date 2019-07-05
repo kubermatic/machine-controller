@@ -252,75 +252,67 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up
 	terminationGracePeriodSeconds := int64(30)
-	userdataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
+	userDataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
 	requestsAndLimits, err := parseResources(c.CPUs, c.Memory)
 	if err != nil {
 		return nil, err
 	}
-	virtualMachineInstance := kubevirtv1.NewMinimalVMIWithNS(c.Namespace, machine.Name)
-	virtualMachineInstance.Spec.Domain.Resources = kubevirtv1.ResourceRequirements{
-		Requests: *requestsAndLimits,
-		Limits:   *requestsAndLimits,
+	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      machine.Name,
+			Namespace: c.Namespace,
+		},
+		Spec: kubevirtv1.VirtualMachineInstanceSpec{
+			Domain: kubevirtv1.DomainSpec{
+				Devices: kubevirtv1.Devices{
+					Disks: []kubevirtv1.Disk{
+						{
+							Name:       "containerdisk",
+							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+						},
+						{
+							Name:       "emptydisk",
+							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+						},
+						{
+							Name:       "cloudinitdisk",
+							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+						},
+					},
+				},
+				Resources: kubevirtv1.ResourceRequirements{
+					Requests: *requestsAndLimits,
+					Limits:   *requestsAndLimits,
+				},
+			},
+			// Must be set because of https://github.com/kubevirt/kubevirt/issues/178
+			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+			Volumes: []kubevirtv1.Volume{
+				{
+					Name: "containerdisk",
+					VolumeSource: kubevirtv1.VolumeSource{
+						ContainerDisk: &kubevirtv1.ContainerDiskSource{Image: c.RegistryImage},
+					},
+				},
+				{
+					Name: "emptydisk",
+					VolumeSource: kubevirtv1.VolumeSource{
+						EmptyDisk: &kubevirtv1.EmptyDiskSource{
+							Capacity: resource.MustParse("2Gi"),
+						},
+					},
+				},
+				{
+					Name: "cloudinitdisk",
+					VolumeSource: kubevirtv1.VolumeSource{
+						CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
+							UserData: fmt.Sprintf("password: %v\nchpasswd: { expire: False }", userDataSecretName),
+						},
+					},
+				},
+			},
+		},
 	}
-	virtualMachineInstance.Spec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
-	//virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      machine.Name,
-	//		Namespace: c.Namespace,
-	//	},
-	//	Spec: kubevirtv1.VirtualMachineInstanceSpec{
-	//		Domain: kubevirtv1.DomainSpec{
-	//			Devices: kubevirtv1.Devices{
-	//				Disks: []kubevirtv1.Disk{
-	//					{
-	//						Name:       "containerdisk",
-	//						DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-	//					},
-	//					{
-	//						Name:       "emptydisk",
-	//						DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-	//					},
-	//					{
-	//						Name:       "cloudinitdisk",
-	//						DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-	//					},
-	//				},
-	//			},
-	//			Resources: kubevirtv1.ResourceRequirements{
-	//				Requests: *requestsAndLimits,
-	//				Limits:   *requestsAndLimits,
-	//			},
-	//		},
-	//		// Must be set because of https://github.com/kubevirt/kubevirt/issues/178
-	//		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-	//		Volumes: []kubevirtv1.Volume{
-	//			{
-	//				Name: "containerdisk",
-	//				VolumeSource: kubevirtv1.VolumeSource{
-	//					ContainerDisk: &kubevirtv1.ContainerDiskSource{Image: c.RegistryImage},
-	//				},
-	//			},
-	//			{
-	//				Name: "emptydisk",
-	//				VolumeSource: kubevirtv1.VolumeSource{
-	//					EmptyDisk: &kubevirtv1.EmptyDiskSource{
-	//						Capacity: resource.Quantity{Format: "2Gi"},
-	//					},
-	//				},
-	//			},
-	//			{
-	//				Name: "cloudinitdisk",
-	//				VolumeSource: kubevirtv1.VolumeSource{
-	//					CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
-	//						UserDataSecretRef: &corev1.LocalObjectReference{
-	//							Name: userdataSecretName,
-	//						},
-	//					},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
 
 	sigClient, err := client.New(&c.Config, client.Options{})
 	if err != nil {
@@ -334,7 +326,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            userdataSecretName,
+			Name:            userDataSecretName,
 			Namespace:       virtualMachineInstance.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachineInstance, kubevirtv1.VirtualMachineInstanceGroupVersionKind)},
 		},
