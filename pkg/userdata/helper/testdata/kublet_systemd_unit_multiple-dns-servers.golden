@@ -38,7 +38,8 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --cluster-dns=10.10.10.10,10.10.10.11,10.10.10.12 \
   --cluster-domain=cluster.local \
   --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+  --cgroup-driver=systemd
 
 [Install]
 WantedBy=multi-user.target
