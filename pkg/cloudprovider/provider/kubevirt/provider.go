@@ -173,8 +173,8 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}
 
 	if virtualMachineInstance.Status.Phase == kubevirtv1.Failed ||
-	// The VMI enters phase succeeded if someone issues a kubectl
-	// delete pod on the virt-launcher pod it runs in
+		// The VMI enters phase succeeded if someone issues a kubectl
+		// delete pod on the virt-launcher pod it runs in
 		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
