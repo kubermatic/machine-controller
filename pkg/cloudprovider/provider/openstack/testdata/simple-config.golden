@@ -18,3 +18,4 @@ lb-provider = ""
 ignore-volume-az  = true
 trust-device-path = true
 bs-version        = "v2"
+node-volume-attach-limit = 25
