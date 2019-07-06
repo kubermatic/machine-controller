@@ -693,7 +693,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 			if _, err := c.updateNode(node.Name, func(n *corev1.Node) {
 				n.Labels[NodeOwnerLabelName] = string(machine.UID)
 			}); err != nil {
-				return err
+				return fmt.Errorf("failed to update node %q after adding owner label: %v", node.Name, err)
 			}
 		}
 
@@ -964,7 +964,7 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 }
 
 func (c *Controller) updateNode(name string, modify func(*corev1.Node)) (*corev1.Node, error) {
-	var node *corev1.Node
+	node := &corev1.Node{}
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		if err := c.client.Get(c.ctx, types.NamespacedName{Name: name}, node); err != nil {
 			return err
