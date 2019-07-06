@@ -73,14 +73,14 @@ func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 }
 
 func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
-	sa, err := c.kubeClient.CoreV1().ServiceAccounts(name.Namespace).Get(name.Name, metav1.GetOptions{})
-	if err != nil {
-		return "", err
+	sa := &corev1.ServiceAccount{}
+	if err := c.client.Get(c.ctx, name, sa); err != nil {
+		return "", fmt.Errorf("failed to get serviceAccount %q: %v", name.String(), err)
 	}
 	for _, serviceAccountSecretName := range sa.Secrets {
-		serviceAccountSecret, err := c.kubeClient.CoreV1().Secrets(name.Namespace).Get(serviceAccountSecretName.Name, metav1.GetOptions{})
-		if err != nil {
-			return "", err
+		serviceAccountSecret := &corev1.Secret{}
+		if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}, serviceAccountSecret); err != nil {
+			return "", fmt.Errorf("failed to get serviceAccountSecret: %v", err)
 		}
 		if serviceAccountSecret.Type != corev1.SecretTypeServiceAccountToken {
 			continue
@@ -104,8 +104,9 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf("bootstrap-token-%s", tokenID),
-			Labels: map[string]string{machineNameLabelKey: name},
+			Name:      fmt.Sprintf("bootstrap-token-%s", tokenID),
+			Namespace: metav1.NamespaceSystem,
+			Labels:    map[string]string{machineNameLabelKey: name},
 		},
 		Type: secretTypeBootstrapToken,
 		Data: map[string][]byte{
@@ -119,9 +120,8 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 		},
 	}
 
-	_, err = c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Create(&secret)
-	if err != nil {
-		return "", err
+	if err := c.client.Create(c.ctx, &secret); err != nil {
+		return "", fmt.Errorf("failed to create bootstrap token secret: %v", err)
 	}
 
 	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
@@ -147,9 +147,8 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *corev1.Secret) (s
 		return token, nil
 	}
 
-	_, err = c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Update(secret)
-	if err != nil {
-		return "", err
+	if err := c.client.Update(c.ctx, secret); err != nil {
+		return "", fmt.Errorf("failed to update secret: %v", err)
 	}
 	return token, nil
 }
