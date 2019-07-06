@@ -177,9 +177,11 @@ func NewMachineController(
 	controller.userDataManager = m
 
 	machineInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueMachine,
+		AddFunc: func(obj interface{}) {
+			controller.enqueueMachine(obj.(metav1.Object))
+		},
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueMachine(new)
+			controller.enqueueMachine(new.(metav1.Object))
 		},
 	})
 
@@ -838,7 +840,7 @@ func (c *Controller) getNode(instance instance.Instance, provider providerconfig
 	return nil, false, nil
 }
 
-func (c *Controller) enqueueMachine(obj interface{}) {
+func (c *Controller) enqueueMachine(obj metav1.Object) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
@@ -848,7 +850,7 @@ func (c *Controller) enqueueMachine(obj interface{}) {
 	c.workqueue.AddRateLimited(key)
 }
 
-func (c *Controller) enqueueMachineAfter(obj interface{}, after time.Duration) {
+func (c *Controller) enqueueMachineAfter(obj metav1.Object, after time.Duration) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
@@ -891,7 +893,7 @@ func (c *Controller) handleObject(obj interface{}) {
 		// have no nodeRef yet to make matching happen ASAP
 		for _, machine := range machinesList.Items {
 			if machine.Status.NodeRef == nil {
-				c.enqueueMachine(machine)
+				c.enqueueMachine(&machine)
 			}
 		}
 	}
@@ -899,7 +901,7 @@ func (c *Controller) handleObject(obj interface{}) {
 	for _, machine := range machinesList.Items {
 		if string(machine.UID) == ownerUIDString {
 			glog.V(6).Infof("Processing node: %s (machine=%s)", object.GetName(), machine.Name)
-			c.enqueueMachine(machine)
+			c.enqueueMachine(&machine)
 			break
 		}
 	}
