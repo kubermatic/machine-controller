@@ -249,7 +249,9 @@ func (c *Controller) clearMachineError(key string) {
 	}
 	machine := &clusterv1alpha1.Machine{}
 	if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: namespace, Name: name}, machine); err != nil {
-		utilruntime.HandleError(fmt.Errorf("failed to get Machine from lister: %v", err))
+		if !kerrors.IsNotFound(err) {
+			utilruntime.HandleError(fmt.Errorf("failed to get Machine from lister: %v", err))
+		}
 		return
 	}
 
