@@ -690,7 +690,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 	}
 	if exists {
 		if val := node.Labels[NodeOwnerLabelName]; val != string(machine.UID) {
-			if _, err := c.updateNode(node.Name, func(n *corev1.Node) {
+			if err := c.updateNode(node, func(n *corev1.Node) {
 				n.Labels[NodeOwnerLabelName] = string(machine.UID)
 			}); err != nil {
 				return fmt.Errorf("failed to update node %q after adding owner label: %v", node.Name, err)
@@ -698,7 +698,7 @@ func (c *Controller) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
-			if _, err := c.updateNode(node.Name, func(n *corev1.Node) {
+			if err := c.updateNode(node, func(n *corev1.Node) {
 				n.Spec.ConfigSource = machine.Spec.ConfigSource
 			}); err != nil {
 				return fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
@@ -778,12 +778,7 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 	}
 
 	if len(modifiers) > 0 {
-		node, err := c.updateNode(node.Name, func(n *corev1.Node) {
-			for _, modify := range modifiers {
-				modify(n)
-			}
-		})
-		if err != nil {
+		if err := c.updateNode(node, modifiers...); err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
 		c.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTaintsUpdated", "Successfully updated labels/annotations/taints")
@@ -963,15 +958,16 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 	return machine, nil
 }
 
-func (c *Controller) updateNode(name string, modify func(*corev1.Node)) (*corev1.Node, error) {
-	node := &corev1.Node{}
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		if err := c.client.Get(c.ctx, types.NamespacedName{Name: name}, node); err != nil {
+func (c *Controller) updateNode(node *corev1.Node, modifiers ...func(*corev1.Node)) error {
+	// Store name here, because the object can be nil if an update failed
+	name := types.NamespacedName{Name: node.Name}
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		if err := c.client.Get(c.ctx, name, node); err != nil {
 			return err
 		}
-		modify(node)
+		for _, modify := range modifiers {
+			modify(node)
+		}
 		return c.client.Update(c.ctx, node)
 	})
-
-	return node, err
 }
