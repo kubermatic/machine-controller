@@ -737,25 +737,28 @@ func ownerReferencesHasMachineSetKind(ownerReferences []metav1.OwnerReference) b
 }
 
 func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, machine *clusterv1alpha1.Machine) error {
-	var labelsUpdated bool
+	var modifiers []func(*corev1.Node)
+
 	for k, v := range machine.Spec.Labels {
 		if _, exists := node.Labels[k]; !exists {
-			labelsUpdated = true
-			node.Labels[k] = v
+			modifiers = append(modifiers, func(n *corev1.Node) {
+				n.Labels[k] = v
+			})
 		}
 	}
 
-	var annotationsUpdated bool
 	for k, v := range machine.Spec.Annotations {
 		if _, exists := node.Annotations[k]; !exists {
-			annotationsUpdated = true
-			node.Annotations[k] = v
+			modifiers = append(modifiers, func(n *corev1.Node) {
+				n.Annotations[k] = v
+			})
 		}
 	}
 	autoscalerAnnotationValue := fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)
 	if node.Annotations[AnnotationAutoscalerIdentifier] != autoscalerAnnotationValue {
-		node.Annotations[AnnotationAutoscalerIdentifier] = autoscalerAnnotationValue
-		annotationsUpdated = true
+		modifiers = append(modifiers, func(n *corev1.Node) {
+			n.Annotations[AnnotationAutoscalerIdentifier] = autoscalerAnnotationValue
+		})
 	}
 
 	taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
@@ -766,15 +769,20 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 		}
 		return false
 	}
-	var taintsUpdated bool
 	for _, t := range machine.Spec.Taints {
 		if !taintExists(node, t) {
-			node.Spec.Taints = append(node.Spec.Taints, t)
-			taintsUpdated = true
+			modifiers = append(modifiers, func(n *corev1.Node) {
+				n.Spec.Taints = append(node.Spec.Taints, t)
+			})
 		}
 	}
-	if labelsUpdated || annotationsUpdated || taintsUpdated {
-		node, err := c.kubeClient.CoreV1().Nodes().Update(node)
+
+	if len(modifiers) > 0 {
+		node, err := c.updateNode(node.Name, func(n *corev1.Node) {
+			for _, modify := range modifiers {
+				modify(n)
+			}
+		})
 		if err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
@@ -783,7 +791,6 @@ func (c *Controller) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 	}
 
 	return nil
-
 }
 
 func (c *Controller) updateMachineStatus(machine *clusterv1alpha1.Machine, node *corev1.Node) error {
@@ -957,23 +964,14 @@ func (c *Controller) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 }
 
 func (c *Controller) updateNode(name string, modify func(*corev1.Node)) (*corev1.Node, error) {
-	var updatedNode *corev1.Node
+	var node *corev1.Node
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		var retryErr error
-
-		//Get latest version from API
-		currentNode, err := c.kubeClient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
-		if err != nil {
+		if err := c.client.Get(c.ctx, types.NamespacedName{Name: name}, node); err != nil {
 			return err
 		}
-
-		// Apply modifications
-		modify(currentNode)
-
-		// Update the node
-		updatedNode, retryErr = c.kubeClient.CoreV1().Nodes().Update(currentNode)
-		return retryErr
+		modify(node)
+		return c.client.Update(c.ctx, node)
 	})
 
-	return updatedNode, err
+	return node, err
 }
