@@ -20,11 +20,12 @@ import (
 	"flag"
 
 	"github.com/golang/glog"
+
 	"k8s.io/client-go/tools/clientcmd"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/kubermatic/machine-controller/pkg/admission"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
-	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
