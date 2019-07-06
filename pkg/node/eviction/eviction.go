@@ -28,7 +28,6 @@ import (
 	policy "k8s.io/api/policy/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -122,41 +121,35 @@ func (ne *NodeEviction) cordonNode(node *corev1.Node) error {
 	})
 }
 
-func (ne *NodeEviction) getFilteredPods() ([]types.NamespacedName, error) {
+func (ne *NodeEviction) getFilteredPods() ([]corev1.Pod, error) {
 	// The lister-backed client from the mgr automatically creates a lister for all objects requested through it.
-	// We explicitly do not want that for pods, hence we have to use unstructured.Unstructured
+	// We explicitly do not want that for pods, hence we have to use the kubernetes core client
 	// TODO @alvaroaleman: Add source code ref for this
-	pods := &unstructured.UnstructuredList{}
-	pods.SetKind("Pod")
-	listOpts := &ctrlruntimeclient.ListOptions{
-		Raw: &metav1.ListOptions{
-			FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": ne.nodeName}).String(),
-		},
-	}
-	if err := ne.client.List(ne.ctx, listOpts, pods); err != nil {
+	pods, err := ne.kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(metav1.ListOptions{
+		FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": ne.nodeName}).String(),
+	})
+	if err != nil {
 		return nil, fmt.Errorf("failed to list pods: %v", err)
 	}
 
-	var filteredPods []types.NamespacedName
+	var filteredPods []corev1.Pod
 	for _, candidatePod := range pods.Items {
-		statusRaw := candidatePod.UnstructuredContent()["status"]
-		status := statusRaw.(corev1.PodStatus)
-		if status.Phase == corev1.PodSucceeded || status.Phase == corev1.PodFailed {
+		if candidatePod.Status.Phase == corev1.PodSucceeded || candidatePod.Status.Phase == corev1.PodFailed {
 			continue
 		}
 		if controllerRef := metav1.GetControllerOf(&candidatePod); controllerRef != nil && controllerRef.Kind == "DaemonSet" {
 			continue
 		}
-		if _, found := candidatePod.GetAnnotations()[corev1.MirrorPodAnnotationKey]; found {
+		if _, found := candidatePod.ObjectMeta.Annotations[corev1.MirrorPodAnnotationKey]; found {
 			continue
 		}
-		filteredPods = append(filteredPods, types.NamespacedName{Namespace: candidatePod.GetNamespace(), Name: candidatePod.GetName()})
+		filteredPods = append(filteredPods, candidatePod)
 	}
 
 	return filteredPods, nil
 }
 
-func (ne *NodeEviction) evictPods(pods []types.NamespacedName) []error {
+func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
 
 	errCh := make(chan error, len(pods))
 	retErrs := []error{}
@@ -167,13 +160,13 @@ func (ne *NodeEviction) evictPods(pods []types.NamespacedName) []error {
 
 	wg.Add(len(pods))
 	for _, pod := range pods {
-		go func(p types.NamespacedName) {
+		go func(p corev1.Pod) {
 			defer wg.Done()
 			for {
 				if isDone {
 					return
 				}
-				err := ne.evictPod(p)
+				err := ne.evictPod(&p)
 				if err == nil || kerrors.IsNotFound(err) {
 					glog.V(6).Infof("Successfully evicted pod %s/%s on node %s", p.Namespace, p.Name, ne.nodeName)
 					return
@@ -203,7 +196,7 @@ func (ne *NodeEviction) evictPods(pods []types.NamespacedName) []error {
 	return retErrs
 }
 
-func (ne *NodeEviction) evictPod(pod types.NamespacedName) error {
+func (ne *NodeEviction) evictPod(pod *corev1.Pod) error {
 	eviction := &policy.Eviction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pod.Name,
