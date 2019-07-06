@@ -119,6 +119,8 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
+    if systemctl is-active ufw; then systemctl stop ufw; fi
+    systemctl mask ufw
     systemctl restart systemd-modules-load.service
     sysctl --system
 
