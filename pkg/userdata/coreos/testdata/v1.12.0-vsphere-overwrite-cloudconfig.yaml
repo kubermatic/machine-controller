@@ -140,7 +140,8 @@ systemd:
           --cluster-dns=10.10.10.10 \
           --cluster-domain=cluster.local \
           --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+          --cgroup-driver=systemd
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
@@ -306,7 +307,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-          {"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
+          {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
 
     - path: /opt/bin/download.sh
       filesystem: root

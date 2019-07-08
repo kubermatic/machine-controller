@@ -39,7 +39,8 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --cluster-domain=cluster.local \
   --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
   --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+  --cgroup-driver=systemd
 
 [Install]
 WantedBy=multi-user.target
