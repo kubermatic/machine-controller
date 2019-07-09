@@ -1455,15 +1455,15 @@
   version = "v1.9.3"
 
 [[projects]]
-  branch = "release-0.17"
-  digest = "1:91cd35d81addb41d9238d35521b52d3d4b49e2a3669176897c6a5750fade3fbd"
+  branch = "release-0.18"
+  digest = "1:6cdfc8fc487edd231f6505a51f806b9dde46d7a182e367ba4724566e2a9d1137"
   name = "kubevirt.io/kubevirt"
   packages = [
     "pkg/api/v1",
     "pkg/precond",
   ]
   pruneopts = "NUT"
-  revision = "adfdb8c07830b99fc79d2fd1d004e862ef70979e"
+  revision = "4913335bc20764d0d0bec55da00146887726ae15"
   source = "github.com/kubevirt/kubevirt"
 
 [[projects]]

@@ -257,6 +257,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	if err != nil {
 		return nil, err
 	}
+
+	quantity, err := resource.ParseQuantity("2Gi")
+	if err != nil {
+		return nil, err
+	}
+
 	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -298,7 +304,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 					Name: "emptydisk",
 					VolumeSource: kubevirtv1.VolumeSource{
 						EmptyDisk: &kubevirtv1.EmptyDiskSource{
-							Capacity: resource.MustParse("2Gi"),
+							Capacity: quantity,
 						},
 					},
 				},
@@ -306,7 +312,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 					Name: "cloudinitdisk",
 					VolumeSource: kubevirtv1.VolumeSource{
 						CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
-							UserData: fmt.Sprintf("password: %v\nchpasswd: { expire: False }", userDataSecretName),
+							UserDataSecretRef: &corev1.LocalObjectReference{
+								Name: userDataSecretName,
+							},
 						},
 					},
 				},
