@@ -69,6 +69,7 @@ spec:
             subnetName: "<< SUBNET_NAME >>"
             routeTableName: "<< ROUTE_TABLE_NAME >>"
             assignPublicIP: false
+            securityGroupName: my-security-group
           operatingSystem: "coreos"
           operatingSystemSpec:
             distUpgradeOnBoot: false
