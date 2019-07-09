@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -83,7 +84,9 @@ func (k *kubeVirtServer) ID() string {
 func (k *kubeVirtServer) Addresses() []string {
 	var addresses []string
 	for _, kvInterface := range k.vmi.Status.Interfaces {
-		addresses = append(addresses, kvInterface.IP)
+		if address := strings.Split(kvInterface.IP, "/")[0]; address != "" {
+			addresses = append(addresses, address)
+		}
 	}
 	return addresses
 }
