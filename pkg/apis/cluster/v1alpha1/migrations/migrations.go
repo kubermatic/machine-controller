@@ -198,7 +198,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %v", err)
 		}
-		skg := providerconfig.NewConfigVarResolver(kubeClient)
+		skg := providerconfig.NewConfigVarResolver(ctx, client)
 		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 		if err != nil {
 			return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)

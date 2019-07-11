@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -24,12 +25,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes"
-
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -59,8 +57,8 @@ func NewMachineControllerMetrics() *MetricsCollection {
 }
 
 type MachineCollector struct {
-	lister     v1alpha1.MachineLister
-	kubeClient kubernetes.Interface
+	ctx    context.Context
+	client ctrlruntimeclient.Client
 
 	machines       *prometheus.Desc
 	machineCreated *prometheus.Desc
@@ -109,19 +107,19 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 	return counter
 }
 
-func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.Interface) *MachineCollector {
+func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *MachineCollector {
 
 	// Start periodically calling the providers SetMetricsForMachines in a dedicated go routine
-	skg := providerconfig.NewConfigVarResolver(kubeClient)
+	skg := providerconfig.NewConfigVarResolver(ctx, client)
 	go func() {
 		metricGatheringExecutor := func() {
-			machines, err := lister.List(labels.Everything())
-			if err != nil {
+			machines := &clusterv1alpha1.MachineList{}
+			if err := client.List(ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
 				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetMetricsForMachines: %v", err))
 				return
 			}
 			var machineList clusterv1alpha1.MachineList
-			for _, machine := range machines {
+			for _, machine := range machines.Items {
 				machineList.Items = append(machineList.Items, *machine.DeepCopy())
 			}
 			if len(machineList.Items) < 1 {
@@ -129,7 +127,7 @@ func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.In
 			}
 
 			providerMachineMap := map[providerconfig.CloudProvider]*clusterv1alpha1.MachineList{}
-			for _, machine := range machines {
+			for _, machine := range machines.Items {
 				providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %v", err))
@@ -138,7 +136,7 @@ func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.In
 				if _, exists := providerMachineMap[providerConfig.CloudProvider]; !exists {
 					providerMachineMap[providerConfig.CloudProvider] = &clusterv1alpha1.MachineList{}
 				}
-				providerMachineMap[providerConfig.CloudProvider].Items = append(providerMachineMap[providerConfig.CloudProvider].Items, *machine)
+				providerMachineMap[providerConfig.CloudProvider].Items = append(providerMachineMap[providerConfig.CloudProvider].Items, machine)
 			}
 
 			for provider, providerMachineList := range providerMachineMap {
@@ -161,8 +159,8 @@ func NewMachineCollector(lister v1alpha1.MachineLister, kubeClient kubernetes.In
 	}()
 
 	return &MachineCollector{
-		lister:     lister,
-		kubeClient: kubeClient,
+		ctx:    ctx,
+		client: client,
 
 		machines: prometheus.NewDesc(
 			metricsPrefix+"machines",
@@ -191,15 +189,15 @@ func (mc MachineCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
-	machines, err := mc.lister.List(labels.Everything())
-	if err != nil {
+	machines := &clusterv1alpha1.MachineList{}
+	if err := mc.client.List(mc.ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
 		return
 	}
 
-	cvr := providerconfig.NewConfigVarResolver(mc.kubeClient)
+	cvr := providerconfig.NewConfigVarResolver(mc.ctx, mc.client)
 	machineCountByLabels := make(map[*machineMetricLabels]uint)
 
-	for _, machine := range machines {
+	for _, machine := range machines.Items {
 		ch <- prometheus.MustNewConstMetric(
 			mc.machineCreated,
 			prometheus.GaugeValue,
@@ -228,7 +226,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		labels, err := provider.MachineMetricsLabels(machine)
+		labels, err := provider.MachineMetricsLabels(&machine)
 		if err != nil {
 			utilruntime.HandleError(fmt.Errorf("failed to determine machine metrics labels: %v", err))
 			continue

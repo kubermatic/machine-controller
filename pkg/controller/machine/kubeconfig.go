@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -72,14 +73,14 @@ func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 }
 
 func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
-	sa, err := c.kubeClient.CoreV1().ServiceAccounts(name.Namespace).Get(name.Name, metav1.GetOptions{})
-	if err != nil {
-		return "", err
+	sa := &corev1.ServiceAccount{}
+	if err := c.client.Get(c.ctx, name, sa); err != nil {
+		return "", fmt.Errorf("failed to get serviceAccount %q: %v", name.String(), err)
 	}
 	for _, serviceAccountSecretName := range sa.Secrets {
-		serviceAccountSecret, err := c.kubeClient.CoreV1().Secrets(name.Namespace).Get(serviceAccountSecretName.Name, metav1.GetOptions{})
-		if err != nil {
-			return "", err
+		serviceAccountSecret := &corev1.Secret{}
+		if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}, serviceAccountSecret); err != nil {
+			return "", fmt.Errorf("failed to get serviceAccountSecret: %v", err)
 		}
 		if serviceAccountSecret.Type != corev1.SecretTypeServiceAccountToken {
 			continue
@@ -103,8 +104,9 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf("bootstrap-token-%s", tokenID),
-			Labels: map[string]string{machineNameLabelKey: name},
+			Name:      fmt.Sprintf("bootstrap-token-%s", tokenID),
+			Namespace: metav1.NamespaceSystem,
+			Labels:    map[string]string{machineNameLabelKey: name},
 		},
 		Type: secretTypeBootstrapToken,
 		Data: map[string][]byte{
@@ -118,9 +120,8 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 		},
 	}
 
-	_, err = c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Create(&secret)
-	if err != nil {
-		return "", err
+	if err := c.client.Create(c.ctx, &secret); err != nil {
+		return "", fmt.Errorf("failed to create bootstrap token secret: %v", err)
 	}
 
 	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
@@ -146,9 +147,8 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *corev1.Secret) (s
 		return token, nil
 	}
 
-	_, err = c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Update(secret)
-	if err != nil {
-		return "", err
+	if err := c.client.Update(c.ctx, secret); err != nil {
+		return "", fmt.Errorf("failed to update secret: %v", err)
 	}
 	return token, nil
 }
@@ -158,18 +158,19 @@ func (c *Controller) getSecretIfExists(name string) (*corev1.Secret, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	selector := labels.NewSelector().Add(*req)
-	secrets, err := c.secretSystemNsLister.List(selector)
-	if err != nil {
+	secrets := &corev1.SecretList{}
+	if err := c.client.List(c.ctx, &ctrlruntimeclient.ListOptions{
+		Namespace:     metav1.NamespaceSystem,
+		LabelSelector: selector}, secrets); err != nil {
 		return nil, err
 	}
 
-	if len(secrets) == 0 {
+	if len(secrets.Items) == 0 {
 		return nil, nil
 	}
-	if len(secrets) > 1 {
-		return nil, fmt.Errorf("expected to find exactly one secret for the given machine name =%s but found %d", name, len(secrets))
+	if len(secrets.Items) > 1 {
+		return nil, fmt.Errorf("expected to find exactly one secret for the given machine name =%s but found %d", name, len(secrets.Items))
 	}
-	return secrets[0], nil
+	return &secrets.Items[0], nil
 }

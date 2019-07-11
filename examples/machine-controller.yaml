@@ -280,28 +280,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secrets
-  resourceNames:
-  - machine-controller-ssh-key
-  - machine-controller-hetzner
-  - machine-controller-linode
-  - machine-controller-digitalocean
-  - machine-controller-openstack
-  - machine-controller-aws
-  - machine-controller-vsphere
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  resourceNames:
-  - machine-controller
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
   - endpoints
   resourceNames:
   - machine-controller
@@ -459,6 +437,8 @@ rules:
   - "*"
 # Pods are required for draining
 # PVs are required for vsphere to detach them prior to deleting the instance
+# Secrets and configmaps are needed for the boostrap token creation and when a ref is used for a
+# value in the machineSpec
 - apiGroups:
   - ""
   resources:
@@ -470,6 +450,8 @@ rules:
   - ""
   resources:
   - "persistentvolumes"
+  - "secrets"
+  - "configmaps"
   verbs:
   - "list"
   - "get"
