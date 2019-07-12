@@ -20,7 +20,7 @@ required = [
 
 [[constraint]]
   name = "kubevirt.io/kubevirt"
-  branch = "release-0.10"
+  branch = "release-0.18"
   source = "github.com/kubevirt/kubevirt"
 
 [[override]]

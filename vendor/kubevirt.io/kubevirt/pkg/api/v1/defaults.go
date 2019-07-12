@@ -1,11 +1,7 @@
 package v1
 
 import (
-	"strings"
-
 	"github.com/pborman/uuid"
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -112,12 +108,6 @@ func SetDefaults_Firmware(obj *Firmware) {
 }
 
 func SetDefaults_VirtualMachineInstance(obj *VirtualMachineInstance) {
-	// FIXME we need proper validation and configurable defaulting instead of this
-	if _, exists := obj.Spec.Domain.Resources.Requests[v1.ResourceMemory]; !exists {
-		obj.Spec.Domain.Resources.Requests = v1.ResourceList{
-			v1.ResourceMemory: resource.MustParse("8192Ki"),
-		}
-	}
 	if obj.Spec.Domain.Firmware == nil {
 		obj.Spec.Domain.Firmware = &Firmware{}
 	}
@@ -125,16 +115,16 @@ func SetDefaults_VirtualMachineInstance(obj *VirtualMachineInstance) {
 	if obj.Spec.Domain.Features == nil {
 		obj.Spec.Domain.Features = &Features{}
 	}
-	if obj.Spec.Domain.Machine.Type == "" {
-		obj.Spec.Domain.Machine.Type = "q35"
-	}
 
-	setDefaults_DiskFromMachineType(obj)
+	setDefaults_Disk(obj)
 	SetDefaults_NetworkInterface(obj)
 }
 
-func setDefaults_DiskFromMachineType(obj *VirtualMachineInstance) {
-	bus := diskBusFromMachine(obj.Spec.Domain.Machine.Type)
+func setDefaults_Disk(obj *VirtualMachineInstance) {
+	// Setting SATA as the default bus since it is typically supported out of the box by
+	// guest operating systems (we support only q35 and therefore IDE is not supported)
+	// TODO: consider making this OS-specific (VIRTIO for linux, SATA for others)
+	bus := "sata"
 
 	for i := range obj.Spec.Domain.Devices.Disks {
 		disk := &obj.Spec.Domain.Devices.Disks[i].DiskDevice
@@ -194,16 +184,6 @@ func DefaultPodNetwork() *Network {
 		},
 	}
 	return defaultNet
-}
-
-func diskBusFromMachine(machine string) string {
-	// catches: "q35", "pc-q35-*"
-	// see /path/to/qemu-kvm -machine help
-	if strings.HasPrefix(machine, "pc-q35") || strings.HasPrefix(machine, "q35") {
-		return "sata"
-	}
-	// safe fallback for x86_64, but very slow
-	return "ide"
 }
 
 func t(v bool) *bool {

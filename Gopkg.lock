@@ -1443,27 +1443,27 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
-  digest = "1:b08090946952cd290d95494732c1a588ca1796e52c3d5382ffd0f67cb9754f4b"
+  digest = "1:b9fb0efb2078126748b814cd17653745dab833ca57daa281f4979b3b5c0ee0e1"
   name = "kubevirt.io/containerized-data-importer"
   packages = [
-    "pkg/apis/datavolumecontroller",
-    "pkg/apis/datavolumecontroller/v1alpha1",
+    "pkg/apis/core",
+    "pkg/apis/core/v1alpha1",
   ]
   pruneopts = "NUT"
-  revision = "8d7a20b86c9a2ed8ac31e26aab50e362f0c84475"
+  revision = "e1d07c4bab891baa010ad0c690132bada66a81fe"
   source = "github.com/kubevirt/containerized-data-importer"
-  version = "v1.3.0"
+  version = "v1.9.3"
 
 [[projects]]
-  branch = "release-0.10"
-  digest = "1:452617fbc46d453dc35684a1e2dd70a09b64e77ee29ba647458adb4e53d8acf0"
+  branch = "release-0.18"
+  digest = "1:6cdfc8fc487edd231f6505a51f806b9dde46d7a182e367ba4724566e2a9d1137"
   name = "kubevirt.io/kubevirt"
   packages = [
     "pkg/api/v1",
     "pkg/precond",
   ]
   pruneopts = "NUT"
-  revision = "6ddf4f4e2db4924ac0725676db72bb78acc6cca2"
+  revision = "4913335bc20764d0d0bec55da00146887726ae15"
   source = "github.com/kubevirt/kubevirt"
 
 [[projects]]
