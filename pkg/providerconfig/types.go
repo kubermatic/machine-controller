@@ -89,15 +89,15 @@ type Config struct {
 	OverwriteCloudConfig *string `json:"overwriteCloudConfig,omitempty"`
 }
 
-// GlobaObjectKeySelector is needed as we can not use v1.SecretKeySelector
+// GlobalObjectKeySelector is needed as we can not use v1.SecretKeySelector
 // because it is not cross namespace
-type GlobaObjectKeySelector struct {
+type GlobalObjectKeySelector struct {
 	v1.ObjectReference `json:",inline"`
 	Key                string `json:"key"`
 }
 
-type GlobalSecretKeySelector GlobaObjectKeySelector
-type GlobalConfigMapKeySelector GlobaObjectKeySelector
+type GlobalSecretKeySelector GlobalObjectKeySelector
+type GlobalConfigMapKeySelector GlobalObjectKeySelector
 
 type ConfigVarString struct {
 	Value           string                     `json:"value,omitempty"`
