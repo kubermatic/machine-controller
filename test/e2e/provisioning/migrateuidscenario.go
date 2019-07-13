@@ -31,8 +31,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -50,19 +48,13 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	if err != nil {
 		return fmt.Errorf("error building kubeconfig: %v", err)
 	}
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return fmt.Errorf("error building kubernetes clientset: %v", err)
-	}
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to construct ctrlruntimeclient: %v", err)
 	}
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
-	pvLister := kubeInformerFactory.Core().V1().PersistentVolumes().Lister()
 	providerData := &cloudprovidertypes.ProviderData{
-		Update:   cloudprovidertypes.GetMachineUpdater(context.Background(), client),
-		PVLister: pvLister,
+		Update: cloudprovidertypes.GetMachineUpdater(context.Background(), client),
+		Client: client,
 	}
 
 	machineDeployment := &v1alpha1.MachineDeployment{}

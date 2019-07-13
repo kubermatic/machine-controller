@@ -25,7 +25,7 @@ import (
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -37,18 +37,18 @@ const (
 	securePortName          = "https"
 )
 
-func New(clientConfig *rest.Config, configMapLister listerscorev1.ConfigMapLister, endpointLister listerscorev1.EndpointsLister) *KubeconfigProvider {
+func New(clientConfig *rest.Config, kubeClient kubernetes.Interface) *KubeconfigProvider {
 	return &KubeconfigProvider{
-		configMapLister: configMapLister,
-		endpointLister:  endpointLister,
-		clientConfig:    clientConfig,
+		clientConfig: clientConfig,
+		kubeClient:   kubeClient,
 	}
 }
 
 type KubeconfigProvider struct {
-	clientConfig    *rest.Config
-	configMapLister listerscorev1.ConfigMapLister
-	endpointLister  listerscorev1.EndpointsLister
+	clientConfig *rest.Config
+	// We use a kubeClient to not accidentally create a lister
+	// in the ctrlruntimeclient
+	kubeClient kubernetes.Interface
 }
 
 func (p *KubeconfigProvider) GetKubeconfig() (*clientcmdapi.Config, error) {
@@ -62,7 +62,7 @@ func (p *KubeconfigProvider) GetKubeconfig() (*clientcmdapi.Config, error) {
 }
 
 func (p *KubeconfigProvider) getKubeconfigFromConfigMap() (*clientcmdapi.Config, error) {
-	cm, err := p.configMapLister.ConfigMaps(metav1.NamespacePublic).Get(configMapName)
+	cm, err := p.kubeClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(configMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (p *KubeconfigProvider) getKubeconfigFromConfigMap() (*clientcmdapi.Config,
 }
 
 func (p *KubeconfigProvider) buildKubeconfigFromEndpoint() (*clientcmdapi.Config, error) {
-	e, err := p.endpointLister.Endpoints(metav1.NamespaceDefault).Get(kubernetesEndpointsName)
+	e, err := p.kubeClient.CoreV1().Endpoints(metav1.NamespaceDefault).Get(kubernetesEndpointsName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get endpoint from lister: %v", err)
 	}
