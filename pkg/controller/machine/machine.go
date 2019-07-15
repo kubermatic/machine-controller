@@ -655,7 +655,7 @@ func (c *Controller) ensureInstanceExistsForMachine(prov cloudprovidertypes.Prov
 			// Create the instance
 			if _, err = c.createProviderInstance(prov, machine, userdata); err != nil {
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
-				return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprover")
+				return c.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprovider")
 			}
 			c.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
 			glog.V(3).Infof("Created machine %s at cloud provider", machine.Name)
