@@ -102,9 +102,8 @@ spec:
               until mc ls local; do echo "Retrying..."; sleep 2; done
 
               echo "Creating all buckets"
-              mc mb --ignore-existing local/terraform-kubeone
-              mc mb --ignore-existing local/kubermatic-etcd-backups
-              mc mb --ignore-existing local/terraform-machine-controller
+              mc mb --ignore-existing local/kubevirt-images
+              mc policy public local/kubevirt-images
 
               echo "Successfully created all buckets. Going to sleep."
               sleep 360000

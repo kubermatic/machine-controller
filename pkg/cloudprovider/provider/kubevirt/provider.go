@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	v1alpha12 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 	"strconv"
 	"strings"
 	"time"
@@ -71,6 +72,7 @@ type Config struct {
 
 type kubeVirtServer struct {
 	vmi kubevirtv1.VirtualMachineInstance
+	vm  kubevirtv1.VirtualMachine
 }
 
 func (k *kubeVirtServer) Name() string {
@@ -325,13 +327,55 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		},
 	}
 
+	// TODO(MQ): enable the DataVolumeSourceHTTP to be configurable.
+	virtualMachine := &kubevirtv1.VirtualMachine{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      machine.Name,
+			Namespace: c.Namespace,
+			Labels: map[string]string{
+				"kubevirt.io/vm": machine.Name,
+			},
+		},
+		Spec: kubevirtv1.VirtualMachineSpec{
+			Running: new(bool),
+			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
+				ObjectMeta: virtualMachineInstance.ObjectMeta,
+				Spec:       virtualMachineInstance.Spec,
+			},
+			DataVolumeTemplates: []v1alpha12.DataVolume{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: machine.Name,
+					},
+					Spec: v1alpha12.DataVolumeSpec{
+						PVC: &corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								"ReadWriteOnce",
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									"storage": quantity,
+								},
+							},
+						},
+						Source: v1alpha12.DataVolumeSource{
+							HTTP: &v1alpha12.DataVolumeSourceHTTP{
+								URL: "http://tinycorelinux.net/10.x/x86/release/TinyCore-current.iso",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	sigClient, err := client.New(&c.Config, client.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
 	ctx := context.Background()
 
-	if err := sigClient.Create(ctx, virtualMachineInstance); err != nil {
+	if err := sigClient.Create(ctx, virtualMachine); err != nil {
 		return nil, fmt.Errorf("failed to create vmi: %v", err)
 	}
 
@@ -339,14 +383,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            userDataSecretName,
 			Namespace:       virtualMachineInstance.Namespace,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachineInstance, kubevirtv1.VirtualMachineInstanceGroupVersionKind)},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachine, kubevirtv1.VirtualMachineGroupVersionKind)},
 		},
 		Data: map[string][]byte{"userdata": []byte(userdata)},
 	}
 	if err := sigClient.Create(ctx, secret); err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
-	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
+	return &kubeVirtServer{vmi: *virtualMachineInstance, vm: *virtualMachine}, nil
 
 }
 
