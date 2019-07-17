@@ -60,6 +60,8 @@ spec:
             diskType: "gp2"
             ## Only application if diskType = io1
             diskIops: 500
+            # Assign a public IP to this instance. Default: true
+            assignPublicIP: false
             tags:
               "KubernetesCluster": "6qsm86c2d"
           # Can be 'ubuntu', 'coreos' or 'centos'
