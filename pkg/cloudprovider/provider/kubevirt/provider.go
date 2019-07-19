@@ -263,6 +263,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, err
 	}
 
+	var running = true
+
 	quantity, err := resource.ParseQuantity("2Gi")
 	if err != nil {
 		return nil, err
@@ -272,17 +274,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
 			Namespace: c.Namespace,
+			Labels: map[string]string{
+				"kubevirt.io/vm": machine.Name,
+			},
 		},
 		Spec: kubevirtv1.VirtualMachineInstanceSpec{
 			Domain: kubevirtv1.DomainSpec{
 				Devices: kubevirtv1.Devices{
 					Disks: []kubevirtv1.Disk{
 						{
-							Name:       "containerdisk",
-							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-						},
-						{
-							Name:       "emptydisk",
+							Name:       machine.Name,
 							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
 						},
 						{
@@ -298,32 +299,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			},
 			// Must be set because of https://github.com/kubevirt/kubevirt/issues/178
 			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-			Volumes: []kubevirtv1.Volume{
-				{
-					Name: "containerdisk",
-					VolumeSource: kubevirtv1.VolumeSource{
-						ContainerDisk: &kubevirtv1.ContainerDiskSource{Image: c.RegistryImage},
-					},
-				},
-				{
-					Name: "emptydisk",
-					VolumeSource: kubevirtv1.VolumeSource{
-						EmptyDisk: &kubevirtv1.EmptyDiskSource{
-							Capacity: quantity,
-						},
-					},
-				},
-				{
-					Name: "cloudinitdisk",
-					VolumeSource: kubevirtv1.VolumeSource{
-						CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
-							UserDataSecretRef: &corev1.LocalObjectReference{
-								Name: userDataSecretName,
-							},
-						},
-					},
-				},
-			},
 		},
 	}
 
@@ -337,7 +312,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			},
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			Running: new(bool),
+			Running: &running,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
 				ObjectMeta: virtualMachineInstance.ObjectMeta,
 				Spec:       virtualMachineInstance.Spec,
