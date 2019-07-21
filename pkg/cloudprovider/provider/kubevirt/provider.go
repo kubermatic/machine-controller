@@ -72,7 +72,6 @@ type Config struct {
 
 type kubeVirtServer struct {
 	vmi kubevirtv1.VirtualMachineInstance
-	vm  kubevirtv1.VirtualMachine
 }
 
 func (k *kubeVirtServer) Name() string {
@@ -263,46 +262,20 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	var running = true
-
-	quantity, err := resource.ParseQuantity("2Gi")
+	quantity, err := resource.ParseQuantity("4Gi")
 	if err != nil {
 		return nil, err
 	}
 
-	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      machine.Name,
-			Namespace: c.Namespace,
-			Labels: map[string]string{
-				"kubevirt.io/vm": machine.Name,
-			},
-		},
-		Spec: kubevirtv1.VirtualMachineInstanceSpec{
-			Domain: kubevirtv1.DomainSpec{
-				Devices: kubevirtv1.Devices{
-					Disks: []kubevirtv1.Disk{
-						{
-							Name:       machine.Name,
-							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-						},
-						{
-							Name:       "cloudinitdisk",
-							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-						},
-					},
-				},
-				Resources: kubevirtv1.ResourceRequirements{
-					Requests: *requestsAndLimits,
-					Limits:   *requestsAndLimits,
-				},
-			},
-			// Must be set because of https://github.com/kubevirt/kubevirt/issues/178
-			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		},
+	pvcRequest := corev1.ResourceList{
+		corev1.ResourceStorage: quantity,
 	}
 
-	// TODO(MQ): enable the DataVolumeSourceHTTP to be configurable.
+	var (
+		vmDataVolume     = fmt.Sprintf("%v-%v", machine.Name, "data-volume")
+		running          = true
+		storageClassName = "kubermatic-fast"
+	)
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -314,28 +287,74 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		Spec: kubevirtv1.VirtualMachineSpec{
 			Running: &running,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
-				ObjectMeta: virtualMachineInstance.ObjectMeta,
-				Spec:       virtualMachineInstance.Spec,
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"kubevirt.io/vm": machine.Name,
+					},
+				},
+				Spec: kubevirtv1.VirtualMachineInstanceSpec{
+					Domain: kubevirtv1.DomainSpec{
+						CPU: &kubevirtv1.CPU{
+							Cores: 2,
+						},
+						Devices: kubevirtv1.Devices{
+							Disks: []kubevirtv1.Disk{
+								{
+									Name:       "datavolumedisk",
+									DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+								},
+								{
+									Name:       "cloudinitdisk",
+									DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+								},
+							},
+						},
+						Resources: kubevirtv1.ResourceRequirements{
+							Requests: *requestsAndLimits,
+							Limits:   *requestsAndLimits,
+						},
+					},
+					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+					Volumes: []kubevirtv1.Volume{
+						{
+							Name: "datavolumedisk",
+							VolumeSource: kubevirtv1.VolumeSource{
+								DataVolume: &kubevirtv1.DataVolumeSource{
+									Name: vmDataVolume,
+								},
+							},
+						},
+						{
+							Name: "cloudinitdisk",
+							VolumeSource: kubevirtv1.VolumeSource{
+								CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
+									UserDataSecretRef: &corev1.LocalObjectReference{
+										Name: userDataSecretName,
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 			DataVolumeTemplates: []v1alpha12.DataVolume{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: machine.Name,
+						Name: vmDataVolume,
 					},
 					Spec: v1alpha12.DataVolumeSpec{
 						PVC: &corev1.PersistentVolumeClaimSpec{
+							StorageClassName: &storageClassName,
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								"ReadWriteOnce",
 							},
 							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									"storage": quantity,
-								},
+								Requests: pvcRequest,
 							},
 						},
 						Source: v1alpha12.DataVolumeSource{
 							HTTP: &v1alpha12.DataVolumeSourceHTTP{
-								URL: "http://tinycorelinux.net/10.x/x86/release/TinyCore-current.iso",
+								URL: "https://cloud-images.ubuntu.com/minimal/releases/bionic/release-20190628/ubuntu-18.04-minimal-cloudimg-amd64.img",
 							},
 						},
 					},
@@ -357,7 +376,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            userDataSecretName,
-			Namespace:       virtualMachineInstance.Namespace,
+			Namespace:       virtualMachine.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachine, kubevirtv1.VirtualMachineGroupVersionKind)},
 		},
 		Data: map[string][]byte{"userdata": []byte(userdata)},
@@ -365,7 +384,30 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	if err := sigClient.Create(ctx, secret); err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
-	return &kubeVirtServer{vmi: *virtualMachineInstance, vm: *virtualMachine}, nil
+
+	var (
+		maxRetry               = 5
+		try                    = 0
+		virtualMachineInstance = &kubevirtv1.VirtualMachineInstance{}
+	)
+
+	for {
+		if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
+			if try < maxRetry {
+				try++
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			if !kerrors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
+			}
+			return nil, cloudprovidererrors.ErrInstanceNotFound
+		}
+		break
+	}
+
+	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
 
 }
 
