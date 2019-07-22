@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -159,9 +158,9 @@ func TestController_GetNode(t *testing.T) {
 				nodes = append(nodes, node)
 			}
 			client := ctrlruntimefake.NewFakeClient(nodes...)
-			controller := Controller{client: client}
+			reconciler := Reconciler{client: client}
 
-			node, exists, err := controller.getNode(test.instance, test.provider)
+			node, exists, err := reconciler.getNode(test.instance, test.provider)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}
@@ -262,14 +261,13 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 
 			client := ctrlruntimefake.NewFakeClient(node, machine)
 
-			controller := Controller{
+			reconciler := Reconciler{
 				client:             client,
 				recorder:           &record.FakeRecorder{},
 				joinClusterTimeout: test.joinTimeoutConfig,
-				workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 			}
 
-			if err := controller.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
+			if _, err := reconciler.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
 				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
 			}
 
@@ -413,12 +411,12 @@ func TestControllerShouldEvict(t *testing.T) {
 			objects = append(objects, test.additionalMachines...)
 			client := ctrlruntimefake.NewFakeClient(objects...)
 
-			ctrl := &Controller{
+			reconciler := &Reconciler{
 				client:            client,
 				skipEvictionAfter: 2 * time.Hour,
 			}
 
-			shouldEvict, err := ctrl.shouldEvict(test.machine)
+			shouldEvict, err := reconciler.shouldEvict(test.machine)
 			if err != nil {
 				t.Fatal(err)
 			}

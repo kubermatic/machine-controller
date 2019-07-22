@@ -18,18 +18,14 @@ package clusterinfo
 
 import (
 	"testing"
-	"time"
 
 	"github.com/go-test/deep"
 	"github.com/pmezard/go-difflib/difflib"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -118,17 +114,10 @@ func TestKubeconfigProvider_GetKubeconfig(t *testing.T) {
 
 	for _, test := range tests {
 		client := fake.NewSimpleClientset(test.objects...)
-		kubeInformerFactory := informers.NewSharedInformerFactory(client, time.Second*30)
-		configMapInformer := kubeInformerFactory.Core().V1().ConfigMaps()
-		endpointInformer := kubeInformerFactory.Core().V1().Endpoints()
-		go configMapInformer.Informer().Run(wait.NeverStop)
-		go endpointInformer.Informer().Run(wait.NeverStop)
 
-		cache.WaitForCacheSync(wait.NeverStop, configMapInformer.Informer().HasSynced, endpointInformer.Informer().HasSynced)
 		provider := KubeconfigProvider{
-			clientConfig:    test.clientConfig,
-			endpointLister:  endpointInformer.Lister(),
-			configMapLister: configMapInformer.Lister(),
+			clientConfig: test.clientConfig,
+			kubeClient:   client,
 		}
 
 		resConfig, err := provider.GetKubeconfig()

@@ -40,23 +40,23 @@ const (
 	tokenFormatter           string            = "%s.%s"
 )
 
-func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
+func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
 	var token string
 	var err error
 
-	if c.bootstrapTokenServiceAccountName != nil {
-		token, err = c.getTokenFromServiceAccount(*c.bootstrapTokenServiceAccountName)
+	if r.bootstrapTokenServiceAccountName != nil {
+		token, err = r.getTokenFromServiceAccount(*r.bootstrapTokenServiceAccountName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %v", c.bootstrapTokenServiceAccountName.Namespace, c.bootstrapTokenServiceAccountName.Name, err)
+			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %v", r.bootstrapTokenServiceAccountName.Namespace, r.bootstrapTokenServiceAccountName.Name, err)
 		}
 	} else {
-		token, err = c.createBootstrapToken(name)
+		token, err = r.createBootstrapToken(name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bootstrap token: %v", err)
 		}
 	}
 
-	infoKubeconfig, err := c.kubeconfigProvider.GetKubeconfig()
+	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig()
 	if err != nil {
 		return nil, err
 	}
@@ -72,14 +72,14 @@ func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 	return outConfig, nil
 }
 
-func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
+func (r *Reconciler) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
 	sa := &corev1.ServiceAccount{}
-	if err := c.client.Get(c.ctx, name, sa); err != nil {
+	if err := r.client.Get(r.ctx, name, sa); err != nil {
 		return "", fmt.Errorf("failed to get serviceAccount %q: %v", name.String(), err)
 	}
 	for _, serviceAccountSecretName := range sa.Secrets {
 		serviceAccountSecret := &corev1.Secret{}
-		if err := c.client.Get(c.ctx, types.NamespacedName{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}, serviceAccountSecret); err != nil {
+		if err := r.client.Get(r.ctx, types.NamespacedName{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}, serviceAccountSecret); err != nil {
 			return "", fmt.Errorf("failed to get serviceAccountSecret: %v", err)
 		}
 		if serviceAccountSecret.Type != corev1.SecretTypeServiceAccountToken {
@@ -90,13 +90,13 @@ func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (stri
 	return "", errors.New("no serviceAccountSecret found")
 }
 
-func (c *Controller) createBootstrapToken(name string) (string, error) {
-	existingSecret, err := c.getSecretIfExists(name)
+func (r *Reconciler) createBootstrapToken(name string) (string, error) {
+	existingSecret, err := r.getSecretIfExists(name)
 	if err != nil {
 		return "", err
 	}
 	if existingSecret != nil {
-		return c.updateSecretExpirationAndGetToken(existingSecret)
+		return r.updateSecretExpirationAndGetToken(existingSecret)
 	}
 
 	tokenID := rand.String(6)
@@ -120,14 +120,14 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 		},
 	}
 
-	if err := c.client.Create(c.ctx, &secret); err != nil {
+	if err := r.client.Create(r.ctx, &secret); err != nil {
 		return "", fmt.Errorf("failed to create bootstrap token secret: %v", err)
 	}
 
 	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
 }
 
-func (c *Controller) updateSecretExpirationAndGetToken(secret *corev1.Secret) (string, error) {
+func (r *Reconciler) updateSecretExpirationAndGetToken(secret *corev1.Secret) (string, error) {
 	if secret.Data == nil {
 		secret.Data = map[string][]byte{}
 	}
@@ -147,20 +147,20 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *corev1.Secret) (s
 		return token, nil
 	}
 
-	if err := c.client.Update(c.ctx, secret); err != nil {
+	if err := r.client.Update(r.ctx, secret); err != nil {
 		return "", fmt.Errorf("failed to update secret: %v", err)
 	}
 	return token, nil
 }
 
-func (c *Controller) getSecretIfExists(name string) (*corev1.Secret, error) {
+func (r *Reconciler) getSecretIfExists(name string) (*corev1.Secret, error) {
 	req, err := labels.NewRequirement(machineNameLabelKey, selection.Equals, []string{name})
 	if err != nil {
 		return nil, err
 	}
 	selector := labels.NewSelector().Add(*req)
 	secrets := &corev1.SecretList{}
-	if err := c.client.List(c.ctx, &ctrlruntimeclient.ListOptions{
+	if err := r.client.List(r.ctx, &ctrlruntimeclient.ListOptions{
 		Namespace:     metav1.NamespaceSystem,
 		LabelSelector: selector}, secrets); err != nil {
 		return nil, err
