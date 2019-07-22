@@ -39,6 +39,8 @@ spec:
             # you have to set this flag to real clusterID when running against our dev or prod
             # otherwise you might have issues with your nodes not joining the cluster
               "KubernetesCluster": "randomString"
+            # Disabling the public IP assignment requires a private subnet with internet access.
+            assignPublicIP: true
           # Can be 'ubuntu', 'coreos' or 'centos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
