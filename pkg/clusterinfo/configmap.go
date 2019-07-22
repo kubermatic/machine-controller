@@ -46,8 +46,9 @@ func New(clientConfig *rest.Config, kubeClient kubernetes.Interface) *Kubeconfig
 
 type KubeconfigProvider struct {
 	clientConfig *rest.Config
-	// We use a kubeClient to not accidentally create a lister
-	// in the ctrlruntimeclient
+	// We use a kubeClient to not accidentally create listers in the ctrlruntimeclient for
+	// secrets, configmaps and endpoints, as that would result in a lot of traffic we don't
+	// care about
 	kubeClient kubernetes.Interface
 }
 
