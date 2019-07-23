@@ -583,6 +583,14 @@
   version = "v1.1.5"
 
 [[projects]]
+  digest = "1:6c54eb0b5a36368c754debe5c57379c6c76d03f49eb099609e15e2b3cc775bf5"
+  name = "github.com/kubevirt/client-go"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f7b247301033cc7dc3da457939d72a129d460021"
+  version = "v0.19.0"
+
+[[projects]]
   digest = "1:a0181b662584429828ccdd68d4dbe09ba7ba7414ef01d54b96f152002802ed72"
   name = "github.com/linode/linodego"
   packages = ["."]
@@ -1547,6 +1555,7 @@
     "github.com/gophercloud/gophercloud/pagination",
     "github.com/heptiolabs/healthcheck",
     "github.com/hetznercloud/hcloud-go/hcloud",
+    "github.com/kubevirt/client-go",
     "github.com/linode/linodego",
     "github.com/mattbaird/jsonpatch",
     "github.com/oklog/run",

@@ -354,7 +354,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 						},
 						Source: v1alpha12.DataVolumeSource{
 							HTTP: &v1alpha12.DataVolumeSourceHTTP{
-								URL: "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img",
+								URL: "http://10.109.79.210/bionic-server-cloudimg-amd64.img",
 							},
 						},
 					},
@@ -384,30 +384,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	if err := sigClient.Create(ctx, secret); err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
-
-	var (
-		maxRetry               = 5
-		try                    = 0
-		virtualMachineInstance = &kubevirtv1.VirtualMachineInstance{}
-	)
-
-	for {
-		if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
-			if try < maxRetry {
-				try++
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			if !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
-			}
-			return nil, cloudprovidererrors.ErrInstanceNotFound
-		}
-		break
-	}
-
-	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
+	return &kubeVirtServer{}, nil
 
 }
 
@@ -425,8 +402,8 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	}
 	ctx := context.Background()
 
-	vmi := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vmi); err != nil {
+	vm := &kubevirtv1.VirtualMachine{}
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vm); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
@@ -434,7 +411,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return true, nil
 	}
 
-	return false, sigClient.Delete(ctx, vmi)
+	return false, sigClient.Delete(ctx, vm)
 }
 
 func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
