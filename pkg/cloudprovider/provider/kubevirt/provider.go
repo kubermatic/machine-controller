@@ -354,7 +354,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 						},
 						Source: v1alpha12.DataVolumeSource{
 							HTTP: &v1alpha12.DataVolumeSourceHTTP{
-								URL: "https://cloud-images.ubuntu.com/minimal/releases/bionic/release-20190628/ubuntu-18.04-minimal-cloudimg-amd64.img",
+								URL: "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img",
 							},
 						},
 					},
