@@ -17,7 +17,15 @@
   version = "v0.36.0"
 
 [[projects]]
-  digest = "1:eba67fa6235db217a2a101a2aff04f559848996a044ee60d84b0c6f69e240856"
+  digest = "1:3fb854fc35fafced21615a93db3c0e324c8cb1d5a89f39dd1e72db0c4200345a"
+  name = "contrib.go.opencensus.io/exporter/ocagent"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "dcb33c7f3b7cfe67e8a2cea10207ede1b7c40764"
+  version = "v0.4.12"
+
+[[projects]]
+  digest = "1:a6eaacf9af7b9e0e94fb5a421a4b513bf7297efab1c05b86cfb74d364e8372c2"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
     "services/compute/mgmt/2018-04-01/compute",
@@ -25,24 +33,27 @@
     "version",
   ]
   pruneopts = "NUT"
-  revision = "fbe7db0e3f9793ba3e5704efbab84f51436c136e"
-  version = "v18.0.0"
+  revision = "397140cd20ce375b8da0534436fb918389917264"
+  version = "v31.1.0"
 
 [[projects]]
-  digest = "1:b727ed6314141ef75a77f5dcfc8043cdcc74bc6a0a65eef6830710f85b333415"
+  digest = "1:70ea1932c1ff085cdc54d7cff66adb89f883e465ba0567bce8ff5af8d677025a"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
     "autorest/adal",
     "autorest/azure",
     "autorest/azure/auth",
+    "autorest/azure/cli",
     "autorest/date",
     "autorest/to",
     "autorest/validation",
+    "logger",
+    "tracing",
   ]
   pruneopts = "NUT"
-  revision = "1f7cd6cfe0adea687ad44a512dfe76140f804318"
-  version = "v10.12.0"
+  revision = "2913f263500c4a5b23dada1b46ccd22ac972315f"
+  version = "v12.3.0"
 
 [[projects]]
   digest = "1:a26f8da48b22e6176c1c6a2459904bb30bd0c49ada04b2963c2c3a203e81a620"
@@ -165,6 +176,21 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
+  digest = "1:8f5acd4d4462b5136af644d25101f0968a7a94ee90fcb2059cec5b7cc42e0b20"
+  name = "github.com/census-instrumentation/opencensus-proto"
+  packages = [
+    "gen-go/agent/common/v1",
+    "gen-go/agent/metrics/v1",
+    "gen-go/agent/trace/v1",
+    "gen-go/metrics/v1",
+    "gen-go/resource/v1",
+    "gen-go/trace/v1",
+  ]
+  pruneopts = "NUT"
+  revision = "d89fa54de508111353cb0b06403c00569be780d8"
+  version = "v0.2.1"
+
+[[projects]]
   digest = "1:15173ac9caac43ba3a8990716158f5fd08174293e259d0a9e67f6fc98cc39d35"
   name = "github.com/coreos/container-linux-config-transpiler"
   packages = [
@@ -240,12 +266,12 @@
   version = "v1.1.3"
 
 [[projects]]
-  branch = "master"
-  digest = "1:ec6271918b59b872a2d25e374569a4f75f1839d91e4191470c297b7eaaaf7641"
+  digest = "1:f9adc21a937e5da643ea14a3488cb7506788876737a5e205394e508627a6eec8"
   name = "github.com/dimchansky/utfbom"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "6c6132ff69f0f6c088739067407b5d32c52e1d0f"
+  revision = "d2133a1ce379ef6fa992b0514a77146c60db9d1c"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:4ddc17aeaa82cb18c5f0a25d7c253a10682f518f4b2558a82869506eec223d76"
@@ -369,11 +395,15 @@
   revision = "66deaeb636dff1ac7d938ce666d090556056a4b0"
 
 [[projects]]
-  digest = "1:4dacf728c83400b3e9d1d3025dd3c1e93e9a1b033726d1b193dc209f3fa9cb7a"
+  digest = "1:178f7ca50ede13568f3e1b4e93ab1cd31481477873aa558a0f06a17b72573cf8"
   name = "github.com/golang/protobuf"
   packages = [
+    "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
+    "protoc-gen-go/generator",
+    "protoc-gen-go/generator/internal/remap",
+    "protoc-gen-go/plugin",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
@@ -383,8 +413,8 @@
     "ptypes/wrappers",
   ]
   pruneopts = "NUT"
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
-  version = "v1.2.0"
+  revision = "6c65a5562fc06764971b7c5d05c76c75e84bdbf7"
+  version = "v1.3.2"
 
 [[projects]]
   branch = "master"
@@ -478,6 +508,18 @@
   ]
   pruneopts = "NUT"
   revision = "c63ab54fda8f77302f8d414e19933f2b6026a089"
+
+[[projects]]
+  digest = "1:3107a6ef51bb9f3bc7cf235af0d92303b39afaa841f02dfc87f1d0a5d05a3fca"
+  name = "github.com/grpc-ecosystem/grpc-gateway"
+  packages = [
+    "internal",
+    "runtime",
+    "utilities",
+  ]
+  pruneopts = "NUT"
+  revision = "ad529a448ba494a88058f9e5be0988713174ac86"
+  version = "v1.9.5"
 
 [[projects]]
   branch = "master"
@@ -575,6 +617,14 @@
   pruneopts = "NUT"
   revision = "3247c84500bff8d9fb6d579d800f20b3e091582c"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:f9f72e583aaacf1d1ac5d6121abd4afd3c690baa9e14e1d009df26bf831ba347"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:2f42fa12d6911c7b7659738758631bec870b7e9b4c6be5444f963cdcfccc191f"
@@ -766,16 +816,19 @@
   version = "v0.17.1"
 
 [[projects]]
-  digest = "1:bad3b5113fd57bcf4549cc7d15283cc8b64cccef6f5044fc1246ee4ab88b18a1"
+  digest = "1:58f2854b50ff8862eb6a347f20dedaac83e1166f4040472e17bc37736841a12f"
   name = "go.opencensus.io"
   packages = [
     ".",
-    "exemplar",
     "internal",
     "internal/tagencoding",
+    "metric/metricdata",
+    "metric/metricproducer",
     "plugin/ocgrpc",
     "plugin/ochttp",
     "plugin/ochttp/propagation/b3",
+    "plugin/ochttp/propagation/tracecontext",
+    "resource",
     "stats",
     "stats/internal",
     "stats/view",
@@ -786,8 +839,8 @@
     "trace/tracestate",
   ]
   pruneopts = "NUT"
-  revision = "f305e5c4e2cf345eba88de13d10de1126fa45a61"
-  version = "v0.19.1"
+  revision = "43463a80402d8447b7fce0d2c58edf1687ff0b58"
+  version = "v0.19.3"
 
 [[projects]]
   digest = "1:22f696cee54865fb8e9ff91df7b633f6b8f22037a8015253c6b6a71ca82219c7"
@@ -989,12 +1042,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1d6ad0bc35bcc652dfa1a0615628bf7d7c9b55e8f88fb9d0121dcc7a0fb06f72"
+  digest = "1:8e2007b88bf5a0c448917bb43bca6bb929b49087a8ff1831549feb5711923f63"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api",
     "googleapis/api/annotations",
     "googleapis/api/distribution",
+    "googleapis/api/httpbody",
     "googleapis/api/label",
     "googleapis/api/metric",
     "googleapis/api/monitoredres",
