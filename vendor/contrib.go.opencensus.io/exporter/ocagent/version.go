@@ -12,17 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal // import "go.opencensus.io/stats/internal"
+package ocagent
 
-const (
-	MaxNameLength = 255
-)
-
-func IsPrintable(str string) bool {
-	for _, r := range str {
-		if !(r >= ' ' && r <= '~') {
-			return false
-		}
-	}
-	return true
-}
+const Version = "0.0.1"
