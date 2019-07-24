@@ -36,7 +36,7 @@ var (
 		semver.MustParse("v1.12.7"),
 		semver.MustParse("v1.13.5"),
 		semver.MustParse("v1.14.0"),
-		semver.MustParse("v1.15.0-beta.2"),
+		semver.MustParse("v1.15.0"),
 	}
 
 	operatingSystems = []providerconfig.OperatingSystem{
@@ -155,13 +155,13 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 func buildScenarios() []scenario {
 	var all []scenario
 	for _, version := range versions {
-		for _, os := range operatingSystems {
+		for _, ops := range operatingSystems {
 			s := scenario{
-				name: fmt.Sprintf("%s-%s", os, version),
+				name: fmt.Sprintf("%s-%s", ops, version),
 				// We only support docker
 				containerRuntime:  "docker",
 				kubernetesVersion: version.String(),
-				osName:            string(os),
+				osName:            string(ops),
 				executor:          verifyCreateAndDelete,
 			}
 			all = append(all, s)
