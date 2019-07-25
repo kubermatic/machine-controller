@@ -28,8 +28,6 @@ spec:
           cloudProviderSpec:
             cpus: "1"
             memory: "2048M"
-            # Can also be quay.io/kubermatic/machine-controller-kubevirt:centos-2
-            registryImage: quay.io/kubermatic/machine-controller-kubevirt:ubuntu-2
             config:
               value: '<< KUBECONFIG >>'
             namespace: kube-system

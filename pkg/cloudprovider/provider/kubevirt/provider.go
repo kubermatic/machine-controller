@@ -56,23 +56,21 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type RawConfig struct {
-	Config        providerconfig.ConfigVarString `json:"config,omitempty"`
-	CPUs          providerconfig.ConfigVarString `json:"cpus"`
-	Memory        providerconfig.ConfigVarString `json:"memory"`
-	RegistryImage providerconfig.ConfigVarString `json:"registryImage"`
-	Namespace     providerconfig.ConfigVarString `json:"namespace"`
-	SourceURL     providerconfig.ConfigVarString `json:"sourceURL"`
-	PVCStorage    providerconfig.ConfigVarString `json:"pvcStorage"`
+	Config     providerconfig.ConfigVarString `json:"config,omitempty"`
+	CPUs       providerconfig.ConfigVarString `json:"cpus"`
+	Memory     providerconfig.ConfigVarString `json:"memory"`
+	Namespace  providerconfig.ConfigVarString `json:"namespace"`
+	SourceURL  providerconfig.ConfigVarString `json:"sourceURL"`
+	PVCStorage providerconfig.ConfigVarString `json:"pvcStorage"`
 }
 
 type Config struct {
-	Config        rest.Config
-	CPUs          string
-	Memory        string
-	RegistryImage string
-	Namespace     string
-	SourceURL     string
-	PVCStorage    resource.Quantity
+	Config     rest.Config
+	CPUs       string
+	Memory     string
+	Namespace  string
+	SourceURL  string
+	PVCStorage resource.Quantity
 }
 
 type kubeVirtServer struct {
@@ -133,10 +131,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Memory)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
-	}
-	config.RegistryImage, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RegistryImage)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "registryImage" field: %v`, err)
 	}
 	config.Namespace, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Namespace)
 	if err != nil {
@@ -253,7 +247,6 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	if err == nil {
 		labels["cpus"] = c.CPUs
 		labels["memoryMIB"] = c.Memory
-		labels["registryImage"] = c.RegistryImage
 		labels["sourceURL"] = c.SourceURL
 	}
 
