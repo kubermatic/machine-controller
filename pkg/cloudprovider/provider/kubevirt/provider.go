@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	utilpointer "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
@@ -61,6 +62,7 @@ type RawConfig struct {
 	RegistryImage providerconfig.ConfigVarString `json:"registryImage"`
 	Namespace     providerconfig.ConfigVarString `json:"namespace"`
 	SourceUrl     providerconfig.ConfigVarString `json:"sourceUrl"`
+	PVCStorage    providerconfig.ConfigVarString `json:"pvcStorage"`
 }
 
 type Config struct {
@@ -70,6 +72,7 @@ type Config struct {
 	RegistryImage string
 	Namespace     string
 	SourceUrl     string
+	PVCStorage    resource.Quantity
 }
 
 type kubeVirtServer struct {
@@ -142,6 +145,13 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	config.SourceUrl, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SourceUrl)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "sourceUrl" field: %v`, err)
+	}
+	pvcStorage, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.PVCStorage)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "pvcStorage" field: %v`, err)
+	}
+	if config.PVCStorage, err = resource.ParseQuantity(pvcStorage); err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse value of "pvcStorage" field: %v`, err)
 	}
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(configString))
 	if err != nil {
@@ -269,18 +279,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	quantity, err := resource.ParseQuantity("10Gi")
-	if err != nil {
-		return nil, err
-	}
-
 	pvcRequest := corev1.ResourceList{
-		corev1.ResourceStorage: quantity,
+		corev1.ResourceStorage: c.PVCStorage,
 	}
 
 	var (
 		vmDataVolume     = fmt.Sprintf("%v-%v", machine.Name, "data-volume")
-		running          = true
 		storageClassName = "kubermatic-fast"
 	)
 	virtualMachine := &kubevirtv1.VirtualMachine{
@@ -292,7 +296,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			},
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			Running: &running,
+			Running: utilpointer.BoolPtr(true),
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
