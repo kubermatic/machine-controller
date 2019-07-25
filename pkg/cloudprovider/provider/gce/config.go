@@ -41,12 +41,14 @@ const (
 
 // imageProjects maps the OS to the Google Cloud image projects
 var imageProjects = map[providerconfig.OperatingSystem]string{
+	providerconfig.OperatingSystemCentOS: "centos-cloud",
 	providerconfig.OperatingSystemCoreos: "coreos-cloud",
 	providerconfig.OperatingSystemUbuntu: "ubuntu-os-cloud",
 }
 
 // imageFamilies maps the OS to the Google Cloud image projects
 var imageFamilies = map[providerconfig.OperatingSystem]string{
+	providerconfig.OperatingSystemCentOS: "centos-7",
 	providerconfig.OperatingSystemCoreos: "coreos-stable",
 	providerconfig.OperatingSystemUbuntu: "ubuntu-1804-lts",
 }
