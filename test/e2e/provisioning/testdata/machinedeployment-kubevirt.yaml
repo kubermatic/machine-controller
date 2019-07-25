@@ -27,7 +27,7 @@ spec:
           cloudProvider: "kubevirt"
           cloudProviderSpec:
             pvcStorage: "10Gi"
-            sourceUrl: http://10.109.79.210/<< OS_NAME >>.img
+            sourceURL: http://10.109.79.210/<< OS_NAME >>.img
             cpus: "1"
             memory: "2048M"
             registryImage: quay.io/kubermatic/machine-controller-kubevirt:<< OS_NAME >>-2

@@ -61,7 +61,7 @@ type RawConfig struct {
 	Memory        providerconfig.ConfigVarString `json:"memory"`
 	RegistryImage providerconfig.ConfigVarString `json:"registryImage"`
 	Namespace     providerconfig.ConfigVarString `json:"namespace"`
-	SourceUrl     providerconfig.ConfigVarString `json:"sourceUrl"`
+	SourceURL     providerconfig.ConfigVarString `json:"sourceURL"`
 	PVCStorage    providerconfig.ConfigVarString `json:"pvcStorage"`
 }
 
@@ -71,7 +71,7 @@ type Config struct {
 	Memory        string
 	RegistryImage string
 	Namespace     string
-	SourceUrl     string
+	SourceURL     string
 	PVCStorage    resource.Quantity
 }
 
@@ -142,9 +142,9 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "namespace" field: %v`, err)
 	}
-	config.SourceUrl, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SourceUrl)
+	config.SourceURL, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SourceURL)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "sourceUrl" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
 	}
 	pvcStorage, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.PVCStorage)
 	if err != nil {
@@ -254,7 +254,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 		labels["cpus"] = c.CPUs
 		labels["memoryMIB"] = c.Memory
 		labels["registryImage"] = c.RegistryImage
-		labels["sourceUrl"] = c.SourceUrl
+		labels["sourceURL"] = c.SourceURL
 	}
 
 	return labels, err
@@ -365,7 +365,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 						},
 						Source: v1alpha12.DataVolumeSource{
 							HTTP: &v1alpha12.DataVolumeSourceHTTP{
-								URL: c.SourceUrl,
+								URL: c.SourceURL,
 							},
 						},
 					},
