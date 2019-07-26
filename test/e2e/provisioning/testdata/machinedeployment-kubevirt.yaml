@@ -29,7 +29,7 @@ spec:
             pvcStorage: "10Gi"
             sourceURL: http://10.109.79.210/<< OS_NAME >>.img
             cpus: "1"
-            memory: "2048M"
+            memory: "4096M"
             config:
               value: '<< KUBECONFIG >>'
             namespace: kube-system
