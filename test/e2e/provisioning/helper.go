@@ -96,10 +96,6 @@ func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams [
 			continue
 		}
 
-		if strings.Contains(cloudProvider, "kubevirt") && testCase.name == "migrateUID" {
-			continue
-		}
-
 		st.Run(testCase.name, func(it *testing.T) {
 			testScenario(it, testCase, cloudProvider, testParams, manifestPath, true)
 		})
