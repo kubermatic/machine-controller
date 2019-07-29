@@ -155,13 +155,13 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 func buildScenarios() []scenario {
 	var all []scenario
 	for _, version := range versions {
-		for _, ops := range operatingSystems {
+		for _, operatingSystem := range operatingSystems {
 			s := scenario{
-				name: fmt.Sprintf("%s-%s", ops, version),
+				name: fmt.Sprintf("%s-%s", operatingSystem, version),
 				// We only support docker
 				containerRuntime:  "docker",
 				kubernetesVersion: version.String(),
-				osName:            string(ops),
+				osName:            string(operatingSystem),
 				executor:          verifyCreateAndDelete,
 			}
 			all = append(all, s)

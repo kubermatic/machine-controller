@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	v1alpha12 "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +39,7 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -56,21 +56,23 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type RawConfig struct {
-	Config     providerconfig.ConfigVarString `json:"config,omitempty"`
-	CPUs       providerconfig.ConfigVarString `json:"cpus"`
-	Memory     providerconfig.ConfigVarString `json:"memory"`
-	Namespace  providerconfig.ConfigVarString `json:"namespace"`
-	SourceURL  providerconfig.ConfigVarString `json:"sourceURL"`
-	PVCStorage providerconfig.ConfigVarString `json:"pvcStorage"`
+	Config           providerconfig.ConfigVarString `json:"config,omitempty"`
+	CPUs             providerconfig.ConfigVarString `json:"cpus"`
+	Memory           providerconfig.ConfigVarString `json:"memory"`
+	Namespace        providerconfig.ConfigVarString `json:"namespace"`
+	SourceURL        providerconfig.ConfigVarString `json:"sourceURL"`
+	PVCSize          providerconfig.ConfigVarString `json:"pvcSize"`
+	StorageClassName providerconfig.ConfigVarString `json:"storageClassName"`
 }
 
 type Config struct {
-	Config     rest.Config
-	CPUs       string
-	Memory     string
-	Namespace  string
-	SourceURL  string
-	PVCStorage resource.Quantity
+	Config           rest.Config
+	CPUs             string
+	Memory           string
+	Namespace        string
+	SourceURL        string
+	StorageClassName string
+	PVCSize          resource.Quantity
 }
 
 type kubeVirtServer struct {
@@ -140,12 +142,16 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
 	}
-	pvcStorage, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.PVCStorage)
+	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.PVCSize)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "pvcStorage" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "pvcSize" field: %v`, err)
 	}
-	if config.PVCStorage, err = resource.ParseQuantity(pvcStorage); err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse value of "pvcStorage" field: %v`, err)
+	if config.PVCSize, err = resource.ParseQuantity(pvcSize); err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse value of "pvcSize" field: %v`, err)
+	}
+	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.StorageClassName)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %v`, err)
 	}
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(configString))
 	if err != nil {
@@ -170,12 +176,21 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}
 	ctx := context.Background()
 
-	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
+	virtualMachine := &kubevirtv1.VirtualMachine{}
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachine); err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
+			return nil, fmt.Errorf("failed to get VirtualMachine %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
+	}
+
+	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
+		if kerrors.IsNotFound(err) {
+			return &kubeVirtServer{}, nil
+		}
+
+		return nil, err
 	}
 
 	// Deletion takes some time, so consider the VMI as deleted as soon as it has a DeletionTimestamp
@@ -272,11 +287,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	pvcRequest := corev1.ResourceList{
-		corev1.ResourceStorage: c.PVCStorage,
-	}
+	var (
+		pvcRequest     = corev1.ResourceList{corev1.ResourceStorage: c.PVCSize}
+		dataVolumeName = machine.Name
+	)
 
-	storageClassName := "kubermatic-fast"
+	// we need this check until this issue is resolved:
+	// https://github.com/kubevirt/containerized-data-importer/issues/895
+	if len(dataVolumeName) > 63 {
+		return nil, fmt.Errorf("dataVolumeName size %v, is bigger than 63 characters", len(dataVolumeName))
+	}
 
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
@@ -322,7 +342,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 							Name: "datavolumedisk",
 							VolumeSource: kubevirtv1.VolumeSource{
 								DataVolume: &kubevirtv1.DataVolumeSource{
-									Name: machine.Name,
+									Name: dataVolumeName,
 								},
 							},
 						},
@@ -339,14 +359,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 					},
 				},
 			},
-			DataVolumeTemplates: []v1alpha12.DataVolume{
+			DataVolumeTemplates: []cdi.DataVolume{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: machine.Name,
+						Name: dataVolumeName,
 					},
-					Spec: v1alpha12.DataVolumeSpec{
+					Spec: cdi.DataVolumeSpec{
 						PVC: &corev1.PersistentVolumeClaimSpec{
-							StorageClassName: utilpointer.StringPtr(storageClassName),
+							StorageClassName: utilpointer.StringPtr(c.StorageClassName),
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								"ReadWriteOnce",
 							},
@@ -354,8 +374,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 								Requests: pvcRequest,
 							},
 						},
-						Source: v1alpha12.DataVolumeSource{
-							HTTP: &v1alpha12.DataVolumeSourceHTTP{
+						Source: cdi.DataVolumeSource{
+							HTTP: &cdi.DataVolumeSourceHTTP{
 								URL: c.SourceURL,
 							},
 						},
