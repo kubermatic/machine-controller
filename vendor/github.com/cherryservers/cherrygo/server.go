@@ -1,7 +1,11 @@
 package cherrygo
 
 import (
+<<<<<<< HEAD
 	"fmt"
+=======
+	"log"
+>>>>>>> CherryServers provider implementation
 	"strings"
 )
 
@@ -60,7 +64,10 @@ type CreateServer struct {
 	Region      string   `json:"region,omitempty"`
 	SSHKeys     []string `json:"ssh_keys"`
 	IPAddresses []string `json:"ip_addresses"`
+<<<<<<< HEAD
 	UserData    string   `json:"user_data"`
+=======
+>>>>>>> CherryServers provider implementation
 }
 
 // DeleteServer field for removing server
@@ -80,7 +87,11 @@ func (s *ServerClient) List(serverID string) (Server, *Response, error) {
 
 	resp, err := s.client.MakeRequest("GET", serverPath, nil, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 
 	return trans, resp, err
@@ -97,7 +108,11 @@ func (s *ServerClient) PowerState(serverID string) (PowerState, *Response, error
 
 	resp, err := s.client.MakeRequest("GET", serverPath, nil, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 
 	return trans, resp, err
@@ -112,9 +127,16 @@ func (s *ServerClient) Create(projectID string, request *CreateServer) (Server, 
 
 	serverPath := strings.Join([]string{baseIPSPath, projectID, endServersPath}, "/")
 
+<<<<<<< HEAD
 	resp, err := s.client.MakeRequest("POST", serverPath, request, &trans)
 	if err != nil {
 		err = fmt.Errorf("Error: %v", err)
+=======
+	//log.Fatalf("Request: %v", request)
+	resp, err := s.client.MakeRequest("POST", serverPath, request, &trans)
+	if err != nil {
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 	return trans, resp, err
 
@@ -129,7 +151,11 @@ func (s *ServerClient) Delete(request *DeleteServer) (Server, *Response, error) 
 
 	resp, err := s.client.MakeRequest("DELETE", serverPath, request, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal("Error in Delete: ", err)
+>>>>>>> CherryServers provider implementation
 	}
 	return trans, resp, err
 }

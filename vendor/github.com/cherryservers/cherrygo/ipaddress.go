@@ -1,7 +1,11 @@
 package cherrygo
 
 import (
+<<<<<<< HEAD
 	"fmt"
+=======
+	"log"
+>>>>>>> CherryServers provider implementation
 	"strings"
 )
 
@@ -51,7 +55,11 @@ func (i *IPClient) List(projectID string, ipID string) (IPAddresses, *Response, 
 
 	resp, err := i.client.MakeRequest("GET", ipsPath, nil, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 
 	return trans, resp, err
@@ -66,7 +74,11 @@ func (i *IPClient) Create(projectID string, request *CreateIPAddress) (IPAddress
 
 	resp, err := i.client.MakeRequest("POST", ipAddressPath, request, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 	return trans, resp, err
 
@@ -81,7 +93,11 @@ func (i *IPClient) Update(projectID string, ipID string, request *UpdateIPAddres
 
 	resp, err := i.client.MakeRequest("PUT", ipAddressPath, request, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 
 	return trans, resp, err
@@ -96,7 +112,11 @@ func (i *IPClient) Remove(projectID string, request *RemoveIPAddress) (IPAddress
 
 	resp, err := i.client.MakeRequest("DELETE", ipAddressPath, request, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 	return trans, resp, err
 }

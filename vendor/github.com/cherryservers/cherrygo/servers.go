@@ -1,7 +1,11 @@
 package cherrygo
 
 import (
+<<<<<<< HEAD
 	"fmt"
+=======
+	"log"
+>>>>>>> CherryServers provider implementation
 	"strings"
 )
 
@@ -94,7 +98,11 @@ func (s *ServersClient) List(projectID string) ([]Servers, *Response, error) {
 	//log.Println("\nFROM LIST1: ", root.Teams)
 	resp, err := s.client.MakeRequest("GET", serversPath, nil, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 
 	return trans, resp, err

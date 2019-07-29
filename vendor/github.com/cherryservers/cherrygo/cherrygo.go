@@ -8,7 +8,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+<<<<<<< HEAD
 	"net/http/httputil"
+=======
+>>>>>>> CherryServers provider implementation
 	"net/url"
 	"os"
 )
@@ -18,7 +21,10 @@ const (
 	cherryAuthTokenVar = "CHERRY_AUTH_TOKEN"
 	mediaType          = "application/json"
 	userAgent          = "cherry-agent-go"
+<<<<<<< HEAD
 	cherryDebugVar     = "CHERRY_DEBUG"
+=======
+>>>>>>> CherryServers provider implementation
 )
 
 // Client returns struct for client
@@ -56,6 +62,10 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 
 	u := c.BaseURL.ResolveReference(url)
 	fmt.Printf("\nAPI Endpoint: %v\n", u)
+<<<<<<< HEAD
+=======
+	//fmt.Printf("\nBODY: %v\n", body)
+>>>>>>> CherryServers provider implementation
 
 	buf := new(bytes.Buffer)
 	if body != nil {
@@ -74,11 +84,14 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 		return nil, err
 	}
 
+<<<<<<< HEAD
 	if c.debug {
 		o, _ := httputil.DumpRequestOut(req, true)
 		log.Printf("\n+++++++++++++REQUEST+++++++++++++\n%s\n+++++++++++++++++++++++++++++++++", string(o))
 	}
 
+=======
+>>>>>>> CherryServers provider implementation
 	req.Close = true
 
 	bearer := "Bearer " + c.AuthToken
@@ -92,16 +105,35 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 		return nil, err
 	}
 
+<<<<<<< HEAD
+=======
+	// make debug = 1 to output raw JSON
+	debug := 0
+	if debug == 1 {
+
+		// Debug output of Json body
+		fmt.Printf("REQUEST: %v", resp)
+		bodyBytes, err2 := ioutil.ReadAll(resp.Body)
+		if err2 != nil {
+			log.Fatal("FATAL: ", err2)
+		}
+		fmt.Printf("%+v", string(bodyBytes))
+		fmt.Println("----------")
+	}
+>>>>>>> CherryServers provider implementation
 	defer resp.Body.Close()
 
 	// inicializuojam responsa reikiamo tipo grazinimui
 	response := Response{Response: resp}
 
+<<<<<<< HEAD
 	if c.debug {
 		o, _ := httputil.DumpResponse(response.Response, true)
 		log.Printf("\n+++++++++++++RESPONSE+++++++++++++\n%s\n+++++++++++++++++++++++++++++++++", string(o))
 	}
 
+=======
+>>>>>>> CherryServers provider implementation
 	if sc := response.StatusCode; sc >= 299 {
 
 		type ErrorResponse struct {
@@ -114,11 +146,19 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 
 		bod, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
+<<<<<<< HEAD
 			return nil, err
 		}
 		err = json.Unmarshal(bod, &errorResponse)
 		if err != nil {
 			return nil, err
+=======
+			log.Fatalf("Error while reading error body: %v", err)
+		}
+		err = json.Unmarshal(bod, &errorResponse)
+		if err != nil {
+			fmt.Printf("Error while unmarshal error body: %v", err)
+>>>>>>> CherryServers provider implementation
 		}
 		// jei reikia viso, tai printinti response.Response
 		err = fmt.Errorf("Error response from API: %v (error code: %v)", errorResponse.Message, errorResponse.Code)
@@ -167,6 +207,7 @@ func NewClient() (*Client, error) {
 		return nil, fmt.Errorf("You must export %s", cherryAuthTokenVar)
 	}
 
+<<<<<<< HEAD
 	c := NewClientWithAuthVar(httpClient, authToken)
 
 	return c, nil
@@ -181,6 +222,8 @@ func NewClientWithAuthVar(httpClient *http.Client, authToken string) *Client {
 // NewClientBase is for new client base creation
 func NewClientBase(httpClient *http.Client, authToken string) (*Client, error) {
 
+=======
+>>>>>>> CherryServers provider implementation
 	url, err := url.Parse(apiURL)
 	if err != nil {
 		return nil, err
@@ -189,7 +232,10 @@ func NewClientBase(httpClient *http.Client, authToken string) (*Client, error) {
 	c := &Client{client: httpClient, AuthToken: authToken, BaseURL: url, UserAgent: userAgent}
 
 	// I teamsClient atiduotu cca turiu apie client'a
+<<<<<<< HEAD
 	c.debug = os.Getenv(cherryDebugVar) != ""
+=======
+>>>>>>> CherryServers provider implementation
 	c.Teams = &TeamsClient{client: c}
 	c.Plans = &PlansClient{client: c}
 	c.Images = &ImagesClient{client: c}
@@ -202,7 +248,11 @@ func NewClientBase(httpClient *http.Client, authToken string) (*Client, error) {
 	c.IPAddresses = &IPSClient{client: c}
 	c.IPAddress = &IPClient{client: c}
 
+<<<<<<< HEAD
 	return c, err
+=======
+	return c, nil
+>>>>>>> CherryServers provider implementation
 }
 
 // ErrorResponse fields

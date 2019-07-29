@@ -1,6 +1,12 @@
 package cherrygo
 
+<<<<<<< HEAD
 import "fmt"
+=======
+import (
+	"log"
+)
+>>>>>>> CherryServers provider implementation
 
 const teamsPath = "/v1/teams"
 
@@ -93,7 +99,11 @@ func (t *TeamsClient) List() ([]Teams, *Response, error) {
 	//log.Println("\nFROM LIST1: ", root.Teams)
 	resp, err := t.client.MakeRequest("GET", teamsPath, nil, &trans)
 	if err != nil {
+<<<<<<< HEAD
 		err = fmt.Errorf("Error: %v", err)
+=======
+		log.Fatal(err)
+>>>>>>> CherryServers provider implementation
 	}
 
 	return trans, resp, err
