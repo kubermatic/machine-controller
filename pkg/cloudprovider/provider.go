@@ -18,6 +18,7 @@ package cloudprovider
 
 import (
 	"errors"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/cherryservers"
 
 	cloudprovidercache "github.com/kubermatic/machine-controller/pkg/cloudprovider/cache"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
@@ -74,6 +75,9 @@ var (
 		},
 		providerconfig.CloudProviderKubeVirt: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return kubevirt.New(cvr)
+		},
+		providerconfig.CloudProviderCherryServers: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return cherryservers.New(cvr)
 		},
 	}
 )
