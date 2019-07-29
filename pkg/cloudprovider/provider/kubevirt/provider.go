@@ -276,10 +276,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		corev1.ResourceStorage: c.PVCStorage,
 	}
 
-	var (
-		vmDataVolume     = fmt.Sprintf("%v-%v", machine.Name, "data-volume")
-		storageClassName = "kubermatic-fast"
-	)
+	storageClassName := "kubermatic-fast"
+
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -324,7 +322,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 							Name: "datavolumedisk",
 							VolumeSource: kubevirtv1.VolumeSource{
 								DataVolume: &kubevirtv1.DataVolumeSource{
-									Name: vmDataVolume,
+									Name: machine.Name,
 								},
 							},
 						},
@@ -344,7 +342,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			DataVolumeTemplates: []v1alpha12.DataVolume{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: vmDataVolume,
+						Name: machine.Name,
 					},
 					Spec: v1alpha12.DataVolumeSpec{
 						PVC: &corev1.PersistentVolumeClaimSpec{
@@ -358,7 +356,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 						},
 						Source: v1alpha12.DataVolumeSource{
 							HTTP: &v1alpha12.DataVolumeSourceHTTP{
-								URL: "https://cloud-images.ubuntu.com/bionic/20190722.1/bionic-server-cloudimg-amd64.img",
+								URL: c.SourceURL,
 							},
 						},
 					},
