@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-cherryservers
+  namespace: kube-system
+type: Opaque
+stringData:
+  token: << CHERRYSERVERS_TOKEN >>
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: cherryservers-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "cherryservers"
+          cloudProviderSpec:
+          # If empty, can be set via CHERRYSERVERS_TOKEN env var
+            token:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-cherryservers
+                key: token
+            plan: "Smart8"
+            location: "EU-East-1"
+            projectID: "<< YOUR_PROJECT_ID >>"
+            # Optional
+            labels:
+              my: label
+          operatingSystem: "Ubuntu 18.04 64bit"  # Or "CentOS 7 64bit"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+      versions:
+        kubelet: 1.13.1

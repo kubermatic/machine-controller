@@ -59,6 +59,7 @@ const (
 	CloudProviderVsphere      CloudProvider = "vsphere"
 	CloudProviderFake         CloudProvider = "fake"
 	CloudProviderKubeVirt     CloudProvider = "kubevirt"
+	CloudProviderCherryServers CloudProvider = "cherryservers"
 )
 
 // DNSConfig contains a machine's DNS configuration
