@@ -393,7 +393,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	machine := listerMachine.DeepCopy()
-	if err := c.sync(machine); err != nil {
+	if err = c.sync(machine); err != nil {
 		// We have no guarantee that machine is non-nil after reconciliation
 		machine := listerMachine.DeepCopy()
 		glog.Errorf("Failed to reconcile machine %q: %v", machine.Name, err)
