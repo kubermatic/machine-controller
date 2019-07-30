@@ -25,11 +25,11 @@
   version = "v0.4.12"
 
 [[projects]]
-  digest = "1:a6eaacf9af7b9e0e94fb5a421a4b513bf7297efab1c05b86cfb74d364e8372c2"
+  digest = "1:d60522a2233add2899da4243e4928dc554e82b7c50b3a7924effaef4bffe2739"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
-    "services/compute/mgmt/2018-04-01/compute",
-    "services/network/mgmt/2018-04-01/network",
+    "services/compute/mgmt/2018-06-01/compute",
+    "services/network/mgmt/2018-06-01/network",
     "version",
   ]
   pruneopts = "NUT"
@@ -1519,8 +1519,8 @@
   input-imports = [
     "cloud.google.com/go/logging",
     "cloud.google.com/go/monitoring/apiv3",
-    "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-04-01/compute",
-    "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-04-01/network",
+    "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute",
+    "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network",
     "github.com/Azure/go-autorest/autorest/azure/auth",
     "github.com/Azure/go-autorest/autorest/to",
     "github.com/Masterminds/semver",
