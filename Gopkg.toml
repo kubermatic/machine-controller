@@ -147,3 +147,7 @@ required = [
 [[constraint]]
   branch = "master"
   name = "github.com/cherryservers/cherrygo"
+  
+[[constraint]]
+  name = "github.com/kubevirt/client-go"
+  version = "^0.19.0"

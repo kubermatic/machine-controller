@@ -1,0 +1,43 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: create-bind-mounts
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: create-bind-mounts
+  template:
+    metadata:
+      labels:
+        app: create-bind-mounts
+    spec:
+      hostPID: true
+      containers:
+        - name: startup-script
+          image: quay.io/kubermatic/startup-script:v0.1.0
+          securityContext:
+            privileged: true
+          env:
+            - name: STARTUP_SCRIPT
+              value: |
+                for ((i=1;i<=50;i++));
+                do
+                  mkdir -p /opt/kube-disks/${i} /mnt/local-volumes/${i}
+                  cat >/etc/systemd/system/mnt-local\\x2dvolumes-${i}.mount <<EOL
+                [Unit]
+                DefaultDependencies=no
+                Before=local-fs.target umount.target
+
+                [Mount]
+                What=/opt/kube-disks/${i}
+                Where=/mnt/local-volumes/${i}
+                Type=none
+                Options=bind
+
+                [Install]
+                WantedBy=local-fs.target
+                EOL
+                  systemctl daemon-reload
+                  systemctl enable --now "mnt-local\x2dvolumes-${i}.mount"
+                done

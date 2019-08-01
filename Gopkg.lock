@@ -1431,6 +1431,14 @@
   revision = "0f2f0396e266ad24afbd02375ba74c0dda1e3611"
 
 [[projects]]
+  branch = "master"
+  digest = "1:98bfb68d62e4df4c94f54f333dea17c1f2d26c5b70620b6c9ad6d7bbc6a0f7ea"
+  name = "k8s.io/utils"
+  packages = ["pointer"]
+  pruneopts = "NUT"
+  revision = "3dccf664f023863740c508fb4284e49742bedfa4"
+
+[[projects]]
   digest = "1:b9fb0efb2078126748b814cd17653745dab833ca57daa281f4979b3b5c0ee0e1"
   name = "kubevirt.io/containerized-data-importer"
   packages = [
@@ -1628,6 +1636,8 @@
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/gengo/examples/defaulter-gen/generators",
+    "k8s.io/utils/pointer",
+    "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1",
     "kubevirt.io/kubevirt/pkg/api/v1",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",

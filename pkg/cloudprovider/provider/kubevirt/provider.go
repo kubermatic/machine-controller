@@ -36,8 +36,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	utilpointer "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -54,19 +56,23 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type RawConfig struct {
-	Config        providerconfig.ConfigVarString `json:"config,omitempty"`
-	CPUs          providerconfig.ConfigVarString `json:"cpus"`
-	Memory        providerconfig.ConfigVarString `json:"memory"`
-	RegistryImage providerconfig.ConfigVarString `json:"registryImage"`
-	Namespace     providerconfig.ConfigVarString `json:"namespace"`
+	Config           providerconfig.ConfigVarString `json:"config,omitempty"`
+	CPUs             providerconfig.ConfigVarString `json:"cpus"`
+	Memory           providerconfig.ConfigVarString `json:"memory"`
+	Namespace        providerconfig.ConfigVarString `json:"namespace"`
+	SourceURL        providerconfig.ConfigVarString `json:"sourceURL"`
+	PVCSize          providerconfig.ConfigVarString `json:"pvcSize"`
+	StorageClassName providerconfig.ConfigVarString `json:"storageClassName"`
 }
 
 type Config struct {
-	Config        rest.Config
-	CPUs          string
-	Memory        string
-	RegistryImage string
-	Namespace     string
+	Config           rest.Config
+	CPUs             string
+	Memory           string
+	Namespace        string
+	SourceURL        string
+	StorageClassName string
+	PVCSize          resource.Quantity
 }
 
 type kubeVirtServer struct {
@@ -128,13 +134,24 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
 	}
-	config.RegistryImage, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RegistryImage)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "registryImage" field: %v`, err)
-	}
 	config.Namespace, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Namespace)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "namespace" field: %v`, err)
+	}
+	config.SourceURL, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SourceURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
+	}
+	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.PVCSize)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "pvcSize" field: %v`, err)
+	}
+	if config.PVCSize, err = resource.ParseQuantity(pvcSize); err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse value of "pvcSize" field: %v`, err)
+	}
+	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.StorageClassName)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %v`, err)
 	}
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(configString))
 	if err != nil {
@@ -159,12 +176,21 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}
 	ctx := context.Background()
 
-	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
+	virtualMachine := &kubevirtv1.VirtualMachine{}
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachine); err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
+			return nil, fmt.Errorf("failed to get VirtualMachine %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
+	}
+
+	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
+		if kerrors.IsNotFound(err) {
+			return &kubeVirtServer{}, nil
+		}
+
+		return nil, err
 	}
 
 	// Deletion takes some time, so consider the VMI as deleted as soon as it has a DeletionTimestamp
@@ -236,7 +262,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	if err == nil {
 		labels["cpus"] = c.CPUs
 		labels["memoryMIB"] = c.Memory
-		labels["registryImage"] = c.RegistryImage
+		labels["sourceURL"] = c.SourceURL
 	}
 
 	return labels, err
@@ -261,62 +287,96 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	quantity, err := resource.ParseQuantity("2Gi")
-	if err != nil {
-		return nil, err
+	var (
+		pvcRequest     = corev1.ResourceList{corev1.ResourceStorage: c.PVCSize}
+		dataVolumeName = machine.Name
+	)
+
+	// we need this check until this issue is resolved:
+	// https://github.com/kubevirt/containerized-data-importer/issues/895
+	if len(dataVolumeName) > 63 {
+		return nil, fmt.Errorf("dataVolumeName size %v, is bigger than 63 characters", len(dataVolumeName))
 	}
 
-	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{
+	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
 			Namespace: c.Namespace,
+			Labels: map[string]string{
+				"kubevirt.io/vm": machine.Name,
+			},
 		},
-		Spec: kubevirtv1.VirtualMachineInstanceSpec{
-			Domain: kubevirtv1.DomainSpec{
-				Devices: kubevirtv1.Devices{
-					Disks: []kubevirtv1.Disk{
-						{
-							Name:       "containerdisk",
-							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-						},
-						{
-							Name:       "emptydisk",
-							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-						},
-						{
-							Name:       "cloudinitdisk",
-							DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
-						},
+		Spec: kubevirtv1.VirtualMachineSpec{
+			Running: utilpointer.BoolPtr(true),
+			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"kubevirt.io/vm": machine.Name,
 					},
 				},
-				Resources: kubevirtv1.ResourceRequirements{
-					Requests: *requestsAndLimits,
-					Limits:   *requestsAndLimits,
+				Spec: kubevirtv1.VirtualMachineInstanceSpec{
+					Domain: kubevirtv1.DomainSpec{
+						CPU: &kubevirtv1.CPU{
+							Cores: 2,
+						},
+						Devices: kubevirtv1.Devices{
+							Disks: []kubevirtv1.Disk{
+								{
+									Name:       "datavolumedisk",
+									DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+								},
+								{
+									Name:       "cloudinitdisk",
+									DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
+								},
+							},
+						},
+						Resources: kubevirtv1.ResourceRequirements{
+							Requests: *requestsAndLimits,
+							Limits:   *requestsAndLimits,
+						},
+					},
+					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+					Volumes: []kubevirtv1.Volume{
+						{
+							Name: "datavolumedisk",
+							VolumeSource: kubevirtv1.VolumeSource{
+								DataVolume: &kubevirtv1.DataVolumeSource{
+									Name: dataVolumeName,
+								},
+							},
+						},
+						{
+							Name: "cloudinitdisk",
+							VolumeSource: kubevirtv1.VolumeSource{
+								CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
+									UserDataSecretRef: &corev1.LocalObjectReference{
+										Name: userDataSecretName,
+									},
+								},
+							},
+						},
+					},
 				},
 			},
-			// Must be set because of https://github.com/kubevirt/kubevirt/issues/178
-			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-			Volumes: []kubevirtv1.Volume{
+			DataVolumeTemplates: []cdi.DataVolume{
 				{
-					Name: "containerdisk",
-					VolumeSource: kubevirtv1.VolumeSource{
-						ContainerDisk: &kubevirtv1.ContainerDiskSource{Image: c.RegistryImage},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: dataVolumeName,
 					},
-				},
-				{
-					Name: "emptydisk",
-					VolumeSource: kubevirtv1.VolumeSource{
-						EmptyDisk: &kubevirtv1.EmptyDiskSource{
-							Capacity: quantity,
+					Spec: cdi.DataVolumeSpec{
+						PVC: &corev1.PersistentVolumeClaimSpec{
+							StorageClassName: utilpointer.StringPtr(c.StorageClassName),
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								"ReadWriteOnce",
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: pvcRequest,
+							},
 						},
-					},
-				},
-				{
-					Name: "cloudinitdisk",
-					VolumeSource: kubevirtv1.VolumeSource{
-						CloudInitNoCloud: &kubevirtv1.CloudInitNoCloudSource{
-							UserDataSecretRef: &corev1.LocalObjectReference{
-								Name: userDataSecretName,
+						Source: cdi.DataVolumeSource{
+							HTTP: &cdi.DataVolumeSourceHTTP{
+								URL: c.SourceURL,
 							},
 						},
 					},
@@ -331,22 +391,22 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	}
 	ctx := context.Background()
 
-	if err := sigClient.Create(ctx, virtualMachineInstance); err != nil {
+	if err := sigClient.Create(ctx, virtualMachine); err != nil {
 		return nil, fmt.Errorf("failed to create vmi: %v", err)
 	}
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            userDataSecretName,
-			Namespace:       virtualMachineInstance.Namespace,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachineInstance, kubevirtv1.VirtualMachineInstanceGroupVersionKind)},
+			Namespace:       virtualMachine.Namespace,
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(virtualMachine, kubevirtv1.VirtualMachineGroupVersionKind)},
 		},
 		Data: map[string][]byte{"userdata": []byte(userdata)},
 	}
 	if err := sigClient.Create(ctx, secret); err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
-	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
+	return &kubeVirtServer{}, nil
 
 }
 
@@ -364,8 +424,8 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	}
 	ctx := context.Background()
 
-	vmi := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vmi); err != nil {
+	vm := &kubevirtv1.VirtualMachine{}
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vm); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
@@ -373,7 +433,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return true, nil
 	}
 
-	return false, sigClient.Delete(ctx, vmi)
+	return false, sigClient.Delete(ctx, vm)
 }
 
 func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
