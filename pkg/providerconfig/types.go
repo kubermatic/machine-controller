@@ -92,7 +92,7 @@ type Config struct {
 // because it is not cross namespace
 type GlobaObjectKeySelector struct {
 	v1.ObjectReference `json:",inline"`
-	Key                string `json:"key"`
+	Key                string `json:"key,omitempty"`
 }
 
 type GlobalSecretKeySelector GlobaObjectKeySelector
