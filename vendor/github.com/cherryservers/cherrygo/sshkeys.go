@@ -1,8 +1,6 @@
 package cherrygo
 
-import (
-	"log"
-)
+import "fmt"
 
 const baseSSHPath = "/v1/ssh-keys"
 
@@ -36,7 +34,7 @@ func (s *SSHKeysClient) List() ([]SSHKeys, *Response, error) {
 	//log.Println("\nFROM LIST1: ", root.Teams)
 	resp, err := s.client.MakeRequest("GET", baseSSHPath, nil, &trans)
 	if err != nil {
-		log.Fatal(err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 
 	return trans, resp, err

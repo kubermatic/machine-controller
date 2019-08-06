@@ -196,7 +196,7 @@
   name = "github.com/cherryservers/cherrygo"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "23401764c27209f1aa74ab5b33c11e754f6a4807"
+  revision = "d8c1476b968d1594d62005121979cd64533296fc"
 
 [[projects]]
   digest = "1:15173ac9caac43ba3a8990716158f5fd08174293e259d0a9e67f6fc98cc39d35"
