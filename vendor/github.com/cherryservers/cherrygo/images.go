@@ -1,7 +1,7 @@
 package cherrygo
 
 import (
-	"log"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -16,9 +16,9 @@ type GetImages interface {
 
 // Images tai ka grazina api
 type Images struct {
-	ID      int     `json:"id,omitempty"`
-	Name    string  `json:"name,omitempty"`
-	Pricing Pricing `json:"pricing,omitempty"`
+	ID      int       `json:"id,omitempty"`
+	Name    string    `json:"name,omitempty"`
+	Pricing []Pricing `json:"pricing,omitempty"`
 }
 
 // ImagesClient paveldi client
@@ -35,11 +35,10 @@ func (i *ImagesClient) List(planID int) ([]Images, *Response, error) {
 	plansPath := strings.Join([]string{baseImagePath, planIDString, endImagePath}, "/")
 
 	var trans []Images
-	//resp := t.client.Bumba()
-	//log.Println("\nFROM LIST1: ", root.Teams)
+
 	resp, err := i.client.MakeRequest("GET", plansPath, nil, &trans)
 	if err != nil {
-		log.Fatal(err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 
 	return trans, resp, err

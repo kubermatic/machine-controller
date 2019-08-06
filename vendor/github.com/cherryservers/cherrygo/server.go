@@ -1,7 +1,7 @@
 package cherrygo
 
 import (
-	"log"
+	"fmt"
 	"strings"
 )
 
@@ -60,6 +60,7 @@ type CreateServer struct {
 	Region      string   `json:"region,omitempty"`
 	SSHKeys     []string `json:"ssh_keys"`
 	IPAddresses []string `json:"ip_addresses"`
+	UserData    string   `json:"user_data"`
 }
 
 // DeleteServer field for removing server
@@ -79,7 +80,7 @@ func (s *ServerClient) List(serverID string) (Server, *Response, error) {
 
 	resp, err := s.client.MakeRequest("GET", serverPath, nil, &trans)
 	if err != nil {
-		log.Fatal(err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 
 	return trans, resp, err
@@ -96,7 +97,7 @@ func (s *ServerClient) PowerState(serverID string) (PowerState, *Response, error
 
 	resp, err := s.client.MakeRequest("GET", serverPath, nil, &trans)
 	if err != nil {
-		log.Fatal(err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 
 	return trans, resp, err
@@ -111,10 +112,9 @@ func (s *ServerClient) Create(projectID string, request *CreateServer) (Server, 
 
 	serverPath := strings.Join([]string{baseIPSPath, projectID, endServersPath}, "/")
 
-	//log.Fatalf("Request: %v", request)
 	resp, err := s.client.MakeRequest("POST", serverPath, request, &trans)
 	if err != nil {
-		log.Fatal(err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 	return trans, resp, err
 
@@ -129,7 +129,7 @@ func (s *ServerClient) Delete(request *DeleteServer) (Server, *Response, error) 
 
 	resp, err := s.client.MakeRequest("DELETE", serverPath, request, &trans)
 	if err != nil {
-		log.Fatal("Error in Delete: ", err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 	return trans, resp, err
 }

@@ -1,7 +1,7 @@
 package cherrygo
 
 import (
-	"log"
+	"fmt"
 	"strings"
 )
 
@@ -29,7 +29,7 @@ func (i *IPSClient) List(projectID string) ([]IPAddresses, *Response, error) {
 	//log.Println("\nFROM LIST1: ", root.Teams)
 	resp, err := i.client.MakeRequest("GET", ipsPath, nil, &trans)
 	if err != nil {
-		log.Fatalf("Error while making request: %v", err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 
 	return trans, resp, err
