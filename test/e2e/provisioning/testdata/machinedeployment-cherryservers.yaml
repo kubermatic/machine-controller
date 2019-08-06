@@ -28,10 +28,7 @@ spec:
             plan: "Smart8"
             location: "EU-East-1"
             projectID: "<< PROJECT_ID >>"
-<<<<<<< HEAD
             teamID: "<< TEAM_ID >>"
-=======
->>>>>>> CherryServers provider implementation
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false

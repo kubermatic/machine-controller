@@ -9,29 +9,20 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-<<<<<<< HEAD
 	"os"
 	"strconv"
 
-=======
->>>>>>> CherryServers provider implementation
 	"github.com/cherryservers/cherrygo"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"golang.org/x/crypto/ssh"
+
 	"k8s.io/apimachinery/pkg/types"
-<<<<<<< HEAD
+
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-=======
-	"os"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"strconv"
-	"time"
->>>>>>> CherryServers provider implementation
 )
 
 const privateRSAKeyBitSize = 4096
@@ -96,14 +87,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 		return nil, nil, fmt.Errorf("failed to get the value of \"projectID\" field, error = %v", err)
 	}
 
-<<<<<<< HEAD
 	c.TeamID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TeamID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"teamID\" field, error = %v", err)
 	}
 
-=======
->>>>>>> CherryServers provider implementation
 	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Location)
 	if err != nil {
 		return nil, nil, err
@@ -185,37 +173,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		}
 	}
 
-<<<<<<< HEAD
-=======
-	sshPrivateKey, sshPublicKey, err := NewKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
-	}
-
-	key, _, err := client.SSHKey.Create(&cherrygo.CreateSSHKey{
-		Label: machine.Name,
-		Key:   sshPublicKey,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("creating ssh key on cherry server failed: %v", err)
-	}
-
->>>>>>> CherryServers provider implementation
 	serverCreateRequest := cherrygo.CreateServer{
 		ProjectID:   c.ProjectID,
 		Hostname:    machine.Name,
 		Image:       osName,
 		Region:      c.Location,
-<<<<<<< HEAD
 		SSHKeys:     []string{},
 		IPAddresses: []string{},
 		PlanID:      strconv.Itoa(planID),
 		UserData:    base64.StdEncoding.EncodeToString([]byte(userdata)),
-=======
-		SSHKeys:     []string{strconv.Itoa(key.ID)},
-		IPAddresses: []string{},
-		PlanID:      strconv.Itoa(planID),
->>>>>>> CherryServers provider implementation
 	}
 
 	server, _, err := client.Server.Create(c.ProjectID, &serverCreateRequest)
@@ -226,54 +192,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		}
 	}
 
-<<<<<<< HEAD
-=======
-	status := "pending"
-	var newSrv cherrygo.Server
-	for status != "active" {
-		newSrv, _, _ = client.Server.List(strconv.Itoa(server.ID))
-		status = newSrv.State
-		time.Sleep(30 * time.Second)
-	}
-
-	time.Sleep(30 * time.Second)
-
-	signer, err := ssh.ParsePrivateKey(sshPrivateKey)
-	sshClientConfig := &ssh.ClientConfig{
-		User:            "root",
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", newSrv.IPAddresses[0].Address, "22"), sshClientConfig)
-	defer conn.Close()
-	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Could not open ssh connection, details = %v", err),
-		}
-	}
-
-	session, err := conn.NewSession()
-	defer session.Close()
-	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Could not create ssh session, details = %v", err),
-		}
-	}
-
-	encoded := base64.StdEncoding.EncodeToString([]byte(userdata))
-
-	err = session.Run("echo " + encoded + " | base64 -d > /etc/cloud/cloud.cfg.d/99_machine_controller.cfg && rm -rf /var/lib/cloud/* && cloud-init init && systemctl start setup.service --no-block")
-	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Could not inject cloud-config, details = %v", err),
-		}
-	}
-
->>>>>>> CherryServers provider implementation
 	return &cherryServer{server: server}, nil
 }
 

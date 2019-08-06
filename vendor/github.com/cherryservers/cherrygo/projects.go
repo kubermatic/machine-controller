@@ -1,11 +1,7 @@
 package cherrygo
 
 import (
-<<<<<<< HEAD
 	"fmt"
-=======
-	"log"
->>>>>>> CherryServers provider implementation
 	"strconv"
 	"strings"
 )
@@ -39,18 +35,10 @@ func (p *ProjectsClient) List(teamID int) ([]Projects, *Response, error) {
 	plansPath := strings.Join([]string{baseProjectPath, teamIDString, endProjectPath}, "/")
 
 	var trans []Projects
-<<<<<<< HEAD
 
 	resp, err := p.client.MakeRequest("GET", plansPath, nil, &trans)
 	if err != nil {
 		err = fmt.Errorf("Error: %v", err)
-=======
-	//resp := t.client.Bumba()
-	//log.Println("\nFROM LIST1: ", root.Teams)
-	resp, err := p.client.MakeRequest("GET", plansPath, nil, &trans)
-	if err != nil {
-		log.Fatal(err)
->>>>>>> CherryServers provider implementation
 	}
 
 	return trans, resp, err
