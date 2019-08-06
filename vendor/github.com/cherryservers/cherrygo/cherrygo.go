@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 )
@@ -17,6 +18,7 @@ const (
 	cherryAuthTokenVar = "CHERRY_AUTH_TOKEN"
 	mediaType          = "application/json"
 	userAgent          = "cherry-agent-go"
+	cherryDebugVar     = "CHERRY_DEBUG"
 )
 
 // Client returns struct for client
@@ -54,7 +56,6 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 
 	u := c.BaseURL.ResolveReference(url)
 	fmt.Printf("\nAPI Endpoint: %v\n", u)
-	//fmt.Printf("\nBODY: %v\n", body)
 
 	buf := new(bytes.Buffer)
 	if body != nil {
@@ -73,6 +74,11 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 		return nil, err
 	}
 
+	if c.debug {
+		o, _ := httputil.DumpRequestOut(req, true)
+		log.Printf("\n+++++++++++++REQUEST+++++++++++++\n%s\n+++++++++++++++++++++++++++++++++", string(o))
+	}
+
 	req.Close = true
 
 	bearer := "Bearer " + c.AuthToken
@@ -86,23 +92,15 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 		return nil, err
 	}
 
-	// make debug = 1 to output raw JSON
-	debug := 0
-	if debug == 1 {
-
-		// Debug output of Json body
-		fmt.Printf("REQUEST: %v", resp)
-		bodyBytes, err2 := ioutil.ReadAll(resp.Body)
-		if err2 != nil {
-			log.Fatal("FATAL: ", err2)
-		}
-		fmt.Printf("%+v", string(bodyBytes))
-		fmt.Println("----------")
-	}
 	defer resp.Body.Close()
 
 	// inicializuojam responsa reikiamo tipo grazinimui
 	response := Response{Response: resp}
+
+	if c.debug {
+		o, _ := httputil.DumpResponse(response.Response, true)
+		log.Printf("\n+++++++++++++RESPONSE+++++++++++++\n%s\n+++++++++++++++++++++++++++++++++", string(o))
+	}
 
 	if sc := response.StatusCode; sc >= 299 {
 
@@ -116,11 +114,11 @@ func (c *Client) MakeRequest(method, path string, body, v interface{}) (*Respons
 
 		bod, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatalf("Error while reading error body: %v", err)
+			return nil, err
 		}
 		err = json.Unmarshal(bod, &errorResponse)
 		if err != nil {
-			fmt.Printf("Error while unmarshal error body: %v", err)
+			return nil, err
 		}
 		// jei reikia viso, tai printinti response.Response
 		err = fmt.Errorf("Error response from API: %v (error code: %v)", errorResponse.Message, errorResponse.Code)
@@ -169,6 +167,20 @@ func NewClient() (*Client, error) {
 		return nil, fmt.Errorf("You must export %s", cherryAuthTokenVar)
 	}
 
+	c := NewClientWithAuthVar(httpClient, authToken)
+
+	return c, nil
+}
+
+// NewClientWithAuthVar needed for auth without env variable
+func NewClientWithAuthVar(httpClient *http.Client, authToken string) *Client {
+	c, _ := NewClientBase(httpClient, authToken)
+	return c
+}
+
+// NewClientBase is for new client base creation
+func NewClientBase(httpClient *http.Client, authToken string) (*Client, error) {
+
 	url, err := url.Parse(apiURL)
 	if err != nil {
 		return nil, err
@@ -177,6 +189,7 @@ func NewClient() (*Client, error) {
 	c := &Client{client: httpClient, AuthToken: authToken, BaseURL: url, UserAgent: userAgent}
 
 	// I teamsClient atiduotu cca turiu apie client'a
+	c.debug = os.Getenv(cherryDebugVar) != ""
 	c.Teams = &TeamsClient{client: c}
 	c.Plans = &PlansClient{client: c}
 	c.Images = &ImagesClient{client: c}
@@ -189,7 +202,7 @@ func NewClient() (*Client, error) {
 	c.IPAddresses = &IPSClient{client: c}
 	c.IPAddress = &IPClient{client: c}
 
-	return c, nil
+	return c, err
 }
 
 // ErrorResponse fields

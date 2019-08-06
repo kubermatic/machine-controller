@@ -1,7 +1,7 @@
 package cherrygo
 
 import (
-	"log"
+	"fmt"
 	"strings"
 )
 
@@ -94,7 +94,7 @@ func (s *ServersClient) List(projectID string) ([]Servers, *Response, error) {
 	//log.Println("\nFROM LIST1: ", root.Teams)
 	resp, err := s.client.MakeRequest("GET", serversPath, nil, &trans)
 	if err != nil {
-		log.Fatal(err)
+		err = fmt.Errorf("Error: %v", err)
 	}
 
 	return trans, resp, err
