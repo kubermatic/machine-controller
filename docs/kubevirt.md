@@ -1,7 +1,7 @@
 # Kubevirt
 
 In order to use the machine-controller to create machines using [Kubevirt](https://kubevirt.io)
-you must first install the latter. We provider a manifest for this, simply run `kubectl apply -f examples/kubevirt-0.10.0.yaml`.
+you must first install the latter. We provider a manifest for this, simply run `kubectl apply -f examples/kubevirt-operator-0.17.4.yaml`.
 
 Afterwards, you can use the provided `exampes/examples/kubevirt-machinedeployment.yaml` as base. There
 are some things you need to keep in mind:
