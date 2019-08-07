@@ -1,31 +1,25 @@
 package cherryservers
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/cherryservers/cherrygo"
+
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"golang.org/x/crypto/ssh"
 
 	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
-
-const privateRSAKeyBitSize = 4096
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
@@ -306,30 +300,4 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	return false, nil
-}
-
-func NewKey() (privateKey []byte, publicKey string, err error) {
-	tmpRSAKeyPair, err := rsa.GenerateKey(rand.Reader, privateRSAKeyBitSize)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create private RSA key: %v", err)
-	}
-
-	if err := tmpRSAKeyPair.Validate(); err != nil {
-		return nil, "", fmt.Errorf("failed to validate private RSA key: %v", err)
-	}
-
-	pubKey, err := ssh.NewPublicKey(&tmpRSAKeyPair.PublicKey)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to generate ssh public key: %v", err)
-	}
-
-	privateDer := x509.MarshalPKCS1PrivateKey(tmpRSAKeyPair)
-	privateBlock := pem.Block{
-		Type:    "RSA PRIVATE KEY",
-		Headers: nil,
-		Bytes:   privateDer,
-	}
-	privatePEM := pem.EncodeToMemory(&privateBlock)
-
-	return privatePEM, string(ssh.MarshalAuthorizedKey(pubKey)), nil
 }

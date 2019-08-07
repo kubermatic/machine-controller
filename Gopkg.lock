@@ -192,7 +192,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2532fc22e1ba5a7c05fdd0b5b5dc0f64f3ab73dec493b87f5b6a6612db6365d5"
+  digest = "1:2f1ab7e55cccf0d9b0b28bc24950a3606c65acb46dabca05d5f7fd3bb2a70f4d"
   name = "github.com/cherryservers/cherrygo"
   packages = ["."]
   pruneopts = "NUT"
