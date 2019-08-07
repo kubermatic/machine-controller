@@ -18,11 +18,11 @@ package cloudprovider
 
 import (
 	"errors"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/cherryservers"
 
 	cloudprovidercache "github.com/kubermatic/machine-controller/pkg/cloudprovider/cache"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/cherryservers"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/fake"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce"

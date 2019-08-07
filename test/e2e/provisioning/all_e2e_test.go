@@ -50,7 +50,7 @@ const (
 	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest = "./testdata/machine-invalid.yaml"
 	kubevirtManifest       = "./testdata/machinedeployment-kubevirt.yaml"
-	cherryserversManifest = "./testdata/machinedeployment-cherryservers.yaml"
+	cherryserversManifest  = "./testdata/machinedeployment-cherryservers.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
