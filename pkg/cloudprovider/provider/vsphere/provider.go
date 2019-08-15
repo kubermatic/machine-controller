@@ -31,11 +31,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
@@ -141,22 +140,13 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	// default templatenetname to network of template if none specific was given and only one adapter exists.
 	if cfg.TemplateNetName == "" && cfg.VMNetName != "" {
 		ctx := context.TODO()
-		client, err := getClient(cfg.Username, cfg.Password, cfg.VSphereURL, cfg.AllowInsecure)
+		session, err := NewSession(ctx, cfg)
 		if err != nil {
-			return spec, fmt.Errorf("failed to get vsphere client: '%v'", err)
+			return spec, fmt.Errorf("failed to create vCenter session: %v", err)
 		}
-		defer func() {
-			if lerr := client.Logout(ctx); lerr != nil {
-				utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
-			}
-		}()
+		defer session.Logout()
 
-		finder, err := getDatacenterFinder(cfg.Datacenter, client)
-		if err != nil {
-			return spec, fmt.Errorf("failed to get datacenter finder: %v", err)
-		}
-
-		templateVM, err := finder.VirtualMachine(ctx, cfg.TemplateVMName)
+		templateVM, err := session.Finder.VirtualMachine(ctx, cfg.TemplateVMName)
 		if err != nil {
 			return spec, fmt.Errorf("failed to get virtual machine: %v", err)
 		}
@@ -203,16 +193,6 @@ func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.Raw
 	}
 
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
-}
-
-func getClient(username, password, address string, allowInsecure bool) (*govmomi.Client, error) {
-	clientURL, err := url.Parse(fmt.Sprintf("%s/sdk", address))
-	if err != nil {
-		return nil, err
-	}
-	clientURL.User = url.UserPassword(username, password)
-
-	return govmomi.NewClient(context.TODO(), clientURL, allowInsecure)
 }
 
 func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *RawConfig, error) {
@@ -310,30 +290,21 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return errors.New("number of CPUs must not be greater than 8")
 	}
 
-	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	session, err := NewSession(ctx, config)
 	if err != nil {
-		return fmt.Errorf("failed to get vsphere client: '%v'", err)
+		return fmt.Errorf("failed to create vCenter session: %v", err)
 	}
-	defer func() {
-		if err := client.Logout(context.Background()); err != nil {
-			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", err))
-		}
-	}()
+	defer session.Logout()
 
-	finder, err := getDatacenterFinder(config.Datacenter, client)
-	if err != nil {
-		return fmt.Errorf("failed to get datacenter %s: %v", config.Datacenter, err)
-	}
-
-	if _, err := finder.Datastore(ctx, config.Datastore); err != nil {
+	if _, err := session.Finder.Datastore(ctx, config.Datastore); err != nil {
 		return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
 	}
 
-	if _, err := finder.ClusterComputeResource(ctx, config.Cluster); err != nil {
+	if _, err := session.Finder.ClusterComputeResource(ctx, config.Cluster); err != nil {
 		return fmt.Errorf("failed to get cluster: %s: %v", config.Cluster, err)
 	}
 
-	templateVM, err := finder.VirtualMachine(ctx, config.TemplateVMName)
+	templateVM, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
 		return fmt.Errorf("failed to get template vm %q: %v", config.TemplateVMName, err)
 	}
@@ -371,34 +342,23 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	session, err := NewSession(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
+		return nil, fmt.Errorf("failed to create vCenter session: %v", err)
 	}
-	defer func() {
-		if err := client.Logout(context.Background()); err != nil {
-			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", err))
-		}
-	}()
+	defer session.Logout()
 
 	var containerLinuxUserdata string
 	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
 		containerLinuxUserdata = userdata
 	}
 
-	finder := find.NewFinder(client.Client, true)
-	dc, err := finder.Datacenter(ctx, config.Datacenter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get datacenter: %v", err)
-	}
-	finder.SetDatacenter(dc)
-
 	virtualMachine, err := createClonedVM(ctx,
 		machine.Spec.Name,
 		config,
-		dc,
-		finder,
-		containerLinuxUserdata)
+		session,
+		containerLinuxUserdata,
+	)
 	if err != nil {
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%v'", err))
 	}
@@ -416,7 +376,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			}
 		}()
 
-		if err := uploadAndAttachISO(ctx, finder, virtualMachine, localUserdataIsoFilePath, config.Datastore); err != nil {
+		if err := uploadAndAttachISO(ctx, session, virtualMachine, localUserdataIsoFilePath, config.Datastore); err != nil {
 			// Destroy VM to avoid a leftover.
 			destroyTask, vmErr := virtualMachine.Destroy(ctx)
 			if vmErr != nil {
@@ -440,7 +400,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 
 	// Add a custom field to indicate to our Get that creation succeeded
 	// If the field is not set, Get will delete the instance
-	customFieldManager, err := object.GetCustomFieldsManager(client.Client)
+	customFieldManager, err := object.GetCustomFieldsManager(session.Client.Client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get customFieldManager: %v", err)
 	}
@@ -486,28 +446,13 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	session, err := NewSession(ctx, config)
 	if err != nil {
-		return false, fmt.Errorf("failed to get vsphere client: '%v'", err)
+		return false, fmt.Errorf("failed to create vCenter session: %v", err)
 	}
-	defer func() {
-		if err := client.Logout(context.Background()); err != nil {
-			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", err))
-		}
-	}()
-	finder := find.NewFinder(client.Client, true)
+	defer session.Logout()
 
-	// We can't use getDatacenterFinder because we need the dc object to
-	// be able to initialize the Datastore Filemanager to delete the instaces
-	// folder on the storage - This doesn't happen automatically because there
-	// is still the cloud-init iso
-	dc, err := finder.Datacenter(ctx, config.Datacenter)
-	if err != nil {
-		return false, fmt.Errorf("failed to get vsphere datacenter: %v", err)
-	}
-	finder.SetDatacenter(dc)
-
-	virtualMachine, err := p.get(ctx, machine, finder)
+	virtualMachine, err := p.get(ctx, machine, session.Finder)
 	if err != nil {
 		if cloudprovidererrors.IsNotFound(err) {
 			return true, nil
@@ -567,11 +512,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
-		datastore, err := finder.Datastore(ctx, config.Datastore)
+		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
 		if err != nil {
 			return false, fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
 		}
-		filemanager := datastore.NewFileManager(dc, false)
+		filemanager := datastore.NewFileManager(session.Datacenter, false)
 
 		if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {
 			if err.Error() == fmt.Sprintf("File [%s] %s was not found", datastore.Name(), virtualMachine.Name()) {
@@ -593,21 +538,13 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	session, err := NewSession(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vsphere client: '%v'", err)
+		return nil, fmt.Errorf("failed to create vCenter session: %v", err)
 	}
-	defer func() {
-		if lerr := client.Logout(ctx); lerr != nil {
-			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
-		}
-	}()
+	defer session.Logout()
 
-	finder, err := getDatacenterFinder(config.Datacenter, client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get datacenter finder: %v", err)
-	}
-	virtualMachineList, err := finder.VirtualMachineList(ctx, machine.Spec.Name)
+	virtualMachineList, err := session.Finder.VirtualMachineList(ctx, machine.Spec.Name)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -669,7 +606,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		}
 		if isGuestToolsRunning {
 			var moVirtualMachine mo.VirtualMachine
-			pc := property.DefaultCollector(client.Client)
+			pc := property.DefaultCollector(session.Client.Client)
 			if err := pc.RetrieveOne(context.TODO(), virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine); err != nil {
 				return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
 			}
@@ -698,21 +635,13 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	client, err := getClient(config.Username, config.Password, config.VSphereURL, config.AllowInsecure)
+	session, err := NewSession(ctx, config)
 	if err != nil {
-		return fmt.Errorf("failed to get vsphere client: '%v'", err)
+		return fmt.Errorf("failed to create vCenter session: %v", err)
 	}
-	defer func() {
-		if lerr := client.Logout(ctx); lerr != nil {
-			utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", lerr))
-		}
-	}()
+	defer session.Logout()
 
-	finder, err := getDatacenterFinder(config.Datacenter, client)
-	if err != nil {
-		return fmt.Errorf("failed to get datacenter finder: %v", err)
-	}
-	virtualMachine, err := p.get(ctx, machine, finder)
+	virtualMachine, err := p.get(ctx, machine, session.Finder)
 	if err != nil {
 		if cloudprovidererrors.IsNotFound(err) {
 			return nil
@@ -720,7 +649,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
 		return fmt.Errorf("failed to get instance from vSphere: %v", err)
 	}
 
-	customFieldManager, err := object.GetCustomFieldsManager(client.Client)
+	customFieldManager, err := object.GetCustomFieldsManager(session.Client.Client)
 	if err != nil {
 		return fmt.Errorf("failed to get customFieldManager: %v", err)
 	}

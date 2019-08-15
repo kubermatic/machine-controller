@@ -32,8 +32,6 @@ import (
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
-	"github.com/vmware/govmomi"
-	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
@@ -46,8 +44,8 @@ const (
 	local-hostname: {{ .Hostname }}`
 )
 
-func createClonedVM(ctx context.Context, vmName string, config *Config, dc *object.Datacenter, f *find.Finder, containerLinuxUserdata string) (*object.VirtualMachine, error) {
-	templateVM, err := f.VirtualMachine(ctx, config.TemplateVMName)
+func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, containerLinuxUserdata string) (*object.VirtualMachine, error) {
+	templateVM, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get template vm: %v", err)
 	}
@@ -62,13 +60,13 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, dc *obje
 		// a different datacenter. It is therefore preferable to use absolute folder
 		// paths, e.g. '/Datacenter/vm/nested/folder'.
 		// The target folder must already exist.
-		targetVMFolder, err = f.Folder(ctx, config.Folder)
+		targetVMFolder, err = session.Finder.Folder(ctx, config.Folder)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get target folder: %v", err)
 		}
 	} else {
 		// Do not query datacenter folders unless required
-		datacenterFolders, err := dc.Folders(ctx)
+		datacenterFolders, err := session.Datacenter.Folders(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get datacenter folders: %v", err)
 		}
@@ -163,7 +161,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, dc *obje
 		return nil, fmt.Errorf("error when waiting for result of clone task: %v", err)
 	}
 
-	virtualMachine, err := f.VirtualMachine(ctx, vmName)
+	virtualMachine, err := session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
 	}
@@ -261,9 +259,8 @@ func getNetworkFromVM(ctx context.Context, vm *object.VirtualMachine, netName st
 	return nil, fmt.Errorf("no accessible network with the name %s found", netName)
 }
 
-func uploadAndAttachISO(ctx context.Context, f *find.Finder, vmRef *object.VirtualMachine, localIsoFilePath, datastoreName string) error {
-
-	datastore, err := f.Datastore(ctx, datastoreName)
+func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, localIsoFilePath, datastoreName string) error {
+	datastore, err := session.Finder.Datastore(ctx, datastoreName)
 	if err != nil {
 		return fmt.Errorf("failed to get datastore: %v", err)
 	}
@@ -289,16 +286,6 @@ func uploadAndAttachISO(ctx context.Context, f *find.Finder, vmRef *object.Virtu
 	cdrom.Connectable.StartConnected = true
 	iso := datastore.Path(remoteIsoFilePath)
 	return vmRef.EditDevice(ctx, devices.InsertIso(cdrom, iso))
-}
-
-func getDatacenterFinder(datacenter string, client *govmomi.Client) (*find.Finder, error) {
-	finder := find.NewFinder(client.Client, true)
-	dc, err := finder.Datacenter(context.TODO(), datacenter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get vsphere datacenter: %v", err)
-	}
-	finder.SetDatacenter(dc)
-	return finder, nil
 }
 
 func generateLocalUserdataISO(userdata, name string) (string, error) {
