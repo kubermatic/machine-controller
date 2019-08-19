@@ -19,7 +19,6 @@ package vsphere
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -204,10 +203,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %v", err)
-	}
-
-	if config.CPUs > 8 {
-		return errors.New("number of CPUs must not be greater than 8")
 	}
 
 	session, err := NewSession(ctx, config)
