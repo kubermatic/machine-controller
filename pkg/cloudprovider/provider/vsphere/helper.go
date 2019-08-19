@@ -52,6 +52,11 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 
 	glog.V(3).Infof("Template VM ref is %+v", templateVM)
 
+	vmDevices, err := templateVM.Device(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list devices of template VM: %v", err)
+	}
+
 	// Find the target folder, if its included in the provider config.
 	var targetVMFolder *object.Folder
 	if config.Folder != "" {
@@ -141,18 +146,27 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		deviceSpecs = append(deviceSpecs, diskspec)
 	}
 
-	desiredConfig := types.VirtualMachineConfigSpec{
-		Flags: &types.VirtualMachineFlagInfo{
-			DiskUuidEnabled: &diskUUIDEnabled,
-		},
-		NumCPUs:    config.CPUs,
-		MemoryMB:   config.MemoryMB,
-		VAppConfig: vAppAconfig,
+	if config.VMNetName != "" {
+		networkSpecs, err := GetNetworkSpecs(ctx, session, vmDevices, config.VMNetName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get network specifications: %v", err)
+		}
+		deviceSpecs = append(deviceSpecs, networkSpecs...)
 	}
 
 	// Create a cloned VM from the template VM's snapshot
-	clonedVMTask, err := templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{
-		Config: &types.VirtualMachineConfigSpec{DeviceChange: deviceSpecs}})
+	cloneSpec := types.VirtualMachineCloneSpec{
+		Config: &types.VirtualMachineConfigSpec{
+			DeviceChange: deviceSpecs,
+			Flags: &types.VirtualMachineFlagInfo{
+				DiskUuidEnabled: &diskUUIDEnabled,
+			},
+			NumCPUs:    config.CPUs,
+			MemoryMB:   config.MemoryMB,
+			VAppConfig: vAppAconfig,
+		},
+	}
+	clonedVMTask, err := templateVM.Clone(ctx, targetVMFolder, vmName, cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %v", err)
 	}
@@ -166,22 +180,6 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
 	}
 
-	reconfigureTask, err := virtualMachine.Reconfigure(ctx, desiredConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to reconfigure vm: %v", err)
-	}
-
-	if err := reconfigureTask.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("error waiting for reconfigure task to finish: %v", err)
-	}
-
-	// Update network if requested
-	if config.VMNetName != "" {
-		if err := updateNetworkForVM(ctx, virtualMachine, config.TemplateNetName, config.VMNetName); err != nil {
-			return nil, fmt.Errorf("couldn't set network for vm: %v", err)
-		}
-	}
-
 	// Ubuntu wont boot with attached floppy device, because it tries to write to it
 	// which fails, because the floppy device does not contain a floppy disk
 	// Upstream issue: https://bugs.launchpad.net/cloud-images/+bug/1573095
@@ -190,73 +188,6 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	}
 
 	return virtualMachine, nil
-}
-
-func updateNetworkForVM(ctx context.Context, vm *object.VirtualMachine, currentNetName string, newNetName string) error {
-	newNet, err := getNetworkFromVM(ctx, vm, newNetName)
-	if err != nil {
-		return fmt.Errorf("failed to get network from vm: %v", err)
-	}
-
-	availableData, err := getNetworkDevicesAndBackingsFromVM(ctx, vm, currentNetName)
-	if err != nil {
-		return fmt.Errorf("failed to get network devices for vm: %v", err)
-	}
-	if len(availableData) == 0 {
-		return errors.New("found no matching network adapter")
-	}
-
-	netDev := availableData[0].device
-	currentBacking := availableData[0].backingInfo
-
-	glog.V(6).Infof("changing network `%s` to `%s` for vm `%s`", currentBacking.DeviceName, newNetName, vm.Name())
-	currentBacking.DeviceName = newNetName
-	currentBacking.Network = newNet
-
-	return vm.EditDevice(ctx, *netDev)
-}
-
-func getNetworkDevicesAndBackingsFromVM(ctx context.Context, vm *object.VirtualMachine, netNameFilter string) ([]netDeviceAndBackingInfo, error) {
-	devices, err := vm.Device(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get devices for vm, see: %s", err)
-	}
-
-	var availableData []netDeviceAndBackingInfo
-
-	for i, device := range devices {
-		ethDevice, ok := device.(types.BaseVirtualEthernetCard)
-		if !ok {
-			continue
-		}
-
-		ethCard := ethDevice.GetVirtualEthernetCard()
-		ethBacking := ethCard.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
-
-		if netNameFilter == "" || ethBacking.DeviceName == netNameFilter {
-			data := netDeviceAndBackingInfo{device: &devices[i], backingInfo: ethBacking}
-			availableData = append(availableData, data)
-		}
-	}
-
-	return availableData, nil
-}
-
-func getNetworkFromVM(ctx context.Context, vm *object.VirtualMachine, netName string) (*types.ManagedObjectReference, error) {
-	cfg, err := vm.QueryConfigTarget(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get query config for vm, see: %v", err)
-	}
-
-	for _, net := range cfg.Network {
-		summary := net.Network.GetNetworkSummary()
-
-		if summary.Accessible && summary.Name == netName {
-			return summary.Network, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no accessible network with the name %s found", netName)
 }
 
 func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, localIsoFilePath, datastoreName string) error {

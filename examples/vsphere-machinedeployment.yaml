@@ -50,11 +50,7 @@ spec:
                 key: password
             datacenter: datacenter1
             templateVMName: ubuntu-template
-            # Optional: templateNetName is the name of the network the interface
-            # on the template-machine is attached to, its only required if the
-            # template-machine has more than one network
-            templateNetName: ''
-            # Optional: by default network will be picked up from the template
+            # Optional. Sets the networks on the VM. If no network is specified, the template default will be used.
             vmNetName: network1
             # Optional
             folder: folder1
