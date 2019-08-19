@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"os"
 	"os/exec"
 	"text/template"
@@ -129,21 +128,11 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 
 	deviceSpecs := []types.BaseVirtualDeviceConfigSpec{}
 	if config.DiskSizeGB != nil {
-		disks, err := getDisksFromVM(ctx, templateVM)
+		diskSpec, err := getDiskSpec(vmDevices, *config.DiskSizeGB)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get disks from VM: %v", err)
+			return nil, fmt.Errorf("failed to get disk specification: %v", err)
 		}
-		// If this is wrong, the resulting error is `Invalid operation for device '0`
-		// so verify again this is legit
-		if err := validateDiskResizing(disks, *config.DiskSizeGB); err != nil {
-			return nil, err
-		}
-
-		glog.V(4).Infof("Increasing disk size to %d GB", *config.DiskSizeGB)
-		disk := disks[0]
-		disk.CapacityInBytes = *config.DiskSizeGB * int64(math.Pow(1024, 3))
-		diskspec := &types.VirtualDeviceConfigSpec{Operation: types.VirtualDeviceConfigSpecOperationEdit, Device: disk}
-		deviceSpecs = append(deviceSpecs, diskspec)
+		deviceSpecs = append(deviceSpecs, diskSpec)
 	}
 
 	if config.VMNetName != "" {
@@ -337,33 +326,4 @@ func getValueForField(ctx context.Context, vm *object.VirtualMachine, fieldName 
 	}
 
 	return "", nil
-}
-
-func getDisksFromVM(ctx context.Context, vm *object.VirtualMachine) ([]*types.VirtualDisk, error) {
-	var props mo.VirtualMachine
-	if err := vm.Properties(ctx, vm.Reference(), nil, &props); err != nil {
-		return nil, fmt.Errorf("error getting VM template reference: %v", err)
-	}
-	l := object.VirtualDeviceList(props.Config.Hardware.Device)
-	disks := l.SelectByType((*types.VirtualDisk)(nil))
-
-	var result []*types.VirtualDisk
-	for _, disk := range disks {
-		if assertedDisk := disk.(*types.VirtualDisk); assertedDisk != nil {
-			result = append(result, assertedDisk)
-		}
-	}
-	return result, nil
-}
-
-func validateDiskResizing(disks []*types.VirtualDisk, requestedSize int64) error {
-	if diskLen := len(disks); diskLen != 1 {
-		return fmt.Errorf("expected vm to have exactly one disk, got %d", diskLen)
-	}
-	requestedCapacityInBytes := requestedSize * int64(math.Pow(1024, 3))
-	if requestedCapacityInBytes < disks[0].CapacityInBytes {
-		attachedDiskSizeInGiB := disks[0].CapacityInBytes / int64(math.Pow(1024, 3))
-		return fmt.Errorf("requested diskSizeGB %d is smaller than size of attached disk(%dGiB)", requestedSize, attachedDiskSizeInGiB)
-	}
-	return nil
 }
