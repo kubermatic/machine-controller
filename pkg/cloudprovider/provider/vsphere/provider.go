@@ -28,7 +28,6 @@ import (
 	"github.com/golang/glog"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -123,27 +122,6 @@ func (vsphereServer Server) Status() instance.Status {
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
-}
-
-func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	pconfig := providerconfig.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	rawCloudProviderSpec, err := json.Marshal(rawConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
-	rawPconfig, err := json.Marshal(pconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
 func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *RawConfig, error) {
