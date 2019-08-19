@@ -224,16 +224,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get template vm %q: %v", config.TemplateVMName, err)
 	}
 
-	disks, err := getDisksFromVM(ctx, templateVM)
+	vmDevices, err := templateVM.Device(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get disks from VM: %v", err)
-	}
-	if diskLen := len(disks); diskLen != 1 {
-		return fmt.Errorf("expected vm to have exactly one disk, had %d", diskLen)
+		return fmt.Errorf("failed to list devices of template VM: %v", err)
 	}
 
 	if config.DiskSizeGB != nil {
-		if err := validateDiskResizing(disks, *config.DiskSizeGB); err != nil {
+		if err := validateDiskResize(vmDevices, *config.DiskSizeGB); err != nil {
 			return err
 		}
 	}
