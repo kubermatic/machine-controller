@@ -28,7 +28,6 @@ import (
 	"github.com/golang/glog"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -61,48 +60,41 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-type netDeviceAndBackingInfo struct {
-	device      *types.BaseVirtualDevice
-	backingInfo *types.VirtualEthernetCardNetworkBackingInfo
-}
-
 // New returns a VSphere provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
-	TemplateVMName  providerconfig.ConfigVarString `json:"templateVMName"`
-	TemplateNetName providerconfig.ConfigVarString `json:"templateNetName,omitempty"`
-	VMNetName       providerconfig.ConfigVarString `json:"vmNetName,omitempty"`
-	Username        providerconfig.ConfigVarString `json:"username,omitempty"`
-	Password        providerconfig.ConfigVarString `json:"password,omitempty"`
-	VSphereURL      providerconfig.ConfigVarString `json:"vsphereURL,omitempty"`
-	Datacenter      providerconfig.ConfigVarString `json:"datacenter"`
-	Cluster         providerconfig.ConfigVarString `json:"cluster"`
-	Folder          providerconfig.ConfigVarString `json:"folder,omitempty"`
-	Datastore       providerconfig.ConfigVarString `json:"datastore"`
-	CPUs            int32                          `json:"cpus"`
-	MemoryMB        int64                          `json:"memoryMB"`
-	DiskSizeGB      *int64                         `json:"diskSizeGB,omitempty"`
-	AllowInsecure   providerconfig.ConfigVarBool   `json:"allowInsecure"`
+	TemplateVMName providerconfig.ConfigVarString `json:"templateVMName"`
+	VMNetName      providerconfig.ConfigVarString `json:"vmNetName,omitempty"`
+	Username       providerconfig.ConfigVarString `json:"username,omitempty"`
+	Password       providerconfig.ConfigVarString `json:"password,omitempty"`
+	VSphereURL     providerconfig.ConfigVarString `json:"vsphereURL,omitempty"`
+	Datacenter     providerconfig.ConfigVarString `json:"datacenter"`
+	Cluster        providerconfig.ConfigVarString `json:"cluster"`
+	Folder         providerconfig.ConfigVarString `json:"folder,omitempty"`
+	Datastore      providerconfig.ConfigVarString `json:"datastore"`
+	CPUs           int32                          `json:"cpus"`
+	MemoryMB       int64                          `json:"memoryMB"`
+	DiskSizeGB     *int64                         `json:"diskSizeGB,omitempty"`
+	AllowInsecure  providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 
 type Config struct {
-	TemplateVMName  string
-	TemplateNetName string
-	VMNetName       string
-	Username        string
-	Password        string
-	VSphereURL      string
-	Datacenter      string
-	Cluster         string
-	Folder          string
-	Datastore       string
-	AllowInsecure   bool
-	CPUs            int32
-	MemoryMB        int64
-	DiskSizeGB      *int64
+	TemplateVMName string
+	VMNetName      string
+	Username       string
+	Password       string
+	VSphereURL     string
+	Datacenter     string
+	Cluster        string
+	Folder         string
+	Datastore      string
+	AllowInsecure  bool
+	CPUs           int32
+	MemoryMB       int64
+	DiskSizeGB     *int64
 }
 
 type Server struct {
@@ -129,70 +121,7 @@ func (vsphereServer Server) Status() instance.Status {
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	cfg, _, rawCfg, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return spec, cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
-		}
-	}
-
-	// default templatenetname to network of template if none specific was given and only one adapter exists.
-	if cfg.TemplateNetName == "" && cfg.VMNetName != "" {
-		ctx := context.TODO()
-		session, err := NewSession(ctx, cfg)
-		if err != nil {
-			return spec, fmt.Errorf("failed to create vCenter session: %v", err)
-		}
-		defer session.Logout()
-
-		templateVM, err := session.Finder.VirtualMachine(ctx, cfg.TemplateVMName)
-		if err != nil {
-			return spec, fmt.Errorf("failed to get virtual machine: %v", err)
-		}
-
-		availableNetworkDevices, err := getNetworkDevicesAndBackingsFromVM(ctx, templateVM, "")
-		if err != nil {
-			return spec, fmt.Errorf("failed to get network devices for vm: %v", err)
-		}
-
-		if len(availableNetworkDevices) == 0 {
-			glog.V(6).Infof("found no network adapter to default to in template vm %s", cfg.TemplateVMName)
-		} else if len(availableNetworkDevices) > 1 {
-			glog.V(6).Infof("found multiple network adapters in template vm %s but no explicit template net name is specified in the cluster", cfg.TemplateVMName)
-		} else {
-			eth := availableNetworkDevices[0].backingInfo
-			rawCfg.TemplateNetName.Value = eth.DeviceName
-		}
-	}
-
-	spec.ProviderSpec.Value, err = setProviderSpec(*rawCfg, spec.ProviderSpec)
-	if err != nil {
-		return spec, fmt.Errorf("error marshaling providerconfig: %s", err)
-	}
-
 	return spec, nil
-}
-
-func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	pconfig := providerconfig.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	rawCloudProviderSpec, err := json.Marshal(rawConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
-	rawPconfig, err := json.Marshal(pconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
 func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *RawConfig, error) {
@@ -213,11 +142,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 
 	c := Config{}
 	c.TemplateVMName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateVMName)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	c.TemplateNetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateNetName)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -282,10 +206,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get config: %v", err)
 	}
 
-	if config.VMNetName != "" && config.TemplateNetName == "" {
-		return errors.New("specified target network (VMNetName) in cluster, but no source network (TemplateNetName) in machine")
-	}
-
 	if config.CPUs > 8 {
 		return errors.New("number of CPUs must not be greater than 8")
 	}
@@ -334,8 +254,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
@@ -620,7 +539,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 				}
 			}
 		} else {
-			glog.V(3).Infof("vmware guest utils for machine %s are not running, can't match it to a node!", machine.Spec.Name)
+			glog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
 		}
 	}
 
