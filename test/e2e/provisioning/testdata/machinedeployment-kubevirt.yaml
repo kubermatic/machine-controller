@@ -31,7 +31,7 @@ spec:
             sourceURL: http://10.109.79.210/<< OS_NAME >>.img
             cpus: "1"
             memory: "4096M"
-            config:
+            kubeconfig:
               value: '<< KUBECONFIG >>'
             namespace: kube-system
           operatingSystem: "<< OS_NAME >>"
