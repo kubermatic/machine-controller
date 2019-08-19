@@ -154,19 +154,10 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		deviceSpecs = append(deviceSpecs, networkSpecs...)
 	}
 
-	// Create a cloned VM from the template VM's snapshot
-	cloneSpec := types.VirtualMachineCloneSpec{
-		Config: &types.VirtualMachineConfigSpec{
-			DeviceChange: deviceSpecs,
-			Flags: &types.VirtualMachineFlagInfo{
-				DiskUuidEnabled: &diskUUIDEnabled,
-			},
-			NumCPUs:    config.CPUs,
-			MemoryMB:   config.MemoryMB,
-			VAppConfig: vAppAconfig,
-		},
-	}
-	clonedVMTask, err := templateVM.Clone(ctx, targetVMFolder, vmName, cloneSpec)
+	// Create a cloned VM from the template VM's snapshot.
+	// We split the cloning from the reconfiguring as those actions differ on the permission side.
+	// It's nicer to tell which specific action failed due to lacking permissions.
+	clonedVMTask, err := templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %v", err)
 	}
@@ -178,6 +169,23 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	virtualMachine, err := session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
+	}
+
+	vmConfig := types.VirtualMachineConfigSpec{
+		DeviceChange: deviceSpecs,
+		Flags: &types.VirtualMachineFlagInfo{
+			DiskUuidEnabled: &diskUUIDEnabled,
+		},
+		NumCPUs:    config.CPUs,
+		MemoryMB:   config.MemoryMB,
+		VAppConfig: vAppAconfig,
+	}
+	reconfigureTask, err := virtualMachine.Reconfigure(ctx, vmConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reconfigure the VM: %v", err)
+	}
+	if err := reconfigureTask.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("error when waiting for result of the reconfigure task: %v", err)
 	}
 
 	// Ubuntu wont boot with attached floppy device, because it tries to write to it
