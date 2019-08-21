@@ -107,6 +107,11 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		return nil, fmt.Errorf("error when waiting for result of relocate task: %v", err)
 	}
 
+	virtualMachine, err = session.Finder.VirtualMachine(ctx, vmName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get virtual machine object after relocating: %v", err)
+	}
+
 	vmDevices, err := virtualMachine.Device(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list devices of template VM: %v", err)
