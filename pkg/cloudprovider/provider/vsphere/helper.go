@@ -71,10 +71,23 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		targetVMFolder = datacenterFolders.VmFolder
 	}
 
+	datastore, err := session.Finder.Datastore(ctx, config.Datastore)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get datastore: %v", err)
+	}
+
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
 	// It's nicer to tell which specific action failed due to lacking permissions.
-	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{})
+	cloneSpec := types.VirtualMachineCloneSpec{
+		Location: types.VirtualMachineRelocateSpec{
+			Datastore:    types.NewReference(datastore.Reference()),
+			DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndConsolidate),
+			Folder:       types.NewReference(targetVMFolder.Reference()),
+			Disk:         []types.VirtualMachineRelocateSpecDiskLocator{},
+		},
+	}
+	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %v", err)
 	}
