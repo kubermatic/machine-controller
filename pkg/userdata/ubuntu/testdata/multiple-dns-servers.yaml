@@ -15,13 +15,24 @@ write_files:
     SystemMaxUse=5G
 
 
-- path: "/etc/modules-load.d/k8s.conf"
+- path: "/opt/load-kernel-modules.sh"
+  permissions: "0755"
   content: |
-    ip_vs
-    ip_vs_rr
-    ip_vs_wrr
-    ip_vs_sh
-    nf_conntrack_ipv4
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    kernel=$(uname -r)
+    kernel_main_version=${kernel:0:1}
+
+    modprobe ip_vs
+    modprobe ip_vs_rr
+    modprobe ip_vs_wrr
+    modprobe ip_vs_sh
+
+    # nf_conntrack_ipv4 got removed in the kernel version 5.0
+    if [ "${kernel_main_version}" -le "4" ]; then
+      modprobe nf_conntrack_ipv4
+    fi
 
 
 - path: "/etc/sysctl.d/k8s.conf"
@@ -201,6 +212,7 @@ write_files:
     Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
     EnvironmentFile=-/etc/environment
 
+    ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/etc/kubernetes/kubelet.conf \
