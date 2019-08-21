@@ -79,15 +79,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
 	// It's nicer to tell which specific action failed due to lacking permissions.
-	cloneSpec := types.VirtualMachineCloneSpec{
-		Location: types.VirtualMachineRelocateSpec{
-			Datastore:    types.NewReference(datastore.Reference()),
-			DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndConsolidate),
-			Folder:       types.NewReference(targetVMFolder.Reference()),
-			Disk:         []types.VirtualMachineRelocateSpecDiskLocator{},
-		},
-	}
-	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, cloneSpec)
+	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %v", err)
 	}
@@ -99,6 +91,20 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	virtualMachine, err := session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
+	}
+
+	relocateSpec := types.VirtualMachineRelocateSpec{
+		Datastore:    types.NewReference(datastore.Reference()),
+		DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndConsolidate),
+		Folder:       types.NewReference(targetVMFolder.Reference()),
+		Disk:         []types.VirtualMachineRelocateSpecDiskLocator{},
+	}
+	relocateTask, err := virtualMachine.Relocate(ctx, relocateSpec, types.VirtualMachineMovePriorityDefaultPriority)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create the relocate task: %v", err)
+	}
+	if err := relocateTask.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("error when waiting for result of relocate task: %v", err)
 	}
 
 	vmDevices, err := virtualMachine.Device(ctx)
