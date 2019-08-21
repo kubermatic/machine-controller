@@ -71,6 +71,11 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		targetVMFolder = datacenterFolders.VmFolder
 	}
 
+	datastore, err := session.Finder.Datastore(ctx, config.Datastore)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get datastore: %v", err)
+	}
+
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
 	// It's nicer to tell which specific action failed due to lacking permissions.
@@ -86,6 +91,25 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	virtualMachine, err := session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
+	}
+
+	relocateSpec := types.VirtualMachineRelocateSpec{
+		Datastore:    types.NewReference(datastore.Reference()),
+		DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndConsolidate),
+		Folder:       types.NewReference(targetVMFolder.Reference()),
+		Disk:         []types.VirtualMachineRelocateSpecDiskLocator{},
+	}
+	relocateTask, err := virtualMachine.Relocate(ctx, relocateSpec, types.VirtualMachineMovePriorityDefaultPriority)
+	if err != nil {
+		return nil, fmt.Errorf("failed to relocate: %v", err)
+	}
+	if err := relocateTask.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("failed waiting for relocation to finish: %v", err)
+	}
+
+	virtualMachine, err = session.Finder.VirtualMachine(ctx, vmName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get virtual machine object after relocating: %v", err)
 	}
 
 	vmDevices, err := virtualMachine.Device(ctx)
