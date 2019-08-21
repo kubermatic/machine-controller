@@ -101,10 +101,10 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	}
 	relocateTask, err := virtualMachine.Relocate(ctx, relocateSpec, types.VirtualMachineMovePriorityDefaultPriority)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create the relocate task: %v", err)
+		return nil, fmt.Errorf("failed to relocate: %v", err)
 	}
 	if err := relocateTask.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("error when waiting for result of relocate task: %v", err)
+		return nil, fmt.Errorf("failed waiting for relocation to finish: %v", err)
 	}
 
 	virtualMachine, err = session.Finder.VirtualMachine(ctx, vmName)
