@@ -214,7 +214,7 @@ func (r *Reconciler) getAsUnstructured(obj runtime.Object) (runtime.Object, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal unstructured.Unstructured: %v", err)
 	}
-	if err := json.Unmarshal(rawJSON, target); err != nil {
+	if err := json.Unmarshal(rawJSON, obj); err != nil {
 		return nil, fmt.Errorf("failed to marshal unstructured.Unstructued into %T: %v", obj, err)
 	}
 	return obj, nil
