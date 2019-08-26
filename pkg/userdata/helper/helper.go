@@ -61,23 +61,20 @@ func StringifyKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
 }
 
 // LoadKernelModules returns a script which is responsible for loading all required kernel modules
+// The nf_conntrack_ipv4 module get removed in newer kernel versions
 func LoadKernelModulesScript() string {
 	return `#!/usr/bin/env bash
 set -euo pipefail
-
-kernel=$(uname -r)
-kernel_main_version=${kernel:0:1}
 
 modprobe ip_vs
 modprobe ip_vs_rr
 modprobe ip_vs_wrr
 modprobe ip_vs_sh
 
-# nf_conntrack_ipv4 got removed in the kernel version 4.19
-if [[ "${kernel_main_version}" -ge "5" ]] || [[ "${kernel}" == 4.19* ]] || [[ "${kernel}" == 4.20* ]]; then
-  modprobe nf_conntrack
-else
+if modinfo nf_conntrack_ipv4 &> /dev/null; then
   modprobe nf_conntrack_ipv4
+else
+  modprobe nf_conntrack
 fi
 `
 }
