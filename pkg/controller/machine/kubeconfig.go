@@ -17,16 +17,20 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/kubernetes/scheme"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -73,15 +77,19 @@ func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 }
 
 func (r *Reconciler) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
-	sa := &corev1.ServiceAccount{}
-	if err := r.client.Get(r.ctx, name, sa); err != nil {
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name.Name, Namespace: name.Namespace}}
+	raw, err := r.getAsUnstructured(sa)
+	if err != nil {
 		return "", fmt.Errorf("failed to get serviceAccount %q: %v", name.String(), err)
 	}
+	sa = raw.(*corev1.ServiceAccount)
 	for _, serviceAccountSecretName := range sa.Secrets {
-		serviceAccountSecret := &corev1.Secret{}
-		if err := r.client.Get(r.ctx, types.NamespacedName{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}, serviceAccountSecret); err != nil {
+		serviceAccountSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}}
+		raw, err = r.getAsUnstructured(serviceAccountSecret)
+		if err != nil {
 			return "", fmt.Errorf("failed to get serviceAccountSecret: %v", err)
 		}
+		serviceAccountSecret = raw.(*corev1.Secret)
 		if serviceAccountSecret.Type != corev1.SecretTypeServiceAccountToken {
 			continue
 		}
@@ -173,4 +181,41 @@ func (r *Reconciler) getSecretIfExists(name string) (*corev1.Secret, error) {
 		return nil, fmt.Errorf("expected to find exactly one secret for the given machine name =%s but found %d", name, len(secrets.Items))
 	}
 	return &secrets.Items[0], nil
+}
+
+// getAsUnstructured is a helper to get an object as unstrucuted.Unstructered from the client.
+// The purpose of this is to avoid establishing a lister, which the cache-backed client automatically
+// does. The object passed in must have name and namespace set. The returned object will
+// be the same as the passed in one, if there was no error.
+func (r *Reconciler) getAsUnstructured(obj runtime.Object) (runtime.Object, error) {
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return nil, errors.New("can not assert object as metav1.Object")
+	}
+	kinds, _, err := scheme.Scheme.ObjectKinds(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kinds for object: %v", err)
+	}
+	if len(kinds) == 0 {
+		return nil, fmt.Errorf("found no kind for object %t", obj)
+	}
+	apiVersion, kind := kinds[0].ToAPIVersionAndKind()
+
+	target := &unstructured.Unstructured{}
+	target.SetAPIVersion(apiVersion)
+	target.SetKind(kind)
+	name := types.NamespacedName{Name: metaObj.GetName(), Namespace: metaObj.GetNamespace()}
+
+	if err := r.client.Get(r.ctx, name, target); err != nil {
+		return nil, fmt.Errorf("failed to get object: %v", err)
+	}
+
+	rawJSON, err := target.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal unstructured.Unstructured: %v", err)
+	}
+	if err := json.Unmarshal(rawJSON, target); err != nil {
+		return nil, fmt.Errorf("failed to marshal unstructured.Unstructued into %T: %v", obj, err)
+	}
+	return obj, nil
 }
