@@ -66,12 +66,22 @@ func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 	}
 
 	outConfig := infoKubeconfig.DeepCopy()
+	clusterContextName := ""
+	for key := range infoKubeconfig.Clusters {
+		clusterContextName = key
+	}
+	cluster := outConfig.Clusters[clusterContextName].DeepCopy()
+	delete(outConfig.Clusters, clusterContextName)
+	outConfig.Clusters["a"] = cluster
 
 	outConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{
-		"": {
+		"a": {
 			Token: token,
 		},
 	}
+
+	outConfig.Contexts = map[string]*clientcmdapi.Context{"a": {Cluster: "a", AuthInfo: "a"}}
+	outConfig.CurrentContext = "a"
 
 	return outConfig, nil
 }
