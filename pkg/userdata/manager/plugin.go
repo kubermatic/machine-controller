@@ -72,9 +72,7 @@ func (p *Plugin) UserData(req plugin.UserDataRequest) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd.Env = []string{
-		fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)),
-	}
+	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)))
 	// Execute command.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
