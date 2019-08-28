@@ -3,6 +3,7 @@ package hcloud
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/hetznercloud/hcloud-go/hcloud/schema"
@@ -46,6 +47,7 @@ const (
 	ActionResourceTypeImage      ActionResourceType = "image"
 	ActionResourceTypeISO        ActionResourceType = "iso"
 	ActionResourceTypeFloatingIP ActionResourceType = "floating_ip"
+	ActionResourceTypeVolume     ActionResourceType = "volume"
 )
 
 // ActionError is the error of an action.
@@ -73,7 +75,7 @@ type ActionClient struct {
 	client *Client
 }
 
-// GetByID retrieves an action by its ID.
+// GetByID retrieves an action by its ID. If the action does not exist, nil is returned.
 func (c *ActionClient) GetByID(ctx context.Context, id int) (*Action, *Response, error) {
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("/actions/%d", id), nil)
 	if err != nil {
@@ -94,11 +96,24 @@ func (c *ActionClient) GetByID(ctx context.Context, id int) (*Action, *Response,
 // ActionListOpts specifies options for listing actions.
 type ActionListOpts struct {
 	ListOpts
+	Status []ActionStatus
+	Sort   []string
+}
+
+func (l ActionListOpts) values() url.Values {
+	vals := l.ListOpts.values()
+	for _, status := range l.Status {
+		vals.Add("status", string(status))
+	}
+	for _, sort := range l.Sort {
+		vals.Add("sort", sort)
+	}
+	return vals
 }
 
 // List returns a list of actions for a specific page.
 func (c *ActionClient) List(ctx context.Context, opts ActionListOpts) ([]*Action, *Response, error) {
-	path := "/actions?" + valuesForListOpts(opts.ListOpts).Encode()
+	path := "/actions?" + opts.values().Encode()
 	req, err := c.client.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, nil, err
@@ -169,7 +184,7 @@ func (c *ActionClient) WatchProgress(ctx context.Context, action *Action) (<-cha
 
 			a, _, err := c.GetByID(ctx, action.ID)
 			if err != nil {
-				errCh <- ctx.Err()
+				errCh <- err
 				return
 			}
 

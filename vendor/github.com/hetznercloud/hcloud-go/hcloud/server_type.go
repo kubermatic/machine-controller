@@ -49,7 +49,7 @@ type ServerTypeClient struct {
 	client *Client
 }
 
-// GetByID retrieves a server type by its ID.
+// GetByID retrieves a server type by its ID. If the server type does not exist, nil is returned.
 func (c *ServerTypeClient) GetByID(ctx context.Context, id int) (*ServerType, *Response, error) {
 	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("/server_types/%d", id), nil)
 	if err != nil {
@@ -67,27 +67,17 @@ func (c *ServerTypeClient) GetByID(ctx context.Context, id int) (*ServerType, *R
 	return ServerTypeFromSchema(body.ServerType), resp, nil
 }
 
-// GetByName retrieves a server type by its name.
+// GetByName retrieves a server type by its name. If the server type does not exist, nil is returned.
 func (c *ServerTypeClient) GetByName(ctx context.Context, name string) (*ServerType, *Response, error) {
-	path := "/server_types?name=" + url.QueryEscape(name)
-	req, err := c.client.NewRequest(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, nil, err
+	serverTypes, response, err := c.List(ctx, ServerTypeListOpts{Name: name})
+	if len(serverTypes) == 0 {
+		return nil, response, err
 	}
-
-	var body schema.ServerTypeListResponse
-	resp, err := c.client.Do(req, &body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(body.ServerTypes) == 0 {
-		return nil, resp, nil
-	}
-	return ServerTypeFromSchema(body.ServerTypes[0]), resp, nil
+	return serverTypes[0], response, err
 }
 
-// Get retrieves a server type by its ID if the input can be parsed as an integer, otherwise it retrieves a server type by its name.
+// Get retrieves a server type by its ID if the input can be parsed as an integer, otherwise it
+// retrieves a server type by its name. If the server type does not exist, nil is returned.
 func (c *ServerTypeClient) Get(ctx context.Context, idOrName string) (*ServerType, *Response, error) {
 	if id, err := strconv.Atoi(idOrName); err == nil {
 		return c.GetByID(ctx, int(id))
@@ -98,11 +88,20 @@ func (c *ServerTypeClient) Get(ctx context.Context, idOrName string) (*ServerTyp
 // ServerTypeListOpts specifies options for listing server types.
 type ServerTypeListOpts struct {
 	ListOpts
+	Name string
+}
+
+func (l ServerTypeListOpts) values() url.Values {
+	vals := l.ListOpts.values()
+	if l.Name != "" {
+		vals.Add("name", l.Name)
+	}
+	return vals
 }
 
 // List returns a list of server types for a specific page.
 func (c *ServerTypeClient) List(ctx context.Context, opts ServerTypeListOpts) ([]*ServerType, *Response, error) {
-	path := "/server_types?" + valuesForListOpts(opts.ListOpts).Encode()
+	path := "/server_types?" + opts.values().Encode()
 	req, err := c.client.NewRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, nil, err
