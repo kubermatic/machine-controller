@@ -42,6 +42,8 @@ const (
 	tokenSecretKey           string            = "token-secret"
 	expirationKey            string            = "expiration"
 	tokenFormatter           string            = "%s.%s"
+	// Keep this short, userdata is limited
+	contextIdentifier string = "c"
 )
 
 func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
@@ -67,11 +69,28 @@ func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 
 	outConfig := infoKubeconfig.DeepCopy()
 
+	// Some consumers expect a valid `Contexts` map and the serialization
+	// for the Context ignores empty string fields, hence we must make sure
+	// both the Cluster and the User have a non-empty key.
+	clusterContextName := ""
+	// This is supposed to have a length of 1. We have code further down the
+	// line that extracts the CA cert and errors out if that is not the case,
+	// so we can simply iterate over it here.
+	for key := range infoKubeconfig.Clusters {
+		clusterContextName = key
+	}
+	cluster := outConfig.Clusters[clusterContextName].DeepCopy()
+	delete(outConfig.Clusters, clusterContextName)
+	outConfig.Clusters[contextIdentifier] = cluster
+
 	outConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{
-		"": {
+		contextIdentifier: {
 			Token: token,
 		},
 	}
+
+	outConfig.Contexts = map[string]*clientcmdapi.Context{contextIdentifier: {Cluster: contextIdentifier, AuthInfo: contextIdentifier}}
+	outConfig.CurrentContext = contextIdentifier
 
 	return outConfig, nil
 }
