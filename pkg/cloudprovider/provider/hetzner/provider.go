@@ -414,6 +414,9 @@ func (s *hetznerServer) Addresses() []string {
 	for _, fips := range s.server.PublicNet.FloatingIPs {
 		addresses = append(addresses, fips.IP.String())
 	}
+	for _, privateNetwork := range s.server.PrivateNet {
+		addresses = append(addresses, privateNetwork.IP.String())
+	}
 
 	return append(addresses, s.server.PublicNet.IPv4.IP.String(), s.server.PublicNet.IPv6.IP.String())
 }
