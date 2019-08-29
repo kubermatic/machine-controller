@@ -47,6 +47,9 @@ spec:
             # Optional
             datacenter: ""
             location: "fsn1"
+            # Optional: network IDs or names
+            networks:
+              - "<< YOUR_NETWORK >>"
             # Optional
             labels:
               my: label

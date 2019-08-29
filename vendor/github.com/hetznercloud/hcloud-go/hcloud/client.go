@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -20,7 +21,8 @@ import (
 // Endpoint is the base URL of the API.
 const Endpoint = "https://api.hetzner.cloud/v1"
 
-// UserAgent is the value for the User-Agent header sent with each request.
+// UserAgent is the value for the library part of the User-Agent header
+// that is sent with each request.
 const UserAgent = "hcloud-go/" + Version
 
 // A BackoffFunc returns the duration to wait before performing the
@@ -46,11 +48,15 @@ func ExponentialBackoff(b float64, d time.Duration) BackoffFunc {
 
 // Client is a client for the Hetzner Cloud API.
 type Client struct {
-	endpoint     string
-	token        string
-	pollInterval time.Duration
-	backoffFunc  BackoffFunc
-	httpClient   *http.Client
+	endpoint           string
+	token              string
+	pollInterval       time.Duration
+	backoffFunc        BackoffFunc
+	httpClient         *http.Client
+	applicationName    string
+	applicationVersion string
+	userAgent          string
+	debugWriter        io.Writer
 
 	Action     ActionClient
 	Datacenter DatacenterClient
@@ -58,10 +64,12 @@ type Client struct {
 	Image      ImageClient
 	ISO        ISOClient
 	Location   LocationClient
+	Network    NetworkClient
 	Pricing    PricingClient
 	Server     ServerClient
 	ServerType ServerTypeClient
 	SSHKey     SSHKeyClient
+	Volume     VolumeClient
 }
 
 // A ClientOption is used to configure a Client.
@@ -96,6 +104,24 @@ func WithBackoffFunc(f BackoffFunc) ClientOption {
 	}
 }
 
+// WithApplication configures a Client with the given application name and
+// application version. The version may be blank. Programs are encouraged
+// to at least set an application name.
+func WithApplication(name, version string) ClientOption {
+	return func(client *Client) {
+		client.applicationName = name
+		client.applicationVersion = version
+	}
+}
+
+// WithDebugWriter configures a Client to print debug information to the given
+// writer. To, for example, print debug information on stderr, set it to os.Stderr.
+func WithDebugWriter(debugWriter io.Writer) ClientOption {
+	return func(client *Client) {
+		client.debugWriter = debugWriter
+	}
+}
+
 // NewClient creates a new client.
 func NewClient(options ...ClientOption) *Client {
 	client := &Client{
@@ -109,16 +135,20 @@ func NewClient(options ...ClientOption) *Client {
 		option(client)
 	}
 
+	client.buildUserAgent()
+
 	client.Action = ActionClient{client: client}
 	client.Datacenter = DatacenterClient{client: client}
 	client.FloatingIP = FloatingIPClient{client: client}
 	client.Image = ImageClient{client: client}
 	client.ISO = ISOClient{client: client}
 	client.Location = LocationClient{client: client}
+	client.Network = NetworkClient{client: client}
 	client.Pricing = PricingClient{client: client}
 	client.Server = ServerClient{client: client}
 	client.ServerType = ServerTypeClient{client: client}
 	client.SSHKey = SSHKeyClient{client: client}
+	client.Volume = VolumeClient{client: client}
 
 	return client
 }
@@ -131,7 +161,7 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body io.Re
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -149,7 +179,6 @@ func (c *Client) Do(r *http.Request, v interface{}) (*Response, error) {
 			return nil, err
 		}
 		response := &Response{Response: resp}
-
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			resp.Body.Close()
@@ -157,6 +186,20 @@ func (c *Client) Do(r *http.Request, v interface{}) (*Response, error) {
 		}
 		resp.Body.Close()
 		resp.Body = ioutil.NopCloser(bytes.NewReader(body))
+
+		if c.debugWriter != nil {
+			dumpReq, err := httputil.DumpRequest(r, true)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(c.debugWriter, "--- Request:\n%s\n\n", dumpReq)
+
+			dumpResp, err := httputil.DumpResponse(resp, true)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(c.debugWriter, "--- Response:\n%s\n\n", dumpResp)
+		}
 
 		if err = response.readMeta(body); err != nil {
 			return response, fmt.Errorf("hcloud: error reading response meta data: %s", err)
@@ -204,6 +247,17 @@ func (c *Client) all(f func(int) (*Response, error)) (*Response, error) {
 			return resp, nil
 		}
 		page = resp.Meta.Pagination.NextPage
+	}
+}
+
+func (c *Client) buildUserAgent() {
+	switch {
+	case c.applicationName != "" && c.applicationVersion != "":
+		c.userAgent = c.applicationName + "/" + c.applicationVersion + " " + UserAgent
+	case c.applicationName != "" && c.applicationVersion == "":
+		c.userAgent = c.applicationName + " " + UserAgent
+	default:
+		c.userAgent = UserAgent
 	}
 }
 
@@ -285,16 +339,16 @@ type ListOpts struct {
 	LabelSelector string // Label selector for filtering by labels
 }
 
-func valuesForListOpts(opts ListOpts) url.Values {
+func (l ListOpts) values() url.Values {
 	vals := url.Values{}
-	if opts.Page > 0 {
-		vals.Add("page", strconv.Itoa(opts.Page))
+	if l.Page > 0 {
+		vals.Add("page", strconv.Itoa(l.Page))
 	}
-	if opts.PerPage > 0 {
-		vals.Add("per_page", strconv.Itoa(opts.PerPage))
+	if l.PerPage > 0 {
+		vals.Add("per_page", strconv.Itoa(l.PerPage))
 	}
-	if len(opts.LabelSelector) > 0 {
-		vals.Add("label_selector", opts.LabelSelector)
+	if len(l.LabelSelector) > 0 {
+		vals.Add("label_selector", l.LabelSelector)
 	}
 	return vals
 }
