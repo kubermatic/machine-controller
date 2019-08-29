@@ -164,7 +164,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if len(c.Networks) != 0 {
 		for _, network := range c.Networks {
 			if _, _, err = client.Network.Get(ctx, network); err != nil {
-				return fmt.Errorf("failed to get network: %v", err)
+				return fmt.Errorf("failed to get network %q: %v", network, err)
 			}
 		}
 	}
