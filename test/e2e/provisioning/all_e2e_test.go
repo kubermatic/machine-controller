@@ -50,6 +50,7 @@ const (
 	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest = "./testdata/machine-invalid.yaml"
 	kubevirtManifest       = "./testdata/machinedeployment-kubevirt.yaml"
+	alibabaManifest        = "./testdata/machinedeployment-alibaba.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -241,6 +242,31 @@ func TestPacketProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< PACKET_PROJECT_ID >>=%s", projectID),
 	}
 	runScenarios(t, excludeSelector, params, PacketManifest, fmt.Sprintf("packet-%s", *testRunIdentifier))
+}
+
+func TestAlibabaProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	accessKeyID := os.Getenv("ALIBABA_ACCESS_KEY_ID")
+	if len(accessKeyID) == 0 {
+		t.Fatal("unable to run the test suite, ALIBABA_ACCESS_KEY_ID environment variable cannot be empty")
+	}
+
+	accessKeySecret := os.Getenv("ALIBABA_ACCESS_KEY_SECRET")
+	if len(accessKeySecret) == 0 {
+		t.Fatal("unable to run the test suite, ALIBABA_ACCESS_KEY_SECRET environment variable cannot be empty")
+	}
+
+	// TODO: the imageID specifies os right now
+	excludeSelector := &scenarioSelector{}
+
+	// act
+	params := []string{
+		fmt.Sprintf("<< ALIBABA_ACCESS_KEY_ID >>=%s", accessKeyID),
+		fmt.Sprintf("<< ALIBABA_ACCESS_KEY_SECRET >>=%s", accessKeySecret),
+	}
+	runScenarios(t, excludeSelector, params, alibabaManifest, fmt.Sprintf("alibaba-%s", *testRunIdentifier))
 }
 
 // TestLinodeProvisioning - a test suite that exercises Linode provider
