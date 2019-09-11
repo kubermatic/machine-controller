@@ -42,12 +42,12 @@ type provider struct {
 }
 
 type RawConfig struct {
-	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyID"`
-	AccessKeySecret providerconfig.ConfigVarString `json:"accessKeySecret"`
-	RegionID        providerconfig.ConfigVarString `json:"regionID"`
-	ImageID         providerconfig.ConfigVarString `json:"imageID"`
+	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyID,omitempty"`
+	AccessKeySecret providerconfig.ConfigVarString `json:"accessKeySecret,omitempty"`
+	RegionID        providerconfig.ConfigVarString `json:"regionID,omitempty"`
+	ImageID         providerconfig.ConfigVarString `json:"imageID,omitempty"`
 	InstanceName    providerconfig.ConfigVarString `json:"instanceName,omitempty"`
-	InstanceType    providerconfig.ConfigVarString `json:"instanceType"`
+	InstanceType    providerconfig.ConfigVarString `json:"instanceType,omitempty"`
 }
 
 type Config struct {
