@@ -18,13 +18,14 @@ package alibaba
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -42,22 +43,26 @@ type provider struct {
 }
 
 type RawConfig struct {
-	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyID,omitempty"`
-	AccessKeySecret providerconfig.ConfigVarString `json:"accessKeySecret,omitempty"`
-	RegionID        providerconfig.ConfigVarString `json:"regionID,omitempty"`
-	ImageID         providerconfig.ConfigVarString `json:"imageID,omitempty"`
-	InstanceName    providerconfig.ConfigVarString `json:"instanceName,omitempty"`
-	InstanceType    providerconfig.ConfigVarString `json:"instanceType,omitempty"`
+	AccessKeyID             providerconfig.ConfigVarString `json:"accessKeyID,omitempty"`
+	AccessKeySecret         providerconfig.ConfigVarString `json:"accessKeySecret,omitempty"`
+	RegionID                providerconfig.ConfigVarString `json:"regionID,omitempty"`
+	ImageID                 providerconfig.ConfigVarString `json:"imageID,omitempty"`
+	InstanceName            providerconfig.ConfigVarString `json:"instanceName,omitempty"`
+	InstanceType            providerconfig.ConfigVarString `json:"instanceType,omitempty"`
+	VSwitchID               providerconfig.ConfigVarString `json:"vSwitchID,omitempty"`
+	InternetMaxBandwidthOut providerconfig.ConfigVarString `json:"internetMaxBandwidthOut,omitempty"`
 }
 
 type Config struct {
-	AccessKeyID     string
-	AccessKeySecret string
-	RegionID        string
-	ImageID         string
-	InstanceName    string
-	InstanceType    string
-	InstanceID      string
+	AccessKeyID             string
+	AccessKeySecret         string
+	RegionID                string
+	ImageID                 string
+	InstanceName            string
+	InstanceType            string
+	InstanceID              string
+	VSwitchID               string
+	InternetMaxBandwidthOut string
 }
 
 type alibabaInstance struct {
@@ -80,7 +85,7 @@ func (a *alibabaInstance) Status() instance.Status {
 	return instance.Status(a.instance.Status)
 }
 
-// New returns a Kubevirt provider
+// New returns a Alibaba cloud provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -96,21 +101,26 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	}
 
 	if c.AccessKeyID == "" {
-		return errors.New("accessKeyID is missing")
+		return fmt.Errorf("accessKeyID is missing")
 	}
 	if c.AccessKeySecret == "" {
-		return errors.New("accessKeySecret is missing")
+		return fmt.Errorf("accessKeySecret is missing")
 	}
 	if c.RegionID == "" {
-		return errors.New("regionID is missing")
+		return fmt.Errorf("regionID is missing")
 	}
 	if c.ImageID == "" {
-		return errors.New("imageID is missing")
+		return fmt.Errorf("imageID is missing")
 	}
 	if c.InstanceType == "" {
-		return errors.New("instanceType is missing")
+		return fmt.Errorf("instanceType is missing")
 	}
-
+	if c.VSwitchID == "" {
+		return fmt.Errorf("vSwitchID is missing")
+	}
+	if c.InternetMaxBandwidthOut == "" {
+		return fmt.Errorf("internetMaxBandwidthOut is missing")
+	}
 	return nil
 }
 
@@ -128,12 +138,12 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	instance, err := getInstance(client, c.InstanceID)
+	i, err := getInstance(client, c.InstanceName)
 	if err != nil {
 		return nil, err
 	}
-	if instance != nil {
-		return &alibabaInstance{instance: instance}, nil
+	if i != nil {
+		return &alibabaInstance{instance: i}, nil
 	}
 
 	return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -161,18 +171,33 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest.ImageId = c.ImageID
 	createInstanceRequest.InstanceName = c.InstanceName
 	createInstanceRequest.InstanceType = c.InstanceType
+	createInstanceRequest.VSwitchId = c.VSwitchID
+	createInstanceRequest.InternetMaxBandwidthOut = requests.Integer(c.InternetMaxBandwidthOut)
 
-	response, err := client.CreateInstance(createInstanceRequest)
+	_, err = client.CreateInstance(createInstanceRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create instance at Alibaba cloud: %v", err)
+		return nil, fmt.Errorf("failed to create i at Alibaba cloud: %v", err)
 	}
-	c.InstanceID = response.InstanceId
 
-	instance, err := getInstance(client, c.InstanceID)
+	foundInstance, err := checkInstanceStatus(client, c.InstanceName)
+
+	ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
+	ipAddress.InstanceId = foundInstance.InstanceId
+
+	_, err = client.AllocatePublicIpAddress(ipAddress)
 	if err != nil {
 		return nil, err
 	}
-	return &alibabaInstance{instance: instance}, nil
+
+	startRequest := ecs.CreateStartInstanceRequest()
+	startRequest.InstanceId = foundInstance.InstanceId
+
+	_, err = client.StartInstance(startRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &alibabaInstance{instance: foundInstance}, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
@@ -289,11 +314,18 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, erro
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"regionID\" field, error = %v", err)
 	}
-
+	c.VSwitchID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VSwitchID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"vSwitchID\" field, error = %v", err)
+	}
+	c.InternetMaxBandwidthOut, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InternetMaxBandwidthOut)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
+	}
 	return &c, &rawConfig, err
 }
 
-func getClient(accessKeyID, accessKeySecret, regionID string) (*ecs.Client, error) {
+func getClient(regionID, accessKeyID, accessKeySecret string) (*ecs.Client, error) {
 	client, err := ecs.NewClientWithAccessKey(regionID, accessKeyID, accessKeySecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Alibaba cloud client: %v", err)
@@ -301,17 +333,51 @@ func getClient(accessKeyID, accessKeySecret, regionID string) (*ecs.Client, erro
 	return client, nil
 }
 
-func getInstance(client *ecs.Client, instanceID string) (*ecs.Instance, error) {
+func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error) {
 	describeInstanceRequest := ecs.CreateDescribeInstancesRequest()
-	describeInstanceRequest.InstanceIds = instanceID
+	describeInstanceRequest.InstanceName = instanceName
 
 	response, err := client.DescribeInstances(describeInstanceRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to describe instance with instanceID: %s: %v", instanceID, err)
+		return nil, fmt.Errorf("failed to describe instance with instanceName: %s: %v", instanceName, err)
 	}
 
-	if response.Instances.Instance == nil {
-		return nil, fmt.Errorf("failed to get instance with instancedID: %s: %v", instanceID, err)
+	if response.Instances.Instance == nil || len(response.Instances.Instance) == 0 {
+		return nil, errors.ErrInstanceNotFound
 	}
+
 	return &response.Instances.Instance[0], nil
+}
+
+func checkInstanceStatus(client *ecs.Client, name string) (*ecs.Instance, error) {
+	var (
+		maxRetries = 5
+		retries    = 1
+	)
+
+	for {
+		if retries > maxRetries {
+			break
+		}
+
+		foundInstance, err := getInstance(client, name)
+		if err != nil {
+			return nil, err
+		}
+
+		if foundInstance == nil {
+			return nil, fmt.Errorf("instance %v is not found", name)
+		}
+
+		if name == foundInstance.InstanceName &&
+			foundInstance.Status == "Stopped" {
+			return foundInstance, nil
+		}
+
+		time.Sleep(500 * time.Millisecond)
+		retries++
+		continue
+	}
+
+	return nil, fmt.Errorf("instance %v doesn't have a status", name)
 }
