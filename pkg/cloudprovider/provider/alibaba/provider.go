@@ -157,11 +157,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, err
 	}
 
-	createInstanceRequest := &ecs.CreateInstanceRequest{
-		ImageId:      c.ImageID,
-		InstanceName: c.InstanceName,
-		InstanceType: c.InstanceType,
-	}
+	createInstanceRequest := ecs.CreateCreateInstanceRequest()
+	createInstanceRequest.ImageId = c.ImageID
+	createInstanceRequest.InstanceName = c.InstanceName
+	createInstanceRequest.InstanceType = c.InstanceType
 
 	response, err := client.CreateInstance(createInstanceRequest)
 	if err != nil {
