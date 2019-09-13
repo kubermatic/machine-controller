@@ -103,6 +103,7 @@ systemd:
         EnvironmentFile=-/etc/environment
         Environment=KUBELET_IMAGE=docker://192.168.100.100:5000/kubernetes/hyperkube:v1.12.0
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
+          --inherit-env \
           --insecure-options=image \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
           --mount volume=resolv,target=/etc/resolv.conf \
