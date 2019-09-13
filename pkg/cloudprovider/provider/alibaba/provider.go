@@ -17,15 +17,18 @@ limitations under the License.
 package alibaba
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
@@ -58,7 +61,6 @@ type Config struct {
 	AccessKeySecret         string
 	RegionID                string
 	ImageID                 string
-	InstanceName            string
 	InstanceType            string
 	InstanceID              string
 	VSwitchID               string
@@ -138,10 +140,11 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	i, err := getInstance(client, c.InstanceName)
+	i, err := getInstance(client, machine.Name)
 	if err != nil {
 		return nil, err
 	}
+
 	if i != nil {
 		return &alibabaInstance{instance: i}, nil
 	}
@@ -169,17 +172,23 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
 	createInstanceRequest.ImageId = c.ImageID
-	createInstanceRequest.InstanceName = c.InstanceName
+	createInstanceRequest.InstanceName = machine.Name
 	createInstanceRequest.InstanceType = c.InstanceType
 	createInstanceRequest.VSwitchId = c.VSwitchID
 	createInstanceRequest.InternetMaxBandwidthOut = requests.Integer(c.InternetMaxBandwidthOut)
+	encodedUserData := base64.StdEncoding.EncodeToString([]byte(userdata))
+	createInstanceRequest.UserData = encodedUserData
+	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
 
 	_, err = client.CreateInstance(createInstanceRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create i at Alibaba cloud: %v", err)
 	}
 
-	foundInstance, err := checkInstanceStatus(client, c.InstanceName)
+	foundInstance, err := checkInstanceStatus(client, machine.Name)
+	if err != nil {
+		return nil, err
+	}
 
 	ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
 	ipAddress.InstanceId = foundInstance.InstanceId
@@ -222,7 +231,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	request := ecs.CreateDeleteInstanceRequest()
-	request.InstanceId = c.InstanceID
+
+	foundInstance, err := getInstance(client, machine.Name)
+	if err != nil {
+		return false, err
+	}
+	request.InstanceId = foundInstance.InstanceId
 
 	if _, err = client.DeleteInstance(request); err != nil {
 		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
@@ -302,10 +316,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, erro
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %v", err)
 	}
-	c.InstanceName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"instanceName\" field, error = %v", err)
-	}
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ImageID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"imageID\" field, error = %v", err)
@@ -366,7 +376,8 @@ func checkInstanceStatus(client *ecs.Client, name string) (*ecs.Instance, error)
 		}
 
 		if foundInstance == nil {
-			return nil, fmt.Errorf("instance %v is not found", name)
+			time.Sleep(500 * time.Millisecond)
+			continue
 		}
 
 		if name == foundInstance.InstanceName &&
