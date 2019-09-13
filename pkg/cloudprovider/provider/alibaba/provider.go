@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -34,7 +35,6 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
-	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
 )
 
 const (
@@ -85,7 +85,7 @@ func (a *alibabaInstance) Status() instance.Status {
 	return instance.Status(a.instance.Status)
 }
 
-// New returns a Alibaba cloud provider
+// New returns an Alibaba cloud provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -94,8 +94,8 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
-	c, _, pc, err := p.getConfig(machinespec.ProviderSpec)
+func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
+	c, _,pc, err := p.getConfig(machineSpec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -182,7 +182,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	_, err = client.CreateInstance(createInstanceRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create i at Alibaba cloud: %v", err)
+		return nil, fmt.Errorf("failed to create instance at Alibaba cloud: %v", err)
 	}
 
 	foundInstance, err := checkInstanceStatus(client, machine.Name)
@@ -383,7 +383,6 @@ func checkInstanceStatus(client *ecs.Client, name string) (*ecs.Instance, error)
 
 		time.Sleep(500 * time.Millisecond)
 		retries++
-		continue
 	}
 
 	return nil, fmt.Errorf("instance %v doesn't have a status", name)
