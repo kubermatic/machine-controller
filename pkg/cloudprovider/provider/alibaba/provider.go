@@ -49,7 +49,6 @@ type RawConfig struct {
 	AccessKeyID             providerconfig.ConfigVarString `json:"accessKeyID,omitempty"`
 	AccessKeySecret         providerconfig.ConfigVarString `json:"accessKeySecret,omitempty"`
 	RegionID                providerconfig.ConfigVarString `json:"regionID,omitempty"`
-	ImageID                 providerconfig.ConfigVarString `json:"imageID,omitempty"`
 	InstanceName            providerconfig.ConfigVarString `json:"instanceName,omitempty"`
 	InstanceType            providerconfig.ConfigVarString `json:"instanceType,omitempty"`
 	VSwitchID               providerconfig.ConfigVarString `json:"vSwitchID,omitempty"`
@@ -60,7 +59,6 @@ type Config struct {
 	AccessKeyID             string
 	AccessKeySecret         string
 	RegionID                string
-	ImageID                 string
 	InstanceType            string
 	InstanceID              string
 	VSwitchID               string
@@ -97,7 +95,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
-	c, _, err := p.getConfig(machinespec.ProviderSpec)
+	c, _, pc, err := p.getConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -111,9 +109,6 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	if c.RegionID == "" {
 		return fmt.Errorf("regionID is missing")
 	}
-	if c.ImageID == "" {
-		return fmt.Errorf("imageID is missing")
-	}
 	if c.InstanceType == "" {
 		return fmt.Errorf("instanceType is missing")
 	}
@@ -123,11 +118,16 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	if c.InternetMaxBandwidthOut == "" {
 		return fmt.Errorf("internetMaxBandwidthOut is missing")
 	}
+	_, err = getImageIDForOS(pc.OperatingSystem)
+	if err != nil {
+		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
+	}
+
 	return nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -157,7 +157,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -171,7 +171,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
-	createInstanceRequest.ImageId = c.ImageID
+	createInstanceRequest.ImageId, _ = getImageIDForOS(pc.OperatingSystem)
 	createInstanceRequest.InstanceName = machine.Name
 	createInstanceRequest.InstanceType = c.InstanceType
 	createInstanceRequest.VSwitchId = c.VSwitchID
@@ -217,7 +217,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -248,7 +248,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err == nil {
 		labels["instanceType"] = c.InstanceType
 		labels["region"] = c.RegionID
@@ -258,7 +258,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %v", err)
 	}
@@ -288,51 +288,47 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, *providerconfig.Config, error) {
 	if s.Value == nil {
-		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	rawConfig := RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	c := Config{}
 	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "ALIBABA_ACCESS_KEY_ID")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"AccessKeyID\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"AccessKeyID\" field, error = %v", err)
 	}
 	c.AccessKeySecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeySecret, "ALIBABA_ACCESS_KEY_SECRET")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"AccessKeySecret\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"AccessKeySecret\" field, error = %v", err)
 	}
 	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %v", err)
-	}
-	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ImageID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"imageID\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %v", err)
 	}
 	c.RegionID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RegionID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"regionID\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"regionID\" field, error = %v", err)
 	}
 	c.VSwitchID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VSwitchID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"vSwitchID\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"vSwitchID\" field, error = %v", err)
 	}
 	c.InternetMaxBandwidthOut, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InternetMaxBandwidthOut)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
 	}
-	return &c, &rawConfig, err
+	return &c, &rawConfig, &pconfig, err
 }
 
 func getClient(regionID, accessKeyID, accessKeySecret string) (*ecs.Client, error) {
@@ -391,4 +387,16 @@ func checkInstanceStatus(client *ecs.Client, name string) (*ecs.Instance, error)
 	}
 
 	return nil, fmt.Errorf("instance %v doesn't have a status", name)
+}
+
+func getImageIDForOS(os providerconfig.OperatingSystem) (string, error) {
+	switch os {
+	case providerconfig.OperatingSystemUbuntu:
+		return "ubuntu_18_04_64_20G_alibase_20190624.vhd", nil
+	case providerconfig.OperatingSystemCentOS:
+		return "centos_7_06_64_20G_alibase_20190711.vhd", nil
+	case providerconfig.OperatingSystemCoreos:
+		return "coreos_2023_4_0_64_30G_alibase_20190319.vhd", nil
+	}
+	return "", providerconfig.ErrOSNotSupported
 }
