@@ -730,24 +730,33 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 
 	for k, v := range machine.Spec.Labels {
 		if _, exists := node.Labels[k]; !exists {
-			modifiers = append(modifiers, func(n *corev1.Node) {
-				n.Labels[k] = v
-			})
+			f := func(k, v string) func(*corev1.Node) {
+				return func(n *corev1.Node) {
+					n.Labels[k] = v
+				}
+			}
+			modifiers = append(modifiers, f(k, v))
 		}
 	}
 
 	for k, v := range machine.Spec.Annotations {
 		if _, exists := node.Annotations[k]; !exists {
-			modifiers = append(modifiers, func(n *corev1.Node) {
-				n.Annotations[k] = v
-			})
+			f := func(k, v string) func(*corev1.Node) {
+				return func(n *corev1.Node) {
+					n.Annotations[k] = v
+				}
+			}
+			modifiers = append(modifiers, f(k, v))
 		}
 	}
 	autoscalerAnnotationValue := fmt.Sprintf("%s/%s", machine.Namespace, machine.Name)
 	if node.Annotations[AnnotationAutoscalerIdentifier] != autoscalerAnnotationValue {
-		modifiers = append(modifiers, func(n *corev1.Node) {
-			n.Annotations[AnnotationAutoscalerIdentifier] = autoscalerAnnotationValue
-		})
+		f := func(k, v string) func(*corev1.Node) {
+			return func(n *corev1.Node) {
+				n.Annotations[k] = v
+			}
+		}
+		modifiers = append(modifiers, f(AnnotationAutoscalerIdentifier, autoscalerAnnotationValue))
 	}
 
 	taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
@@ -760,9 +769,12 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 	}
 	for _, t := range machine.Spec.Taints {
 		if !taintExists(node, t) {
-			modifiers = append(modifiers, func(n *corev1.Node) {
-				n.Spec.Taints = append(node.Spec.Taints, t)
-			})
+			f := func(t corev1.Taint) func(*corev1.Node) {
+				return func(n *corev1.Node) {
+					n.Spec.Taints = append(node.Spec.Taints, t)
+				}
+			}
+			modifiers = append(modifiers, f(t))
 		}
 	}
 
