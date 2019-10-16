@@ -23,7 +23,7 @@ package main
 import (
 	"flag"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
@@ -41,6 +41,6 @@ func main() {
 	var p = userdataplugin.New(provider, debug)
 
 	if err := p.Run(); err != nil {
-		glog.Fatalf("error running Ubuntu plugin: %v", err)
+		klog.Fatalf("error running Ubuntu plugin: %v", err)
 	}
 }

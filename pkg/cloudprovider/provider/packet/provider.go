@@ -23,7 +23,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	"github.com/packethost/packngo"
 
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -303,7 +303,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, newID types.UID) error 
 		return err
 	}
 	if device == nil {
-		glog.Infof("No instance exists for machine %s", machine.Name)
+		klog.Infof("No instance exists for machine %s", machine.Name)
 		return nil
 	}
 
@@ -319,7 +319,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, newID types.UID) error 
 	// create a new UID label
 	tags = append(tags, generateTag(string(newID)))
 
-	glog.Infof("Setting UID label for machine %s", machine.Name)
+	klog.Infof("Setting UID label for machine %s", machine.Name)
 	dur := &packngo.DeviceUpdateRequest{
 		Tags: &tags,
 	}
@@ -327,7 +327,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, newID types.UID) error 
 	if err != nil {
 		return packetErrorToTerminalError(err, response, "failed to update UID label")
 	}
-	glog.Infof("Successfully set UID label for machine %s", machine.Name)
+	klog.Infof("Successfully set UID label for machine %s", machine.Name)
 
 	return nil
 }

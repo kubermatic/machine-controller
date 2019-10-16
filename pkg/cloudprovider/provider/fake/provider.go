@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -75,11 +75,11 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	}
 
 	if fakeCloudProviderSpec.PassValidation {
-		glog.V(3).Infof("succeeding validation as requested")
+		klog.V(3).Infof("succeeding validation as requested")
 		return nil
 	}
 
-	glog.V(3).Infof("failing validation as requested")
+	klog.V(3).Infof("failing validation as requested")
 	return fmt.Errorf("failing validation as requested")
 }
 

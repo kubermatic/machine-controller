@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -41,7 +41,7 @@ import (
 
 func init() {
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
 	}
 }
 

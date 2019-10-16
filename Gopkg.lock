@@ -1628,6 +1628,7 @@
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/gengo/examples/defaulter-gen/generators",
+    "k8s.io/klog",
     "k8s.io/utils/pointer",
     "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1",
     "kubevirt.io/kubevirt/pkg/api/v1",

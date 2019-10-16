@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -217,7 +217,7 @@ func Add(
 
 				for _, machine := range machinesList.Items {
 					if string(machine.UID) == ownerUIDString {
-						glog.V(6).Infof("Processing node: %s (machine=%s)", node.Meta.GetName(), machine.Name)
+						klog.V(6).Infof("Processing node: %s (machine=%s)", node.Meta.GetName(), machine.Name)
 						return []reconcile.Request{{NamespacedName: types.NamespacedName{
 							Namespace: machine.Namespace,
 							Name:      machine.Name,
@@ -337,19 +337,19 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	machine := &clusterv1alpha1.Machine{}
 	if err := r.client.Get(r.ctx, request.NamespacedName, machine); err != nil {
 		if kerrors.IsNotFound(err) {
-			glog.V(2).Infof("machine %q in work queue no longer exists", request.NamespacedName.String())
+			klog.V(2).Infof("machine %q in work queue no longer exists", request.NamespacedName.String())
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	}
 
 	if machine.Labels[controllerNameLabelKey] != r.name {
-		glog.V(3).Infof("Ignoring machine %q because its worker-name doesn't match", request.NamespacedName.String())
+		klog.V(3).Infof("Ignoring machine %q because its worker-name doesn't match", request.NamespacedName.String())
 		return reconcile.Result{}, nil
 	}
 
 	if machine.Annotations[AnnotationMachineUninitialized] != "" {
-		glog.V(3).Infof("Ignoring machine %q because it has a non-empty %q annotation", machine.Name, AnnotationMachineUninitialized)
+		klog.V(3).Infof("Ignoring machine %q because it has a non-empty %q annotation", machine.Name, AnnotationMachineUninitialized)
 		return reconcile.Result{}, nil
 	}
 
@@ -357,7 +357,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	result, err := r.reconcile(machine)
 	if err != nil {
 		// We have no guarantee that machine is non-nil after reconciliation
-		glog.Errorf("Failed to reconcile machine %q: %v", recorderMachine.Name, err)
+		klog.Errorf("Failed to reconcile machine %q: %v", recorderMachine.Name, err)
 		r.recorder.Eventf(recorderMachine, corev1.EventTypeWarning, "ReconcilingError", "%v", err)
 	} else {
 		r.clearMachineError(machine)
@@ -408,7 +408,7 @@ func (r *Reconciler) reconcile(machine *clusterv1alpha1.Machine) (*reconcile.Res
 	if err != nil {
 		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
 		if kerrors.IsNotFound(err) {
-			glog.V(3).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
+			klog.V(3).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
 			return nil, r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 				m.Status.NodeRef = nil
 			})
@@ -449,13 +449,13 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 	// If the deletion got triggered a few hours ago, skip eviction.
 	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
 	if time.Since(machine.DeletionTimestamp.Time) > r.skipEvictionAfter {
-		glog.V(0).Infof("Skipping eviction for machine %q since the deletion got triggered %.2f minutes ago", machine.Name, r.skipEvictionAfter.Minutes())
+		klog.V(0).Infof("Skipping eviction for machine %q since the deletion got triggered %.2f minutes ago", machine.Name, r.skipEvictionAfter.Minutes())
 		return false, nil
 	}
 
 	// No node - Nothing to evict
 	if machine.Status.NodeRef == nil {
-		glog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
+		klog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
 		return false, nil
 	}
 
@@ -463,7 +463,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 	if err := r.client.Get(r.ctx, types.NamespacedName{Name: machine.Status.NodeRef.Name}, node); err != nil {
 		// Node does not exist  - Nothing to evict
 		if kerrors.IsNotFound(err) {
-			glog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
+			klog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to get node %q", machine.Status.NodeRef.Name)
@@ -498,7 +498,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 
 	// If we arrived here we didn't find any machine without a NodeRef and we didn't
 	// find any node that is schedulable, so eviction cant succeed
-	glog.V(4).Infof("Skipping eviction for machine %q since there is no possible target for an eviction", machine.Name)
+	klog.V(4).Infof("Skipping eviction for machine %q since there is no possible target for an eviction", machine.Name)
 	return false, nil
 }
 
@@ -589,7 +589,7 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 
 func (r *Reconciler) ensureInstanceExistsForMachine(
 	prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfig.Config) (*reconcile.Result, error) {
-	glog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
+	klog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
 	providerInstance, err := prov.Get(machine, r.providerData)
 
@@ -598,7 +598,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 		// case 2.1: instance was not found and we are going to create one
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			glog.V(3).Infof("Validated machine spec of %s", machine.Name)
+			klog.V(3).Infof("Validated machine spec of %s", machine.Name)
 
 			kubeconfig, err := r.createBootstrapKubeconfig(machine.Name)
 			if err != nil {
@@ -635,7 +635,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				return nil, r.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprovider")
 			}
 			r.recorder.Event(machine, corev1.EventTypeNormal, "Created", "Successfully created instance")
-			glog.V(3).Infof("Created machine %s at cloud provider", machine.Name)
+			klog.V(3).Infof("Created machine %s at cloud provider", machine.Name)
 			// Reqeue the machine to make sure we notice if creation failed silently
 			return &reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 		}
@@ -693,7 +693,7 @@ func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 			}); err != nil {
 				return nil, fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
 			}
-			glog.V(3).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
+			klog.V(3).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
 		}
 		if err := r.updateMachineStatus(machine, node); err != nil {
 			return nil, fmt.Errorf("failed to update machine status: %v", err)
@@ -783,7 +783,7 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
 		r.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTaintsUpdated", "Successfully updated labels/annotations/taints")
-		glog.V(3).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
+		klog.V(3).Infof("Added labels/annotations/taints to node %s (machine %s)", node.Name, machine.Name)
 	}
 
 	return nil
@@ -851,23 +851,23 @@ func (r *Reconciler) ReadinessChecks() map[string]healthcheck.Check {
 			cm, err := r.kubeconfigProvider.GetKubeconfig()
 			if err != nil {
 				err := fmt.Errorf("failed to get cluster-info configmap: %v", err)
-				glog.V(2).Info(err)
+				klog.V(2).Info(err)
 				return err
 			}
 			if len(cm.Clusters) != 1 {
 				err := errors.New("invalid kubeconfig: no clusters found")
-				glog.V(2).Info(err)
+				klog.V(2).Info(err)
 				return err
 			}
 			for name, c := range cm.Clusters {
 				if len(c.CertificateAuthorityData) == 0 {
 					err := fmt.Errorf("invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
+					klog.V(2).Info(err)
 					return err
 				}
 				if len(c.Server) == 0 {
 					err := fmt.Errorf("invalid kubeconfig: no server was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
+					klog.V(2).Info(err)
 					return err
 				}
 			}
@@ -886,7 +886,7 @@ func (r *Reconciler) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 		}); err != nil {
 			return nil, fmt.Errorf("failed to update machine after adding the delete instance finalizer: %v", err)
 		}
-		glog.V(3).Infof("Added delete finalizer to machine %s", machine.Name)
+		klog.V(3).Infof("Added delete finalizer to machine %s", machine.Name)
 	}
 	return machine, nil
 }

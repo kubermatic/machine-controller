@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	"github.com/mattbaird/jsonpatch"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -75,12 +75,12 @@ func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperat
 	if err != nil {
 		return nil, err
 	}
-	glog.V(6).Infof("jsonpatch: Marshaled original: %s", string(ori))
+	klog.V(6).Infof("jsonpatch: Marshaled original: %s", string(ori))
 	cur, err := json.Marshal(current)
 	if err != nil {
 		return nil, err
 	}
-	glog.V(6).Infof("jsonpatch: Marshaled target: %s", string(cur))
+	klog.V(6).Infof("jsonpatch: Marshaled target: %s", string(cur))
 	return jsonpatch.CreatePatch(ori, cur)
 }
 
@@ -97,7 +97,7 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1beta
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal json patch: %v", err)
 		}
-		glog.V(3).Infof("Produced jsonpatch: %s", string(patchRaw))
+		klog.V(3).Infof("Produced jsonpatch: %s", string(patchRaw))
 
 		response.Patch = patchRaw
 		response.PatchType = &jsonPatch
@@ -123,11 +123,11 @@ func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) 
 
 		resp, err := json.Marshal(admissionReview)
 		if err != nil {
-			glog.Errorf("failed to marshal admissionResponse: %v", err)
+			klog.Errorf("failed to marshal admissionResponse: %v", err)
 			return
 		}
 		if _, err := w.Write(resp); err != nil {
-			glog.Errorf("failed to write admissionResponse: %v", err)
+			klog.Errorf("failed to write admissionResponse: %v", err)
 		}
 	}
 }

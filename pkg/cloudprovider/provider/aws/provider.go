@@ -30,7 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -170,7 +170,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem, region 
 	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
 	amiID, found := cache.Get(cacheKey)
 	if found {
-		glog.V(3).Info("found AMI-ID in cache!")
+		klog.V(3).Info("found AMI-ID in cache!")
 		return amiID.(string), nil
 	}
 
@@ -611,7 +611,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	}
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
-		glog.V(3).Infof("successfully triggered termination of instance %s at aws", instance.ID())
+		klog.V(3).Infof("successfully triggered termination of instance %s at aws", instance.ID())
 	}
 
 	return false, nil

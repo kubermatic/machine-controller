@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/digitalocean/godo"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	"golang.org/x/oauth2"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -290,7 +290,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	defer func() {
 		_, err := client.Keys.DeleteByFingerprint(ctx, fingerprint)
 		if err != nil {
-			glog.Errorf("failed to remove a temporary ssh key with fingerprint = %v, due to = %v", fingerprint, err)
+			klog.Errorf("failed to remove a temporary ssh key with fingerprint = %v, due to = %v", fingerprint, err)
 		}
 	}()
 
@@ -333,10 +333,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			return false, fmt.Errorf("droplet (id='%d') got created but we failed to fetch its status", droplet.ID)
 		}
 		if sets.NewString(newDroplet.Tags...).Has(string(machine.UID)) {
-			glog.V(6).Infof("droplet (id='%d') got fully created", droplet.ID)
+			klog.V(6).Infof("droplet (id='%d') got fully created", droplet.ID)
 			return true, nil
 		}
-		glog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
+		klog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
 		return false, nil
 	})
 

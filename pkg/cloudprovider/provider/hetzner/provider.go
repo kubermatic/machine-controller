@@ -24,7 +24,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -262,7 +262,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	defer func() {
 		_, err := client.SSHKey.Delete(ctx, hkey)
 		if err != nil {
-			glog.Errorf("Failed to delete temporary ssh key: %v", err)
+			klog.Errorf("Failed to delete temporary ssh key: %v", err)
 		}
 	}()
 	serverCreateOpts.SSHKeys = []*hcloud.SSHKey{hkey}
@@ -359,11 +359,11 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to get server: %v", err)
 	}
 	if server == nil {
-		glog.Infof("No instance exists for machine %s", machine.Name)
+		klog.Infof("No instance exists for machine %s", machine.Name)
 		return nil
 	}
 
-	glog.Infof("Setting UID label for machine %s", machine.Name)
+	klog.Infof("Setting UID label for machine %s", machine.Name)
 	_, response, err := client.Server.Update(ctx, server, hcloud.ServerUpdateOpts{
 		Labels: map[string]string{machineUIDLabelKey: string(new)},
 	})
@@ -375,7 +375,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	}
 	// This succeeds, but does not result in a label on the server, seems to be a bug
 	// on Hetzner side
-	glog.Infof("Successfully set UID label for machine %s", machine.Name)
+	klog.Infof("Successfully set UID label for machine %s", machine.Name)
 
 	return nil
 }

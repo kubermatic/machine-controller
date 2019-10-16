@@ -26,7 +26,7 @@ import (
 	"errors"
 	"flag"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
@@ -83,7 +83,7 @@ func (m *Manager) locatePlugins() {
 	for _, os := range supportedOS {
 		plugin, err := newPlugin(os, m.debug)
 		if err != nil {
-			glog.Errorf("cannot use plugin '%v': %v", os, err)
+			klog.Errorf("cannot use plugin '%v': %v", os, err)
 			continue
 		}
 		m.plugins[os] = plugin

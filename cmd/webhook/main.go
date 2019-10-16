@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"k8s.io/client-go/tools/clientcmd"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,6 +37,7 @@ var (
 )
 
 func main() {
+	klog.InitFlags(nil)
 	if flag.Lookup("kubeconfig") == nil {
 		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	}
@@ -52,28 +53,28 @@ func main() {
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		glog.Fatalf("error building kubeconfig: %v", err)
+		klog.Fatalf("error building kubeconfig: %v", err)
 	}
 
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
-		glog.Fatalf("failed to build client: %v", err)
+		klog.Fatalf("failed to build client: %v", err)
 	}
 
 	um, err := userdatamanager.New()
 	if err != nil {
-		glog.Fatalf("error initialising userdata plugins: %v", err)
+		klog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
 	s := admission.New(admissionListenAddress, client, um)
 	if err := s.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath); err != nil {
-		glog.Fatalf("Failed to start server: %v", err)
+		klog.Fatalf("Failed to start server: %v", err)
 	}
 	defer func() {
 		if err := s.Close(); err != nil {
-			glog.Fatalf("Failed to shutdown server: %v", err)
+			klog.Fatalf("Failed to shutdown server: %v", err)
 		}
 	}()
-	glog.Infof("Listening on %s", admissionListenAddress)
+	klog.Infof("Listening on %s", admissionListenAddress)
 	select {}
 }

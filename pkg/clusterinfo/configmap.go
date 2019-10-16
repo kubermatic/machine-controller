@@ -22,7 +22,7 @@ import (
 	"io/ioutil"
 	"net"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -55,8 +55,8 @@ type KubeconfigProvider struct {
 func (p *KubeconfigProvider) GetKubeconfig() (*clientcmdapi.Config, error) {
 	cm, err := p.getKubeconfigFromConfigMap()
 	if err != nil {
-		glog.V(6).Infof("could not get cluster-info kubeconfig from configmap: %v", err)
-		glog.V(6).Info("falling back to retrieval via endpoint")
+		klog.V(6).Infof("could not get cluster-info kubeconfig from configmap: %v", err)
+		klog.V(6).Info("falling back to retrieval via endpoint")
 		return p.buildKubeconfigFromEndpoint()
 	}
 	return cm, nil
