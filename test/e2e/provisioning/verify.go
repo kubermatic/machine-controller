@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
-
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -36,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -71,7 +70,7 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
 	}
 
-	glog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
+	klog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
 	return nil
 }
 
@@ -148,7 +147,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
-	glog.Infof("creating a new \"%s\" MachineDeployment\n", machineDeployment.Name)
+	klog.Infof("creating a new \"%s\" MachineDeployment\n", machineDeployment.Name)
 	if err := client.Create(context.Background(), machineDeployment); err != nil {
 		return nil, err
 	}
@@ -164,9 +163,9 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	if err != nil {
 		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %v (%v)", machineDeployment.Name, err, pollErr)
 	}
-	glog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
+	klog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 
-	glog.Infof("Waiting for node of MachineDeployment %s to become ready", machineDeployment.Name)
+	klog.Infof("Waiting for node of MachineDeployment %s to become ready", machineDeployment.Name)
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		machines, pollErr := getMatchingMachines(machineDeployment, client)
 		if pollErr != nil || len(machines) < 1 {
@@ -207,7 +206,7 @@ func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimecli
 }
 
 func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client, timeout time.Duration) error {
-	glog.Infof("Starting to clean up MachineDeployment %s", machineDeployment.Name)
+	klog.Infof("Starting to clean up MachineDeployment %s", machineDeployment.Name)
 
 	// We first scale down to 0, because once the machineSets are deleted we can not
 	// match machines anymore and we do want to verify not only the node is gone but also
@@ -232,7 +231,7 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return fmt.Errorf("failed to wait for machines of MachineDeployment %s to be deleted: %v", machineDeployment.Name, err)
 	}
 
-	glog.V(2).Infof("Deleting MachineDeployment %s", machineDeployment.Name)
+	klog.V(2).Infof("Deleting MachineDeployment %s", machineDeployment.Name)
 	if err := client.Delete(context.Background(), machineDeployment); err != nil {
 		return fmt.Errorf("unable to remove MachineDeployment %s, due to %v", machineDeployment.Name, err)
 	}
@@ -331,7 +330,7 @@ func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, c
 	if err != nil {
 		return nil, err
 	}
-	glog.V(2).Infof("Found %v matching MachineSets for %s", len(matchingMachineSets), machineDeployment.Name)
+	klog.V(2).Infof("Found %v matching MachineSets for %s", len(matchingMachineSets), machineDeployment.Name)
 	var matchingMachines []clusterv1alpha1.Machine
 	for _, machineSet := range matchingMachineSets {
 		machinesForMachineSet, err := getMatchingMachinesForMachineset(&machineSet, client)
@@ -340,7 +339,7 @@ func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, c
 		}
 		matchingMachines = append(matchingMachines, machinesForMachineSet...)
 	}
-	glog.V(2).Infof("Found %v matching Machines for MachineDeployment %s", len(matchingMachines), machineDeployment.Name)
+	klog.V(2).Infof("Found %v matching Machines for MachineDeployment %s", len(matchingMachines), machineDeployment.Name)
 	return matchingMachines, nil
 }
 

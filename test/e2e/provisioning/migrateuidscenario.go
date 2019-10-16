@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
-
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -35,6 +33,7 @@ import (
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
@@ -99,7 +98,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 			if err != cloudprovidererrors.ErrInstanceNotFound {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
-					glog.V(4).Infof("failed to get machine %s before creating it on try %v with err=%v, will retry", machine.Name, i, err)
+					klog.V(4).Infof("failed to get machine %s before creating it on try %v with err=%v, will retry", machine.Name, i, err)
 					continue
 				}
 				return fmt.Errorf("failed to get machine %s before creating it: %v", machine.Name, err)
@@ -108,7 +107,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 			if err != nil {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
-					glog.V(4).Infof("failed to create machine %s on try %v with err=%v, will retry", machine.Name, i, err)
+					klog.V(4).Infof("failed to create machine %s on try %v with err=%v, will retry", machine.Name, i, err)
 					continue
 				}
 				return fmt.Errorf("failed to create machine %s: %v", machine.Name, err)
@@ -121,7 +120,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	for i := 0; i < maxTries; i++ {
 		if _, err := prov.Get(machine, providerData); err != nil {
 			if i < maxTries-1 {
-				glog.V(4).Infof("failed to get instance for machine %s before migrating on try %v with err=%v, will retry", machine.Name, i, err)
+				klog.V(4).Infof("failed to get instance for machine %s before migrating on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
 				continue
 			}
@@ -135,7 +134,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 		if err := prov.MigrateUID(machine, newUID); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
-				glog.V(4).Infof("failed to migrate UID for machine %s  on try %v with err=%v, will retry", machine.Name, i, err)
+				klog.V(4).Infof("failed to migrate UID for machine %s  on try %v with err=%v, will retry", machine.Name, i, err)
 				continue
 			}
 			return fmt.Errorf("failed to migrate UID for machine %s: %v", machine.Name, err)
@@ -149,7 +148,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 		if _, err := prov.Get(machine, providerData); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
-				glog.V(4).Infof("failed to get instance for machine %s after migrating on try %v with err=%v, will retry", machine.Name, i, err)
+				klog.V(4).Infof("failed to get instance for machine %s after migrating on try %v with err=%v, will retry", machine.Name, i, err)
 				continue
 			}
 			return fmt.Errorf("failed to get machine %s after migrating UID: %v", machine.Name, err)
@@ -164,7 +163,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 		done, err := prov.Cleanup(machine, providerData)
 		if err != nil {
 			if i < maxTries-1 {
-				glog.V(4).Infof("Failed to delete machine %s on try %v with err=%v, will retry", machine.Name, i, err)
+				klog.V(4).Infof("Failed to delete machine %s on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
 				continue
 			}
@@ -182,7 +181,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 			break
 		}
 		if i < maxTries-1 {
-			glog.V(4).Infof("Get after deleting instance for machine %s did not return ErrInstanceNotFound but err=%v", machine.Name, err)
+			klog.V(4).Infof("Get after deleting instance for machine %s did not return ErrInstanceNotFound but err=%v", machine.Name, err)
 			// Wait a little, as some providers like AWS delete asynchronously
 			time.Sleep(10 * time.Second)
 			continue
