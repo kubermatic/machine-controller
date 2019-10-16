@@ -39,7 +39,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
 	"github.com/docker/distribution/reference"
-	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -54,6 +53,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/signals"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/klog"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	machinedeploymentcontroller "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment"
 	machinesetcontroller "sigs.k8s.io/cluster-api/pkg/controller/machineset"
@@ -136,6 +136,7 @@ type controllerRunOptions struct {
 }
 
 func main() {
+	klog.InitFlags(nil)
 	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
 	// we have to guard it
 	//TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
@@ -167,7 +168,7 @@ func main() {
 
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
-		glog.Fatalf("invalid cluster dns specified: %v", err)
+		klog.Fatalf("invalid cluster dns specified: %v", err)
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
@@ -175,7 +176,7 @@ func main() {
 		parsedJoinClusterTimeoutLiteral, err := time.ParseDuration(joinClusterTimeout)
 		parsedJoinClusterTimeout = &parsedJoinClusterTimeoutLiteral
 		if err != nil {
-			glog.Fatalf("failed to parse join-cluster-timeout as duration: %v", err)
+			klog.Fatalf("failed to parse join-cluster-timeout as duration: %v", err)
 		}
 	}
 
@@ -183,26 +184,26 @@ func main() {
 
 	// Needed for migrations
 	if err := machinesv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		glog.Fatalf("failed to add machinesv1alpha1 api to scheme: %v", err)
+		klog.Fatalf("failed to add machinesv1alpha1 api to scheme: %v", err)
 	}
 	if err := apiextensionsv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		glog.Fatalf("failed to add apiextensionv1beta1 api to scheme: %v", err)
+		klog.Fatalf("failed to add apiextensionv1beta1 api to scheme: %v", err)
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
 	}
 	// Check if the hyperkube image has a tag set
 	hyperkubeImageRef, err := reference.Parse(nodeHyperkubeImage)
 	if err != nil {
-		glog.Fatalf("failed to parse --node-hyperkube-image %s: %v", nodeHyperkubeImage, err)
+		klog.Fatalf("failed to parse --node-hyperkube-image %s: %v", nodeHyperkubeImage, err)
 	}
 	if _, ok := hyperkubeImageRef.(reference.NamedTagged); ok {
-		glog.Fatalf("--node-hyperkube-image must not contain a tag. The tag will be dynamically set for each Machine.")
+		klog.Fatalf("--node-hyperkube-image must not contain a tag. The tag will be dynamically set for each Machine.")
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		glog.Fatalf("error building kubeconfig: %v", err)
+		klog.Fatalf("error building kubeconfig: %v", err)
 	}
 
 	// rest.Config has no DeepCopy() that returns another rest.Config, thus
@@ -211,17 +212,17 @@ func main() {
 	// QPS and Burst config there
 	machineCfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		glog.Fatalf("error building kubeconfig for machines: %v", err)
+		klog.Fatalf("error building kubeconfig for machines: %v", err)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
+		klog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
 	}
 
 	ctrlruntimeClient, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
-		glog.Fatalf("error building ctrlruntime client: %v", err)
+		klog.Fatalf("error building ctrlruntime client: %v", err)
 	}
 
 	prometheusRegistry := prometheus.DefaultRegisterer
@@ -264,7 +265,7 @@ func main() {
 	if bootstrapTokenServiceAccountName != "" {
 		flagParts := strings.Split(bootstrapTokenServiceAccountName, "/")
 		if flagPartsLen := len(flagParts); flagPartsLen != 2 {
-			glog.Fatalf("Splitting the bootstrap-token-service-account-name flag value in '/' returned %d parts, expected exactly two", flagPartsLen)
+			klog.Fatalf("Splitting the bootstrap-token-service-account-name flag value in '/' returned %d parts, expected exactly two", flagPartsLen)
 		}
 		runOptions.bootstrapTokenServiceAccountName = &types.NamespacedName{Namespace: flagParts[0], Name: flagParts[1]}
 	}
@@ -278,11 +279,11 @@ func main() {
 		g.Add(func() error {
 			return s.ListenAndServe()
 		}, func(err error) {
-			glog.Warningf("shutting down HTTP server due to: %s", err)
+			klog.Warningf("shutting down HTTP server due to: %s", err)
 			srvCtx, cancel := context.WithTimeout(ctx, time.Second)
 			defer cancel()
 			if err = s.Shutdown(srvCtx); err != nil {
-				glog.Errorf("failed to shutdown HTTP server: %s", err)
+				klog.Errorf("failed to shutdown HTTP server: %s", err)
 			}
 		})
 	}
@@ -309,7 +310,7 @@ func main() {
 		})
 	}
 
-	glog.Info(g.Run())
+	klog.Info(g.Run())
 }
 
 // startControllerViaLeaderElection starts machine controller only if a proper lock was acquired.
@@ -319,14 +320,14 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	mgrSyncPeriod := 5 * time.Minute
 	mgr, err := manager.New(runOptions.cfg, manager.Options{SyncPeriod: &mgrSyncPeriod})
 	if err != nil {
-		glog.Errorf("failed to create manager: %v", err)
+		klog.Errorf("failed to create manager: %v", err)
 		runOptions.parentCtxDone()
 		return err
 	}
 
 	id, err := os.Hostname()
 	if err != nil {
-		glog.Fatalf("error getting hostname: %s", err.Error())
+		klog.Fatalf("error getting hostname: %s", err.Error())
 	}
 	// add a seed to the id, so that two processes on the same host don't accidentally both become active
 	id = id + "_" + string(uuid.NewUUID())
@@ -363,14 +364,14 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 
 		// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
 		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, mgr.GetClient(), runOptions.kubeClient, providerData); err != nil {
-			glog.Errorf("Migration to clusterv1alpha1 failed: %v", err)
+			klog.Errorf("Migration to clusterv1alpha1 failed: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 
 		// Migrate providerConfig field to providerSpec field
 		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, runOptions.cfg, mgr.GetClient()); err != nil {
-			glog.Errorf("Migration of providerConfig field to providerSpec field failed: %v", err)
+			klog.Errorf("Migration of providerConfig field to providerSpec field failed: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
@@ -391,27 +392,27 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.skipEvictionAfter,
 			runOptions.node,
 		); err != nil {
-			glog.Errorf("failed to add Machine controller to manager: %v", err)
+			klog.Errorf("failed to add Machine controller to manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 		if err := machinesetcontroller.Add(mgr); err != nil {
-			glog.Errorf("failed to add MachineSet controller to manager: %v", err)
+			klog.Errorf("failed to add MachineSet controller to manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 		if err := machinedeploymentcontroller.Add(mgr); err != nil {
-			glog.Errorf("failed to add MachineDeployment controller to manager: %v", err)
+			klog.Errorf("failed to add MachineDeployment controller to manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 		if err := mgr.Start(runOptions.parentCtx.Done()); err != nil {
-			glog.Errorf("failed to start kubebuilder manager: %v", err)
+			klog.Errorf("failed to start kubebuilder manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 
-		glog.Info("machine controller has been successfully stopped")
+		klog.Info("machine controller has been successfully stopped")
 	}
 
 	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
@@ -469,23 +470,23 @@ func readinessChecks(kubeconfigProvider machinecontroller.KubeconfigProvider) ma
 		"valid-info-kubeconfig": func() error {
 			cm, err := kubeconfigProvider.GetKubeconfig()
 			if err != nil {
-				glog.V(2).Infof("[healthcheck] Unable to get kubeconfig: %v", err)
+				klog.V(2).Infof("[healthcheck] Unable to get kubeconfig: %v", err)
 				return err
 			}
 			if len(cm.Clusters) != 1 {
 				err := errors.New("[healthcheck] Invalid kubeconfig: no clusters found")
-				glog.V(2).Info(err)
+				klog.V(2).Info(err)
 				return err
 			}
 			for name, c := range cm.Clusters {
 				if len(c.CertificateAuthorityData) == 0 {
 					err := fmt.Errorf("[healthcheck] Invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
+					klog.V(2).Info(err)
 					return err
 				}
 				if len(c.Server) == 0 {
 					err := fmt.Errorf("[healthcheck] Invalid kubeconfig: no server was specified for kuberconfig.clusters.['%s']", name)
-					glog.V(2).Info(err)
+					klog.V(2).Info(err)
 					return err
 				}
 			}

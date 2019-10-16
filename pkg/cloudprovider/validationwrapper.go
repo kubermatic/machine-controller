@@ -19,12 +19,11 @@ package cloudprovider
 import (
 	"fmt"
 
-	"github.com/golang/glog"
-
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"k8s.io/apimachinery/pkg/types"
 
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
@@ -50,11 +49,11 @@ func (w *cachingValidationWrapper) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("error getting validation result from cache: %v", err)
 	}
 	if exists {
-		glog.V(6).Infof("Got cache hit for validation")
+		klog.V(6).Infof("Got cache hit for validation")
 		return result
 	}
 
-	glog.V(6).Infof("Got cache miss for validation")
+	klog.V(6).Infof("Got cache miss for validation")
 	err = w.actualProvider.Validate(spec)
 	if err := cache.Set(spec, err); err != nil {
 		return fmt.Errorf("failed to set cache after validation: %v", err)

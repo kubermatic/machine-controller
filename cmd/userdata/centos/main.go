@@ -23,7 +23,7 @@ package main
 import (
 	"flag"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
@@ -41,6 +41,6 @@ func main() {
 	var p = userdataplugin.New(provider, debug)
 
 	if err := p.Run(); err != nil {
-		glog.Fatalf("error running CentOS plugin: %v", err)
+		klog.Fatalf("error running CentOS plugin: %v", err)
 	}
 }

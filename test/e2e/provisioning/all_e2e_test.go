@@ -24,15 +24,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/glog"
-
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/klog"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 func init() {
+	klog.InitFlags(nil)
 	if err := clusterv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
-		glog.Fatalf("failed to add clusterv1alpha1 to scheme: %v", err)
+		klog.Fatalf("failed to add clusterv1alpha1 to scheme: %v", err)
 	}
 }
 

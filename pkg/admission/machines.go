@@ -20,11 +20,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/klog"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	clusterv1alpha1conversions "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
@@ -44,7 +44,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	machineOriginal := machine.DeepCopy()
-	glog.V(3).Infof("Defaulting and validating machine %s/%s", machine.Namespace, machine.Name)
+	klog.V(3).Infof("Defaulting and validating machine %s/%s", machine.Namespace, machine.Name)
 
 	// Mutating .Spec is never allowed
 	// Only hidden exception: the machine-controller may set the .Spec.Name to .Metadata.Name

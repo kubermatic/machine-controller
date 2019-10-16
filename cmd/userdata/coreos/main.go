@@ -23,7 +23,7 @@ package main
 import (
 	"flag"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
@@ -42,6 +42,6 @@ func main() {
 	var p = userdataplugin.New(convert.NewIgnition(provider), debug)
 
 	if err := p.Run(); err != nil {
-		glog.Fatalf("error running CoreOS plugin: %v", err)
+		klog.Fatalf("error running CoreOS plugin: %v", err)
 	}
 }
