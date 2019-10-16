@@ -28,14 +28,12 @@ import (
 	"os/exec"
 	"text/template"
 
-	"k8s.io/klog"
-
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/klog"
 )
 
 const (

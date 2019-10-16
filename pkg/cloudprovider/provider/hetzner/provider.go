@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"k8s.io/klog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -34,7 +33,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
-
+	"k8s.io/klog"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )

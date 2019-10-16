@@ -25,13 +25,13 @@ import (
 	"reflect"
 	"time"
 
-	"k8s.io/klog"
 	"github.com/mattbaird/jsonpatch"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"

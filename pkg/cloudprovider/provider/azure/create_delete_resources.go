@@ -24,8 +24,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"k8s.io/klog"
+
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
 )
 
 // deleteInterfacesByMachineUID will remove all network interfaces tagged with the specific machine's UID.

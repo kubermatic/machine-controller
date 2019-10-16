@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/digitalocean/godo"
-	"k8s.io/klog"
 	"golang.org/x/oauth2"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -38,8 +37,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"k8s.io/klog"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 

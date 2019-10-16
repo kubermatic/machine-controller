@@ -19,13 +19,12 @@ package main
 import (
 	"flag"
 
-	"k8s.io/klog"
-
-	"k8s.io/client-go/tools/clientcmd"
-	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/kubermatic/machine-controller/pkg/admission"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
+
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (

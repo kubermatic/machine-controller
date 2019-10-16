@@ -28,10 +28,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"k8s.io/klog"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
+	"k8s.io/klog"
 )
 
 const (

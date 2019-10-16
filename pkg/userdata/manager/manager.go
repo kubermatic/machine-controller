@@ -26,9 +26,9 @@ import (
 	"errors"
 	"flag"
 
-	"k8s.io/klog"
-
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
+	"k8s.io/klog"
 )
 
 var (
