@@ -19,12 +19,12 @@ package machinedeployment
 import (
 	"sort"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	dutil "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment/util"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/integer"
 	"k8s.io/klog"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	dutil "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment/util"
 )
 
 // rolloutRolling implements the logic for rolling a new machine set.
