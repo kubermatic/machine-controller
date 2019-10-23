@@ -1447,12 +1447,11 @@
   source = "github.com/kubevirt/kubevirt"
 
 [[projects]]
-  digest = "1:fa5977222626e5ca4ee3808062f84476e36a0e1f1d51abf95bb440961f4c1132"
+  digest = "1:b311a15d58ae914f551cc10753e8774c58977e8a5cd0dbe485edb8db6a748fc6"
   name = "sigs.k8s.io/cluster-api"
   packages = [
     "pkg/apis/cluster/common",
     "pkg/apis/cluster/v1alpha1",
-    "pkg/controller/machineset",
     "pkg/controller/noderefutil",
     "pkg/util",
   ]
@@ -1627,7 +1626,7 @@
     "kubevirt.io/kubevirt/pkg/api/v1",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
     "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",
-    "sigs.k8s.io/cluster-api/pkg/controller/machineset",
+    "sigs.k8s.io/cluster-api/pkg/controller/noderefutil",
     "sigs.k8s.io/cluster-api/pkg/util",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/fake",
