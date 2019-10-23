@@ -109,10 +109,6 @@ required = [
   version = "v12.3.*"
 
 [[constraint]]
-  name = "sigs.k8s.io/cluster-api"
-  revision = "2ec456177c0e8f0a903f4e746d44baaae54cc591"
-
-[[constraint]]
   name = "gopkg.in/gcfg.v1"
   version = "1.2.3"
 
