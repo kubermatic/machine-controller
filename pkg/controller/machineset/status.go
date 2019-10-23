@@ -148,7 +148,7 @@ func isNodeReady(node *corev1.Node) bool {
 }
 
 // getReadyCondition extracts the ready condition from the given status and returns that.
-// Returns nil and -1 if the condition is not present, and the index of the located condition.
+// Returns nil if the condition is not present.
 func getReadyCondition(status *corev1.NodeStatus) *corev1.NodeCondition {
 	if status == nil {
 		return nil
