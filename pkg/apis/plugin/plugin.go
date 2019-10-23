@@ -23,8 +23,8 @@ package plugin
 import (
 	"net"
 
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 const (

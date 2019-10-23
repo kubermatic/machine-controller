@@ -24,9 +24,9 @@ import (
 	"os"
 	"testing"
 
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
-	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 )
 
 func init() {

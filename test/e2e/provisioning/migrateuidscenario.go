@@ -33,8 +33,8 @@ import (
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"k8s.io/klog"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 )
 
 func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {

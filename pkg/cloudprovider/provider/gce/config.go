@@ -25,11 +25,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
