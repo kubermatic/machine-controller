@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,10 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,9 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -187,7 +188,7 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, d *v1alpha1.
 	// Add foregroundDeletion finalizer if MachineDeployment isn't deleted and linked to a cluster.
 	if cluster != nil &&
 		d.ObjectMeta.DeletionTimestamp.IsZero() &&
-		!util.Contains(d.Finalizers, metav1.FinalizerDeleteDependents) {
+		!contains(d.Finalizers, metav1.FinalizerDeleteDependents) {
 
 		d.Finalizers = append(d.ObjectMeta.Finalizers, metav1.FinalizerDeleteDependents)
 
@@ -229,7 +230,7 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, d *v1alpha1.
 // getCluster reuturns the Cluster associated with the MachineDeployment, if any.
 func (r *ReconcileMachineDeployment) getCluster(d *v1alpha1.MachineDeployment) (*v1alpha1.Cluster, error) {
 	if d.Spec.Template.Labels[v1alpha1.MachineClusterLabelName] == "" {
-		klog.Infof("Deployment %q in namespace %q doesn't specify %q label, assuming nil cluster", d.Name, d.Namespace, v1alpha1.MachineClusterLabelName)
+		klog.V(4).Infof("Deployment %q in namespace %q doesn't specify %q label, assuming nil cluster", d.Name, d.Namespace, v1alpha1.MachineClusterLabelName)
 		return nil, nil
 	}
 
@@ -413,4 +414,13 @@ func (r *ReconcileMachineDeployment) MachineSetToDeployments(o handler.MapObject
 	}
 
 	return result
+}
+
+func contains(list []string, strToSearch string) bool {
+	for _, item := range list {
+		if item == strToSearch {
+			return true
+		}
+	}
+	return false
 }

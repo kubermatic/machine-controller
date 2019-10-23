@@ -28,6 +28,17 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/node/eviction"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
+	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,8 +54,6 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -53,15 +62,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/node/eviction"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
-	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
 const (

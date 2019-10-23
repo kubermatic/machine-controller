@@ -1447,21 +1447,6 @@
   source = "github.com/kubevirt/kubevirt"
 
 [[projects]]
-  digest = "1:e150ebbf3f6e0fefbb01f338b1bc525f08e1ed3308d21288e07a85879260532c"
-  name = "sigs.k8s.io/cluster-api"
-  packages = [
-    "pkg/apis/cluster/common",
-    "pkg/apis/cluster/v1alpha1",
-    "pkg/controller/machinedeployment",
-    "pkg/controller/machinedeployment/util",
-    "pkg/controller/machineset",
-    "pkg/controller/noderefutil",
-    "pkg/util",
-  ]
-  pruneopts = "NUT"
-  revision = "2ec456177c0e8f0a903f4e746d44baaae54cc591"
-
-[[projects]]
   digest = "1:080caff4a0fbd5260153ee9fa9e67d5ddba984d0394c17043c10ab001b296fba"
   name = "sigs.k8s.io/controller-runtime"
   packages = [
@@ -1524,6 +1509,7 @@
     "github.com/aws/aws-sdk-go/service/ec2",
     "github.com/aws/aws-sdk-go/service/iam",
     "github.com/coreos/container-linux-config-transpiler/config",
+    "github.com/davecgh/go-spew/spew",
     "github.com/digitalocean/godo",
     "github.com/docker/distribution/reference",
     "github.com/ghodss/yaml",
@@ -1552,6 +1538,7 @@
     "github.com/packethost/packngo",
     "github.com/patrickmn/go-cache",
     "github.com/pborman/uuid",
+    "github.com/pkg/errors",
     "github.com/pmezard/go-difflib/difflib",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
@@ -1577,6 +1564,7 @@
     "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/equality",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured",
@@ -1615,6 +1603,7 @@
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/tools/reference",
     "k8s.io/client-go/util/flowcontrol",
+    "k8s.io/client-go/util/integer",
     "k8s.io/client-go/util/retry",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
@@ -1623,10 +1612,6 @@
     "k8s.io/utils/pointer",
     "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1",
     "kubevirt.io/kubevirt/pkg/api/v1",
-    "sigs.k8s.io/cluster-api/pkg/apis/cluster/common",
-    "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1",
-    "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment",
-    "sigs.k8s.io/cluster-api/pkg/controller/machineset",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/fake",
     "sigs.k8s.io/controller-runtime/pkg/controller",
@@ -1635,6 +1620,7 @@
     "sigs.k8s.io/controller-runtime/pkg/manager",
     "sigs.k8s.io/controller-runtime/pkg/predicate",
     "sigs.k8s.io/controller-runtime/pkg/reconcile",
+    "sigs.k8s.io/controller-runtime/pkg/runtime/scheme",
     "sigs.k8s.io/controller-runtime/pkg/source",
   ]
   solver-name = "gps-cdcl"

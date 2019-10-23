@@ -67,7 +67,6 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 		github.com/kubermatic/machine-controller/cmd/webhook
 
 lint:
-	./hack/verify-type-revision-annotation-const.sh
 	golangci-lint run -v
 
 docker-image: machine-controller webhook

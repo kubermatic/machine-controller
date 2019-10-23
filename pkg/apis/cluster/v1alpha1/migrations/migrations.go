@@ -22,6 +22,7 @@ import (
 	"time"
 
 	machinecontrolleradmission "github.com/kubermatic/machine-controller/pkg/admission"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -44,7 +45,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 

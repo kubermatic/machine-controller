@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,14 +19,15 @@ package machineset
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/controller/noderefutil"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -55,9 +56,9 @@ func (c *ReconcileMachineSet) calculateStatus(ms *v1alpha1.MachineSet, filteredM
 			klog.V(4).Infof("Unable to get node for machine %v, %v", machine.Name, err)
 			continue
 		}
-		if noderefutil.IsNodeReady(node) {
+		if isNodeReady(node) {
 			readyReplicasCount++
-			if noderefutil.IsNodeAvailable(node, ms.Spec.MinReadySeconds, metav1.Now()) {
+			if isNodeAvailable(node, ms.Spec.MinReadySeconds, metav1.Now()) {
 				availableReplicasCount++
 			}
 		}
@@ -131,4 +132,52 @@ func (c *ReconcileMachineSet) getMachineNode(machine *v1alpha1.Machine) (*corev1
 	node := &corev1.Node{}
 	err := c.Client.Get(context.Background(), client.ObjectKey{Name: nodeRef.Name}, node)
 	return node, err
+}
+
+// isNodeReady returns true if a node is ready; false otherwise.
+func isNodeReady(node *corev1.Node) bool {
+	if node == nil {
+		return false
+	}
+	for _, c := range node.Status.Conditions {
+		if c.Type == corev1.NodeReady {
+			return c.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+// getReadyCondition extracts the ready condition from the given status and returns that.
+// Returns nil if the condition is not present.
+func getReadyCondition(status *corev1.NodeStatus) *corev1.NodeCondition {
+	if status == nil {
+		return nil
+	}
+	for i := range status.Conditions {
+		if status.Conditions[i].Type == corev1.NodeReady {
+			return &status.Conditions[i]
+		}
+	}
+	return nil
+}
+
+// isNodeAvailable returns true if the node is ready and minReadySeconds have elapsed or is 0. False otherwise.
+func isNodeAvailable(node *corev1.Node, minReadySeconds int32, now metav1.Time) bool {
+	if !isNodeReady(node) {
+		return false
+	}
+
+	if minReadySeconds == 0 {
+		return true
+	}
+
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	readyCondition := getReadyCondition(&node.Status)
+
+	if !readyCondition.LastTransitionTime.IsZero() &&
+		readyCondition.LastTransitionTime.Add(minReadySecondsDuration).Before(now.Time) {
+		return true
+	}
+
+	return false
 }

@@ -44,19 +44,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
+	machinedeploymentcontroller "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment"
+	machinesetcontroller "github.com/kubermatic/machine-controller/pkg/controller/machineset"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/klog"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	machinedeploymentcontroller "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment"
-	machinesetcontroller "sigs.k8s.io/cluster-api/pkg/controller/machineset"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )

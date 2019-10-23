@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,15 +24,17 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -184,7 +186,7 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, machineSet *cluster
 	// Add foregroundDeletion finalizer if MachineSet isn't deleted and linked to a cluster.
 	if cluster != nil &&
 		machineSet.ObjectMeta.DeletionTimestamp.IsZero() &&
-		!util.Contains(machineSet.Finalizers, metav1.FinalizerDeleteDependents) {
+		!contains(machineSet.Finalizers, metav1.FinalizerDeleteDependents) {
 
 		machineSet.Finalizers = append(machineSet.ObjectMeta.Finalizers, metav1.FinalizerDeleteDependents)
 
@@ -264,7 +266,7 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, machineSet *cluster
 // getCluster reuturns the Cluster associated with the MachineSet, if any.
 func (r *ReconcileMachineSet) getCluster(ms *clusterv1alpha1.MachineSet) (*clusterv1alpha1.Cluster, error) {
 	if ms.Spec.Template.Labels[clusterv1alpha1.MachineClusterLabelName] == "" {
-		klog.Infof("MachineSet %q in namespace %q doesn't specify %q label, assuming nil cluster", ms.Name, ms.Namespace, clusterv1alpha1.MachineClusterLabelName)
+		klog.V(4).Infof("MachineSet %q in namespace %q doesn't specify %q label, assuming nil cluster", ms.Name, ms.Namespace, clusterv1alpha1.MachineClusterLabelName)
 		return nil, nil
 	}
 
@@ -404,7 +406,7 @@ func (r *ReconcileMachineSet) adoptOrphan(machineSet *clusterv1alpha1.MachineSet
 
 func (r *ReconcileMachineSet) waitForMachineCreation(machineList []*clusterv1alpha1.Machine) error {
 	for _, machine := range machineList {
-		pollErr := util.PollImmediate(stateConfirmationInterval, stateConfirmationTimeout, func() (bool, error) {
+		pollErr := wait.PollImmediate(stateConfirmationInterval, stateConfirmationTimeout, func() (bool, error) {
 			key := client.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
 			if err := r.Client.Get(context.Background(), key, &clusterv1alpha1.Machine{}); err != nil {
@@ -429,7 +431,7 @@ func (r *ReconcileMachineSet) waitForMachineCreation(machineList []*clusterv1alp
 
 func (r *ReconcileMachineSet) waitForMachineDeletion(machineList []*clusterv1alpha1.Machine) error {
 	for _, machine := range machineList {
-		pollErr := util.PollImmediate(stateConfirmationInterval, stateConfirmationTimeout, func() (bool, error) {
+		pollErr := wait.PollImmediate(stateConfirmationInterval, stateConfirmationTimeout, func() (bool, error) {
 			m := &clusterv1alpha1.Machine{}
 			key := client.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
@@ -483,4 +485,13 @@ func (r *ReconcileMachineSet) MachineToMachineSets(o handler.MapObject) []reconc
 	}
 
 	return result
+}
+
+func contains(list []string, strToSearch string) bool {
+	for _, item := range list {
+		if item == strToSearch {
+			return true
+		}
+	}
+	return false
 }

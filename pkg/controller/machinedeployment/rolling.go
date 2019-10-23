@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,11 +20,13 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	dutil "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment/util"
+
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/integer"
 	"k8s.io/klog"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	dutil "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment/util"
 )
 
 // rolloutRolling implements the logic for rolling a new machine set.

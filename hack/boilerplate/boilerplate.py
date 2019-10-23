@@ -150,7 +150,7 @@ def file_extension(filename):
     return os.path.splitext(filename)[1].split(".")[-1].lower()
 
 
-skipped_dirs = ['pkg/client', 'vendor', 'hack/verify-boilerplate.sh', 'hack/verify-codegen.sh', 'hack/update-codegen.sh', 'hack/boilerplate/test', 'pkg/userdata/scripts/health-monitor.sh', 'pkg/signals/signal.go', 'pkg/machines/v1alpha1/doc.go', 'pkg/machines/v1alpha1/defaults.go']
+skipped_dirs = ['pkg/client', 'vendor', 'hack/verify-boilerplate.sh', 'hack/verify-codegen.sh', 'hack/update-codegen.sh', 'hack/boilerplate/test', 'pkg/userdata/scripts/health-monitor.sh', 'pkg/signals/signal.go', 'pkg/machines/v1alpha1/doc.go', 'pkg/machines/v1alpha1/defaults.go', 'pkg/machines/v1alpha1/zz_generated.deepcopy.go', 'pkg/apis/cluster/v1alpha1/zz_generated.deepcopy.go']
 
 # list all the files contain 'DO NOT EDIT', but are not generated
 skipped_ungenerated_files = ['hack/boilerplate/boilerplate.py']

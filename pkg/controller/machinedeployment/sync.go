@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2019 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,6 +24,10 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	dutil "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment/util"
+
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,8 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	dutil "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -459,32 +461,6 @@ func (r *ReconcileMachineDeployment) cleanupDeployment(oldMSs []*clusterv1alpha1
 	}
 
 	return nil
-}
-
-// isScalingEvent checks whether the provided deployment has been updated with a scaling event
-// by looking at the desired-replicas annotation in the active machine sets of the deployment.
-//
-// msList should come from getMachineSetsForDeployment(d).
-// machineMap should come from getMachineMapForDeployment(d, msList).
-func (r *ReconcileMachineDeployment) isScalingEvent(d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, machineMap map[types.UID]*clusterv1alpha1.MachineList) (bool, error) {
-	if d.Spec.Replicas == nil {
-		return false, errors.Errorf("spec replicas for deployment %v is nil, this is unexpected", d.Name)
-	}
-	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(d, msList, machineMap, false)
-	if err != nil {
-		return false, err
-	}
-	allMSs := append(oldMSs, newMS)
-	for _, ms := range dutil.FilterActiveMachineSets(allMSs) {
-		desired, ok := dutil.GetDesiredReplicasAnnotation(ms)
-		if !ok {
-			continue
-		}
-		if desired != *(d.Spec.Replicas) {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func (r *ReconcileMachineDeployment) updateMachineDeployment(d *clusterv1alpha1.MachineDeployment, modify func(*clusterv1alpha1.MachineDeployment)) error {
