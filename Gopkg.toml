@@ -42,27 +42,23 @@ required = [
 
 [[override]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.13"
+  branch = "release-1.16"
 
 [[override]]
   name = "k8s.io/api"
-  branch = "release-1.13"
+  branch = "release-1.16"
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.13.1"
+  version = "kubernetes-1.16.2"
 
 [[override]]
   name = "k8s.io/apiserver"
-  branch = "release-1.13"
+  branch = "release-1.16"
 
 [[override]]
   name = "k8s.io/code-generator"
-  branch = "release-1.13"
-
-[[override]]
-  name = "k8s.io/gengo"
-  revision = "0689ccc1d7d65d9dd1bedcc3b0b1ed7df91ba266"
+  branch = "release-1.16"
 
 [[constraint]]
   name = "github.com/digitalocean/godo"
@@ -74,7 +70,7 @@ required = [
 
 [[constraint]]
   name = "k8s.io/apiextensions-apiserver"
-  branch = "release-1.13"
+  branch = "release-1.16"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
@@ -135,3 +131,7 @@ required = [
 [[constraint]]
   name = "github.com/docker/distribution"
   version = "v2.7.1"
+
+[[constraint]]
+  name = "sigs.k8s.io/controller-runtime"
+  version = "v0.3.0"
