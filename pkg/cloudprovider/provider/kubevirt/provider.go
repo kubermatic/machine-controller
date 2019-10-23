@@ -24,6 +24,11 @@ import (
 	"strings"
 	"time"
 
+	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
+	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -38,12 +43,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	utilpointer "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
-	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
-
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 )
 
 type provider struct {

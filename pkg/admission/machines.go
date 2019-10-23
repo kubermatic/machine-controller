@@ -23,12 +23,12 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/klog"
-
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
 
 // BypassSpecNoModificationRequirementAnnotation is used to bypass the "no machine.spec modification" allowed
