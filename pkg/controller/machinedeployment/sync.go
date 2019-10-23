@@ -461,32 +461,6 @@ func (r *ReconcileMachineDeployment) cleanupDeployment(oldMSs []*clusterv1alpha1
 	return nil
 }
 
-// isScalingEvent checks whether the provided deployment has been updated with a scaling event
-// by looking at the desired-replicas annotation in the active machine sets of the deployment.
-//
-// msList should come from getMachineSetsForDeployment(d).
-// machineMap should come from getMachineMapForDeployment(d, msList).
-func (r *ReconcileMachineDeployment) isScalingEvent(d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, machineMap map[types.UID]*clusterv1alpha1.MachineList) (bool, error) {
-	if d.Spec.Replicas == nil {
-		return false, errors.Errorf("spec replicas for deployment %v is nil, this is unexpected", d.Name)
-	}
-	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(d, msList, machineMap, false)
-	if err != nil {
-		return false, err
-	}
-	allMSs := append(oldMSs, newMS)
-	for _, ms := range dutil.FilterActiveMachineSets(allMSs) {
-		desired, ok := dutil.GetDesiredReplicasAnnotation(ms)
-		if !ok {
-			continue
-		}
-		if desired != *(d.Spec.Replicas) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (r *ReconcileMachineDeployment) updateMachineDeployment(d *clusterv1alpha1.MachineDeployment, modify func(*clusterv1alpha1.MachineDeployment)) error {
 	return updateMachineDeployment(r.Client, d, modify)
 }
