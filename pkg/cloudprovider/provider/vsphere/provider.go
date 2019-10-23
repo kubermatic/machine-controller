@@ -39,7 +39,7 @@ import (
 	ktypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )

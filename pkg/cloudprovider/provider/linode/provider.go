@@ -40,7 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	common "github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 )
 

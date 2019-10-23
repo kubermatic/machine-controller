@@ -24,7 +24,7 @@ import (
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"log"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 )
 

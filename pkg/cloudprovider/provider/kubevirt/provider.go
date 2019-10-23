@@ -42,7 +42,7 @@ import (
 	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
 
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 )
 
