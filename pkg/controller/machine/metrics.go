@@ -116,7 +116,7 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 	go func() {
 		metricGatheringExecutor := func() {
 			machines := &clusterv1alpha1.MachineList{}
-			if err := client.List(ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
+			if err := client.List(ctx, machines); err != nil {
 				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetMetricsForMachines: %v", err))
 				return
 			}
@@ -192,7 +192,7 @@ func (mc MachineCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements the prometheus.Collector interface.
 func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 	machines := &clusterv1alpha1.MachineList{}
-	if err := mc.client.List(mc.ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
+	if err := mc.client.List(mc.ctx, machines); err != nil {
 		return
 	}
 

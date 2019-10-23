@@ -190,7 +190,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 
 func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimeclient.Client) (bool, error) {
 	nodes := &corev1.NodeList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
+	if err := client.List(context.Background(), nodes); err != nil {
 		return false, fmt.Errorf("failed to list nodes: %v", err)
 	}
 	for _, node := range nodes.Items {
@@ -276,7 +276,7 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 	}
 
 	nodes := &corev1.NodeList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
+	if err := client.List(context.Background(), nodes); err != nil {
 		return fmt.Errorf("failed to list Nodes: %v", err)
 	}
 
@@ -345,7 +345,7 @@ func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, c
 
 func getMatchingMachinesForMachineset(machineSet *clusterv1alpha1.MachineSet, client ctrlruntimeclient.Client) ([]clusterv1alpha1.Machine, error) {
 	allMachines := &clusterv1alpha1.MachineList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{Namespace: machineSet.Namespace}, allMachines); err != nil {
+	if err := client.List(context.Background(), allMachines, &ctrlruntimeclient.ListOptions{Namespace: machineSet.Namespace}); err != nil {
 		return nil, fmt.Errorf("failed to list Machines: %v", err)
 	}
 	var matchingMachines []clusterv1alpha1.Machine
@@ -371,7 +371,7 @@ func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment,
 		}
 	}
 	allMachineSets := &clusterv1alpha1.MachineSetList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{Namespace: machineDeployment.Namespace}, allMachineSets); err != nil {
+	if err := client.List(context.Background(), allMachineSets, &ctrlruntimeclient.ListOptions{Namespace: machineDeployment.Namespace}); err != nil {
 		return nil, fmt.Errorf("failed to list MachineSets: %v", err)
 	}
 	var matchingMachineSets []clusterv1alpha1.MachineSet

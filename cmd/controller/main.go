@@ -346,7 +346,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 		Client: runOptions.kubeClient.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      id + fmt.Sprintf("-%s", leaderName),
-			EventRecorder: mgr.GetRecorder("machine_controller_leader_election"),
+			EventRecorder: mgr.GetEventRecorderFor("machine_controller_leader_election"),
 		},
 	}
 

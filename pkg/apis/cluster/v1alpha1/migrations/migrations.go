@@ -172,7 +172,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 	klog.Infof("Getting existing machine.machines.k8s.io/v1alpha1 to migrate")
 
 	machinesv1Alpha1Machines := &machinesv1alpha1.MachineList{}
-	if err := client.List(ctx, &ctrlruntimeclient.ListOptions{}, machinesv1Alpha1Machines); err != nil {
+	if err := client.List(ctx, machinesv1Alpha1Machines); err != nil {
 		return fmt.Errorf("failed to list machinesV1Alpha1 machines: %v", err)
 	}
 	klog.Infof("Found %v machine.machines.k8s.io/v1alpha1", len(machinesv1Alpha1Machines.Items))
