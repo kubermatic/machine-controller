@@ -22,12 +22,11 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/klog"
-	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
-	clusterv1alpha1conversions "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
@@ -71,14 +70,6 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 	}
 	// Delete the `BypassSpecNoModificationRequirementAnnotation` annotation, it should be valid only once
 	delete(machine.Annotations, BypassSpecNoModificationRequirementAnnotation)
-
-	// Add type revision annotation
-	if _, ok := machine.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName]; !ok {
-		if machine.Annotations == nil {
-			machine.Annotations = map[string]string{}
-		}
-		machine.Annotations[clusterv1alpha1conversions.TypeRevisionAnnotationName] = clusterv1alpha1conversions.TypeRevisionCurrentVersion
-	}
 
 	// Default name
 	if machine.Spec.Name == "" {

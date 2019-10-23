@@ -28,12 +28,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
-const (
-	TypeRevisionAnnotationName = "machine-controller/machine-type-revision"
-
-	TypeRevisionCurrentVersion = "2ec456177c0e8f0a903f4e746d44baaae54cc591"
-)
-
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
@@ -43,12 +37,6 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.Generation = 0
 	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = metav1.NamespaceSystem
-
-	// Add annotation that indicates the current revision used for the types
-	if out.Annotations == nil {
-		out.Annotations = map[string]string{}
-	}
-	out.Annotations[TypeRevisionAnnotationName] = TypeRevisionCurrentVersion
 
 	// github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1.MachineStatus and
 	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former
