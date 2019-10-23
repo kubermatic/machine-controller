@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
+	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
-	kubevirtv1 "kubevirt.io/kubevirt/pkg/api/v1"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
