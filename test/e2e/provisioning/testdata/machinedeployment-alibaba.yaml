@@ -4,7 +4,7 @@ metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
 spec:
-  replicas: 1
+  replicas: 3
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -28,8 +28,9 @@ spec:
             accessKeySecret: << ALIBABA_ACCESS_KEY_SECRET >>
             instanceType: "ecs.t1.xsmall"
             instanceName: "alibaba-instance"
-            regionID: eu-central-1
-            imageID: "aliyun_2_1903_64_20G_alibase_20190829.vhd"
+            regionID: us-east-1
+            vSwitchID: "vsw-0xibq47dyorch2oorejry"
+            internetMaxBandwidthOut: 10
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
