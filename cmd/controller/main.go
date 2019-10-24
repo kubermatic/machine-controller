@@ -361,6 +361,20 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			Update: cloudprovidertypes.GetMachineUpdater(ctx, mgr.GetClient()),
 			Client: mgr.GetClient(),
 		}
+		// We must start the manager before we add any of the controllers, because
+		// the migrations must run before the controllers but need the mgrs client.
+		go func() {
+			if err := mgr.Start(runOptions.parentCtx.Done()); err != nil {
+				klog.Errorf("failed to start kubebuilder manager: %v", err)
+				runOptions.parentCtxDone()
+			}
+		}()
+		cacheSyncContext, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		if synced := mgr.GetCache().WaitForCacheSync(cacheSyncContext.Done()); !synced {
+			klog.Error("Timed out waiting for cache to sync")
+			return
+		}
 
 		// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
 		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, mgr.GetClient(), runOptions.kubeClient, providerData); err != nil {
@@ -403,11 +417,6 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 		}
 		if err := machinedeploymentcontroller.Add(mgr); err != nil {
 			klog.Errorf("failed to add MachineDeployment controller to manager: %v", err)
-			runOptions.parentCtxDone()
-			return
-		}
-		if err := mgr.Start(runOptions.parentCtx.Done()); err != nil {
-			klog.Errorf("failed to start kubebuilder manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}

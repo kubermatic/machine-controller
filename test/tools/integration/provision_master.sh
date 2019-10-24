@@ -99,7 +99,7 @@ if ! ls machine-controller-deployed; then
   docker build -t kubermatic/machine-controller:latest .
   # The 10 minute window given by default for the node to appear is too short
   # when we upgrade the instance during the upgrade test
-  if [[ ${JOB_NAME} = "pull-machine-controller-e2e-ubuntu-upgrade" ]]; then
+  if [[ ${JOB_NAME:-} = "pull-machine-controller-e2e-ubuntu-upgrade" ]]; then
     sed -i '/.*join-cluster-timeout=.*/d' examples/machine-controller.yaml
   fi
   sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/machine-controller.yaml
