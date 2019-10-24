@@ -42,6 +42,7 @@ machine-controller-docker:
 		golang:$(GO_VERSION) \
 			make machine-controller
 
+.PHONY: machine-controller
 machine-controller: $(shell find cmd pkg -name '*.go') vendor
 	go build -v \
 		-ldflags '-s -w' \

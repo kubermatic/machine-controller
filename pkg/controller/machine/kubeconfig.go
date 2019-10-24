@@ -187,9 +187,10 @@ func (r *Reconciler) getSecretIfExists(name string) (*corev1.Secret, error) {
 	}
 	selector := labels.NewSelector().Add(*req)
 	secrets := &corev1.SecretList{}
-	if err := r.client.List(r.ctx, &ctrlruntimeclient.ListOptions{
-		Namespace:     metav1.NamespaceSystem,
-		LabelSelector: selector}, secrets); err != nil {
+	if err := r.client.List(r.ctx, secrets,
+		&ctrlruntimeclient.ListOptions{
+			Namespace:     metav1.NamespaceSystem,
+			LabelSelector: selector}); err != nil {
 		return nil, err
 	}
 

@@ -156,7 +156,7 @@ func Add(
 	reconciler := &Reconciler{
 		kubeClient:                       kubeClient,
 		client:                           mgr.GetClient(),
-		recorder:                         mgr.GetRecorder(ControllerName),
+		recorder:                         mgr.GetEventRecorderFor(ControllerName),
 		metrics:                          metrics,
 		kubeconfigProvider:               kubeconfigProvider,
 		providerData:                     providerData,
@@ -191,7 +191,7 @@ func Add(
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(node handler.MapObject) (result []reconcile.Request) {
 				machinesList := &clusterv1alpha1.MachineList{}
-				if err := mgr.GetClient().List(ctx, &ctrlruntimeclient.ListOptions{}, machinesList); err != nil {
+				if err := mgr.GetClient().List(ctx, machinesList); err != nil {
 					utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
 					return
 				}
@@ -474,7 +474,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 	// * There is at least one machine without a valid NodeRef because that means it probably just got created
 	// * There is at least one Node that is schedulable (`.Spec.Unschedulable == false`)
 	machines := &clusterv1alpha1.MachineList{}
-	if err := r.client.List(r.ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
+	if err := r.client.List(r.ctx, machines); err != nil {
 		return false, fmt.Errorf("failed to get machines from lister: %v", err)
 	}
 	for _, machine := range machines.Items {
@@ -483,7 +483,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 		}
 	}
 	nodes := &corev1.NodeList{}
-	if err := r.client.List(r.ctx, &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
+	if err := r.client.List(r.ctx, nodes); err != nil {
 		return false, fmt.Errorf("failed to get nodes from lister: %v", err)
 	}
 	for _, node := range nodes.Items {
@@ -567,7 +567,7 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 	}
 	listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
 	nodes := &corev1.NodeList{}
-	if err := r.client.List(r.ctx, listOpts, nodes); err != nil {
+	if err := r.client.List(r.ctx, nodes, listOpts); err != nil {
 		return fmt.Errorf("failed to list nodes: %v", err)
 	}
 
@@ -817,7 +817,7 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 		return nil, false, fmt.Errorf("getNode called with nil provider instance")
 	}
 	nodes := &corev1.NodeList{}
-	if err := r.client.List(r.ctx, &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
+	if err := r.client.List(r.ctx, nodes); err != nil {
 		return nil, false, err
 	}
 

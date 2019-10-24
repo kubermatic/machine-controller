@@ -19,9 +19,9 @@ required = [
   version = "^0.9.0"
 
 [[constraint]]
-  name = "kubevirt.io/kubevirt"
-  branch = "release-0.18"
-  source = "github.com/kubevirt/kubevirt"
+  name = "kubevirt.io/client-go"
+	version = "v0.19.0"
+  source = "github.com/kubevirt/client-go"
 
 [[override]]
   name = "kubevirt.io/containerized-data-importer"
@@ -42,27 +42,27 @@ required = [
 
 [[override]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.13"
+  branch = "release-1.15"
 
 [[override]]
   name = "k8s.io/api"
-  branch = "release-1.13"
+  branch = "release-1.15"
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.13.1"
+  version = "kubernetes-1.15.4"
 
 [[override]]
   name = "k8s.io/apiserver"
-  branch = "release-1.13"
+  branch = "release-1.15"
 
 [[override]]
   name = "k8s.io/code-generator"
-  branch = "release-1.13"
+  branch = "release-1.15"
 
-[[override]]
-  name = "k8s.io/gengo"
-  revision = "0689ccc1d7d65d9dd1bedcc3b0b1ed7df91ba266"
+[[constraint]]
+	name = "k8s.io/utils"
+	revision = "c2654d5206da6b7b6ace12841e8f359bb89b443c"
 
 [[constraint]]
   name = "github.com/digitalocean/godo"
@@ -74,7 +74,7 @@ required = [
 
 [[constraint]]
   name = "k8s.io/apiextensions-apiserver"
-  branch = "release-1.13"
+  branch = "release-1.15"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
@@ -135,3 +135,12 @@ required = [
 [[constraint]]
   name = "github.com/docker/distribution"
   version = "v2.7.1"
+
+[[constraint]]
+  name = "sigs.k8s.io/controller-runtime"
+  version = "v0.3.0"
+
+# Otherwise dep panics: https://github.com/golang/dep/issues/1799
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "gopkg.in/fsnotify/fsnotify.v1"

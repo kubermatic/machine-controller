@@ -25,8 +25,8 @@ import (
 	dutil "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment/util"
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/integer"
 	"k8s.io/klog"
+	"k8s.io/utils/integer"
 )
 
 // rolloutRolling implements the logic for rolling a new machine set.

@@ -41,7 +41,6 @@ import (
 	ktypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog"
-	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -396,7 +395,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	pvs := &corev1.PersistentVolumeList{}
-	if err := data.Client.List(data.Ctx, &ctrlruntimeclient.ListOptions{}, pvs); err != nil {
+	if err := data.Client.List(data.Ctx, pvs); err != nil {
 		return false, fmt.Errorf("failed to list PVs: %v", err)
 	}
 
