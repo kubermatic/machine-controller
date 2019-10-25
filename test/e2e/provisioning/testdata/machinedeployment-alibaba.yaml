@@ -22,14 +22,14 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "packet"
+          cloudProvider: "alibaba"
           cloudProviderSpec:
             accessKeyID: << ALIBABA_ACCESS_KEY_ID >>
             accessKeySecret: << ALIBABA_ACCESS_KEY_SECRET >>
-            instanceType: "ecs.t1.xsmall"
+            instanceType: "ecs.sn2ne.large"
             instanceName: "alibaba-instance"
-            regionID: us-east-1
-            vSwitchID: "vsw-0xibq47dyorch2oorejry"
+            regionID: eu-central-1
+            vSwitchID: "vsw-gw8g8mn4ohmj483hsylmn"
             internetMaxBandwidthOut: 10
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
