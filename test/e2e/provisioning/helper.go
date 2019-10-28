@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"github.com/Masterminds/semver"
 )
@@ -39,16 +39,16 @@ var (
 		semver.MustParse("v1.15.0"),
 	}
 
-	operatingSystems = []providerconfig.OperatingSystem{
-		providerconfig.OperatingSystemUbuntu,
-		providerconfig.OperatingSystemCoreos,
-		providerconfig.OperatingSystemCentOS,
+	operatingSystems = []providerconfigtypes.OperatingSystem{
+		providerconfigtypes.OperatingSystemUbuntu,
+		providerconfigtypes.OperatingSystemCoreos,
+		providerconfigtypes.OperatingSystemCentOS,
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfig.OperatingSystemUbuntu): "machine-controller-e2e-ubuntu",
-		string(providerconfig.OperatingSystemCoreos): "machine-controller-e2e-coreos",
-		string(providerconfig.OperatingSystemCentOS): "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemUbuntu): "machine-controller-e2e-ubuntu",
+		string(providerconfigtypes.OperatingSystemCoreos): "machine-controller-e2e-coreos",
+		string(providerconfigtypes.OperatingSystemCentOS): "machine-controller-e2e-centos",
 	}
 )
 

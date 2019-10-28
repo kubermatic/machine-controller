@@ -26,6 +26,7 @@ import (
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -69,8 +70,8 @@ type MachineCollector struct {
 
 type machineMetricLabels struct {
 	KubeletVersion  string
-	CloudProvider   providerconfig.CloudProvider
-	OperatingSystem providerconfig.OperatingSystem
+	CloudProvider   providerconfigtypes.CloudProvider
+	OperatingSystem providerconfigtypes.OperatingSystem
 	ProviderLabels  map[string]string
 }
 
@@ -128,9 +129,9 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 				return
 			}
 
-			providerMachineMap := map[providerconfig.CloudProvider]*clusterv1alpha1.MachineList{}
+			providerMachineMap := map[providerconfigtypes.CloudProvider]*clusterv1alpha1.MachineList{}
 			for _, machine := range machines.Items {
-				providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+				providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %v", err))
 					continue
@@ -216,7 +217,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 			)
 		}
 
-		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+		providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 		if err != nil {
 			utilruntime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %v", machine.Name, err))
 			continue

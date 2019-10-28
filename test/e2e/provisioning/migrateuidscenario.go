@@ -26,6 +26,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -73,7 +74,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	machine.Name = machineDeployment.Name
 	machine.Spec.Name = machine.Name
 
-	providerSpec, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+	providerSpec, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get provideSpec: %v", err)
 	}

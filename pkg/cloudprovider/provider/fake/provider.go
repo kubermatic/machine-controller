@@ -24,6 +24,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -61,7 +62,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 // Validate returns success or failure based according to its FakeCloudProviderSpec
 func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(machinespec.ProviderSpec.Value.Raw, &pconfig)
 	if err != nil {
 		return err

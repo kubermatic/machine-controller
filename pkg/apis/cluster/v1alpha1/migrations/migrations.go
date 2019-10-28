@@ -30,6 +30,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -193,7 +194,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 
 		// Some providers need to update the provider instance to the new UID, we get the provider as early as possible
 		// to not fail in a half-migrated state when the providerconfig is invalid
-		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
+		providerConfig, err := providerconfigtypes.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %v", err)
 		}

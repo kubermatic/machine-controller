@@ -36,6 +36,7 @@ import (
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 
@@ -378,7 +379,7 @@ func (r *Reconciler) reconcile(machine *clusterv1alpha1.Machine) (*reconcile.Res
 		machine.Spec.Name = machine.Name
 	}
 
-	providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+	providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider config: %v", err)
 	}
@@ -588,7 +589,7 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 }
 
 func (r *Reconciler) ensureInstanceExistsForMachine(
-	prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfig.Config) (*reconcile.Result, error) {
+	prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
 	klog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
 	providerInstance, err := prov.Get(machine, r.providerData)
@@ -672,7 +673,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	return r.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
 }
 
-func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfig.Config) (*reconcile.Result, error) {
+func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
 	node, exists, err := r.getNode(providerInstance, providerConfig.CloudProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
@@ -812,7 +813,7 @@ func (r *Reconciler) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 	return nil
 }
 
-func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig.CloudProvider) (node *corev1.Node, exists bool, err error) {
+func (r *Reconciler) getNode(instance instance.Instance, provider providerconfigtypes.CloudProvider) (node *corev1.Node, exists bool, err error) {
 	if instance == nil {
 		return nil, false, fmt.Errorf("getNode called with nil provider instance")
 	}
@@ -824,7 +825,7 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 	// We trim leading slashes in raw ID, since we always want three slashes in full ID
 	providerID := fmt.Sprintf("%s:///%s", provider, strings.TrimLeft(instance.ID(), "/"))
 	for _, node := range nodes.Items {
-		if provider == providerconfig.CloudProviderAzure {
+		if provider == providerconfigtypes.CloudProviderAzure {
 			// Azure IDs are case-insensitive
 			if strings.EqualFold(node.Spec.ProviderID, providerID) {
 				return node.DeepCopy(), true, nil
