@@ -29,8 +29,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	packettypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/packet/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -45,15 +47,6 @@ const (
 // New returns a Packet provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	APIKey       providerconfig.ConfigVarString   `json:"apiKey,omitempty"`
-	ProjectID    providerconfig.ConfigVarString   `json:"projectID,omitempty"`
-	BillingCycle providerconfig.ConfigVarString   `json:"billingCycle"`
-	InstanceType providerconfig.ConfigVarString   `json:"instanceType"`
-	Facilities   []providerconfig.ConfigVarString `json:"facilities"`
-	Tags         []providerconfig.ConfigVarString `json:"tags,omitempty"`
 }
 
 type Config struct {
@@ -73,7 +66,7 @@ func (c *Config) populateDefaults() {
 	}
 }
 
-func (c *RawConfig) populateDefaults() {
+func populateDefaults(c *packettypes.RawConfig) {
 	if c.BillingCycle.Value == "" {
 		c.BillingCycle.Value = defaultBillingCycle
 	}
@@ -83,17 +76,17 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *packettypes.RawConfig, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	rawConfig := RawConfig{}
+	rawConfig := packettypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, nil, err
 	}
@@ -276,7 +269,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	if err != nil {
 		return spec, err
 	}
-	rawConfig.populateDefaults()
+	populateDefaults(rawConfig)
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
 	if err != nil {
 		return spec, err
@@ -387,11 +380,11 @@ func (s *packetDevice) Status() instance.Status {
 /******
 CONVENIENCE INTERNAL FUNCTIONS
 ******/
-func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func setProviderSpec(rawConfig packettypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, err
@@ -423,16 +416,16 @@ func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Dev
 }
 
 // given a defined Kubermatic constant for an operating system, return the canonical slug for Packet
-func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
+func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu_18_04", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos_7", nil
-	case providerconfig.OperatingSystemCoreos:
+	case providerconfigtypes.OperatingSystemCoreos:
 		return "coreos_stable", nil
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
 
 func getClient(apiKey string) *packngo.Client {
