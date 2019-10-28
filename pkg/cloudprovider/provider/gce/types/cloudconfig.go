@@ -18,7 +18,7 @@ limitations under the License.
 // Google Cloud Provider for the Machine Controller
 //
 
-package gce
+package types
 
 import (
 	"bytes"
