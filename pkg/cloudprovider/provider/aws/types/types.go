@@ -20,7 +20,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
-type Config struct {
+type RawConfig struct {
 	AccessKeyID     providerconfigtypes.ConfigVarString `json:"accessKeyId,omitempty"`
 	SecretAccessKey providerconfigtypes.ConfigVarString `json:"secretAccessKey,omitempty"`
 

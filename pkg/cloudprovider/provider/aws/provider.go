@@ -219,7 +219,7 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
@@ -228,7 +228,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	rawConfig := awstypes.Config{}
+	rawConfig := awstypes.RawConfig{}
 	if err := json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
@@ -804,7 +804,7 @@ func awsErrorToTerminalError(err error, msg string) error {
 	return nil
 }
 
-func setProviderSpec(rawConfig awstypes.Config, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func setProviderSpec(rawConfig awstypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
