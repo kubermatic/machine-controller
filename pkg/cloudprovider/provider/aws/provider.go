@@ -37,8 +37,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	awstypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -85,19 +87,19 @@ var (
 		ec2.VolumeTypeSt1,
 	)
 
-	amiFilters = map[providerconfig.OperatingSystem]amiFilter{
-		providerconfig.OperatingSystemCoreos: {
+	amiFilters = map[providerconfigtypes.OperatingSystem]amiFilter{
+		providerconfigtypes.OperatingSystemCoreos: {
 			description: "CoreOS Container Linux stable*",
 			// The AWS marketplace ID from CoreOS
 			owner: "595879546273",
 		},
-		providerconfig.OperatingSystemCentOS: {
+		providerconfigtypes.OperatingSystemCentOS: {
 			description: "CentOS Linux 7 x86_64 HVM EBS*",
 			// The AWS marketplace ID from AWS
 			owner:       "679593333241",
 			productCode: "aw0evgkw8e5c1q413zgy5pjce",
 		},
-		providerconfig.OperatingSystemUbuntu: {
+		providerconfigtypes.OperatingSystemUbuntu: {
 			// Be as precise as possible - otherwise we might get a nightly dev build
 			description: "Canonical, Ubuntu, 18.04 LTS, amd64 bionic image build on ????-??-??",
 			// The AWS marketplace ID from Canonical
@@ -110,26 +112,6 @@ var (
 	cacheLock = &sync.Mutex{}
 	cache     = gocache.New(5*time.Minute, 5*time.Minute)
 )
-
-type RawConfig struct {
-	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyId,omitempty"`
-	SecretAccessKey providerconfig.ConfigVarString `json:"secretAccessKey,omitempty"`
-
-	Region           providerconfig.ConfigVarString   `json:"region"`
-	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone,omitempty"`
-	VpcID            providerconfig.ConfigVarString   `json:"vpcId"`
-	SubnetID         providerconfig.ConfigVarString   `json:"subnetId"`
-	SecurityGroupIDs []providerconfig.ConfigVarString `json:"securityGroupIDs,omitempty"`
-	InstanceProfile  providerconfig.ConfigVarString   `json:"instanceProfile,omitempty"`
-	IsSpotInstance   *bool                            `json:"isSpotInstance,omitempty"`
-	InstanceType     providerconfig.ConfigVarString   `json:"instanceType,omitempty"`
-	AMI              providerconfig.ConfigVarString   `json:"ami,omitempty"`
-	DiskSize         int64                            `json:"diskSize"`
-	DiskType         providerconfig.ConfigVarString   `json:"diskType,omitempty"`
-	DiskIops         *int64                           `json:"diskIops,omitempty"`
-	Tags             map[string]string                `json:"tags,omitempty"`
-	AssignPublicIP   *bool                            `json:"assignPublicIP,omitempty"`
-}
 
 type Config struct {
 	AccessKeyID     string
@@ -157,7 +139,7 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem, region string) (string, error) {
+func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
@@ -224,29 +206,29 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfig.OperatingSystem, region 
 	return *image.ImageId, nil
 }
 
-func getDefaultRootDevicePath(os providerconfig.OperatingSystem) (string, error) {
+func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "/dev/sda1", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "/dev/sda1", nil
-	case providerconfig.OperatingSystemCoreos:
+	case providerconfigtypes.OperatingSystemCoreos:
 		return "/dev/xvda", nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *RawConfig, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	rawConfig := RawConfig{}
+	rawConfig := awstypes.Config{}
 	if err := json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
@@ -481,7 +463,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
 		// Gzip the userdata in case we don't use CoreOS.
 		userdata, err = convert.GzipString(userdata)
 		if err != nil {
@@ -673,15 +655,15 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	cc := &CloudConfig{
-		Global: GlobalOpts{
+	cc := &awstypes.CloudConfig{
+		Global: awstypes.GlobalOpts{
 			VPC:      c.VpcID,
 			SubnetID: c.SubnetID,
 			Zone:     c.AvailabilityZone,
 		},
 	}
 
-	s, err := CloudConfigToString(cc)
+	s, err := awstypes.CloudConfigToString(cc)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to convert cloud-config to string: %v", err)
 	}
@@ -822,11 +804,11 @@ func awsErrorToTerminalError(err error, msg string) error {
 	return nil
 }
 
-func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func setProviderSpec(rawConfig awstypes.Config, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, err
