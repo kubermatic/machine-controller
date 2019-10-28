@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
@@ -37,7 +36,7 @@ import (
 )
 
 const (
-	machineUIDTag = "kubermatic-machine-controller:machine-uid"
+	machineUIDTag = "machine_uid"
 )
 
 type provider struct {
@@ -52,6 +51,7 @@ type RawConfig struct {
 	InstanceType            providerconfig.ConfigVarString `json:"instanceType,omitempty"`
 	VSwitchID               providerconfig.ConfigVarString `json:"vSwitchID,omitempty"`
 	InternetMaxBandwidthOut providerconfig.ConfigVarString `json:"internetMaxBandwidthOut,omitempty"`
+	Labels                  map[string]string              `json:"labels,omitempty"`
 }
 
 type Config struct {
@@ -62,6 +62,7 @@ type Config struct {
 	InstanceID              string
 	VSwitchID               string
 	InternetMaxBandwidthOut string
+	Labels                  map[string]string
 }
 
 type alibabaInstance struct {
@@ -77,7 +78,12 @@ func (a *alibabaInstance) ID() string {
 }
 
 func (a *alibabaInstance) Addresses() []string {
-	return a.instance.PublicIpAddress.IpAddress
+	var primaryIpAddresses []string
+	for _, networkInterface := range a.instance.NetworkInterfaces.NetworkInterface {
+		primaryIpAddresses = append(primaryIpAddresses, networkInterface.PrimaryIpAddress)
+	}
+
+	return primaryIpAddresses
 }
 
 func (a *alibabaInstance) Status() instance.Status {
@@ -169,6 +175,20 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, err
 	}
 
+	if c.Labels == nil {
+		c.Labels = map[string]string{}
+	}
+
+	c.Labels[machineUIDTag] = string(machine.UID)
+
+	var instanceTags []ecs.CreateInstanceTag
+	for k, v := range c.Labels {
+		instanceTags = append(instanceTags, ecs.CreateInstanceTag{
+			Key:   k,
+			Value: v,
+		})
+	}
+
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
 	createInstanceRequest.ImageId, _ = getImageIDForOS(pc.OperatingSystem)
 	createInstanceRequest.InstanceName = machine.Name
@@ -178,13 +198,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	encodedUserData := base64.StdEncoding.EncodeToString([]byte(userdata))
 	createInstanceRequest.UserData = encodedUserData
 	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
+	createInstanceRequest.Tag = &instanceTags
 
 	_, err = client.CreateInstance(createInstanceRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create instance at Alibaba cloud: %v", err)
 	}
 
-	foundInstance, err := checkInstanceStatus(client, machine.Name)
+	foundInstance, err := getInstance(client, machine.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -229,15 +250,18 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	request := ecs.CreateDeleteInstanceRequest()
-
 	foundInstance, err := getInstance(client, machine.Name)
 	if err != nil {
 		return false, err
 	}
-	request.InstanceId = foundInstance.InstanceId
 
-	if _, err = client.DeleteInstance(request); err != nil {
+	stopInstanceRequest := ecs.CreateStopInstanceRequest()
+	stopInstanceRequest.InstanceId = foundInstance.InstanceId
+	client.StopInstance(stopInstanceRequest)
+
+	deleteInstancesRequest := ecs.CreateDeleteInstancesRequest()
+	deleteInstancesRequest.InstanceId = &[]string{foundInstance.InstanceId}
+	if _, err = client.DeleteInstances(deleteInstancesRequest); err != nil {
 		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
 	}
 
@@ -327,6 +351,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, *pro
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
 	}
+	c.Labels = rawConfig.Labels
 	return &c, &rawConfig, &pconfig, err
 }
 
@@ -352,39 +377,6 @@ func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error)
 	}
 
 	return &response.Instances.Instance[0], nil
-}
-
-func checkInstanceStatus(client *ecs.Client, name string) (*ecs.Instance, error) {
-	var (
-		maxRetries = 5
-		retries    = 1
-	)
-
-	for {
-		if retries > maxRetries {
-			break
-		}
-
-		foundInstance, err := getInstance(client, name)
-		if err != nil {
-			return nil, err
-		}
-
-		if foundInstance == nil {
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-
-		if name == foundInstance.InstanceName &&
-			foundInstance.Status == "Stopped" {
-			return foundInstance, nil
-		}
-
-		time.Sleep(500 * time.Millisecond)
-		retries++
-	}
-
-	return nil, fmt.Errorf("instance %v doesn't have a status", name)
 }
 
 func getImageIDForOS(os providerconfig.OperatingSystem) (string, error) {
