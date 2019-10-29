@@ -31,8 +31,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	hetznertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -51,15 +53,6 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-type RawConfig struct {
-	Token      providerconfig.ConfigVarString   `json:"token,omitempty"`
-	ServerType providerconfig.ConfigVarString   `json:"serverType"`
-	Datacenter providerconfig.ConfigVarString   `json:"datacenter"`
-	Location   providerconfig.ConfigVarString   `json:"location"`
-	Networks   []providerconfig.ConfigVarString `json:"networks"`
-	Labels     map[string]string                `json:"labels,omitempty"`
-}
-
 type Config struct {
 	Token      string
 	ServerType string
@@ -69,31 +62,31 @@ type Config struct {
 	Labels     map[string]string
 }
 
-func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
+func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu-18.04", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7", nil
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
 
 func getClient(token string) *hcloud.Client {
 	return hcloud.NewClient(hcloud.WithToken(token))
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rawConfig := RawConfig{}
+	rawConfig := hetznertypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
 	}

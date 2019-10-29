@@ -25,6 +25,7 @@ import (
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -88,7 +89,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 }
 
 func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.MachineSpec) error {
-	providerConfig, err := providerconfig.GetConfig(spec.ProviderSpec)
+	providerConfig, err := providerconfigtypes.GetConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
 	}

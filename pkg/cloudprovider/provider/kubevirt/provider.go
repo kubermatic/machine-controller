@@ -31,8 +31,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	kubevirttypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -58,16 +60,6 @@ type provider struct {
 // New returns a Kubevirt provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	Kubeconfig       providerconfig.ConfigVarString `json:"kubeconfig,omitempty"`
-	CPUs             providerconfig.ConfigVarString `json:"cpus,omitempty"`
-	Memory           providerconfig.ConfigVarString `json:"memory,omitempty"`
-	Namespace        providerconfig.ConfigVarString `json:"namespace,omitempty"`
-	SourceURL        providerconfig.ConfigVarString `json:"sourceURL,omitempty"`
-	PVCSize          providerconfig.ConfigVarString `json:"pvcSize,omitempty"`
-	StorageClassName providerconfig.ConfigVarString `json:"storageClassName,omitempty"`
 }
 
 type Config struct {
@@ -111,18 +103,17 @@ func (k *kubeVirtServer) Status() instance.Status {
 
 var _ instance.Instance = &kubeVirtServer{}
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	//TODO: Use RawConfig to allow resolving via secretReg/ConfigMapRef
-	rawConfig := RawConfig{}
+	rawConfig := kubevirttypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
 	}
@@ -236,7 +227,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if _, err := parseResources(c.CPUs, c.Memory); err != nil {
 		return err
 	}
-	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos {
 		return fmt.Errorf("CoreOS is not supported")
 	}
 	sigClient, err := client.New(&c.Kubeconfig, client.Options{})

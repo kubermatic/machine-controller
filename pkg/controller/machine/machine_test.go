@@ -26,7 +26,7 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -107,7 +107,7 @@ func TestController_GetNode(t *testing.T) {
 		resNode  *corev1.Node
 		exists   bool
 		err      error
-		provider providerconfig.CloudProvider
+		provider providerconfigtypes.CloudProvider
 	}{
 		{
 			name:     "node not found - no nodeList",
@@ -257,7 +257,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 				instance.id = "test-id"
 			}
 
-			providerConfig := &providerconfig.Config{CloudProvider: providerconfig.CloudProviderFake}
+			providerConfig := &providerconfigtypes.Config{CloudProvider: providerconfigtypes.CloudProviderFake}
 
 			client := ctrlruntimefake.NewFakeClient(node, machine)
 

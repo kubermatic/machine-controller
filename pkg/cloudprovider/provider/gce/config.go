@@ -30,9 +30,9 @@ import (
 	"google.golang.org/api/compute/v1"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-
-	"k8s.io/apimachinery/pkg/runtime"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 // Environment variables for the configuration of the Google Cloud project access.
@@ -41,15 +41,15 @@ const (
 )
 
 // imageProjects maps the OS to the Google Cloud image projects
-var imageProjects = map[providerconfig.OperatingSystem]string{
-	providerconfig.OperatingSystemCoreos: "coreos-cloud",
-	providerconfig.OperatingSystemUbuntu: "ubuntu-os-cloud",
+var imageProjects = map[providerconfigtypes.OperatingSystem]string{
+	providerconfigtypes.OperatingSystemCoreos: "coreos-cloud",
+	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-os-cloud",
 }
 
 // imageFamilies maps the OS to the Google Cloud image projects
-var imageFamilies = map[providerconfig.OperatingSystem]string{
-	providerconfig.OperatingSystemCoreos: "coreos-stable",
-	providerconfig.OperatingSystemUbuntu: "ubuntu-1804-lts",
+var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
+	providerconfigtypes.OperatingSystemCoreos: "coreos-stable",
+	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-1804-lts",
 }
 
 // diskTypes are the disk types of the Google Cloud. Map is used for
@@ -65,66 +65,25 @@ const (
 	defaultDiskSize = 25
 )
 
-// CloudProviderSpec contains the specification of the cloud provider taken
-// from the provider configuration.
-type CloudProviderSpec struct {
-	ServiceAccount        providerconfig.ConfigVarString `json:"serviceAccount,omitempty"`
-	Zone                  providerconfig.ConfigVarString `json:"zone"`
-	MachineType           providerconfig.ConfigVarString `json:"machineType"`
-	DiskSize              int64                          `json:"diskSize"`
-	DiskType              providerconfig.ConfigVarString `json:"diskType"`
-	Network               providerconfig.ConfigVarString `json:"network"`
-	Subnetwork            providerconfig.ConfigVarString `json:"subnetwork"`
-	Preemptible           providerconfig.ConfigVarBool   `json:"preemptible"`
-	Labels                map[string]string              `json:"labels,omitempty"`
-	Tags                  []string                       `json:"tags,omitempty"`
-	AssignPublicIPAddress *providerconfig.ConfigVarBool  `json:"assignPublicIPAddress,omitempty"`
-	MultiZone             providerconfig.ConfigVarBool   `json:"multizone"`
-	Regional              providerconfig.ConfigVarBool   `json:"regional"`
-}
-
 // newCloudProviderSpec creates a cloud provider specification out of the
 // given ProviderSpec.
-func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*CloudProviderSpec, *providerconfig.Config, error) {
+func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*gcetypes.CloudProviderSpec, *providerconfigtypes.Config, error) {
 	// Retrieve provider configuration from machine specification.
 	if spec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	providerConfig := providerconfig.Config{}
+	providerConfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
 	}
 	// Retrieve cloud provider specification from cloud provider specification.
-	cpSpec := &CloudProviderSpec{}
+	cpSpec := &gcetypes.CloudProviderSpec{}
 	err = json.Unmarshal(providerConfig.CloudProviderSpec.Raw, cpSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
 	}
 	return cpSpec, &providerConfig, nil
-}
-
-// updateProviderSpec updates the given provider spec with changed
-// configuration values.
-func (cpSpec *CloudProviderSpec) updateProviderSpec(spec v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	if spec.Value == nil {
-		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
-	}
-	providerConfig := providerconfig.Config{}
-	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
-	if err != nil {
-		return nil, err
-	}
-	rawCPSpec, err := json.Marshal(cpSpec)
-	if err != nil {
-		return nil, err
-	}
-	providerConfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCPSpec}
-	rawProviderConfig, err := json.Marshal(providerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return &runtime.RawExtension{Raw: rawProviderConfig}, nil
 }
 
 // config contains the configuration of the Provider.
@@ -141,7 +100,7 @@ type config struct {
 	labels                map[string]string
 	tags                  []string
 	jwtConfig             *jwt.Config
-	providerConfig        *providerconfig.Config
+	providerConfig        *providerconfigtypes.Config
 	assignPublicIPAddress bool
 	multizone             bool
 	regional              bool
@@ -263,11 +222,11 @@ func (cfg *config) diskTypeDescriptor() string {
 func (cfg *config) sourceImageDescriptor() (string, error) {
 	project, ok := imageProjects[cfg.providerConfig.OperatingSystem]
 	if !ok {
-		return "", providerconfig.ErrOSNotSupported
+		return "", providerconfigtypes.ErrOSNotSupported
 	}
 	family, ok := imageFamilies[cfg.providerConfig.OperatingSystem]
 	if !ok {
-		return "", providerconfig.ErrOSNotSupported
+		return "", providerconfigtypes.ErrOSNotSupported
 	}
 	return fmt.Sprintf("projects/%s/global/images/family/%s", project, family), nil
 }

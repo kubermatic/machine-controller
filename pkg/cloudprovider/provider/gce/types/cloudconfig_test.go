@@ -20,7 +20,7 @@ limitations under the License.
 // Unit Tests
 //
 
-package gce
+package types
 
 import (
 	"testing"

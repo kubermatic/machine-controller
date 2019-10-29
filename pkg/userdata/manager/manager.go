@@ -26,7 +26,7 @@ import (
 	"errors"
 	"flag"
 
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/klog"
 )
@@ -43,23 +43,23 @@ var (
 
 	// supportedOS contains a list of operating systems the machine
 	// controller supports.
-	supportedOS = []providerconfig.OperatingSystem{
-		providerconfig.OperatingSystemCentOS,
-		providerconfig.OperatingSystemCoreos,
-		providerconfig.OperatingSystemUbuntu,
+	supportedOS = []providerconfigtypes.OperatingSystem{
+		providerconfigtypes.OperatingSystemCentOS,
+		providerconfigtypes.OperatingSystemCoreos,
+		providerconfigtypes.OperatingSystemUbuntu,
 	}
 )
 
 // Manager inits and manages the userdata plugins.
 type Manager struct {
 	debug   bool
-	plugins map[providerconfig.OperatingSystem]*Plugin
+	plugins map[providerconfigtypes.OperatingSystem]*Plugin
 }
 
 // New returns an initialised plugin manager.
 func New() (*Manager, error) {
 	m := &Manager{
-		plugins: make(map[providerconfig.OperatingSystem]*Plugin),
+		plugins: make(map[providerconfigtypes.OperatingSystem]*Plugin),
 	}
 	flag.BoolVar(&m.debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
 	m.locatePlugins()
@@ -70,7 +70,7 @@ func New() (*Manager, error) {
 }
 
 // ForOS returns the plugin for the given operating system.
-func (m *Manager) ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
+func (m *Manager) ForOS(os providerconfigtypes.OperatingSystem) (p *Plugin, err error) {
 	var found bool
 	if p, found = m.plugins[os]; !found {
 		return nil, ErrPluginNotFound

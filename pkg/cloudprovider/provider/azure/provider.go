@@ -33,9 +33,11 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	azuretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -59,26 +61,6 @@ const (
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
-}
-
-// RawConfig is a direct representation of an Azure machine object's configuration
-type RawConfig struct {
-	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID,omitempty"`
-	TenantID       providerconfig.ConfigVarString `json:"tenantID,omitempty"`
-	ClientID       providerconfig.ConfigVarString `json:"clientID,omitempty"`
-	ClientSecret   providerconfig.ConfigVarString `json:"clientSecret,omitempty"`
-
-	Location          providerconfig.ConfigVarString `json:"location"`
-	ResourceGroup     providerconfig.ConfigVarString `json:"resourceGroup"`
-	VMSize            providerconfig.ConfigVarString `json:"vmSize"`
-	VNetName          providerconfig.ConfigVarString `json:"vnetName"`
-	SubnetName        providerconfig.ConfigVarString `json:"subnetName"`
-	RouteTableName    providerconfig.ConfigVarString `json:"routeTableName"`
-	AvailabilitySet   providerconfig.ConfigVarString `json:"availabilitySet"`
-	SecurityGroupName providerconfig.ConfigVarString `json:"securityGroupName"`
-
-	AssignPublicIP providerconfig.ConfigVarBool `json:"assignPublicIP"`
-	Tags           map[string]string            `json:"tags,omitempty"`
 }
 
 type config struct {
@@ -122,20 +104,20 @@ func (vm *azureVM) Status() instance.Status {
 	return vm.status
 }
 
-var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
-	providerconfig.OperatingSystemCoreos: {
+var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageReference{
+	providerconfigtypes.OperatingSystemCoreos: {
 		Publisher: to.StringPtr("CoreOS"),
 		Offer:     to.StringPtr("CoreOS"),
 		Sku:       to.StringPtr("Stable"),
 		Version:   to.StringPtr("latest"),
 	},
-	providerconfig.OperatingSystemCentOS: {
+	providerconfigtypes.OperatingSystemCentOS: {
 		Publisher: to.StringPtr("OpenLogic"),
 		Offer:     to.StringPtr("CentOS"),
 		Sku:       to.StringPtr("7-CI"), // https://docs.microsoft.com/en-us/azure/virtual-machines/linux/using-cloud-init
 		Version:   to.StringPtr("latest"),
 	},
-	providerconfig.OperatingSystemUbuntu: {
+	providerconfigtypes.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
 		Offer:     to.StringPtr("UbuntuServer"),
 		// FIXME We'd like to use Ubuntu 18.04 eventually, but the docker's release
@@ -146,7 +128,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 	},
 }
 
-func getOSImageReference(os providerconfig.OperatingSystem) (*compute.ImageReference, error) {
+func getOSImageReference(os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
 	ref, supported := imageReferences[os]
 	if !supported {
 		return nil, fmt.Errorf("operating system %q not supported", os)
@@ -160,16 +142,16 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	rawCfg := RawConfig{}
+	rawCfg := azuretypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawCfg)
 	if err != nil {
 		return nil, nil, err
@@ -675,7 +657,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	cc := &CloudConfig{
+	cc := &azuretypes.CloudConfig{
 		Cloud:                      "AZUREPUBLICCLOUD",
 		TenantID:                   c.TenantID,
 		SubscriptionID:             c.SubscriptionID,
@@ -691,7 +673,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		UseInstanceMetadata:        true,
 	}
 
-	s, err := CloudConfigToString(cc)
+	s, err := azuretypes.CloudConfigToString(cc)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to convert cloud-config to string: %v", err)
 	}

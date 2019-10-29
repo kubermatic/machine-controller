@@ -22,6 +22,8 @@ import (
 	"sync"
 	"time"
 
+	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
+
 	corev1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,10 +35,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	SkipEvictionAnnotationKey = "kubermatic.io/skip-eviction"
 )
 
 type NodeEviction struct {
@@ -62,8 +60,8 @@ func (ne *NodeEviction) Run() (bool, error) {
 	if err := ne.client.Get(ne.ctx, types.NamespacedName{Name: ne.nodeName}, node); err != nil {
 		return false, fmt.Errorf("failed to get node from lister: %v", err)
 	}
-	if _, exists := node.Annotations[SkipEvictionAnnotationKey]; exists {
-		klog.V(3).Infof("Skipping eviction for node %s as it has a %s annotation", ne.nodeName, SkipEvictionAnnotationKey)
+	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
+		klog.V(3).Infof("Skipping eviction for node %s as it has a %s annotation", ne.nodeName, evictiontypes.SkipEvictionAnnotationKey)
 		return false, nil
 	}
 	klog.V(3).Infof("Starting to evict node %s", ne.nodeName)

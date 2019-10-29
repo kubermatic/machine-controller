@@ -33,8 +33,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	digitaloceantypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -49,17 +51,6 @@ type provider struct {
 // New returns a digitalocean provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	Token             providerconfig.ConfigVarString   `json:"token,omitempty"`
-	Region            providerconfig.ConfigVarString   `json:"region"`
-	Size              providerconfig.ConfigVarString   `json:"size"`
-	Backups           providerconfig.ConfigVarBool     `json:"backups"`
-	IPv6              providerconfig.ConfigVarBool     `json:"ipv6"`
-	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
-	Monitoring        providerconfig.ConfigVarBool     `json:"monitoring"`
-	Tags              []providerconfig.ConfigVarString `json:"tags,omitempty"`
 }
 
 type Config struct {
@@ -90,16 +81,16 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
+func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu-18-04-x64", nil
-	case providerconfig.OperatingSystemCoreos:
+	case providerconfigtypes.OperatingSystemCoreos:
 		return "coreos-stable", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7-x64", nil
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
 
 func getClient(token string) *godo.Client {
@@ -111,16 +102,16 @@ func getClient(token string) *godo.Client {
 	return godo.NewClient(oauthClient)
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	rawConfig := RawConfig{}
+	rawConfig := digitaloceantypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {
 		return nil, nil, err

@@ -37,8 +37,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	openstacktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -60,32 +62,6 @@ type provider struct {
 // New returns a openstack provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	// Auth details
-	IdentityEndpoint providerconfig.ConfigVarString `json:"identityEndpoint,omitempty"`
-	Username         providerconfig.ConfigVarString `json:"username,omitempty"`
-	Password         providerconfig.ConfigVarString `json:"password,omitempty"`
-	DomainName       providerconfig.ConfigVarString `json:"domainName,omitempty"`
-	TenantName       providerconfig.ConfigVarString `json:"tenantName,omitempty"`
-	TenantID         providerconfig.ConfigVarString `json:"tenantID,omitempty"`
-	TokenID          providerconfig.ConfigVarString `json:"tokenId,omitempty"`
-	Region           providerconfig.ConfigVarString `json:"region,omitempty"`
-
-	// Machine details
-	Image                 providerconfig.ConfigVarString   `json:"image"`
-	Flavor                providerconfig.ConfigVarString   `json:"flavor"`
-	SecurityGroups        []providerconfig.ConfigVarString `json:"securityGroups,omitempty"`
-	Network               providerconfig.ConfigVarString   `json:"network,omitempty"`
-	Subnet                providerconfig.ConfigVarString   `json:"subnet,omitempty"`
-	FloatingIPPool        providerconfig.ConfigVarString   `json:"floatingIpPool,omitempty"`
-	AvailabilityZone      providerconfig.ConfigVarString   `json:"availabilityZone,omitempty"`
-	TrustDevicePath       providerconfig.ConfigVarBool     `json:"trustDevicePath"`
-	RootDiskSizeGB        *int                             `json:"rootDiskSizeGB"`
-	NodeVolumeAttachLimit *uint                            `json:"nodeVolumeAttachLimit"`
-	// This tag is related to server metadata, not compute server's tag
-	Tags map[string]string `json:"tags,omitempty"`
 }
 
 type Config struct {
@@ -124,16 +100,16 @@ const (
 // Protects floating ip assignment
 var floatingIPAssignLock = &sync.Mutex{}
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *RawConfig, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	var rawConfig RawConfig
+	var rawConfig openstacktypes.RawConfig
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {
 		return nil, nil, nil, err
@@ -216,11 +192,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	return &c, &pconfig, &rawConfig, err
 }
 
-func setProviderSpec(rawConfig RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func setProviderSpec(rawConfig openstacktypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, err
@@ -709,8 +685,8 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	cc := &CloudConfig{
-		Global: GlobalOpts{
+	cc := &openstacktypes.CloudConfig{
+		Global: openstacktypes.GlobalOpts{
 			AuthURL:    c.IdentityEndpoint,
 			Username:   c.Username,
 			Password:   c.Password,
@@ -719,10 +695,10 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			TenantID:   c.TenantID,
 			Region:     c.Region,
 		},
-		LoadBalancer: LoadBalancerOpts{
+		LoadBalancer: openstacktypes.LoadBalancerOpts{
 			ManageSecurityGroups: true,
 		},
-		BlockStorage: BlockStorageOpts{
+		BlockStorage: openstacktypes.BlockStorageOpts{
 			BSVersion:       "auto",
 			TrustDevicePath: c.TrustDevicePath,
 			IgnoreVolumeAZ:  true,
@@ -733,7 +709,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		cc.BlockStorage.NodeVolumeAttachLimit = *c.NodeVolumeAttachLimit
 	}
 
-	s, err := CloudConfigToString(cc)
+	s, err := openstacktypes.CloudConfigToString(cc)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %v", err)
 	}

@@ -29,7 +29,7 @@ import (
 	"strings"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/klog"
 )
@@ -48,7 +48,7 @@ type Plugin struct {
 
 // newPlugin creates a new plugin manager. It starts the named
 // binary and connects to it via net/rpc.
-func newPlugin(os providerconfig.OperatingSystem, debug bool) (*Plugin, error) {
+func newPlugin(os providerconfigtypes.OperatingSystem, debug bool) (*Plugin, error) {
 	p := &Plugin{
 		debug: debug,
 	}

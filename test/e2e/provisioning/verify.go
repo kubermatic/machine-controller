@@ -25,8 +25,8 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
-	"github.com/kubermatic/machine-controller/pkg/node/eviction"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,7 +90,7 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 	// Enforce the kube-system namespace, otherwise cleanup wont work
 	newMachineDeployment.Namespace = "kube-system"
 	// Dont evict during testing
-	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{eviction.SkipEvictionAnnotationKey: "true"}
+	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachineDeployment, nil
 }
@@ -111,7 +111,7 @@ func prepareMachine(kubeConfig, manifestPath string, parameters []string) (ctrlr
 	// Enforce the kube-system namespace, otherwise cleanup wont work
 	newMachine.Namespace = "kube-system"
 	// Dont evict during testing
-	newMachine.Spec.Annotations = map[string]string{eviction.SkipEvictionAnnotationKey: "true"}
+	newMachine.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachine, nil
 }
@@ -260,11 +260,11 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 
 		for _, machine := range machines {
 			// Azure doesn't seem to easely expose the private IP address, there is only a PublicIPAddressClient in the sdk
-			providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+			providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 			if err != nil {
 				return fmt.Errorf("failed to get provider config: %v", err)
 			}
-			if providerConfig.CloudProvider == providerconfig.CloudProviderAzure {
+			if providerConfig.CloudProvider == providerconfigtypes.CloudProviderAzure {
 				continue
 			}
 
