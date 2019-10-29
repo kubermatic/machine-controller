@@ -52,6 +52,7 @@ type RawConfig struct {
 	VSwitchID               providerconfig.ConfigVarString `json:"vSwitchID,omitempty"`
 	InternetMaxBandwidthOut providerconfig.ConfigVarString `json:"internetMaxBandwidthOut,omitempty"`
 	Labels                  map[string]string              `json:"labels,omitempty"`
+	ZoneID                  providerconfig.ConfigVarString `json:"zoneID,omitempty"`
 }
 
 type Config struct {
@@ -63,6 +64,7 @@ type Config struct {
 	VSwitchID               string
 	InternetMaxBandwidthOut string
 	Labels                  map[string]string
+	ZoneID                  string
 }
 
 type alibabaInstance struct {
@@ -78,12 +80,12 @@ func (a *alibabaInstance) ID() string {
 }
 
 func (a *alibabaInstance) Addresses() []string {
-	var primaryIpAddresses []string
+	var primaryIPAddresses []string
 	for _, networkInterface := range a.instance.NetworkInterfaces.NetworkInterface {
-		primaryIpAddresses = append(primaryIpAddresses, networkInterface.PrimaryIpAddress)
+		primaryIPAddresses = append(primaryIPAddresses, networkInterface.PrimaryIpAddress)
 	}
 
-	return primaryIpAddresses
+	return primaryIPAddresses
 }
 
 func (a *alibabaInstance) Status() instance.Status {
@@ -122,6 +124,9 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 	}
 	if c.InternetMaxBandwidthOut == "" {
 		return fmt.Errorf("internetMaxBandwidthOut is missing")
+	}
+	if c.ZoneID == "" {
+		return fmt.Errorf("zoneID is missing")
 	}
 	_, err = getImageIDForOS(pc.OperatingSystem)
 	if err != nil {
@@ -199,6 +204,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest.UserData = encodedUserData
 	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
 	createInstanceRequest.Tag = &instanceTags
+	createInstanceRequest.ZoneId = c.ZoneID
 
 	_, err = client.CreateInstance(createInstanceRequest)
 	if err != nil {
@@ -300,7 +306,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	}
 	request := ecs.CreateAddTagsRequest()
 	request.ResourceId = foundInstance.InstanceId
-	request.ResourceType = foundInstance.InstanceType
+	request.ResourceType = "instance"
 	tags := []ecs.AddTagsTag{tag}
 	request.Tag = &tags
 
@@ -386,7 +392,7 @@ func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error)
 func getImageIDForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfig.OperatingSystemUbuntu:
-		return "ubuntu_18_04_64_20G_alibase_20190624.vhd", nil
+		return "ubuntu_16_04_64_20G_alibase_20190620.vhd", nil
 	case providerconfig.OperatingSystemCentOS:
 		return "centos_7_06_64_20G_alibase_20190711.vhd", nil
 	case providerconfig.OperatingSystemCoreos:
