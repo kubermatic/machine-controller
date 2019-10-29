@@ -258,8 +258,7 @@ func TestAlibabaProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, ALIBABA_ACCESS_KEY_SECRET environment variable cannot be empty")
 	}
 
-	// TODO: the imageID specifies os right now
-	excludeSelector := &scenarioSelector{}
+	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
 
 	// act
 	params := []string{

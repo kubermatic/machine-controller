@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
@@ -37,6 +38,14 @@ import (
 
 const (
 	machineUIDTag = "machine_uid"
+)
+
+type instanceStatus string
+
+const (
+	pendingStatus instanceStatus = "Pending"
+	stoppedStatus instanceStatus = "Stopped"
+	runningStatus instanceStatus = "Running"
 )
 
 type provider struct {
@@ -102,7 +111,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
-	c, _, pc, err := p.getConfig(machineSpec.ProviderSpec)
+	c, pc, err := p.getConfig(machineSpec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -137,7 +146,7 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -167,7 +176,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	c, _, pc, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -186,14 +195,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	c.Labels[machineUIDTag] = string(machine.UID)
 
-	var instanceTags []ecs.CreateInstanceTag
-	for k, v := range c.Labels {
-		instanceTags = append(instanceTags, ecs.CreateInstanceTag{
-			Key:   k,
-			Value: v,
-		})
-	}
-
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
 	createInstanceRequest.ImageId, _ = getImageIDForOS(pc.OperatingSystem)
 	createInstanceRequest.InstanceName = machine.Name
@@ -203,36 +204,52 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	encodedUserData := base64.StdEncoding.EncodeToString([]byte(userdata))
 	createInstanceRequest.UserData = encodedUserData
 	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
-	createInstanceRequest.Tag = &instanceTags
 	createInstanceRequest.ZoneId = c.ZoneID
 
-	_, err = client.CreateInstance(createInstanceRequest)
+	res, err := client.CreateInstance(createInstanceRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create instance at Alibaba cloud: %v", err)
 	}
 
-	foundInstance, err := getInstance(client, machine.Name)
-	if err != nil {
-		return nil, err
+	var (
+		foundInstance *ecs.Instance
+		maxRetries    = 10
+		tries         = 0
+	)
+
+	for {
+		foundInstance, err = getInstance(client, machine.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		if tries >= maxRetries {
+			return nil, fmt.Errorf("instance %v isn't in a ready state", foundInstance.InstanceId)
+		}
+
+		switch instanceStatus(foundInstance.Status) {
+		case pendingStatus:
+			tries++
+		case stoppedStatus:
+			startRequest := ecs.CreateStartInstanceRequest()
+			startRequest.InstanceId = res.InstanceId
+
+			_, err = client.StartInstance(startRequest)
+			if err != nil {
+				return nil, err
+			}
+		case runningStatus:
+			ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
+			ipAddress.InstanceId = foundInstance.InstanceId
+
+			_, err = client.AllocatePublicIpAddress(ipAddress)
+			if err != nil {
+				panic(err)
+			}
+			return &alibabaInstance{instance: foundInstance}, nil
+		}
+		time.Sleep(5 * time.Second)
 	}
-
-	ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
-	ipAddress.InstanceId = foundInstance.InstanceId
-
-	_, err = client.AllocatePublicIpAddress(ipAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	startRequest := ecs.CreateStartInstanceRequest()
-	startRequest.InstanceId = foundInstance.InstanceId
-
-	_, err = client.StartInstance(startRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	return &alibabaInstance{instance: foundInstance}, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
@@ -243,7 +260,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -275,7 +292,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err == nil {
 		labels["instanceType"] = c.InstanceType
 		labels["region"] = c.RegionID
@@ -285,7 +302,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %v", err)
 	}
@@ -321,48 +338,52 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *RawConfig, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
 	if s.Value == nil {
-		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 	pconfig := providerconfig.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	rawConfig := RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	c := Config{}
 	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "ALIBABA_ACCESS_KEY_ID")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"AccessKeyID\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"AccessKeyID\" field, error = %v", err)
 	}
 	c.AccessKeySecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeySecret, "ALIBABA_ACCESS_KEY_SECRET")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"AccessKeySecret\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"AccessKeySecret\" field, error = %v", err)
 	}
 	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %v", err)
 	}
 	c.RegionID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RegionID)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"regionID\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"regionID\" field, error = %v", err)
 	}
 	c.VSwitchID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VSwitchID)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"vSwitchID\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"vSwitchID\" field, error = %v", err)
+	}
+	c.ZoneID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ZoneID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"zoneID\" field, error = %v", err)
 	}
 	c.InternetMaxBandwidthOut, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InternetMaxBandwidthOut)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
 	}
 	c.Labels = rawConfig.Labels
-	return &c, &rawConfig, &pconfig, err
+	return &c, &pconfig, err
 }
 
 func getClient(regionID, accessKeyID, accessKeySecret string) (*ecs.Client, error) {
@@ -392,7 +413,7 @@ func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error)
 func getImageIDForOS(os providerconfig.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfig.OperatingSystemUbuntu:
-		return "ubuntu_16_04_64_20G_alibase_20190620.vhd", nil
+		return "ubuntu_18_04_64_20G_alibase_20190624.vhd", nil
 	case providerconfig.OperatingSystemCentOS:
 		return "centos_7_06_64_20G_alibase_20190711.vhd", nil
 	case providerconfig.OperatingSystemCoreos:
