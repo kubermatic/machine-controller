@@ -255,12 +255,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	stopInstanceRequest := ecs.CreateStopInstanceRequest()
-	stopInstanceRequest.InstanceId = foundInstance.InstanceId
-	client.StopInstance(stopInstanceRequest)
-
 	deleteInstancesRequest := ecs.CreateDeleteInstancesRequest()
 	deleteInstancesRequest.InstanceId = &[]string{foundInstance.InstanceId}
+
+	deleteInstancesRequest.Force = requests.Boolean("True")
 	if _, err = client.DeleteInstances(deleteInstancesRequest); err != nil {
 		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
 	}
@@ -291,12 +289,18 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return err
 	}
 
+	foundInstance, err := getInstance(client, machine.Name)
+	if err != nil {
+		return fmt.Errorf("failed to find instance: %v", err)
+	}
+
 	tag := ecs.AddTagsTag{
 		Value: string(new),
 		Key:   machineUIDTag,
 	}
 	request := ecs.CreateAddTagsRequest()
-	request.ResourceId = c.InstanceID
+	request.ResourceId = foundInstance.InstanceId
+	request.ResourceType = foundInstance.InstanceType
 	tags := []ecs.AddTagsTag{tag}
 	request.Tag = &tags
 
