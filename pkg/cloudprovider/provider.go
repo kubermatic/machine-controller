@@ -77,7 +77,7 @@ var (
 		providerconfigtypes.CloudProviderKubeVirt: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return kubevirt.New(cvr)
 		},
-		providerconfig.CloudProviderAlibaba: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderAlibaba: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return alibaba.New(cvr)
 		},
 	}

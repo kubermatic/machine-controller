@@ -30,8 +30,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	alibabatypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/alibaba/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -50,18 +52,6 @@ const (
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
-}
-
-type RawConfig struct {
-	AccessKeyID             providerconfig.ConfigVarString `json:"accessKeyID,omitempty"`
-	AccessKeySecret         providerconfig.ConfigVarString `json:"accessKeySecret,omitempty"`
-	RegionID                providerconfig.ConfigVarString `json:"regionID,omitempty"`
-	InstanceName            providerconfig.ConfigVarString `json:"instanceName,omitempty"`
-	InstanceType            providerconfig.ConfigVarString `json:"instanceType,omitempty"`
-	VSwitchID               providerconfig.ConfigVarString `json:"vSwitchID,omitempty"`
-	InternetMaxBandwidthOut providerconfig.ConfigVarString `json:"internetMaxBandwidthOut,omitempty"`
-	Labels                  map[string]string              `json:"labels,omitempty"`
-	ZoneID                  providerconfig.ConfigVarString `json:"zoneID,omitempty"`
 }
 
 type Config struct {
@@ -338,17 +328,17 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rawConfig := RawConfig{}
+	rawConfig := alibabatypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
 	}
@@ -410,14 +400,14 @@ func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error)
 	return &response.Instances.Instance[0], nil
 }
 
-func getImageIDForOS(os providerconfig.OperatingSystem) (string, error) {
+func getImageIDForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu_18_04_64_20G_alibase_20190624.vhd", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos_7_06_64_20G_alibase_20190711.vhd", nil
-	case providerconfig.OperatingSystemCoreos:
+	case providerconfigtypes.OperatingSystemCoreos:
 		return "coreos_2023_4_0_64_30G_alibase_20190319.vhd", nil
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
