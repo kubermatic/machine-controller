@@ -12,6 +12,7 @@
 | Google Cloud Platform | ✓ | ✓ | x |
 | Hetzner | ✓ | x | ✓ |
 | Linode | ✓ | x | x |
+| CherryServers | ✓ | x | ✓ |
 
 ## Configuring a operating system
 

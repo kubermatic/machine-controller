@@ -140,6 +140,10 @@ required = [
   name = "sigs.k8s.io/controller-runtime"
   version = "v0.3.0"
 
+[[constraint]]
+  revision = "fe5f3641e452b0ecae421b613a9c8dbbf730ecae"
+  name = "github.com/cherryservers/cherrygo"
+
 # Otherwise dep panics: https://github.com/golang/dep/issues/1799
 [[override]]
   name = "gopkg.in/fsnotify.v1"

@@ -42,18 +42,19 @@ const (
 type CloudProvider string
 
 const (
-	CloudProviderAWS          CloudProvider = "aws"
-	CloudProviderAzure        CloudProvider = "azure"
-	CloudProviderDigitalocean CloudProvider = "digitalocean"
-	CloudProviderGoogle       CloudProvider = "gce"
-	CloudProviderHetzner      CloudProvider = "hetzner"
-	CloudProviderKubeVirt     CloudProvider = "kubevirt"
-	CloudProviderLinode       CloudProvider = "linode"
-	CloudProviderOpenstack    CloudProvider = "openstack"
-	CloudProviderPacket       CloudProvider = "packet"
-	CloudProviderVsphere      CloudProvider = "vsphere"
-	CloudProviderFake         CloudProvider = "fake"
-	CloudProviderAlibaba      CloudProvider = "alibaba"
+	CloudProviderAWS           CloudProvider = "aws"
+	CloudProviderAzure         CloudProvider = "azure"
+	CloudProviderDigitalocean  CloudProvider = "digitalocean"
+	CloudProviderGoogle        CloudProvider = "gce"
+	CloudProviderHetzner       CloudProvider = "hetzner"
+	CloudProviderKubeVirt      CloudProvider = "kubevirt"
+	CloudProviderLinode        CloudProvider = "linode"
+	CloudProviderOpenstack     CloudProvider = "openstack"
+	CloudProviderPacket        CloudProvider = "packet"
+	CloudProviderVsphere       CloudProvider = "vsphere"
+	CloudProviderFake          CloudProvider = "fake"
+	CloudProviderAlibaba       CloudProvider = "alibaba"
+	CloudProviderCherryServers CloudProvider = "cherryservers"
 )
 
 var (
@@ -72,6 +73,7 @@ var (
 	AllCloudProviders = []CloudProvider{
 		CloudProviderAWS,
 		CloudProviderAzure,
+		CloudProviderCherryServers,
 		CloudProviderDigitalocean,
 		CloudProviderGoogle,
 		CloudProviderHetzner,

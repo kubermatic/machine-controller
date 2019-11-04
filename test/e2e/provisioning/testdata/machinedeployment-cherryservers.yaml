@@ -1,0 +1,37 @@
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: << MACHINE_NAME >>
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      name: << MACHINE_NAME >>
+  template:
+    metadata:
+      labels:
+        name: << MACHINE_NAME >>
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "cherryservers"
+          cloudProviderSpec:
+            token: << CHERRYSERVERS_TOKEN >>
+            plan: "Hexa Smart"
+            location: "EU-East-1"
+            projectID: "<< CHERRYSERVERS_PROJECT_ID >>"
+            teamID: "<< CHERRYSERVERS_TEAM_ID >>"
+          operatingSystem: "<< OS_NAME >>"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+      versions:
+        kubelet: "<< KUBERNETES_VERSION >>"

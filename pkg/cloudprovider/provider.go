@@ -23,6 +23,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/alibaba"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/cherryservers"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/fake"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce"
@@ -79,6 +80,9 @@ var (
 		},
 		providerconfigtypes.CloudProviderAlibaba: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return alibaba.New(cvr)
+		},
+		providerconfigtypes.CloudProviderCherryServers: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return cherryservers.New(cvr)
 		},
 	}
 )

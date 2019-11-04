@@ -52,6 +52,7 @@ const (
 	invalidMachineManifest = "./testdata/machine-invalid.yaml"
 	kubevirtManifest       = "./testdata/machinedeployment-kubevirt.yaml"
 	alibabaManifest        = "./testdata/machinedeployment-alibaba.yaml"
+	cherryserversManifest  = "./testdata/machinedeployment-cherryservers.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -478,4 +479,29 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		executor:          verifyCreateUpdateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)
+}
+
+// TestCherryServersProvisioning - a test suite that exercises CherryServers provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestCherryServersProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	cherryServersToken := os.Getenv("CHERRYSERVERS_E2E_TESTS_TOKEN")
+	cherryserversProjectID := os.Getenv("CHERRYSERVERS_PROJECT_ID")
+	cherryserversTeamID := os.Getenv("CHERRYSERVERS_TEAM_ID")
+	if len(cherryServersToken) == 0 || len(cherryserversProjectID) == 0 || len(cherryserversTeamID) == 0 {
+		t.Fatal("unable to run the test suite, all of CHERRYSERVERS_E2E_TESTS_TOKEN, CHERRYSERVERS_PROJECT_ID and CHERRYSERVERS_TEAM_ID environment variables must be set!")
+	}
+
+	// CherryServers does not support coreos
+	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
+
+	// act
+	params := []string{
+		fmt.Sprintf("<< CHERRYSERVERS_TOKEN >>=%s", cherryServersToken),
+		fmt.Sprintf("<< CHERRYSERVERS_PROJECT_ID >>=%s", cherryserversProjectID),
+		fmt.Sprintf("<< CHERRYSERVERS_TEAM_ID >>=%s", cherryserversTeamID),
+	}
+	runScenarios(t, excludeSelector, params, cherryserversManifest, fmt.Sprintf("cherry-%s", *testRunIdentifier))
 }
