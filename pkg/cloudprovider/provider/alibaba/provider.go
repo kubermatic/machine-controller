@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
@@ -152,7 +153,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
-	foundInstance, err := getInstance(client, machine.Name)
+	foundInstance, err := getInstance(client, machine.Name, string(machine.UID))
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +204,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
-	createInstanceRequest.ImageId, _ = p.getImageIDForOS(machine.Spec, pc.OperatingSystem)
+	createInstanceRequest.ImageId, err = p.getImageIDForOS(machine.Spec, pc.OperatingSystem)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get a valied image for machine : %v", err)
+	}
 	createInstanceRequest.InstanceName = machine.Name
 	createInstanceRequest.InstanceType = c.InstanceType
 	createInstanceRequest.VSwitchId = c.VSwitchID
@@ -212,6 +216,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest.UserData = encodedUserData
 	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
 	createInstanceRequest.ZoneId = c.ZoneID
+	tag := ecs.CreateInstanceTag{
+		Key:   machineUIDTag,
+		Value: string(machine.UID),
+	}
+	createInstanceRequest.Tag = &[]ecs.CreateInstanceTag{tag}
 
 	_, err = client.CreateInstance(createInstanceRequest)
 	if err != nil {
@@ -226,15 +235,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, fmt.Errorf("failed updating machine %v finzaliers: %v", machine.Name, err)
 	}
 
-	i, err := getInstance(client, machine.Name)
+	foundInstance, err := getInstance(client, machine.Name, string(machine.UID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get alibaba instance %v due to %v", machine.Name, err)
 	}
-	return &alibabaInstance{instance: i}, nil
+
+	return &alibabaInstance{instance: foundInstance}, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	if _, err := p.Get(machine, data); err != nil {
+	foundInstance, err := p.Get(machine, data)
+	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
 		}
@@ -254,13 +265,8 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
-	foundInstance, err := getInstance(client, machine.Name)
-	if err != nil {
-		return false, fmt.Errorf("failed to get alibaba instance %v due to %v", machine.Name, err)
-	}
-
 	deleteInstancesRequest := ecs.CreateDeleteInstancesRequest()
-	deleteInstancesRequest.InstanceId = &[]string{foundInstance.InstanceId}
+	deleteInstancesRequest.InstanceId = &[]string{foundInstance.ID()}
 
 	deleteInstancesRequest.Force = requests.Boolean("True")
 	if _, err = client.DeleteInstances(deleteInstancesRequest); err != nil {
@@ -298,7 +304,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
-	foundInstance, err := getInstance(client, machine.Name)
+	foundInstance, err := getInstance(client, machine.Name, string(machine.UID))
 	if err != nil {
 		return fmt.Errorf("failed to get alibaba instance %v due to %v", machine.Name, err)
 	}
@@ -380,16 +386,25 @@ func getClient(regionID, accessKeyID, accessKeySecret string) (*ecs.Client, erro
 	return client, nil
 }
 
-func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error) {
+func getInstance(client *ecs.Client, instanceName string, uid string) (*ecs.Instance, error) {
 	describeInstanceRequest := ecs.CreateDescribeInstancesRequest()
 	describeInstanceRequest.InstanceName = instanceName
+	tag := []ecs.DescribeInstancesTag{
+		{
+			Key:   machineUIDTag,
+			Value: uid,
+		},
+	}
+	describeInstanceRequest.Tag = &tag
 
 	response, err := client.DescribeInstances(describeInstanceRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe instance with instanceName: %s: %v", instanceName, err)
 	}
 
-	if response.Instances.Instance == nil || len(response.Instances.Instance) == 0 {
+	if response.Instances.Instance == nil ||
+		len(response.Instances.Instance) == 0 ||
+		response.GetHttpStatus() == http.StatusNotFound {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
