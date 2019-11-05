@@ -31,6 +31,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	alibabatypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/alibaba/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -41,6 +42,8 @@ const (
 	machineUIDTag   = "machine_uid"
 	centosImageName = "CentOS  7.6 64 bit"
 	ubuntuImageName = "Ubuntu  18.04 64 bit"
+
+	finalizerInstance = "kubermatic.io/cleanup-alibaba-instance"
 )
 
 type instanceStatus string
@@ -146,7 +149,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 
 	client, err := getClient(c.RegionID, c.AccessKeyID, c.AccessKeySecret)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
 	foundInstance, err := getInstance(client, machine.Name)
@@ -161,16 +164,19 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 
 		_, err = client.StartInstance(startRequest)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to start instance %v: %v", foundInstance.InstanceId, err)
 		}
 		return nil, fmt.Errorf("instance %v is in a stopped state", foundInstance.InstanceId)
 	case runningStatus:
-		ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
-		ipAddress.InstanceId = foundInstance.InstanceId
+		if len(foundInstance.PublicIpAddress.IpAddress) == 0 {
+			ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
+			ipAddress.InstanceId = foundInstance.InstanceId
 
-		_, err = client.AllocatePublicIpAddress(ipAddress)
-		if err != nil {
-			return nil, err
+			_, err = client.AllocatePublicIpAddress(ipAddress)
+			if err != nil {
+				return nil, fmt.Errorf("failed to allocate ip address for instance %v: %v", foundInstance.InstanceId, err)
+			}
+
 		}
 		return &alibabaInstance{instance: foundInstance}, nil
 	}
@@ -193,14 +199,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	client, err := getClient(c.RegionID, c.AccessKeyID, c.AccessKeySecret)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get alibaba client: %v", err)
 	}
-
-	if c.Labels == nil {
-		c.Labels = map[string]string{}
-	}
-
-	c.Labels[machineUIDTag] = string(machine.UID)
 
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
 	createInstanceRequest.ImageId, _ = p.getImageIDForOS(machine.Spec, pc.OperatingSystem)
@@ -218,9 +218,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, fmt.Errorf("failed to create instance at Alibaba cloud: %v", err)
 	}
 
+	if err = data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerInstance) {
+			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerInstance)
+		}
+	}); err != nil {
+		return nil, fmt.Errorf("failed updating machine %v finzaliers: %v", machine.Name, err)
+	}
+
 	i, err := getInstance(client, machine.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get alibaba instance %v due to %v", machine.Name, err)
 	}
 	return &alibabaInstance{instance: i}, nil
 }
@@ -243,12 +251,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	client, err := getClient(c.RegionID, c.AccessKeyID, c.AccessKeySecret)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
 	foundInstance, err := getInstance(client, machine.Name)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get alibaba instance %v due to %v", machine.Name, err)
 	}
 
 	deleteInstancesRequest := ecs.CreateDeleteInstancesRequest()
@@ -259,6 +267,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
 	}
 
+	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerInstance)
+	}); err != nil {
+		return false, fmt.Errorf("failed updating machine %v finzaliers: %v", machine.Name, err)
+	}
 	return false, nil
 }
 
@@ -282,12 +295,12 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 
 	client, err := getClient(c.RegionID, c.AccessKeyID, c.AccessKeySecret)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
 	foundInstance, err := getInstance(client, machine.Name)
 	if err != nil {
-		return fmt.Errorf("failed to find instance: %v", err)
+		return fmt.Errorf("failed to get alibaba instance %v due to %v", machine.Name, err)
 	}
 
 	tag := ecs.AddTagsTag{
@@ -318,12 +331,12 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode providers config: %v", err)
 	}
 
 	rawConfig := alibabatypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode alibaba providers config: %v", err)
 	}
 
 	c := Config{}
@@ -386,12 +399,12 @@ func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error)
 func (p *provider) getImageIDForOS(machineSpec v1alpha1.MachineSpec, os providerconfigtypes.OperatingSystem) (string, error) {
 	c, _, err := p.getConfig(machineSpec.ProviderSpec)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
 	client, err := getClient(c.RegionID, c.AccessKeyID, c.AccessKeySecret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get alibaba client: %v", err)
 	}
 
 	request := ecs.CreateDescribeImagesRequest()
@@ -401,7 +414,7 @@ func (p *provider) getImageIDForOS(machineSpec v1alpha1.MachineSpec, os provider
 
 	response, err := client.DescribeImages(request)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to describe alibaba images: %v", err)
 	}
 
 	var availableImage = map[providerconfigtypes.OperatingSystem]string{}
