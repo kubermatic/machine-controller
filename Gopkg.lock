@@ -203,6 +203,13 @@
   version = "v0.2.1"
 
 [[projects]]
+  digest = "1:fc89165071cd3b5fc508d2de0a7d9f67a8dc8ea5fc49dd32c38572465ae4f9fe"
+  name = "github.com/cherryservers/cherrygo"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "fe5f3641e452b0ecae421b613a9c8dbbf730ecae"
+
+[[projects]]
   digest = "1:15173ac9caac43ba3a8990716158f5fd08174293e259d0a9e67f6fc98cc39d35"
   name = "github.com/coreos/container-linux-config-transpiler"
   packages = [
@@ -1517,6 +1524,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/ec2",
     "github.com/aws/aws-sdk-go/service/iam",
+    "github.com/cherryservers/cherrygo",
     "github.com/coreos/container-linux-config-transpiler/config",
     "github.com/davecgh/go-spew/spew",
     "github.com/digitalocean/godo",

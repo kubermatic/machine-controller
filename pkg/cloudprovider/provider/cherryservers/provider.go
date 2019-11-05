@@ -25,17 +25,20 @@ import (
 	"strconv"
 
 	"github.com/cherryservers/cherrygo"
-	"github.com/golang/glog"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cherryserverstypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/cherryservers/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
-
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
+	// "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	// "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 const (
@@ -48,15 +51,6 @@ type provider struct {
 
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	TeamID    providerconfig.ConfigVarString `json:"teamID"`
-	ProjectID providerconfig.ConfigVarString `json:"projectID"`
-	Token     providerconfig.ConfigVarString `json:"token,omitempty"`
-	Plan      providerconfig.ConfigVarString `json:"plan"`
-	Location  providerconfig.ConfigVarString `json:"location"`
-	Tags      map[string]string              `json:"tags,omitempty"`
 }
 
 type Config struct {
@@ -72,17 +66,17 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rawConfig := RawConfig{}
+	rawConfig := cherryserverstypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
 	}
@@ -115,14 +109,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	return &c, &pconfig, err
 }
 
-func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
+func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "Ubuntu 18.04 64bit", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "CentOS 7 64bit", nil
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
 
 func getClient(token string) *cherrygo.Client {
@@ -373,11 +367,11 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to get server: %v", err)
 	}
 	if server == nil {
-		glog.Infof("No instance exists for machine %s", machine.Name)
+		klog.V(6).Infof("No instance exists for machine %s", machine.Name)
 		return nil
 	}
 
-	glog.Infof("Setting UID tag for machine %s", machine.Name)
+	klog.V(6).Infof("Setting UID tag for machine %s", machine.Name)
 	tags := server.Tags
 	tags[machineUIDTagKey] = string(new)
 	updateServerRequest := cherrygo.UpdateServer{
@@ -394,7 +388,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	if response.Response.StatusCode != http.StatusOK {
 		return fmt.Errorf("got unexpected response code %v, expected %v", response.Response.Status, http.StatusOK)
 	}
-	glog.Infof("Successfully set UID tag for machine %s", machine.Name)
+	klog.V(6).Infof("Successfully set UID tag for machine %s", machine.Name)
 
 	return nil
 }
