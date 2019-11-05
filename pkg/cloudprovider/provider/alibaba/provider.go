@@ -19,15 +19,14 @@ package alibaba
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	alibabatypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/alibaba/types"
@@ -39,13 +38,14 @@ import (
 )
 
 const (
-	machineUIDTag = "machine_uid"
+	machineUIDTag   = "machine_uid"
+	centosImageName = "CentOS  7.6 64 bit"
+	ubuntuImageName = "Ubuntu  18.04 64 bit"
 )
 
 type instanceStatus string
 
 const (
-	pendingStatus instanceStatus = "Pending"
 	stoppedStatus instanceStatus = "Stopped"
 	runningStatus instanceStatus = "Running"
 )
@@ -107,27 +107,27 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 	}
 
 	if c.AccessKeyID == "" {
-		return fmt.Errorf("accessKeyID is missing")
+		return errors.New("accessKeyID is missing")
 	}
 	if c.AccessKeySecret == "" {
-		return fmt.Errorf("accessKeySecret is missing")
+		return errors.New("accessKeySecret is missing")
 	}
 	if c.RegionID == "" {
-		return fmt.Errorf("regionID is missing")
+		return errors.New("regionID is missing")
 	}
 	if c.InstanceType == "" {
-		return fmt.Errorf("instanceType is missing")
+		return errors.New("instanceType is missing")
 	}
 	if c.VSwitchID == "" {
-		return fmt.Errorf("vSwitchID is missing")
+		return errors.New("vSwitchID is missing")
 	}
 	if c.InternetMaxBandwidthOut == "" {
-		return fmt.Errorf("internetMaxBandwidthOut is missing")
+		return errors.New("internetMaxBandwidthOut is missing")
 	}
 	if c.ZoneID == "" {
-		return fmt.Errorf("zoneID is missing")
+		return errors.New("zoneID is missing")
 	}
-	_, err = getImageIDForOS(pc.OperatingSystem)
+	_, err = p.getImageIDForOS(machineSpec, pc.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
 	}
@@ -149,16 +149,33 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	i, err := getInstance(client, machine.Name)
+	foundInstance, err := getInstance(client, machine.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	if i != nil {
-		return &alibabaInstance{instance: i}, nil
+	switch instanceStatus(foundInstance.Status) {
+	case stoppedStatus:
+		startRequest := ecs.CreateStartInstanceRequest()
+		startRequest.InstanceId = foundInstance.InstanceId
+
+		_, err = client.StartInstance(startRequest)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("instance %v is in a stopped state", foundInstance.InstanceId)
+	case runningStatus:
+		ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
+		ipAddress.InstanceId = foundInstance.InstanceId
+
+		_, err = client.AllocatePublicIpAddress(ipAddress)
+		if err != nil {
+			return nil, err
+		}
+		return &alibabaInstance{instance: foundInstance}, nil
 	}
 
-	return nil, cloudprovidererrors.ErrInstanceNotFound
+	return nil, fmt.Errorf("instance %v is not ready", foundInstance.InstanceId)
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
@@ -186,7 +203,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	c.Labels[machineUIDTag] = string(machine.UID)
 
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
-	createInstanceRequest.ImageId, _ = getImageIDForOS(pc.OperatingSystem)
+	createInstanceRequest.ImageId, _ = p.getImageIDForOS(machine.Spec, pc.OperatingSystem)
 	createInstanceRequest.InstanceName = machine.Name
 	createInstanceRequest.InstanceType = c.InstanceType
 	createInstanceRequest.VSwitchId = c.VSwitchID
@@ -196,50 +213,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
 	createInstanceRequest.ZoneId = c.ZoneID
 
-	res, err := client.CreateInstance(createInstanceRequest)
+	_, err = client.CreateInstance(createInstanceRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create instance at Alibaba cloud: %v", err)
 	}
 
-	var (
-		foundInstance *ecs.Instance
-		maxRetries    = 10
-		tries         = 0
-	)
-
-	for {
-		foundInstance, err = getInstance(client, machine.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		if tries >= maxRetries {
-			return nil, fmt.Errorf("instance %v isn't in a ready state", foundInstance.InstanceId)
-		}
-
-		switch instanceStatus(foundInstance.Status) {
-		case pendingStatus:
-			tries++
-		case stoppedStatus:
-			startRequest := ecs.CreateStartInstanceRequest()
-			startRequest.InstanceId = res.InstanceId
-
-			_, err = client.StartInstance(startRequest)
-			if err != nil {
-				return nil, err
-			}
-		case runningStatus:
-			ipAddress := ecs.CreateAllocatePublicIpAddressRequest()
-			ipAddress.InstanceId = foundInstance.InstanceId
-
-			_, err = client.AllocatePublicIpAddress(ipAddress)
-			if err != nil {
-				panic(err)
-			}
-			return &alibabaInstance{instance: foundInstance}, nil
-		}
-		time.Sleep(5 * time.Second)
+	i, err := getInstance(client, machine.Name)
+	if err != nil {
+		return nil, err
 	}
+	return &alibabaInstance{instance: i}, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
@@ -330,7 +313,7 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 
 func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
-		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
+		return nil, nil, errors.New("machine.spec.providerconfig.value is nil")
 	}
 	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
@@ -394,20 +377,46 @@ func getInstance(client *ecs.Client, instanceName string) (*ecs.Instance, error)
 	}
 
 	if response.Instances.Instance == nil || len(response.Instances.Instance) == 0 {
-		return nil, errors.ErrInstanceNotFound
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
 	return &response.Instances.Instance[0], nil
 }
 
-func getImageIDForOS(os providerconfigtypes.OperatingSystem) (string, error) {
-	switch os {
-	case providerconfigtypes.OperatingSystemUbuntu:
-		return "ubuntu_18_04_64_20G_alibase_20190624.vhd", nil
-	case providerconfigtypes.OperatingSystemCentOS:
-		return "centos_7_06_64_20G_alibase_20190711.vhd", nil
-	case providerconfigtypes.OperatingSystemCoreos:
-		return "coreos_2023_4_0_64_30G_alibase_20190319.vhd", nil
+func (p *provider) getImageIDForOS(machineSpec v1alpha1.MachineSpec, os providerconfigtypes.OperatingSystem) (string, error) {
+	c, _, err := p.getConfig(machineSpec.ProviderSpec)
+	if err != nil {
+		return "", err
 	}
+
+	client, err := getClient(c.RegionID, c.AccessKeyID, c.AccessKeySecret)
+	if err != nil {
+		return "", err
+	}
+
+	request := ecs.CreateDescribeImagesRequest()
+	request.InstanceType = "ecs.sn1ne.large"
+	request.OSType = "linux"
+	request.Architecture = "x86_64"
+
+	response, err := client.DescribeImages(request)
+	if err != nil {
+		return "", err
+	}
+
+	var availableImage = map[providerconfigtypes.OperatingSystem]string{}
+	for _, image := range response.Images.Image {
+		switch image.OSNameEn {
+		case ubuntuImageName:
+			availableImage[providerconfigtypes.OperatingSystemUbuntu] = image.ImageId
+		case centosImageName:
+			availableImage[providerconfigtypes.OperatingSystemCentOS] = image.ImageId
+		}
+	}
+
+	if imageID, ok := availableImage[os]; ok {
+		return imageID, nil
+	}
+
 	return "", providerconfigtypes.ErrOSNotSupported
 }
