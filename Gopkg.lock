@@ -766,7 +766,7 @@
   revision = "9a301d65acbb728fcc3ace14f45f511a4cfeea9c"
 
 [[projects]]
-  digest = "1:53e520c5a1e67de0ec53147ceaa6eaa9dcfa295721cb30a9c54668147fe190ee"
+  digest = "1:3e6f7bda8d0452d47a9db71b642f9295cc4abec4c74cc8e321d0c672373f00f6"
   name = "github.com/vmware/govmomi"
   packages = [
     ".",
@@ -787,8 +787,8 @@
     "vim25/xml",
   ]
   pruneopts = "NUT"
-  revision = "123ed177021588bac57b5c87c1a84270ddf2eca8"
-  version = "v0.17.1"
+  revision = "a0fef816799db3e430bb7a5ac951e7835fe4d56b"
+  version = "v0.21.0"
 
 [[projects]]
   digest = "1:58f2854b50ff8862eb6a347f20dedaac83e1166f4040472e17bc37736841a12f"

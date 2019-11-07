@@ -61,7 +61,10 @@ func EthernetCardTypes() VirtualDeviceList {
 	return VirtualDeviceList([]types.BaseVirtualDevice{
 		&types.VirtualE1000{},
 		&types.VirtualE1000e{},
+		&types.VirtualVmxnet2{},
 		&types.VirtualVmxnet3{},
+		&types.VirtualPCNet32{},
+		&types.VirtualSriovEthernetCard{},
 	}).Select(func(device types.BaseVirtualDevice) bool {
 		c := device.(types.BaseVirtualEthernetCard).GetVirtualEthernetCard()
 		c.GetVirtualDevice().Key = -1
@@ -226,8 +229,10 @@ func (l VirtualDeviceList) FindSCSIController(name string) (*types.VirtualSCSICo
 func (l VirtualDeviceList) CreateSCSIController(name string) (types.BaseVirtualDevice, error) {
 	ctypes := SCSIControllerTypes()
 
-	if name == "scsi" || name == "" {
+	if name == "" || name == "scsi" {
 		name = ctypes.Type(ctypes[0])
+	} else if name == "virtualscsi" {
+		name = "pvscsi" // ovf VirtualSCSI mapping
 	}
 
 	found := ctypes.Select(func(device types.BaseVirtualDevice) bool {
@@ -834,7 +839,7 @@ func (l VirtualDeviceList) TypeName(device types.BaseVirtualDevice) string {
 	return dtype.Elem().Name()
 }
 
-var deviceNameRegexp = regexp.MustCompile(`(?:Virtual)?(?:Machine)?(\w+?)(?:Card|Device|Controller)?$`)
+var deviceNameRegexp = regexp.MustCompile(`(?:Virtual)?(?:Machine)?(\w+?)(?:Card|EthernetCard|Device|Controller)?$`)
 
 func (l VirtualDeviceList) deviceName(device types.BaseVirtualDevice) string {
 	name := "device"
