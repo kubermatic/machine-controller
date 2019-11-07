@@ -487,42 +487,45 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("failed to get powerstate: %v", err)
 	}
 
-	var status instance.Status
-	switch powerState {
-	case types.VirtualMachinePowerStatePoweredOn:
-		status = instance.StatusRunning
-	default:
-		status = instance.StatusUnknown
+	if powerState != types.VirtualMachinePowerStatePoweredOn {
+		powerOnTask, err := virtualMachine.PowerOn(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to power on instance that was in state %q: %v", powerState, err)
+		}
+		if err := powerOnTask.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("failed waiting for instance to be powered on: %v", err)
+		}
+		// We must return here because the vendored code for determining if the guest
+		// utils are running yields an NPD when using with an instance that is not running
+		return Server{name: virtualMachine.Name(), status: instance.StatusUnknown}, nil
 	}
 
 	// virtualMachine.IsToolsRunning panics when executed on a VM that is not powered on
 	addresses := []string{}
-	if powerState == types.VirtualMachinePowerStatePoweredOn {
-		isGuestToolsRunning, err := virtualMachine.IsToolsRunning(context.TODO())
-		if err != nil {
-			return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
+	isGuestToolsRunning, err := virtualMachine.IsToolsRunning(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
+	}
+	if isGuestToolsRunning {
+		var moVirtualMachine mo.VirtualMachine
+		pc := property.DefaultCollector(session.Client.Client)
+		if err := pc.RetrieveOne(ctx, virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine); err != nil {
+			return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
 		}
-		if isGuestToolsRunning {
-			var moVirtualMachine mo.VirtualMachine
-			pc := property.DefaultCollector(session.Client.Client)
-			if err := pc.RetrieveOne(context.TODO(), virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine); err != nil {
-				return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
-			}
 
-			for _, nic := range moVirtualMachine.Guest.Net {
-				for _, address := range nic.IpAddress {
-					// Exclude ipv6 link-local addresses and default Docker bridge
-					if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
-						addresses = append(addresses, address)
-					}
+		for _, nic := range moVirtualMachine.Guest.Net {
+			for _, address := range nic.IpAddress {
+				// Exclude ipv6 link-local addresses and default Docker bridge
+				if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
+					addresses = append(addresses, address)
 				}
 			}
-		} else {
-			klog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
 		}
+	} else {
+		klog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
 	}
 
-	return Server{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil
+	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
