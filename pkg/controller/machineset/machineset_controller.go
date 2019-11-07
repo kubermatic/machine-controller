@@ -164,29 +164,8 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, machineSet *cluster
 		return reconcile.Result{}, errors.Errorf("failed validation on MachineSet %q label selector, cannot match any machines ", machineSet.Name)
 	}
 
-	// Cluster might be nil as some providers might not require a cluster object
-	// for machine management.
-	cluster, err := r.getCluster(machineSet)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Set the ownerRef with foreground deletion if there is a linked cluster.
-	if cluster != nil && len(machineSet.OwnerReferences) == 0 {
-		blockOwnerDeletion := true
-		machineSet.OwnerReferences = append(machineSet.OwnerReferences, metav1.OwnerReference{
-			APIVersion:         cluster.APIVersion,
-			Kind:               cluster.Kind,
-			Name:               cluster.Name,
-			UID:                cluster.UID,
-			BlockOwnerDeletion: &blockOwnerDeletion,
-		})
-	}
-
-	// Add foregroundDeletion finalizer if MachineSet isn't deleted and linked to a cluster.
-	if cluster != nil &&
-		machineSet.ObjectMeta.DeletionTimestamp.IsZero() &&
-		!contains(machineSet.Finalizers, metav1.FinalizerDeleteDependents) {
+	// Add foregroundDeletion finalizer
+	if !contains(machineSet.Finalizers, metav1.FinalizerDeleteDependents) {
 
 		machineSet.Finalizers = append(machineSet.ObjectMeta.Finalizers, metav1.FinalizerDeleteDependents)
 
@@ -261,26 +240,6 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, machineSet *cluster
 	}
 
 	return reconcile.Result{}, nil
-}
-
-// getCluster reuturns the Cluster associated with the MachineSet, if any.
-func (r *ReconcileMachineSet) getCluster(ms *clusterv1alpha1.MachineSet) (*clusterv1alpha1.Cluster, error) {
-	if ms.Spec.Template.Labels[clusterv1alpha1.MachineClusterLabelName] == "" {
-		klog.V(4).Infof("MachineSet %q in namespace %q doesn't specify %q label, assuming nil cluster", ms.Name, ms.Namespace, clusterv1alpha1.MachineClusterLabelName)
-		return nil, nil
-	}
-
-	cluster := &clusterv1alpha1.Cluster{}
-	key := client.ObjectKey{
-		Namespace: ms.Namespace,
-		Name:      ms.Spec.Template.Labels[clusterv1alpha1.MachineClusterLabelName],
-	}
-
-	if err := r.Client.Get(context.Background(), key, cluster); err != nil {
-		return nil, err
-	}
-
-	return cluster, nil
 }
 
 // syncReplicas scales Machine resources up or down.
