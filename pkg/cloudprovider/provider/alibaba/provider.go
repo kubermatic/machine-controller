@@ -247,6 +247,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	foundInstance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
+			if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+				updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerInstance)
+			}); err != nil {
+				return false, fmt.Errorf("failed updating machine %v finzaliers: %v", machine.Name, err)
+			}
 			return true, nil
 		}
 		return false, err
@@ -273,11 +278,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
 	}
 
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
-		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerInstance)
-	}); err != nil {
-		return false, fmt.Errorf("failed updating machine %v finzaliers: %v", machine.Name, err)
-	}
 	return false, nil
 }
 
