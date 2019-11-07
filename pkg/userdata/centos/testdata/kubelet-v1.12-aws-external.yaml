@@ -161,10 +161,12 @@ write_files:
     WantedBy=multi-user.target
 
 - path: "/etc/kubernetes/cloud-config"
+  permissions: "0600"
   content: |
     {aws-config:true}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
+  permissions: "0600"
   content: |
     apiVersion: v1
     clusters:
