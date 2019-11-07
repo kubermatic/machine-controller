@@ -166,32 +166,9 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, d *v1alpha1.
 		return reconcile.Result{}, errors.Errorf("failed validation on MachineDeployment %q label selector, cannot match Machine template labels", d.Name)
 	}
 
-	// Cluster might be nil as some providers might not require a cluster object
-	// for machine management.
-	cluster, err := r.getCluster(d)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Set the ownerRef with foreground deletion if there is a linked cluster.
-	if cluster != nil && len(d.OwnerReferences) == 0 {
-		blockOwnerDeletion := true
-		d.OwnerReferences = append(d.OwnerReferences, metav1.OwnerReference{
-			APIVersion:         cluster.APIVersion,
-			Kind:               cluster.Kind,
-			Name:               cluster.Name,
-			UID:                cluster.UID,
-			BlockOwnerDeletion: &blockOwnerDeletion,
-		})
-	}
-
-	// Add foregroundDeletion finalizer if MachineDeployment isn't deleted and linked to a cluster.
-	if cluster != nil &&
-		d.ObjectMeta.DeletionTimestamp.IsZero() &&
-		!contains(d.Finalizers, metav1.FinalizerDeleteDependents) {
+	if !contains(d.Finalizers, metav1.FinalizerDeleteDependents) {
 
 		d.Finalizers = append(d.ObjectMeta.Finalizers, metav1.FinalizerDeleteDependents)
-
 		if err := r.Client.Update(context.Background(), d); err != nil {
 			klog.Infof("Failed to add finalizers to MachineSet %q: %v", d.Name, err)
 			return reconcile.Result{}, err
@@ -225,26 +202,6 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, d *v1alpha1.
 	}
 
 	return reconcile.Result{}, errors.Errorf("unexpected deployment strategy type: %s", d.Spec.Strategy.Type)
-}
-
-// getCluster reuturns the Cluster associated with the MachineDeployment, if any.
-func (r *ReconcileMachineDeployment) getCluster(d *v1alpha1.MachineDeployment) (*v1alpha1.Cluster, error) {
-	if d.Spec.Template.Labels[v1alpha1.MachineClusterLabelName] == "" {
-		klog.V(4).Infof("Deployment %q in namespace %q doesn't specify %q label, assuming nil cluster", d.Name, d.Namespace, v1alpha1.MachineClusterLabelName)
-		return nil, nil
-	}
-
-	cluster := &v1alpha1.Cluster{}
-	key := client.ObjectKey{
-		Namespace: d.Namespace,
-		Name:      d.Spec.Template.Labels[v1alpha1.MachineClusterLabelName],
-	}
-
-	if err := r.Client.Get(context.Background(), key, cluster); err != nil {
-		return nil, err
-	}
-
-	return cluster, nil
 }
 
 // getMachineSetsForDeployment returns a list of MachineSets associated with a MachineDeployment.
