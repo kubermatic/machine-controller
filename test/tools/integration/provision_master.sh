@@ -73,7 +73,7 @@ if ! ls \$HOME/.kube/config; then
   kubectl taint nodes --all node-role.kubernetes.io/master-
 fi
 if ! ls kube-flannel.yml; then
-  curl -LO https://github.com/coreos/flannel/blob/v0.11.0/Documentation/kube-flannel.yml
+  curl -LO https://raw.githubusercontent.com/coreos/flannel/960b3243b9a7faccdfe7b3c09097105e68030ea7/Documentation/kube-flannel.yml
   kubectl apply -f kube-flannel.yml
 fi
 
