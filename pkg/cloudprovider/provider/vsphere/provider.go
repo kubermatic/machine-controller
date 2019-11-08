@@ -232,7 +232,19 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+	vm, err := p.create(machine, userdata)
+	if err != nil {
+		_, cleanupErr := p.Cleanup(machine, data)
+		if cleanupErr != nil {
+			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %v", cleanupErr, err)
+		}
+		return nil, err
+	}
+	return vm, nil
+}
+
+func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
