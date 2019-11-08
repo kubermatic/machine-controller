@@ -550,7 +550,7 @@ func (p *provider) get(ctx context.Context, folder string, spec v1alpha1.Machine
 	path := fmt.Sprintf("%s/%s", folder, spec.Name)
 	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, path)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("vm '%s' not found", spec.Name) {
+		if err.Error() == fmt.Sprintf("vm '%s' not found", path) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 		return nil, fmt.Errorf("failed to list virtual machines: %v", err)
