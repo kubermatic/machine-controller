@@ -133,7 +133,7 @@ subjects:
   kind: Group
   name: system:bootstrappers:machine-controller:default-node-token
 ---
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: machine-controller
@@ -182,7 +182,7 @@ spec:
               port: 8085
             periodSeconds: 5
 ---
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: machine-controller-webhook
