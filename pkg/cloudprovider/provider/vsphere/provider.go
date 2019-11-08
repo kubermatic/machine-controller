@@ -45,16 +45,6 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	// We set this field on the virtual machine to the name of
-	// the machine to indicate creation succeeded.
-	// If this is not set correctly, .Get will delete the instance
-	creationCompleteFieldName = "kubernetes-worker-complete"
-	// machineUIDFieldName is the name of the field in which we
-	// store the machines UID
-	machineUIDFieldName = "kubernetes-machine-uid"
-)
-
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
