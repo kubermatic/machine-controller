@@ -193,6 +193,14 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get cluster: %s: %v", config.Cluster, err)
 	}
 
+	if _, err := session.Finder.Folder(ctx, config.Folder); err != nil {
+		return fmt.Errorf("failed to get folder %q: %v", config.Folder, err)
+	}
+
+	if _, err := p.get(ctx, config.Folder, spec, session.Finder); err == nil {
+		return fmt.Errorf("a vm %s/%s already exists", config.Folder, spec.Name)
+	}
+
 	templateVM, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
 		return fmt.Errorf("failed to get template vm %q: %v", config.TemplateVMName, err)
@@ -316,7 +324,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 	defer session.Logout()
 
-	virtualMachine, err := p.get(ctx, machine, session.Finder)
+	virtualMachine, err := p.get(ctx, config.Folder, machine.Spec, session.Finder)
 	if err != nil {
 		if cloudprovidererrors.IsNotFound(err) {
 			return true, nil
@@ -408,7 +416,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	}
 	defer session.Logout()
 
-	virtualMachine, err := p.get(ctx, machine, session.Finder)
+	virtualMachine, err := p.get(ctx, config.Folder, machine.Spec, session.Finder)
 	if err != nil {
 		// Must not wrap because we match on the error type
 		return nil, err
@@ -538,10 +546,11 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) get(ctx context.Context, machine *v1alpha1.Machine, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
-	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, machine.Spec.Name)
+func (p *provider) get(ctx context.Context, folder string, spec v1alpha1.MachineSpec, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
+	path := fmt.Sprintf("%s/%s", folder, spec.Name)
+	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, path)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
+		if err.Error() == fmt.Sprintf("vm '%s' not found", spec.Name) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 		return nil, fmt.Errorf("failed to list virtual machines: %v", err)
@@ -551,7 +560,7 @@ func (p *provider) get(ctx context.Context, machine *v1alpha1.Machine, datacente
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 	if n := len(virtualMachineList); n > 1 {
-		return nil, fmt.Errorf("expected to find at most one vm for name %q, got %d", machine.Spec.Name, n)
+		return nil, fmt.Errorf("expected to find at most one vm at %q, got %d", path, n)
 	}
 	return virtualMachineList[0], nil
 }
