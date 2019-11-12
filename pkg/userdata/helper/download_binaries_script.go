@@ -38,7 +38,7 @@ fi
 {{- if .DownloadKubelet }}
 {{- /* kubelet */}}
 if [ ! -f /opt/bin/kubelet ]; then
-    curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubeletVersion }}/bin/linux/amd64/kubelet
+    curl -Lfo /opt/bin/kubelet https://s3.dbl.cloud.syseleven.net/sys11-metakube-kubelet/v{{ .KubeletVersion }}-sys11-2/kubelet
     chmod +x /opt/bin/kubelet
 fi
 {{- end }}
