@@ -57,7 +57,7 @@ func TestEvictPods(t *testing.T) {
 
 		t.Run(test.Name, func(t *testing.T) {
 
-			ne := &NodeEviction{client: client, nodeName: "node1"}
+			ne := &NodeEviction{kubeClient: client, nodeName: "node1"}
 			if errs := ne.evictPods(literalPods); len(errs) > 0 {
 				t.Fatalf("Got unexpected errors=%v when running evictPods", errs)
 			}

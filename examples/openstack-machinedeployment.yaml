@@ -101,6 +101,9 @@ spec:
             network: ""
             # Only required if the network has more than one subnet
             subnet: ""
+            # Optional, if set, the rootDisk will be a volume. If not, the rootDisk
+            # will be on ephemeral storage and its size will be derived from the flavor
+            rootDiskSizeGB: 20
             # the list of metadata you would like to attach to the instance
             tags:
               tagKey: tagValue

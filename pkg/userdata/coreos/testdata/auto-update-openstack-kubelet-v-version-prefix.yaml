@@ -19,6 +19,7 @@ systemd:
         After=network-online.target
         [Service]
         Type=oneshot
+        EnvironmentFile=-/etc/environment
         ExecStart=/opt/bin/download.sh
         [Install]
         WantedBy=multi-user.target
@@ -73,8 +74,10 @@ systemd:
         TimeoutStartSec=5min
         CPUAccounting=true
         MemoryAccounting=true
+        EnvironmentFile=-/etc/environment
         Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.9.2
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
+          --inherit-env \
           --insecure-options=image \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
           --mount volume=resolv,target=/etc/resolv.conf \
@@ -94,6 +97,7 @@ systemd:
         ExecStartPre=/bin/mkdir -p /opt/cni/bin
         ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
+        ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
           --kubeconfig=/etc/kubernetes/kubelet.conf \
@@ -119,15 +123,25 @@ systemd:
           --cluster-dns=10.10.10.10 \
           --cluster-domain=cluster.local \
           --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+          --cgroup-driver=systemd
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
         [Install]
         WantedBy=multi-user.target
 
+    - name: docker.service
+      enabled: true
+      dropins:
+      - name: 10-environment.conf
+        contents: |
+          [Service]
+          EnvironmentFile=-/etc/environment
+
 storage:
   files:
+
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root
       mode: 0644
@@ -137,16 +151,24 @@ storage:
           SystemMaxUse=5G
 
 
-    - path: /etc/modules-load.d/k8s.conf
+    - path: /opt/load-kernel-modules.sh
       filesystem: root
-      mode: 0644
+      mode: 0755
       contents:
         inline: |
-          ip_vs
-          ip_vs_rr
-          ip_vs_wrr
-          ip_vs_sh
-          nf_conntrack_ipv4
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          modprobe ip_vs
+          modprobe ip_vs_rr
+          modprobe ip_vs_wrr
+          modprobe ip_vs_sh
+
+          if modinfo nf_conntrack_ipv4 &> /dev/null; then
+            modprobe nf_conntrack_ipv4
+          else
+            modprobe nf_conntrack
+          fi
 
 
     - path: /etc/sysctl.d/k8s.conf
@@ -269,13 +291,12 @@ storage:
           PasswordAuthentication no
           ChallengeResponseAuthentication no
 
-    - path: /etc/systemd/system/docker.service.d/10-storage.conf
+    - path: /etc/docker/daemon.json
       filesystem: root
       mode: 0644
       contents:
         inline: |
-          [Service]
-          Environment=DOCKER_OPTS=--storage-driver=overlay2
+          {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
 
     - path: /opt/bin/download.sh
       filesystem: root
@@ -284,14 +305,11 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
-          #setup some common directories
           mkdir -p /opt/bin/
           mkdir -p /var/lib/calico
           mkdir -p /etc/kubernetes/manifests
           mkdir -p /etc/cni/net.d
           mkdir -p /opt/cni/bin
-
-          # cni
           if [ ! -f /opt/cni/bin/loopback ]; then
               curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
           fi

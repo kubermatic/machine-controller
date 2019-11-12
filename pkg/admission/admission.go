@@ -17,6 +17,7 @@ limitations under the License.
 package admission
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -31,22 +32,23 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 )
 
 type admissionData struct {
-	coreClient      kubernetes.Interface
+	ctx             context.Context
+	client          ctrlruntimeclient.Client
 	userDataManager *userdatamanager.Manager
 }
 
 var jsonPatch = admissionv1beta1.PatchTypeJSONPatch
 
-func New(listenAddress string, coreClient kubernetes.Interface, um *userdatamanager.Manager) *http.Server {
+func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamanager.Manager) *http.Server {
 	m := http.NewServeMux()
 	ad := &admissionData{
-		coreClient:      coreClient,
+		client:          client,
 		userDataManager: um,
 	}
 	m.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))

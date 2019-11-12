@@ -34,9 +34,9 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 
@@ -66,7 +66,7 @@ type provider struct {
 }
 
 // New returns a aws provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
@@ -113,23 +113,23 @@ var (
 )
 
 type RawConfig struct {
-	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyId"`
-	SecretAccessKey providerconfig.ConfigVarString `json:"secretAccessKey"`
+	AccessKeyID     providerconfig.ConfigVarString `json:"accessKeyId,omitempty"`
+	SecretAccessKey providerconfig.ConfigVarString `json:"secretAccessKey,omitempty"`
 
-	Region           providerconfig.ConfigVarString `json:"region"`
-	AvailabilityZone providerconfig.ConfigVarString `json:"availabilityZone"`
-
+	Region           providerconfig.ConfigVarString   `json:"region"`
+	AvailabilityZone providerconfig.ConfigVarString   `json:"availabilityZone,omitempty"`
 	VpcID            providerconfig.ConfigVarString   `json:"vpcId"`
 	SubnetID         providerconfig.ConfigVarString   `json:"subnetId"`
-	SecurityGroupIDs []providerconfig.ConfigVarString `json:"securityGroupIDs"`
-	InstanceProfile  providerconfig.ConfigVarString   `json:"instanceProfile"`
+	SecurityGroupIDs []providerconfig.ConfigVarString `json:"securityGroupIDs,omitempty"`
+	InstanceProfile  providerconfig.ConfigVarString   `json:"instanceProfile,omitempty"`
 	IsSpotInstance   *bool                            `json:"isSpotInstance,omitempty"`
-
-	InstanceType providerconfig.ConfigVarString `json:"instanceType"`
-	AMI          providerconfig.ConfigVarString `json:"ami"`
-	DiskSize     int64                          `json:"diskSize"`
-	DiskType     providerconfig.ConfigVarString `json:"diskType"`
-	Tags         map[string]string              `json:"tags"`
+	InstanceType     providerconfig.ConfigVarString   `json:"instanceType,omitempty"`
+	AMI              providerconfig.ConfigVarString   `json:"ami,omitempty"`
+	DiskSize         int64                            `json:"diskSize"`
+	DiskType         providerconfig.ConfigVarString   `json:"diskType,omitempty"`
+	DiskIops         *int64                           `json:"diskIops,omitempty"`
+	Tags             map[string]string                `json:"tags,omitempty"`
+	AssignPublicIP   *bool                            `json:"assignPublicIP,omitempty"`
 }
 
 type Config struct {
@@ -138,18 +138,18 @@ type Config struct {
 
 	Region           string
 	AvailabilityZone string
-
 	VpcID            string
 	SubnetID         string
 	SecurityGroupIDs []string
 	InstanceProfile  string
 	IsSpotInstance   *bool
-
-	InstanceType string
-	AMI          string
-	DiskSize     int64
-	DiskType     string
-	Tags         map[string]string
+	InstanceType     string
+	AMI              string
+	DiskSize         int64
+	DiskType         string
+	DiskIops         *int64
+	Tags             map[string]string
+	AssignPublicIP   *bool
 }
 
 type amiFilter struct {
@@ -300,8 +300,22 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if c.DiskType == ec2.VolumeTypeIo1 {
+		if rawConfig.DiskIops == nil {
+			return nil, nil, nil, errors.New("Missing required field `diskIops`")
+		}
+		iops := *rawConfig.DiskIops
+
+		if iops < 100 || iops > 64000 {
+			return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 100, max: 64000)")
+		}
+
+		c.DiskIops = rawConfig.DiskIops
+	}
+
 	c.Tags = rawConfig.Tags
 	c.IsSpotInstance = rawConfig.IsSpotInstance
+	c.AssignPublicIP = rawConfig.AssignPublicIP
 
 	return &c, &pconfig, &rawConfig, err
 }
@@ -337,6 +351,9 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	}
 	if rawConfig.DiskType.Value == "" {
 		rawConfig.DiskType.Value = ec2.VolumeTypeStandard
+	}
+	if rawConfig.AssignPublicIP == nil {
+		rawConfig.AssignPublicIP = aws.Bool(true)
 	}
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
 	return spec, err
@@ -436,7 +453,7 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 	return vpcOut.Vpcs[0], nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -496,6 +513,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 		instanceMarketOptions = &ec2.InstanceMarketOptionsRequest{MarketType: aws.String(ec2.MarketTypeSpot)}
 	}
 
+	// By default we assign a public IP - We introduced this field later, so we made it a pointer & default to true.
+	// This must be done aside from the webhook defaulting as we might have machines which don't get defaulted before this
+	assignPublicIP := config.AssignPublicIP == nil || *config.AssignPublicIP
+
 	instanceRequest := &ec2.RunInstancesInput{
 		ImageId:               aws.String(amiID),
 		InstanceMarketOptions: instanceMarketOptions,
@@ -506,6 +527,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 					VolumeSize:          aws.Int64(config.DiskSize),
 					DeleteOnTermination: aws.Bool(true),
 					VolumeType:          aws.String(config.DiskType),
+					Iops:                config.DiskIops,
 				},
 			},
 		},
@@ -519,7 +541,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 		NetworkInterfaces: []*ec2.InstanceNetworkInterfaceSpecification{
 			{
 				DeviceIndex:              aws.Int64(0), // eth0
-				AssociatePublicIpAddress: aws.Bool(true),
+				AssociatePublicIpAddress: aws.Bool(assignPublicIP),
 				DeleteOnTermination:      aws.Bool(true),
 				SubnetId:                 aws.String(config.SubnetID),
 			},
@@ -559,8 +581,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDe
 	return awsInstance, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
-	instance, err := p.Get(machine)
+func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
@@ -595,7 +617,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDele
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return p.get(machine)
+}
+
+func (p *provider) get(machine *v1alpha1.Machine) (*awsInstance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -680,7 +706,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	instance, err := p.Get(machine)
+	instance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil

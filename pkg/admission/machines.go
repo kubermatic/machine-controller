@@ -101,7 +101,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 	if err != nil {
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(ad.coreClient)
+	skg := providerconfig.NewConfigVarResolver(ad.ctx, ad.client)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)

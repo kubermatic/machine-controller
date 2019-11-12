@@ -18,13 +18,15 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
@@ -45,7 +47,7 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 			shouldRenew:             true,
 		},
 	}
-	controller := Controller{}
+	reconciler := Reconciler{ctx: context.Background()}
 
 	for _, testCase := range tests {
 		secret := &corev1.Secret{}
@@ -56,15 +58,17 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		data[tokenIDKey] = []byte("tokenID")
 		data[expirationKey] = []byte(testCase.initialExperirationTime.Format(time.RFC3339))
 		secret.Data = data
-		controller.kubeClient = kubefake.NewSimpleClientset(runtime.Object(secret))
+		reconciler.client = ctrlruntimefake.NewFakeClient(runtime.Object(secret))
 
-		_, err := controller.updateSecretExpirationAndGetToken(secret)
-		if err != nil {
+		if _, err := reconciler.updateSecretExpirationAndGetToken(secret); err != nil {
 			t.Fatalf("Unexpected error running updateSecretExpirationAndGetToken: %v", err)
 		}
 
-		updatedSecret, err := controller.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Get("secret", metav1.GetOptions{})
-		if err != nil {
+		updatedSecret := &corev1.Secret{}
+		if err := reconciler.client.Get(reconciler.ctx, types.NamespacedName{
+			Namespace: metav1.NamespaceSystem,
+			Name:      "secret",
+		}, updatedSecret); err != nil {
 			t.Fatalf("Unsexpected error getting secret: %v", err)
 		}
 

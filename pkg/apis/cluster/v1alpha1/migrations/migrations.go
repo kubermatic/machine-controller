@@ -24,6 +24,7 @@ import (
 	machinecontrolleradmission "github.com/kubermatic/machine-controller/pkg/admission"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
@@ -136,7 +137,9 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 }
 
 func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
-	ctx context.Context, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) error {
+	ctx context.Context, client ctrlruntimeclient.Client,
+	kubeClient kubernetes.Interface,
+	providerData *cloudprovidertypes.ProviderData) error {
 
 	err := client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1beta1.CustomResourceDefinition{})
 	if err != nil {
@@ -152,7 +155,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		return fmt.Errorf("error when checking for existence of 'machines.cluster.k8s.io' crd: %v", err)
 	}
 
-	if err := migrateMachines(ctx, client, kubeClient); err != nil {
+	if err := migrateMachines(ctx, client, kubeClient, providerData); err != nil {
 		return fmt.Errorf("failed to migrate machines: %v", err)
 	}
 	glog.Infof("Attempting to delete CRD %s", machines.CRDName)
@@ -163,7 +166,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	return nil
 }
 
-func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) error {
+func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface, providerData *cloudprovidertypes.ProviderData) error {
 	glog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
 
 	// Get machinesv1Alpha1Machines
@@ -195,7 +198,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %v", err)
 		}
-		skg := providerconfig.NewConfigVarResolver(kubeClient)
+		skg := providerconfig.NewConfigVarResolver(ctx, client)
 		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 		if err != nil {
 			return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
@@ -269,7 +272,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			// Block until we can actually GET the instance with the new UID
 			var isMigrated bool
 			for i := 0; i < 100; i++ {
-				if _, err := prov.Get(finalClusterV1Alpha1Machine); err == nil {
+				if _, err := prov.Get(finalClusterV1Alpha1Machine, providerData); err == nil {
 					isMigrated = true
 					break
 				}

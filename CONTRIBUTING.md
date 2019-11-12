@@ -12,7 +12,7 @@ Origin (DCO). This document was created by the Linux Kernel community and is a
 simple statement that you, as a contributor, have the legal right to make the
 contribution. See the [DCO](DCO) file for details.
 
-Any copyright notices in this repo should specify the authors as "the Loodse XXX project contributors".
+Any copyright notices in this repo should specify the authors as "the Loodse Machine Controller project contributors".
 
 To sign your work, just add a line like this at the end of your commit message:
 
@@ -22,11 +22,17 @@ Signed-off-by: Joe Example <joe@example.com>
 
 This can easily be done with the `--signoff` option to `git commit`.
 
+Note that we're requiring all commits in a PR to be signed-off. If you already created a PR, you can sign-off all existing commits by rebasing with the `--signoff` flag.
+
+```
+git rebase --signoff origin/master
+```
+
 By doing this you state that you can certify the following (from https://developercertificate.org/):
 
 ## Email and Chat
 
-The XXX project currently uses the general Loodse email list and Slack channel:
+The Machine Controller project currently uses the general Loodse email list and Slack channel:
 - Email: [loodse-dev](https://groups.google.com/forum/#!forum/loodse-dev)
 - Slack: #kubermatic channel on [Kubermatic Slack]((http://slack.kubermatic.io/))
 

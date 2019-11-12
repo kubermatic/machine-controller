@@ -27,10 +27,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -48,15 +48,17 @@ type provider struct {
 }
 
 // New returns a Hetzner provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
-	Token      providerconfig.ConfigVarString `json:"token"`
-	ServerType providerconfig.ConfigVarString `json:"serverType"`
-	Datacenter providerconfig.ConfigVarString `json:"datacenter"`
-	Location   providerconfig.ConfigVarString `json:"location"`
+	Token      providerconfig.ConfigVarString   `json:"token,omitempty"`
+	ServerType providerconfig.ConfigVarString   `json:"serverType"`
+	Datacenter providerconfig.ConfigVarString   `json:"datacenter"`
+	Location   providerconfig.ConfigVarString   `json:"location"`
+	Networks   []providerconfig.ConfigVarString `json:"networks"`
+	Labels     map[string]string                `json:"labels,omitempty"`
 }
 
 type Config struct {
@@ -64,6 +66,8 @@ type Config struct {
 	ServerType string
 	Datacenter string
 	Location   string
+	Networks   []string
+	Labels     map[string]string
 }
 
 func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
@@ -112,6 +116,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.
 	if err != nil {
 		return nil, nil, err
 	}
+	for _, network := range rawConfig.Networks {
+		networkValue, err := p.configVarResolver.GetConfigVarStringValue(network)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.Networks = append(c.Networks, networkValue)
+	}
+	c.Labels = rawConfig.Labels
 	return &c, &pconfig, err
 }
 
@@ -149,6 +161,14 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
+	if len(c.Networks) != 0 {
+		for _, network := range c.Networks {
+			if _, _, err = client.Network.Get(ctx, network); err != nil {
+				return fmt.Errorf("failed to get network %q: %v", network, err)
+			}
+		}
+	}
+
 	if _, _, err = client.ServerType.Get(ctx, c.ServerType); err != nil {
 		return fmt.Errorf("failed to get server type: %v", err)
 	}
@@ -156,7 +176,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -176,12 +196,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		}
 	}
 
+	if c.Labels == nil {
+		c.Labels = map[string]string{}
+	}
+	c.Labels[machineUIDLabelKey] = string(machine.UID)
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
 		UserData: userdata,
-		Labels: map[string]string{
-			machineUIDLabelKey: string(machine.UID),
-		},
+		Labels:   c.Labels,
 	}
 
 	if c.Datacenter != "" {
@@ -198,6 +220,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		}
 	}
 
+	if len(c.Networks) != 0 {
+		serverCreateOpts.Networks = []*hcloud.Network{}
+		for _, network := range c.Networks {
+			n, _, err := client.Network.Get(ctx, network)
+			if err != nil {
+				return nil, hzErrorToTerminalError(err, "failed to get network")
+			}
+			serverCreateOpts.Networks = append(serverCreateOpts.Networks, n)
+		}
+	}
+
 	serverCreateOpts.Image, _, err = client.Image.Get(ctx, imageName)
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to get image")
@@ -208,6 +241,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 		return nil, hzErrorToTerminalError(err, "failed to get server type")
 	}
 
+	// We generate a temporary SSH key here, because otherwise Hetzner creates
+	// a password and sends it via E-Mail to the account owner, which can be quite
+	// spammy. No one will ever get access to the private key.
 	sshkey, err := ssh.NewKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
@@ -242,8 +278,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
-	instance, err := p.Get(machine)
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
@@ -276,7 +312,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -377,6 +413,9 @@ func (s *hetznerServer) Addresses() []string {
 	var addresses []string
 	for _, fips := range s.server.PublicNet.FloatingIPs {
 		addresses = append(addresses, fips.IP.String())
+	}
+	for _, privateNetwork := range s.server.PrivateNet {
+		addresses = append(addresses, privateNetwork.IP.String())
 	}
 
 	return append(addresses, s.server.PublicNet.IPv4.IP.String(), s.server.PublicNet.IPv6.IP.String())

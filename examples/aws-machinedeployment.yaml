@@ -7,7 +7,7 @@ metadata:
   namespace: kube-system
 type: Opaque
 stringData:
-  accessKeyId: << AWS_ACCESS_KEY_ID >
+  accessKeyId: << AWS_ACCESS_KEY_ID >>
   secretAccessKey: << AWS_SECRET_ACCESS_KEY >>
 ---
 apiVersion: "cluster.k8s.io/v1alpha1"
@@ -58,6 +58,10 @@ spec:
             instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
+            ## Only application if diskType = io1
+            diskIops: 500
+            # Assign a public IP to this instance. Default: true
+            assignPublicIP: false
             tags:
               "KubernetesCluster": "6qsm86c2d"
           # Can be 'ubuntu', 'coreos' or 'centos'

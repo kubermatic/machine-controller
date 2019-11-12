@@ -31,11 +31,13 @@ func TxtFuncMap() template.FuncMap {
 	funcMap["kubeletSystemdUnit"] = KubeletSystemdUnit
 	funcMap["kubeletFlags"] = KubeletFlags
 	funcMap["cloudProviderFlags"] = CloudProviderFlags
-	funcMap["kernelModules"] = KernelModules
+	funcMap["kernelModulesScript"] = LoadKernelModulesScript
 	funcMap["kernelSettings"] = KernelSettings
 	funcMap["journalDConfig"] = JournalDConfig
 	funcMap["kubeletHealthCheckSystemdUnit"] = KubeletHealthCheckSystemdUnit
 	funcMap["containerRuntimeHealthCheckSystemdUnit"] = ContainerRuntimeHealthCheckSystemdUnit
+	funcMap["dockerConfig"] = DockerConfig
+	funcMap["proxyEnvironment"] = ProxyEnvironment
 
 	return funcMap
 }

@@ -38,21 +38,25 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "azure"
           cloudProviderSpec:
+            # Can also be set via the env var 'AZURE_TENANT_ID' on the machine-controller
             tenantID:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-azure
                 key: tenantID
+            # Can also be set via the env var 'AZURE_CLIENT_ID' on the machine-controller
             clientID:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-azure
                 key: clientID
+            # Can also be set via the env var 'AZURE_CLIENT_SECRET' on the machine-controller
             clientSecret:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-azure
                 key: clientSecret
+            # Can also be set via the env var 'AZURE_SUBSCRIPTION_ID' on the machine-controller
             subscriptionID:
               secretKeyRef:
                 namespace: kube-system
@@ -65,6 +69,7 @@ spec:
             subnetName: "<< SUBNET_NAME >>"
             routeTableName: "<< ROUTE_TABLE_NAME >>"
             assignPublicIP: false
+            securityGroupName: my-security-group
           operatingSystem: "coreos"
           operatingSystemSpec:
             distUpgradeOnBoot: false

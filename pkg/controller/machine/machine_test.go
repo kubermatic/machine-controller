@@ -17,29 +17,33 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/go-test/deep"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
+	"github.com/golang/glog"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
-
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	machinefake "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/fake"
+	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func init() {
+	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+	}
+}
 
 type fakeInstance struct {
 	name      string
@@ -149,15 +153,14 @@ func TestController_GetNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+			nodes := []runtime.Object{}
 			for _, node := range nodeList {
-				if err := nodeIndexer.Add(node); err != nil {
-					t.Fatalf("failed to add node to nodeIndexer: %v", err)
-				}
+				nodes = append(nodes, node)
 			}
-			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer)}
+			client := ctrlruntimefake.NewFakeClient(nodes...)
+			reconciler := Reconciler{client: client}
 
-			node, exists, err := controller.getNode(test.instance, test.provider)
+			node, exists, err := reconciler.getNode(test.instance, test.provider)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}
@@ -242,6 +245,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			machine := &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:              "my-machine",
 					CreationTimestamp: test.creationTimestamp,
 					OwnerReferences:   test.ownerReferences}}
 
@@ -255,31 +259,20 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 
 			providerConfig := &providerconfig.Config{CloudProvider: providerconfig.CloudProviderFake}
 
-			machineClient := machinefake.NewSimpleClientset(machine)
+			client := ctrlruntimefake.NewFakeClient(node, machine)
 
-			nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-			if err := nodeIndexer.Add(node); err != nil {
-				t.Fatalf("failed to add node to nodeIndexer: %v", err)
-			}
-
-			controller := Controller{nodesLister: corev1listers.NewNodeLister(nodeIndexer),
+			reconciler := Reconciler{
+				client:             client,
 				recorder:           &record.FakeRecorder{},
-				machineClient:      machineClient,
 				joinClusterTimeout: test.joinTimeoutConfig,
-				workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(1*time.Second, 5*time.Minute), "Machines"),
 			}
 
-			if err := controller.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
+			if _, err := reconciler.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
 				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
 			}
 
-			var wasDeleted bool
-			for _, action := range machineClient.Actions() {
-				if action.GetVerb() == "delete" {
-					wasDeleted = true
-					break
-				}
-			}
+			err := client.Get(context.Background(), types.NamespacedName{Name: machine.Name}, &clusterv1alpha1.Machine{})
+			wasDeleted := kerrors.IsNotFound(err)
 
 			if wasDeleted != test.getsDeleted {
 				t.Errorf("Machine was deleted: %v, but expectedDeletion: %v", wasDeleted, test.getsDeleted)
@@ -298,19 +291,20 @@ func TestControllerShouldEvict(t *testing.T) {
 	now := metav1.Now()
 
 	tests := []struct {
-		name         string
-		machine      *clusterv1alpha1.Machine
-		existingNode *corev1.Node
-		shouldEvict  bool
+		name               string
+		machine            *clusterv1alpha1.Machine
+		additionalMachines []runtime.Object
+		existingNodes      []runtime.Object
+		shouldEvict        bool
 	}{
 		{
 			name:        "skip eviction due to eviction timeout",
 			shouldEvict: false,
-			existingNode: &corev1.Node{
+			existingNodes: []runtime.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				},
-			},
+			}},
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &threeHoursAgo,
@@ -345,12 +339,31 @@ func TestControllerShouldEvict(t *testing.T) {
 			},
 		},
 		{
-			name:        "Do eviction",
-			shouldEvict: true,
-			existingNode: &corev1.Node{
+			name: "Skip eviction due to no available target",
+			existingNodes: []runtime.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				},
+			}},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &now,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+		},
+		{
+			name:        "Eviction possible because of second node",
+			shouldEvict: true,
+			existingNodes: []runtime.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				}}, &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eviction-destination",
+				}},
 			},
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
@@ -361,27 +374,49 @@ func TestControllerShouldEvict(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "Eviction possible because of machine without noderef",
+			shouldEvict: true,
+			existingNodes: []runtime.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "existing-node",
+				}}, &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "eviction-destination",
+				}},
+			},
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &now,
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
+				},
+			},
+			additionalMachines: []runtime.Object{
+				&clusterv1alpha1.Machine{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "new-machine-without-a-node",
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var objects []runtime.Object
-			if test.existingNode != nil {
-				objects = append(objects, test.existingNode)
-			}
 
-			kubeClient := fake.NewSimpleClientset(objects...)
-			informerFactory := informers.NewSharedInformerFactory(kubeClient, 5*time.Minute)
+			objects := []runtime.Object{test.machine}
+			objects = append(objects, test.existingNodes...)
+			objects = append(objects, test.additionalMachines...)
+			client := ctrlruntimefake.NewFakeClient(objects...)
 
-			ctrl := &Controller{
-				nodesLister:       informerFactory.Core().V1().Nodes().Lister(),
+			reconciler := &Reconciler{
+				client:            client,
 				skipEvictionAfter: 2 * time.Hour,
 			}
 
-			informerFactory.Start(wait.NeverStop)
-			informerFactory.WaitForCacheSync(wait.NeverStop)
-
-			shouldEvict, err := ctrl.shouldEvict(test.machine)
+			shouldEvict, err := reconciler.shouldEvict(test.machine)
 			if err != nil {
 				t.Fatal(err)
 			}

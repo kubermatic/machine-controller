@@ -21,19 +21,19 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 type cachingValidationWrapper struct {
-	actualProvider cloud.Provider
+	actualProvider cloudprovidertypes.Provider
 }
 
 // NewValidationCacheWrappingCloudProvider returns a wrapped cloudprovider
-func NewValidationCacheWrappingCloudProvider(actualProvider cloud.Provider) cloud.Provider {
+func NewValidationCacheWrappingCloudProvider(actualProvider cloudprovidertypes.Provider) cloudprovidertypes.Provider {
 	return &cachingValidationWrapper{actualProvider: actualProvider}
 }
 
@@ -64,8 +64,8 @@ func (w *cachingValidationWrapper) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 // Get just calls the underlying cloudproviders Get
-func (w *cachingValidationWrapper) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
-	return w.actualProvider.Get(machine)
+func (w *cachingValidationWrapper) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return w.actualProvider.Get(machine, data)
 }
 
 // GetCloudConfig just calls the underlying cloudproviders GetCloudConfig
@@ -74,12 +74,12 @@ func (w *cachingValidationWrapper) GetCloudConfig(spec v1alpha1.MachineSpec) (st
 }
 
 // Create just calls the underlying cloudproviders Create
-func (w *cachingValidationWrapper) Create(m *v1alpha1.Machine, mcd *cloud.MachineCreateDeleteData, cloudConfig string) (instance.Instance, error) {
+func (w *cachingValidationWrapper) Create(m *v1alpha1.Machine, mcd *cloudprovidertypes.ProviderData, cloudConfig string) (instance.Instance, error) {
 	return w.actualProvider.Create(m, mcd, cloudConfig)
 }
 
 // Cleanup just calls the underlying cloudproviders Cleanup
-func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloud.MachineCreateDeleteData) (bool, error) {
+func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloudprovidertypes.ProviderData) (bool, error) {
 	return w.actualProvider.Cleanup(m, mcd)
 }
 

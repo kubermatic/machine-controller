@@ -1,28 +1,36 @@
 #cloud-config
 
 hostname: node1
-# Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name
 
 
 ssh_pwauth: no
-
 ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 
 write_files:
+
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
     [Journal]
     SystemMaxUse=5G
 
 
-- path: "/etc/modules-load.d/k8s.conf"
+- path: "/opt/load-kernel-modules.sh"
+  permissions: "0755"
   content: |
-    ip_vs
-    ip_vs_rr
-    ip_vs_wrr
-    ip_vs_sh
-    nf_conntrack_ipv4
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    modprobe ip_vs
+    modprobe ip_vs_rr
+    modprobe ip_vs_wrr
+    modprobe ip_vs_sh
+
+    if modinfo nf_conntrack_ipv4 &> /dev/null; then
+      modprobe nf_conntrack_ipv4
+    else
+      modprobe nf_conntrack
+    fi
 
 
 - path: "/etc/sysctl.d/k8s.conf"
@@ -111,15 +119,13 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
-
-    # As we added some modules and don't want to reboot, restart the service
+    if systemctl is-active ufw; then systemctl stop ufw; fi
+    systemctl mask ufw
     systemctl restart systemd-modules-load.service
     sysctl --system
 
     apt-key add /opt/docker.asc
     apt-get update
-
-    # Make sure we always disable swap - Otherwise the kubelet won't start'.
     cp /etc/fstab /etc/fstab.orig
     cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
     mv /etc/fstab.noswap /etc/fstab
@@ -146,26 +152,20 @@ write_files:
       util-linux \
       ${CR_PKG} \
       ipvsadm
-
-    # If something failed during package installation but docker got installed, we need to put it on hold
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
 
-    #setup some common directories
     mkdir -p /opt/bin/
     mkdir -p /var/lib/calico
     mkdir -p /etc/kubernetes/manifests
     mkdir -p /etc/cni/net.d
     mkdir -p /opt/cni/bin
-
-    # cni
     if [ ! -f /opt/cni/bin/loopback ]; then
         curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
     fi
-    # kubelet
     if [ ! -f /opt/bin/kubelet ]; then
         curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.10.10/bin/linux/amd64/kubelet
         chmod +x /opt/bin/kubelet
@@ -208,7 +208,9 @@ write_files:
     MemoryAccounting=true
 
     Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+    EnvironmentFile=-/etc/environment
 
+    ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/etc/kubernetes/kubelet.conf \
@@ -232,7 +234,8 @@ write_files:
       --cluster-dns=10.10.10.10 \
       --cluster-domain=cluster.local \
       --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+      --cgroup-driver=systemd
 
     [Install]
     WantedBy=multi-user.target
@@ -306,6 +309,7 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
     ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
 - path: "/etc/profile.d/opt-bin-path.sh"
@@ -313,12 +317,10 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/systemd/system/docker.service.d/10-storage.conf
+- path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    [Service]
-    ExecStart=
-    ExecStart=/usr/bin/dockerd -H fd:// --storage-driver=overlay2
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -346,6 +348,12 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
+
+- path: /etc/systemd/system/docker.service.d/environment.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    EnvironmentFile=-/etc/environment
 
 runcmd:
 - systemctl enable --now setup.service

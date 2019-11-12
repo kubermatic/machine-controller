@@ -20,7 +20,7 @@ required = [
 
 [[constraint]]
   name = "kubevirt.io/kubevirt"
-  branch = "release-0.10"
+  branch = "release-0.18"
   source = "github.com/kubevirt/kubevirt"
 
 [[override]]
@@ -102,19 +102,19 @@ required = [
 
 [[constraint]]
   name = "github.com/hetznercloud/hcloud-go"
-  version = "v1.9.*"
+  version = "v1.15.*"
 
 [[constraint]]
   name = "github.com/Azure/azure-sdk-for-go"
-  version = "18.*"
+  version = "v31.1.*"
 
 [[constraint]]
   name = "github.com/Azure/go-autorest"
-  version = "10.12.*"
+  version = "v12.3.*"
 
 [[constraint]]
   name = "sigs.k8s.io/cluster-api"
-  revision = "c63bf6f67ab631a449b6eb76dfe29458441051e0"
+  revision = "2ec456177c0e8f0a903f4e746d44baaae54cc591"
 
 [[constraint]]
   name = "gopkg.in/gcfg.v1"
@@ -140,3 +140,10 @@ required = [
   name = "github.com/packethost/packngo"
   revision = "a02c426e4888c0bb39c3abcf249c8d048e2c6e40"
 
+[[constraint]]
+  name = "github.com/docker/distribution"
+  version = "v2.7.1"
+
+[[constraint]]
+  name = "github.com/kubevirt/client-go"
+  version = "^0.19.0"

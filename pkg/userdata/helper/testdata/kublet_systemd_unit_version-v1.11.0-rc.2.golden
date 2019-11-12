@@ -13,7 +13,9 @@ CPUAccounting=true
 MemoryAccounting=true
 
 Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+EnvironmentFile=-/etc/environment
 
+ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
   --kubeconfig=/etc/kubernetes/kubelet.conf \
@@ -37,7 +39,8 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --cluster-dns=10.10.10.10 \
   --cluster-domain=cluster.local \
   --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+  --cgroup-driver=systemd
 
 [Install]
 WantedBy=multi-user.target

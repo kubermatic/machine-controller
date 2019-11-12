@@ -40,11 +40,17 @@ const (
 // UserDataRequest requests user data with the given arguments.
 type UserDataRequest struct {
 	MachineSpec           clusterv1alpha1.MachineSpec
-	KubeConfig            *clientcmdapi.Config
+	Kubeconfig            *clientcmdapi.Config
 	CloudProviderName     string
 	CloudConfig           string
 	DNSIPs                []net.IP
 	ExternalCloudProvider bool
+	HTTPProxy             string
+	NoProxy               string
+	InsecureRegistries    []string
+	RegistryMirrors       []string
+	PauseImage            string
+	HyperkubeImage        string
 }
 
 // UserDataResponse contains the responded user data.

@@ -33,6 +33,7 @@ type kubeletFlagTestCase struct {
 	hostname      string
 	cloudProvider string
 	external      bool
+	pauseImage    string
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -72,12 +73,27 @@ func TestKubeletSystemdUnit(t *testing.T) {
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
 		},
+		{
+			name:          "pause-image-set",
+			version:       semver.MustParse("v1.13.5"),
+			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
+			hostname:      "some-test-node",
+			cloudProvider: "aws",
+			pauseImage:    "192.168.100.100:5000/kubernetes/pause:v3.1",
+		},
 	}...)
 
 	for _, test := range tests {
 		name := fmt.Sprintf("kublet_systemd_unit_%s", test.name)
 		t.Run(name, func(t *testing.T) {
-			out, err := KubeletSystemdUnit(test.version.String(), test.cloudProvider, test.hostname, test.dnsIPs, test.external)
+			out, err := KubeletSystemdUnit(
+				test.version.String(),
+				test.cloudProvider,
+				test.hostname,
+				test.dnsIPs,
+				test.external,
+				test.pauseImage,
+			)
 			if err != nil {
 				t.Error(err)
 			}

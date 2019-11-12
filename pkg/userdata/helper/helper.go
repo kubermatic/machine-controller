@@ -17,6 +17,7 @@ limitations under the License.
 package helper
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -59,13 +60,22 @@ func StringifyKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
 	return string(kubeconfigBytes), nil
 }
 
-// KernelModules returns the list of kernel modules required for a kubernetes worker node
-func KernelModules() string {
-	return `ip_vs
-ip_vs_rr
-ip_vs_wrr
-ip_vs_sh
-nf_conntrack_ipv4
+// LoadKernelModules returns a script which is responsible for loading all required kernel modules
+// The nf_conntrack_ipv4 module get removed in newer kernel versions
+func LoadKernelModulesScript() string {
+	return `#!/usr/bin/env bash
+set -euo pipefail
+
+modprobe ip_vs
+modprobe ip_vs_rr
+modprobe ip_vs_wrr
+modprobe ip_vs_sh
+
+if modinfo nf_conntrack_ipv4 &> /dev/null; then
+  modprobe nf_conntrack_ipv4
+else
+  modprobe nf_conntrack
+fi
 `
 }
 
@@ -89,4 +99,39 @@ func JournalDConfig() string {
 	return `[Journal]
 SystemMaxUse=5G
 `
+}
+
+type dockerConfig struct {
+	ExecOpts           []string `json:"exec-opts"`
+	StorageDriver      string   `json:"storage-driver"`
+	InsecureRegistries []string `json:"insecure-registries"`
+	RegistryMirrors    []string `json:"registry-mirrors"`
+}
+
+// DockerConfig returns the docker daemon.json.
+func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) {
+	cfg := dockerConfig{
+		ExecOpts:           []string{"native.cgroupdriver=systemd"},
+		StorageDriver:      "overlay2",
+		InsecureRegistries: insecureRegistries,
+		RegistryMirrors:    registryMirrors,
+	}
+	if insecureRegistries == nil {
+		cfg.InsecureRegistries = []string{}
+	}
+	if registryMirrors == nil {
+		cfg.RegistryMirrors = []string{}
+	}
+
+	b, err := json.Marshal(cfg)
+	return string(b), err
+}
+
+func ProxyEnvironment(proxy, noProxy string) string {
+	return fmt.Sprintf(`HTTP_PROXY=%s
+http_proxy=%s
+HTTPS_PROXY=%s
+https_proxy=%s
+NO_PROXY=%s
+no_proxy=%s`, proxy, proxy, proxy, proxy, noProxy, noProxy)
 }

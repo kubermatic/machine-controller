@@ -23,14 +23,12 @@ package coreos
 import (
 	"bytes"
 	"fmt"
-	"net"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/semver"
 
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
@@ -39,32 +37,25 @@ import (
 type Provider struct{}
 
 // UserData renders user-data template to string.
-func (p Provider) UserData(
-	spec clusterv1alpha1.MachineSpec,
-	kubeconfig *clientcmdapi.Config,
-	cloudConfig string,
-	cloudProviderName string,
-	clusterDNSIPs []net.IP,
-	externalCloudProvider bool,
-) (string, error) {
+func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
 	}
 
-	kubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
+	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
 	if err != nil {
 		return "", fmt.Errorf("invalid kubelet version: %v", err)
 	}
 
-	pconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
+	pconfig, err := providerconfig.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get provider config: %v", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {
-		cloudConfig = *pconfig.OverwriteCloudConfig
+		req.CloudConfig = *pconfig.OverwriteCloudConfig
 	}
 
 	coreosConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
@@ -72,40 +63,45 @@ func (p Provider) UserData(
 		return "", fmt.Errorf("failed to get coreos config from provider config: %v", err)
 	}
 
-	kubeconfigString, err := userdatahelper.StringifyKubeconfig(kubeconfig)
+	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
 	if err != nil {
 		return "", err
 	}
 
-	kubernetesCACert, err := userdatahelper.GetCACert(kubeconfig)
+	kubernetesCACert, err := userdatahelper.GetCACert(req.Kubeconfig)
 	if err != nil {
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
+	// We need to reconfigure rkt to allow insecure registries in case the hyperkube image comes from an insecure registry
+	var insecureHyperkubeImage bool
+	for _, registry := range req.InsecureRegistries {
+		if strings.Contains(req.HyperkubeImage, registry) {
+			insecureHyperkubeImage = true
+		}
+	}
+
+	if coreosConfig.DisableAutoUpdate {
+		coreosConfig.DisableLocksmithD = true
+		coreosConfig.DisableUpdateEngine = true
+	}
+
 	data := struct {
-		MachineSpec       clusterv1alpha1.MachineSpec
-		ProviderSpec      *providerconfig.Config
-		CoreOSConfig      *Config
-		Kubeconfig        string
-		CloudProvider     string
-		CloudConfig       string
-		HyperkubeImageTag string
-		ClusterDNSIPs     []net.IP
-		KubernetesCACert  string
-		KubeletVersion    string
-		IsExternal        bool
+		plugin.UserDataRequest
+		ProviderSpec           *providerconfig.Config
+		CoreOSConfig           *Config
+		Kubeconfig             string
+		KubernetesCACert       string
+		KubeletVersion         string
+		InsecureHyperkubeImage bool
 	}{
-		MachineSpec:       spec,
-		ProviderSpec:      pconfig,
-		CoreOSConfig:      coreosConfig,
-		Kubeconfig:        kubeconfigString,
-		CloudProvider:     cloudProviderName,
-		CloudConfig:       cloudConfig,
-		HyperkubeImageTag: fmt.Sprintf("v%s", kubeletVersion.String()),
-		ClusterDNSIPs:     clusterDNSIPs,
-		KubernetesCACert:  kubernetesCACert,
-		KubeletVersion:    kubeletVersion.String(),
-		IsExternal:        externalCloudProvider,
+		UserDataRequest:        req,
+		ProviderSpec:           pconfig,
+		CoreOSConfig:           coreosConfig,
+		Kubeconfig:             kubeconfigString,
+		KubernetesCACert:       kubernetesCACert,
+		KubeletVersion:         kubeletVersion.String(),
+		InsecureHyperkubeImage: insecureHyperkubeImage,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -117,11 +113,13 @@ func (p Provider) UserData(
 
 // UserData template.
 const userDataTemplate = `passwd:
+{{- if ne (len .ProviderSpec.SSHPublicKeys) 0 }}
   users:
     - name: core
       ssh_authorized_keys:
         {{range .ProviderSpec.SSHPublicKeys}}- {{.}}
         {{end}}
+{{- end }}
 
 {{- if .ProviderSpec.Network }}
 networkd:
@@ -144,14 +142,25 @@ networkd:
 
 systemd:
   units:
-{{- if .CoreOSConfig.DisableAutoUpdate }}
+{{- if .CoreOSConfig.DisableUpdateEngine }}
     - name: update-engine.service
       mask: true
+{{- end }}
+{{- if .CoreOSConfig.DisableLocksmithD }}
     - name: locksmithd.service
       mask: true
-{{ end }}
+{{- end }}
     - name: docker.service
       enabled: true
+
+{{- if .HTTPProxy }}
+    - name: update-engine.service
+      dropins:
+        - name: 50-proxy.conf
+          contents: |
+            [Service]
+            Environment=ALL_PROXY={{ .HTTPProxy }}
+{{- end }}
 
     - name: download-healthcheck-script.service
       enabled: true
@@ -161,6 +170,7 @@ systemd:
         After=network-online.target
         [Service]
         Type=oneshot
+        EnvironmentFile=-/etc/environment
         ExecStart=/opt/bin/download.sh
         [Install]
         WantedBy=multi-user.target
@@ -198,9 +208,15 @@ systemd:
         TimeoutStartSec=5min
         CPUAccounting=true
         MemoryAccounting=true
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:{{ .HyperkubeImageTag }}
+        EnvironmentFile=-/etc/environment
+{{- if .HTTPProxy }}
+        Environment=KUBELET_IMAGE=docker://{{ .HyperkubeImage }}:v{{ .KubeletVersion }}
+{{- else }}
+        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v{{ .KubeletVersion }}
+{{- end }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
-          --insecure-options=image \
+          --inherit-env \
+          --insecure-options=image{{if .InsecureHyperkubeImage }},http{{ end }} \
           --volume=resolv,kind=host,source=/etc/resolv.conf \
           --mount volume=resolv,target=/etc/resolv.conf \
           --volume cni-bin,kind=host,source=/opt/cni/bin \
@@ -219,16 +235,34 @@ systemd:
         ExecStartPre=/bin/mkdir -p /opt/cni/bin
         ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
+        ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
-{{ kubeletFlags .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 10 }}
+{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage | indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
         [Install]
         WantedBy=multi-user.target
 
+    - name: docker.service
+      enabled: true
+      dropins:
+      - name: 10-environment.conf
+        contents: |
+          [Service]
+          EnvironmentFile=-/etc/environment
+
 storage:
   files:
+{{- if .HTTPProxy }}
+    - path: /etc/environment
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+{{ proxyEnvironment .HTTPProxy .NoProxy | indent 10 }}
+{{- end }}
+
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root
       mode: 0644
@@ -236,12 +270,12 @@ storage:
         inline: |
 {{ journalDConfig | indent 10 }}
 
-    - path: /etc/modules-load.d/k8s.conf
+    - path: /opt/load-kernel-modules.sh
       filesystem: root
-      mode: 0644
+      mode: 0755
       contents:
         inline: |
-{{ kernelModules | indent 10 }}
+{{ kernelModulesScript | indent 10 }}
 
     - path: /etc/sysctl.d/k8s.conf
       filesystem: root
@@ -291,7 +325,7 @@ storage:
       contents:
         inline: |
 {{ .KubernetesCACert | indent 10 }}
-{{ if ne .CloudProvider "aws" }}
+{{ if ne .CloudProviderName "aws" }}
     - path: /etc/hostname
       filesystem: root
       mode: 0600
@@ -318,13 +352,12 @@ storage:
           PasswordAuthentication no
           ChallengeResponseAuthentication no
 
-    - path: /etc/systemd/system/docker.service.d/10-storage.conf
+    - path: /etc/docker/daemon.json
       filesystem: root
       mode: 0644
       contents:
         inline: |
-          [Service]
-          Environment=DOCKER_OPTS=--storage-driver=overlay2
+{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 10 }}
 
     - path: /opt/bin/download.sh
       filesystem: root

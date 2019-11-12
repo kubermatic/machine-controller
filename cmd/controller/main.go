@@ -25,46 +25,36 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
-	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
 
+	"github.com/docker/distribution/reference"
 	"github.com/golang/glog"
 	"github.com/heptiolabs/healthcheck"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
-	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
-	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
-	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
-	"github.com/kubermatic/machine-controller/pkg/signals"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
+	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
+	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/signals"
+
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterv1alpha1clientset "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
-	clusterinformers "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
-	clusterlistersv1alpha1 "sigs.k8s.io/cluster-api/pkg/client/listers_generated/cluster/v1alpha1"
 	machinedeploymentcontroller "sigs.k8s.io/cluster-api/pkg/controller/machinedeployment"
 	machinesetcontroller "sigs.k8s.io/cluster-api/pkg/controller/machineset"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -83,16 +73,20 @@ var (
 	externalCloudProvider            bool
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
+
+	nodeHTTPProxy          string
+	nodeNoProxy            string
+	nodeInsecureRegistries string
+	nodeRegistryMirrors    string
+	nodePauseImage         string
+	nodeHyperkubeImage     string
 )
 
 const (
-	controllerName                     = "machine-controller"
 	defaultLeaderElectionNamespace     = "kube-system"
 	defaultLeaderElectionLeaseDuration = 15 * time.Second
 	defaultLeaderElectionRenewDeadline = 10 * time.Second
 	defaultLeaderElectionRetryPeriod   = 2 * time.Second
-
-	controllerNameLabelKey = "machine.k8s.io/controller"
 )
 
 // controllerRunOptions holds data that are required to create and run machine controller
@@ -100,41 +94,8 @@ type controllerRunOptions struct {
 	// kubeClient a client that knows how to consume kubernetes API
 	kubeClient *kubernetes.Clientset
 
-	// extClient a client that knows how to consume kubernetes extension API
-	extClient *apiextclient.Clientset
-
-	// machineClient a client that knows how to consume Machine resources
-	machineClient *clusterv1alpha1clientset.Clientset
-
-	// ctrlruntimeclient is a client that knows how to consume everything
-	ctrlruntimeClient ctrlruntimeclient.Client
-
-	// this essentially sets the cluster DNS IP addresses. The list is passed to kubelet and then down to pods.
-	clusterDNSIPs []net.IP
-
 	// metrics a struct that holds all metrics we want to collect
 	metrics *machinecontroller.MetricsCollection
-
-	// leaderElectionClient holds a client that is used by the leader election library
-	leaderElectionClient *kubernetes.Clientset
-
-	// nodeInformer holds a shared informer for Nodes
-	nodeInformer cache.SharedIndexInformer
-
-	// nodeLister holds a lister that knows how to list Nodes from a cache
-	nodeLister listerscorev1.NodeLister
-
-	// secretSystemNsLister knows hot to list Secrects that are inside kube-system namespace from a cache
-	secretSystemNsLister listerscorev1.SecretLister
-
-	// pvLister knows how to list PersistentVolumes
-	pvLister listerscorev1.PersistentVolumeLister
-
-	// machineInformer holds a shared informer for Machines
-	machineInformer cache.SharedIndexInformer
-
-	// machineLister holds a lister that knows how to list Machines from a cache
-	machineLister clusterlistersv1alpha1.MachineLister
 
 	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
 	kubeconfigProvider machinecontroller.KubeconfigProvider
@@ -170,6 +131,8 @@ type controllerRunOptions struct {
 
 	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
 	skipEvictionAfter time.Duration
+
+	node machinecontroller.NodeSettings
 }
 
 func main() {
@@ -191,12 +154,18 @@ func main() {
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
 	flag.BoolVar(&externalCloudProvider, "external-cloud-provider", false, "when set, kubelets will receive --cloud-provider=external flag")
 	flag.DurationVar(&skipEvictionAfter, "skip-eviction-after", 2*time.Hour, "Skips the eviction if a machine is not gone after the specified duration.")
+	flag.StringVar(&nodeHTTPProxy, "node-http-proxy", "", "If set, it configures the 'HTTP_PROXY' & 'HTTPS_PROXY' environment variable on the nodes.")
+	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1", "If set, it configures the 'NO_PROXY' environment variable on the nodes.")
+	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
+	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
+	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
+	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag.")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
-	ips, err := parseClusterDNSIPs(clusterDNSIPs)
+	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
 		glog.Fatalf("invalid cluster dns specified: %v", err)
 	}
@@ -222,6 +191,14 @@ func main() {
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
 	}
+	// Check if the hyperkube image has a tag set
+	hyperkubeImageRef, err := reference.Parse(nodeHyperkubeImage)
+	if err != nil {
+		glog.Fatalf("failed to parse --node-hyperkube-image %s: %v", nodeHyperkubeImage, err)
+	}
+	if _, ok := hyperkubeImageRef.(reference.NamedTagged); ok {
+		glog.Fatalf("--node-hyperkube-image must not contain a tag. The tag will be dynamically set for each Machine.")
+	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -242,64 +219,46 @@ func main() {
 		glog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
 	}
 
-	extClient, err := apiextclient.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for extClient: %v", err)
-	}
-
 	ctrlruntimeClient, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
 		glog.Fatalf("error building ctrlruntime client: %v", err)
 	}
 
-	// We do a huge amount of requests when processing some more machines
-	// as this controller still does defaulting and there is no separate status
-	// object so conflicts happen often which results in retries
-	machineCfg.QPS = 20
-	machineCfg.Burst = 50
-	machineClient, err := clusterv1alpha1clientset.NewForConfig(machineCfg)
-	if err != nil {
-		glog.Fatalf("error building example clientset for machineClient: %v", err)
-	}
-
-	leaderElectionClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("error building kubernetes clientset for leaderElectionClient: %v", err)
-	}
-
 	prometheusRegistry := prometheus.DefaultRegisterer
 
-	// before we acquire a lock we actually warm up caches mirroring the state of the API server
-	clusterInformerFactory := clusterinformers.NewFilteredSharedInformerFactory(machineClient, time.Minute*15, metav1.NamespaceAll, labelSelector(name))
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Minute*15)
-	kubePublicKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespacePublic, nil)
-	kubeSystemInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceSystem, nil)
-	defaultKubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(kubeClient, time.Second*30, metav1.NamespaceDefault, nil)
-
-	kubeconfigProvider := clusterinfo.New(cfg, kubePublicKubeInformerFactory.Core().V1().ConfigMaps().Lister(), defaultKubeInformerFactory.Core().V1().Endpoints().Lister())
+	kubeconfigProvider := clusterinfo.New(cfg, kubeClient)
 	runOptions := controllerRunOptions{
-		kubeClient:            kubeClient,
-		extClient:             extClient,
-		machineClient:         machineClient,
-		ctrlruntimeClient:     ctrlruntimeClient,
-		metrics:               machinecontroller.NewMachineControllerMetrics(),
-		clusterDNSIPs:         ips,
-		leaderElectionClient:  leaderElectionClient,
-		nodeInformer:          kubeInformerFactory.Core().V1().Nodes().Informer(),
-		nodeLister:            kubeInformerFactory.Core().V1().Nodes().Lister(),
-		secretSystemNsLister:  kubeSystemInformerFactory.Core().V1().Secrets().Lister(),
-		pvLister:              kubeInformerFactory.Core().V1().PersistentVolumes().Lister(),
-		machineInformer:       clusterInformerFactory.Cluster().V1alpha1().Machines().Informer(),
-		machineLister:         clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
+		kubeClient: kubeClient,
+		metrics:    machinecontroller.NewMachineControllerMetrics(),
+
 		kubeconfigProvider:    kubeconfigProvider,
 		name:                  name,
 		prometheusRegisterer:  prometheusRegistry,
 		cfg:                   machineCfg,
 		externalCloudProvider: externalCloudProvider,
 		skipEvictionAfter:     skipEvictionAfter,
+		node: machinecontroller.NodeSettings{
+			ClusterDNSIPs:  clusterDNSIPs,
+			HTTPProxy:      nodeHTTPProxy,
+			NoProxy:        nodeNoProxy,
+			HyperkubeImage: nodeHyperkubeImage,
+			PauseImage:     nodePauseImage,
+		},
 	}
 	if parsedJoinClusterTimeout != nil {
 		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
+	}
+
+	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
+		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {
+			runOptions.node.InsecureRegistries = append(runOptions.node.InsecureRegistries, trimmedRegistry)
+		}
+	}
+
+	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
+		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
+			runOptions.node.RegistryMirrors = append(runOptions.node.RegistryMirrors, trimmedMirror)
+		}
 	}
 
 	if bootstrapTokenServiceAccountName != "" {
@@ -310,34 +269,10 @@ func main() {
 		runOptions.bootstrapTokenServiceAccountName = &types.NamespacedName{Namespace: flagParts[0], Name: flagParts[1]}
 	}
 
-	kubeInformerFactory.Start(stopCh)
-	kubePublicKubeInformerFactory.Start(stopCh)
-	defaultKubeInformerFactory.Start(stopCh)
-	clusterInformerFactory.Start(stopCh)
-	kubeSystemInformerFactory.Start(stopCh)
-
-	syncsMaps := []map[reflect.Type]bool{
-		kubeInformerFactory.WaitForCacheSync(stopCh),
-		kubePublicKubeInformerFactory.WaitForCacheSync(stopCh),
-		clusterInformerFactory.WaitForCacheSync(stopCh),
-		defaultKubeInformerFactory.WaitForCacheSync(stopCh),
-		kubeSystemInformerFactory.WaitForCacheSync(stopCh),
-	}
-	for _, syncsMap := range syncsMaps {
-		for key, synced := range syncsMap {
-			if !synced {
-				glog.Fatalf("unable to sync %s", key)
-			}
-		}
-	}
-
 	ctx, ctxDone := context.WithCancel(context.Background())
 	var g run.Group
 	{
-		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(
-			clusterInformerFactory.Cluster().V1alpha1().Machines().Lister(),
-			kubeClient,
-		))
+		prometheusRegistry.MustRegister(machinecontroller.NewMachineCollector(ctx, ctrlruntimeClient))
 
 		s := createUtilHTTPServer(kubeClient, kubeconfigProvider, prometheus.DefaultGatherer)
 		g.Add(func() error {
@@ -381,6 +316,14 @@ func main() {
 // This essentially means that we can have multiple instances and at the same time only one is operational.
 // The program terminates when the leadership was lost.
 func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
+	mgrSyncPeriod := 5 * time.Minute
+	mgr, err := manager.New(runOptions.cfg, manager.Options{SyncPeriod: &mgrSyncPeriod})
+	if err != nil {
+		glog.Errorf("failed to create manager: %v", err)
+		runOptions.parentCtxDone()
+		return err
+	}
+
 	id, err := os.Hostname()
 	if err != nil {
 		glog.Fatalf("error getting hostname: %s", err.Error())
@@ -389,7 +332,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	id = id + "_" + string(uuid.NewUUID())
 
 	// add worker name to the election lock name to prevent conflicts between controllers handling different worker labels
-	leaderName := controllerName
+	leaderName := strings.Replace(machinecontroller.ControllerName, "_", "-", -1)
 	if runOptions.name != "" {
 		leaderName = runOptions.name + "-" + leaderName
 	}
@@ -399,10 +342,10 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			Namespace: defaultLeaderElectionNamespace,
 			Name:      leaderName,
 		},
-		Client: runOptions.leaderElectionClient.CoreV1(),
+		Client: runOptions.kubeClient.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity:      id + fmt.Sprintf("-%s", leaderName),
-			EventRecorder: createRecorder(runOptions.kubeClient),
+			EventRecorder: mgr.GetRecorder("machine_controller_leader_election"),
 		},
 	}
 
@@ -412,24 +355,43 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	// and bad things can happen - the fact it works at the moment doesn't mean it will in the future
 	runController := func(ctx context.Context) {
 
-		//Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
-		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, runOptions.ctrlruntimeClient, runOptions.kubeClient); err != nil {
+		providerData := &cloudprovidertypes.ProviderData{
+			Ctx:    ctx,
+			Update: cloudprovidertypes.GetMachineUpdater(ctx, mgr.GetClient()),
+			Client: mgr.GetClient(),
+		}
+
+		// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
+		if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, mgr.GetClient(), runOptions.kubeClient, providerData); err != nil {
 			glog.Errorf("Migration to clusterv1alpha1 failed: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 
-		//Migrate providerConfig field to providerSpec field
-		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, runOptions.cfg, runOptions.ctrlruntimeClient); err != nil {
+		// Migrate providerConfig field to providerSpec field
+		if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, runOptions.cfg, mgr.GetClient()); err != nil {
 			glog.Errorf("Migration of providerConfig field to providerSpec field failed: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 
-		mgrSyncPeriod := 5 * time.Minute
-		mgr, err := manager.New(runOptions.cfg, manager.Options{SyncPeriod: &mgrSyncPeriod})
-		if err != nil {
-			glog.Errorf("failed to start kubebuilder manager: %v", err)
+		if err := machinecontroller.Add(
+			ctx,
+			mgr,
+			runOptions.kubeClient,
+			workerCount,
+			runOptions.metrics,
+			runOptions.prometheusRegisterer,
+			runOptions.kubeconfigProvider,
+			providerData,
+			runOptions.joinClusterTimeout,
+			runOptions.externalCloudProvider,
+			runOptions.name,
+			runOptions.bootstrapTokenServiceAccountName,
+			runOptions.skipEvictionAfter,
+			runOptions.node,
+		); err != nil {
+			glog.Errorf("failed to add Machine controller to manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
@@ -443,44 +405,12 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			runOptions.parentCtxDone()
 			return
 		}
-		go func() {
-			if err := mgr.Start(runOptions.parentCtx.Done()); err != nil {
-				glog.Errorf("failed to start kubebuilder manager: %v", err)
-				runOptions.parentCtxDone()
-				return
-			}
-		}()
-
-		machineController, err := machinecontroller.NewMachineController(
-			runOptions.kubeClient,
-			runOptions.machineClient,
-			runOptions.nodeInformer,
-			runOptions.nodeLister,
-			runOptions.machineInformer,
-			runOptions.machineLister,
-			runOptions.secretSystemNsLister,
-			runOptions.pvLister,
-			runOptions.clusterDNSIPs,
-			runOptions.metrics,
-			runOptions.prometheusRegisterer,
-			runOptions.kubeconfigProvider,
-			runOptions.joinClusterTimeout,
-			runOptions.externalCloudProvider,
-			runOptions.name,
-			runOptions.bootstrapTokenServiceAccountName,
-			runOptions.skipEvictionAfter,
-		)
-		if err != nil {
-			glog.Errorf("failed to create machine-controller: %v", err)
+		if err := mgr.Start(runOptions.parentCtx.Done()); err != nil {
+			glog.Errorf("failed to start kubebuilder manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
 
-		if runErr := machineController.Run(workerCount, runOptions.parentCtx.Done()); runErr != nil {
-			glog.Errorf("error running controller: %v", runErr)
-			runOptions.parentCtxDone()
-			return
-		}
 		glog.Info("machine controller has been successfully stopped")
 	}
 
@@ -564,16 +494,6 @@ func readinessChecks(kubeconfigProvider machinecontroller.KubeconfigProvider) ma
 	}
 }
 
-// createRecorder creates a new event recorder which is later used by the leader election
-// library to broadcast events
-func createRecorder(kubeClient *kubernetes.Clientset) record.EventRecorder {
-	glog.V(3).Info("creating event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.V(3).Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-	return eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerName})
-}
-
 func parseClusterDNSIPs(s string) ([]net.IP, error) {
 	var ips []net.IP
 	sips := strings.Split(s, ",")
@@ -585,23 +505,4 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
-}
-
-// return label selector to only process machines with a matching machine.k8s.io/controller label
-func labelSelector(workerName string) func(*metav1.ListOptions) {
-	return func(options *metav1.ListOptions) {
-		var req *labels.Requirement
-		var err error
-		if workerName == "" {
-			if req, err = labels.NewRequirement(controllerNameLabelKey, selection.DoesNotExist, nil); err != nil {
-				glog.Fatalf("failed to build label selector: %v", err)
-			}
-		} else {
-			if req, err = labels.NewRequirement(controllerNameLabelKey, selection.Equals, []string{workerName}); err != nil {
-				glog.Fatalf("failed to build label selector: %v", err)
-			}
-		}
-
-		options.LabelSelector = req.String()
-	}
 }

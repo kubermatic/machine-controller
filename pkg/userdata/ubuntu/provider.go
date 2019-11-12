@@ -24,14 +24,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net"
 	"text/template"
 
 	"github.com/Masterminds/semver"
 
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
@@ -40,32 +37,25 @@ import (
 type Provider struct{}
 
 // UserData renders user-data template to string.
-func (p Provider) UserData(
-	spec clusterv1alpha1.MachineSpec,
-	kubeconfig *clientcmdapi.Config,
-	cloudConfig string,
-	cloudProviderName string,
-	clusterDNSIPs []net.IP,
-	externalCloudProvider bool,
-) (string, error) {
+func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
 	}
 
-	kubeletVersion, err := semver.NewVersion(spec.Versions.Kubelet)
+	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
 	if err != nil {
 		return "", fmt.Errorf("invalid kubelet version: %v", err)
 	}
 
-	pconfig, err := providerconfig.GetConfig(spec.ProviderSpec)
+	pconfig, err := providerconfig.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get providerSpec: %v", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {
-		cloudConfig = *pconfig.OverwriteCloudConfig
+		req.CloudConfig = *pconfig.OverwriteCloudConfig
 	}
 
 	if pconfig.Network != nil {
@@ -77,45 +67,37 @@ func (p Provider) UserData(
 		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
 	}
 
-	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(kubeconfig)
+	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(req.Kubeconfig)
 	if err != nil {
 		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
 	}
 
-	kubeconfigString, err := userdatahelper.StringifyKubeconfig(kubeconfig)
+	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
 	if err != nil {
 		return "", err
 	}
 
-	kubernetesCACert, err := userdatahelper.GetCACert(kubeconfig)
+	kubernetesCACert, err := userdatahelper.GetCACert(req.Kubeconfig)
 	if err != nil {
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
 	data := struct {
-		MachineSpec      clusterv1alpha1.MachineSpec
+		plugin.UserDataRequest
 		ProviderSpec     *providerconfig.Config
 		OSConfig         *Config
-		CloudProvider    string
-		CloudConfig      string
-		ClusterDNSIPs    []net.IP
 		ServerAddr       string
 		KubeletVersion   string
 		Kubeconfig       string
 		KubernetesCACert string
-		IsExternal       bool
 	}{
-		MachineSpec:      spec,
+		UserDataRequest:  req,
 		ProviderSpec:     pconfig,
 		OSConfig:         ubuntuConfig,
-		CloudProvider:    cloudProviderName,
-		CloudConfig:      cloudConfig,
-		ClusterDNSIPs:    clusterDNSIPs,
 		ServerAddr:       serverAddr,
 		KubeletVersion:   kubeletVersion.String(),
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
-		IsExternal:       externalCloudProvider,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -127,26 +109,36 @@ func (p Provider) UserData(
 
 // UserData template.
 const userDataTemplate = `#cloud-config
-{{ if ne .CloudProvider "aws" }}
+{{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
-# Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name
+{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
 {{ end }}
 
 ssh_pwauth: no
 
+{{- if .ProviderSpec.SSHPublicKeys }}
 ssh_authorized_keys:
 {{- range .ProviderSpec.SSHPublicKeys }}
 - "{{ . }}"
 {{- end }}
+{{- end }}
 
 write_files:
+{{- if .HTTPProxy }}
+- path: "/etc/environment"
+  content: |
+    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+{{ proxyEnvironment .HTTPProxy .NoProxy | indent 4 }}
+{{- end }}
+
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
 {{ journalDConfig | indent 4 }}
 
-- path: "/etc/modules-load.d/k8s.conf"
+- path: "/opt/load-kernel-modules.sh"
+  permissions: "0755"
   content: |
-{{ kernelModules | indent 4 }}
+{{ kernelModulesScript | indent 4 }}
 
 - path: "/etc/sysctl.d/k8s.conf"
   content: |
@@ -227,15 +219,17 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
+    if systemctl is-active ufw; then systemctl stop ufw; fi
+    systemctl mask ufw
 
-    # As we added some modules and don't want to reboot, restart the service
+{{- /* As we added some modules and don't want to reboot, restart the service */}}
     systemctl restart systemd-modules-load.service
     sysctl --system
 
     apt-key add /opt/docker.asc
     apt-get update
 
-    # Make sure we always disable swap - Otherwise the kubelet won't start'.
+{{- /* Make sure we always disable swap - Otherwise the kubelet won't start'. */}}
     cp /etc/fstab /etc/fstab.orig
     cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
     mv /etc/fstab.noswap /etc/fstab
@@ -261,10 +255,10 @@ write_files:
       socat \
       util-linux \
       ${CR_PKG} \
-      ipvsadm{{ if eq .CloudProvider "vsphere" }} \
+      ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
       open-vm-tools{{ end }}
 
-    # If something failed during package installation but docker got installed, we need to put it on hold
+{{- /* If something failed during package installation but docker got installed, we need to put it on hold */}}
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
 
@@ -293,7 +287,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .KubeletVersion .CloudProvider .MachineSpec.Name .ClusterDNSIPs .IsExternal | indent 4 }}
+{{ kubeletSystemdUnit .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
@@ -325,6 +319,7 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
     ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
 - path: "/etc/profile.d/opt-bin-path.sh"
@@ -332,12 +327,10 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/systemd/system/docker.service.d/10-storage.conf
+- path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    [Service]
-    ExecStart=
-    ExecStart=/usr/bin/dockerd -H fd:// --storage-driver=overlay2
+{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -348,6 +341,12 @@ write_files:
   permissions: "0644"
   content: |
 {{ containerRuntimeHealthCheckSystemdUnit | indent 4 }}
+
+- path: /etc/systemd/system/docker.service.d/environment.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    EnvironmentFile=-/etc/environment
 
 runcmd:
 - systemctl enable --now setup.service

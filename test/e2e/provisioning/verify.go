@@ -292,7 +292,7 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 	}
 
 	if shouldExist != nodeForMachineExists {
-		return fmt.Errorf("expeced node to exists=%v but could find node=%v", shouldExist, nodeForMachineExists)
+		return fmt.Errorf("expected node to exists=%v but could find node=%v", shouldExist, nodeForMachineExists)
 	}
 	return nil
 }

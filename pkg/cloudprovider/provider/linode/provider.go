@@ -31,10 +31,10 @@ import (
 	"github.com/linode/linodego"
 	"golang.org/x/oauth2"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/cloud"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -49,17 +49,17 @@ type provider struct {
 }
 
 // New returns a linode provider
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloud.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
 type RawConfig struct {
-	Token             providerconfig.ConfigVarString   `json:"token"`
+	Token             providerconfig.ConfigVarString   `json:"token,omitempty"`
 	Region            providerconfig.ConfigVarString   `json:"region"`
 	Type              providerconfig.ConfigVarString   `json:"type"`
 	Backups           providerconfig.ConfigVarBool     `json:"backups"`
 	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
-	Tags              []providerconfig.ConfigVarString `json:"tags"`
+	Tags              []providerconfig.ConfigVarString `json:"tags,omitempty"`
 }
 
 type Config struct {
@@ -223,7 +223,7 @@ func createRandomPassword() (string, error) {
 	return rootPass, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -285,8 +285,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloud.MachineCreateDelet
 	return &linodeInstance{linode: linode}, err
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloud.MachineCreateDeleteData) (bool, error) {
-	instance, err := p.Get(machine)
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
@@ -326,7 +326,7 @@ func getListOptions(name string) *linodego.ListOptions {
 	return listOptions
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine) (instance.Instance, error) {
+func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{

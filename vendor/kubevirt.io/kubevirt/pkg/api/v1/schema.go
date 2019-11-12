@@ -20,7 +20,7 @@
 package v1
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -28,8 +28,10 @@ import (
 type IOThreadsPolicy string
 
 const (
-	IOThreadsPolicyShared IOThreadsPolicy = "shared"
-	IOThreadsPolicyAuto   IOThreadsPolicy = "auto"
+	IOThreadsPolicyShared  IOThreadsPolicy = "shared"
+	IOThreadsPolicyAuto    IOThreadsPolicy = "auto"
+	CPUModeHostPassthrough                 = "host-passthrough"
+	CPUModeHostModel                       = "host-model"
 )
 
 //go:generate swagger-doc
@@ -51,6 +53,8 @@ type HostDisk struct {
 	// Capacity of the sparse disk
 	// +optional
 	Capacity resource.Quantity `json:"capacity,omitempty"`
+	// Shared indicate whether the path is shared between nodes
+	Shared *bool `json:"shared,omitempty"`
 }
 
 // ConfigMapVolumeSource adapts a ConfigMap into a volume.
@@ -100,6 +104,15 @@ type CloudInitNoCloudSource struct {
 	// UserData contains NoCloud inline cloud-init userdata.
 	// + optional
 	UserData string `json:"userData,omitempty"`
+	// NetworkDataSecretRef references a k8s secret that contains NoCloud networkdata.
+	// + optional
+	NetworkDataSecretRef *v1.LocalObjectReference `json:"networkDataSecretRef,omitempty"`
+	// NetworkDataBase64 contains NoCloud cloud-init networkdata as a base64 encoded string.
+	// + optional
+	NetworkDataBase64 string `json:"networkDataBase64,omitempty"`
+	// NetworkData contains NoCloud inline cloud-init networkdata.
+	// + optional
+	NetworkData string `json:"networkData,omitempty"`
 }
 
 // ---
@@ -122,7 +135,7 @@ type DomainSpec struct {
 	// Clock sets the clock and timers of the vmi.
 	// +optional
 	Clock *Clock `json:"clock,omitempty"`
-	// Features like acpi, apic, hyperv.
+	// Features like acpi, apic, hyperv, smm.
 	// +optional
 	Features *Features `json:"features,omitempty"`
 	// Devices allows adding disks, network interfaces, ...
@@ -132,6 +145,31 @@ type DomainSpec struct {
 	// One of: shared, auto
 	// +optional
 	IOThreadsPolicy *IOThreadsPolicy `json:"ioThreadsPolicy,omitempty"`
+}
+
+// Represents the firmware blob used to assist in the domain creation process.
+// Used for setting the QEMU BIOS file path for the libvirt domain.
+// ---
+// +k8s:openapi-gen=true
+type Bootloader struct {
+	// If set (default), BIOS will be used.
+	// +optional
+	BIOS *BIOS `json:"bios,omitempty"`
+	// If set, EFI will be used instead of BIOS.
+	// +optional
+	EFI *EFI `json:"efi,omitempty"`
+}
+
+// If set (default), BIOS will be used.
+// ---
+// +k8s:openapi-gen=true
+type BIOS struct {
+}
+
+// If set, EFI will be used instead of BIOS.
+// ---
+// +k8s:openapi-gen=true
+type EFI struct {
 }
 
 // ---
@@ -158,18 +196,43 @@ type CPU struct {
 	// Cores specifies the number of cores inside the vmi.
 	// Must be a value greater or equal 1.
 	Cores uint32 `json:"cores,omitempty"`
+	// Sockets specifies the number of sockets inside the vmi.
+	// Must be a value greater or equal 1.
+	Sockets uint32 `json:"sockets,omitempty"`
+	// Threads specifies the number of threads inside the vmi.
+	// Must be a value greater or equal 1.
+	Threads uint32 `json:"threads,omitempty"`
 	// Model specifies the CPU model inside the VMI.
 	// List of available models https://github.com/libvirt/libvirt/blob/master/src/cpu/cpu_map.xml.
 	// It is possible to specify special cases like "host-passthrough" to get the same CPU as the node
 	// and "host-model" to get CPU closest to the node one.
-	// For more information see https://libvirt.org/formatdomain.html#elementsCPU.
 	// Defaults to host-model.
 	// +optional
 	Model string `json:"model,omitempty"`
+	// Features specifies the CPU features list inside the VMI.
+	// +optional
+	Features []CPUFeature `json:"features,omitempty"`
 	// DedicatedCPUPlacement requests the scheduler to place the VirtualMachineInstance on a node
 	// with enough dedicated pCPUs and pin the vCPUs to it.
 	// +optional
 	DedicatedCPUPlacement bool `json:"dedicatedCpuPlacement,omitempty"`
+}
+
+// CPUFeature allows specifying a CPU feature.
+// ---
+// +k8s:openapi-gen=true
+type CPUFeature struct {
+	// Name of the CPU feature
+	Name string `json:"name"`
+	// Policy is the CPU feature attribute which can have the following attributes:
+	// force    - The virtual CPU will claim the feature is supported regardless of it being supported by host CPU.
+	// require  - Guest creation will fail unless the feature is supported by the host CPU or the hypervisor is able to emulate it.
+	// optional - The feature will be supported by virtual CPU if and only if it is supported by host CPU.
+	// disable  - The feature will not be supported by virtual CPU.
+	// forbid   - Guest creation will fail if the feature is supported by host CPU.
+	// Defaults to require
+	// +optional
+	Policy string `json:"policy,omitempty"`
 }
 
 // Memory allows specifying the VirtualMachineInstance memory features.
@@ -207,6 +270,11 @@ type Firmware struct {
 	// UUID reported by the vmi bios.
 	// Defaults to a random generated uid.
 	UUID types.UID `json:"uuid,omitempty"`
+	// Settings to control the bootloader that is used.
+	// +optional
+	Bootloader *Bootloader `json:"bootloader,omitempty"`
+	// The system-serial-number in SMBIOS
+	Serial string `json:"serial,omitempty"`
 }
 
 // ---
@@ -218,6 +286,8 @@ type Devices struct {
 	Watchdog *Watchdog `json:"watchdog,omitempty"`
 	// Interfaces describe network interfaces which are added to the vmi.
 	Interfaces []Interface `json:"interfaces,omitempty"`
+	// Inputs describe input devices
+	Inputs []Input `json:"inputs,omitempty"`
 	// Whether to attach a pod network interface. Defaults to true.
 	AutoattachPodInterface *bool `json:"autoattachPodInterface,omitempty"`
 	// Whether to attach the default graphics device or not.
@@ -236,12 +306,22 @@ type Devices struct {
 
 // ---
 // +k8s:openapi-gen=true
+type Input struct {
+	// Bus indicates the bus of input device to emulate.
+	// Supported values: virtio, usb.
+	Bus string `json:"bus,omitempty"`
+	// Type indicated the type of input device.
+	// Supported values: tablet.
+	Type string `json:"type"`
+	// Name is the device name
+	Name string `json:"name"`
+}
+
+// ---
+// +k8s:openapi-gen=true
 type Disk struct {
 	// Name is the device name
 	Name string `json:"name"`
-	// Name of the volume which is referenced.
-	// Must match the Name of a Volume.
-	VolumeName string `json:"volumeName"`
 	// DiskDevice specifies as which device the disk should be added to the guest.
 	// Defaults to Disk.
 	DiskDevice `json:",inline"`
@@ -283,7 +363,7 @@ type DiskDevice struct {
 // +k8s:openapi-gen=true
 type DiskTarget struct {
 	// Bus indicates the type of disk device to emulate.
-	// supported values: virtio, sata, scsi, ide.
+	// supported values: virtio, sata, scsi.
 	Bus string `json:"bus,omitempty"`
 	// ReadOnly.
 	// Defaults to false.
@@ -297,7 +377,7 @@ type DiskTarget struct {
 // +k8s:openapi-gen=true
 type LunTarget struct {
 	// Bus indicates the type of disk device to emulate.
-	// supported values: virtio, sata, scsi, ide.
+	// supported values: virtio, sata, scsi.
 	Bus string `json:"bus,omitempty"`
 	// ReadOnly.
 	// Defaults to false.
@@ -333,7 +413,7 @@ const (
 // +k8s:openapi-gen=true
 type CDRomTarget struct {
 	// Bus indicates the type of disk device to emulate.
-	// supported values: virtio, sata, scsi, ide.
+	// supported values: virtio, sata, scsi.
 	Bus string `json:"bus,omitempty"`
 	// ReadOnly.
 	// Defaults to true.
@@ -376,10 +456,10 @@ type VolumeSource struct {
 	// More info: http://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html
 	// +optional
 	CloudInitNoCloud *CloudInitNoCloudSource `json:"cloudInitNoCloud,omitempty"`
-	// RegistryDisk references a docker image, embedding a qcow or raw disk.
+	// ContainerDisk references a docker image, embedding a qcow or raw disk.
 	// More info: https://kubevirt.gitbooks.io/user-guide/registry-disk.html
 	// +optional
-	RegistryDisk *RegistryDiskSource `json:"registryDisk,omitempty"`
+	ContainerDisk *ContainerDiskSource `json:"containerDisk,omitempty"`
 	// Ephemeral is a special volume source that "wraps" specified source and provides copy-on-write image on top of it.
 	// +optional
 	Ephemeral *EphemeralVolumeSource `json:"ephemeral,omitempty"`
@@ -434,11 +514,13 @@ type EmptyDiskSource struct {
 // Represents a docker image with an embedded disk.
 // ---
 // +k8s:openapi-gen=true
-type RegistryDiskSource struct {
+type ContainerDiskSource struct {
 	// Image is the name of the image with the embedded disk.
 	Image string `json:"image"`
 	// ImagePullSecret is the name of the Docker registry secret required to pull the image. The secret must already exist.
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
+	// Path defines the path to disk file in the container
+	Path string `json:"path,omitempty"`
 }
 
 // Exactly one of its members must be set.
@@ -621,6 +703,10 @@ type Features struct {
 	// Defaults to the machine type setting.
 	// +optional
 	Hyperv *FeatureHyperv `json:"hyperv,omitempty"`
+	// SMM enables/disables System Management Mode.
+	// TSEG not yet implemented.
+	// +optional
+	SMM *FeatureState `json:"smm,omitempty"`
 }
 
 // Represents if a feature is enabled or disabled.
@@ -703,7 +789,7 @@ type FeatureHyperv struct {
 	// Defaults to the machine type setting.
 	// +optional
 	SyNICTimer *FeatureState `json:"synictimer,omitempty"`
-	// Reset enables Hyperv reboot/reset for the vmi.
+	// Reset enables Hyperv reboot/reset for the vmi. Requires synic.
 	// Defaults to the machine type setting.
 	// +optional
 	Reset *FeatureState `json:"reset,omitempty"`
@@ -711,6 +797,26 @@ type FeatureHyperv struct {
 	// Defaults to the machine type setting.
 	// +optional
 	VendorID *FeatureVendorID `json:"vendorid,omitempty"`
+	// Frequencies improve Hyper-V on KVM (TSC clock source).
+	// Defaults to the machine type setting.
+	// +optional
+	Frequencies *FeatureState `json:"frequencies,omitempty"`
+	// Reenlightenment improve Hyper-V on KVM (TSC clock source).
+	// Defaults to the machine type setting.
+	// +optional
+	Reenlightenment *FeatureState `json:"reenlightenment,omitempty"`
+	// TLBFlush improves performances in overcommited environments. Requires vpindex.
+	// Defaults to the machine type setting.
+	// +optional
+	TLBFlush *FeatureState `json:"tlbflush,omitempty"`
+	// IPI improves performances in overcommited environments. Requires vpindex.
+	// Defaults to the machine type setting.
+	// +optional
+	IPI *FeatureState `json:"ipi,omitempty"`
+	// EVMCS Speeds up L2 vmexits, but disables other virtualization features. Requires vapic.
+	// Defaults to the machine type setting.
+	// +optional
+	EVMCS *FeatureState `json:"evmcs,omitempty"`
 }
 
 // WatchdogAction defines the watchdog action, if a watchdog gets triggered.
@@ -794,6 +900,37 @@ type Interface struct {
 	// If specified, the virtual network interface will be placed on the guests pci address with the specifed PCI address. For example: 0000:81:01.10
 	// +optional
 	PciAddress string `json:"pciAddress,omitempty"`
+	// If specified the network interface will pass additional DHCP options to the VMI
+	// +optional
+	DHCPOptions *DHCPOptions `json:"dhcpOptions,omitempty"`
+}
+
+// Extra DHCP options to use in the interface.
+// ---
+// +k8s:openapi-gen=true
+type DHCPOptions struct {
+	// If specified will pass option 67 to interface's DHCP server
+	// +optional
+	BootFileName string `json:"bootFileName,omitempty"`
+	// If specified will pass option 66 to interface's DHCP server
+	// +optional
+	TFTPServerName string `json:"tftpServerName,omitempty"`
+	// If specified will pass the configured NTP server to the VM via DHCP option 042.
+	// +optional
+	NTPServers []string `json:"ntpServers,omitempty"`
+	// If specified will pass extra DHCP options for private use, range: 224-254
+	// +optional
+	PrivateOptions []DHCPPrivateOptions `json:"privateOptions,omitempty"`
+}
+
+// DHCPExtraOptions defines Extra DHCP options for a VM.
+type DHCPPrivateOptions struct {
+	// Option is an Integer value from 224-254
+	// Required.
+	Option int `json:"option"`
+	// Value is a String value for the Option provided
+	// Required.
+	Value string `json:"value"`
 }
 
 // Represents the method which will be used to connect the interface to the guest.
@@ -801,8 +938,10 @@ type Interface struct {
 // ---
 // +k8s:openapi-gen=true
 type InterfaceBindingMethod struct {
-	Bridge *InterfaceBridge `json:"bridge,omitempty"`
-	Slirp  *InterfaceSlirp  `json:"slirp,omitempty"`
+	Bridge     *InterfaceBridge     `json:"bridge,omitempty"`
+	Slirp      *InterfaceSlirp      `json:"slirp,omitempty"`
+	Masquerade *InterfaceMasquerade `json:"masquerade,omitempty"`
+	SRIOV      *InterfaceSRIOV      `json:"sriov,omitempty"`
 }
 
 // ---
@@ -812,6 +951,14 @@ type InterfaceBridge struct{}
 // ---
 // +k8s:openapi-gen=true
 type InterfaceSlirp struct{}
+
+// ---
+// +k8s:openapi-gen=true
+type InterfaceMasquerade struct{}
+
+// ---
+// +k8s:openapi-gen=true
+type InterfaceSRIOV struct{}
 
 // Port repesents a port to expose from the virtual machine.
 // Default protocol TCP.
@@ -851,9 +998,9 @@ type Network struct {
 // ---
 // +k8s:openapi-gen=true
 type NetworkSource struct {
-	Pod    *PodNetwork `json:"pod,omitempty"`
-	Multus *CniNetwork `json:"multus,omitempty"`
-	Genie  *CniNetwork `json:"genie,omitempty"`
+	Pod    *PodNetwork    `json:"pod,omitempty"`
+	Multus *MultusNetwork `json:"multus,omitempty"`
+	Genie  *GenieNetwork  `json:"genie,omitempty"`
 }
 
 // Represents the stock pod network interface.
@@ -871,11 +1018,24 @@ type PodNetwork struct {
 type Rng struct {
 }
 
-// Represents the cni network.
+// Represents the genie cni network.
 // ---
 // +k8s:openapi-gen=true
-type CniNetwork struct {
-	// References to a NetworkAttachmentDefinition CRD object in the same namespace.
-	// In case of genie, it references the CNI plugin name.
+type GenieNetwork struct {
+	// References the CNI plugin name.
 	NetworkName string `json:"networkName"`
+}
+
+// Represents the multus cni network.
+// ---
+// +k8s:openapi-gen=true
+type MultusNetwork struct {
+	// References to a NetworkAttachmentDefinition CRD object. Format:
+	// <networkName>, <namespace>/<networkName>. If namespace is not
+	// specified, VMI namespace is assumed.
+	NetworkName string `json:"networkName"`
+
+	// Select the default network and add it to the
+	// multus-cni.io/default-network annotation.
+	Default bool `json:"default,omitempty"`
 }

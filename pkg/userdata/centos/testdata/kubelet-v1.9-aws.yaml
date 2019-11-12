@@ -4,19 +4,29 @@
 ssh_pwauth: no
 
 write_files:
+
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
     [Journal]
     SystemMaxUse=5G
 
 
-- path: "/etc/modules-load.d/k8s.conf"
+- path: "/opt/load-kernel-modules.sh"
+  permissions: "0755"
   content: |
-    ip_vs
-    ip_vs_rr
-    ip_vs_wrr
-    ip_vs_sh
-    nf_conntrack_ipv4
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    modprobe ip_vs
+    modprobe ip_vs_rr
+    modprobe ip_vs_wrr
+    modprobe ip_vs_sh
+
+    if modinfo nf_conntrack_ipv4 &> /dev/null; then
+      modprobe nf_conntrack_ipv4
+    else
+      modprobe nf_conntrack
+    fi
 
 
 - path: "/etc/sysctl.d/k8s.conf"
@@ -51,12 +61,8 @@ write_files:
     set -xeuo pipefail
 
     setenforce 0 || true
-
-    # As we added some modules and don't want to reboot, restart the service
     systemctl restart systemd-modules-load.service
     sysctl --system
-
-    # Make sure we always disable swap - Otherwise the kubelet won't start
     cp /etc/fstab /etc/fstab.orig
     cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
     mv /etc/fstab.noswap /etc/fstab
@@ -74,18 +80,14 @@ write_files:
       curl \
       ipvsadm
 
-    #setup some common directories
     mkdir -p /opt/bin/
     mkdir -p /var/lib/calico
     mkdir -p /etc/kubernetes/manifests
     mkdir -p /etc/cni/net.d
     mkdir -p /opt/cni/bin
-
-    # cni
     if [ ! -f /opt/cni/bin/loopback ]; then
         curl -L https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz | tar -xvzC /opt/cni/bin -f -
     fi
-    # kubelet
     if [ ! -f /opt/bin/kubelet ]; then
         curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.9.2/bin/linux/amd64/kubelet
         chmod +x /opt/bin/kubelet
@@ -95,6 +97,7 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
+    sed -i 's/journald/json-file/g' /etc/sysconfig/docker
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -126,7 +129,9 @@ write_files:
     MemoryAccounting=true
 
     Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+    EnvironmentFile=-/etc/environment
 
+    ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/etc/kubernetes/kubelet.conf \
@@ -151,15 +156,11 @@ write_files:
       --cluster-dns= \
       --cluster-domain=cluster.local \
       --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+      --cgroup-driver=systemd
 
     [Install]
     WantedBy=multi-user.target
-
-- path: "/etc/systemd/system/kubelet.service.d/extras.conf"
-  content: |
-    [Service]
-    Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
 
 - path: "/etc/kubernetes/cloud-config"
   content: |
@@ -225,6 +226,7 @@ write_files:
     [Service]
     Type=oneshot
     RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
     ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
 - path: "/etc/profile.d/opt-bin-path.sh"
@@ -258,6 +260,12 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
+
+- path: /etc/systemd/system/docker.service.d/environment.conf
+  permissions: "0644"
+  content: |
+    [Service]
+    EnvironmentFile=-/etc/environment
 
 runcmd:
 - systemctl enable --now setup.service

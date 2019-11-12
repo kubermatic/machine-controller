@@ -17,17 +17,22 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/kubernetes/scheme"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -37,50 +42,73 @@ const (
 	tokenSecretKey           string            = "token-secret"
 	expirationKey            string            = "expiration"
 	tokenFormatter           string            = "%s.%s"
+	// Keep this short, userdata is limited
+	contextIdentifier string = "c"
 )
 
-func (c *Controller) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
+func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
 	var token string
 	var err error
 
-	if c.bootstrapTokenServiceAccountName != nil {
-		token, err = c.getTokenFromServiceAccount(*c.bootstrapTokenServiceAccountName)
+	if r.bootstrapTokenServiceAccountName != nil {
+		token, err = r.getTokenFromServiceAccount(*r.bootstrapTokenServiceAccountName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %v", c.bootstrapTokenServiceAccountName.Namespace, c.bootstrapTokenServiceAccountName.Name, err)
+			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %v", r.bootstrapTokenServiceAccountName.Namespace, r.bootstrapTokenServiceAccountName.Name, err)
 		}
 	} else {
-		token, err = c.createBootstrapToken(name)
+		token, err = r.createBootstrapToken(name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bootstrap token: %v", err)
 		}
 	}
 
-	infoKubeconfig, err := c.kubeconfigProvider.GetKubeconfig()
+	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig()
 	if err != nil {
 		return nil, err
 	}
 
 	outConfig := infoKubeconfig.DeepCopy()
 
+	// Some consumers expect a valid `Contexts` map and the serialization
+	// for the Context ignores empty string fields, hence we must make sure
+	// both the Cluster and the User have a non-empty key.
+	clusterContextName := ""
+	// This is supposed to have a length of 1. We have code further down the
+	// line that extracts the CA cert and errors out if that is not the case,
+	// so we can simply iterate over it here.
+	for key := range infoKubeconfig.Clusters {
+		clusterContextName = key
+	}
+	cluster := outConfig.Clusters[clusterContextName].DeepCopy()
+	delete(outConfig.Clusters, clusterContextName)
+	outConfig.Clusters[contextIdentifier] = cluster
+
 	outConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{
-		"": {
+		contextIdentifier: {
 			Token: token,
 		},
 	}
 
+	outConfig.Contexts = map[string]*clientcmdapi.Context{contextIdentifier: {Cluster: contextIdentifier, AuthInfo: contextIdentifier}}
+	outConfig.CurrentContext = contextIdentifier
+
 	return outConfig, nil
 }
 
-func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
-	sa, err := c.kubeClient.CoreV1().ServiceAccounts(name.Namespace).Get(name.Name, metav1.GetOptions{})
+func (r *Reconciler) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name.Name, Namespace: name.Namespace}}
+	raw, err := r.getAsUnstructured(sa)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get serviceAccount %q: %v", name.String(), err)
 	}
+	sa = raw.(*corev1.ServiceAccount)
 	for _, serviceAccountSecretName := range sa.Secrets {
-		serviceAccountSecret, err := c.kubeClient.CoreV1().Secrets(name.Namespace).Get(serviceAccountSecretName.Name, metav1.GetOptions{})
+		serviceAccountSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}}
+		raw, err = r.getAsUnstructured(serviceAccountSecret)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to get serviceAccountSecret: %v", err)
 		}
+		serviceAccountSecret = raw.(*corev1.Secret)
 		if serviceAccountSecret.Type != corev1.SecretTypeServiceAccountToken {
 			continue
 		}
@@ -89,13 +117,13 @@ func (c *Controller) getTokenFromServiceAccount(name types.NamespacedName) (stri
 	return "", errors.New("no serviceAccountSecret found")
 }
 
-func (c *Controller) createBootstrapToken(name string) (string, error) {
-	existingSecret, err := c.getSecretIfExists(name)
+func (r *Reconciler) createBootstrapToken(name string) (string, error) {
+	existingSecret, err := r.getSecretIfExists(name)
 	if err != nil {
 		return "", err
 	}
 	if existingSecret != nil {
-		return c.updateSecretExpirationAndGetToken(existingSecret)
+		return r.updateSecretExpirationAndGetToken(existingSecret)
 	}
 
 	tokenID := rand.String(6)
@@ -103,8 +131,9 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf("bootstrap-token-%s", tokenID),
-			Labels: map[string]string{machineNameLabelKey: name},
+			Name:      fmt.Sprintf("bootstrap-token-%s", tokenID),
+			Namespace: metav1.NamespaceSystem,
+			Labels:    map[string]string{machineNameLabelKey: name},
 		},
 		Type: secretTypeBootstrapToken,
 		Data: map[string][]byte{
@@ -118,15 +147,14 @@ func (c *Controller) createBootstrapToken(name string) (string, error) {
 		},
 	}
 
-	_, err = c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Create(&secret)
-	if err != nil {
-		return "", err
+	if err := r.client.Create(r.ctx, &secret); err != nil {
+		return "", fmt.Errorf("failed to create bootstrap token secret: %v", err)
 	}
 
 	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
 }
 
-func (c *Controller) updateSecretExpirationAndGetToken(secret *corev1.Secret) (string, error) {
+func (r *Reconciler) updateSecretExpirationAndGetToken(secret *corev1.Secret) (string, error) {
 	if secret.Data == nil {
 		secret.Data = map[string][]byte{}
 	}
@@ -146,30 +174,67 @@ func (c *Controller) updateSecretExpirationAndGetToken(secret *corev1.Secret) (s
 		return token, nil
 	}
 
-	_, err = c.kubeClient.CoreV1().Secrets(metav1.NamespaceSystem).Update(secret)
-	if err != nil {
-		return "", err
+	if err := r.client.Update(r.ctx, secret); err != nil {
+		return "", fmt.Errorf("failed to update secret: %v", err)
 	}
 	return token, nil
 }
 
-func (c *Controller) getSecretIfExists(name string) (*corev1.Secret, error) {
+func (r *Reconciler) getSecretIfExists(name string) (*corev1.Secret, error) {
 	req, err := labels.NewRequirement(machineNameLabelKey, selection.Equals, []string{name})
 	if err != nil {
 		return nil, err
 	}
-
 	selector := labels.NewSelector().Add(*req)
-	secrets, err := c.secretSystemNsLister.List(selector)
-	if err != nil {
+	secrets := &corev1.SecretList{}
+	if err := r.client.List(r.ctx, &ctrlruntimeclient.ListOptions{
+		Namespace:     metav1.NamespaceSystem,
+		LabelSelector: selector}, secrets); err != nil {
 		return nil, err
 	}
 
-	if len(secrets) == 0 {
+	if len(secrets.Items) == 0 {
 		return nil, nil
 	}
-	if len(secrets) > 1 {
-		return nil, fmt.Errorf("expected to find exactly one secret for the given machine name =%s but found %d", name, len(secrets))
+	if len(secrets.Items) > 1 {
+		return nil, fmt.Errorf("expected to find exactly one secret for the given machine name =%s but found %d", name, len(secrets.Items))
 	}
-	return secrets[0], nil
+	return &secrets.Items[0], nil
+}
+
+// getAsUnstructured is a helper to get an object as unstrucuted.Unstructered from the client.
+// The purpose of this is to avoid establishing a lister, which the cache-backed client automatically
+// does. The object passed in must have name and namespace set. The returned object will
+// be the same as the passed in one, if there was no error.
+func (r *Reconciler) getAsUnstructured(obj runtime.Object) (runtime.Object, error) {
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return nil, errors.New("can not assert object as metav1.Object")
+	}
+	kinds, _, err := scheme.Scheme.ObjectKinds(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kinds for object: %v", err)
+	}
+	if len(kinds) == 0 {
+		return nil, fmt.Errorf("found no kind for object %t", obj)
+	}
+	apiVersion, kind := kinds[0].ToAPIVersionAndKind()
+
+	target := &unstructured.Unstructured{}
+	target.SetAPIVersion(apiVersion)
+	target.SetKind(kind)
+	name := types.NamespacedName{Name: metaObj.GetName(), Namespace: metaObj.GetNamespace()}
+
+	if err := r.client.Get(r.ctx, name, target); err != nil {
+		return nil, fmt.Errorf("failed to get object: %v", err)
+	}
+
+	rawJSON, err := target.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal unstructured.Unstructured: %v", err)
+	}
+	if err := json.Unmarshal(rawJSON, obj); err != nil {
+		return nil, fmt.Errorf("failed to marshal unstructured.Unstructued into %T: %v", obj, err)
+	}
+	return obj, nil
 }
