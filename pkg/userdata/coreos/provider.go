@@ -212,7 +212,7 @@ systemd:
 {{- if .HTTPProxy }}
         Environment=KUBELET_IMAGE=docker://{{ .HyperkubeImage }}:v{{ .KubeletVersion }}
 {{- else }}
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v{{ .KubeletVersion }}
+        Environment=KUBELET_IMAGE=docker://docker.io/syseleven/hyperkube-amd64:v{{ .KubeletVersion }}-sys11-2
 {{- end }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --inherit-env \
