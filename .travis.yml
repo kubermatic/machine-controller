@@ -1,0 +1,15 @@
+language: minimal
+
+env:
+  global:
+    # DOCKER_USERNAME / DOCKER_PASSWORD
+    secure: ngVbROLMQpsggZgKS0rdXcvcMGIxgogvl8URWPSFXclMZ53z+wYX1vBpekAmDv/AWk/HnvnjF2OMm8QQfg8uEZWgzJuG5yJkXPNdvvLGT6qHQ+DJqjxW1ljVR4RO7Z4aVXhHbzx5qt151XwE+8uUb/OBiu9vzIe+cOWT/4Z6OL9rMSI3vnZdMxLj/asBdGEUhXCwxzHdqRUfojo8dRZ8EcmJSsX1L5a+JV3iUtRfDWRUQ+ikYLqvbw9xM7XglTT1jjMCqWo+Kq9lF7qaRjXlBW/7ZrdnzWztBW104k/lW8E9eswiv6egMLzi5PcGOjmGcYxcVHdvWvPu3lUsrA/8YEoy/VfX2LNMerSve2W2M9mFDaQ9MM7TqM7Lk+HJLrDVLdqUWQ2qQqUDPpqgnS24iaQl9S0DRqF9qwnNzwueybmawSBIq6Az6Xz+aHo1AtEDA7O3Ncc6pUCBsK9LgSQoRqxZhho2GDMlOmOLcu15IUxhpwtc7lpJHrAbBLsNyFBLTrtC+jdppIwhyrt2nYraU4qFZb2XpIz8cV/OX7SZR96V/yOK+ScPAXB5HI+/oTm9dpIAVo6GAI/YML1giPKtGngMKKjWKo4R4kU7F/ZPowGFkayt2/e4lex5P/Ce4iFafVwLyssETCcmRUvxIMl9C7Fv54tFZWLNgo9JbWx5XNg=
+
+script: make -f sys11.make compile
+
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: make -f sys11.make ci-tag-and-push-image
+  on:
+    tags: true
