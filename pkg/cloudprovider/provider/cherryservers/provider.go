@@ -327,29 +327,15 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}
 
 	client := getClient(c.Token)
-
-	servers, _, err := client.Servers.List(c.ProjectID)
+	srv, err := getServerByTag(client, string(machine.UID), c.ProjectID)
 	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Failed to list servers, due to %v", err),
-		}
+		return nil, cloudprovidererrors.ErrInstanceNotFound
+	}
+	if srv == nil {
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	for _, server := range servers {
-		if server.Tags[machineUIDTagKey] == string(machine.UID) {
-			srv, _, err := client.Server.List(strconv.Itoa(server.ID))
-			if err != nil {
-				return nil, cloudprovidererrors.TerminalError{
-					Reason:  common.InvalidConfigurationMachineError,
-					Message: fmt.Sprintf("Failed to fetch server, due to %v", err),
-				}
-			}
-			return &cherryServer{server: srv}, nil
-		}
-	}
-
-	return nil, cloudprovidererrors.ErrInstanceNotFound
+	return &cherryServer{server: *srv}, nil
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
@@ -372,21 +358,18 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	}
 
 	klog.V(6).Infof("Setting UID tag for machine %s", machine.Name)
-	tags := server.Tags
-	tags[machineUIDTagKey] = string(new)
-	updateServerRequest := cherrygo.UpdateServer{
-		Tags: tags,
-	}
 
-	_, response, err := client.Server.Update(strconv.Itoa(server.ID), &updateServerRequest)
+	_, response, err := client.Server.Update(strconv.Itoa(server.ID), &cherrygo.UpdateServer{
+		Tags: map[string]string{machineUIDTagKey: string(new)},
+	})
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("Failed to update UID tag, due to %v", err),
 		}
 	}
-	if response.Response.StatusCode != http.StatusOK {
-		return fmt.Errorf("got unexpected response code %v, expected %v", response.Response.Status, http.StatusOK)
+	if response.Response.StatusCode != http.StatusCreated {
+		return fmt.Errorf("got unexpected response code %v, expected %v", response.Response.Status, http.StatusCreated)
 	}
 	klog.V(6).Infof("Successfully set UID tag for machine %s", machine.Name)
 
