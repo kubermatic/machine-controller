@@ -25,7 +25,7 @@ spec:
           cloudProvider: "cherryservers"
           cloudProviderSpec:
             token: << CHERRYSERVERS_TOKEN >>
-            plan: "Hexa Smart"
+            plan: "Smart8"
             location: "EU-East-1"
             projectID: "<< CHERRYSERVERS_PROJECT_ID >>"
             teamID: "<< CHERRYSERVERS_TEAM_ID >>"
