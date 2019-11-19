@@ -489,11 +489,20 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	_, err = p.get(machine)
 	// If a defunct VM got created, the `Get` call returns an error - But not because the request
 	// failed but because the VM has an invalid config hence always delete except on err == cloudprovidererrors.ErrInstanceNotFound
-	if err != cloudprovidererrors.ErrInstanceNotFound {
-		klog.Infof("deleting VM %q", machine.Name)
-		if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-			return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
+	if err != nil {
+		if err == cloudprovidererrors.ErrInstanceNotFound {
+			if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+				updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
+			}); err != nil {
+				return false, err
+			}
 		}
+		return false, nil
+	}
+
+	klog.Infof("deleting VM %q", machine.Name)
+	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
+		return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
 	}
 
 	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
