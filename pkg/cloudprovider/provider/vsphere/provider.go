@@ -45,16 +45,6 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	// We set this field on the virtual machine to the name of
-	// the machine to indicate creation succeeded.
-	// If this is not set correctly, .Get will delete the instance
-	creationCompleteFieldName = "kubernetes-worker-complete"
-	// machineUIDFieldName is the name of the field in which we
-	// store the machines UID
-	machineUIDFieldName = "kubernetes-machine-uid"
-)
-
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -203,6 +193,14 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get cluster: %s: %v", config.Cluster, err)
 	}
 
+	if _, err := session.Finder.Folder(ctx, config.Folder); err != nil {
+		return fmt.Errorf("failed to get folder %q: %v", config.Folder, err)
+	}
+
+	if _, err := p.get(ctx, config.Folder, spec, session.Finder); err == nil {
+		return fmt.Errorf("a vm %s/%s already exists", config.Folder, spec.Name)
+	}
+
 	templateVM, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
 		return fmt.Errorf("failed to get template vm %q: %v", config.TemplateVMName, err)
@@ -232,7 +230,19 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+	vm, err := p.create(machine, userdata)
+	if err != nil {
+		_, cleanupErr := p.Cleanup(machine, data)
+		if cleanupErr != nil {
+			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %v", cleanupErr, err)
+		}
+		return nil, err
+	}
+	return vm, nil
+}
+
+func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -296,43 +306,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("error when waiting for vm powerOn task: %v", err)
 	}
 
-	// Add a custom field to indicate to our Get that creation succeeded
-	// If the field is not set, Get will delete the instance
-	customFieldManager, err := object.GetCustomFieldsManager(session.Client.Client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get customFieldManager: %v", err)
-	}
-	machineUIDFieldKey, err := createOrGetFieldIndex(ctx, machineUIDFieldName, customFieldManager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get field key for field %q: %v", machineUIDFieldName, err)
-	}
-	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), machineUIDFieldKey, string(machine.UID)); err != nil {
-		return nil, fmt.Errorf("failed to set field %q to value %q: %v", machineUIDFieldKey, string(machine.UID), err)
-	}
-	creationCompleteFieldKey, err := createOrGetFieldIndex(ctx, creationCompleteFieldName, customFieldManager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get field key for field %q: %v", creationCompleteFieldName, err)
-	}
-	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), creationCompleteFieldKey, machine.Spec.Name); err != nil {
-		return nil, fmt.Errorf("failed to set field %q to value %q: %v", creationCompleteFieldName, machine.Spec.Name, err)
-	}
-
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
-}
-
-func createOrGetFieldIndex(ctx context.Context, fieldName string, customFieldManager *object.CustomFieldsManager) (int32, error) {
-	key, err := customFieldManager.FindKey(ctx, fieldName)
-	if err != nil {
-		if !strings.Contains(err.Error(), "key name not found") {
-			return 0, fmt.Errorf("error trying to get field with key %q: %v", fieldName, err)
-		}
-		field, err := customFieldManager.Add(ctx, fieldName, "VirtualMachine", nil, nil)
-		if err != nil {
-			return 0, fmt.Errorf("failed to add field %q: %v", fieldName, err)
-		}
-		key = field.Key
-	}
-	return key, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
@@ -350,7 +324,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 	defer session.Logout()
 
-	virtualMachine, err := p.get(ctx, machine, session.Finder)
+	virtualMachine, err := p.get(ctx, config.Folder, machine.Spec, session.Finder)
 	if err != nil {
 		if cloudprovidererrors.IsNotFound(err) {
 			return true, nil
@@ -442,44 +416,10 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	}
 	defer session.Logout()
 
-	virtualMachineList, err := session.Finder.VirtualMachineList(ctx, machine.Spec.Name)
+	virtualMachine, err := p.get(ctx, config.Folder, machine.Spec, session.Finder)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
-			return nil, cloudprovidererrors.ErrInstanceNotFound
-		}
-		return nil, fmt.Errorf("failed to list virtual machines: %v", err)
-	}
-
-	var virtualMachine *object.VirtualMachine
-	for _, virtualMachineItem := range virtualMachineList {
-		// Check if the creationCompleteFieldName is set to machine.UID
-		// If that is not the case, the creation didn't complete successfully and
-		// we must delete the instance so it gets recreated
-		creationCompleteFieldValue, err := getValueForField(ctx,
-			virtualMachineItem, creationCompleteFieldName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get value for field: %v", err)
-		}
-		machineCreationCompletedSuccessfully := creationCompleteFieldValue == machine.Spec.Name
-		if !machineCreationCompletedSuccessfully {
-			klog.V(4).Infof("Cleaning up instance %q whose creation didn't complete", machine.Spec.Name)
-			if _, err := p.Cleanup(machine, data); err != nil {
-				return nil, fmt.Errorf("failed to delete instance whose creation didn't complete: %v", err)
-			}
-			continue
-		}
-
-		machineUIDFieldValue, err := getValueForField(ctx, virtualMachineItem, machineUIDFieldName)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get value for field %q: %v", machineUIDFieldName, err)
-		}
-		if machineUIDFieldValue == string(machine.UID) {
-			virtualMachine = virtualMachineItem
-			break
-		}
-	}
-	if virtualMachine == nil {
-		return nil, cloudprovidererrors.ErrInstanceNotFound
+		// Must not wrap because we match on the error type
+		return nil, err
 	}
 
 	powerState, err := virtualMachine.PowerState(ctx)
@@ -487,77 +427,48 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("failed to get powerstate: %v", err)
 	}
 
-	var status instance.Status
-	switch powerState {
-	case types.VirtualMachinePowerStatePoweredOn:
-		status = instance.StatusRunning
-	default:
-		status = instance.StatusUnknown
+	if powerState != types.VirtualMachinePowerStatePoweredOn {
+		powerOnTask, err := virtualMachine.PowerOn(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to power on instance that was in state %q: %v", powerState, err)
+		}
+		if err := powerOnTask.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("failed waiting for instance to be powered on: %v", err)
+		}
+		// We must return here because the vendored code for determining if the guest
+		// utils are running yields an NPD when using with an instance that is not running
+		return Server{name: virtualMachine.Name(), status: instance.StatusUnknown}, nil
 	}
 
 	// virtualMachine.IsToolsRunning panics when executed on a VM that is not powered on
 	addresses := []string{}
-	if powerState == types.VirtualMachinePowerStatePoweredOn {
-		isGuestToolsRunning, err := virtualMachine.IsToolsRunning(context.TODO())
-		if err != nil {
-			return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
+	isGuestToolsRunning, err := virtualMachine.IsToolsRunning(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
+	}
+	if isGuestToolsRunning {
+		var moVirtualMachine mo.VirtualMachine
+		pc := property.DefaultCollector(session.Client.Client)
+		if err := pc.RetrieveOne(ctx, virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine); err != nil {
+			return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
 		}
-		if isGuestToolsRunning {
-			var moVirtualMachine mo.VirtualMachine
-			pc := property.DefaultCollector(session.Client.Client)
-			if err := pc.RetrieveOne(context.TODO(), virtualMachine.Reference(), []string{"guest"}, &moVirtualMachine); err != nil {
-				return nil, fmt.Errorf("failed to retrieve guest info: %v", err)
-			}
 
-			for _, nic := range moVirtualMachine.Guest.Net {
-				for _, address := range nic.IpAddress {
-					// Exclude ipv6 link-local addresses and default Docker bridge
-					if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
-						addresses = append(addresses, address)
-					}
+		for _, nic := range moVirtualMachine.Guest.Net {
+			for _, address := range nic.IpAddress {
+				// Exclude ipv6 link-local addresses and default Docker bridge
+				if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
+					addresses = append(addresses, address)
 				}
 			}
-		} else {
-			klog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
 		}
+	} else {
+		klog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
 	}
 
-	return Server{name: virtualMachine.Name(), status: status, addresses: addresses, id: virtualMachine.Reference().Value}, nil
+	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
-	ctx := context.Background()
-
-	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
-	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
-	}
-
-	session, err := NewSession(ctx, config)
-	if err != nil {
-		return fmt.Errorf("failed to create vCenter session: %v", err)
-	}
-	defer session.Logout()
-
-	virtualMachine, err := p.get(ctx, machine, session.Finder)
-	if err != nil {
-		if cloudprovidererrors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to get instance from vSphere: %v", err)
-	}
-
-	customFieldManager, err := object.GetCustomFieldsManager(session.Client.Client)
-	if err != nil {
-		return fmt.Errorf("failed to get customFieldManager: %v", err)
-	}
-	machineUIDFieldKey, err := createOrGetFieldIndex(ctx, machineUIDFieldName, customFieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to get field key for field %q: %v", machineUIDFieldName, err)
-	}
-	if err := customFieldManager.Set(ctx, virtualMachine.Reference(), machineUIDFieldKey, string(new)); err != nil {
-		return fmt.Errorf("failed to set field %q to value %q: %v", machineUIDFieldKey, string(new), err)
-	}
 	return nil
 }
 
@@ -635,24 +546,21 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) get(ctx context.Context, machine *v1alpha1.Machine, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
-	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, machine.Spec.Name)
+func (p *provider) get(ctx context.Context, folder string, spec v1alpha1.MachineSpec, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
+	path := fmt.Sprintf("%s/%s", folder, spec.Name)
+	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, path)
 	if err != nil {
-		if err.Error() == fmt.Sprintf("vm '%s' not found", machine.Spec.Name) {
+		if err.Error() == fmt.Sprintf("vm '%s' not found", path) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 		return nil, fmt.Errorf("failed to list virtual machines: %v", err)
 	}
 
-	for _, virtualMachine := range virtualMachineList {
-		machineUIDFieldValue, err := getValueForField(ctx, virtualMachine, machineUIDFieldName)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get value for field %q: %v", machineUIDFieldName, err)
-		}
-		if machineUIDFieldValue == string(machine.UID) {
-			return virtualMachine, nil
-		}
+	if len(virtualMachineList) == 0 {
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
-
-	return nil, cloudprovidererrors.ErrInstanceNotFound
+	if n := len(virtualMachineList); n > 1 {
+		return nil, fmt.Errorf("expected to find at most one vm at %q, got %d", path, n)
+	}
+	return virtualMachineList[0], nil
 }

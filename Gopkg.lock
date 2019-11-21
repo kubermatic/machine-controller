@@ -111,6 +111,26 @@
   revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
 
 [[projects]]
+  digest = "1:fa8c7388014f41adc0fec7363916084eecd90ba513f892eb0f20faac013f4bbd"
+  name = "github.com/aliyun/alibaba-cloud-sdk-go"
+  packages = [
+    "sdk",
+    "sdk/auth",
+    "sdk/auth/credentials",
+    "sdk/auth/credentials/provider",
+    "sdk/auth/signers",
+    "sdk/endpoints",
+    "sdk/errors",
+    "sdk/requests",
+    "sdk/responses",
+    "sdk/utils",
+    "services/ecs",
+  ]
+  pruneopts = "NUT"
+  revision = "111b102694f9e38f0792c9f544e8586c8ac7de9b"
+  version = "1.60.121"
+
+[[projects]]
   digest = "1:975108e8d4f5dab096fc991326e96a5716ee8d02e5e7386bb4796171afc4ab9a"
   name = "github.com/aokoli/goutils"
   packages = ["."]
@@ -746,7 +766,7 @@
   revision = "9a301d65acbb728fcc3ace14f45f511a4cfeea9c"
 
 [[projects]]
-  digest = "1:53e520c5a1e67de0ec53147ceaa6eaa9dcfa295721cb30a9c54668147fe190ee"
+  digest = "1:3e6f7bda8d0452d47a9db71b642f9295cc4abec4c74cc8e321d0c672373f00f6"
   name = "github.com/vmware/govmomi"
   packages = [
     ".",
@@ -767,8 +787,8 @@
     "vim25/xml",
   ]
   pruneopts = "NUT"
-  revision = "123ed177021588bac57b5c87c1a84270ddf2eca8"
-  version = "v0.17.1"
+  revision = "a0fef816799db3e430bb7a5ac951e7835fe4d56b"
+  version = "v0.21.0"
 
 [[projects]]
   digest = "1:58f2854b50ff8862eb6a347f20dedaac83e1166f4040472e17bc37736841a12f"
@@ -1074,6 +1094,14 @@
   pruneopts = "NUT"
   revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
   version = "v0.9.1"
+
+[[projects]]
+  digest = "1:643f6cb49dfafd006d393831dbc82df9b5ae09feb1ca2209c4905d200414c29d"
+  name = "gopkg.in/ini.v1"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "d4cae42d398bc0095297fc3315669590d29166ea"
+  version = "v1.46.0"
 
 [[projects]]
   digest = "1:5e3a62455328b4902b011e84d6c05a5f09e325cc1705bac7269723050e50a0f5"
@@ -1481,6 +1509,8 @@
     "github.com/Azure/go-autorest/autorest/to",
     "github.com/Masterminds/semver",
     "github.com/Masterminds/sprig",
+    "github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests",
+    "github.com/aliyun/alibaba-cloud-sdk-go/services/ecs",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/awserr",
     "github.com/aws/aws-sdk-go/aws/credentials",
