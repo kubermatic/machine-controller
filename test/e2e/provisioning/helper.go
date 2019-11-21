@@ -51,6 +51,8 @@ var (
 	}
 )
 
+const defaultNamespace = "kube-system"
+
 type scenario struct {
 	// name holds short description of the test scenario, it is also used to create machines and nodes names
 	// so please don't put "strange" characters there

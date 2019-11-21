@@ -496,8 +496,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 			}); err != nil {
 				return false, err
 			}
+
+			return true, nil
 		}
-		return false, nil
+		return false, err
 	}
 
 	klog.Infof("deleting VM %q", machine.Name)

@@ -278,7 +278,13 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
 	}
 
-	return false, nil
+	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerInstance)
+	}); err != nil {
+		return false, fmt.Errorf("failed updating machine %v finzaliers: %v", machine.Name, err)
+	}
+
+	return true, nil
 }
 
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
