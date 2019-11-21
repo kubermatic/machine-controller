@@ -72,17 +72,11 @@ func (p *Plugin) UserData(req plugin.UserDataRequest) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if p.debug {
-		glog.V(3).Infof("passing userdata to plugin: %s", string(reqj))
-	}
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)))
 	// Execute command.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to execute command %q: output: %q error: %q", p.command, string(out), err)
-	}
-	if p.debug {
-		glog.V(3).Infof("received userdata response from plugin: %s", string(out))
 	}
 	var resp plugin.UserDataResponse
 	err = json.Unmarshal(out, &resp)
