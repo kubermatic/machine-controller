@@ -21,12 +21,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/prometheus/client_golang/prometheus"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	"k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -67,8 +70,8 @@ type MachineCollector struct {
 
 type machineMetricLabels struct {
 	KubeletVersion  string
-	CloudProvider   providerconfig.CloudProvider
-	OperatingSystem providerconfig.OperatingSystem
+	CloudProvider   providerconfigtypes.CloudProvider
+	OperatingSystem providerconfigtypes.OperatingSystem
 	ProviderLabels  map[string]string
 }
 
@@ -114,7 +117,7 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 	go func() {
 		metricGatheringExecutor := func() {
 			machines := &clusterv1alpha1.MachineList{}
-			if err := client.List(ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
+			if err := client.List(ctx, machines); err != nil {
 				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetMetricsForMachines: %v", err))
 				return
 			}
@@ -126,9 +129,9 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 				return
 			}
 
-			providerMachineMap := map[providerconfig.CloudProvider]*clusterv1alpha1.MachineList{}
+			providerMachineMap := map[providerconfigtypes.CloudProvider]*clusterv1alpha1.MachineList{}
 			for _, machine := range machines.Items {
-				providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+				providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %v", err))
 					continue
@@ -190,7 +193,7 @@ func (mc MachineCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements the prometheus.Collector interface.
 func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 	machines := &clusterv1alpha1.MachineList{}
-	if err := mc.client.List(mc.ctx, &ctrlruntimeclient.ListOptions{}, machines); err != nil {
+	if err := mc.client.List(mc.ctx, machines); err != nil {
 		return
 	}
 
@@ -214,7 +217,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 			)
 		}
 
-		providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+		providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 		if err != nil {
 			utilruntime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %v", machine.Name, err))
 			continue

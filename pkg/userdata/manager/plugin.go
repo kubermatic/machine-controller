@@ -28,10 +28,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/golang/glog"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
+	"k8s.io/klog"
 )
 
 const (
@@ -48,7 +48,7 @@ type Plugin struct {
 
 // newPlugin creates a new plugin manager. It starts the named
 // binary and connects to it via net/rpc.
-func newPlugin(os providerconfig.OperatingSystem, debug bool) (*Plugin, error) {
+func newPlugin(os providerconfigtypes.OperatingSystem, debug bool) (*Plugin, error) {
 	p := &Plugin{
 		debug: debug,
 	}
@@ -98,7 +98,7 @@ func (p *Plugin) UserData(req plugin.UserDataRequest) (string, error) {
 // findPlugin tries to find the executable of the plugin.
 func (p *Plugin) findPlugin(name string) error {
 	filename := pluginPrefix + name
-	glog.Infof("looking for plugin %q", filename)
+	klog.Infof("looking for plugin %q", filename)
 	// Create list to search in.
 	var dirs []string
 	envDir := os.Getenv(plugin.EnvPluginDir)
@@ -126,7 +126,7 @@ func (p *Plugin) findPlugin(name string) error {
 	// Now take a look.
 	for _, dir := range dirs {
 		command := dir + string(os.PathSeparator) + filename
-		glog.V(3).Infof("checking %q", command)
+		klog.V(3).Infof("checking %q", command)
 		fi, err := os.Stat(command)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -135,13 +135,13 @@ func (p *Plugin) findPlugin(name string) error {
 			return fmt.Errorf("error when looking for %q: %v", command, err)
 		}
 		if fi.IsDir() || (fi.Mode()&0111 == 0) {
-			glog.Infof("found '%s', but is no executable", command)
+			klog.Infof("found '%s', but is no executable", command)
 			continue
 		}
 		p.command = command
-		glog.Infof("found '%s'", command)
+		klog.Infof("found '%s'", command)
 		return nil
 	}
-	glog.Errorf("did not find '%s'", filename)
+	klog.Errorf("did not find '%s'", filename)
 	return ErrPluginNotFound
 }

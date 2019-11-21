@@ -30,11 +30,12 @@ import (
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 )
@@ -92,7 +93,7 @@ func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	if cpSpec.DiskType.Value == "" {
 		cpSpec.DiskType.Value = defaultDiskType
 	}
-	spec.ProviderSpec.Value, err = cpSpec.updateProviderSpec(spec.ProviderSpec)
+	spec.ProviderSpec.Value, err = cpSpec.UpdateProviderSpec(spec.ProviderSpec)
 	return spec, err
 }
 
@@ -170,8 +171,8 @@ func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Init cloud configuration.
-	cc := &CloudConfig{
-		Global: GlobalOpts{
+	cc := &gcetypes.CloudConfig{
+		Global: gcetypes.GlobalOpts{
 			ProjectID:      cfg.projectID,
 			LocalZone:      cfg.zone,
 			MultiZone:      cfg.multizone,

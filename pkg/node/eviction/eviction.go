@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
+	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
 
 	corev1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
@@ -33,11 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	SkipEvictionAnnotationKey = "kubermatic.io/skip-eviction"
 )
 
 type NodeEviction struct {
@@ -63,22 +60,22 @@ func (ne *NodeEviction) Run() (bool, error) {
 	if err := ne.client.Get(ne.ctx, types.NamespacedName{Name: ne.nodeName}, node); err != nil {
 		return false, fmt.Errorf("failed to get node from lister: %v", err)
 	}
-	if _, exists := node.Annotations[SkipEvictionAnnotationKey]; exists {
-		glog.V(3).Infof("Skipping eviction for node %s as it has a %s annotation", ne.nodeName, SkipEvictionAnnotationKey)
+	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
+		klog.V(3).Infof("Skipping eviction for node %s as it has a %s annotation", ne.nodeName, evictiontypes.SkipEvictionAnnotationKey)
 		return false, nil
 	}
-	glog.V(3).Infof("Starting to evict node %s", ne.nodeName)
+	klog.V(3).Infof("Starting to evict node %s", ne.nodeName)
 
 	if err := ne.cordonNode(node); err != nil {
 		return false, fmt.Errorf("failed to cordon node %s: %v", ne.nodeName, err)
 	}
-	glog.V(6).Infof("Successfully cordoned node %s", ne.nodeName)
+	klog.V(6).Infof("Successfully cordoned node %s", ne.nodeName)
 
 	podsToEvict, err := ne.getFilteredPods()
 	if err != nil {
 		return false, fmt.Errorf("failed to get Pods to evict for node %s: %v", ne.nodeName, err)
 	}
-	glog.V(6).Infof("Found %v pods to evict for node %s", len(podsToEvict), ne.nodeName)
+	klog.V(6).Infof("Found %v pods to evict for node %s", len(podsToEvict), ne.nodeName)
 
 	if len(podsToEvict) == 0 {
 		return false, nil
@@ -88,7 +85,7 @@ func (ne *NodeEviction) Run() (bool, error) {
 	if errs := ne.evictPods(podsToEvict); len(errs) > 0 {
 		return true, fmt.Errorf("failed to evict pods, errors encountered: %v", errs)
 	}
-	glog.V(6).Infof("Successfully created evictions for all pods on node %s!", ne.nodeName)
+	klog.V(6).Infof("Successfully created evictions for all pods on node %s!", ne.nodeName)
 
 	return true, nil
 }
@@ -168,7 +165,7 @@ func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
 				}
 				err := ne.evictPod(&p)
 				if err == nil || kerrors.IsNotFound(err) {
-					glog.V(6).Infof("Successfully evicted pod %s/%s on node %s", p.Namespace, p.Name, ne.nodeName)
+					klog.V(6).Infof("Successfully evicted pod %s/%s on node %s", p.Namespace, p.Name, ne.nodeName)
 					return
 				} else if kerrors.IsTooManyRequests(err) {
 					// PDB prevents eviction, return and make the controller retry later
@@ -186,10 +183,10 @@ func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
 
 	select {
 	case <-finished:
-		glog.V(6).Infof("All goroutines for eviction pods on node %s finished", ne.nodeName)
+		klog.V(6).Infof("All goroutines for eviction pods on node %s finished", ne.nodeName)
 		break
 	case err := <-errCh:
-		glog.V(6).Infof("Got an error from eviction goroutine for node %s: %v", ne.nodeName, err)
+		klog.V(6).Infof("Got an error from eviction goroutine for node %s: %v", ne.nodeName, err)
 		retErrs = append(retErrs, err)
 	}
 

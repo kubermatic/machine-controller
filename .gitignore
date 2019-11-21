@@ -13,5 +13,5 @@ examples/*.csr
 examples/*.srl
 /webhook
 # As long as we don't support modules.
-go.mod
-go.sum
+/go.mod
+/go.sum

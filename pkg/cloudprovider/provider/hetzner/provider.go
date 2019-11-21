@@ -24,19 +24,20 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/golang/glog"
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	hetznertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
-
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 )
 
 const (
@@ -52,15 +53,6 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-type RawConfig struct {
-	Token      providerconfig.ConfigVarString   `json:"token,omitempty"`
-	ServerType providerconfig.ConfigVarString   `json:"serverType"`
-	Datacenter providerconfig.ConfigVarString   `json:"datacenter"`
-	Location   providerconfig.ConfigVarString   `json:"location"`
-	Networks   []providerconfig.ConfigVarString `json:"networks"`
-	Labels     map[string]string                `json:"labels,omitempty"`
-}
-
 type Config struct {
 	Token      string
 	ServerType string
@@ -70,31 +62,31 @@ type Config struct {
 	Labels     map[string]string
 }
 
-func getNameForOS(os providerconfig.OperatingSystem) (string, error) {
+func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu-18.04", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7", nil
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
 
 func getClient(token string) *hcloud.Client {
 	return hcloud.NewClient(hcloud.WithToken(token))
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rawConfig := RawConfig{}
+	rawConfig := hetznertypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
 	}
@@ -262,7 +254,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	defer func() {
 		_, err := client.SSHKey.Delete(ctx, hkey)
 		if err != nil {
-			glog.Errorf("Failed to delete temporary ssh key: %v", err)
+			klog.Errorf("Failed to delete temporary ssh key: %v", err)
 		}
 	}()
 	serverCreateOpts.SSHKeys = []*hcloud.SSHKey{hkey}
@@ -359,11 +351,11 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to get server: %v", err)
 	}
 	if server == nil {
-		glog.Infof("No instance exists for machine %s", machine.Name)
+		klog.Infof("No instance exists for machine %s", machine.Name)
 		return nil
 	}
 
-	glog.Infof("Setting UID label for machine %s", machine.Name)
+	klog.Infof("Setting UID label for machine %s", machine.Name)
 	_, response, err := client.Server.Update(ctx, server, hcloud.ServerUpdateOpts{
 		Labels: map[string]string{machineUIDLabelKey: string(new)},
 	})
@@ -375,7 +367,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	}
 	// This succeeds, but does not result in a label on the server, seems to be a bug
 	// on Hetzner side
-	glog.Infof("Successfully set UID label for machine %s", machine.Name)
+	klog.Infof("Successfully set UID label for machine %s", machine.Name)
 
 	return nil
 }

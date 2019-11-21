@@ -23,10 +23,10 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/golang/glog"
 
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,13 +35,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func init() {
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		glog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
 	}
 }
 
@@ -107,7 +107,7 @@ func TestController_GetNode(t *testing.T) {
 		resNode  *corev1.Node
 		exists   bool
 		err      error
-		provider providerconfig.CloudProvider
+		provider providerconfigtypes.CloudProvider
 	}{
 		{
 			name:     "node not found - no nodeList",
@@ -257,7 +257,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 				instance.id = "test-id"
 			}
 
-			providerConfig := &providerconfig.Config{CloudProvider: providerconfig.CloudProviderFake}
+			providerConfig := &providerconfigtypes.Config{CloudProvider: providerconfigtypes.CloudProviderFake}
 
 			client := ctrlruntimefake.NewFakeClient(node, machine)
 

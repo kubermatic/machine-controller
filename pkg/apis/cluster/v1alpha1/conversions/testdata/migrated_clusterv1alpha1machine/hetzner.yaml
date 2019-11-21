@@ -1,6 +1,4 @@
 metadata:
-  annotations:
-    machine-controller/machine-type-revision: 2ec456177c0e8f0a903f4e746d44baaae54cc591
   creationTimestamp: null
   name: hetzner
   namespace: kube-system

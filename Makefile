@@ -42,6 +42,7 @@ machine-controller-docker:
 		golang:$(GO_VERSION) \
 			make machine-controller
 
+.PHONY: machine-controller
 machine-controller: $(shell find cmd pkg -name '*.go') vendor
 	go build -v \
 		-ldflags '-s -w' \
@@ -76,7 +77,6 @@ webhook: $(shell find cmd pkg -name '*.go') vendor
 		github.com/kubermatic/machine-controller/cmd/webhook
 
 lint:
-	./hack/verify-type-revision-annotation-const.sh
 	golangci-lint run -v
 
 docker-image: machine-controller webhook docker-image-nodep

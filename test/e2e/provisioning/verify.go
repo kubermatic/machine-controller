@@ -23,11 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
-
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
-	"github.com/kubermatic/machine-controller/pkg/node/eviction"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -71,7 +70,7 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
 	}
 
-	glog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
+	klog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
 	return nil
 }
 
@@ -91,7 +90,7 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 	// Enforce the kube-system namespace, otherwise cleanup wont work
 	newMachineDeployment.Namespace = "kube-system"
 	// Dont evict during testing
-	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{eviction.SkipEvictionAnnotationKey: "true"}
+	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachineDeployment, nil
 }
@@ -112,7 +111,7 @@ func prepareMachine(kubeConfig, manifestPath string, parameters []string) (ctrlr
 	// Enforce the kube-system namespace, otherwise cleanup wont work
 	newMachine.Namespace = "kube-system"
 	// Dont evict during testing
-	newMachine.Spec.Annotations = map[string]string{eviction.SkipEvictionAnnotationKey: "true"}
+	newMachine.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
 
 	return client, newMachine, nil
 }
@@ -148,7 +147,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
-	glog.Infof("creating a new \"%s\" MachineDeployment\n", machineDeployment.Name)
+	klog.Infof("creating a new \"%s\" MachineDeployment\n", machineDeployment.Name)
 	if err := client.Create(context.Background(), machineDeployment); err != nil {
 		return nil, err
 	}
@@ -164,9 +163,9 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	if err != nil {
 		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %v (%v)", machineDeployment.Name, err, pollErr)
 	}
-	glog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
+	klog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 
-	glog.Infof("Waiting for node of MachineDeployment %s to become ready", machineDeployment.Name)
+	klog.Infof("Waiting for node of MachineDeployment %s to become ready", machineDeployment.Name)
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		machines, pollErr := getMatchingMachines(machineDeployment, client)
 		if pollErr != nil || len(machines) < 1 {
@@ -191,7 +190,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 
 func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimeclient.Client) (bool, error) {
 	nodes := &corev1.NodeList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
+	if err := client.List(context.Background(), nodes); err != nil {
 		return false, fmt.Errorf("failed to list nodes: %v", err)
 	}
 	for _, node := range nodes.Items {
@@ -207,7 +206,7 @@ func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimecli
 }
 
 func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client, timeout time.Duration) error {
-	glog.Infof("Starting to clean up MachineDeployment %s", machineDeployment.Name)
+	klog.Infof("Starting to clean up MachineDeployment %s", machineDeployment.Name)
 
 	// We first scale down to 0, because once the machineSets are deleted we can not
 	// match machines anymore and we do want to verify not only the node is gone but also
@@ -232,7 +231,7 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return fmt.Errorf("failed to wait for machines of MachineDeployment %s to be deleted: %v", machineDeployment.Name, err)
 	}
 
-	glog.V(2).Infof("Deleting MachineDeployment %s", machineDeployment.Name)
+	klog.V(2).Infof("Deleting MachineDeployment %s", machineDeployment.Name)
 	if err := client.Delete(context.Background(), machineDeployment); err != nil {
 		return fmt.Errorf("unable to remove MachineDeployment %s, due to %v", machineDeployment.Name, err)
 	}
@@ -261,11 +260,11 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 
 		for _, machine := range machines {
 			// Azure doesn't seem to easely expose the private IP address, there is only a PublicIPAddressClient in the sdk
-			providerConfig, err := providerconfig.GetConfig(machine.Spec.ProviderSpec)
+			providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 			if err != nil {
 				return fmt.Errorf("failed to get provider config: %v", err)
 			}
-			if providerConfig.CloudProvider == providerconfig.CloudProviderAzure {
+			if providerConfig.CloudProvider == providerconfigtypes.CloudProviderAzure {
 				continue
 			}
 
@@ -277,7 +276,7 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 	}
 
 	nodes := &corev1.NodeList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{}, nodes); err != nil {
+	if err := client.List(context.Background(), nodes); err != nil {
 		return fmt.Errorf("failed to list Nodes: %v", err)
 	}
 
@@ -331,7 +330,7 @@ func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, c
 	if err != nil {
 		return nil, err
 	}
-	glog.V(2).Infof("Found %v matching MachineSets for %s", len(matchingMachineSets), machineDeployment.Name)
+	klog.V(2).Infof("Found %v matching MachineSets for %s", len(matchingMachineSets), machineDeployment.Name)
 	var matchingMachines []clusterv1alpha1.Machine
 	for _, machineSet := range matchingMachineSets {
 		machinesForMachineSet, err := getMatchingMachinesForMachineset(&machineSet, client)
@@ -340,13 +339,13 @@ func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, c
 		}
 		matchingMachines = append(matchingMachines, machinesForMachineSet...)
 	}
-	glog.V(2).Infof("Found %v matching Machines for MachineDeployment %s", len(matchingMachines), machineDeployment.Name)
+	klog.V(2).Infof("Found %v matching Machines for MachineDeployment %s", len(matchingMachines), machineDeployment.Name)
 	return matchingMachines, nil
 }
 
 func getMatchingMachinesForMachineset(machineSet *clusterv1alpha1.MachineSet, client ctrlruntimeclient.Client) ([]clusterv1alpha1.Machine, error) {
 	allMachines := &clusterv1alpha1.MachineList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{Namespace: machineSet.Namespace}, allMachines); err != nil {
+	if err := client.List(context.Background(), allMachines, &ctrlruntimeclient.ListOptions{Namespace: machineSet.Namespace}); err != nil {
 		return nil, fmt.Errorf("failed to list Machines: %v", err)
 	}
 	var matchingMachines []clusterv1alpha1.Machine
@@ -372,7 +371,7 @@ func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment,
 		}
 	}
 	allMachineSets := &clusterv1alpha1.MachineSetList{}
-	if err := client.List(context.Background(), &ctrlruntimeclient.ListOptions{Namespace: machineDeployment.Namespace}, allMachineSets); err != nil {
+	if err := client.List(context.Background(), allMachineSets, &ctrlruntimeclient.ListOptions{Namespace: machineDeployment.Namespace}); err != nil {
 		return nil, fmt.Errorf("failed to list MachineSets: %v", err)
 	}
 	var matchingMachineSets []clusterv1alpha1.MachineSet

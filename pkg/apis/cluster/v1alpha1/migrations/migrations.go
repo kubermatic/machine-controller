@@ -22,6 +22,7 @@ import (
 	"time"
 
 	machinecontrolleradmission "github.com/kubermatic/machine-controller/pkg/admission"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/conversions"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -29,8 +30,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/machines"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-
-	"github.com/golang/glog"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -45,12 +45,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *restclient.Config, client ctrlruntimeclient.Client) error {
-	glog.Infof("Starting to migrate providerConfigs to providerSpecs")
+	klog.Infof("Starting to migrate providerConfigs to providerSpecs")
 	dynamicClient, err := dynamicclient.NewForConfig(config)
 	if err != nil {
 		return fmt.Errorf("failed to construct dynamic client: %v", err)
@@ -74,7 +74,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 			return fmt.Errorf("failed to convert machine: %v", err)
 		}
 		if wasConverted {
-			glog.Infof("Converted providerConfig -> providerSpec for machine %s/%s, attempting to update", convertedMachine.Namespace, convertedMachine.Name)
+			klog.Infof("Converted providerConfig -> providerSpec for machine %s/%s, attempting to update", convertedMachine.Namespace, convertedMachine.Name)
 			if convertedMachine.Annotations == nil {
 				convertedMachine.Annotations = map[string]string{}
 			}
@@ -84,7 +84,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 			if err := client.Update(ctx, convertedMachine); err != nil {
 				return fmt.Errorf("failed to update converted machine %s: %v", convertedMachine.Name, err)
 			}
-			glog.Infof("Successfully updated machine %s/%s after converting providerConfig -> providerSpec", convertedMachine.Namespace, convertedMachine.Name)
+			klog.Infof("Successfully updated machine %s/%s after converting providerConfig -> providerSpec", convertedMachine.Namespace, convertedMachine.Name)
 		}
 	}
 
@@ -102,11 +102,11 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 			return fmt.Errorf("failed to convert MachineSet %s/%s: %v", machineSet.GetNamespace(), machineSet.GetName(), err)
 		}
 		if machineSetWasConverted {
-			glog.Infof("Converted providerConfig -> providerSpec for MachineSet %s/%s, attempting to update", convertedMachineSet.Namespace, convertedMachineSet.Name)
+			klog.Infof("Converted providerConfig -> providerSpec for MachineSet %s/%s, attempting to update", convertedMachineSet.Namespace, convertedMachineSet.Name)
 			if err := client.Update(ctx, convertedMachineSet); err != nil {
 				return fmt.Errorf("failed to update MachineSet %s/%s after converting providerConfig -> providerSpec: %v", convertedMachineSet.Namespace, convertedMachineSet.Name, err)
 			}
-			glog.Infof("Successfully updated MachineSet %s/%s after converting providerConfig -> providerSpec", convertedMachineSet.Namespace, convertedMachineSet.Name)
+			klog.Infof("Successfully updated MachineSet %s/%s after converting providerConfig -> providerSpec", convertedMachineSet.Namespace, convertedMachineSet.Name)
 		}
 	}
 
@@ -124,15 +124,15 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 			return fmt.Errorf("failed to convert MachineDeployment %s/%s: %v", machineDeployment.GetNamespace(), machineDeployment.GetName(), err)
 		}
 		if machineDeploymentWasConverted {
-			glog.Infof("Converted providerConfig -> providerSpec for MachineDeployment %s/%s, attempting to update", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
+			klog.Infof("Converted providerConfig -> providerSpec for MachineDeployment %s/%s, attempting to update", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
 			if err := client.Update(ctx, convertedMachineDeployment); err != nil {
 				return fmt.Errorf("failed to update MachineDeployment %s/%s after converting providerConfig -> providerSpec: %v", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name, err)
 			}
-			glog.Infof("Successfully updated MachineDeployment %s/%s after converting providerConfig -> providerSpec", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
+			klog.Infof("Successfully updated MachineDeployment %s/%s after converting providerConfig -> providerSpec", convertedMachineDeployment.Namespace, convertedMachineDeployment.Name)
 		}
 	}
 
-	glog.Infof("Successfully migrated providerConfigs to providerSpecs")
+	klog.Infof("Successfully migrated providerConfigs to providerSpecs")
 	return nil
 }
 
@@ -144,7 +144,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	err := client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1beta1.CustomResourceDefinition{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			glog.Infof("CRD %s not present, no migration needed", machines.CRDName)
+			klog.Infof("CRD %s not present, no migration needed", machines.CRDName)
 			return nil
 		}
 		return fmt.Errorf("failed to get crds: %v", err)
@@ -158,31 +158,31 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	if err := migrateMachines(ctx, client, kubeClient, providerData); err != nil {
 		return fmt.Errorf("failed to migrate machines: %v", err)
 	}
-	glog.Infof("Attempting to delete CRD %s", machines.CRDName)
+	klog.Infof("Attempting to delete CRD %s", machines.CRDName)
 	if err := client.Delete(ctx, &apiextensionsv1beta1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{Name: machines.CRDName}}); err != nil {
 		return fmt.Errorf("failed to delete machinesv1alpha1.machine crd: %v", err)
 	}
-	glog.Infof("Successfully deleted CRD %s", machines.CRDName)
+	klog.Infof("Successfully deleted CRD %s", machines.CRDName)
 	return nil
 }
 
 func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface, providerData *cloudprovidertypes.ProviderData) error {
-	glog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
+	klog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
 
 	// Get machinesv1Alpha1Machines
-	glog.Infof("Getting existing machine.machines.k8s.io/v1alpha1 to migrate")
+	klog.Infof("Getting existing machine.machines.k8s.io/v1alpha1 to migrate")
 
 	machinesv1Alpha1Machines := &machinesv1alpha1.MachineList{}
-	if err := client.List(ctx, &ctrlruntimeclient.ListOptions{}, machinesv1Alpha1Machines); err != nil {
+	if err := client.List(ctx, machinesv1Alpha1Machines); err != nil {
 		return fmt.Errorf("failed to list machinesV1Alpha1 machines: %v", err)
 	}
-	glog.Infof("Found %v machine.machines.k8s.io/v1alpha1", len(machinesv1Alpha1Machines.Items))
+	klog.Infof("Found %v machine.machines.k8s.io/v1alpha1", len(machinesv1Alpha1Machines.Items))
 
 	// Convert the machine, create the new machine, delete the old one, wait for it to be absent
 	// We do this in one loop to avoid ending up having all machines in  both the new and the old format if deletion
 	// failes for whatever reason
 	for _, machinesV1Alpha1Machine := range machinesv1Alpha1Machines.Items {
-		glog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+		klog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		convertedClusterv1alpha1Machine := &clusterv1alpha1.Machine{}
 		err := conversions.Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(&machinesV1Alpha1Machine,
 			convertedClusterv1alpha1Machine)
@@ -194,7 +194,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 
 		// Some providers need to update the provider instance to the new UID, we get the provider as early as possible
 		// to not fail in a half-migrated state when the providerconfig is invalid
-		providerConfig, err := providerconfig.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
+		providerConfig, err := providerconfigtypes.GetConfig(convertedClusterv1alpha1Machine.Spec.ProviderSpec)
 		if err != nil {
 			return fmt.Errorf("failed to get provider config: %v", err)
 		}
@@ -212,7 +212,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 		// Do a get first to cover the case the new machine was already created but then something went wrong
 		// If that is the case and the clusterv1alpha1machine != machinesv1alpha1machine we error out and the operator
 		// has to manually delete either the new or the old machine
-		glog.Infof("Checking if machine.cluster.k8s.io/v1alpha1 %s/%s already exists",
+		klog.Infof("Checking if machine.cluster.k8s.io/v1alpha1 %s/%s already exists",
 			convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 
 		existingClusterV1alpha1Machine := &clusterv1alpha1.Machine{}
@@ -226,13 +226,13 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			}
 
 			// ClusterV1alpha1Machine does not exist yet
-			glog.Infof("Machine.cluster.k8s.io/v1alpha1 %s/%s does not yet exist, attempting to create it",
+			klog.Infof("Machine.cluster.k8s.io/v1alpha1 %s/%s does not yet exist, attempting to create it",
 				convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 
 			if err := client.Create(ctx, convertedClusterv1alpha1Machine); err != nil {
 				return fmt.Errorf("failed to create clusterv1alpha1.machine %s: %v", convertedClusterv1alpha1Machine.Name, err)
 			}
-			glog.Infof("Successfully created machine.cluster.k8s.io/v1alpha1 %s/%s",
+			klog.Infof("Successfully created machine.cluster.k8s.io/v1alpha1 %s/%s",
 				convertedClusterv1alpha1Machine.Namespace, convertedClusterv1alpha1Machine.Name)
 			finalClusterV1Alpha1Machine = convertedClusterv1alpha1Machine
 		} else {
@@ -245,13 +245,13 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			existingClusterV1alpha1Machine.Annotations = convertedClusterv1alpha1Machine.Annotations
 			existingClusterV1alpha1Machine.Finalizers = convertedClusterv1alpha1Machine.Finalizers
 
-			glog.Infof("Updating existing machine.cluster.k8s.io/v1alpha1 %s/%s",
+			klog.Infof("Updating existing machine.cluster.k8s.io/v1alpha1 %s/%s",
 				existingClusterV1alpha1Machine.Namespace, existingClusterV1alpha1Machine.Name)
 
 			if err := client.Update(ctx, existingClusterV1alpha1Machine); err != nil {
 				return fmt.Errorf("failed to update metadata of existing clusterV1Alpha1 machine: %v", err)
 			}
-			glog.Infof("Successfully updated existing machine.cluster.k8s.io/v1alpha1 %s/%s",
+			klog.Infof("Successfully updated existing machine.cluster.k8s.io/v1alpha1 %s/%s",
 				existingClusterV1alpha1Machine.Namespace, existingClusterV1alpha1Machine.Name)
 			finalClusterV1Alpha1Machine = existingClusterV1alpha1Machine
 		}
@@ -263,7 +263,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 		}
 
 		if sets.NewString(finalClusterV1Alpha1Machine.Finalizers...).Has(machinecontroller.FinalizerDeleteInstance) {
-			glog.Infof("Attempting to update the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+			klog.Infof("Attempting to update the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 			newMachineWithOldUID := finalClusterV1Alpha1Machine.DeepCopy()
 			newMachineWithOldUID.UID = machinesV1Alpha1Machine.UID
 			if err := prov.MigrateUID(newMachineWithOldUID, finalClusterV1Alpha1Machine.UID); err != nil {
@@ -281,19 +281,19 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			if !isMigrated {
 				return fmt.Errorf("failed to GET instance for machine %s after UID migration", finalClusterV1Alpha1Machine.Name)
 			}
-			glog.Infof("Successfully updated the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+			klog.Infof("Successfully updated the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		}
 
 		// All went fine, we only have to clear the old machine now
-		glog.Infof("Deleting machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+		klog.Infof("Deleting machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		if err := deleteMachinesV1Alpha1Machine(ctx, &machinesV1Alpha1Machine, client); err != nil {
 			return err
 		}
-		glog.Infof("Successfully deleted machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
-		glog.Infof("Successfully finished migration for machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+		klog.Infof("Successfully deleted machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
+		klog.Infof("Successfully finished migration for machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 	}
 
-	glog.Infof("Successfully finished migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
+	klog.Infof("Successfully finished migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
 	return nil
 }
 
@@ -301,7 +301,7 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machine *clusterv1a
 	if machine.Spec.Name == "" {
 		machine.Spec.Name = machine.Name
 	}
-	glog.Infof("Checking if node for machines.cluster.k8s.io/v1alpha1 %s/%s exists",
+	klog.Infof("Checking if node for machines.cluster.k8s.io/v1alpha1 %s/%s exists",
 		machine.Namespace, machine.Name)
 	nodeNameCandidates := []string{machine.Spec.Name}
 	if machine.Status.NodeRef != nil {
@@ -314,7 +314,7 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machine *clusterv1a
 		node := &corev1.Node{}
 		if err := client.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
 			if kerrors.IsNotFound(err) {
-				glog.Infof("No node for machines.cluster.k8s.io/v1alpha1 %s/%s found",
+				klog.Infof("No node for machines.cluster.k8s.io/v1alpha1 %s/%s found",
 					machine.Namespace, machine.Name)
 				continue
 			}
@@ -322,7 +322,7 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machine *clusterv1a
 				machine.Spec.Name, machine.Name, err)
 		}
 
-		glog.Infof("Found node for machines.cluster.k8s.io/v1alpha1 %s/%s: %s, removing its ownerRef and adding NodeOwnerLabel",
+		klog.Infof("Found node for machines.cluster.k8s.io/v1alpha1 %s/%s: %s, removing its ownerRef and adding NodeOwnerLabel",
 			node.Name, machine.Namespace, machine.Name)
 		nodeLabels := node.Labels
 		nodeLabels[machinecontroller.NodeOwnerLabelName] = string(machine.UID)
@@ -338,7 +338,7 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machine *clusterv1a
 		}); err != nil {
 			return fmt.Errorf("failed to update OwnerLabel on node %s: %v", node.Name, err)
 		}
-		glog.Infof("Successfully removed ownerRef and added NodeOwnerLabelName to node %s for machines.cluster.k8s.io/v1alpha1 %s/%s",
+		klog.Infof("Successfully removed ownerRef and added NodeOwnerLabelName to node %s for machines.cluster.k8s.io/v1alpha1 %s/%s",
 			node.Name, machine.Namespace, machine.Name)
 	}
 

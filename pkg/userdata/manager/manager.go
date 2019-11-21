@@ -26,9 +26,9 @@ import (
 	"errors"
 	"flag"
 
-	"github.com/golang/glog"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	"k8s.io/klog"
 )
 
 var (
@@ -43,17 +43,17 @@ var (
 
 	// supportedOS contains a list of operating systems the machine
 	// controller supports.
-	supportedOS = []providerconfig.OperatingSystem{
-		providerconfig.OperatingSystemCentOS,
-		providerconfig.OperatingSystemCoreos,
-		providerconfig.OperatingSystemUbuntu,
+	supportedOS = []providerconfigtypes.OperatingSystem{
+		providerconfigtypes.OperatingSystemCentOS,
+		providerconfigtypes.OperatingSystemCoreos,
+		providerconfigtypes.OperatingSystemUbuntu,
 	}
 )
 
 // Manager inits and manages the userdata plugins.
 type Manager struct {
 	debug   bool
-	plugins map[providerconfig.OperatingSystem]*Plugin
+	plugins map[providerconfigtypes.OperatingSystem]*Plugin
 }
 
 var pluginDebug = flag.Bool("plugin-debug", false, "Switch for enabling the plugin debugging")
@@ -61,7 +61,7 @@ var pluginDebug = flag.Bool("plugin-debug", false, "Switch for enabling the plug
 // New returns an initialised plugin manager.
 func New() (*Manager, error) {
 	m := &Manager{
-		plugins: make(map[providerconfig.OperatingSystem]*Plugin),
+		plugins: make(map[providerconfigtypes.OperatingSystem]*Plugin),
 	}
 	m.debug = *pluginDebug
 	m.locatePlugins()
@@ -72,7 +72,7 @@ func New() (*Manager, error) {
 }
 
 // ForOS returns the plugin for the given operating system.
-func (m *Manager) ForOS(os providerconfig.OperatingSystem) (p *Plugin, err error) {
+func (m *Manager) ForOS(os providerconfigtypes.OperatingSystem) (p *Plugin, err error) {
 	var found bool
 	if p, found = m.plugins[os]; !found {
 		return nil, ErrPluginNotFound
@@ -85,7 +85,7 @@ func (m *Manager) locatePlugins() {
 	for _, os := range supportedOS {
 		plugin, err := newPlugin(os, m.debug)
 		if err != nil {
-			glog.Errorf("cannot use plugin '%v': %v", os, err)
+			klog.Errorf("cannot use plugin '%v': %v", os, err)
 			continue
 		}
 		m.plugins[os] = plugin

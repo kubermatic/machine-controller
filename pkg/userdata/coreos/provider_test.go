@@ -26,13 +26,13 @@ import (
 	"net"
 	"testing"
 
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
@@ -100,7 +100,7 @@ type userDataTestCase struct {
 	spec                  clusterv1alpha1.MachineSpec
 	ccProvider            cloud.ConfigProvider
 	osConfig              *Config
-	providerSpec          *providerconfig.Config
+	providerSpec          *providerconfigtypes.Config
 	DNSIPs                []net.IP
 	externalCloudProvider bool
 	httpProxy             string
@@ -119,7 +119,7 @@ func TestUserDataGeneration(t *testing.T) {
 	tests := []userDataTestCase{
 		{
 			name: "v1.9.2-disable-auto-update-aws",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -141,7 +141,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.9.2-disable-locksmith-aws",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -163,7 +163,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.9.2-disable-update-engine-aws",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -185,7 +185,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.9.2-disable-auto-update-aws-external",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -208,7 +208,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.10.3-auto-update-openstack-multiple-dns",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -232,7 +232,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "auto-update-openstack-kubelet-v-version-prefix",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 			},
@@ -256,13 +256,13 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.11.2-vsphere-static-ipconfig",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				Network: &providerconfig.NetworkConfig{
+				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
-					DNS: providerconfig.DNSConfig{
+					DNS: providerconfigtypes.DNSConfig{
 						Servers: []string{"8.8.8.8"},
 					},
 				},
@@ -287,14 +287,14 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.12.0-vsphere-overwrite-cloudconfig",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				OverwriteCloudConfig: stringPtr("my\ncustom\ncloud-config"),
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				Network: &providerconfig.NetworkConfig{
+				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
-					DNS: providerconfig.DNSConfig{
+					DNS: providerconfigtypes.DNSConfig{
 						Servers: []string{"8.8.8.8"},
 					},
 				},
@@ -317,7 +317,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.15.0-vsphere",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 			},
 			spec: clusterv1alpha1.MachineSpec{
@@ -340,13 +340,13 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.12.0-vsphere-proxy",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				Network: &providerconfig.NetworkConfig{
+				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
-					DNS: providerconfig.DNSConfig{
+					DNS: providerconfigtypes.DNSConfig{
 						Servers: []string{"8.8.8.8"},
 					},
 				},
@@ -374,13 +374,13 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "v1.12.0-vsphere-mirrors",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				Network: &providerconfig.NetworkConfig{
+				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
-					DNS: providerconfig.DNSConfig{
+					DNS: providerconfigtypes.DNSConfig{
 						Servers: []string{"8.8.8.8"},
 					},
 				},

@@ -26,21 +26,22 @@ import (
 	"time"
 
 	"github.com/digitalocean/godo"
-	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	digitaloceantypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 )
 
 type provider struct {
@@ -50,17 +51,6 @@ type provider struct {
 // New returns a digitalocean provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	Token             providerconfig.ConfigVarString   `json:"token,omitempty"`
-	Region            providerconfig.ConfigVarString   `json:"region"`
-	Size              providerconfig.ConfigVarString   `json:"size"`
-	Backups           providerconfig.ConfigVarBool     `json:"backups"`
-	IPv6              providerconfig.ConfigVarBool     `json:"ipv6"`
-	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
-	Monitoring        providerconfig.ConfigVarBool     `json:"monitoring"`
-	Tags              []providerconfig.ConfigVarString `json:"tags,omitempty"`
 }
 
 type Config struct {
@@ -91,16 +81,16 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
+func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu-18-04-x64", nil
-	case providerconfig.OperatingSystemCoreos:
+	case providerconfigtypes.OperatingSystemCoreos:
 		return "coreos-stable", nil
-	case providerconfig.OperatingSystemCentOS:
+	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7-x64", nil
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
 
 func getClient(token string) *godo.Client {
@@ -112,16 +102,16 @@ func getClient(token string) *godo.Client {
 	return godo.NewClient(oauthClient)
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	rawConfig := RawConfig{}
+	rawConfig := digitaloceantypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {
 		return nil, nil, err
@@ -290,7 +280,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	defer func() {
 		_, err := client.Keys.DeleteByFingerprint(ctx, fingerprint)
 		if err != nil {
-			glog.Errorf("failed to remove a temporary ssh key with fingerprint = %v, due to = %v", fingerprint, err)
+			klog.Errorf("failed to remove a temporary ssh key with fingerprint = %v, due to = %v", fingerprint, err)
 		}
 	}()
 
@@ -333,10 +323,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			return false, fmt.Errorf("droplet (id='%d') got created but we failed to fetch its status", droplet.ID)
 		}
 		if sets.NewString(newDroplet.Tags...).Has(string(machine.UID)) {
-			glog.V(6).Infof("droplet (id='%d') got fully created", droplet.ID)
+			klog.V(6).Infof("droplet (id='%d') got fully created", droplet.ID)
 			return true, nil
 		}
-		glog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
+		klog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
 		return false, nil
 	})
 

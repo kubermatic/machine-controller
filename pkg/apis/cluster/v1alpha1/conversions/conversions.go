@@ -20,18 +20,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
-
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-)
-
-const (
-	TypeRevisionAnnotationName = "machine-controller/machine-type-revision"
-
-	TypeRevisionCurrentVersion = "2ec456177c0e8f0a903f4e746d44baaae54cc591"
 )
 
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
@@ -44,13 +37,7 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	out.CreationTimestamp = metav1.Time{}
 	out.ObjectMeta.Namespace = metav1.NamespaceSystem
 
-	// Add annotation that indicates the current revision used for the types
-	if out.Annotations == nil {
-		out.Annotations = map[string]string{}
-	}
-	out.Annotations[TypeRevisionAnnotationName] = TypeRevisionCurrentVersion
-
-	// sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineStatus and
+	// github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1.MachineStatus and
 	// pkg/machines/v1alpha1.MachineStatus are semantically identical, the former
 	// only has one additional field, so we cast by serializing and deserializing
 	inStatusJSON, err := json.Marshal(in.Status)

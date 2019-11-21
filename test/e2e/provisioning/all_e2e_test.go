@@ -24,15 +24,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/golang/glog"
-
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8s.io/client-go/kubernetes/scheme"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 )
 
 func init() {
+	klog.InitFlags(nil)
 	if err := clusterv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
-		glog.Fatalf("failed to add clusterv1alpha1 to scheme: %v", err)
+		klog.Fatalf("failed to add clusterv1alpha1 to scheme: %v", err)
 	}
 }
 
@@ -384,7 +384,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		name:              "MachineDeployment upgrade",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.10.5",
+		kubernetesVersion: "1.15.5",
 		executor:          verifyCreateUpdateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)

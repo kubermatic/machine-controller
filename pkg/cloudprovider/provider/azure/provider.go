@@ -27,19 +27,20 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/golang/glog"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	azuretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
-
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 )
 
 const (
@@ -60,26 +61,6 @@ const (
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
-}
-
-// RawConfig is a direct representation of an Azure machine object's configuration
-type RawConfig struct {
-	SubscriptionID providerconfig.ConfigVarString `json:"subscriptionID,omitempty"`
-	TenantID       providerconfig.ConfigVarString `json:"tenantID,omitempty"`
-	ClientID       providerconfig.ConfigVarString `json:"clientID,omitempty"`
-	ClientSecret   providerconfig.ConfigVarString `json:"clientSecret,omitempty"`
-
-	Location          providerconfig.ConfigVarString `json:"location"`
-	ResourceGroup     providerconfig.ConfigVarString `json:"resourceGroup"`
-	VMSize            providerconfig.ConfigVarString `json:"vmSize"`
-	VNetName          providerconfig.ConfigVarString `json:"vnetName"`
-	SubnetName        providerconfig.ConfigVarString `json:"subnetName"`
-	RouteTableName    providerconfig.ConfigVarString `json:"routeTableName"`
-	AvailabilitySet   providerconfig.ConfigVarString `json:"availabilitySet"`
-	SecurityGroupName providerconfig.ConfigVarString `json:"securityGroupName"`
-
-	AssignPublicIP providerconfig.ConfigVarBool `json:"assignPublicIP"`
-	Tags           map[string]string            `json:"tags,omitempty"`
 }
 
 type config struct {
@@ -123,20 +104,20 @@ func (vm *azureVM) Status() instance.Status {
 	return vm.status
 }
 
-var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
-	providerconfig.OperatingSystemCoreos: {
+var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageReference{
+	providerconfigtypes.OperatingSystemCoreos: {
 		Publisher: to.StringPtr("CoreOS"),
 		Offer:     to.StringPtr("CoreOS"),
 		Sku:       to.StringPtr("Stable"),
 		Version:   to.StringPtr("latest"),
 	},
-	providerconfig.OperatingSystemCentOS: {
+	providerconfigtypes.OperatingSystemCentOS: {
 		Publisher: to.StringPtr("OpenLogic"),
 		Offer:     to.StringPtr("CentOS"),
 		Sku:       to.StringPtr("7-CI"), // https://docs.microsoft.com/en-us/azure/virtual-machines/linux/using-cloud-init
 		Version:   to.StringPtr("latest"),
 	},
-	providerconfig.OperatingSystemUbuntu: {
+	providerconfigtypes.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
 		Offer:     to.StringPtr("UbuntuServer"),
 		// FIXME We'd like to use Ubuntu 18.04 eventually, but the docker's release
@@ -147,7 +128,7 @@ var imageReferences = map[providerconfig.OperatingSystem]compute.ImageReference{
 	},
 }
 
-func getOSImageReference(os providerconfig.OperatingSystem) (*compute.ImageReference, error) {
+func getOSImageReference(os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
 	ref, supported := imageReferences[os]
 	if !supported {
 		return nil, fmt.Errorf("operating system %q not supported", os)
@@ -161,16 +142,16 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	rawCfg := RawConfig{}
+	rawCfg := azuretypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawCfg)
 	if err != nil {
 		return nil, nil, err
@@ -298,7 +279,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 			if conf.Name != nil {
 				name = *conf.Name
 			} else {
-				glog.Warningf("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
+				klog.Warningf("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
 				if conf.ID == nil || len(*conf.ID) == 0 {
 					return nil, fmt.Errorf("IP configuration of NIC %q was returned with no ID", ifaceName)
 				}
@@ -453,7 +434,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
 	}
 
-	glog.Infof("Creating machine %q", machine.Spec.Name)
+	klog.Infof("Creating machine %q", machine.Spec.Name)
 	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerDisks) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerDisks)
@@ -509,7 +490,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	// If a defunct VM got created, the `Get` call returns an error - But not because the request
 	// failed but because the VM has an invalid config hence always delete except on err == cloudprovidererrors.ErrInstanceNotFound
 	if err != cloudprovidererrors.ErrInstanceNotFound {
-		glog.Infof("deleting VM %q", machine.Name)
+		klog.Infof("deleting VM %q", machine.Name)
 		if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
 			return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
 		}
@@ -521,7 +502,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	glog.Infof("deleting disks of VM %q", machine.Name)
+	klog.Infof("deleting disks of VM %q", machine.Name)
 	if err := deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
 	}
@@ -531,7 +512,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	glog.Infof("deleting network interfaces of VM %q", machine.Name)
+	klog.Infof("deleting network interfaces of VM %q", machine.Name)
 	if err := deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
 	}
@@ -541,7 +522,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	glog.Infof("deleting public IP addresses of VM %q", machine.Name)
+	klog.Infof("deleting public IP addresses of VM %q", machine.Name)
 	if err := deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
 	}
@@ -602,7 +583,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	if len(*iv.Statuses) < 2 {
 		provisioningStatus := (*iv.Statuses)[0]
 		if provisioningStatus.Code == nil {
-			glog.Warningf("azure provisioning status has missing code")
+			klog.Warningf("azure provisioning status has missing code")
 			return instance.StatusUnknown, nil
 		}
 
@@ -612,7 +593,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 		case "ProvisioningState/deleting":
 			return instance.StatusDeleting, nil
 		default:
-			glog.Warningf("unknown Azure provisioning status %q", *provisioningStatus.Code)
+			klog.Warningf("unknown Azure provisioning status %q", *provisioningStatus.Code)
 			return instance.StatusUnknown, nil
 		}
 	}
@@ -621,7 +602,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	// https://docs.microsoft.com/en-us/azure/virtual-machines/windows/tutorial-manage-vm#vm-power-states
 	powerStatus := (*iv.Statuses)[1]
 	if powerStatus.Code == nil {
-		glog.Warningf("azure power status has missing code")
+		klog.Warningf("azure power status has missing code")
 		return instance.StatusUnknown, nil
 	}
 
@@ -633,7 +614,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	case "PowerState/starting":
 		return instance.StatusCreating, nil
 	default:
-		glog.Warningf("unknown Azure power status %q", *powerStatus.Code)
+		klog.Warningf("unknown Azure power status %q", *powerStatus.Code)
 		return instance.StatusUnknown, nil
 	}
 }
@@ -676,7 +657,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	cc := &CloudConfig{
+	cc := &azuretypes.CloudConfig{
 		Cloud:                      "AZUREPUBLICCLOUD",
 		TenantID:                   c.TenantID,
 		SubscriptionID:             c.SubscriptionID,
@@ -692,7 +673,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		UseInstanceMetadata:        true,
 	}
 
-	s, err := CloudConfigToString(cc)
+	s, err := azuretypes.CloudConfigToString(cc)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to convert cloud-config to string: %v", err)
 	}

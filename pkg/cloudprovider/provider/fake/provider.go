@@ -20,15 +20,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/golang/glog"
-
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
-
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/klog"
 )
 
 type provider struct{}
@@ -63,7 +62,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 // Validate returns success or failure based according to its FakeCloudProviderSpec
 func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(machinespec.ProviderSpec.Value.Raw, &pconfig)
 	if err != nil {
 		return err
@@ -75,11 +74,11 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	}
 
 	if fakeCloudProviderSpec.PassValidation {
-		glog.V(3).Infof("succeeding validation as requested")
+		klog.V(3).Infof("succeeding validation as requested")
 		return nil
 	}
 
-	glog.V(3).Infof("failing validation as requested")
+	klog.V(3).Infof("failing validation as requested")
 	return fmt.Errorf("failing validation as requested")
 }
 

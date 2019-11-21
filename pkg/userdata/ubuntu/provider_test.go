@@ -30,15 +30,15 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
@@ -106,7 +106,7 @@ type userDataTestCase struct {
 	spec                  clusterv1alpha1.MachineSpec
 	ccProvider            cloud.ConfigProvider
 	osConfig              *Config
-	providerSpec          *providerconfig.Config
+	providerSpec          *providerconfigtypes.Config
 	DNSIPs                []net.IP
 	kubernetesCACert      string
 	externalCloudProvider bool
@@ -129,7 +129,7 @@ func simpleVersionTests() []userDataTestCase {
 	for _, v := range versions {
 		tests = append(tests, userDataTestCase{
 			name: fmt.Sprintf("version-%s", v.String()),
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -166,7 +166,7 @@ func TestUserDataGeneration(t *testing.T) {
 	tests = append(tests, []userDataTestCase{
 		{
 			name: "dist-upgrade-on-boot",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -191,7 +191,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "multiple-dns-servers",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -216,7 +216,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "kubelet-version-without-v-prefix",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -241,7 +241,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "multiple-ssh-keys",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD", "ssh-rsa EEEFFF"},
 			},
@@ -266,7 +266,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "openstack",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
@@ -291,7 +291,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "openstack-overwrite-cloud-config",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "openstack",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
@@ -317,7 +317,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "vsphere",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
@@ -343,7 +343,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "vsphere-proxy",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
@@ -373,7 +373,7 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 		{
 			name: "vsphere-mirrors",
-			providerSpec: &providerconfig.Config{
+			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
 				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),

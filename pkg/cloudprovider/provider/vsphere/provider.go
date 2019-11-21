@@ -24,25 +24,25 @@ import (
 	"os"
 	"strings"
 
-	"github.com/golang/glog"
-
-	corev1 "k8s.io/api/core/v1"
-	ktypes "k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	vspheretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
+	corev1 "k8s.io/api/core/v1"
+	ktypes "k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/klog"
 )
 
 const (
@@ -62,22 +62,6 @@ type provider struct {
 // New returns a VSphere provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	TemplateVMName providerconfig.ConfigVarString `json:"templateVMName"`
-	VMNetName      providerconfig.ConfigVarString `json:"vmNetName,omitempty"`
-	Username       providerconfig.ConfigVarString `json:"username,omitempty"`
-	Password       providerconfig.ConfigVarString `json:"password,omitempty"`
-	VSphereURL     providerconfig.ConfigVarString `json:"vsphereURL,omitempty"`
-	Datacenter     providerconfig.ConfigVarString `json:"datacenter"`
-	Cluster        providerconfig.ConfigVarString `json:"cluster"`
-	Folder         providerconfig.ConfigVarString `json:"folder,omitempty"`
-	Datastore      providerconfig.ConfigVarString `json:"datastore"`
-	CPUs           int32                          `json:"cpus"`
-	MemoryMB       int64                          `json:"memoryMB"`
-	DiskSizeGB     *int64                         `json:"diskSizeGB,omitempty"`
-	AllowInsecure  providerconfig.ConfigVarBool   `json:"allowInsecure"`
 }
 
 type Config struct {
@@ -123,17 +107,17 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, *RawConfig, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	rawConfig := RawConfig{}
+	rawConfig := vspheretypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {
 		return nil, nil, nil, err
@@ -263,7 +247,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	defer session.Logout()
 
 	var containerLinuxUserdata string
-	if pc.OperatingSystem == providerconfig.OperatingSystemCoreos {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos {
 		containerLinuxUserdata = userdata
 	}
 
@@ -277,7 +261,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%v'", err))
 	}
 
-	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
 		localUserdataIsoFilePath, err := generateLocalUserdataISO(userdata, machine.Spec.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate local userdadata iso: %v", err)
@@ -397,7 +381,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	pvs := &corev1.PersistentVolumeList{}
-	if err := data.Client.List(data.Ctx, &ctrlruntimeclient.ListOptions{}, pvs); err != nil {
+	if err := data.Client.List(data.Ctx, pvs); err != nil {
 		return false, fmt.Errorf("failed to list PVs: %v", err)
 	}
 
@@ -425,7 +409,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
 	}
 
-	if pc.OperatingSystem != providerconfig.OperatingSystemCoreos {
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
 		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
 		if err != nil {
 			return false, fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
@@ -440,7 +424,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	glog.V(2).Infof("Successfully destroyed vm %s", virtualMachine.Name())
+	klog.V(2).Infof("Successfully destroyed vm %s", virtualMachine.Name())
 	return true, nil
 }
 
@@ -478,7 +462,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		}
 		machineCreationCompletedSuccessfully := creationCompleteFieldValue == machine.Spec.Name
 		if !machineCreationCompletedSuccessfully {
-			glog.V(4).Infof("Cleaning up instance %q whose creation didn't complete", machine.Spec.Name)
+			klog.V(4).Infof("Cleaning up instance %q whose creation didn't complete", machine.Spec.Name)
 			if _, err := p.Cleanup(machine, data); err != nil {
 				return nil, fmt.Errorf("failed to delete instance whose creation didn't complete: %v", err)
 			}
@@ -534,7 +518,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 				}
 			}
 		} else {
-			glog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
+			klog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
 		}
 	}
 
@@ -600,23 +584,23 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		workingDir = fmt.Sprintf("/%s/vm", c.Datacenter)
 	}
 
-	cc := &CloudConfig{
-		Global: GlobalOpts{
+	cc := &vspheretypes.CloudConfig{
+		Global: vspheretypes.GlobalOpts{
 			User:         c.Username,
 			Password:     c.Password,
 			InsecureFlag: c.AllowInsecure,
 			VCenterPort:  u.Port(),
 		},
-		Disk: DiskOpts{
+		Disk: vspheretypes.DiskOpts{
 			SCSIControllerType: "pvscsi",
 		},
-		Workspace: WorkspaceOpts{
+		Workspace: vspheretypes.WorkspaceOpts{
 			Datacenter:       c.Datacenter,
 			VCenterIP:        u.Hostname(),
 			DefaultDatastore: c.Datastore,
 			Folder:           workingDir,
 		},
-		VirtualCenter: map[string]*VirtualCenterConfig{
+		VirtualCenter: map[string]*vspheretypes.VirtualCenterConfig{
 			u.Hostname(): {
 				VCenterPort: u.Port(),
 				Datacenters: c.Datacenter,
@@ -626,7 +610,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		},
 	}
 
-	s, err := CloudConfigToString(cc)
+	s, err := vspheretypes.CloudConfigToString(cc)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %v", err)
 	}

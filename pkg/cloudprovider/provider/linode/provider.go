@@ -31,17 +31,18 @@ import (
 	"github.com/linode/linodego"
 	"golang.org/x/oauth2"
 
+	common "github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	linodetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	common "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 type provider struct {
@@ -51,15 +52,6 @@ type provider struct {
 // New returns a linode provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
-}
-
-type RawConfig struct {
-	Token             providerconfig.ConfigVarString   `json:"token,omitempty"`
-	Region            providerconfig.ConfigVarString   `json:"region"`
-	Type              providerconfig.ConfigVarString   `json:"type"`
-	Backups           providerconfig.ConfigVarBool     `json:"backups"`
-	PrivateNetworking providerconfig.ConfigVarBool     `json:"private_networking"`
-	Tags              []providerconfig.ConfigVarString `json:"tags,omitempty"`
 }
 
 type Config struct {
@@ -87,25 +79,25 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func getSlugForOS(os providerconfig.OperatingSystem) (string, error) {
+func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
-	case providerconfig.OperatingSystemUbuntu:
+	case providerconfigtypes.OperatingSystemUbuntu:
 		return "linode/ubuntu18.04", nil
 
 		/**
 		// StackScripts not available for CoreOS, and no
 		// other userdata work-around
-		case providerconfig.OperatingSystemCoreos:
+		case providerconfigtypes.OperatingSystemCoreos:
 			return "linode/containerlinux", nil
 		**/
 
 		/**
 		// StackScript for CloudInit is not centos7 ready
-		case providerconfig.OperatingSystemCentOS:
+		case providerconfigtypes.OperatingSystemCentOS:
 			return "linode/centos7", nil
 		**/
 	}
-	return "", providerconfig.ErrOSNotSupported
+	return "", providerconfigtypes.ErrOSNotSupported
 }
 
 func getClient(token string) linodego.Client {
@@ -122,16 +114,16 @@ func getClient(token string) linodego.Client {
 	return client
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfig.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfig.Config{}
+	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	rawConfig := RawConfig{}
+	rawConfig := linodetypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {
 		return nil, nil, err
