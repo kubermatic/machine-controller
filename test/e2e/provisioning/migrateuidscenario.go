@@ -60,13 +60,13 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	newUID := types.UID(fmt.Sprintf("bbb-%s", machineDeployment.Name))
 	machine.UID = oldUID
 	machine.Name = machineDeployment.Name
-	machine.Namespace = defaultNamespace
+	machine.Namespace = metav1.NamespaceSystem
 	machine.Spec.Name = machine.Name
 	fakeClient := fakectrlruntimeclient.NewFakeClient(
 		&v1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      machineDeployment.Name,
-				Namespace: defaultNamespace,
+				Namespace: metav1.NamespaceSystem,
 			},
 		})
 
