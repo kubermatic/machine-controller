@@ -22,19 +22,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/client-go/tools/clientcmd"
-	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8s.io/klog"
 )
 
@@ -43,18 +43,6 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	manifest, err := readAndModifyManifest(manifestPath, parameters)
 	if err != nil {
 		return fmt.Errorf("failed to prepare the manifest, due to: %v", err)
-	}
-	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
-	if err != nil {
-		return fmt.Errorf("error building kubeconfig: %v", err)
-	}
-	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
-	if err != nil {
-		return fmt.Errorf("failed to construct ctrlruntimeclient: %v", err)
-	}
-	providerData := &cloudprovidertypes.ProviderData{
-		Update: cloudprovidertypes.GetMachineUpdater(context.Background(), client),
-		Client: client,
 	}
 
 	machineDeployment := &v1alpha1.MachineDeployment{}
@@ -72,13 +60,25 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	newUID := types.UID(fmt.Sprintf("bbb-%s", machineDeployment.Name))
 	machine.UID = oldUID
 	machine.Name = machineDeployment.Name
+	machine.Namespace = metav1.NamespaceSystem
 	machine.Spec.Name = machine.Name
+	fakeClient := fakectrlruntimeclient.NewFakeClient(
+		&v1alpha1.Machine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      machineDeployment.Name,
+				Namespace: metav1.NamespaceSystem,
+			},
+		})
+
+	providerData := &cloudprovidertypes.ProviderData{
+		Update: cloudprovidertypes.GetMachineUpdater(context.Background(), fakeClient),
+		Client: fakeClient,
+	}
 
 	providerSpec, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get provideSpec: %v", err)
 	}
-	fakeClient := fakectrlruntimeclient.NewFakeClient()
 	skg := providerconfig.NewConfigVarResolver(context.Background(), fakeClient)
 	prov, err := cloudprovider.ForProvider(providerSpec.CloudProvider, skg)
 	if err != nil {
