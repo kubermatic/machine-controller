@@ -421,7 +421,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			return
 		}
 
-		klog.Info("machine controller has been successfully stopped")
+		klog.Info("machine controller startup complete")
 	}
 
 	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
@@ -442,6 +442,7 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 	go le.Run(runOptions.parentCtx)
 
 	<-runOptions.parentCtx.Done()
+	klog.Info("machine controller has been successfully stopped")
 	return nil
 }
 
