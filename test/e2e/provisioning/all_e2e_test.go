@@ -81,11 +81,8 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	// Provisioning coreos images via kubevirt does not work, needs investigation
-	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
-
 	params := []string{fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig)}
-	runScenarios(t, excludeSelector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
+	runScenarios(t, nil, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
 }
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
