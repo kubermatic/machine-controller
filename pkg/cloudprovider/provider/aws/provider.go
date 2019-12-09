@@ -106,6 +106,12 @@ var (
 			// The AWS marketplace ID from Canonical
 			owner: "099720109477",
 		},
+		providerconfigtypes.OperatingSystemSLES: {
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+			// The AWS marketplace ID from Canonical
+			owner: "013907871322",
+		},
 	}
 
 	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
@@ -215,6 +221,8 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "/dev/sda1", nil
 	case providerconfigtypes.OperatingSystemCoreos:
+		return "/dev/xvda", nil
+	case providerconfigtypes.OperatingSystemSLES:
 		return "/dev/xvda", nil
 	}
 
@@ -479,7 +487,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	tags := []*ec2.Tag{
 		{
 			Key:   aws.String(nameTag),
-			Value: aws.String(machine.Spec.Name),
+			Value: aws.String(machine.ObjectMeta.Name),
 		},
 		{
 			Key:   aws.String(machineUIDTag),

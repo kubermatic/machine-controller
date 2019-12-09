@@ -60,6 +60,10 @@ machine-controller: $(shell find cmd pkg -name '*.go') vendor
 		-ldflags '-s -w' \
 		-o machine-controller-userdata-ubuntu \
 		github.com/kubermatic/machine-controller/cmd/userdata/ubuntu
+	go build -v \
+		-ldflags '-s -w' \
+		-o machine-controller-userdata-sles \
+		github.com/kubermatic/machine-controller/cmd/userdata/sles
 
 webhook: $(shell find cmd pkg -name '*.go') vendor
 	go build -v \
