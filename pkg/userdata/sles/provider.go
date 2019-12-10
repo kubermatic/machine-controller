@@ -151,11 +151,9 @@ write_files:
     set -xeuo pipefail
     if systemctl is-active ufw; then systemctl stop ufw; fi
     systemctl mask ufw
-
 {{- /* As we added some modules and don't want to reboot, restart the service */}}
     systemctl restart systemd-modules-load.service
     sysctl --system
-
 
 {{- /* Make sure we always disable swap - Otherwise the kubelet won't start'. */}}
     cp /etc/fstab /etc/fstab.orig
@@ -170,6 +168,12 @@ write_files:
       socat \
       ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
       open-vm-tools{{ end }}
+    {{- if .OSConfig.DistUpgradeOnBoot }}
+    zypper --non-interactive --quiet --color dup
+    {{- end }}
+    if [[ -e /var/run/reboot-required ]]; then
+      reboot
+    fi
 
 {{ downloadBinariesScript .KubeletVersion true | indent 4 }}
 
