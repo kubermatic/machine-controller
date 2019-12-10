@@ -64,8 +64,8 @@ if ! which kubelet; then
   deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
   apt-get update
-  apt-get install -y kubelet=1.16.2-00 kubeadm=1.16.2-00 kubectl=1.16.2-00
-  kubeadm init --kubernetes-version=v1.16.2 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
+  apt-get install -y kubelet=1.17.0-00 kubeadm=1.17.0-00 kubectl=1.17.0-00
+  kubeadm init --kubernetes-version=v1.17.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
 fi
 if ! ls \$HOME/.kube/config; then
   mkdir -p \$HOME/.kube
