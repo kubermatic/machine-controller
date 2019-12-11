@@ -113,41 +113,42 @@ func TestKubeconfigProvider_GetKubeconfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		client := fake.NewSimpleClientset(test.objects...)
+		t.Run(test.name, func(t *testing.T) {
+			client := fake.NewSimpleClientset(test.objects...)
 
-		provider := KubeconfigProvider{
-			clientConfig: test.clientConfig,
-			kubeClient:   client,
-		}
+			provider := KubeconfigProvider{
+				clientConfig: test.clientConfig,
+				kubeClient:   client,
+			}
 
-		resConfig, err := provider.GetKubeconfig()
-		if diff := deep.Equal(err, test.err); diff != nil {
-			t.Error(diff)
-		}
-		if test.err != nil {
-			return
-		}
+			resConfig, err := provider.GetKubeconfig()
+			if diff := deep.Equal(err, test.err); diff != nil {
+				t.Error(diff)
+			}
+			if test.err != nil {
+				return
+			}
 
-		out, err := clientcmd.Write(*resConfig)
-		if err != nil {
-			t.Error(err)
-		}
+			out, err := clientcmd.Write(*resConfig)
+			if err != nil {
+				t.Error(err)
+			}
 
-		diff := difflib.UnifiedDiff{
-			A:        difflib.SplitLines(test.resConfig),
-			B:        difflib.SplitLines(string(out)),
-			FromFile: "Expected",
-			ToFile:   "Got",
-			Context:  3,
-		}
-		diffStr, err := difflib.GetUnifiedDiffString(diff)
-		if err != nil {
-			t.Fatal(err)
-		}
+			diff := difflib.UnifiedDiff{
+				A:        difflib.SplitLines(test.resConfig),
+				B:        difflib.SplitLines(string(out)),
+				FromFile: "Expected",
+				ToFile:   "Got",
+				Context:  3,
+			}
+			diffStr, err := difflib.GetUnifiedDiffString(diff)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		if len(diffStr) > 0 {
-			t.Errorf("got diff between expected and actual result: \n%s\n", diffStr)
-		}
-
+			if len(diffStr) > 0 {
+				t.Errorf("got diff between expected and actual result: \n%s\n", diffStr)
+			}
+		})
 	}
 }
