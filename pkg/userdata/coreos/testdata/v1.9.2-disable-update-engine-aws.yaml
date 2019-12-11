@@ -117,6 +117,7 @@ systemd:
           --cloud-provider=aws \
           --cloud-config=/etc/kubernetes/cloud-config \
           --read-only-port=0 \
+          --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
           --anonymous-auth=false \
