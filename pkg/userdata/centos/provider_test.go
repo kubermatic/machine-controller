@@ -204,49 +204,51 @@ func TestUserDataGeneration(t *testing.T) {
 	provider := Provider{}
 
 	for _, test := range tests {
-		emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
-			Value: &runtime.RawExtension{},
-		}
-		test.spec.ProviderSpec = emtpyProviderSpec
-		var cloudProvider *fakeCloudConfigProvider
-		if test.cloudProviderName != nil {
-			cloudProvider = &fakeCloudConfigProvider{
-				name:   *test.cloudProviderName,
-				config: "{config:true}",
-				err:    nil,
+		t.Run(test.name, func(t *testing.T) {
+			emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
+				Value: &runtime.RawExtension{},
 			}
-		} else {
-			cloudProvider = defaultCloudProvider
-		}
-		cloudConfig, cloudProviderName, err := cloudProvider.GetCloudConfig(test.spec)
-		if err != nil {
-			t.Fatalf("failed to get cloud config: %v", err)
-		}
+			test.spec.ProviderSpec = emtpyProviderSpec
+			var cloudProvider *fakeCloudConfigProvider
+			if test.cloudProviderName != nil {
+				cloudProvider = &fakeCloudConfigProvider{
+					name:   *test.cloudProviderName,
+					config: "{config:true}",
+					err:    nil,
+				}
+			} else {
+				cloudProvider = defaultCloudProvider
+			}
+			cloudConfig, cloudProviderName, err := cloudProvider.GetCloudConfig(test.spec)
+			if err != nil {
+				t.Fatalf("failed to get cloud config: %v", err)
+			}
 
-		req := plugin.UserDataRequest{
-			MachineSpec:           test.spec,
-			Kubeconfig:            kubeconfig,
-			CloudConfig:           cloudConfig,
-			CloudProviderName:     cloudProviderName,
-			DNSIPs:                test.clusterDNSIPs,
-			ExternalCloudProvider: test.externalCloudProvider,
-			HTTPProxy:             test.httpProxy,
-			NoProxy:               test.noProxy,
-			InsecureRegistries:    test.insecureRegistries,
-			RegistryMirrors:       test.registryMirrors,
-			PauseImage:            test.pauseImage,
-		}
-		s, err := provider.UserData(req)
-		if err != nil {
-			t.Errorf("error getting userdata: '%v'", err)
-		}
+			req := plugin.UserDataRequest{
+				MachineSpec:           test.spec,
+				Kubeconfig:            kubeconfig,
+				CloudConfig:           cloudConfig,
+				CloudProviderName:     cloudProviderName,
+				DNSIPs:                test.clusterDNSIPs,
+				ExternalCloudProvider: test.externalCloudProvider,
+				HTTPProxy:             test.httpProxy,
+				NoProxy:               test.noProxy,
+				InsecureRegistries:    test.insecureRegistries,
+				RegistryMirrors:       test.registryMirrors,
+				PauseImage:            test.pauseImage,
+			}
+			s, err := provider.UserData(req)
+			if err != nil {
+				t.Errorf("error getting userdata: '%v'", err)
+			}
 
-		// Check if we can gzip it.
-		if _, err := convert.GzipString(s); err != nil {
-			t.Fatal(err)
-		}
-		goldenName := test.name + ".yaml"
-		testhelper.CompareOutput(t, goldenName, s, *update)
+			// Check if we can gzip it.
+			if _, err := convert.GzipString(s); err != nil {
+				t.Fatal(err)
+			}
+			goldenName := test.name + ".yaml"
+			testhelper.CompareOutput(t, goldenName, s, *update)
+		})
 	}
 }
 
