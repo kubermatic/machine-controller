@@ -44,6 +44,11 @@ func (f CloudProviderInstance) Name() string {
 func (f CloudProviderInstance) ID() string {
 	return ""
 }
+
+func (f CloudProviderInstance) HostID() string {
+	return ""
+}
+
 func (f CloudProviderInstance) Addresses() []string {
 	return nil
 }

@@ -727,9 +727,26 @@ func ownerReferencesHasMachineSetKind(ownerReferences []metav1.OwnerReference) b
 }
 
 func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, machine *clusterv1alpha1.Machine) error {
-	var modifiers []func(*corev1.Node)
+	providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return fmt.Errorf("failed to get provider config: %v", err)
+	}
+	skg := providerconfig.NewConfigVarResolver(r.ctx, r.client)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
+	}
 
-	for k, v := range machine.Spec.Labels {
+	providerInstance, err := prov.Get(machine, r.providerData)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud provider instance %q: %v", providerConfig.CloudProvider, err)
+	}
+
+
+	var modifiers []func(*corev1.Node)
+    nodeLables := machine.Spec.Labels
+    nodeLables["host-id"] = providerInstance.HostID()
+	for k, v := range nodeLables {
 		if _, exists := node.Labels[k]; !exists {
 			f := func(k, v string) func(*corev1.Node) {
 				return func(n *corev1.Node) {

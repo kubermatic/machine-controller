@@ -55,6 +55,10 @@ func (gi *googleInstance) ID() string {
 	return strconv.FormatUint(gi.ci.Id, 10)
 }
 
+func (gi *googleInstance) HostID() string {
+	return ""
+}
+
 // Addresses implements instance.Instance.
 func (gi *googleInstance) Addresses() []string {
 	var addrs []string

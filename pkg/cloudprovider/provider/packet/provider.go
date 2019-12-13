@@ -356,6 +356,10 @@ func (s *packetDevice) ID() string {
 	return s.device.ID
 }
 
+func (s *packetDevice) HostID() string {
+	return ""
+}
+
 func (s *packetDevice) Addresses() []string {
 	// returns addresses in CIDR format
 	var addresses []string

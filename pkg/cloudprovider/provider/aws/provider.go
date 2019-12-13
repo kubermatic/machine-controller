@@ -730,6 +730,10 @@ func (d *awsInstance) ID() string {
 	return aws.StringValue(d.instance.InstanceId)
 }
 
+func (d *awsInstance) HostID() string {
+	return ""
+}
+
 func (d *awsInstance) Addresses() []string {
 	return []string{
 		aws.StringValue(d.instance.PublicIpAddress),

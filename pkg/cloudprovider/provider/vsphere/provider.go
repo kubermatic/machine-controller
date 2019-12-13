@@ -85,6 +85,10 @@ func (vsphereServer Server) ID() string {
 	return vsphereServer.id
 }
 
+func (vsphereServer Server) HostID() string {
+	return ""
+}
+
 func (vsphereServer Server) Addresses() []string {
 	return vsphereServer.addresses
 }

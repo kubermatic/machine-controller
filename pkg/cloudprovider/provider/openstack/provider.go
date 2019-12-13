@@ -746,6 +746,10 @@ func (d *osInstance) ID() string {
 	return d.server.ID
 }
 
+func (d *osInstance) HostID() string {
+	return d.server.HostID
+}
+
 func (d *osInstance) Addresses() []string {
 	var addresses []string
 	for _, networkAddresses := range d.server.Addresses {

@@ -84,6 +84,10 @@ func (k *kubeVirtServer) ID() string {
 	return string(k.vmi.UID)
 }
 
+func (k *kubeVirtServer) HostID() string {
+	return ""
+}
+
 func (k *kubeVirtServer) Addresses() []string {
 	var addresses []string
 	for _, kvInterface := range k.vmi.Status.Interfaces {

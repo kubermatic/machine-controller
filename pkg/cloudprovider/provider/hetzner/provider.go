@@ -401,6 +401,10 @@ func (s *hetznerServer) ID() string {
 	return strconv.Itoa(s.server.ID)
 }
 
+func (s *hetznerServer) HostID() string {
+	return ""
+}
+
 func (s *hetznerServer) Addresses() []string {
 	var addresses []string
 	for _, fips := range s.server.PublicNet.FloatingIPs {

@@ -413,6 +413,10 @@ func (d *linodeInstance) ID() string {
 	return strconv.Itoa(d.linode.ID)
 }
 
+func (d *linodeInstance) HostID() string {
+	return ""
+}
+
 func (d *linodeInstance) Addresses() []string {
 	var addresses []string
 	for _, n := range d.linode.IPv4 {

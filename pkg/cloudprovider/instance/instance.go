@@ -20,6 +20,7 @@ package instance
 type Instance interface {
 	Name() string
 	ID() string
+	HostID() string
 	Addresses() []string
 	Status() Status
 }

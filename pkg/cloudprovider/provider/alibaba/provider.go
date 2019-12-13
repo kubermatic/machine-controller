@@ -82,6 +82,10 @@ func (a *alibabaInstance) ID() string {
 	return a.instance.InstanceId
 }
 
+func (a *alibabaInstance) HostID() string {
+	return ""
+}
+
 func (a *alibabaInstance) Addresses() []string {
 	var primaryIPAddresses []string
 	for _, networkInterface := range a.instance.NetworkInterfaces.NetworkInterface {

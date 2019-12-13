@@ -96,6 +96,10 @@ func (vm *azureVM) ID() string {
 	return *vm.vm.ID
 }
 
+func (vm *azureVM) HostID() string {
+	return ""
+}
+
 func (vm *azureVM) Name() string {
 	return *vm.vm.Name
 }
