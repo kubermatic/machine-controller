@@ -745,7 +745,9 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 
 	var modifiers []func(*corev1.Node)
     nodeLables := machine.Spec.Labels
-    nodeLables["host-id"] = providerInstance.HostID()
+    if hostId := providerInstance.HostID(); hostId != "" {
+    	nodeLables["metakube.de/host-id"] = providerInstance.HostID()
+	}
 	for k, v := range nodeLables {
 		if _, exists := node.Labels[k]; !exists {
 			f := func(k, v string) func(*corev1.Node) {
