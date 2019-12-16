@@ -33,7 +33,7 @@ spec:
             instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
-            ebsVolumeEncrypted: false
+            ebsVolumeEncrypted: true
             securityGroupIDs:
             - "sg-a2c195ca"
             tags:

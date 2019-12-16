@@ -1,0 +1,26 @@
+presubmits:
+  #########################################################
+  # unit tests
+  #########################################################
+
+  - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-aws: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+        # Uses go1.11.1
+        - image: quay.io/kubermatic/dep:0.5.4-2
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAWSProvisioningE2EWithEbsEncryptionEnabled"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
