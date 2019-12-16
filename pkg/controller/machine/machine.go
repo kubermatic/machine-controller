@@ -742,11 +742,13 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 		return fmt.Errorf("failed to get cloud provider instance %q: %v", providerConfig.CloudProvider, err)
 	}
 
-
 	var modifiers []func(*corev1.Node)
-    nodeLables := machine.Spec.Labels
-    if hostId := providerInstance.HostID(); hostId != "" {
-    	nodeLables["metakube.de/host-id"] = providerInstance.HostID()
+	nodeLables := machine.Spec.Labels
+	if providerInstance.HostID() != "" {
+		if nodeLables == nil {
+			nodeLables = map[string]string{}
+		}
+		nodeLables["metakube.de/host-id"] = providerInstance.HostID()
 	}
 	for k, v := range nodeLables {
 		if _, exists := node.Labels[k]; !exists {
