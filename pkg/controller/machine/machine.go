@@ -81,6 +81,7 @@ const (
 
 	controllerNameLabelKey = "machine.k8s.io/controller"
 	NodeOwnerLabelName     = "machine-controller/owned-by"
+	HostIdLabelName        = "machine-controller/host-id"
 
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
 	// cluster-api provider to match Nodes to Machines
@@ -743,14 +744,14 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 	}
 
 	var modifiers []func(*corev1.Node)
-	nodeLables := machine.Spec.Labels
-	if providerInstance.HostID() != "" {
-		if nodeLables == nil {
-			nodeLables = map[string]string{}
-		}
-		nodeLables["metakube.de/host-id"] = providerInstance.HostID()
+	nodeLabels := machine.Spec.Labels
+	if nodeLabels == nil {
+		nodeLabels = map[string]string{}
 	}
-	for k, v := range nodeLables {
+	if providerInstance.HostID() != "" {
+		nodeLabels[HostIdLabelName] = providerInstance.HostID()
+	}
+	for k, v := range nodeLabels {
 		if _, exists := node.Labels[k]; !exists {
 			f := func(k, v string) func(*corev1.Node) {
 				return func(n *corev1.Node) {
