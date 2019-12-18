@@ -37,14 +37,15 @@ func init() {
 }
 
 const (
-	DOManifest      = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest     = "./testdata/machinedeployment-aws.yaml"
-	AzureManifest   = "./testdata/machinedeployment-azure.yaml"
-	GCEManifest     = "./testdata/machinedeployment-gce.yaml"
-	HZManifest      = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest  = "./testdata/machinedeployment-packet.yaml"
-	LinodeManifest  = "./testdata/machinedeployment-linode.yaml"
-	VSPhereManifest = "./testdata/machinedeployment-vsphere.yaml"
+	DOManifest              = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest             = "./testdata/machinedeployment-aws.yaml"
+	AWSEBSEncryptedManifest = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
+	AzureManifest           = "./testdata/machinedeployment-azure.yaml"
+	GCEManifest             = "./testdata/machinedeployment-gce.yaml"
+	HZManifest              = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest          = "./testdata/machinedeployment-packet.yaml"
+	LinodeManifest          = "./testdata/machinedeployment-linode.yaml"
+	VSPhereManifest         = "./testdata/machinedeployment-vsphere.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
 	OSManifest             = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
@@ -148,6 +149,33 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
 	}
 	runScenarios(t, nil, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+}
+
+// TestAWSProvisioningE2EWithEbsEncryptionEnabled - a test suite that exercises AWS provider with ebs encryption enabled
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestAWSProvisioningE2EWithEbsEncryptionEnabled(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
+		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+	}
+
+	// act
+	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+	}
+
+	scenario := scenario{
+		name:              "Ubuntu",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "v1.15.6",
+		executor:          verifyCreateAndDelete,
+	}
+	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
 }
 
 // TestAzureProvisioningE2E - a test suite that exercises Azure provider

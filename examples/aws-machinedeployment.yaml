@@ -58,6 +58,7 @@ spec:
             instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
+            ebsVolumeEncrypted: false
             ## Only application if diskType = io1
             diskIops: 500
             # Assign a public IP to this instance. Default: true

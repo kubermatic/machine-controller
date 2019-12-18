@@ -47,6 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 var (
@@ -117,20 +118,21 @@ type Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
 
-	Region           string
-	AvailabilityZone string
-	VpcID            string
-	SubnetID         string
-	SecurityGroupIDs []string
-	InstanceProfile  string
-	IsSpotInstance   *bool
-	InstanceType     string
-	AMI              string
-	DiskSize         int64
-	DiskType         string
-	DiskIops         *int64
-	Tags             map[string]string
-	AssignPublicIP   *bool
+	Region             string
+	AvailabilityZone   string
+	VpcID              string
+	SubnetID           string
+	SecurityGroupIDs   []string
+	InstanceProfile    string
+	IsSpotInstance     *bool
+	InstanceType       string
+	AMI                string
+	DiskSize           int64
+	DiskType           string
+	DiskIops           *int64
+	EBSVolumeEncrypted bool
+	Tags               map[string]string
+	AssignPublicIP     *bool
 }
 
 type amiFilter struct {
@@ -293,7 +295,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 
 		c.DiskIops = rawConfig.DiskIops
 	}
-
+	c.EBSVolumeEncrypted, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.EBSVolumeEncrypted)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %v", err)
+	}
 	c.Tags = rawConfig.Tags
 	c.IsSpotInstance = rawConfig.IsSpotInstance
 	c.AssignPublicIP = rawConfig.AssignPublicIP
@@ -509,6 +514,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 					DeleteOnTermination: aws.Bool(true),
 					VolumeType:          aws.String(config.DiskType),
 					Iops:                config.DiskIops,
+					Encrypted:           pointer.BoolPtr(config.EBSVolumeEncrypted),
 				},
 			},
 		},
