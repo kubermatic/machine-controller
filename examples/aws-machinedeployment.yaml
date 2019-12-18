@@ -65,7 +65,7 @@ spec:
             assignPublicIP: false
             tags:
               "KubernetesCluster": "6qsm86c2d"
-          # Can be 'ubuntu', 'coreos' or 'centos'
+          # Can be 'ubuntu', 'coreos' ,'centos' or 'sles'
           operatingSystem: "coreos"
           operatingSystemSpec:
             disableAutoUpdate: true
