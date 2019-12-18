@@ -1,7 +1,4 @@
 presubmits:
-  #########################################################
-  # unit tests
-  #########################################################
 
   - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
     always_run: true
