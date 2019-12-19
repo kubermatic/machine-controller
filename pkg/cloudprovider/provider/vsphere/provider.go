@@ -174,7 +174,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, _, _, err := p.getConfig(spec.ProviderSpec)
+	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %v", err)
 	}
@@ -219,7 +219,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 			return err
 		}
 	}
-
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
+		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
+	}
 	return nil
 }
 
