@@ -53,6 +53,12 @@ func init() {
 	metav1.AddToGroupVersion(scheme.Scheme, kubevirtv1.GroupVersion)
 }
 
+var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
+	providerconfigtypes.OperatingSystemCentOS: nil,
+	providerconfigtypes.OperatingSystemCoreos: nil,
+	providerconfigtypes.OperatingSystemUbuntu: nil,
+}
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -220,7 +226,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, _, err := p.getConfig(spec.ProviderSpec)
+	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -230,6 +236,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	sigClient, err := client.New(&c.Kubeconfig, client.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %v", err)
+	}
+	if _, ok := supportedOS[pc.OperatingSystem]; !ok {
+		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
 	// Check if we can reach the API of the target cluster
 	vmi := &kubevirtv1.VirtualMachineInstance{}

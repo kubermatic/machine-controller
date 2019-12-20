@@ -42,6 +42,7 @@ var (
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemCoreos,
 		providerconfigtypes.OperatingSystemCentOS,
+		providerconfigtypes.OperatingSystemSLES,
 	}
 
 	openStackImages = map[string]string{

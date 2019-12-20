@@ -82,8 +82,9 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
 	params := []string{fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig)}
-	runScenarios(t, nil, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
+	runScenarios(t, excludeSelector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
 }
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
@@ -111,7 +112,8 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	runScenarios(t, nil, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+	runScenarios(t, excludeSelector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
@@ -127,9 +129,10 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environement varialbe cannot be empty")
 	}
 
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
-	runScenarios(t, nil, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
+	runScenarios(t, excludeSelector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
 }
 
 // TestAWSProvisioning - a test suite that exercises AWS provider
@@ -143,12 +146,34 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+	// act
+	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+	}
+	runScenarios(t, excludeSelector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+}
+
+// TestAWSSLESProvisioningE2E - a test suite that exercises AWS provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestAWSSLESProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
+		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+	}
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
 	}
-	runScenarios(t, nil, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+
+	// We would like to test SLES image only in this test as the other images are tested in TestAWSProvisioningE2E
+	excludeSelector := &scenarioSelector{osName: []string{"coreos", "ubuntu", "centos"}}
+	runScenarios(t, excludeSelector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestAWSProvisioningE2EWithEbsEncryptionEnabled - a test suite that exercises AWS provider with ebs encryption enabled
@@ -192,7 +217,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	excludeSelector := &scenarioSelector{}
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -216,7 +241,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	}
 
 	// Act. GCE does not support CentOS.
-	excludeSelector := &scenarioSelector{osName: []string{"centos"}}
+	excludeSelector := &scenarioSelector{osName: []string{"centos", "sles"}}
 	params := []string{
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 	}
@@ -235,7 +260,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	}
 
 	// Hetzner does not support coreos
-	excludeSelector := &scenarioSelector{osName: []string{"coreos"}}
+	excludeSelector := &scenarioSelector{osName: []string{"coreos", "sles"}}
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
@@ -258,8 +283,7 @@ func TestPacketProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
 	}
 
-	// Packet supports all
-	excludeSelector := &scenarioSelector{}
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
 
 	// act
 	params := []string{
@@ -308,7 +332,7 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 
 	// we're shimming userdata through Linode stackscripts, and Linode's coreos does not support stackscripts
 	// and the stackscript hasn't been verified for use with centos
-	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos"}}
+	excludeSelector := &scenarioSelector{osName: []string{"coreos", "centos", "sles"}}
 
 	// act
 	params := []string{fmt.Sprintf("<< LINODE_TOKEN >>=%s", linodeToken)}
@@ -329,7 +353,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
-	excludeSelector := &scenarioSelector{}
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
 
 	// act
 	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
