@@ -19,9 +19,11 @@ package helper
 import (
 	"bytes"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"net"
+	"strings"
 	"text/template"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -59,7 +61,7 @@ const (
 --pod-infra-container-image={{ .PauseImage }} \
 {{- end }}
 {{- if .InitialTaints }}
---register-with-taints={{- range $i, $t := .InitialTaints }}{{ $t.Key }}={{ $t.Value }}:{{ $t.Effect }}{{ if (lt $i (sub (len $.InitialTaints) 1)) }},{{ end }}{{ end }} \
+--register-with-taints={{- .InitialTaints }} \
 {{- end }}
 --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
 --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
@@ -106,7 +108,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet
-func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []v1.Taint) (string, error) {
+func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %v", err)
@@ -119,7 +121,7 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 		ClusterDNSIPs  []net.IP
 		IsExternal     bool
 		PauseImage     string
-		InitialTaints  []v1.Taint
+		InitialTaints  []corev1.Taint
 	}{
 		KubeletVersion: kubeletVersion,
 		CloudProvider:  cloudProvider,
@@ -139,10 +141,15 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 }
 
 // KubeletFlags returns the kubelet flags
-func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []v1.Taint) (string, error) {
+func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint) (string, error) {
 	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %v", err)
+	}
+
+	initialTaintsArgs := []string{}
+	for _, taint := range initialTaints {
+		initialTaintsArgs = append(initialTaintsArgs, fmt.Sprintf("%s=%s:%s", taint.Key, taint.Value, taint.Effect))
 	}
 
 	data := struct {
@@ -152,7 +159,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		KubeletVersion string
 		IsExternal     bool
 		PauseImage     string
-		InitialTaints  []v1.Taint
+		InitialTaints  string
 	}{
 		CloudProvider:  cloudProvider,
 		Hostname:       hostname,
@@ -160,7 +167,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		KubeletVersion: version,
 		IsExternal:     external,
 		PauseImage:     pauseImage,
-		InitialTaints:  initialTaints,
+		InitialTaints:  strings.Join(initialTaintsArgs, ","),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)

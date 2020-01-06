@@ -18,9 +18,10 @@ package helper
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"net"
 	"testing"
+
+	corev1 "k8s.io/api/core/v1"
 
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
@@ -35,7 +36,7 @@ type kubeletFlagTestCase struct {
 	cloudProvider string
 	external      bool
 	pauseImage    string
-	initialTaints []v1.Taint
+	initialTaints []corev1.Taint
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -89,16 +90,16 @@ func TestKubeletSystemdUnit(t *testing.T) {
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
-			initialTaints: []v1.Taint{
+			initialTaints: []corev1.Taint{
 				{
 					Key:    "key1",
 					Value:  "value1",
-					Effect: v1.TaintEffectNoSchedule,
+					Effect: corev1.TaintEffectNoSchedule,
 				},
 				{
 					Key:    "key2",
 					Value:  "value2",
-					Effect: v1.TaintEffectNoExecute,
+					Effect: corev1.TaintEffectNoExecute,
 				},
 			},
 		},
