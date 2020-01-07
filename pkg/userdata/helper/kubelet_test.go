@@ -21,6 +21,8 @@ import (
 	"net"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
 	"github.com/Masterminds/semver"
@@ -34,6 +36,7 @@ type kubeletFlagTestCase struct {
 	cloudProvider string
 	external      bool
 	pauseImage    string
+	initialTaints []corev1.Taint
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -81,6 +84,25 @@ func TestKubeletSystemdUnit(t *testing.T) {
 			cloudProvider: "aws",
 			pauseImage:    "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
+		{
+			name:          "taints-set",
+			version:       semver.MustParse("v1.13.5"),
+			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
+			hostname:      "some-test-node",
+			cloudProvider: "aws",
+			initialTaints: []corev1.Taint{
+				{
+					Key:    "key1",
+					Value:  "value1",
+					Effect: corev1.TaintEffectNoSchedule,
+				},
+				{
+					Key:    "key2",
+					Value:  "value2",
+					Effect: corev1.TaintEffectNoExecute,
+				},
+			},
+		},
 	}...)
 
 	for _, test := range tests {
@@ -93,6 +115,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 				test.dnsIPs,
 				test.external,
 				test.pauseImage,
+				test.initialTaints,
 			)
 			if err != nil {
 				t.Error(err)
