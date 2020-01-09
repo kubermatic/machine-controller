@@ -144,6 +144,12 @@ write_files:
   content: |
 {{ kernelSettings | indent 4 }}
 
+- path: "/etc/default/grub.d/60-swap-accounting.cfg"
+  content: |
+    # Added by kubermatic machine-controller
+    # Enable cgroups memory and swap accounting
+    GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
+
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
   content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
@@ -225,6 +231,8 @@ write_files:
 {{- /* As we added some modules and don't want to reboot, restart the service */}}
     systemctl restart systemd-modules-load.service
     sysctl --system
+    # Update grub to include kernel command options to enable swap accounting. A reboot is still required to enable it.
+    update-grub
 
     apt-key add /opt/docker.asc
     apt-get update
