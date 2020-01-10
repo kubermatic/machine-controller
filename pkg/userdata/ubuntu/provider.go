@@ -231,8 +231,6 @@ write_files:
 {{- /* As we added some modules and don't want to reboot, restart the service */}}
     systemctl restart systemd-modules-load.service
     sysctl --system
-    # Update grub to include kernel command options to enable swap accounting. A reboot is still required to enable it.
-    update-grub
 
     apt-key add /opt/docker.asc
     apt-get update
@@ -273,8 +271,12 @@ write_files:
     {{- if .OSConfig.DistUpgradeOnBoot }}
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
     {{- end }}
-    if [[ -e /var/run/reboot-required ]]; then
-      reboot
+
+    # Update grub to include kernel command options to enable swap accounting.
+    if grep -v -q swapaccount=1 /proc/cmdline
+    then
+      update-grub
+      touch /var/run/reboot-required
     fi
 
 {{ downloadBinariesScript .KubeletVersion true | indent 4 }}
@@ -360,4 +362,8 @@ write_files:
 
 runcmd:
 - systemctl enable --now setup.service
+
+power_state:
+    mode: reboot
+    condition: test -f /var/run/reboot-required
 `
