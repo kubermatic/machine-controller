@@ -278,6 +278,9 @@ write_files:
       update-grub
       touch /var/run/reboot-required
     fi
+    if [[ -e /var/run/reboot-required ]]; then
+      reboot
+    fi
 
 {{ downloadBinariesScript .KubeletVersion true | indent 4 }}
 
@@ -362,8 +365,4 @@ write_files:
 
 runcmd:
 - systemctl enable --now setup.service
-
-power_state:
-    mode: reboot
-    condition: test -f /var/run/reboot-required
 `
