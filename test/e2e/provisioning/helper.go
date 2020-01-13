@@ -33,16 +33,16 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.12.7"),
-		semver.MustParse("v1.13.5"),
-		semver.MustParse("v1.14.0"),
-		semver.MustParse("v1.15.0"),
+		semver.MustParse("v1.15.6"),
+		semver.MustParse("v1.16.3"),
+		semver.MustParse("v1.17.0"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemCoreos,
 		providerconfigtypes.OperatingSystemCentOS,
+		providerconfigtypes.OperatingSystemSLES,
 	}
 
 	openStackImages = map[string]string{

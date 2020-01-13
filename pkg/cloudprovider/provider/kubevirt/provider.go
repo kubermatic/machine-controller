@@ -53,6 +53,12 @@ func init() {
 	metav1.AddToGroupVersion(scheme.Scheme, kubevirtv1.GroupVersion)
 }
 
+var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
+	providerconfigtypes.OperatingSystemCentOS: nil,
+	providerconfigtypes.OperatingSystemCoreos: nil,
+	providerconfigtypes.OperatingSystemUbuntu: nil,
+}
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
@@ -231,12 +237,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if _, err := parseResources(c.CPUs, c.Memory); err != nil {
 		return err
 	}
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos {
-		return fmt.Errorf("CoreOS is not supported")
-	}
 	sigClient, err := client.New(&c.Kubeconfig, client.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %v", err)
+	}
+	if _, ok := supportedOS[pc.OperatingSystem]; !ok {
+		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
 	// Check if we can reach the API of the target cluster
 	vmi := &kubevirtv1.VirtualMachineInstance{}
@@ -269,7 +275,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -290,7 +296,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	var (
 		pvcRequest     = corev1.ResourceList{corev1.ResourceStorage: c.PVCSize}
 		dataVolumeName = machine.Name
+
+		annotations map[string]string
 	)
+
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos {
+		annotations = map[string]string{
+			"kubevirt.io/ignitiondata": userdata,
+		}
+	}
 
 	// we need this check until this issue is resolved:
 	// https://github.com/kubevirt/containerized-data-importer/issues/895
@@ -310,6 +324,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			Running: utilpointer.BoolPtr(true),
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
+					Annotations: annotations,
 					Labels: map[string]string{
 						"kubevirt.io/vm": machine.Name,
 					},

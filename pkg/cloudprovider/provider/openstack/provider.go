@@ -309,7 +309,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	c, _, _, err := p.getConfig(spec.ProviderSpec)
+	c, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -380,7 +380,9 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if _, err := getAvailabilityZone(client, c.Region, c.AvailabilityZone); err != nil {
 		return fmt.Errorf("failed to get availability zone %q: %v", c.AvailabilityZone, err)
 	}
-
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
+		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
+	}
 	// Optional fields
 	if len(c.SecurityGroups) != 0 {
 		for _, s := range c.SecurityGroups {

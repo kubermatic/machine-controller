@@ -47,6 +47,7 @@ var (
 		providerconfigtypes.OperatingSystemCentOS,
 		providerconfigtypes.OperatingSystemCoreos,
 		providerconfigtypes.OperatingSystemUbuntu,
+		providerconfigtypes.OperatingSystemSLES,
 	}
 )
 

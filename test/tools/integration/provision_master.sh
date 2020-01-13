@@ -31,7 +31,7 @@ done
 
 if [[ "${1:-deploy_machine_controller}"  != "do-not-deploy-machine-controller" ]]; then
 rsync -avR  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ../../.././{Makefile,examples/machine-controller.yaml,machine-controller,machine-controller-userdata-centos,machine-controller-userdata-coreos,machine-controller-userdata-ubuntu,Dockerfile,webhook} \
+    ../../.././{Makefile,examples/machine-controller.yaml,machine-controller,machine-controller-userdata-*,Dockerfile,webhook} \
     root@$ADDR:/root/
 fi
 
@@ -64,22 +64,16 @@ if ! which kubelet; then
   deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
   apt-get update
-  apt-get install -y kubelet=1.14.0-00 kubeadm=1.14.0-00 kubectl=1.14.0-00
-  kubeadm init --kubernetes-version=v1.14.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
-  sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-scheduler.yaml
-  sed -i 's/\(.*leader-elect=true\)/\1\n    - --feature-gates=ScheduleDaemonSetPods=false/g' /etc/kubernetes/manifests/kube-controller-manager.yaml
+  apt-get install -y kubelet=1.17.0-00 kubeadm=1.17.0-00 kubectl=1.17.0-00
+  kubeadm init --kubernetes-version=v1.17.0 --apiserver-advertise-address=$ADDR --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
 fi
 if ! ls \$HOME/.kube/config; then
   mkdir -p \$HOME/.kube
   cp -i /etc/kubernetes/admin.conf \$HOME/.kube/config
   kubectl taint nodes --all node-role.kubernetes.io/master-
-  kubectl get configmap -n kube-system kubelet-config-1.12 -o yaml \
-   |sed '/creationTimestamp/d;/resourceVersion/d;/selfLink/d;/uid/d;s/kubelet-config-1.12/kubelet-config-1.11/g' \
-   |kubectl apply -f -
 fi
 if ! ls kube-flannel.yml; then
-  # Open upstream PR for the fix that is needed for kube 1.12: https://github.com/coreos/flannel/pull/1045
-  curl -LO https://raw.githubusercontent.com/alvaroaleman/flannel/kube-1.12-support/Documentation/kube-flannel.yml
+  curl -LO https://raw.githubusercontent.com/coreos/flannel/960b3243b9a7faccdfe7b3c09097105e68030ea7/Documentation/kube-flannel.yml
   kubectl apply -f kube-flannel.yml
 fi
 

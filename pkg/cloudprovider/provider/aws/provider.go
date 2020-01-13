@@ -47,6 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 var (
@@ -105,6 +106,12 @@ var (
 			// The AWS marketplace ID from Canonical
 			owner: "099720109477",
 		},
+		providerconfigtypes.OperatingSystemSLES: {
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+			// The AWS marketplace ID from Canonical
+			owner: "013907871322",
+		},
 	}
 
 	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
@@ -117,20 +124,21 @@ type Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
 
-	Region           string
-	AvailabilityZone string
-	VpcID            string
-	SubnetID         string
-	SecurityGroupIDs []string
-	InstanceProfile  string
-	IsSpotInstance   *bool
-	InstanceType     string
-	AMI              string
-	DiskSize         int64
-	DiskType         string
-	DiskIops         *int64
-	Tags             map[string]string
-	AssignPublicIP   *bool
+	Region             string
+	AvailabilityZone   string
+	VpcID              string
+	SubnetID           string
+	SecurityGroupIDs   []string
+	InstanceProfile    string
+	IsSpotInstance     *bool
+	InstanceType       string
+	AMI                string
+	DiskSize           int64
+	DiskType           string
+	DiskIops           *int64
+	EBSVolumeEncrypted bool
+	Tags               map[string]string
+	AssignPublicIP     *bool
 }
 
 type amiFilter struct {
@@ -214,6 +222,8 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 		return "/dev/sda1", nil
 	case providerconfigtypes.OperatingSystemCoreos:
 		return "/dev/xvda", nil
+	case providerconfigtypes.OperatingSystemSLES:
+		return "/dev/xvda", nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
@@ -293,7 +303,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 
 		c.DiskIops = rawConfig.DiskIops
 	}
-
+	c.EBSVolumeEncrypted, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.EBSVolumeEncrypted)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %v", err)
+	}
 	c.Tags = rawConfig.Tags
 	c.IsSpotInstance = rawConfig.IsSpotInstance
 	c.AssignPublicIP = rawConfig.AssignPublicIP
@@ -509,6 +522,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 					DeleteOnTermination: aws.Bool(true),
 					VolumeType:          aws.String(config.DiskType),
 					Iops:                config.DiskIops,
+					Encrypted:           pointer.BoolPtr(config.EBSVolumeEncrypted),
 				},
 			},
 		},
