@@ -49,27 +49,33 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-// New returns a VSphere provider
+// New returns a VSphere provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
+// Config contains vSphere provider configuration.
 type Config struct {
-	TemplateVMName string
-	VMNetName      string
-	Username       string
-	Password       string
-	VSphereURL     string
-	Datacenter     string
-	Cluster        string
-	Folder         string
-	Datastore      string
-	AllowInsecure  bool
-	CPUs           int32
-	MemoryMB       int64
-	DiskSizeGB     *int64
+	TemplateVMName   string
+	VMNetName        string
+	Username         string
+	Password         string
+	VSphereURL       string
+	Datacenter       string
+	Cluster          string
+	Folder           string
+	Datastore        string
+	DatastoreCluster string
+	AllowInsecure    bool
+	CPUs             int32
+	MemoryMB         int64
+	DiskSizeGB       *int64
 }
 
+// Ensures that Server implements Instance interface.
+var _ instance.Instance = &Server{}
+
+// Server holds vSphere server information.
 type Server struct {
 	name      string
 	id        string
@@ -92,6 +98,9 @@ func (vsphereServer Server) Addresses() []string {
 func (vsphereServer Server) Status() instance.Status {
 	return vsphereServer.status
 }
+
+// Ensures that provider implements Provider interface.
+var _ cloudprovidertypes.Provider = &provider{}
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
@@ -159,6 +168,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
+	c.DatastoreCluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DatastoreCluster)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.AllowInsecure, "VSPHERE_ALLOW_INSECURE")
 	if err != nil {
 		return nil, nil, nil, err
@@ -185,8 +199,17 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 	defer session.Logout()
 
-	if _, err := session.Finder.Datastore(ctx, config.Datastore); err != nil {
-		return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
+	// If the datastore cluster is present it takes precedence over datastore.
+	if config.DatastoreCluster != "" && config.Datastore == "" {
+		if _, err := session.Finder.DatastoreCluster(ctx, config.DatastoreCluster); err != nil {
+			return fmt.Errorf("failed to get datastore cluster %s: %v", config.DatastoreCluster, err)
+		}
+	} else if config.Datastore != "" {
+		if _, err := session.Finder.Datastore(ctx, config.Datastore); err != nil {
+			return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
+		}
+	} else {
+		return fmt.Errorf("one between datastore and datastore cluster %s: %v", config.Datastore, err)
 	}
 
 	if _, err := session.Finder.ClusterComputeResource(ctx, config.Cluster); err != nil {
@@ -263,7 +286,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 		containerLinuxUserdata = userdata
 	}
 
-	virtualMachine, err := createClonedVM(ctx,
+	virtualMachine, datastore, err := createClonedVM(ctx,
 		machine.Spec.Name,
 		config,
 		session,
@@ -286,7 +309,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 			}
 		}()
 
-		if err := uploadAndAttachISO(ctx, session, virtualMachine, localUserdataIsoFilePath, config.Datastore); err != nil {
+		if err := uploadAndAttachISO(ctx, session, virtualMachine, datastore, localUserdataIsoFilePath); err != nil {
 			// Destroy VM to avoid a leftover.
 			destroyTask, vmErr := virtualMachine.Destroy(ctx)
 			if vmErr != nil {

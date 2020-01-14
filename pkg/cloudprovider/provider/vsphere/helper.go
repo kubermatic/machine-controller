@@ -42,10 +42,10 @@ const (
 	local-hostname: {{ .Hostname }}`
 )
 
-func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, containerLinuxUserdata string) (*object.VirtualMachine, error) {
+func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, containerLinuxUserdata string) (*object.VirtualMachine, *object.Datastore, error) {
 	tpl, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get template vm: %v", err)
+		return nil, nil, fmt.Errorf("failed to get template vm: %v", err)
 	}
 
 	// Find the target folder, if its included in the provider config.
@@ -58,20 +58,15 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		// The target folder must already exist.
 		targetVMFolder, err = session.Finder.Folder(ctx, config.Folder)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get target folder: %v", err)
+			return nil, nil, fmt.Errorf("failed to get target folder: %v", err)
 		}
 	} else {
 		// Do not query datacenter folders unless required
 		datacenterFolders, err := session.Datacenter.Folders(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get datacenter folders: %v", err)
+			return nil, nil, fmt.Errorf("failed to get datacenter folders: %v", err)
 		}
 		targetVMFolder = datacenterFolders.VmFolder
-	}
-
-	datastore, err := session.Finder.Datastore(ctx, config.Datastore)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get datastore: %v", err)
 	}
 
 	// Create a cloned VM from the template VM's snapshot.
@@ -79,16 +74,21 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	// It's nicer to tell which specific action failed due to lacking permissions.
 	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to clone template vm: %v", err)
+		return nil, nil, fmt.Errorf("failed to clone template vm: %v", err)
 	}
 
 	if err := clonedVMTask.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("error when waiting for result of clone task: %v", err)
+		return nil, nil, fmt.Errorf("error when waiting for result of clone task: %v", err)
 	}
 
 	virtualMachine, err := session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
+		return nil, nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
+	}
+
+	datastore, err := resolveDatastoreRef(ctx, config, session, virtualMachine, targetVMFolder)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to resolve datastore: %v", err)
 	}
 
 	relocateSpec := types.VirtualMachineRelocateSpec{
@@ -99,20 +99,20 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	}
 	relocateTask, err := virtualMachine.Relocate(ctx, relocateSpec, types.VirtualMachineMovePriorityDefaultPriority)
 	if err != nil {
-		return nil, fmt.Errorf("failed to relocate: %v", err)
+		return nil, nil, fmt.Errorf("failed to relocate: %v", err)
 	}
 	if err := relocateTask.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("failed waiting for relocation to finish: %v", err)
+		return nil, nil, fmt.Errorf("failed waiting for relocation to finish: %v", err)
 	}
 
 	virtualMachine, err = session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get virtual machine object after relocating: %v", err)
+		return nil, nil, fmt.Errorf("failed to get virtual machine object after relocating: %v", err)
 	}
 
 	vmDevices, err := virtualMachine.Device(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list devices of template VM: %v", err)
+		return nil, nil, fmt.Errorf("failed to list devices of template VM: %v", err)
 	}
 
 	var vAppAconfig *types.VmConfigSpec
@@ -124,12 +124,12 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		// which we'll extract from that template.
 		var mvm mo.VirtualMachine
 		if err := virtualMachine.Properties(ctx, virtualMachine.Reference(), []string{"config", "config.vAppConfig", "config.vAppConfig.property"}, &mvm); err != nil {
-			return nil, fmt.Errorf("failed to extract vapp properties for coreos: %v", err)
+			return nil, nil, fmt.Errorf("failed to extract vapp properties for coreos: %v", err)
 		}
 
 		var propertySpecs []types.VAppPropertySpec
 		if mvm.Config.VAppConfig.GetVmConfigInfo() == nil {
-			return nil, fmt.Errorf("no vm config found in template '%s'. Make sure you import the correct OVA with the appropriate coreos settings", config.TemplateVMName)
+			return nil, nil, fmt.Errorf("no vm config found in template '%s'. Make sure you import the correct OVA with the appropriate coreos settings", config.TemplateVMName)
 		}
 
 		for _, item := range mvm.Config.VAppConfig.GetVmConfigInfo().Property {
@@ -168,12 +168,12 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	if config.DiskSizeGB != nil {
 		disks, err := getDisksFromVM(ctx, virtualMachine)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get disks from VM: %v", err)
+			return nil, nil, fmt.Errorf("failed to get disks from VM: %v", err)
 		}
 		// If this is wrong, the resulting error is `Invalid operation for device '0`
 		// so verify again this is legit
 		if err := validateDiskResizing(disks, *config.DiskSizeGB); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		klog.V(4).Infof("Increasing disk size to %d GB", *config.DiskSizeGB)
@@ -186,7 +186,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	if config.VMNetName != "" {
 		networkSpecs, err := GetNetworkSpecs(ctx, session, vmDevices, config.VMNetName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get network specifications: %v", err)
+			return nil, nil, fmt.Errorf("failed to get network specifications: %v", err)
 		}
 		deviceSpecs = append(deviceSpecs, networkSpecs...)
 	}
@@ -202,27 +202,75 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	}
 	reconfigureTask, err := virtualMachine.Reconfigure(ctx, vmConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to reconfigure the VM: %v", err)
+		return nil, nil, fmt.Errorf("failed to reconfigure the VM: %v", err)
 	}
 	if err := reconfigureTask.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("error when waiting for result of the reconfigure task: %v", err)
+		return nil, nil, fmt.Errorf("error when waiting for result of the reconfigure task: %v", err)
 	}
 
 	// Ubuntu wont boot with attached floppy device, because it tries to write to it
 	// which fails, because the floppy device does not contain a floppy disk
 	// Upstream issue: https://bugs.launchpad.net/cloud-images/+bug/1573095
 	if err := removeFloppyDevice(ctx, virtualMachine); err != nil {
-		return nil, fmt.Errorf("failed to remove floppy device: %v", err)
+		return nil, nil, fmt.Errorf("failed to remove floppy device: %v", err)
 	}
 
-	return virtualMachine, nil
+	return virtualMachine, datastore, nil
 }
 
-func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, localIsoFilePath, datastoreName string) error {
-	datastore, err := session.Finder.Datastore(ctx, datastoreName)
-	if err != nil {
-		return fmt.Errorf("failed to get datastore: %v", err)
+func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, vm *object.VirtualMachine, folder *object.Folder) (*object.Datastore, error) {
+	// Based on https://github.com/vmware/govmomi/blob/v0.22.1/govc/vm/clone.go#L358
+	if config.DatastoreCluster != "" && config.Datastore == "" {
+		storagePod, err := session.Finder.DatastoreCluster(ctx, config.DatastoreCluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get datastore cluster: %v", err)
+		}
+
+		// Build pod selection spec from config spec
+		podSelectionSpec := types.StorageDrsPodSelectionSpec{
+			StoragePod: types.NewReference(storagePod.Reference()),
+		}
+
+		// Get the virtual machine reference
+		vmref := vm.Reference()
+
+		// Build the placement spec
+		storagePlacementSpec := types.StoragePlacementSpec{
+			Folder:           types.NewReference(folder.Reference()),
+			Vm:               &vmref,
+			PodSelectionSpec: podSelectionSpec,
+			CloneName:        vm.Name(),
+			CloneSpec:        &types.VirtualMachineCloneSpec{},
+			Type:             string(types.StoragePlacementSpecPlacementTypeClone),
+		}
+
+		// Get the storage placement result
+		storageResourceManager := object.NewStorageResourceManager(session.Client.Client)
+		result, err := storageResourceManager.RecommendDatastores(ctx, storagePlacementSpec)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get the recommendations
+		recommendations := result.Recommendations
+		if len(recommendations) == 0 {
+			return nil, fmt.Errorf("no recommendations")
+		}
+
+		// Get the first recommendation
+		return object.NewDatastore(session.Client.Client, recommendations[0].Action[0].(*types.StoragePlacementAction).Destination.Reference()), nil
+	} else if config.DatastoreCluster == "" && config.Datastore != "" {
+		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get datastore cluster: %v", err)
+		}
+		return datastore, nil
+	} else {
+		return nil, fmt.Errorf("Please provide either a datastore or a storagepod")
 	}
+}
+
+func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, datastore *object.Datastore, localIsoFilePath string) error {
 	p := soap.DefaultUpload
 	remoteIsoFilePath := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
 	klog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", datastore, remoteIsoFilePath)

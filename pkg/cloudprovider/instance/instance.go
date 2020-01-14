@@ -18,12 +18,17 @@ package instance
 
 // Instance represents a instance on the cloud provider
 type Instance interface {
+	// Name returns the instance name.
 	Name() string
+	// ID returns the instance identifier.
 	ID() string
+	// Addresses returns a list of addresses associated with the instance.
 	Addresses() []string
+	// Status returns the instance status.
 	Status() Status
 }
 
+// Status represents the instance status.
 type Status string
 
 const (
