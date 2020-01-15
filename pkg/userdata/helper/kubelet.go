@@ -48,13 +48,13 @@ const (
 {{- end }}
 --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
 --exit-on-lock-contention \
---lock-file=/tmp/kubelet.lock \
 {{- if .PauseImage }}
+--pod-infra-container-image={{ .PauseImage }}
 {{- end }}
 {{- if .InitialTaints }}
 --register-with-taints={{- .InitialTaints }} \
 {{- end }}
---pod-infra-container-image={{ .PauseImage }}`
+--lock-file=/tmp/kubelet.lock`
 
 	kubeletSystemdUnitTpl = `[Unit]
 After=docker.service

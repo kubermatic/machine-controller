@@ -145,8 +145,7 @@ write_files:
       --cloud-config=/etc/kubernetes/cloud-config \
       --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
-      --lock-file=/tmp/kubelet.lock \
-      --pod-infra-container-image=
+      --lock-file=/tmp/kubelet.lock
 
     [Install]
     WantedBy=multi-user.target
@@ -181,7 +180,7 @@ write_files:
     apiVersion: kubelet.config.k8s.io/v1beta1
     cgroupDriver: systemd
     clusterDomain: cluster.local
-    clusterDNS:    
+    clusterDNS:
     rotateCertificates: true
     podManifestPath: /etc/kubernetes/manifests
     readOnlyPort: 0
@@ -200,7 +199,7 @@ write_files:
     authentication:
       x509:
         clientCAFile: /etc/kubernetes/pki/ca.crt
-      webhook: 
+      webhook:
         enabled: true
       anonymous:
         enabled: false

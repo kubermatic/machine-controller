@@ -338,7 +338,7 @@ write_files:
     clusterDNS:
     {{- range .DNSIPs }}
       - "{{ . }}"
-    {{- end }}    
+    {{- end }}
     rotateCertificates: true
     podManifestPath: /etc/kubernetes/manifests
     readOnlyPort: 0
@@ -357,7 +357,7 @@ write_files:
     authentication:
       x509:
         clientCAFile: /etc/kubernetes/pki/ca.crt
-      webhook: 
+      webhook:
         enabled: true
       anonymous:
         enabled: false

@@ -112,9 +112,7 @@ systemd:
           --cni-bin-dir=/opt/cni/bin \
           --cadvisor-port=0 \
           --cert-dir=/etc/kubernetes/pki \
-          --cloud-provider=openstack \
-          --cloud-config=/etc/kubernetes/cloud-config \
-          --hostname-override=node1 \
+          --cloud-provider=external \
           --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock
@@ -143,6 +141,41 @@ storage:
           [Journal]
           SystemMaxUse=5G
 
+
+    - path: "/etc/kubernetes/kubelet.conf"
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          kind: KubeletConfiguration
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          cgroupDriver: systemd
+          clusterDomain: cluster.local
+          clusterDNS:
+            - "10.10.10.10"
+          rotateCertificates: true
+          podManifestPath: /etc/kubernetes/manifests
+          readOnlyPort: 0
+          systemReserved:
+            cpu: 500m
+            memory: 500Mi
+          kubeReserved:
+            cpu: 500m
+            memory: 500Mi
+          featureGates:
+            RotateKubeletServerCertificate: true
+          serverTLSBootstrap: true
+          rotateCertificates: true
+          authorization:
+            mode: Webhook
+          authentication:
+            x509:
+              clientCAFile: /etc/kubernetes/pki/ca.crt
+            webhook:
+              enabled: true
+            anonymous:
+              enabled: false
+          protectKernelDefaults: true
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root

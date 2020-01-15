@@ -28,8 +28,7 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --hostname-override=some-test-node \
   --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
   --exit-on-lock-contention \
-  --lock-file=/tmp/kubelet.lock \
-  --pod-infra-container-image=
+  --lock-file=/tmp/kubelet.lock
 
 [Install]
 WantedBy=multi-user.target

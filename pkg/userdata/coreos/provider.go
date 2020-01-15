@@ -274,7 +274,7 @@ storage:
     - path: "/etc/kubernetes/kubelet.conf"
       filesystem: root
       mode: 0644
-      contents: 
+      contents:
         inline: |
           kind: KubeletConfiguration
           apiVersion: kubelet.config.k8s.io/v1beta1
@@ -283,7 +283,7 @@ storage:
           clusterDNS:
           {{- range .DNSIPs }}
             - "{{ . }}"
-          {{- end }}    
+          {{- end }}
           rotateCertificates: true
           podManifestPath: /etc/kubernetes/manifests
           readOnlyPort: 0
@@ -302,7 +302,7 @@ storage:
           authentication:
             x509:
               clientCAFile: /etc/kubernetes/pki/ca.crt
-            webhook: 
+            webhook:
               enabled: true
             anonymous:
               enabled: false
