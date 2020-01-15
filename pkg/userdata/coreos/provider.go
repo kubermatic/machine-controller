@@ -240,6 +240,8 @@ systemd:
 {{ if semverCompare ">=1.17.0" .KubeletVersion }}{{ print "          kubelet \\\n" }}{{ end -}}
 {{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
+        Restart=always
+        RestartSec=10
         [Install]
         WantedBy=multi-user.target
 
