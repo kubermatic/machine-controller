@@ -338,7 +338,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":["https://registry.docker-cn.com"]}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":["https://registry.docker-cn.com"],"log-opts":{"max-size":"500M"}}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

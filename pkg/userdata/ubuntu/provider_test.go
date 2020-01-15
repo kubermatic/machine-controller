@@ -114,6 +114,7 @@ type userDataTestCase struct {
 	noProxy               string
 	insecureRegistries    []string
 	registryMirrors       []string
+	maxLogSize            string
 	pauseImage            string
 }
 
@@ -372,7 +373,8 @@ func TestUserDataGeneration(t *testing.T) {
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
-			name: "vsphere-mirrors",
+			name:       "vsphere-mirrors",
+			maxLogSize: "500M",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
@@ -441,6 +443,7 @@ func TestUserDataGeneration(t *testing.T) {
 				NoProxy:               test.noProxy,
 				InsecureRegistries:    test.insecureRegistries,
 				RegistryMirrors:       test.registryMirrors,
+				MaxLogSize:            test.maxLogSize,
 				PauseImage:            test.pauseImage,
 			}
 			s, err := provider.UserData(req)

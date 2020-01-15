@@ -50,6 +50,7 @@ type UserDataRequest struct {
 	NoProxy               string
 	InsecureRegistries    []string
 	RegistryMirrors       []string
+	MaxLogSize            string
 	PauseImage            string
 	HyperkubeImage        string
 }

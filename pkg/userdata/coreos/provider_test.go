@@ -107,6 +107,7 @@ type userDataTestCase struct {
 	noProxy               string
 	insecureRegistries    []string
 	registryMirrors       []string
+	maxLogSize            string
 	pauseImage            string
 	hyperkubeImage        string
 }
@@ -407,7 +408,8 @@ func TestUserDataGeneration(t *testing.T) {
 			hyperkubeImage:  "192.168.100.100:5000/kubernetes/hyperkube",
 		},
 		{
-			name: "v1.17.0",
+			name:       "v1.17.0",
+			maxLogSize: "500M",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -475,6 +477,7 @@ func TestUserDataGeneration(t *testing.T) {
 				NoProxy:               test.noProxy,
 				InsecureRegistries:    test.insecureRegistries,
 				RegistryMirrors:       test.registryMirrors,
+				MaxLogSize:            test.maxLogSize,
 				PauseImage:            test.pauseImage,
 				HyperkubeImage:        test.hyperkubeImage,
 			}

@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -78,6 +79,7 @@ var (
 	nodeNoProxy            string
 	nodeInsecureRegistries string
 	nodeRegistryMirrors    string
+	nodeMaxLogSize         string
 	nodePauseImage         string
 	nodeHyperkubeImage     string
 )
@@ -159,6 +161,7 @@ func main() {
 	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1", "If set, it configures the 'NO_PROXY' environment variable on the nodes.")
 	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
+	flag.StringVar(&nodeMaxLogSize, "node-max-log-size", "", "Maximum size for docker logfile")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag.")
 
@@ -261,6 +264,11 @@ func main() {
 			runOptions.node.RegistryMirrors = append(runOptions.node.RegistryMirrors, trimmedMirror)
 		}
 	}
+
+	if err := validateSize(nodeMaxLogSize); err != nil {
+		klog.Fatalf("error parsing max-log-size: %s is not a valid size", nodeMaxLogSize)
+	}
+	runOptions.node.MaxLogSize = nodeMaxLogSize
 
 	if bootstrapTokenServiceAccountName != "" {
 		flagParts := strings.Split(bootstrapTokenServiceAccountName, "/")
@@ -516,4 +524,15 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+var sizeRegex = regexp.MustCompile(`^(\d+(\.\d+)*) ?([kKmMgGtTpP])?[iI]?[bB]?$`)
+
+func validateSize(s string) error {
+	matches := sizeRegex.FindStringSubmatch(s)
+	if len(matches) != 4 {
+		return fmt.Errorf("invalid size: '%s'", s)
+	}
+
+	return nil
 }

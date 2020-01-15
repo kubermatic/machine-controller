@@ -358,7 +358,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 10 }}
+{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 10 }}
 
     - path: /opt/bin/download.sh
       filesystem: root

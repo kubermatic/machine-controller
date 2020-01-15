@@ -119,6 +119,8 @@ type NodeSettings struct {
 	InsecureRegistries []string
 	// If set, these mirrors will be take for pulling all required images on the node.
 	RegistryMirrors []string
+	// If set, Docker will be configured to rotate logs at this size.
+	MaxLogSize string
 	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it.
 	PauseImage string
 	// The hyperkube image to use. Currently only Container Linux uses it.
@@ -621,6 +623,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
 				InsecureRegistries:    r.nodeSettings.InsecureRegistries,
 				RegistryMirrors:       r.nodeSettings.RegistryMirrors,
+				MaxLogSize:            r.nodeSettings.MaxLogSize,
 				PauseImage:            r.nodeSettings.PauseImage,
 				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
 				NoProxy:               r.nodeSettings.NoProxy,

@@ -332,7 +332,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
+{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

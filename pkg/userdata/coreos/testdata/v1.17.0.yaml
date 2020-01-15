@@ -316,7 +316,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-          {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
+          {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[],"log-opts":{"max-size":"500M"}}
 
     - path: /opt/bin/download.sh
       filesystem: root
