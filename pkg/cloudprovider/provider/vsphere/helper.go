@@ -262,11 +262,11 @@ func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, 
 	} else if config.DatastoreCluster == "" && config.Datastore != "" {
 		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get datastore cluster: %v", err)
+			return nil, fmt.Errorf("failed to get datastore: %v", err)
 		}
 		return datastore, nil
 	} else {
-		return nil, fmt.Errorf("Please provide either a datastore or a storagepod")
+		return nil, fmt.Errorf("please provide either a datastore or a storagepod")
 	}
 }
 
