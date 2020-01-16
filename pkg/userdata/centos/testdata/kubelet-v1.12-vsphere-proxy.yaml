@@ -161,8 +161,10 @@ write_files:
       --hostname-override=node1 \
       --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
-      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1
-      --lock-file=/tmp/kubelet.lock
+      --lock-file=/tmp/kubelet.lock \
+      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
+      --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 
     [Install]
     WantedBy=multi-user.target
@@ -201,12 +203,6 @@ write_files:
     rotateCertificates: true
     podManifestPath: /etc/kubernetes/manifests
     readOnlyPort: 0
-    systemReserved:
-      cpu: 500m
-      memory: 500Mi
-    kubeReserved:
-      cpu: 500m
-      memory: 500Mi
     featureGates:
       RotateKubeletServerCertificate: true
     serverTLSBootstrap: true

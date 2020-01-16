@@ -132,7 +132,9 @@ systemd:
           --hostname-override=node1 \
           --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
-          --lock-file=/tmp/kubelet.lock
+          --lock-file=/tmp/kubelet.lock \
+          --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10
@@ -173,12 +175,6 @@ storage:
           rotateCertificates: true
           podManifestPath: /etc/kubernetes/manifests
           readOnlyPort: 0
-          systemReserved:
-            cpu: 500m
-            memory: 500Mi
-          kubeReserved:
-            cpu: 500m
-            memory: 500Mi
           featureGates:
             RotateKubeletServerCertificate: true
           serverTLSBootstrap: true
