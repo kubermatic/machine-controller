@@ -244,12 +244,6 @@ write_files:
     rotateCertificates: true
     podManifestPath: /etc/kubernetes/manifests
     readOnlyPort: 0
-    systemReserved:
-      cpu: 500m
-      memory: 500Mi
-    kubeReserved:
-      cpu: 500m
-      memory: 500Mi
     featureGates:
       RotateKubeletServerCertificate: true
     serverTLSBootstrap: true
