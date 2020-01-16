@@ -1562,6 +1562,7 @@
     "github.com/vmware/govmomi/object",
     "github.com/vmware/govmomi/property",
     "github.com/vmware/govmomi/simulator",
+    "github.com/vmware/govmomi/vim25/methods",
     "github.com/vmware/govmomi/vim25/mo",
     "github.com/vmware/govmomi/vim25/soap",
     "github.com/vmware/govmomi/vim25/types",

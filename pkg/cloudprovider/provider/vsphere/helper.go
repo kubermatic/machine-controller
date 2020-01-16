@@ -248,7 +248,7 @@ func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, 
 		storageResourceManager := object.NewStorageResourceManager(session.Client.Client)
 		result, err := storageResourceManager.RecommendDatastores(ctx, storagePlacementSpec)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error occurred while getting storage placement recommendation: %v", err)
 		}
 
 		// Get the recommendations
@@ -266,7 +266,7 @@ func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, 
 		}
 		return datastore, nil
 	} else {
-		return nil, fmt.Errorf("please provide either a datastore or a storagepod")
+		return nil, fmt.Errorf("please provide either a datastore or a datastore cluster")
 	}
 }
 

@@ -45,13 +45,22 @@ import (
 	"k8s.io/klog"
 )
 
+type configGetter func(v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error)
+
+// Ensures that getConfig function is of type configGetter
+var _ configGetter = (&provider{}).getConfig
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
+	// This is to ease unit tests
+	getConfigFunc configGetter
 }
 
 // New returns a VSphere provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	return &provider{configVarResolver: configVarResolver}
+	provider := &provider{configVarResolver: configVarResolver}
+	provider.getConfigFunc = provider.getConfig
+	return provider
 }
 
 // Config contains vSphere provider configuration.
@@ -188,7 +197,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, pc, _, err := p.getConfig(spec.ProviderSpec)
+	config, pc, _, err := p.getConfigFunc(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %v", err)
 	}
@@ -204,12 +213,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		if _, err := session.Finder.DatastoreCluster(ctx, config.DatastoreCluster); err != nil {
 			return fmt.Errorf("failed to get datastore cluster %s: %v", config.DatastoreCluster, err)
 		}
-	} else if config.Datastore != "" {
+	} else if config.Datastore != "" && config.DatastoreCluster == "" {
 		if _, err := session.Finder.Datastore(ctx, config.Datastore); err != nil {
 			return fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
 		}
 	} else {
-		return fmt.Errorf("one between datastore and datastore cluster %s: %v", config.Datastore, err)
+		return fmt.Errorf("one between datastore and datastore cluster should be specified: %v", err)
 	}
 
 	if _, err := session.Finder.ClusterComputeResource(ctx, config.Cluster); err != nil {
