@@ -265,10 +265,12 @@ func main() {
 		}
 	}
 
-	if err := validateSize(nodeMaxLogSize); err != nil {
-		klog.Fatalf("error parsing max-log-size: %s is not a valid size", nodeMaxLogSize)
+	if nodeMaxLogSize != "" {
+		if err := validateSize(nodeMaxLogSize); err != nil {
+			klog.Fatalf("error parsing max-log-size: %s is not a valid size", nodeMaxLogSize)
+		}
+		runOptions.node.MaxLogSize = nodeMaxLogSize
 	}
-	runOptions.node.MaxLogSize = nodeMaxLogSize
 
 	if bootstrapTokenServiceAccountName != "" {
 		flagParts := strings.Split(bootstrapTokenServiceAccountName, "/")
