@@ -295,7 +295,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 		containerLinuxUserdata = userdata
 	}
 
-	virtualMachine, datastore, err := createClonedVM(ctx,
+	virtualMachine, err := createClonedVM(ctx,
 		machine.Spec.Name,
 		config,
 		session,
@@ -318,7 +318,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 			}
 		}()
 
-		if err := uploadAndAttachISO(ctx, session, virtualMachine, datastore, localUserdataIsoFilePath); err != nil {
+		if err := uploadAndAttachISO(ctx, session, virtualMachine, localUserdataIsoFilePath); err != nil {
 			// Destroy VM to avoid a leftover.
 			destroyTask, vmErr := virtualMachine.Destroy(ctx)
 			if vmErr != nil {
@@ -408,7 +408,19 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 			}
 		}
 	}
-
+	var props mo.VirtualMachine
+	// Obtain VM properties
+	if err := virtualMachine.Properties(ctx, virtualMachine.Reference(), nil, &props); err != nil {
+		return false, fmt.Errorf("error getting VM properties: %v", err)
+	}
+	datastorePath, err := getDatastorePathObjFromVMDiskPath(props.Summary.Config.VmPathName)
+	if err != nil {
+		return false, err
+	}
+	datastore, err := session.Finder.Datastore(ctx, datastorePath.Datastore)
+	if err != nil {
+		return false, err
+	}
 	destroyTask, err := virtualMachine.Destroy(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
@@ -418,10 +430,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
-		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
-		if err != nil {
-			return false, fmt.Errorf("failed to get datastore %s: %v", config.Datastore, err)
-		}
 		filemanager := datastore.NewFileManager(session.Datacenter, false)
 
 		if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {

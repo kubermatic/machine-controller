@@ -113,7 +113,7 @@ func Test_resolveDatastoreRef(t *testing.T) {
 			}
 
 			fmt.Printf("%s with %d hosts", session.Client.Client.ServiceContent.About.ApiType, model.Count().Host)
-			got, err := resolveDatastoreRef(ctx, tt.config, session, vms[2], vmFolder)
+			got, err := resolveDatastoreRef(ctx, tt.config, session, vms[2], vmFolder, &types.VirtualMachineCloneSpec{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("resolveDatastoreRef() error = %v, wantErr %v", err, tt.wantErr)
 				return

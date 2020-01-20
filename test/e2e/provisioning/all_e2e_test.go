@@ -37,16 +37,16 @@ func init() {
 }
 
 const (
-	DOManifest              = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest             = "./testdata/machinedeployment-aws.yaml"
-	AWSEBSEncryptedManifest = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
-	AzureManifest           = "./testdata/machinedeployment-azure.yaml"
-	GCEManifest             = "./testdata/machinedeployment-gce.yaml"
-	HZManifest              = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest          = "./testdata/machinedeployment-packet.yaml"
-	LinodeManifest          = "./testdata/machinedeployment-linode.yaml"
-	VSPhereManifest         = "./testdata/machinedeployment-vsphere.yaml"
-	VSPhereDatastoreClusterManifest         = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
+	DOManifest                      = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest                     = "./testdata/machinedeployment-aws.yaml"
+	AWSEBSEncryptedManifest         = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
+	AzureManifest                   = "./testdata/machinedeployment-azure.yaml"
+	GCEManifest                     = "./testdata/machinedeployment-gce.yaml"
+	HZManifest                      = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest                  = "./testdata/machinedeployment-packet.yaml"
+	LinodeManifest                  = "./testdata/machinedeployment-linode.yaml"
+	VSPhereManifest                 = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereDatastoreClusterManifest = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
 	OSManifest             = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
@@ -384,9 +384,8 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 
 // TestVsphereStaticIPProvisioningE2E will try to create a node with a VSphere machine
 // whose IP address is statically assigned.
-func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
+/*func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 	// Comment next line to enable this test.
-	t.Skip("Skipping test")
 	t.Parallel()
 
 	// test data
@@ -421,7 +420,7 @@ func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
 	}
 
 	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest, false)
-}
+}*/
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
 // image and upgrade it prior to joining the cluster
