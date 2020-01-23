@@ -86,6 +86,32 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		coreosConfig.DisableUpdateEngine = true
 	}
 
+	// Use patched kubelet where necessary
+	var kubeletImage string
+	{
+		upstreamImage := "docker://k8s.gcr.io/hyperkube-amd64:v" + kubeletVersion.String()
+		sys11Image := "docker://docker.io/syseleven/hyperkube-amd64:v" + kubeletVersion.String() + "-sys11-2"
+
+		kubeletImage = upstreamImage
+
+		switch kubeletVersion.Minor() {
+		case 15:
+			if kubeletVersion.Patch() < 8 {
+				kubeletImage = sys11Image
+			}
+
+		case 16:
+			if kubeletVersion.Patch() < 5 {
+				kubeletImage = sys11Image
+			}
+
+		case 17:
+			if kubeletVersion.Patch() < 1 {
+				kubeletImage = sys11Image
+			}
+		}
+	}
+
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec           *providerconfigtypes.Config
@@ -93,6 +119,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig             string
 		KubernetesCACert       string
 		KubeletVersion         string
+		KubeletImage           string
 		InsecureHyperkubeImage bool
 	}{
 		UserDataRequest:        req,
@@ -101,6 +128,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig:             kubeconfigString,
 		KubernetesCACert:       kubernetesCACert,
 		KubeletVersion:         kubeletVersion.String(),
+		KubeletImage:           kubeletImage,
 		InsecureHyperkubeImage: insecureHyperkubeImage,
 	}
 	b := &bytes.Buffer{}
@@ -212,7 +240,7 @@ systemd:
 {{- if .HTTPProxy }}
         Environment=KUBELET_IMAGE=docker://{{ .HyperkubeImage }}:v{{ .KubeletVersion }}
 {{- else }}
-        Environment=KUBELET_IMAGE=docker://docker.io/syseleven/hyperkube-amd64:v{{ .KubeletVersion }}-sys11-2
+        Environment=KUBELET_IMAGE={{ .KubeletImage }}
 {{- end }}
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --inherit-env \
