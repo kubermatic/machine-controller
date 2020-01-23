@@ -57,6 +57,7 @@ var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
 	providerconfigtypes.OperatingSystemCentOS: nil,
 	providerconfigtypes.OperatingSystemCoreos: nil,
 	providerconfigtypes.OperatingSystemUbuntu: nil,
+	providerconfigtypes.OperatingSystemRHEL:   nil,
 }
 
 type provider struct {
