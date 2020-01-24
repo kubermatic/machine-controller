@@ -66,5 +66,9 @@ spec:
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false
+            # 'rhelSubscriptionManagerUser' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_USER`
+            rhelSubscriptionManagerUser:
+            # 'rhelSubscriptionManagerPassword' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_PASSWORD`
+            rhelSubscriptionManagerPassword:
       versions:
         kubelet: 1.9.6

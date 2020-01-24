@@ -78,12 +78,21 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG")
-	if kubevirtKubeconfig == "" {
-		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
+	rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
+	rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
+
+	if kubevirtKubeconfig == "" || rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" {
+		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG, RHEL_SUBSCRIPTION_MANAGER_USER, " +
+			"and RHEL_SUBSCRIPTION_MANAGER_PASSWORD must be set")
 	}
 
 	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
-	params := []string{fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig)}
+	params := []string{
+		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
+		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser),
+		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword),
+	}
+
 	runScenarios(t, excludeSelector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
 }
 
@@ -349,8 +358,13 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
 	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
 	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
-	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
-		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+	rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
+	rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
+
+	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 ||
+		rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER " +
+			"RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
 	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
@@ -360,6 +374,8 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
 		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
 		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
+		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser),
+		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword),
 	}
 	runScenarios(t, excludeSelector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }
