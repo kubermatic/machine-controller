@@ -45,7 +45,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
 	if err != nil {
-		return "", fmt.Errorf("invalid kubelet version: '%v'", err)
+		return "", fmt.Errorf("invalid kubelet version: %v", err)
 	}
 
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
@@ -63,7 +63,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	rhelConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse OperatingSystemSpec: '%v'", err)
+		return "", fmt.Errorf("failed to parse OperatingSystemSpec: %v", err)
 	}
 
 	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(req.Kubeconfig)
