@@ -37,16 +37,16 @@ func init() {
 }
 
 const (
-	DOManifest                      = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest                     = "./testdata/machinedeployment-aws.yaml"
-	AWSEBSEncryptedManifest         = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
-	AzureManifest                   = "./testdata/machinedeployment-azure.yaml"
-	GCEManifest                     = "./testdata/machinedeployment-gce.yaml"
-	HZManifest                      = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest                  = "./testdata/machinedeployment-packet.yaml"
-	LinodeManifest                  = "./testdata/machinedeployment-linode.yaml"
-	VSPhereManifest                 = "./testdata/machinedeployment-vsphere.yaml"
-	VSPhereDatastoreClusterManifest = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
+	DOManifest              = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest             = "./testdata/machinedeployment-aws.yaml"
+	AWSEBSEncryptedManifest = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
+	AzureManifest           = "./testdata/machinedeployment-azure.yaml"
+	GCEManifest             = "./testdata/machinedeployment-gce.yaml"
+	HZManifest              = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest          = "./testdata/machinedeployment-packet.yaml"
+	LinodeManifest          = "./testdata/machinedeployment-linode.yaml"
+	VSPhereManifest         = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereDSCManifest      = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
 	OSManifest             = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
@@ -349,11 +349,7 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 	runScenarios(t, excludeSelector, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
 }
 
-// TestVsphereProvisioning - a test suite that exercises vsphere provider
-// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-func TestVsphereProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
+func getVSphereTestParams(t *testing.T) (*scenarioSelector, []string) {
 	// test data
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
@@ -368,7 +364,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 			"RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
-	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+	selector := &scenarioSelector{osName: []string{"sles"}}
 
 	// act
 	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
@@ -378,49 +374,65 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser),
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword),
 	}
+	return selector, params
+}
+
+// TestVsphereProvisioning - a test suite that exercises vsphere provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVsphereProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	excludeSelector, params := getVSphereTestParams(t)
 	runScenarios(t, excludeSelector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
-	runScenarios(t, excludeSelector, params, VSPhereDatastoreClusterManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
+}
+
+// TestVsphereDatastoreClusterProvisioning - is the same as the TestVsphereProvisioning suite but specifies a DatastoreCluster
+// instead of the Datastore in the provider specs.
+func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	excludeSelector, params := getVSphereTestParams(t)
+	runScenarios(t, excludeSelector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
 }
 
 // TestVsphereStaticIPProvisioningE2E will try to create a node with a VSphere machine
 // whose IP address is statically assigned.
-/*func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
-	// Comment next line to enable this test.
-	t.Parallel()
-
-	// test data
-	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
-	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
-	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
-	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
-	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
-		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
-	}
-
-	buildNum, err := strconv.Atoi(os.Getenv("CIRCLE_BUILD_NUM"))
-	if err != nil {
-		t.Fatalf("failed to parse CIRCLE_BUILD_NUM: %s", err)
-	}
-	ipOctet := buildNum % 256
-
-	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
-		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
-		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
-		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
-		fmt.Sprintf("<< IP_OCTET >>=%d", ipOctet),
-	}
-
-	// we only run one scenario, to prevent IP conflicts
-	scenario := scenario{
-		name:              "Coreos Docker Kubernetes v1.11.0",
-		osName:            "coreos",
-		containerRuntime:  "docker",
-		kubernetesVersion: "1.11.0",
-		executor:          verifyCreateAndDelete,
-	}
-
-	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest, false)
-}*/
+//func TestVsphereStaticIPProvisioningE2E(t *testing.T) {
+//	t.Parallel()
+//
+//	// test data
+//	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
+//	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
+//	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
+//	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
+//	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 {
+//		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
+//	}
+//
+//	buildNum, err := strconv.Atoi(os.Getenv("CIRCLE_BUILD_NUM"))
+//	if err != nil {
+//		t.Fatalf("failed to parse CIRCLE_BUILD_NUM: %s", err)
+//	}
+//	ipOctet := buildNum % 256
+//
+//	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
+//		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
+//		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
+//		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
+//		fmt.Sprintf("<< IP_OCTET >>=%d", ipOctet),
+//	}
+//
+//	// we only run one scenario, to prevent IP conflicts
+//	scenario := scenario{
+//		name:              "Coreos Docker Kubernetes v1.11.0",
+//		osName:            "coreos",
+//		containerRuntime:  "docker",
+//		kubernetesVersion: "1.11.0",
+//		executor:          verifyCreateAndDelete,
+//	}
+//
+//	testScenario(t, scenario, fmt.Sprintf("vs-staticip-%s", *testRunIdentifier), params, vssip_manifest, false)
+//}
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
 // image and upgrade it prior to joining the cluster

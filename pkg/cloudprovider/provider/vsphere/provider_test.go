@@ -18,93 +18,125 @@ package vsphere
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 	"testing"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	vspheretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/vmware/govmomi/simulator"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+type machineSpecArgs struct {
+	datastore        *string
+	datastoreCluster *string
+}
+
+func (m machineSpecArgs) generateMachineSpec(user, password, url string) v1alpha1.MachineSpec {
+	dsSpec := ""
+	if m.datastore != nil {
+		dsSpec = fmt.Sprintf(`"datastore": "%s",`, *m.datastore)
+	}
+	if m.datastoreCluster != nil {
+		dsSpec = dsSpec + fmt.Sprintf(`"datastoreCluster": "%s",`, *m.datastoreCluster)
+	}
+	return v1alpha1.MachineSpec{
+		ProviderSpec: v1alpha1.ProviderSpec{
+			Value: &runtime.RawExtension{
+				Raw: []byte(fmt.Sprintf(`{
+					"cloudProvider": "vsphere",
+					"cloudProviderSpec": {
+						"allowInsecure": false,
+						"cluster": "DC0_C0",
+						"cpus": 1,
+						"datacenter": "DC0",
+						%s
+						"folder": "/",
+						"memoryMB": 2000,
+						"password": "%s",
+						"templateVMName": "DC0_H0_VM0",
+						"username": "%s",
+						"vmNetName": "",
+						"vsphereURL": "%s"
+					},
+					"operatingSystem": "coreos",
+					"operatingSystemSpec": {
+						"disableAutoUpdate": false,
+						"disableLocksmithD": true,
+						"disableUpdateEngine": false
+					}
+				}`, dsSpec, password, user, url)),
+			},
+		},
+	}
+}
 func Test_provider_Validate(t *testing.T) {
+	toPointer := func(s string) *string {
+		return &s
+	}
 	tests := []struct {
 		name         string
-		config       *Config
+		args         machineSpecArgs
 		getConfigErr error
 		wantErr      bool
 	}{
 		{
 			name: "Valid Datastore",
-			config: &Config{
-				Datacenter:     "DC0",
-				Cluster:        "DC0_C0",
-				Folder:         "/",
-				Datastore:      "LocalDS_0",
-				TemplateVMName: "DC0_H0_VM0",
+			args: machineSpecArgs{
+				datastore: toPointer("LocalDS_0"),
+			},
+			getConfigErr: nil,
+			wantErr:      false,
+		},
+		{
+			name: "Valid Datastore end empty DatastoreCluster",
+			args: machineSpecArgs{
+				datastore:        toPointer("LocalDS_0"),
+				datastoreCluster: toPointer(""),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
 		},
 		{
 			name: "Valid DatastoreCluster",
-			config: &Config{
-				Datacenter:       "DC0",
-				Cluster:          "DC0_C0",
-				Folder:           "/",
-				DatastoreCluster: "DC0_POD0",
-				TemplateVMName:   "DC0_H0_VM0",
+			args: machineSpecArgs{
+				datastoreCluster: toPointer("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
 		},
 		{
 			name: "Invalid Datastore",
-			config: &Config{
-				Datacenter:     "DC0",
-				Cluster:        "DC0_C0",
-				Folder:         "/",
-				Datastore:      "LocalDS_10",
-				TemplateVMName: "DC0_H0_VM0",
+			args: machineSpecArgs{
+				datastore: toPointer("LocalDS_10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
 		{
 			name: "Invalid DatastoreCluster",
-			config: &Config{
-				Datacenter:       "DC0",
-				Cluster:          "DC0_C0",
-				Folder:           "/",
-				DatastoreCluster: "DC0_POD10",
-				TemplateVMName:   "DC0_H0_VM0",
+			args: machineSpecArgs{
+				datastore: toPointer("DC0_POD10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
 		{
 			name: "Both Datastore and DatastoreCluster specified",
-			config: &Config{
-				Datacenter:       "DC0",
-				Cluster:          "DC0_C0",
-				Folder:           "/",
-				Datastore:        "LocalDS_0",
-				DatastoreCluster: "DC0_POD0",
-				TemplateVMName:   "DC0_H0_VM0",
+			args: machineSpecArgs{
+				datastore:        toPointer("DC0_POD10"),
+				datastoreCluster: toPointer("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
 		{
-			name: "Neither Datastore nor DatastoreCluster specified",
-			config: &Config{
-				Datacenter:     "DC0",
-				Cluster:        "DC0_C0",
-				Folder:         "/",
-				TemplateVMName: "DC0_H0_VM0",
-			},
+			name:         "Neither Datastore nor DatastoreCluster specified",
+			args:         machineSpecArgs{},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
@@ -127,17 +159,14 @@ func Test_provider_Validate(t *testing.T) {
 
 			// Setup config to be able to login to the simulator
 			// Remove trailing `/sdk` as it is appended by the session constructor
-			tt.config.VSphereURL = strings.TrimSuffix(s.URL.String(), "/sdk")
-			tt.config.Username = simulator.DefaultLogin.Username()
-			tt.config.Password, _ = simulator.DefaultLogin.Password()
+			vSphereURL := strings.TrimSuffix(s.URL.String(), "/sdk")
+			username := simulator.DefaultLogin.Username()
+			password, _ := simulator.DefaultLogin.Password()
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), nil),
-				getConfigFunc: func(v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error) {
-					return tt.config, &providerconfigtypes.Config{OperatingSystem: providerconfigtypes.OperatingSystemCoreos}, nil, tt.getConfigErr
-				},
+				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
 			}
-			if err := p.Validate(v1alpha1.MachineSpec{}); (err != nil) != tt.wantErr {
+			if err := p.Validate(tt.args.generateMachineSpec(username, password, vSphereURL)); (err != nil) != tt.wantErr {
 				t.Errorf("provider.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -45,21 +45,13 @@ import (
 	"k8s.io/klog"
 )
 
-type configGetter func(v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error)
-
-// Ensures that getConfig function is of type configGetter
-var _ configGetter = (&provider{}).getConfig
-
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
-	// This is to ease unit tests
-	getConfigFunc configGetter
 }
 
 // New returns a VSphere provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	provider := &provider{configVarResolver: configVarResolver}
-	provider.getConfigFunc = provider.getConfig
 	return provider
 }
 
@@ -197,7 +189,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, pc, _, err := p.getConfigFunc(spec.ProviderSpec)
+	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %v", err)
 	}
@@ -208,7 +200,8 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 	defer session.Logout()
 
-	// If the datastore cluster is present it takes precedence over datastore.
+	// Only and only one between datastore and datastre cluster should be
+	// present, otherwise an error is raised.
 	if config.DatastoreCluster != "" && config.Datastore == "" {
 		if _, err := session.Finder.DatastoreCluster(ctx, config.DatastoreCluster); err != nil {
 			return fmt.Errorf("failed to get datastore cluster %s: %v", config.DatastoreCluster, err)

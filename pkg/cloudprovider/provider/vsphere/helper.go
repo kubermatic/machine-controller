@@ -70,7 +70,6 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	}
 
 	relocateSpec := types.VirtualMachineRelocateSpec{
-		//Datastore:    types.NewReference(datastore.Reference()),
 		DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndConsolidate),
 		Folder:       types.NewReference(targetVMFolder.Reference()),
 		Disk:         []types.VirtualMachineRelocateSpecDiskLocator{},
@@ -279,11 +278,11 @@ func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.Vir
 	}
 	datastorePath, err := getDatastorePathObjFromVMDiskPath(props.Summary.Config.VmPathName)
 	if err != nil {
-		return err
+		return fmt.Errorf("error when trying to locate VM %s datastore path: %v", vmRef.Name(), err)
 	}
 	datastore, err := session.Finder.Datastore(ctx, datastorePath.Datastore)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting datastore: %v", err)
 	}
 	klog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", datastore, remoteIsoFilePath)
 	if err := datastore.UploadFile(ctx, localIsoFilePath, remoteIsoFilePath, &p); err != nil {
