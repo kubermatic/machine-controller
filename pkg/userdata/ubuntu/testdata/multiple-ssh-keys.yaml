@@ -46,6 +46,12 @@ write_files:
     fs.inotify.max_user_watches = 1048576
 
 
+- path: "/etc/default/grub.d/60-swap-accounting.cfg"
+  content: |
+    # Added by kubermatic machine-controller
+    # Enable cgroups memory and swap accounting
+    GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
+
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
   content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
@@ -156,6 +162,13 @@ write_files:
       ipvsadm
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
+
+    # Update grub to include kernel command options to enable swap accounting.
+    if grep -v -q swapaccount=1 /proc/cmdline
+    then
+      update-grub
+      touch /var/run/reboot-required
+    fi
     if [[ -e /var/run/reboot-required ]]; then
       reboot
     fi
