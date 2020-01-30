@@ -271,11 +271,7 @@ func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, 
 func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, localIsoFilePath string) error {
 	p := soap.DefaultUpload
 	remoteIsoFilePath := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
-	var props mo.VirtualMachine
-	// Obtain VM properties
-	if err := vmRef.Properties(ctx, vmRef.Reference(), nil, &props); err != nil {
-		return fmt.Errorf("error getting VM properties: %v", err)
-	}
+	// Get the datastore where VM files are located
 	datastore, err := getDatastoreFromVM(ctx, session, vmRef)
 	if err != nil {
 		return fmt.Errorf("error getting datastore from VM %s: %v", vmRef.Name(), err)
