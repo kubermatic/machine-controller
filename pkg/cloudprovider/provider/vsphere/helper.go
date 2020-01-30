@@ -276,13 +276,9 @@ func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.Vir
 	if err := vmRef.Properties(ctx, vmRef.Reference(), nil, &props); err != nil {
 		return fmt.Errorf("error getting VM properties: %v", err)
 	}
-	datastorePath, err := getDatastorePathObjFromVMDiskPath(props.Summary.Config.VmPathName)
+	datastore, err := getDatastoreFromVM(ctx, session, vmRef)
 	if err != nil {
-		return fmt.Errorf("error when trying to locate VM %s datastore path: %v", vmRef.Name(), err)
-	}
-	datastore, err := session.Finder.Datastore(ctx, datastorePath.Datastore)
-	if err != nil {
-		return fmt.Errorf("error getting datastore: %v", err)
+		return fmt.Errorf("error getting datastore from VM %s: %v", vmRef.Name(), err)
 	}
 	klog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", datastore, remoteIsoFilePath)
 	if err := datastore.UploadFile(ctx, localIsoFilePath, remoteIsoFilePath, &p); err != nil {
@@ -420,13 +416,17 @@ func validateDiskResizing(disks []*types.VirtualDisk, requestedSize int64) error
 	return nil
 }
 
-//getDatastorePathObjFromVMDiskPath gets the datastorePathObj from VM disk path.
-func getDatastorePathObjFromVMDiskPath(vmDiskPath string) (*object.DatastorePath, error) {
-	datastorePathObj := new(object.DatastorePath)
-	isSuccess := datastorePathObj.FromString(vmDiskPath)
-	if !isSuccess {
-		klog.Errorf("Failed to parse volPath: %s", vmDiskPath)
-		return nil, fmt.Errorf("Failed to parse volPath: %s", vmDiskPath)
+//getDatastoreFromVM gets the datastore where the VM files are located.
+func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.VirtualMachine) (*object.Datastore, error) {
+	var props mo.VirtualMachine
+	// Obtain VM properties
+	if err := vmRef.Properties(ctx, vmRef.Reference(), nil, &props); err != nil {
+		return nil, fmt.Errorf("error getting VM properties: %v", err)
 	}
-	return datastorePathObj, nil
+	datastorePathObj := new(object.DatastorePath)
+	isSuccess := datastorePathObj.FromString(props.Summary.Config.VmPathName)
+	if !isSuccess {
+		return nil, fmt.Errorf("Failed to parse volPath: %s", props.Summary.Config.VmPathName)
+	}
+	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
 }

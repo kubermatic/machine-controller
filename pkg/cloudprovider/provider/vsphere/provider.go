@@ -401,18 +401,9 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 			}
 		}
 	}
-	var props mo.VirtualMachine
-	// Obtain VM properties
-	if err := virtualMachine.Properties(ctx, virtualMachine.Reference(), nil, &props); err != nil {
-		return false, fmt.Errorf("error getting VM properties: %v", err)
-	}
-	datastorePath, err := getDatastorePathObjFromVMDiskPath(props.Summary.Config.VmPathName)
+	datastore, err := getDatastoreFromVM(ctx, session, virtualMachine)
 	if err != nil {
-		return false, err
-	}
-	datastore, err := session.Finder.Datastore(ctx, datastorePath.Datastore)
-	if err != nil {
-		return false, err
+		return false, fmt.Errorf("Error getting datastore from VM %s: %v", virtualMachine.Name(), err)
 	}
 	destroyTask, err := virtualMachine.Destroy(ctx)
 	if err != nil {
