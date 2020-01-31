@@ -256,6 +256,7 @@ func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, 
 
 		// Get the first recommendation
 		ds := recommendations[0].Action[0].(*types.StoragePlacementAction).Destination.Reference()
+		klog.Infof("The selected datastore from datastore cluster %s is: %v", config.DatastoreCluster, ds)
 		return &ds, nil
 	} else if config.DatastoreCluster == "" && config.Datastore != "" {
 		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
