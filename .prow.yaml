@@ -51,6 +51,7 @@ presubmits:
     clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
     labels:
       preset-vsphere: "true"
+      preset-rhel: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
     spec:
