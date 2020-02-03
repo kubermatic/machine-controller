@@ -35,7 +35,7 @@ spec:
             datastoreCluster: 'dsc-1'
             cpus: 2
             MemoryMB: 2048
-            diskSizeGB: 25
+            diskSizeGB: 50
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
