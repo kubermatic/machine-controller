@@ -50,7 +50,7 @@ presubmits:
     error_on_eviction: true
     clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
     labels:
-      preset-aws: "true"
+      preset-vsphere: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
     spec:
