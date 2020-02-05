@@ -87,7 +87,7 @@ write_files:
     fi
 
 
-    sed -i 's/systemd/cgroupfs/g' /etc/docker/daemon.json
+    sed -i 's/cgroupdriver=systemd/cgroupdriver=cgroupfs/g' /etc/docker/daemon.json
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
