@@ -175,6 +175,7 @@ write_files:
 
 {{ downloadBinariesScript .KubeletVersion true | indent 4 }}
 
+    sed -i 's/systemd/cgroupfs/g' /etc/docker/daemon.json 
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -232,7 +233,7 @@ write_files:
   content: |
     kind: KubeletConfiguration
     apiVersion: kubelet.config.k8s.io/v1beta1
-    cgroupDriver: systemd
+    cgroupDriver: cgroupfs
     clusterDomain: cluster.local
     clusterDNS:
     {{- range .DNSIPs }}
