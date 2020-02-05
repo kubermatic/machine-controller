@@ -392,8 +392,8 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	//TODO(irozzo): understand why e2e tests are failing with RHEL
-	excludeSelector := &scenarioSelector{osName: []string{"sles", "rhel"}}
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+
 	params := getVSphereTestParams(t)
 	runScenarios(t, excludeSelector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
 }

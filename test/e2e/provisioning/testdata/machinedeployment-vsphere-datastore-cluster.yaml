@@ -40,5 +40,9 @@ spec:
           operatingSystemSpec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
+            # 'rhelSubscriptionManagerUser' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_USER`
+            rhelSubscriptionManagerUser: "<< RHEL_SUBSCRIPTION_MANAGER_USER >>"
+            # 'rhelSubscriptionManagerPassword' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_PASSWORD`
+            rhelSubscriptionManagerPassword: "<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>"
       versions:
         kubelet: "<< KUBERNETES_VERSION >>"
