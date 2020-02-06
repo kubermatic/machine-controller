@@ -185,7 +185,6 @@ write_files:
     {{ end }}
     
     subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}' --auto-attach --force
-    yum update -y
     yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
     yum install -y docker-ce-3:18.09.1-3.el7 \
