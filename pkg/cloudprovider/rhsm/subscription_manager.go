@@ -1,7 +1,22 @@
+/*
+Copyright 2019 The Machine Controller Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package rhsm
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,29 +56,24 @@ type credentials struct {
 
 type defaultRedHatSubscriptionManager struct {
 	offlineToken string
-	authUrl      string
-	apiUrl       string
+	authURL      string
+	apiURL       string
 	client       *http.Client
 	credentials  *credentials
 }
 
-var unauthenticatedRequestError = errors.New("unauthenticated")
+var errUnauthenticatedRequest = errors.New("unauthenticated")
 
 func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManager, error) {
 	if offlineToken == "" {
 		return nil, errors.New("offline token, authURL, or apiPath cannot be empty")
 	}
 
-	token, err := base64.StdEncoding.DecodeString(offlineToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed decoding offline token: %v", err)
-	}
-
 	return &defaultRedHatSubscriptionManager{
 		client:       &http.Client{},
-		authUrl:      "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
-		apiUrl:       "https://api.access.redhat.com/management/v1/systems",
-		offlineToken: string(token),
+		authURL:      "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
+		apiURL:       "https://api.access.redhat.com/management/v1/systems",
+		offlineToken: offlineToken,
 	}, nil
 }
 
@@ -83,7 +93,7 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 	for retries < maxRetries {
 		machineUUID, err := d.findSystemsProfile(machineName)
 		if err != nil {
-			if err == unauthenticatedRequestError {
+			if err == errUnauthenticatedRequest {
 				if err := d.refreshToken(); err != nil {
 					klog.Errorf("failed to refresh offline token: %v", err)
 					continue
@@ -103,7 +113,7 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 			return nil
 		}
 
-		if err == unauthenticatedRequestError {
+		if err == errUnauthenticatedRequest {
 			if err := d.refreshToken(); err != nil {
 				klog.Errorf("failed to refresh offline token: %v", err)
 				continue
@@ -123,7 +133,7 @@ func (d *defaultRedHatSubscriptionManager) refreshToken() error {
 	payload.Add("client_id", "rhsm-api")
 	payload.Add("refresh_token", d.offlineToken)
 
-	req, err := http.NewRequest("POST", d.authUrl, strings.NewReader(payload.Encode()))
+	req, err := http.NewRequest("POST", d.authURL, strings.NewReader(payload.Encode()))
 	if err != nil {
 		return err
 	}
@@ -156,7 +166,7 @@ func (d *defaultRedHatSubscriptionManager) refreshToken() error {
 }
 
 func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (string, error) {
-	req, err := http.NewRequest("GET", d.apiUrl, nil)
+	req, err := http.NewRequest("GET", d.apiURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create fecth systems request: %v", err)
 	}
@@ -176,7 +186,7 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (stri
 
 	if res.StatusCode != http.StatusOK {
 		if res.StatusCode == http.StatusUnauthorized {
-			return "", unauthenticatedRequestError
+			return "", errUnauthenticatedRequest
 		}
 		return "", fmt.Errorf("error while exeucting request with status code: %v and message: %s", res.StatusCode, string(data))
 	}
@@ -198,7 +208,7 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (stri
 }
 
 func (d *defaultRedHatSubscriptionManager) deleteSubscription(uuid string) error {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/%s", d.apiUrl, uuid), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/%s", d.apiURL, uuid), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete system request: %v", err)
 	}
@@ -218,7 +228,7 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(uuid string) error
 
 	if res.StatusCode != http.StatusNoContent {
 		if res.StatusCode == http.StatusUnauthorized {
-			return unauthenticatedRequestError
+			return errUnauthenticatedRequest
 		}
 
 		return fmt.Errorf("error while exeucting request with status code: %v and message: %s", res.StatusCode, string(data))
