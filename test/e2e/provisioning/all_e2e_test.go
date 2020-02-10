@@ -81,6 +81,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG")
 	rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
 	rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
+	rhsmOfflineToken := os.Getenv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
 
 	if kubevirtKubeconfig == "" || rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG, RHEL_SUBSCRIPTION_MANAGER_USER, " +
@@ -92,6 +93,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser),
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword),
+		fmt.Sprintf("<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>=%s", rhsmOfflineToken),
 	}
 
 	runScenarios(t, excludeSelector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
