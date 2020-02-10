@@ -46,6 +46,7 @@ const (
 	PacketManifest          = "./testdata/machinedeployment-packet.yaml"
 	LinodeManifest          = "./testdata/machinedeployment-linode.yaml"
 	VSPhereManifest         = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereDSCManifest      = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	//	vssip_manifest         = "./testdata/machinedeployment-vsphere-static-ip.yaml"
 	OSManifest             = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest      = "./testdata/machinedeployment-openstack-upgrade.yml"
@@ -348,26 +349,21 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 	runScenarios(t, excludeSelector, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
 }
 
-// TestVsphereProvisioning - a test suite that exercises vsphere provider
-// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-func TestVsphereProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
+func getVSphereTestParams(t *testing.T) []string {
 	// test data
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
 	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
 	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
+
 	rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
 	rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
 
-	if len(vsPassword) == 0 || len(vsUsername) == 0 || len(vsAddress) == 0 || len(vsCluster) == 0 ||
+	if vsPassword == "" || vsUsername == "" || vsAddress == "" || vsCluster == "" ||
 		rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" {
 		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER " +
 			"RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
-
-	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
 
 	// act
 	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
@@ -377,7 +373,29 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser),
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword),
 	}
+	return params
+}
+
+// TestVsphereProvisioning - a test suite that exercises vsphere provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVsphereProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+
+	params := getVSphereTestParams(t)
 	runScenarios(t, excludeSelector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+}
+
+// TestVsphereDatastoreClusterProvisioning - is the same as the TestVsphereProvisioning suite but specifies a DatastoreCluster
+// instead of the Datastore in the provider specs.
+func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+
+	params := getVSphereTestParams(t)
+	runScenarios(t, excludeSelector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
 }
 
 // TestVsphereStaticIPProvisioningE2E will try to create a node with a VSphere machine
