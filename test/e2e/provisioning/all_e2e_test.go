@@ -83,7 +83,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 	rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
 	rhsmOfflineToken := os.Getenv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
 
-	if kubevirtKubeconfig == "" || rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" {
+	if kubevirtKubeconfig == "" || rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" || rhsmOfflineToken == "" {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG, RHEL_SUBSCRIPTION_MANAGER_USER, " +
 			"and RHEL_SUBSCRIPTION_MANAGER_PASSWORD must be set")
 	}
@@ -360,9 +360,10 @@ func getVSphereTestParams(t *testing.T) []string {
 
 	rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
 	rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
+	rhsmOfflineToken := os.Getenv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
 
 	if vsPassword == "" || vsUsername == "" || vsAddress == "" || vsCluster == "" ||
-		rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" {
+		rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" || rhsmOfflineToken == "" {
 		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER " +
 			"RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
@@ -374,6 +375,7 @@ func getVSphereTestParams(t *testing.T) []string {
 		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser),
 		fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword),
+		fmt.Sprintf("<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>=%s", rhsmOfflineToken),
 	}
 	return params
 }
