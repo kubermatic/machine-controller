@@ -65,7 +65,7 @@ func createTestingServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case authPath:
-			fmt.Fprintln(w, "{\"access_token\":\"test-access-token\", \"expires_in\":900}")
+			fmt.Fprintln(w, "{\"access_token\":\"test-access-token\"}")
 		case apiPath:
 			fmt.Fprintln(w, "{\"pagination\": {\"offset\": 0, \"limit\": 100,\"count\": 1}, \"body\": ["+
 				"{\"name\": \"test-machine-mqasim\", \"uuid\": \""+machineUUID+"\"}]}")

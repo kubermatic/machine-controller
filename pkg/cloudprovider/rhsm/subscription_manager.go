@@ -21,11 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/klog"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"k8s.io/klog"
 )
 
 // RedHatSubscriptionManager is responsible for removing redhat subscriptions.
@@ -46,12 +47,11 @@ type body struct {
 
 type systemsResponse struct {
 	Pagination pagination `json:"pagination"`
-	Body       []*body    `json:"body"`
+	Body       []body     `json:"body"`
 }
 
 type credentials struct {
 	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in"`
 }
 
 type defaultRedHatSubscriptionManager struct {
@@ -66,11 +66,13 @@ var errUnauthenticatedRequest = errors.New("unauthenticated")
 
 func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManager, error) {
 	if offlineToken == "" {
-		return nil, errors.New("offline token, authURL, or apiPath cannot be empty")
+		return nil, errors.New("RedHatSubscriptionManager offline token cannot be empty")
 	}
 
 	return &defaultRedHatSubscriptionManager{
-		client:       &http.Client{},
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 		authURL:      "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
 		apiURL:       "https://api.access.redhat.com/management/v1/systems",
 		offlineToken: offlineToken,
@@ -168,7 +170,7 @@ func (d *defaultRedHatSubscriptionManager) refreshToken() error {
 func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (string, error) {
 	req, err := http.NewRequest("GET", d.apiURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create fecth systems request: %v", err)
+		return "", fmt.Errorf("failed to create fetch systems request: %v", err)
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", d.credentials.AccessToken))
