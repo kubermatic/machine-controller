@@ -71,7 +71,7 @@ func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManage
 
 	return &defaultRedHatSubscriptionManager{
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 10 * time.Second,
 		},
 		authURL:      "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
 		apiURL:       "https://api.access.redhat.com/management/v1/systems",
