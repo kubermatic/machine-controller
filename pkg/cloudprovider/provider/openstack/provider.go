@@ -38,6 +38,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	openstacktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -86,7 +87,8 @@ type Config struct {
 	RootDiskSizeGB        *int
 	NodeVolumeAttachLimit *uint
 
-	Tags map[string]string
+	Tags    map[string]string
+	manager rhsm.RedHatSubscriptionManager
 }
 
 const (
@@ -189,6 +191,13 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		c.Tags = map[string]string{}
 	}
 
+	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
+	if offlineToken != "" {
+		c.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
+		}
+	}
 	return &c, &pconfig, &rawConfig, err
 }
 
@@ -826,7 +835,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 			fmt.Sprintf("%s finalizer exists but %s annotation does not", floatingIPReleaseFinalizer, floatingIPIDAnnotationKey))
 	}
 
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -853,6 +862,11 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 		return fmt.Errorf("failed to delete %s finalizer from Machine: %v", floatingIPReleaseFinalizer, err)
 	}
 
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
+		if err := c.manager.UnregisterInstance(machine.Name); err != nil {
+			return fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
+	}
 	return nil
 }
 
