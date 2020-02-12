@@ -570,7 +570,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -594,6 +594,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	if hasFloatingIPReleaseFinalizer {
 		return false, p.cleanupFloatingIP(machine, data.Update)
+	}
+
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
+		if err := c.manager.UnregisterInstance(machine.Name); err != nil {
+			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
+		}
 	}
 
 	return false, nil
@@ -835,7 +841,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 			fmt.Sprintf("%s finalizer exists but %s annotation does not", floatingIPReleaseFinalizer, floatingIPIDAnnotationKey))
 	}
 
-	c, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -862,11 +868,6 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 		return fmt.Errorf("failed to delete %s finalizer from Machine: %v", floatingIPReleaseFinalizer, err)
 	}
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
-		if err := c.manager.UnregisterInstance(machine.Name); err != nil {
-			return fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
-		}
-	}
 	return nil
 }
 
