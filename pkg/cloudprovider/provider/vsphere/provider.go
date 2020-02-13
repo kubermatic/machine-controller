@@ -413,7 +413,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.Manager != nil {
 		if err := config.Manager.UnregisterInstance(machine.Name); err != nil {
-			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
 		}
 	}
 
