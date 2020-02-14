@@ -52,6 +52,6 @@ plan apply destroy: .terraform
 
 provision: apply
 	cd ../verify/ && make verify
-	cd ../../../ && make machine-controller
+	cd ../../../ && make all
 	./provision_master.sh
 	./create-and-destroy-machine.sh

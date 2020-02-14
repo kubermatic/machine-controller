@@ -16,6 +16,7 @@ package autorest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -37,6 +38,27 @@ const (
 	headerContentType      = "Content-Type"
 	headerUserAgent        = "User-Agent"
 )
+
+// used as a key type in context.WithValue()
+type ctxPrepareDecorators struct{}
+
+// WithPrepareDecorators adds the specified PrepareDecorators to the provided context.
+// If no PrepareDecorators are provided the context is unchanged.
+func WithPrepareDecorators(ctx context.Context, prepareDecorator []PrepareDecorator) context.Context {
+	if len(prepareDecorator) == 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxPrepareDecorators{}, prepareDecorator)
+}
+
+// GetPrepareDecorators returns the PrepareDecorators in the provided context or the provided default PrepareDecorators.
+func GetPrepareDecorators(ctx context.Context, defaultPrepareDecorators ...PrepareDecorator) []PrepareDecorator {
+	inCtx := ctx.Value(ctxPrepareDecorators{})
+	if pd, ok := inCtx.([]PrepareDecorator); ok {
+		return pd
+	}
+	return defaultPrepareDecorators
+}
 
 // Preparer is the interface that wraps the Prepare method.
 //
@@ -501,7 +523,7 @@ func parseURL(u *url.URL, path string) (*url.URL, error) {
 // WithQueryParameters returns a PrepareDecorators that encodes and applies the query parameters
 // given in the supplied map (i.e., key=value).
 func WithQueryParameters(queryParameters map[string]interface{}) PrepareDecorator {
-	parameters := ensureValueStrings(queryParameters)
+	parameters := MapToValues(queryParameters)
 	return func(p Preparer) Preparer {
 		return PreparerFunc(func(r *http.Request) (*http.Request, error) {
 			r, err := p.Prepare(r)
@@ -509,14 +531,16 @@ func WithQueryParameters(queryParameters map[string]interface{}) PrepareDecorato
 				if r.URL == nil {
 					return r, NewError("autorest", "WithQueryParameters", "Invoked with a nil URL")
 				}
-
 				v := r.URL.Query()
 				for key, value := range parameters {
-					d, err := url.QueryUnescape(value)
-					if err != nil {
-						return r, err
+					for i := range value {
+						d, err := url.QueryUnescape(value[i])
+						if err != nil {
+							return r, err
+						}
+						value[i] = d
 					}
-					v.Add(key, d)
+					v[key] = value
 				}
 				r.URL.RawQuery = v.Encode()
 			}
