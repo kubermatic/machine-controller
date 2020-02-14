@@ -42,7 +42,7 @@ import (
 
 const (
 	machineUIDTag   = "machine_uid"
-	centosImageName = "CentOS  7.6 64 bit"
+	centosImageName = "CentOS  7.7 64 bit"
 	ubuntuImageName = "Ubuntu  18.04 64 bit"
 
 	finalizerInstance = "kubermatic.io/cleanup-alibaba-instance"
@@ -69,6 +69,8 @@ type Config struct {
 	InternetMaxBandwidthOut string
 	Labels                  map[string]string
 	ZoneID                  string
+	DeskType                string
+	DeskSize                string
 }
 
 type alibabaInstance struct {
@@ -135,6 +137,12 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 	_, err = p.getImageIDForOS(machineSpec, pc.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
+	}
+	if c.DeskType == "" {
+		return errors.New(" deskType is missing")
+	}
+	if c.DeskSize == "" {
+		return errors.New(" deskSize is missing")
 	}
 
 	return nil
@@ -215,7 +223,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest.InternetMaxBandwidthOut = requests.Integer(c.InternetMaxBandwidthOut)
 	encodedUserData := base64.StdEncoding.EncodeToString([]byte(userdata))
 	createInstanceRequest.UserData = encodedUserData
-	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
+	createInstanceRequest.SystemDiskCategory = c.DeskType
+	createInstanceRequest.DataDisk = &[]ecs.CreateInstanceDataDisk{
+		{
+			Size: c.DeskSize,
+		},
+	}
+	createInstanceRequest.SystemDiskSize = requests.Integer(c.DeskSize)
 	createInstanceRequest.ZoneId = c.ZoneID
 	tag := ecs.CreateInstanceTag{
 		Key:   machineUIDTag,
@@ -271,7 +285,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	deleteInstancesRequest.Force = requests.Boolean("True")
 	if _, err = client.DeleteInstances(deleteInstancesRequest); err != nil {
-		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
+		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", foundInstance.ID(), err)
 	}
 
 	return false, nil
