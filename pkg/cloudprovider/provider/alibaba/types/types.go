@@ -30,4 +30,6 @@ type RawConfig struct {
 	InternetMaxBandwidthOut providerconfigtypes.ConfigVarString `json:"internetMaxBandwidthOut,omitempty"`
 	Labels                  map[string]string                   `json:"labels,omitempty"`
 	ZoneID                  providerconfigtypes.ConfigVarString `json:"zoneID,omitempty"`
+	DeskType                providerconfigtypes.ConfigVarString `json:"desk_type,omitempty"`
+	DeskSize                providerconfigtypes.ConfigVarString `json:"desk_size,omitempty"`
 }
