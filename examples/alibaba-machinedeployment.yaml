@@ -53,6 +53,8 @@ spec:
             instanceName: "alibaba-instance"
             regionID: eu-central-1
             imageID: "aliyun_2_1903_64_20G_alibase_20190829.vhd"
+            diskType: "cloud_efficiency"
+            diskSize: "40"
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false

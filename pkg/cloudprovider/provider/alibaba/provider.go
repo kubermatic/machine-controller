@@ -69,8 +69,8 @@ type Config struct {
 	InternetMaxBandwidthOut string
 	Labels                  map[string]string
 	ZoneID                  string
-	DeskType                string
-	DeskSize                string
+	DiskType                string
+	DiskSize                string
 }
 
 type alibabaInstance struct {
@@ -138,11 +138,11 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 	if err != nil {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
 	}
-	if c.DeskType == "" {
-		return errors.New(" deskType is missing")
+	if c.DiskType == "" {
+		return errors.New(" DiskType is missing")
 	}
-	if c.DeskSize == "" {
-		return errors.New(" deskSize is missing")
+	if c.DiskSize == "" {
+		return errors.New(" DiskSize is missing")
 	}
 
 	return nil
@@ -223,13 +223,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest.InternetMaxBandwidthOut = requests.Integer(c.InternetMaxBandwidthOut)
 	encodedUserData := base64.StdEncoding.EncodeToString([]byte(userdata))
 	createInstanceRequest.UserData = encodedUserData
-	createInstanceRequest.SystemDiskCategory = c.DeskType
+	createInstanceRequest.SystemDiskCategory = c.DiskType
 	createInstanceRequest.DataDisk = &[]ecs.CreateInstanceDataDisk{
 		{
-			Size: c.DeskSize,
+			Size: c.DiskSize,
 		},
 	}
-	createInstanceRequest.SystemDiskSize = requests.Integer(c.DeskSize)
+	createInstanceRequest.SystemDiskSize = requests.Integer(c.DiskSize)
 	createInstanceRequest.ZoneId = c.ZoneID
 	tag := ecs.CreateInstanceTag{
 		Key:   machineUIDTag,
@@ -385,6 +385,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
 	}
 	c.Labels = rawConfig.Labels
+	c.DiskType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"diskType\" field, error = %v", err)
+	}
+	c.DiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskSize)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"diskType\" field, error = %v", err)
+	}
 	return &c, &pconfig, err
 }
 
