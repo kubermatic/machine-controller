@@ -32,8 +32,8 @@ spec:
             vSwitchID: "vsw-gw8g8mn4ohmj483hsylmn"
             internetMaxBandwidthOut: 10
             zoneID: eu-central-1a
-            deskType: "cloud_efficiency"
-            deskSize: "40"
+            diskType: "cloud_efficiency"
+            diskSize: "40"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
