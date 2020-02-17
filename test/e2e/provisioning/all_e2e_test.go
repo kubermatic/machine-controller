@@ -117,7 +117,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+	excludeSelector := &scenarioSelector{osName: []string{"sles", "rhel"}}
 	runScenarios(t, excludeSelector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -370,7 +370,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+	excludeSelector := &scenarioSelector{osName: []string{"sles", "rhel"}}
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, excludeSelector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -381,7 +381,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	excludeSelector := &scenarioSelector{osName: []string{"sles"}}
+	excludeSelector := &scenarioSelector{osName: []string{"sles", "rhel"}}
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, excludeSelector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
