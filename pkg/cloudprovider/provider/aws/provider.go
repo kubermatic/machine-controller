@@ -223,17 +223,21 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 }
 
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
+	const (
+		rootDevicePathUbuntuCentOSRHEL = "/dev/sda1"
+		rootDevicePathCoreOSSLES       = "/dev/xvda"
+	)
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return "/dev/sda1", nil
+		return rootDevicePathUbuntuCentOSRHEL, nil
 	case providerconfigtypes.OperatingSystemCentOS:
-		return "/dev/sda1", nil
+		return rootDevicePathUbuntuCentOSRHEL, nil
 	case providerconfigtypes.OperatingSystemCoreos:
-		return "/dev/xvda", nil
+		return rootDevicePathCoreOSSLES, nil
 	case providerconfigtypes.OperatingSystemSLES:
-		return "/dev/xvda", nil
+		return rootDevicePathCoreOSSLES, nil
 	case providerconfigtypes.OperatingSystemRHEL:
-		return "/dev/sda1", nil
+		return rootDevicePathUbuntuCentOSRHEL, nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
