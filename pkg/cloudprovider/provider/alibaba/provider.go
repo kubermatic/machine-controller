@@ -139,10 +139,10 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
 	}
 	if c.DiskType == "" {
-		return errors.New(" DiskType is missing")
+		return errors.New("DiskType is missing")
 	}
 	if c.DiskSize == "" {
-		return errors.New(" DiskSize is missing")
+		return errors.New("DiskSize is missing")
 	}
 
 	return nil
@@ -391,7 +391,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 	c.DiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskSize)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"diskType\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"diskSize\" field, error = %v", err)
 	}
 	return &c, &pconfig, err
 }
