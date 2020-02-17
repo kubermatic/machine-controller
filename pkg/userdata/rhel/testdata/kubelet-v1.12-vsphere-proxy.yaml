@@ -79,9 +79,9 @@ write_files:
     swapoff -a
 
     hostnamectl set-hostname node1
-
-
     subscription-manager register --username='' --password='' --auto-attach --force
+
+
     yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
     mkdir /etc/docker
