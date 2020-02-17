@@ -26,12 +26,14 @@ spec:
           cloudProviderSpec:
             accessKeyID: << ALIBABA_ACCESS_KEY_ID >>
             accessKeySecret: << ALIBABA_ACCESS_KEY_SECRET >>
-            instanceType: "ecs.sn1ne.large"
+            instanceType: "ecs.c6.large"
             instanceName: "alibaba-instance"
             regionID: eu-central-1
             vSwitchID: "vsw-gw8g8mn4ohmj483hsylmn"
             internetMaxBandwidthOut: 10
             zoneID: eu-central-1a
+            diskType: "cloud_efficiency"
+            diskSize: "40"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
