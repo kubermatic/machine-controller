@@ -38,6 +38,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	awstypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -112,6 +113,12 @@ var (
 			// The AWS marketplace ID from Canonical
 			owner: "013907871322",
 		},
+		providerconfigtypes.OperatingSystemRHEL: {
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "Provided by Red Hat, Inc.",
+			// The AWS marketplace ID from Canonical
+			owner: "309956199498",
+		},
 	}
 
 	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
@@ -139,6 +146,7 @@ type Config struct {
 	EBSVolumeEncrypted bool
 	Tags               map[string]string
 	AssignPublicIP     *bool
+	manager            rhsm.RedHatSubscriptionManager
 }
 
 type amiFilter struct {
@@ -224,6 +232,8 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 		return "/dev/xvda", nil
 	case providerconfigtypes.OperatingSystemSLES:
 		return "/dev/xvda", nil
+	case providerconfigtypes.OperatingSystemRHEL:
+		return "/dev/sda1", nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
@@ -310,7 +320,13 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.Tags = rawConfig.Tags
 	c.IsSpotInstance = rawConfig.IsSpotInstance
 	c.AssignPublicIP = rawConfig.AssignPublicIP
-
+	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
+	if offlineToken != "" {
+		c.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
+		}
+	}
 	return &c, &pconfig, &rawConfig, err
 }
 
@@ -585,7 +601,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return false, err
 	}
 
-	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -607,6 +623,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
 		klog.V(3).Infof("successfully triggered termination of instance %s at aws", instance.ID())
+	}
+
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
+		if err := config.manager.UnregisterInstance(machine.Name); err != nil {
+			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
 	}
 
 	return false, nil

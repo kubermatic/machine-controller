@@ -138,6 +138,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>=%s", rhsmOfflineToken))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 50))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", "ami-dafdcfc7"))
 	} else {
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 25))
 	}
