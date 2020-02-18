@@ -182,9 +182,11 @@ write_files:
 {{- /*  The normal way of setting it via cloud-init is broken, see */}}
 {{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
     hostnamectl set-hostname {{ .MachineSpec.Name }}
+{{- /*  We should create a subscription for all instances in all cloud providers, however for aws this must be done by using the gold images */}}
+{{- /*  https://github.com/kubermatic/kubermatic/issues/5099 */}}
+    subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}' --auto-attach --force
     {{ end }}
     
-    subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}' --auto-attach --force
     yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
     mkdir /etc/docker
