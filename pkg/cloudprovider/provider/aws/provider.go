@@ -110,13 +110,13 @@ var (
 		providerconfigtypes.OperatingSystemSLES: {
 			// Be as precise as possible - otherwise we might get a nightly dev build
 			description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
-			// The AWS marketplace ID from Canonical
+			// The AWS marketplace ID from SLES
 			owner: "013907871322",
 		},
 		providerconfigtypes.OperatingSystemRHEL: {
 			// Be as precise as possible - otherwise we might get a nightly dev build
 			description: "Provided by Red Hat, Inc.",
-			// The AWS marketplace ID from Canonical
+			// The AWS marketplace ID from RedHat
 			owner: "309956199498",
 		},
 	}
