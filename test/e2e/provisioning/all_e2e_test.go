@@ -117,7 +117,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	excludeSelector := &scenarioSelector{osName: []string{"sles", "rhel"}}
+	excludeSelector := &scenarioSelector{osName: []string{"sles", "rhel", "centos", "coreos"}}
 	runScenarios(t, excludeSelector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
