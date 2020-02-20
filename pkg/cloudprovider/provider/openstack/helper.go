@@ -414,18 +414,15 @@ NetworkLoop:
 }
 
 func getDefaultSubnet(client *gophercloud.ProviderClient, network *osnetworks.Network, region string) (*string, error) {
-	if len(network.Subnets) == 0 {
-		return nil, nil
-	} else if len(network.Subnets) == 1 {
+	if len(network.Subnets) == 1 {
 		return &network.Subnets[0], nil
-	} else {
-		subnets, err := getSubnets(client, region, network.ID)
-		if err != nil {
-			return nil, err
-		}
-		if len(subnets) == 1 {
-			return &subnets[0].ID, nil
-		}
 	}
-	return nil, nil
+	subnets, err := getSubnets(client, region, network.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(subnets) == 0 {
+		return nil, errors.New("no subnets available")
+	}
+	return &subnets[0].ID, nil
 }
