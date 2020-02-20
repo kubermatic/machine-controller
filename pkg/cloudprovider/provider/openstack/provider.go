@@ -308,6 +308,10 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			klog.V(3).Infof("Defaulted subnet for machine '%s' to '%s'", spec.Name, *subnet)
 			rawConfig.Subnet.Value = *subnet
 		}
+		if subnet == nil {
+			klog.V(3).Infof("Failed to get any subnets, networkIDL %s and network name: %s", networkID, net.Name)
+			return spec, osErrorToTerminalError(err, fmt.Sprintf("failed to get any subnet defaulting '%s", networkID))
+		}
 	}
 
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
