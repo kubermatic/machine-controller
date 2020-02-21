@@ -16,7 +16,7 @@ GO_VERSION = 1.13.8
 
 export CGO_ENABLED := 0
 
-export E2E_SSH_PUBKEY ?= $(shell cat ~/.ssh/id_rsa.pub)
+export E2E_SSH_PUBKEY ?= $(shell test -f ~/.ssh/id_rsa.pub && cat ~/.ssh/id_rsa.pub)
 
 export DOCKER_TAG ?= $(shell git tag --points-at HEAD)
 
@@ -24,7 +24,6 @@ REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
 LDFLAGS ?= -ldflags '-s -w'
-MODFLAG ?= -mod vendor
 
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
@@ -36,15 +35,15 @@ USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
 .PHONY: all
 all: machine-controller webhook $(USERDATA_BIN)
 
-machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -name '*.go') vendor
+machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -name '*.go')
 	go build -v \
-		$(LDFLAGS) $(MODFLAG) \
+		$(LDFLAGS) \
 		-o $@ \
 		github.com/kubermatic/machine-controller/cmd/userdata/$*
 
-%: cmd/% $(shell find cmd/$* pkg -name '*.go') vendor
+%: cmd/% $(shell find cmd/$* pkg -name '*.go')
 	go build -v \
-		$(LDFLAGS) $(MODFLAG) \
+		$(LDFLAGS) \
 		-o $@ \
 		github.com/kubermatic/machine-controller/cmd/$*
 
@@ -54,9 +53,6 @@ clean:
 		webhook \
 		$(USERDATA_BIN)
 
-vendor: go.mod go.sum
-	go mod vendor
-
 .PHONY: machine-controller-docker
 machine-controller-docker:
 	@docker run --rm \
@@ -65,7 +61,7 @@ machine-controller-docker:
 		-e GOCACHE=/cache \
 		-w /go/src/github.com/kubermatic/machine-controller \
 		golang:$(GO_VERSION) \
-			make machine-controller CGO_ENABLED="$(CGO_ENABLED)" MODFLAG="$(MODFLAG)" E2E_SSH_PUBKEY=
+			make all CGO_ENABLED="$(CGO_ENABLED)"
 
 .PHONY: lint
 lint:
@@ -92,12 +88,12 @@ test-unit-docker:
 		-e GOCACHE=/cache \
 		-w /go/src/github.com/kubermatic/machine-controller \
 		golang:$(GO_VERSION) \
-			make test-unit MODFLAG="$(MODFLAG)" E2E_SSH_PUBKEY=
+			make test-unit
 
 .PHONY: test-unit
-test-unit: vendor
+test-unit:
 	@#The `-race` flag requires CGO
-	CGO_ENABLED=1 go test $(MODFLAG) -race ./...
+	CGO_ENABLED=1 go test -race ./...
 
 .PHONY: e2e-cluster
 e2e-cluster: machine-controller webhook
