@@ -130,10 +130,19 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
 		rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
 		rhsmOfflineToken := os.Getenv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
+		if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderAzure)) {
+			rhelImageID := os.Getenv("AZURE_RHEL_IMAGE_ID")
+			if rhelImageID == "" {
+				t.Fatalf("Unable to run e2e tests, AZURE_RHEL_IMAGE_ID must be set when rhel is used as an os in Azure")
+			}
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< IMAGE_ID >>=%s", rhelImageID))
+		}
+
 		if rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" || rhsmOfflineToken == "" {
-			t.Errorf("Unable to run e2e tests, RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD, and " +
+			t.Fatalf("Unable to run e2e tests, RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD, and " +
 				"REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN must be set when rhel is used as an os")
 		}
+
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>=%s", rhsmOfflineToken))
@@ -141,6 +150,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", "ami-0badcc5b522737046"))
 	} else {
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", ""))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< IMAGE_ID >>=%s", ""))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 25))
 	}
 
