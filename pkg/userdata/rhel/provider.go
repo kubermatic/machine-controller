@@ -184,12 +184,16 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
 {{- /*  We should create a subscription for all instances in all cloud providers, however for aws this must be done by using the gold images */}}
 {{- /*  https://github.com/kubermatic/kubermatic/issues/5099 */}}
-    subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}' --auto-attach --force
+    subscription-manager clean
+    subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}'
+    subscription-manager attach --auto
+    yum clean all
+    yum repolist
     {{ end }}
-    
+
     yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
-    mkdir /etc/docker
+    [ ! -d "/etc/docker" ] && mkdir -p "/etc/docker"
 
     yum install -y docker-ce-3:18.09.1-3.el7 \
       ebtables \
@@ -216,7 +220,7 @@ write_files:
       ]
     }
     EOF
-      
+
 {{ downloadBinariesScript .KubeletVersion true | indent 4 }}
 
     {{- if eq .CloudProviderName "vsphere" }}

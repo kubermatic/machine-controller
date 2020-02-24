@@ -81,9 +81,9 @@ func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManage
 
 func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string) error {
 	if d.credentials == nil {
-		klog.Info("access token has been expired, refreshing token")
+		klog.Info("access token has been expired or not initialized, refreshing token")
 		if err := d.refreshToken(); err != nil {
-			return fmt.Errorf("failed to refresh offline token")
+			return fmt.Errorf("failed to refresh offline token: %v", err)
 		}
 	}
 
