@@ -36,6 +36,8 @@ type RawConfig struct {
 	AvailabilitySet   providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	SecurityGroupName providerconfigtypes.ConfigVarString `json:"securityGroupName"`
 
-	AssignPublicIP providerconfigtypes.ConfigVarBool `json:"assignPublicIP"`
-	Tags           map[string]string                 `json:"tags,omitempty"`
+	AssignPublicIP   providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
+	Tags             map[string]string                   `json:"tags,omitempty"`
+	ImageID          providerconfigtypes.ConfigVarString `json:"imageID"`
+	RHSMOfflineToken providerconfigtypes.ConfigVarString `json:"rhsmOfflineToken,omitempty"`
 }

@@ -34,6 +34,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	azuretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
@@ -78,9 +79,11 @@ type config struct {
 	RouteTableName    string
 	AvailabilitySet   string
 	SecurityGroupName string
+	ImageID           string
+	AssignPublicIP    bool
+	Tags              map[string]string
 
-	AssignPublicIP bool
-	Tags           map[string]string
+	manager rhsm.RedHatSubscriptionManager
 }
 
 type azureVM struct {
@@ -127,9 +130,21 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 		Sku:     to.StringPtr("18.04-LTS"),
 		Version: to.StringPtr("latest"),
 	},
+	providerconfigtypes.OperatingSystemRHEL: {
+		Publisher: to.StringPtr("RedHat"),
+		Offer:     to.StringPtr("RHEL"),
+		Sku:       to.StringPtr("7-RAW-CI"),
+		Version:   to.StringPtr("7.7.2019081601"),
+	},
 }
 
-func getOSImageReference(os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
+func getOSImageReference(imageID string, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
+	if imageID != "" {
+		return &compute.ImageReference{
+			ID: to.StringPtr(imageID),
+		}, nil
+	}
+
 	ref, supported := imageReferences[os]
 	if !supported {
 		return nil, fmt.Errorf("operating system %q not supported", os)
@@ -225,6 +240,19 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	}
 
 	c.Tags = rawCfg.Tags
+
+	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get image id: %v", err)
+	}
+
+	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
+	if offlineToken != "" {
+		c.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
+		}
+	}
 
 	return &c, &pconfig, nil
 }
@@ -344,7 +372,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, fmt.Errorf("failed to create VM client: %v", err)
 	}
 
-	osRef, err := getOSImageReference(providerCfg.OperatingSystem)
+	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +383,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
 
-	ifaceName := machine.Spec.Name + "-netiface"
+	ifaceName := machine.Name + "-netiface"
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 	if config.AssignPublicIP {
@@ -410,7 +438,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			},
 			OsProfile: &compute.OSProfile{
 				AdminUsername: to.StringPtr(adminUserName),
-				ComputerName:  &machine.Spec.Name,
+				ComputerName:  &machine.Name,
 				LinuxConfiguration: &compute.LinuxConfiguration{
 					DisablePasswordAuthentication: to.BoolPtr(true),
 					SSH: &compute.SSHConfiguration{
@@ -435,7 +463,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
 	}
 
-	klog.Infof("Creating machine %q", machine.Spec.Name)
+	klog.Infof("Creating machine %q", machine.Name)
 	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerDisks) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerDisks)
@@ -447,7 +475,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, err
 	}
 
-	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Spec.Name, vmSpec)
+	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Name, vmSpec)
 	if err != nil {
 		return nil, fmt.Errorf("trying to create a VM: %v", err)
 	}
@@ -463,26 +491,26 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	// get the actual VM object filled in with additional data
-	vm, err = vmClient.Get(context.TODO(), config.ResourceGroup, machine.Spec.Name, "")
+	vm, err = vmClient.Get(context.TODO(), config.ResourceGroup, machine.Name, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %v", machine.Spec.Name, err)
+		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %v", machine.Name, err)
 	}
 
 	ipAddresses, err := getVMIPAddresses(context.TODO(), config, &vm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", machine.Spec.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", machine.Name, err.Error())
 	}
 
-	status, err := getVMStatus(context.TODO(), config, machine.Spec.Name)
+	status, err := getVMStatus(context.TODO(), config, machine.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Spec.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Name, err.Error())
 	}
 
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
@@ -536,6 +564,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerPublicIP)
 	}); err != nil {
 		return false, err
+	}
+
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
+		if err := config.manager.UnregisterInstance(machine.Name); err != nil {
+			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
 	}
 
 	return true, nil
@@ -649,7 +683,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*azureVM, error) {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %v", vm.Name, err)
 	}
 
-	status, err := getVMStatus(context.TODO(), config, machine.Spec.Name)
+	status, err := getVMStatus(context.TODO(), config, machine.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve status for VM %v: %v", vm.Name, err)
 	}
@@ -743,7 +777,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	_, err = getOSImageReference(providerCfg.OperatingSystem)
+	_, err = getOSImageReference(c.ImageID, providerCfg.OperatingSystem)
 	return err
 }
 
@@ -764,7 +798,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to create VM client: %v", err)
 	}
 
-	ifaceName := machine.Spec.Name + "-netiface"
+	ifaceName := machine.Name + "-netiface"
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 
@@ -812,7 +846,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	tags[machineUIDTag] = to.StringPtr(string(new))
 
 	vmSpec := compute.VirtualMachine{Location: &config.Location, Tags: tags}
-	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Spec.Name, vmSpec)
+	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec)
 	if err != nil {
 		return fmt.Errorf("failed to update UID of the instance: %v", err)
 	}
