@@ -193,7 +193,7 @@ write_files:
 
     yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
-    [ ! -d "/etc/docker" ] && mkdir -p "/etc/docker"
+    mkdir -p "/etc/docker"
 
     yum install -y docker-ce-3:18.09.1-3.el7 \
       ebtables \
