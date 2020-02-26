@@ -33,7 +33,10 @@ OS = centos coreos ubuntu sles rhel
 USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
 
 .PHONY: all
-all: machine-controller webhook $(USERDATA_BIN)
+all: build-machine-controller webhook
+
+.PHONY: build-machine-controller
+build-machine-controller: machine-controller $(USERDATA_BIN)
 
 machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -name '*.go')
 	go build -v \

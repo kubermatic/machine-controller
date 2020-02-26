@@ -20,7 +20,7 @@ set -e
 MC_KUBECONFIG=${MC_KUBECONFIG:-$(dirname $0)/../.kubeconfig}
 # If you want to use the default kubeconfig `export MC_KUBECONFIG=$KUBECONFIG`
 
-make -C $(dirname $0)/.. machine-controller
+make -C $(dirname $0)/.. build-machine-controller
 $(dirname $0)/../machine-controller \
   -kubeconfig=$MC_KUBECONFIG \
   -worker-count=50 \
