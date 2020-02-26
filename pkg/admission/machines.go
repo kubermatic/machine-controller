@@ -59,12 +59,12 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 		if oldMachine.Spec.Name != machine.Spec.Name && machine.Spec.Name == machine.Name {
 			oldMachine.Spec.Name = machine.Spec.Name
 		}
-		// Allow mutation when:
-		// * oldMachine has Initializers on it
-		// * machine has the `MigrationBypassSpecNoModificationRequirementAnnotation` annotation (used for type migration)
+		// Allow mutation when machine has the
+		// `MigrationBypassSpecNoModificationRequirementAnnotation` annotation
+		// (used for type migration)
 		bypassValidationForMigration := machine.Annotations[BypassSpecNoModificationRequirementAnnotation] == "true"
-		if (oldMachine.Initializers == nil || len(oldMachine.Initializers.Pending) == 0) && !bypassValidationForMigration {
-			if equal := apiequality.Semantic.DeepEqual(machine.Spec, oldMachine.Spec); !equal {
+		if !bypassValidationForMigration {
+			if !apiequality.Semantic.DeepEqual(machine.Spec, oldMachine.Spec) {
 				return nil, fmt.Errorf("machine.spec is immutable")
 			}
 		}
