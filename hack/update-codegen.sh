@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2017 The Kubernetes Authors.
 #
@@ -24,7 +24,7 @@ echo Removing old client
 rm -rf "pkg/crd/client"
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE}")
 echo $SCRIPT_ROOT
-./vendor/k8s.io/code-generator/generate-groups.sh all \
+/usr/bin/env bash ./vendor/k8s.io/code-generator/generate-groups.sh all \
     github.com/kubermatic/machine-controller/pkg/client github.com/kubermatic/machine-controller/pkg \
     machines:v1alpha1 \
     --go-header-file=${SCRIPT_ROOT}/header.txt

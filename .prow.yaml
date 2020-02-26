@@ -6,12 +6,11 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - make
           args:
-            - machine-controller
+            - all
           resources:
             requests:
               cpu: 1
@@ -22,7 +21,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - make
           args:
@@ -37,7 +36,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: golangci/golangci-lint:v1.16.0
+        - image: golangci/golangci-lint:v1.23.6
           command:
             - make
           args:
@@ -57,7 +56,7 @@ presubmits:
           command:
             - "sh"
             - "-c"
-            - "rm -r ./vendor && yamllint -c .yamllint.conf ."
+            - "yamllint -c .yamllint.conf ."
           resources:
             requests:
               cpu: 200m
@@ -68,7 +67,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: golang:1.13.3
+        - image: golang:1.13.8
           command:
             - make
           args:
@@ -95,8 +94,7 @@ presubmits:
       preset-alibaba: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -119,8 +117,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -143,8 +140,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -166,8 +162,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -189,8 +184,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -211,8 +205,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -233,8 +226,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -255,8 +247,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -276,8 +267,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -300,8 +290,7 @@ presubmits:
       preset-linode: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -323,8 +312,7 @@ presubmits:
       preset-packet: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -346,8 +334,7 @@ presubmits:
       preset-cherryservers: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -369,8 +356,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -391,8 +377,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -412,8 +397,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -445,8 +429,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -467,8 +450,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -490,8 +472,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:

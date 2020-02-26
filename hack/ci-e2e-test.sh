@@ -46,7 +46,7 @@ mv kubectl /usr/local/bin
 
 # Build binaries
 echo "Building machine-controller and webhook"
-make machine-controller webhook
+make all
 
 # Copy individual plugins with success control.
 echo "Copying machine-controller plugins"
