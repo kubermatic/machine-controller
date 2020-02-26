@@ -58,23 +58,16 @@ clean:
 		webhook \
 		$(USERDATA_BIN)
 
-.PHONY: machine-controller-docker
-machine-controller-docker:
-	@docker run --rm \
-		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
-		-v $$PWD/.buildcache:/cache \
-		-e GOCACHE=/cache \
-		-w /go/src/github.com/kubermatic/machine-controller \
-		golang:$(GO_VERSION) \
-			make all CGO_ENABLED="$(CGO_ENABLED)"
-
 .PHONY: lint
 lint:
 	golangci-lint run -v
 
 .PHONY: docker-image
-docker-image: machine-controller webhook
-	docker build -t $(IMAGE_NAME) .
+docker-image:
+	docker build --build-arg GO_VERSION=$(GO_VERSION) -t $(IMAGE_NAME) .
+
+.PHONY: docker-image-publish
+docker-image-publish: docker-image
 	docker push $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
 		$(eval IMAGE_TAG = $(GIT_TAG)) \
