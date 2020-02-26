@@ -16,6 +16,8 @@ GO_VERSION = 1.13.8
 
 export CGO_ENABLED := 0
 
+export GOFLAGS ?= -mod=readonly
+
 export E2E_SSH_PUBKEY ?= $(shell test -f ~/.ssh/id_rsa.pub && cat ~/.ssh/id_rsa.pub)
 
 export DOCKER_TAG ?= $(shell git tag --points-at HEAD)
@@ -86,7 +88,7 @@ test-unit-docker:
 		-e GOCACHE=/cache \
 		-w /go/src/github.com/kubermatic/machine-controller \
 		golang:$(GO_VERSION) \
-			make test-unit
+			make test-unit GOFLAGS=$(GOFLAGS)
 
 .PHONY: test-unit
 test-unit:
