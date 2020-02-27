@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
@@ -80,10 +81,13 @@ type config struct {
 	AvailabilitySet   string
 	SecurityGroupName string
 	ImageID           string
-	AssignPublicIP    bool
-	Tags              map[string]string
 
-	manager rhsm.RedHatSubscriptionManager
+	OSDiskSize   string
+	DataDiskSize string
+
+	AssignPublicIP bool
+	Tags           map[string]string
+	manager        rhsm.RedHatSubscriptionManager
 }
 
 type azureVM struct {
@@ -207,6 +211,17 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.VMSize, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VMSize)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"vmSize\" field, error = %v", err)
+	}
+
+	c.OSDiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.OSDiskSize)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"OSDiskSize\" field, error = %v", err)
+	}
+
+	c.DataDiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.DataDiskSize)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"DataDiskSize\" field, error = %v", err)
 	}
 
 	c.VNetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetName)
@@ -357,6 +372,44 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
+func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
+	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OSImageReference: %v", err)
+	}
+	// initial default storage prfile, this will use the VMSize default storage profile
+	sp := &compute.StorageProfile{
+		ImageReference: osRef,
+	}
+	if config.OSDiskSize != "" && config.OSDiskSize != "0" {
+		osDiskSize, err := strconv.Atoi(config.OSDiskSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert OSDeskSize to int: %v", err)
+		}
+		osDiskSize32 := int32(osDiskSize)
+		sp.OsDisk = &compute.OSDisk{
+			DiskSizeGB:   &osDiskSize32,
+			CreateOption: compute.DiskCreateOptionTypesFromImage,
+		}
+	}
+
+	if config.DataDiskSize != "" && config.DataDiskSize != "0" {
+		dataDiskSize, err := strconv.Atoi(config.DataDiskSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert DataDiskSize to int: %v", err)
+		}
+		dataDiskSize32 := int32(dataDiskSize)
+		sp.DataDisks = &[]compute.DataDisk{
+			{
+				// this should be in range 0-63 and should be unique per datadisk, since we have only one datadisk, this should be fine
+				Lun:          new(int32),
+				DiskSizeGB:   &dataDiskSize32,
+				CreateOption: compute.DiskCreateOptionTypesEmpty,
+			},
+		}
+	}
+	return sp, nil
+}
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -370,11 +423,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	vmClient, err := getVMClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VM client: %v", err)
-	}
-
-	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
-	if err != nil {
-		return nil, err
 	}
 
 	// We genete a random SSH key, since Azure won't let us create a VM without an SSH key or a password
@@ -423,7 +471,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		// CoreOS uses core by default everywhere, so we adhere to that
 		adminUserName = "core"
 	}
-
+	storageProfile, err := getStorageProfile(config, providerCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get StorageProfile: %v", err)
+	}
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
@@ -452,7 +503,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 				},
 				CustomData: to.StringPtr(base64.StdEncoding.EncodeToString([]byte(userdata))),
 			},
-			StorageProfile: &compute.StorageProfile{ImageReference: osRef},
+			StorageProfile: storageProfile,
 		},
 		Tags: tags,
 	}
