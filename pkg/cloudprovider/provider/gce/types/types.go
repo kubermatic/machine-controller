@@ -42,6 +42,8 @@ type CloudProviderSpec struct {
 	AssignPublicIPAddress *providerconfigtypes.ConfigVarBool  `json:"assignPublicIPAddress,omitempty"`
 	MultiZone             providerconfigtypes.ConfigVarBool   `json:"multizone"`
 	Regional              providerconfigtypes.ConfigVarBool   `json:"regional"`
+	RHSMOfflineToken      providerconfigtypes.ConfigVarString `json:"rhsmOfflineToken,omitempty"`
+	CustomImage           providerconfigtypes.ConfigVarString `json:"customImage,omitempty"`
 }
 
 // UpdateProviderSpec updates the given provider spec with changed

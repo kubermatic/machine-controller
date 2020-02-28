@@ -38,6 +38,7 @@ import (
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 // Terminal error messages.
@@ -289,6 +290,12 @@ func (p *Provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	err = svc.waitZoneOperation(cfg, op.Name)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
+	}
+
+	if cfg.providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && cfg.manager != nil {
+		if err := cfg.manager.UnregisterInstance(machine.Name); err != nil {
+			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
 	}
 	return false, nil
 }
