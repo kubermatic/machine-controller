@@ -35,7 +35,7 @@ require (
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.1 // indirect
-	github.com/googleapis/gnostic v0.4.1 // indirect
+	github.com/googleapis/gnostic v0.4.0 // indirect
 	github.com/gophercloud/gophercloud v0.2.1-0.20190626201551-2949719e8258
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
@@ -100,12 +100,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
-replace (
-	cloud.google.com/go => cloud.google.com/go v0.38.0
-	github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.3.0+incompatible
-	github.com/BurntSushi/toml => github.com/BurntSushi/toml v0.3.1
-	github.com/PuerkitoBio/purell => github.com/PuerkitoBio/purell v1.1.1
-	github.com/beorn7/perks => github.com/beorn7/perks v1.0.1
-	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.0
-	google.golang.org/api => google.golang.org/api v0.6.0
-)
+replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.3.0+incompatible
