@@ -16,8 +16,6 @@ GO_VERSION = 1.13.8
 
 export CGO_ENABLED := 0
 
-export GOFLAGS ?= -mod=readonly
-
 export E2E_SSH_PUBKEY ?= $(shell test -f ~/.ssh/id_rsa.pub && cat ~/.ssh/id_rsa.pub)
 
 export DOCKER_TAG ?= $(shell git tag --points-at HEAD)
