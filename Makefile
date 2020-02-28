@@ -20,6 +20,8 @@ export E2E_SSH_PUBKEY ?= $(shell test -f ~/.ssh/id_rsa.pub && cat ~/.ssh/id_rsa.
 
 export DOCKER_TAG ?= $(shell git tag --points-at HEAD)
 
+export GOFLAGS?=-mod=readonly -trimpath
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
