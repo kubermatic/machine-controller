@@ -504,7 +504,7 @@ postsubmits:
               /usr/local/bin/entrypoint.sh &&
               docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD &&
               docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io &&
-              make docker-image
+              make docker-image-publish
           # docker-in-docker needs privileged mode
           securityContext:
             privileged: true
