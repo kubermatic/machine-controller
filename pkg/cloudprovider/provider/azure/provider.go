@@ -43,6 +43,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -80,10 +81,13 @@ type config struct {
 	AvailabilitySet   string
 	SecurityGroupName string
 	ImageID           string
-	AssignPublicIP    bool
-	Tags              map[string]string
 
-	manager rhsm.RedHatSubscriptionManager
+	OSDiskSize   int32
+	DataDiskSize int32
+
+	AssignPublicIP bool
+	Tags           map[string]string
+	manager        rhsm.RedHatSubscriptionManager
 }
 
 type azureVM struct {
@@ -240,6 +244,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	}
 
 	c.Tags = rawCfg.Tags
+	c.OSDiskSize = rawCfg.OSDiskSize
+	c.DataDiskSize = rawCfg.DataDiskSize
 
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
@@ -358,6 +364,35 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
+func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
+	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OSImageReference: %v", err)
+	}
+	// initial default storage profile, this will use the VMSize default storage profile
+	sp := &compute.StorageProfile{
+		ImageReference: osRef,
+	}
+	if config.OSDiskSize != 0 {
+		sp.OsDisk = &compute.OSDisk{
+			DiskSizeGB:   pointer.Int32Ptr(config.OSDiskSize),
+			CreateOption: compute.DiskCreateOptionTypesFromImage,
+		}
+	}
+
+	if config.DataDiskSize != 0 {
+		sp.DataDisks = &[]compute.DataDisk{
+			{
+				// this should be in range 0-63 and should be unique per datadisk, since we have only one datadisk, this should be fine
+				Lun:          new(int32),
+				DiskSizeGB:   pointer.Int32Ptr(config.DataDiskSize),
+				CreateOption: compute.DiskCreateOptionTypesEmpty,
+			},
+		}
+	}
+	return sp, nil
+}
+
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
@@ -370,11 +405,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	vmClient, err := getVMClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VM client: %v", err)
-	}
-
-	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
-	if err != nil {
-		return nil, err
 	}
 
 	// We genete a random SSH key, since Azure won't let us create a VM without an SSH key or a password
@@ -423,7 +453,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		// CoreOS uses core by default everywhere, so we adhere to that
 		adminUserName = "core"
 	}
-
+	storageProfile, err := getStorageProfile(config, providerCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get StorageProfile: %v", err)
+	}
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
@@ -452,7 +485,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 				},
 				CustomData: to.StringPtr(base64.StdEncoding.EncodeToString([]byte(userdata))),
 			},
-			StorageProfile: &compute.StorageProfile{ImageReference: osRef},
+			StorageProfile: storageProfile,
 		},
 		Tags: tags,
 	}

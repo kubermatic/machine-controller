@@ -65,6 +65,9 @@ spec:
             location: "westeurope"
             resourceGroup: "<< YOUR_RESOURCE_GROUP >>"
             vmSize: "Standard_B1ms"
+            # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
+            osDiskSize: 30
+            dataDiskSize: 30
             vnetName: "<< VNET_NAME >>"
             subnetName: "<< SUBNET_NAME >>"
             routeTableName: "<< ROUTE_TABLE_NAME >>"
