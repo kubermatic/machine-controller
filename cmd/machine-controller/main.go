@@ -51,6 +51,7 @@ import (
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinedeploymentcontroller "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment"
 	machinesetcontroller "github.com/kubermatic/machine-controller/pkg/controller/machineset"
+	"github.com/kubermatic/machine-controller/pkg/controller/nodecsrapprover"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/signals"
@@ -417,6 +418,11 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 		}
 		if err := machinedeploymentcontroller.Add(mgr); err != nil {
 			klog.Errorf("failed to add MachineDeployment controller to manager: %v", err)
+			runOptions.parentCtxDone()
+			return
+		}
+		if err := nodecsrapprover.Add(mgr); err != nil {
+			klog.Errorf("failed to add NodeCSRApprover controller to manager: %v", err)
 			runOptions.parentCtxDone()
 			return
 		}
