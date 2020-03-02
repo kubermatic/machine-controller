@@ -253,6 +253,7 @@ presubmits:
       preset-gce: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-rhel: "true"
     spec:
       containers:
         # Uses go1.11.1
