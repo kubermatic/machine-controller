@@ -245,6 +245,7 @@ presubmits:
       preset-gce: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-rhel: "true"
     spec:
       containers:
         - image: golang:1.13.8

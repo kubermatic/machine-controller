@@ -246,7 +246,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	}
 
 	// Act. GCE does not support CentOS.
-	excludeSelector := &scenarioSelector{osName: []string{"centos", "sles", "rhel"}}
+	excludeSelector := &scenarioSelector{osName: []string{"centos", "sles"}}
 	params := []string{
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 	}
