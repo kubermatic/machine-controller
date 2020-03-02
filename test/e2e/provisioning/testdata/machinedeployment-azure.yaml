@@ -31,6 +31,9 @@ spec:
             location: "westeurope"
             resourceGroup: "machine-controller-e2e"
             vmSize: "Standard_F1"
+            # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
+            osDiskSize: 30
+            dataDiskSize: 30
             vnetName: "machine-controller-e2e"
             subnetName: "machine-controller-e2e"
             routeTableName: "machine-controller-e2e"

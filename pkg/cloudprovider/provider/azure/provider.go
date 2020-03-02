@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
@@ -44,6 +43,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -82,8 +82,8 @@ type config struct {
 	SecurityGroupName string
 	ImageID           string
 
-	OSDiskSize   string
-	DataDiskSize string
+	OSDiskSize   int32
+	DataDiskSize int32
 
 	AssignPublicIP bool
 	Tags           map[string]string
@@ -213,17 +213,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get the value of \"vmSize\" field, error = %v", err)
 	}
 
-	c.OSDiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.OSDiskSize)
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"OSDiskSize\" field, error = %v", err)
-	}
-
-	c.DataDiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.DataDiskSize)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"DataDiskSize\" field, error = %v", err)
-	}
-
 	c.VNetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"vnetName\" field, error = %v", err)
@@ -255,6 +244,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	}
 
 	c.Tags = rawCfg.Tags
+	c.OSDiskSize = rawCfg.OSDiskSize
+	c.DataDiskSize = rawCfg.DataDiskSize
 
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
@@ -372,38 +363,29 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
+
 func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
 	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OSImageReference: %v", err)
 	}
-	// initial default storage prfile, this will use the VMSize default storage profile
+	// initial default storage profile, this will use the VMSize default storage profile
 	sp := &compute.StorageProfile{
 		ImageReference: osRef,
 	}
-	if config.OSDiskSize != "" && config.OSDiskSize != "0" {
-		osDiskSize, err := strconv.Atoi(config.OSDiskSize)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert OSDeskSize to int: %v", err)
-		}
-		osDiskSize32 := int32(osDiskSize)
+	if config.OSDiskSize != 0 {
 		sp.OsDisk = &compute.OSDisk{
-			DiskSizeGB:   &osDiskSize32,
+			DiskSizeGB:   pointer.Int32Ptr(config.OSDiskSize),
 			CreateOption: compute.DiskCreateOptionTypesFromImage,
 		}
 	}
 
-	if config.DataDiskSize != "" && config.DataDiskSize != "0" {
-		dataDiskSize, err := strconv.Atoi(config.DataDiskSize)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert DataDiskSize to int: %v", err)
-		}
-		dataDiskSize32 := int32(dataDiskSize)
+	if config.DataDiskSize != 0 {
 		sp.DataDisks = &[]compute.DataDisk{
 			{
 				// this should be in range 0-63 and should be unique per datadisk, since we have only one datadisk, this should be fine
 				Lun:          new(int32),
-				DiskSizeGB:   &dataDiskSize32,
+				DiskSizeGB:   pointer.Int32Ptr(config.DataDiskSize),
 				CreateOption: compute.DiskCreateOptionTypesEmpty,
 			},
 		}

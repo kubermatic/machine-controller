@@ -38,8 +38,8 @@ type RawConfig struct {
 
 	ImageID          providerconfigtypes.ConfigVarString `json:"imageID"`
 	RHSMOfflineToken providerconfigtypes.ConfigVarString `json:"rhsmOfflineToken,omitempty"`
-	OSDiskSize       providerconfigtypes.ConfigVarString `json:"osDiskSize"`
-	DataDiskSize     providerconfigtypes.ConfigVarString `json:"dataDiskSize"`
+	OSDiskSize       int32                               `json:"osDiskSize"`
+	DataDiskSize     int32                               `json:"dataDiskSize"`
 	AssignPublicIP   providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
 	Tags             map[string]string                   `json:"tags,omitempty"`
 }
