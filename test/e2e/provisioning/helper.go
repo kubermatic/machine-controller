@@ -148,7 +148,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>=%s", rhsmOfflineToken))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 50))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< CUSTOM-IMAGE >>=%v", "rhel-8-1-custom"))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", "ami-0badcc5b522737046"))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", "ami-08c04369895785ac4"))
 	} else {
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", ""))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< IMAGE_ID >>=%s", ""))

@@ -615,7 +615,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	}
 
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
-		if err := config.manager.UnregisterInstance(machine.Name); err != nil {
+		if err := config.manager.UnregisterInstance(*instance.instance.PrivateDnsName); err != nil {
 			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
 		}
 	}
