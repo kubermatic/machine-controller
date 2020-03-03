@@ -157,13 +157,17 @@ func validateCSRRequest(csr *certificatesv1beta1.CertificateSigningRequest) erro
 	if err != nil {
 		return err
 	}
+	// Validate Subject CommonName
 	if csrRequest.Subject.CommonName != csr.Spec.Username {
 		return fmt.Errorf("commonName '%s' is different then CSR username '%s'", csrRequest.Subject.CommonName, csr.Spec.Username)
 	}
-	for _, org := range csrRequest.Subject.Organization {
-		if !sets.NewString(csr.Spec.Groups...).Has(org) {
-			return fmt.Errorf("organization '%s' is not in CSR groups", org)
-		}
+	// Validate Subject Organization
+	if len(csrRequest.Subject.Organization) != 1 {
+		return fmt.Errorf("error validating subject organizations")
 	}
+	if csrRequest.Subject.Organization[0] != "system:nodes" {
+		return fmt.Errorf("expected 'system:nodes' in organization, but got '%s'", csrRequest.Subject.Organization[0])
+	}
+
 	return nil
 }
