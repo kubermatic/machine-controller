@@ -37,10 +37,6 @@ import (
 
 const ControllerName = "node_csr_autoapprover"
 
-// Check if the Reconciler fullfills the interface
-// at compile time
-var _ reconcile.Reconciler = &reconciler{}
-
 type reconciler struct {
 	client.Client
 	// Have to use the typed client because csr approval is a subresource
