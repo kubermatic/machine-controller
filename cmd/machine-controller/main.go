@@ -51,6 +51,7 @@ import (
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinedeploymentcontroller "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment"
 	machinesetcontroller "github.com/kubermatic/machine-controller/pkg/controller/machineset"
+	"github.com/kubermatic/machine-controller/pkg/controller/nodecsrapprover"
 	machinehealth "github.com/kubermatic/machine-controller/pkg/health"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/signals"
@@ -73,6 +74,7 @@ var (
 	externalCloudProvider            bool
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
+	nodeCSRApprover                  bool
 
 	nodeHTTPProxy          string
 	nodeNoProxy            string
@@ -132,6 +134,9 @@ type controllerRunOptions struct {
 	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
 	skipEvictionAfter time.Duration
 
+	// Enable NodeCSRApprover controller to automatically approve node serving certificate requests.
+	nodeCSRApprover bool
+
 	node machinecontroller.NodeSettings
 }
 
@@ -161,6 +166,7 @@ func main() {
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag.")
+	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -238,6 +244,7 @@ func main() {
 		cfg:                   machineCfg,
 		externalCloudProvider: externalCloudProvider,
 		skipEvictionAfter:     skipEvictionAfter,
+		nodeCSRApprover:       nodeCSRApprover,
 		node: machinecontroller.NodeSettings{
 			ClusterDNSIPs:  clusterDNSIPs,
 			HTTPProxy:      nodeHTTPProxy,
@@ -419,6 +426,13 @@ func startControllerViaLeaderElection(runOptions controllerRunOptions) error {
 			klog.Errorf("failed to add MachineDeployment controller to manager: %v", err)
 			runOptions.parentCtxDone()
 			return
+		}
+		if runOptions.nodeCSRApprover {
+			if err := nodecsrapprover.Add(mgr); err != nil {
+				klog.Errorf("failed to add NodeCSRApprover controller to manager: %v", err)
+				runOptions.parentCtxDone()
+				return
+			}
 		}
 
 		klog.Info("machine controller startup complete")
