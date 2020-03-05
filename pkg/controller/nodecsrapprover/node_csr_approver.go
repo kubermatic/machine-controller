@@ -81,15 +81,15 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 		}
 		return err
 	}
+	klog.V(4).Infof("Reconciling CSR %s", csr.ObjectMeta.Name)
+
 	// If CSR is approved, skip it
 	for _, condition := range csr.Status.Conditions {
 		if condition.Type == certificatesv1beta1.CertificateApproved {
-			klog.V(4).Infoln("already approved, skipping reconciling")
+			klog.V(4).Infof("CSR %s already approved, skipping reconciling", csr.ObjectMeta.Name)
 			return nil
 		}
 	}
-
-	klog.V(4).Infof("Reconciling CSR %s", csr.ObjectMeta.Name)
 
 	// Ensure system:nodes is in groups
 	if !sets.NewString(csr.Spec.Groups...).Has("system:nodes") {
@@ -123,7 +123,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	csr.Status.Conditions = append(csr.Status.Conditions, approvalCondition)
 
 	if _, err := r.certClient.UpdateApproval(csr); err != nil {
-		return fmt.Errorf("failed to update approval for CSR %q: %v", csr.Name, err)
+		return fmt.Errorf("failed to approve CSR %q: %v", csr.Name, err)
 	}
 
 	klog.Infof("Successfully approved CSR %s", csr.ObjectMeta.Name)
