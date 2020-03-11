@@ -30,6 +30,8 @@ import (
 	"k8s.io/klog"
 )
 
+const defaultTimeout = 10 * time.Second
+
 // RedHatSubscriptionManager is responsible for removing redhat subscriptions.
 type RedHatSubscriptionManager interface {
 	//TODO(irozzo) add context in input to give more control to the caller
@@ -65,15 +67,18 @@ func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManage
 		return nil, errors.New("RedHatSubscriptionManager offline token cannot be empty")
 	}
 	return &defaultRedHatSubscriptionManager{
-		apiURL: "https://api.access.redhat.com/management/v1/systems",
-		client: newOAuthClientWithRefreshToken(offlineToken, "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"),
+		apiURL:          "https://api.access.redhat.com/management/v1/systems",
+		client:          newOAuthClientWithRefreshToken(offlineToken, "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"),
+		requestsLimiter: 100,
 	}, nil
 }
 
 func newOAuthClientWithRefreshToken(refreshToken string, tokenURL string) *http.Client {
 	ctx := context.Background()
-	// Use the custom HTTP client when requesting a token.
-	httpClient := &http.Client{Timeout: 5 * time.Second}
+	// Use the custom HTTP client when requesting an access token in order to
+	// set a timeout value.
+	// See: https://github.com/golang/oauth2/blob/c85d3e98c914e3a33234ad863dcbff5dbc425bb8/internal/token.go#L232
+	httpClient := &http.Client{Timeout: defaultTimeout}
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 	conf := &oauth2.Config{
 		ClientID: "rhsm-api",
@@ -84,7 +89,10 @@ func newOAuthClientWithRefreshToken(refreshToken string, tokenURL string) *http.
 	tok := &oauth2.Token{
 		RefreshToken: refreshToken,
 	}
-	return conf.Client(ctx, tok)
+	// Set timeout for the client used for API calls as well.
+	c := conf.Client(ctx, tok)
+	c.Timeout = defaultTimeout
+	return c
 }
 
 func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string) error {
