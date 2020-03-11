@@ -30,14 +30,25 @@ var (
 
 func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 	testCases := []struct {
-		name          string
-		offlineToken  string
-		testingServer *httptest.Server
+		name           string
+		requestLimiter int
+		offlineToken   string
+		testingServer  *httptest.Server
+		machineName    string
 	}{
 		{
-			name:          "execute redhat system unregister instance",
-			offlineToken:  "test_token",
-			testingServer: createTestingServer(),
+			name:           "execute redhat system unregister instance",
+			requestLimiter: 2,
+			offlineToken:   "test_token",
+			testingServer:  createTestingServer(false, false),
+			machineName:    "test-machine",
+		},
+		{
+			name:           "execute redhat system unregister instance for 5 systems",
+			requestLimiter: 2,
+			offlineToken:   "test_token",
+			testingServer:  createTestingServer(true, true),
+			machineName:    "test-machine-5",
 		},
 	}
 
@@ -52,24 +63,53 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			}
 			manager.(*defaultRedHatSubscriptionManager).apiURL = tt.testingServer.URL + apiPath
 			manager.(*defaultRedHatSubscriptionManager).authURL = tt.testingServer.URL + authPath
+			manager.(*defaultRedHatSubscriptionManager).requestsLimiter = tt.requestLimiter
 
-			if err := manager.UnregisterInstance("test-machine-mqasim"); err != nil {
+			if err := manager.UnregisterInstance(tt.machineName); err != nil {
 				t.Fatalf("failed executing test: %v", err)
 			}
 		})
 	}
 }
 
-func createTestingServer() *httptest.Server {
-	machineUUID := "4a3ee8d7-337d-4cef-a20c-dda011f28f95"
+func createTestingServer(pagination, rounded bool) *httptest.Server {
+	var (
+		processedRequest = 1
+		result           string
+	)
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case authPath:
 			fmt.Fprintln(w, "{\"access_token\":\"test-access-token\"}")
 		case apiPath:
-			fmt.Fprintln(w, "{\"pagination\": {\"offset\": 0, \"limit\": 100,\"count\": 1}, \"body\": ["+
-				"{\"name\": \"test-machine-mqasim\", \"uuid\": \""+machineUUID+"\"}]}")
-		case apiPath + "/" + machineUUID:
+			if pagination {
+				switch processedRequest {
+				case 1:
+					result = "{\"pagination\": {\"offset\": 0, \"limit\": 2,\"count\": 5}, \"body\": [" +
+						"{\"name\": \"test-machine-1\", \"uuid\": \"4a3ee8d7-337d-4cef-a20c-dda011f28f96\"}," +
+						"{\"name\": \"test-machine-2\", \"uuid\": \"4a3ee8d7-337d-4cef-a20c-dda011f28f91\"}" +
+						"]}"
+				case 2:
+					result = "{\"pagination\": {\"offset\": 0, \"limit\": 2,\"count\": 5}, \"body\": [" +
+						"{\"name\": \"test-machine-3\", \"uuid\": \"4a3ee8d7-337d-4cef-a20c-dda011f28f98\"}," +
+						"{\"name\": \"test-machine-4\", \"uuid\": \"4a3ee8d7-337d-4cef-a20c-dda011f28f95\"}" +
+						"]}"
+				case 3:
+					result = "{\"pagination\": {\"offset\": 0, \"limit\": 2,\"count\": 5}, \"body\": [" +
+						"{\"name\": \"test-machine-5\", \"uuid\": \"4a3ee8d7-337d-4cef-a20c-dda011f28f99\"}" +
+						"]}"
+				}
+				processedRequest++
+				fmt.Fprint(w, result)
+			} else {
+				processedRequest++
+				fmt.Fprintln(w, "{\"pagination\": {\"offset\": 0, \"limit\": 100,\"count\": 1}, \"body\": ["+
+					"{\"name\": \"test-machine\", \"uuid\": \"4a3ee8d7-337d-4cef-a20c-dda011f28f95\"}]}")
+			}
+		case apiPath + "/4a3ee8d7-337d-4cef-a20c-dda011f28f95":
+			w.WriteHeader(http.StatusNoContent)
+			fmt.Fprint(w, "success")
+		case apiPath + "/4a3ee8d7-337d-4cef-a20c-dda011f28f99":
 			w.WriteHeader(http.StatusNoContent)
 			fmt.Fprint(w, "success")
 		}
