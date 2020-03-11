@@ -65,7 +65,7 @@ type defaultRedHatSubscriptionManager struct {
 
 var errUnauthenticatedRequest = errors.New("unauthenticated")
 
-func NewRedHatSubscriptionManager(offlineToken string, requestLimit int) (RedHatSubscriptionManager, error) {
+func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManager, error) {
 	if offlineToken == "" {
 		return nil, errors.New("RedHatSubscriptionManager offline token cannot be empty")
 	}
@@ -77,7 +77,7 @@ func NewRedHatSubscriptionManager(offlineToken string, requestLimit int) (RedHat
 		authURL:         "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
 		apiURL:          "https://api.access.redhat.com/management/v1/systems",
 		offlineToken:    offlineToken,
-		requestsLimiter: requestLimit,
+		requestsLimiter: 100,
 	}, nil
 }
 
@@ -166,24 +166,12 @@ func (d *defaultRedHatSubscriptionManager) refreshToken() error {
 		return nil
 	}
 
-	return fmt.Errorf("error while exeucting request with status code: %v and message: %s", res.StatusCode, string(data))
+	return fmt.Errorf("error while executing request with status code: %v and message: %s", res.StatusCode, string(data))
 }
 
 func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (string, error) {
-	systemsInfo, err := d.executeFindSystemsRequest(0)
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve systems: %v", err)
-	}
-
-	for _, system := range systemsInfo.Body {
-		if system.Name == name {
-			return system.UUID, nil
-		}
-	}
-
-	var counter = 1
-	for counter <= (numberOfRequest(systemsInfo.Pagination.Count, d.requestsLimiter) - 1) {
-		offset := d.requestsLimiter * counter
+	var offset int
+	for {
 		systemsInfo, err := d.executeFindSystemsRequest(offset)
 		if err != nil {
 			return "", fmt.Errorf("failed to retrieve systems: %v", err)
@@ -194,7 +182,12 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (stri
 				return system.UUID, nil
 			}
 		}
-		counter++
+
+		if len(systemsInfo.Body) < d.requestsLimiter {
+			break
+		}
+
+		offset += len(systemsInfo.Body)
 	}
 
 	klog.Infof("no machine name %s is found", name)
@@ -225,20 +218,10 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(uuid string) error
 			return errUnauthenticatedRequest
 		}
 
-		return fmt.Errorf("error while exeucting request with status code: %v and message: %s", res.StatusCode, string(data))
+		return fmt.Errorf("error while executing request with status code: %v and message: %s", res.StatusCode, string(data))
 	}
 
 	return nil
-}
-
-func numberOfRequest(count, limit int) int {
-	pagesIndicator := float64(count) / float64(limit)
-	rounded := int(pagesIndicator)
-	if pagesIndicator > float64(rounded) {
-		rounded = rounded + 1
-	}
-
-	return rounded
 }
 
 func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(offset int) (*systemsResponse, error) {
@@ -264,7 +247,7 @@ func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(offset int)
 		if res.StatusCode == http.StatusUnauthorized {
 			return nil, errUnauthenticatedRequest
 		}
-		return nil, fmt.Errorf("error while exeucting request with status code: %v and message: %s", res.StatusCode, string(data))
+		return nil, fmt.Errorf("error while executing request with status code: %v and message: %s", res.StatusCode, string(data))
 	}
 
 	var fetchedSystems = &systemsResponse{}

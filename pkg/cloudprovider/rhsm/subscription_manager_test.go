@@ -44,13 +44,6 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			machineName:    "test-machine",
 		},
 		{
-			name:           "execute redhat system unregister instance for 4 systems",
-			requestLimiter: 2,
-			offlineToken:   "test_token",
-			testingServer:  createTestingServer(true, false),
-			machineName:    "test-machine-4",
-		},
-		{
 			name:           "execute redhat system unregister instance for 5 systems",
 			requestLimiter: 2,
 			offlineToken:   "test_token",
@@ -64,12 +57,13 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			defer func() {
 				tt.testingServer.Close()
 			}()
-			manager, err := NewRedHatSubscriptionManager(tt.offlineToken, tt.requestLimiter)
+			manager, err := NewRedHatSubscriptionManager(tt.offlineToken)
 			if err != nil {
 				t.Fatalf("failed executing test: %v", err)
 			}
 			manager.(*defaultRedHatSubscriptionManager).apiURL = tt.testingServer.URL + apiPath
 			manager.(*defaultRedHatSubscriptionManager).authURL = tt.testingServer.URL + authPath
+			manager.(*defaultRedHatSubscriptionManager).requestsLimiter = tt.requestLimiter
 
 			if err := manager.UnregisterInstance(tt.machineName); err != nil {
 				t.Fatalf("failed executing test: %v", err)
