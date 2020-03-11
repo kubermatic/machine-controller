@@ -62,7 +62,7 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 				t.Fatalf("failed executing test: %v", err)
 			}
 			manager.(*defaultRedHatSubscriptionManager).apiURL = tt.testingServer.URL + apiPath
-			manager.(*defaultRedHatSubscriptionManager).authURL = tt.testingServer.URL + authPath
+			manager.(*defaultRedHatSubscriptionManager).client = newOAuthClientWithRefreshToken(tt.offlineToken, tt.testingServer.URL+authPath)
 			manager.(*defaultRedHatSubscriptionManager).requestsLimiter = tt.requestLimiter
 
 			if err := manager.UnregisterInstance(tt.machineName); err != nil {
@@ -80,6 +80,7 @@ func createTestingServer(pagination, rounded bool) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case authPath:
+			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprintln(w, "{\"access_token\":\"test-access-token\"}")
 		case apiPath:
 			if pagination {

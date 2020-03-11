@@ -17,20 +17,22 @@ limitations under the License.
 package rhsm
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
+
+	"golang.org/x/oauth2"
 
 	"k8s.io/klog"
 )
 
 // RedHatSubscriptionManager is responsible for removing redhat subscriptions.
 type RedHatSubscriptionManager interface {
+	//TODO(irozzo) add context in input to give more control to the caller
 	UnregisterInstance(machineName string) error
 }
 
@@ -50,16 +52,9 @@ type systemsResponse struct {
 	Body       []body     `json:"body"`
 }
 
-type credentials struct {
-	AccessToken string `json:"access_token"`
-}
-
 type defaultRedHatSubscriptionManager struct {
-	offlineToken    string
-	authURL         string
 	apiURL          string
 	client          *http.Client
-	credentials     *credentials
 	requestsLimiter int
 }
 
@@ -69,25 +64,31 @@ func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManage
 	if offlineToken == "" {
 		return nil, errors.New("RedHatSubscriptionManager offline token cannot be empty")
 	}
-
 	return &defaultRedHatSubscriptionManager{
-		client: &http.Client{
-			Timeout: 10 * time.Second,
-		},
-		authURL:         "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
-		apiURL:          "https://api.access.redhat.com/management/v1/systems",
-		offlineToken:    offlineToken,
-		requestsLimiter: 100,
+		apiURL: "https://api.access.redhat.com/management/v1/systems",
+		client: newOAuthClientWithRefreshToken(offlineToken, "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"),
 	}, nil
 }
 
-func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string) error {
-	if d.credentials == nil {
-		klog.Info("access token has been expired or not initialized, refreshing token")
-		if err := d.refreshToken(); err != nil {
-			return fmt.Errorf("failed to refresh offline token: %v", err)
-		}
+func newOAuthClientWithRefreshToken(refreshToken string, tokenURL string) *http.Client {
+	ctx := context.Background()
+	// Use the custom HTTP client when requesting a token.
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
+	conf := &oauth2.Config{
+		ClientID: "rhsm-api",
+		Endpoint: oauth2.Endpoint{
+			TokenURL: tokenURL,
+		},
 	}
+	tok := &oauth2.Token{
+		RefreshToken: refreshToken,
+	}
+	return conf.Client(ctx, tok)
+}
+
+func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string) error {
+	ctx := context.Background()
 
 	var (
 		retries    = 0
@@ -95,14 +96,8 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 	)
 
 	for retries < maxRetries {
-		machineUUID, err := d.findSystemsProfile(machineName)
+		machineUUID, err := d.findSystemsProfile(ctx, machineName)
 		if err != nil {
-			if err == errUnauthenticatedRequest {
-				if err := d.refreshToken(); err != nil {
-					klog.Errorf("failed to refresh offline token: %v", err)
-					continue
-				}
-			}
 			return fmt.Errorf("failed to find system profile: %v", err)
 		}
 
@@ -111,18 +106,12 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 			return nil
 		}
 
-		err = d.deleteSubscription(machineUUID)
+		err = d.deleteSubscription(ctx, machineUUID)
 		if err == nil {
 			klog.Infof("subscription for vm %v has been deleted successfully", machineUUID)
 			return nil
 		}
 
-		if err == errUnauthenticatedRequest {
-			if err := d.refreshToken(); err != nil {
-				klog.Errorf("failed to refresh offline token: %v", err)
-				continue
-			}
-		}
 		klog.Errorf("failed to delete subscription for system: %s due to: %v", machineUUID, err)
 		time.Sleep(2 * time.Second)
 		retries++
@@ -131,48 +120,10 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 	return errors.New("failed to delete system profile after max retires number has been reached")
 }
 
-func (d *defaultRedHatSubscriptionManager) refreshToken() error {
-	payload := url.Values{}
-	payload.Add("grant_type", "refresh_token")
-	payload.Add("client_id", "rhsm-api")
-	payload.Add("refresh_token", d.offlineToken)
-
-	req, err := http.NewRequest("POST", d.authURL, strings.NewReader(payload.Encode()))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	res, err := d.client.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer res.Body.Close()
-
-	var creds = &credentials{}
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("failed while reading response: %v", err)
-	}
-
-	if res.StatusCode == http.StatusOK {
-		if err := json.Unmarshal(data, creds); err != nil {
-			return fmt.Errorf("failed while unmarshalling data: %v", err)
-		}
-		d.credentials = creds
-
-		return nil
-	}
-
-	return fmt.Errorf("error while executing request with status code: %v and message: %s", res.StatusCode, string(data))
-}
-
-func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (string, error) {
+func (d *defaultRedHatSubscriptionManager) findSystemsProfile(ctx context.Context, name string) (string, error) {
 	var offset int
 	for {
-		systemsInfo, err := d.executeFindSystemsRequest(offset)
+		systemsInfo, err := d.executeFindSystemsRequest(ctx, offset)
 		if err != nil {
 			return "", fmt.Errorf("failed to retrieve systems: %v", err)
 		}
@@ -194,13 +145,12 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(name string) (stri
 	return "", nil
 }
 
-func (d *defaultRedHatSubscriptionManager) deleteSubscription(uuid string) error {
+func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Context, uuid string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/%s", d.apiURL, uuid), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete system request: %v", err)
 	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", d.credentials.AccessToken))
+	req.WithContext(ctx)
 
 	res, err := d.client.Do(req)
 	if err != nil {
@@ -224,13 +174,12 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(uuid string) error
 	return nil
 }
 
-func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(offset int) (*systemsResponse, error) {
+func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context.Context, offset int) (*systemsResponse, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf(d.apiURL+"?limit=%v&offset=%v", d.requestsLimiter, offset), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetch systems request: %v", err)
 	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", d.credentials.AccessToken))
+	req.WithContext(ctx)
 
 	res, err := d.client.Do(req)
 	if err != nil {
