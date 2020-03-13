@@ -322,12 +322,22 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 				name = splitConfID[len(splitConfID)-1]
 			}
 
-			addrStrings, err := getIPAddressStrings(ctx, c, name)
-			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+			if c.AssignPublicIP {
+				publicIPName := ifaceName + "-pubip"
+				publicIPs, err := getIPAddressStrings(ctx, c, publicIPName)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+				}
+				ipAddresses = append(ipAddresses, publicIPs...)
 			}
 
-			ipAddresses = append(ipAddresses, addrStrings...)
+			internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
+			if err != nil {
+				return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
+			}
+
+			ipAddresses = append(ipAddresses, internalIPs...)
+
 		}
 	}
 
@@ -350,11 +360,30 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 	}
 
 	var ipAddresses []string
-	if ip.IPConfiguration.PublicIPAddress != nil && ip.IPConfiguration.PublicIPAddress.IPAddress != nil {
-		ipAddresses = append(ipAddresses, *ip.IPConfiguration.PublicIPAddress.IPAddress)
+	if ip.IPAddress != nil {
+		ipAddresses = append(ipAddresses, *ip.IPAddress)
 	}
-	if ip.IPConfiguration.PrivateIPAddress != nil {
-		ipAddresses = append(ipAddresses, *ip.IPConfiguration.PrivateIPAddress)
+
+	return ipAddresses, nil
+}
+
+func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigName string) ([]string, error) {
+	var ipAddresses []string
+	ipConfigClient, err := getIPConfigClient(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create IP config client: %v", err)
+	}
+
+	internalIP, err := ipConfigClient.Get(ctx, c.ResourceGroup, inetface, ipconfigName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IP config %q: %v", inetface, err)
+	}
+
+	if internalIP.ID == nil {
+		return nil, fmt.Errorf("private IP %q has nil IPConfiguration", inetface)
+	}
+	if internalIP.PrivateIPAddress != nil {
+		ipAddresses = append(ipAddresses, *internalIP.PrivateIPAddress)
 	}
 
 	return ipAddresses, nil
