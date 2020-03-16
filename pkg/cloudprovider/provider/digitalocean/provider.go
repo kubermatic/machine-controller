@@ -378,12 +378,9 @@ func (p *provider) get(machine *v1alpha1.Machine) (*doInstance, error) {
 		}
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
-	droplets, rsp, err := client.Droplets.List(ctx, &godo.ListOptions{PerPage: 1000})
-
+	droplets, err := p.listDroplets(c.Token)
 	if err != nil {
-		return nil, doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to get droplets: %v", err))
+		return nil, err
 	}
 
 	for i, droplet := range droplets {
@@ -393,6 +390,38 @@ func (p *provider) get(machine *v1alpha1.Machine) (*doInstance, error) {
 	}
 
 	return nil, cloudprovidererrors.ErrInstanceNotFound
+}
+
+func (p *provider) listDroplets(token string) ([]godo.Droplet, error) {
+	ctx := context.TODO()
+	client := getClient(token)
+	result := make([]godo.Droplet, 0)
+
+	opt := &godo.ListOptions{
+		PerPage: 200,
+	}
+
+	for {
+		droplets, resp, err := client.Droplets.List(ctx, opt)
+		if err != nil {
+			return nil, doStatusAndErrToTerminalError(resp.StatusCode, fmt.Errorf("failed to get droplets: %v", err))
+		}
+
+		result = append(result, droplets...)
+
+		if resp.Links == nil || resp.Links.IsLastPage() {
+			break
+		}
+
+		page, err := resp.Links.CurrentPage()
+		if err != nil {
+			return nil, err
+		}
+
+		opt.Page = page + 1
+	}
+
+	return result, nil
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {

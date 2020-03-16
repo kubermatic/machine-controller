@@ -38,6 +38,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	awstypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -109,8 +110,14 @@ var (
 		providerconfigtypes.OperatingSystemSLES: {
 			// Be as precise as possible - otherwise we might get a nightly dev build
 			description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
-			// The AWS marketplace ID from Canonical
+			// The AWS marketplace ID from SLES
 			owner: "013907871322",
+		},
+		providerconfigtypes.OperatingSystemRHEL: {
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "Provided by Red Hat, Inc.",
+			// The AWS marketplace ID from RedHat
+			owner: "309956199498",
 		},
 	}
 
@@ -139,6 +146,7 @@ type Config struct {
 	EBSVolumeEncrypted bool
 	Tags               map[string]string
 	AssignPublicIP     *bool
+	manager            rhsm.RedHatSubscriptionManager
 }
 
 type amiFilter struct {
@@ -215,15 +223,21 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 }
 
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
+	const (
+		rootDevicePathUbuntuCentOSRHEL = "/dev/sda1"
+		rootDevicePathCoreOSSLES       = "/dev/xvda"
+	)
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return "/dev/sda1", nil
+		return rootDevicePathUbuntuCentOSRHEL, nil
 	case providerconfigtypes.OperatingSystemCentOS:
-		return "/dev/sda1", nil
+		return rootDevicePathUbuntuCentOSRHEL, nil
 	case providerconfigtypes.OperatingSystemCoreos:
-		return "/dev/xvda", nil
+		return rootDevicePathCoreOSSLES, nil
 	case providerconfigtypes.OperatingSystemSLES:
-		return "/dev/xvda", nil
+		return rootDevicePathCoreOSSLES, nil
+	case providerconfigtypes.OperatingSystemRHEL:
+		return rootDevicePathUbuntuCentOSRHEL, nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
@@ -310,7 +324,13 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.Tags = rawConfig.Tags
 	c.IsSpotInstance = rawConfig.IsSpotInstance
 	c.AssignPublicIP = rawConfig.AssignPublicIP
-
+	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
+	if offlineToken != "" {
+		c.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
+		}
+	}
 	return &c, &pconfig, &rawConfig, err
 }
 
@@ -539,6 +559,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 				AssociatePublicIpAddress: aws.Bool(assignPublicIP),
 				DeleteOnTermination:      aws.Bool(true),
 				SubnetId:                 aws.String(config.SubnetID),
+				Groups:                   aws.StringSlice(config.SecurityGroupIDs),
 			},
 		},
 		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
@@ -556,24 +577,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed create instance at aws")
 	}
-	awsInstance := &awsInstance{instance: runOut.Instances[0]}
 
-	// Change to our security group
-	_, modifyInstanceErr := ec2Client.ModifyInstanceAttribute(&ec2.ModifyInstanceAttributeInput{
-		InstanceId: runOut.Instances[0].InstanceId,
-		Groups:     aws.StringSlice(config.SecurityGroupIDs),
-	})
-	if modifyInstanceErr != nil {
-		_, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
-			InstanceIds: []*string{runOut.Instances[0].InstanceId},
-		})
-		if err != nil {
-			return nil, awsErrorToTerminalError(modifyInstanceErr, fmt.Sprintf("failed to delete instance %s due to %v after attaching to security groups %v", aws.StringValue(runOut.Instances[0].InstanceId), err, config.SecurityGroupIDs))
-		}
-		return nil, awsErrorToTerminalError(modifyInstanceErr, fmt.Sprintf("failed to attach instance %s to security group %v", aws.StringValue(runOut.Instances[0].InstanceId), config.SecurityGroupIDs))
-	}
-
-	return awsInstance, nil
+	return &awsInstance{instance: runOut.Instances[0]}, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
@@ -585,7 +590,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return false, err
 	}
 
-	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -607,6 +612,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
 		klog.V(3).Infof("successfully triggered termination of instance %s at aws", instance.ID())
+	}
+
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
+		if err := config.manager.UnregisterInstance(machine.Name); err != nil {
+			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
 	}
 
 	return false, nil

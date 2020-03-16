@@ -42,7 +42,7 @@ import (
 
 const (
 	machineUIDTag   = "machine_uid"
-	centosImageName = "CentOS  7.6 64 bit"
+	centosImageName = "CentOS  7.7 64 bit"
 	ubuntuImageName = "Ubuntu  18.04 64 bit"
 
 	finalizerInstance = "kubermatic.io/cleanup-alibaba-instance"
@@ -69,6 +69,8 @@ type Config struct {
 	InternetMaxBandwidthOut string
 	Labels                  map[string]string
 	ZoneID                  string
+	DiskType                string
+	DiskSize                string
 }
 
 type alibabaInstance struct {
@@ -139,6 +141,12 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 	_, err = p.getImageIDForOS(machineSpec, pc.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
+	}
+	if c.DiskType == "" {
+		return errors.New("DiskType is missing")
+	}
+	if c.DiskSize == "" {
+		return errors.New("DiskSize is missing")
 	}
 
 	return nil
@@ -219,7 +227,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest.InternetMaxBandwidthOut = requests.Integer(c.InternetMaxBandwidthOut)
 	encodedUserData := base64.StdEncoding.EncodeToString([]byte(userdata))
 	createInstanceRequest.UserData = encodedUserData
-	createInstanceRequest.SystemDiskCategory = "cloud_efficiency"
+	createInstanceRequest.SystemDiskCategory = c.DiskType
+	createInstanceRequest.DataDisk = &[]ecs.CreateInstanceDataDisk{
+		{
+			Size: c.DiskSize,
+		},
+	}
+	createInstanceRequest.SystemDiskSize = requests.Integer(c.DiskSize)
 	createInstanceRequest.ZoneId = c.ZoneID
 	tag := ecs.CreateInstanceTag{
 		Key:   machineUIDTag,
@@ -275,7 +289,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	deleteInstancesRequest.Force = requests.Boolean("True")
 	if _, err = client.DeleteInstances(deleteInstancesRequest); err != nil {
-		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", c.InstanceID, err)
+		return false, fmt.Errorf("failed to delete instance with instanceID %s, due to %v", foundInstance.ID(), err)
 	}
 
 	return false, nil
@@ -375,6 +389,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get the value of \"internetMaxBandwidthOut\" field, error = %v", err)
 	}
 	c.Labels = rawConfig.Labels
+	c.DiskType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"diskType\" field, error = %v", err)
+	}
+	c.DiskSize, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskSize)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"diskSize\" field, error = %v", err)
+	}
 	return &c, &pconfig, err
 }
 
