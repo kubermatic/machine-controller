@@ -766,7 +766,7 @@
   revision = "9a301d65acbb728fcc3ace14f45f511a4cfeea9c"
 
 [[projects]]
-  digest = "1:3e6f7bda8d0452d47a9db71b642f9295cc4abec4c74cc8e321d0c672373f00f6"
+  digest = "1:c1cb791cd00e63ae9bf77a4ee6c525ba11b171fb012686f136abf622d6ccb05b"
   name = "github.com/vmware/govmomi"
   packages = [
     ".",
@@ -774,8 +774,13 @@
     "list",
     "nfc",
     "object",
+    "ovf",
     "property",
     "session",
+    "simulator",
+    "simulator/esx",
+    "simulator/internal",
+    "simulator/vpx",
     "task",
     "vim25",
     "vim25/debug",
@@ -787,8 +792,8 @@
     "vim25/xml",
   ]
   pruneopts = "NUT"
-  revision = "a0fef816799db3e430bb7a5ac951e7835fe4d56b"
-  version = "v0.21.0"
+  revision = "490c5edad4c986216ba1fa04f3c0aa2a4ce5e702"
+  version = "v0.22.1"
 
 [[projects]]
   digest = "1:58f2854b50ff8862eb6a347f20dedaac83e1166f4040472e17bc37736841a12f"
@@ -1556,6 +1561,8 @@
     "github.com/vmware/govmomi/find",
     "github.com/vmware/govmomi/object",
     "github.com/vmware/govmomi/property",
+    "github.com/vmware/govmomi/simulator",
+    "github.com/vmware/govmomi/vim25/methods",
     "github.com/vmware/govmomi/vim25/mo",
     "github.com/vmware/govmomi/vim25/soap",
     "github.com/vmware/govmomi/vim25/types",

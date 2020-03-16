@@ -69,15 +69,26 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		targetVMFolder = datacenterFolders.VmFolder
 	}
 
-	datastore, err := session.Finder.Datastore(ctx, config.Datastore)
+	relocateSpec := types.VirtualMachineRelocateSpec{
+		DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndConsolidate),
+		Folder:       types.NewReference(targetVMFolder.Reference()),
+		Disk:         []types.VirtualMachineRelocateSpecDiskLocator{},
+	}
+	cloneSpec := types.VirtualMachineCloneSpec{
+		PowerOn:  false,
+		Template: false,
+		Location: relocateSpec,
+	}
+	datastoreref, err := resolveDatastoreRef(ctx, config, session, tpl, targetVMFolder, &cloneSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get datastore: %v", err)
+		return nil, fmt.Errorf("failed to resolve datastore: %v", err)
 	}
 
+	cloneSpec.Location.Datastore = datastoreref
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
 	// It's nicer to tell which specific action failed due to lacking permissions.
-	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{})
+	clonedVMTask, err := tpl.Clone(ctx, targetVMFolder, vmName, cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to clone template vm: %v", err)
 	}
@@ -89,25 +100,6 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	virtualMachine, err := session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %v", err)
-	}
-
-	relocateSpec := types.VirtualMachineRelocateSpec{
-		Datastore:    types.NewReference(datastore.Reference()),
-		DiskMoveType: string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndConsolidate),
-		Folder:       types.NewReference(targetVMFolder.Reference()),
-		Disk:         []types.VirtualMachineRelocateSpecDiskLocator{},
-	}
-	relocateTask, err := virtualMachine.Relocate(ctx, relocateSpec, types.VirtualMachineMovePriorityDefaultPriority)
-	if err != nil {
-		return nil, fmt.Errorf("failed to relocate: %v", err)
-	}
-	if err := relocateTask.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("failed waiting for relocation to finish: %v", err)
-	}
-
-	virtualMachine, err = session.Finder.VirtualMachine(ctx, vmName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get virtual machine object after relocating: %v", err)
 	}
 
 	vmDevices, err := virtualMachine.Device(ctx)
@@ -218,13 +210,73 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	return virtualMachine, nil
 }
 
-func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, localIsoFilePath, datastoreName string) error {
-	datastore, err := session.Finder.Datastore(ctx, datastoreName)
-	if err != nil {
-		return fmt.Errorf("failed to get datastore: %v", err)
+func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, vm *object.VirtualMachine, folder *object.Folder, cloneSpec *types.VirtualMachineCloneSpec) (*types.ManagedObjectReference, error) {
+	// Based on https://github.com/vmware/govmomi/blob/v0.22.1/govc/vm/clone.go#L358
+	if config.DatastoreCluster != "" && config.Datastore == "" {
+		klog.Infof("Choosing initial datastore placement for vm %s from datastore cluster %s", vm.Name(), config.DatastoreCluster)
+		storagePod, err := session.Finder.DatastoreCluster(ctx, config.DatastoreCluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get datastore cluster: %v", err)
+		}
+
+		// Build pod selection spec from config spec
+		podSelectionSpec := types.StorageDrsPodSelectionSpec{
+			StoragePod: types.NewReference(storagePod.Reference()),
+		}
+
+		// Get the virtual machine reference
+		vmref := vm.Reference()
+
+		// TODO(irozzo) moveAllDiskBackingsAndConsolidate does not seem to work with RecommendDatastore,
+		// try to better understand the reason and the implications.
+		// https://code.vmware.com/docs/4206/vsphere-web-services-api-reference/doc/vim.vm.RelocateSpec.DiskMoveOptions.html
+		cloneSpec.Location.DiskMoveType = string(types.VirtualMachineRelocateDiskMoveOptionsMoveAllDiskBackingsAndDisallowSharing)
+		// Build the placement spec
+		storagePlacementSpec := types.StoragePlacementSpec{
+			Folder:           types.NewReference(folder.Reference()),
+			Vm:               &vmref,
+			CloneName:        vm.Name(),
+			CloneSpec:        cloneSpec,
+			PodSelectionSpec: podSelectionSpec,
+			Type:             string(types.StoragePlacementSpecPlacementTypeClone),
+		}
+
+		// Get the storage placement result
+		storageResourceManager := object.NewStorageResourceManager(session.Client.Client)
+		result, err := storageResourceManager.RecommendDatastores(ctx, storagePlacementSpec)
+		if err != nil {
+			return nil, fmt.Errorf("error occurred while getting storage placement recommendation: %v", err)
+		}
+
+		// Get the recommendations
+		recommendations := result.Recommendations
+		if len(recommendations) == 0 {
+			return nil, fmt.Errorf("no recommendations")
+		}
+
+		// Get the first recommendation
+		ds := recommendations[0].Action[0].(*types.StoragePlacementAction).Destination.Reference()
+		klog.Infof("The selected datastore from datastore cluster %s is: %v", config.DatastoreCluster, ds)
+		return &ds, nil
+	} else if config.DatastoreCluster == "" && config.Datastore != "" {
+		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get datastore: %v", err)
+		}
+		return types.NewReference(datastore.Reference()), nil
+	} else {
+		return nil, fmt.Errorf("please provide either a datastore or a datastore cluster")
 	}
+}
+
+func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, localIsoFilePath string) error {
 	p := soap.DefaultUpload
 	remoteIsoFilePath := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
+	// Get the datastore where VM files are located
+	datastore, err := getDatastoreFromVM(ctx, session, vmRef)
+	if err != nil {
+		return fmt.Errorf("error getting datastore from VM %s: %v", vmRef.Name(), err)
+	}
 	klog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", datastore, remoteIsoFilePath)
 	if err := datastore.UploadFile(ctx, localIsoFilePath, remoteIsoFilePath, &p); err != nil {
 		return fmt.Errorf("failed to upload iso: %v", err)
@@ -359,4 +411,19 @@ func validateDiskResizing(disks []*types.VirtualDisk, requestedSize int64) error
 		return fmt.Errorf("requested diskSizeGB %d is smaller than size of attached disk(%dGiB)", requestedSize, attachedDiskSizeInGiB)
 	}
 	return nil
+}
+
+//getDatastoreFromVM gets the datastore where the VM files are located.
+func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.VirtualMachine) (*object.Datastore, error) {
+	var props mo.VirtualMachine
+	// Obtain VM properties
+	if err := vmRef.Properties(ctx, vmRef.Reference(), nil, &props); err != nil {
+		return nil, fmt.Errorf("error getting VM properties: %v", err)
+	}
+	datastorePathObj := new(object.DatastorePath)
+	isSuccess := datastorePathObj.FromString(props.Summary.Config.VmPathName)
+	if !isSuccess {
+		return nil, fmt.Errorf("Failed to parse volPath: %s", props.Summary.Config.VmPathName)
+	}
+	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
 }

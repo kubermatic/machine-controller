@@ -48,6 +48,7 @@ var (
 		providerconfigtypes.OperatingSystemCoreos,
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemSLES,
+		providerconfigtypes.OperatingSystemRHEL,
 	}
 )
 

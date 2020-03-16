@@ -708,6 +708,7 @@ func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		// Check if the machine is a potential candidate for triggering deletion
 		if r.joinClusterTimeout != nil && ownerReferencesHasMachineSetKind(machine.OwnerReferences) {
 			if time.Since(machine.CreationTimestamp.Time) > *r.joinClusterTimeout {
+				klog.V(3).Infof("Join cluster timeout expired for machine %s, deleting it", machine.Name)
 				if err := r.client.Delete(r.ctx, machine); err != nil {
 					return nil, fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
 						machine.Namespace, machine.Name, r.joinClusterTimeout.String(), err)

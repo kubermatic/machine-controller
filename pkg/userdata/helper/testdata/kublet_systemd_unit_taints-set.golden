@@ -18,31 +18,21 @@ EnvironmentFile=-/etc/environment
 ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
-  --kubeconfig=/etc/kubernetes/kubelet.conf \
-  --pod-manifest-path=/etc/kubernetes/manifests \
+  --kubeconfig=/var/lib/kubelet/kubeconfig \
+  --config=/etc/kubernetes/kubelet.conf \
   --allow-privileged=true \
   --network-plugin=cni \
   --cni-conf-dir=/etc/cni/net.d \
   --cni-bin-dir=/opt/cni/bin \
-  --authorization-mode=Webhook \
-  --client-ca-file=/etc/kubernetes/pki/ca.crt \
-  --rotate-certificates=true \
   --cert-dir=/etc/kubernetes/pki \
-  --authentication-token-webhook=true \
   --cloud-provider=aws \
   --cloud-config=/etc/kubernetes/cloud-config \
-  --read-only-port=0 \
   --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
-  --anonymous-auth=false \
-  --protect-kernel-defaults=true \
-  --cluster-dns=10.10.10.10 \
-  --cluster-domain=cluster.local \
   --register-with-taints=key1=value1:NoSchedule,key2=value2:NoExecute \
   --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-  --cgroup-driver=systemd
+  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 
 [Install]
 WantedBy=multi-user.target
