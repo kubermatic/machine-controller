@@ -184,7 +184,10 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    yum install -y docker-1.13.1 \
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+    yum install -y docker-ce-18.09.9-3.el7 \
       ebtables \
       ethtool \
       nfs-utils \
@@ -202,11 +205,15 @@ write_files:
     systemctl enable --now vmtoolsd.service
     {{ end -}}
 {{- /* Without this, the conformance tests fail with differing tests causing it, the common denominator: They look for some string in container logs and get an empty log */ -}}
-    sed -i 's/journald/json-file/g' /etc/sysconfig/docker
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
+
+- path: /etc/docker/daemon.json
+  permissions: "0644"
+  content: |
+{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
