@@ -192,9 +192,7 @@ write_files:
 
     yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
-    mkdir -p "/etc/docker"
-
-    yum install -y docker-ce-3:18.09.1-3.el7 \
+    yum install -y docker-ce-18.09.1-3.el7 \
       ebtables \
       ethtool \
       nfs-utils \
@@ -205,20 +203,6 @@ write_files:
       curl \
       ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
       open-vm-tools{{ end }}
-
-    cat > /etc/docker/daemon.json <<EOF
-    {
-      "exec-opts": ["native.cgroupdriver=systemd"],
-      "log-driver": "json-file",
-      "log-opts": {
-        "max-size": "100m"
-      },
-      "storage-driver": "overlay2",
-      "storage-opts": [
-        "overlay2.override_kernel_check=true"
-      ]
-    }
-    EOF
 
 {{ downloadBinariesScript .KubeletVersion true | indent 4 }}
 
@@ -307,6 +291,11 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
+- path: /etc/docker/daemon.json
+  permissions: "0644"
+  content: |
+{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
+  
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
   content: |

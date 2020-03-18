@@ -353,7 +353,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-          {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":["https://registry.docker-cn.com"]}
+          {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"},"registry-mirrors":["https://registry.docker-cn.com"]}
 
     - path: /opt/bin/download.sh
       filesystem: root
