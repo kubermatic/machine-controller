@@ -201,26 +201,17 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1beta1.CertificateSigning
 		return fmt.Errorf("organization '%s' doesn't match node group '%s'", certReq.Subject.Organization[0], nodeGroup)
 	}
 
+	machineAddressSet := sets.NewString(machine.Status.NodeRef.Name)
+	for _, addr := range machine.Status.Addresses {
+		machineAddressSet.Insert(addr.Address)
+	}
+
 	// Validate SAN DNS names
 	for _, dns := range certReq.DNSNames {
 		if len(dns) == 0 {
 			continue
 		}
-
-		var foundSAN bool
-		for _, addr := range machine.Status.Addresses {
-			if addr.Address == dns {
-				foundSAN = true
-				break
-			}
-		}
-		if !foundSAN {
-			// Some providers don't have reachable DNS names and those are not in addresses.
-			// In that case we check is the DNS name matching the node name, and if yes we
-			// assume the DNS name is valid and allowed.
-			if machine.Status.NodeRef.Name == dns {
-				continue
-			}
+		if !machineAddressSet.Has(dns) {
 			return fmt.Errorf("dns name '%s' cannot be associated with node '%s'", dns, machine.Status.NodeRef.Name)
 		}
 	}
@@ -230,15 +221,7 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1beta1.CertificateSigning
 		if len(ip) == 0 {
 			continue
 		}
-
-		var foundSAN bool
-		for _, addr := range machine.Status.Addresses {
-			if addr.Address == ip.String() {
-				foundSAN = true
-				break
-			}
-		}
-		if !foundSAN {
+		if !machineAddressSet.Has(ip.String()) {
 			return fmt.Errorf("ip address '%v' cannot be associated with node '%s'", ip, machine.Status.NodeRef.Name)
 		}
 	}
