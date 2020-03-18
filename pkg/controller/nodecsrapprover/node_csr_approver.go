@@ -21,6 +21,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"strings"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +38,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const ControllerName = "node_csr_autoapprover"
+const (
+	// ControllerName is name of the NodeCSRApprover controller
+	ControllerName = "node_csr_autoapprover"
+
+	nodeUser       = "system:node"
+	nodeUserPrefix = nodeUser + ":"
+
+	nodeGroup          = "system:nodes"
+	authenticatedGroup = "system:authenticated"
+)
 
 type reconciler struct {
 	client.Client
@@ -91,30 +103,41 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 		}
 	}
 
-	// Ensure system:nodes is in groups
-	if !sets.NewString(csr.Spec.Groups...).Has("system:nodes") {
-		klog.V(4).Infof("Skipping reconciling CSR '%s' because 'system:nodes' is not in its groups", csr.ObjectMeta.Name)
+	// Validate the CSR object and get the node name
+	nodeName, err := r.validateCSRObject(csr)
+	if err != nil {
+		klog.V(4).Infof("Skipping reconciling CSR '%s' because CSR object is not valid: %v", csr.ObjectMeta.Name, err)
 		return nil
 	}
 
-	// Check are present usages matching allowed usages
-	if len(csr.Spec.Usages) != 3 {
-		klog.V(4).Infof("Skipping reconciling CSR '%s' because it has not exactly three usages defined", csr.ObjectMeta.Name)
-		return nil
+	// Get machine name for the appropriate node
+	machine, found, err := r.getMachineForNode(nodeName)
+	if err != nil {
+		return fmt.Errorf("failed to get machine for node '%s': %v", nodeName, err)
 	}
-	for _, usage := range csr.Spec.Usages {
-		if !isUsageInUsageList(usage, allowedUsages) {
-			klog.V(4).Infof("Skipping reconciling CSR '%s' because its usage (%v) is not in the list of allowed usages (%v)",
-				csr.ObjectMeta.Name, usage, allowedUsages)
-			return nil
-		}
-	}
-	// Validate the CSR request
-	if err := validateCSRRequest(csr); err != nil {
-		klog.V(4).Infof("Skipping reconciling CSR '%s' because CSR request is not valid: %v", csr.ObjectMeta.Name, err)
-		return nil
+	if !found {
+		return fmt.Errorf("no machine found for given node '%s'", nodeName)
 	}
 
+	// Parse the certificate request
+	csrBlock, rest := pem.Decode(csr.Spec.Request)
+	if csrBlock == nil {
+		return fmt.Errorf("no certificate request found for the given CSR")
+	}
+	if len(rest) != 0 {
+		return fmt.Errorf("found more than one PEM encoded block in the result")
+	}
+	certRequest, err := x509.ParseCertificateRequest(csrBlock.Bytes)
+	if err != nil {
+		return err
+	}
+
+	// Validate the certificate request
+	if err := r.validateX509CSR(csr, certRequest, machine); err != nil {
+		return fmt.Errorf("error validating the x509 certificate request: %v", err)
+	}
+
+	// Approve CSR
 	klog.V(4).Infof("Approving CSR %s", csr.ObjectMeta.Name)
 	approvalCondition := certificatesv1beta1.CertificateSigningRequestCondition{
 		Type:   certificatesv1beta1.CertificateApproved,
@@ -130,6 +153,99 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	return nil
 }
 
+// validateCSRObject valides the CSR object and returns name of the node that requested the certificate
+func (r *reconciler) validateCSRObject(csr *certificatesv1beta1.CertificateSigningRequest) (string, error) {
+	// Get and validate the node name
+	if !strings.HasPrefix(csr.Spec.Username, nodeUserPrefix) {
+		return "", fmt.Errorf("username must have the '%s' prefix", nodeUserPrefix)
+	}
+	nodeName := strings.TrimPrefix(csr.Spec.Username, nodeUserPrefix)
+	if len(nodeName) == 0 {
+		return "", fmt.Errorf("node name is empty")
+	}
+
+	// Ensure system:nodes and system:authenticated are in groups
+	if len(csr.Spec.Groups) < 2 {
+		return "", fmt.Errorf("there are less than 2 groups")
+	}
+	if !sets.NewString(csr.Spec.Groups...).HasAll(nodeGroup, authenticatedGroup) {
+		return "", fmt.Errorf("'%s' and/or '%s' are not in its groups", nodeGroup, authenticatedGroup)
+	}
+
+	// Check are present usages matching allowed usages
+	if len(csr.Spec.Usages) != 3 {
+		return "", fmt.Errorf("there are no exactly three usages defined")
+	}
+	for _, usage := range csr.Spec.Usages {
+		if !isUsageInUsageList(usage, allowedUsages) {
+			return "", fmt.Errorf("usage %v is not in the list of allowed usages (%v)", usage, allowedUsages)
+		}
+	}
+
+	return nodeName, nil
+}
+
+// validateX509CSR validates the certificate request by comparing CN with username,
+// and organization with groups.
+func (r *reconciler) validateX509CSR(csr *certificatesv1beta1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine v1alpha1.Machine) error {
+	// Validate Subject CommonName
+	if certReq.Subject.CommonName != csr.Spec.Username {
+		return fmt.Errorf("commonName '%s' is different then CSR username '%s'", certReq.Subject.CommonName, csr.Spec.Username)
+	}
+
+	// Validate Subject Organization
+	if len(certReq.Subject.Organization) != 1 {
+		return fmt.Errorf("expected only one organization but got %d instead", len(certReq.Subject.Organization))
+	}
+	if certReq.Subject.Organization[0] != nodeGroup {
+		return fmt.Errorf("organization '%s' doesn't match node group '%s'", certReq.Subject.Organization[0], nodeGroup)
+	}
+
+	machineAddressSet := sets.NewString(machine.Status.NodeRef.Name)
+	for _, addr := range machine.Status.Addresses {
+		machineAddressSet.Insert(addr.Address)
+	}
+
+	// Validate SAN DNS names
+	for _, dns := range certReq.DNSNames {
+		if len(dns) == 0 {
+			continue
+		}
+		if !machineAddressSet.Has(dns) {
+			return fmt.Errorf("dns name '%s' cannot be associated with node '%s'", dns, machine.Status.NodeRef.Name)
+		}
+	}
+
+	// Validate SAN IP addresses
+	for _, ip := range certReq.IPAddresses {
+		if len(ip) == 0 {
+			continue
+		}
+		if !machineAddressSet.Has(ip.String()) {
+			return fmt.Errorf("ip address '%v' cannot be associated with node '%s'", ip, machine.Status.NodeRef.Name)
+		}
+	}
+
+	return nil
+}
+
+func (r *reconciler) getMachineForNode(nodeName string) (v1alpha1.Machine, bool, error) {
+	// List all Machines in all namespaces
+	machines := &v1alpha1.MachineList{}
+	listOptions := &client.ListOptions{Namespace: ""}
+	if err := r.Client.List(context.Background(), machines, listOptions); err != nil {
+		return v1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %v", err)
+	}
+
+	for _, machine := range machines.Items {
+		if machine.Status.NodeRef != nil && machine.Status.NodeRef.Name == nodeName {
+			return machine, true, nil
+		}
+	}
+
+	return v1alpha1.Machine{}, false, fmt.Errorf("failed to get machine for given node name '%s'", nodeName)
+}
+
 func isUsageInUsageList(usage certificatesv1beta1.KeyUsage, usageList []certificatesv1beta1.KeyUsage) bool {
 	for _, usageListItem := range usageList {
 		if usage == usageListItem {
@@ -137,33 +253,4 @@ func isUsageInUsageList(usage certificatesv1beta1.KeyUsage, usageList []certific
 		}
 	}
 	return false
-}
-
-// validateCSRRequest parses the CSR request and compares certificate request CommonName with CSR username, and
-// certificateRequest Organization with CSR groups.
-func validateCSRRequest(csr *certificatesv1beta1.CertificateSigningRequest) error {
-	csrBlock, rest := pem.Decode(csr.Spec.Request)
-	if csrBlock == nil {
-		return fmt.Errorf("no certificate request found for the given CSR")
-	}
-	if len(rest) != 0 {
-		return fmt.Errorf("found more than one PEM encoded block in the result")
-	}
-	csrRequest, err := x509.ParseCertificateRequest(csrBlock.Bytes)
-	if err != nil {
-		return err
-	}
-	// Validate Subject CommonName
-	if csrRequest.Subject.CommonName != csr.Spec.Username {
-		return fmt.Errorf("commonName '%s' is different then CSR username '%s'", csrRequest.Subject.CommonName, csr.Spec.Username)
-	}
-	// Validate Subject Organization
-	if len(csrRequest.Subject.Organization) != 1 {
-		return fmt.Errorf("error validating subject organizations")
-	}
-	if csrRequest.Subject.Organization[0] != "system:nodes" {
-		return fmt.Errorf("expected 'system:nodes' in organization, but got '%s'", csrRequest.Subject.Organization[0])
-	}
-
-	return nil
 }
