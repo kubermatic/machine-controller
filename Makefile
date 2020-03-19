@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+SHELL = /bin/bash -eu -o pipefail
+
 GO_VERSION = 1.13.8
 
 export CGO_ENABLED := 0
