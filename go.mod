@@ -92,12 +92,13 @@ require (
 	k8s.io/gengo v0.0.0-20200205140755-e0e292d8aa12 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // indirect
+	k8s.io/kubelet v0.15.10
 	k8s.io/utils v0.0.0-20200124190032-861946025e34
 	kubevirt.io/client-go v0.19.0
 	kubevirt.io/containerized-data-importer v1.9.3
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 	sigs.k8s.io/controller-runtime v0.3.0
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	sigs.k8s.io/yaml v1.2.0
 )
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.3.0+incompatible
