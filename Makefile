@@ -20,7 +20,7 @@ export CGO_ENABLED := 0
 
 export E2E_SSH_PUBKEY ?= $(shell test -f ~/.ssh/id_rsa.pub && cat ~/.ssh/id_rsa.pub)
 
-export DOCKER_TAG ?= $(shell git tag --points-at HEAD)
+export GIT_TAG ?= $(shell git tag --points-at HEAD)
 
 export GOFLAGS?=-mod=readonly -trimpath
 
