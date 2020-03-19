@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeletv1b1 "k8s.io/kubelet/config/v1beta1"
+	"k8s.io/utils/pointer"
 	kyaml "sigs.k8s.io/yaml"
 )
 
@@ -136,10 +137,6 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 
 // kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration
 func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP) (string, error) {
-	var (
-		True  = true
-		False = false
-	)
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
 		clusterDNSstr = append(clusterDNSstr, ip.String())
@@ -155,10 +152,10 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP) (string, er
 				ClientCAFile: "/etc/kubernetes/pki/ca.crt",
 			},
 			Webhook: kubeletv1b1.KubeletWebhookAuthentication{
-				Enabled: &True,
+				Enabled: pointer.BoolPtr(true),
 			},
 			Anonymous: kubeletv1b1.KubeletAnonymousAuthentication{
-				Enabled: &False,
+				Enabled: pointer.BoolPtr(false),
 			},
 		},
 		Authorization: kubeletv1b1.KubeletAuthorization{
