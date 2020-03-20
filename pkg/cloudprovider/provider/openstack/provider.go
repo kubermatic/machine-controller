@@ -410,7 +410,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -505,6 +505,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
+		if err := rhsm.AddRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+		}
+	}
 	return &osInstance{server: &server}, nil
 }
 
@@ -599,6 +604,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
 		if err := c.manager.UnregisterInstance(machine.Name); err != nil {
 			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
+		}
+
+		if err := rhsm.RemoveRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return false, fmt.Errorf("failed to remove finalizer: %v", err)
 		}
 	}
 

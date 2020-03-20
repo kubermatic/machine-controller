@@ -36,6 +36,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -261,6 +262,13 @@ func (p *Provider) Create(
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
+
+	if cfg.providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && cfg.manager != nil {
+		if err := rhsm.AddRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+		}
+	}
+
 	// Retrieve it to get a full qualified instance.
 	return p.Get(machine, data)
 }
@@ -295,6 +303,10 @@ func (p *Provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if cfg.providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && cfg.manager != nil {
 		if err := cfg.manager.UnregisterInstance(machine.Name); err != nil {
 			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
+
+		if err := rhsm.RemoveRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return false, fmt.Errorf("failed to remove finalizer: %v", err)
 		}
 	}
 	return false, nil

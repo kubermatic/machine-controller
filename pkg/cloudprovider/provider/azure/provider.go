@@ -539,6 +539,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Name, err.Error())
 	}
 
+	if providerCfg.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
+		if err := rhsm.AddRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+		}
+	}
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
@@ -602,6 +607,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
 		if err := config.manager.UnregisterInstance(machine.Name); err != nil {
 			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
+
+		if err := rhsm.RemoveRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return false, fmt.Errorf("failed to remove finalizer: %v", err)
 		}
 	}
 

@@ -578,10 +578,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, awsErrorToTerminalError(err, "failed create instance at aws")
 	}
 
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
+		if err := rhsm.AddRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+		}
+	}
+
 	return &awsInstance{instance: runOut.Instances[0]}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	instance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -617,6 +623,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
 		if err := config.manager.UnregisterInstance(*instance.instance.PrivateDnsName); err != nil {
 			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
+		}
+
+		if err := rhsm.RemoveRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return false, fmt.Errorf("failed to remove finalizer: %v", err)
 		}
 	}
 

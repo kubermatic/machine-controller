@@ -279,7 +279,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return labels, err
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -426,11 +426,18 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	if err := sigClient.Create(ctx, secret); err != nil {
 		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
 	}
+
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
+		if err := rhsm.AddRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+		}
+	}
+
 	return &kubeVirtServer{}, nil
 
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
@@ -456,6 +463,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
 		if err := c.manager.UnregisterInstance(machine.Name); err != nil {
 			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
+		}
+
+		if err := rhsm.RemoveRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return false, fmt.Errorf("failed to remove finalizer: %v", err)
 		}
 	}
 

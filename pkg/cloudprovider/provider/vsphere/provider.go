@@ -72,7 +72,7 @@ type Config struct {
 	CPUs             int32
 	MemoryMB         int64
 	DiskSizeGB       *int64
-	Manager          rhsm.RedHatSubscriptionManager
+	manager          rhsm.RedHatSubscriptionManager
 }
 
 // Ensures that Server implements Instance interface.
@@ -186,7 +186,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.DiskSizeGB = rawConfig.DiskSizeGB
 	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
 	if offlineToken != "" {
-		c.Manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
+		c.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
 		}
@@ -267,7 +267,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	vm, err := p.create(machine, userdata)
+	vm, err := p.create(machine, data.Update, userdata)
 	if err != nil {
 		_, cleanupErr := p.Cleanup(machine, data)
 		if cleanupErr != nil {
@@ -278,7 +278,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return vm, nil
 }
 
-func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (p *provider) create(machine *v1alpha1.Machine, updater cloudprovidertypes.MachineUpdater, userdata string) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -340,6 +340,12 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 
 	if err := powerOnTask.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("error when waiting for vm powerOn task: %v", err)
+	}
+
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
+		if err := rhsm.AddRHELSubscriptionFinalizer(machine, updater); err != nil {
+			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+		}
 	}
 
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
@@ -411,9 +417,13 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.Manager != nil {
-		if err := config.Manager.UnregisterInstance(machine.Name); err != nil {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
+		if err := config.manager.UnregisterInstance(machine.Name); err != nil {
 			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
+		}
+
+		if err := rhsm.RemoveRHELSubscriptionFinalizer(machine, data.Update); err != nil {
+			return false, fmt.Errorf("failed to remove finalizer: %v", err)
 		}
 	}
 
