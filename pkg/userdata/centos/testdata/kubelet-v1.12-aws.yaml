@@ -69,7 +69,10 @@ write_files:
     swapoff -a
 
 
-    yum install -y docker-1.13.1 \
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+    yum install -y docker-ce-18.09.9-3.el7 \
       ebtables \
       ethtool \
       nfs-utils \
@@ -97,7 +100,6 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
-    sed -i 's/journald/json-file/g' /etc/sysconfig/docker
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -250,6 +252,11 @@ write_files:
   permissions: "0644"
   content: |
     export PATH="/opt/bin:$PATH"
+
+- path: /etc/docker/daemon.json
+  permissions: "0644"
+  content: |
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"}}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
