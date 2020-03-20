@@ -35,6 +35,17 @@ func getIPClient(c *config) (*network.PublicIPAddressesClient, error) {
 	return &ipClient, nil
 }
 
+func getIPConfigClient(c *config) (*network.InterfaceIPConfigurationsClient, error) {
+	var err error
+	ipConfigClient := network.NewInterfaceIPConfigurationsClient(c.SubscriptionID)
+	ipConfigClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
+	}
+
+	return &ipConfigClient, nil
+}
+
 func getSubnetsClient(c *config) (*network.SubnetsClient, error) {
 	var err error
 	subnetClient := network.NewSubnetsClient(c.SubscriptionID)

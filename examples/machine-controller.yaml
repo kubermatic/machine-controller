@@ -167,7 +167,7 @@ spec:
             # Machines that fail to join the cluster within this timeout and
             # are owned by a MachineSet will get deleted so the MachineSet
             # controller re-creates them
-            - -join-cluster-timeout=15m
+            - -join-cluster-timeout=25m
           ports:
           - containerPort: 8085
           livenessProbe:

@@ -99,4 +99,4 @@ EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then
   EXTRA_ARGS="-run $1"
 fi
-go test -race -tags=e2e -parallel 240 -v -timeout 50m  ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
+go test -race -tags=e2e -parallel 240 -v -timeout 70m  ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
