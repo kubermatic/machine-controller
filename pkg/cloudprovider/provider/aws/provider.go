@@ -580,7 +580,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
 		if err := rhsm.AddRHELSubscriptionFinalizer(machine, data.Update); err != nil {
-			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+			return nil, fmt.Errorf("failed adding finalizer: %v", err)
 		}
 	}
 

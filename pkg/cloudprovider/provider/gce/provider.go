@@ -265,7 +265,7 @@ func (p *Provider) Create(
 
 	if cfg.providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && cfg.manager != nil {
 		if err := rhsm.AddRHELSubscriptionFinalizer(machine, data.Update); err != nil {
-			return nil, fmt.Errorf("failed adding finlizer: %v", err)
+			return nil, fmt.Errorf("failed adding finalizer: %v", err)
 		}
 	}
 
