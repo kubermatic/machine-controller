@@ -30,7 +30,7 @@ import (
 	"k8s.io/klog"
 )
 
-const defaultTimeout = 50 * time.Second
+const defaultTimeout = 10 * time.Second
 
 // RedHatSubscriptionManager is responsible for removing redhat subscriptions.
 type RedHatSubscriptionManager interface {
@@ -109,7 +109,7 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(offlineToken, mach
 			return nil
 		}
 
-		err = d.deleteSubscription(ctx, offlineToken, machineUUID)
+		err = d.deleteSubscription(ctx, machineUUID, offlineToken)
 		if err == nil {
 			klog.Infof("subscription for vm %v has been deleted successfully", machineUUID)
 			return nil
