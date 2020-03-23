@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	authPath = "/auth/"
+	authPath = "/"
 	apiPath  = "/systems"
 )
 
@@ -59,6 +59,7 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			}()
 			manager := NewRedHatSubscriptionManager()
 			manager.(*defaultRedHatSubscriptionManager).apiURL = tt.testingServer.URL + apiPath
+			manager.(*defaultRedHatSubscriptionManager).authURL = tt.testingServer.URL
 			manager.(*defaultRedHatSubscriptionManager).requestsLimiter = tt.requestLimiter
 
 			if err := manager.UnregisterInstance(tt.offlineToken, tt.machineName); err != nil {

@@ -576,7 +576,7 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 			}
 
 			if err := r.redhatSubscriptionManager.UnregisterInstance(rhelConfig.RedHatSubscriptionOfflineToken, machineName); err != nil {
-				return nil, fmt.Errorf("failed to delete subscribtion for machine name %s: %v", machine.Name, err)
+				return nil, fmt.Errorf("failed to delete subscription for machine name %s: %v", machine.Name, err)
 			}
 		}
 

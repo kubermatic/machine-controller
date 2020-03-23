@@ -22,7 +22,6 @@ import (
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog"
 )
 
 // Config contains specific configuration for RHEL.
@@ -60,11 +59,7 @@ func LoadConfig(r runtime.RawExtension) (*Config, error) {
 	}
 
 	if cfg.RedHatSubscriptionOfflineToken == "" {
-		subOfflineToken, ok := os.LookupEnv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
-		if !ok {
-			klog.Warning("redhat offline token is not found, rhel subscriptions won't be handled by the machine-controller")
-		}
-		cfg.RedHatSubscriptionOfflineToken = subOfflineToken
+		cfg.RedHatSubscriptionOfflineToken, _ = os.LookupEnv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
 	}
 
 	return cfg, nil
