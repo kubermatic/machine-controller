@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 )
 
 // Config contains specific configuration for RHEL.
@@ -29,6 +30,7 @@ type Config struct {
 	DistUpgradeOnBoot               bool   `json:"distUpgradeOnBoot"`
 	RHELSubscriptionManagerUser     string `json:"rhelSubscriptionManagerUser,omitempty"`
 	RHELSubscriptionManagerPassword string `json:"rhelSubscriptionManagerPassword,omitempty"`
+	RedHatSubscriptionOfflineToken  string `json:"redhatSubscriptionOfflineToken,omitempty"`
 }
 
 // LoadConfig retrieves the RHEL configuration from raw data.
@@ -55,6 +57,14 @@ func LoadConfig(r runtime.RawExtension) (*Config, error) {
 			return nil, fmt.Errorf("RHEL_SUBSCRIPTION_MANAGER_PASSWORD env variable is not found")
 		}
 		cfg.RHELSubscriptionManagerPassword = subPassword
+	}
+
+	if cfg.RedHatSubscriptionOfflineToken == "" {
+		subOfflineToken, ok := os.LookupEnv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
+		if !ok {
+			klog.Warning("redhat offline token is not found, rhel subscriptions won't be handled by the machine-controller")
+		}
+		cfg.RedHatSubscriptionOfflineToken = subOfflineToken
 	}
 
 	return cfg, nil

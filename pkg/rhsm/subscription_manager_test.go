@@ -40,14 +40,14 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			name:           "execute redhat system unregister instance",
 			requestLimiter: 2,
 			offlineToken:   "test_token",
-			testingServer:  createTestingServer(false, false),
+			testingServer:  createTestingServer(false),
 			machineName:    "test-machine",
 		},
 		{
 			name:           "execute redhat system unregister instance for 5 systems",
 			requestLimiter: 2,
 			offlineToken:   "test_token",
-			testingServer:  createTestingServer(true, true),
+			testingServer:  createTestingServer(true),
 			machineName:    "test-machine-5",
 		},
 	}
@@ -57,22 +57,18 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			defer func() {
 				tt.testingServer.Close()
 			}()
-			manager, err := NewRedHatSubscriptionManager(tt.offlineToken)
-			if err != nil {
-				t.Fatalf("failed executing test: %v", err)
-			}
+			manager := NewRedHatSubscriptionManager()
 			manager.(*defaultRedHatSubscriptionManager).apiURL = tt.testingServer.URL + apiPath
-			manager.(*defaultRedHatSubscriptionManager).client = newOAuthClientWithRefreshToken(tt.offlineToken, tt.testingServer.URL+authPath)
 			manager.(*defaultRedHatSubscriptionManager).requestsLimiter = tt.requestLimiter
 
-			if err := manager.UnregisterInstance(tt.machineName); err != nil {
+			if err := manager.UnregisterInstance(tt.offlineToken, tt.machineName); err != nil {
 				t.Fatalf("failed executing test: %v", err)
 			}
 		})
 	}
 }
 
-func createTestingServer(pagination, rounded bool) *httptest.Server {
+func createTestingServer(pagination bool) *httptest.Server {
 	var (
 		processedRequest = 1
 		result           string
