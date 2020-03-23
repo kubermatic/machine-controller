@@ -569,13 +569,13 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 			return nil, fmt.Errorf("failed to get rhel os specs: %v", err)
 		}
 
-		if rhelConfig.RedHatSubscriptionOfflineToken != "" {
+		if rhelConfig.RHSMOfflineToken != "" {
 			machineName := machine.Name
 			if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
 				machineName = machine.Status.NodeRef.Name
 			}
 
-			if err := r.redhatSubscriptionManager.UnregisterInstance(rhelConfig.RedHatSubscriptionOfflineToken, machineName); err != nil {
+			if err := r.redhatSubscriptionManager.UnregisterInstance(rhelConfig.RHSMOfflineToken, machineName); err != nil {
 				return nil, fmt.Errorf("failed to delete subscription for machine name %s: %v", machine.Name, err)
 			}
 		}
