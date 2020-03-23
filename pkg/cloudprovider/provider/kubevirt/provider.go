@@ -32,7 +32,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	kubevirttypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -77,7 +76,6 @@ type Config struct {
 	Namespace        string
 	SourceURL        string
 	StorageClassName string
-	manager          rhsm.RedHatSubscriptionManager
 	PVCSize          resource.Quantity
 }
 
@@ -163,13 +161,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %v", err)
 	}
 	config.Kubeconfig = *restConfig
-	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
-	if offlineToken != "" {
-		config.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
-		}
-	}
+
 	return &config, &pconfig, nil
 }
 
@@ -431,7 +423,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -451,12 +443,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		}
 		// VMI is gone
 		return true, nil
-	}
-
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
-		if err := c.manager.UnregisterInstance(machine.Name); err != nil {
-			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
-		}
 	}
 
 	return false, sigClient.Delete(ctx, vm)
