@@ -35,7 +35,7 @@ const defaultTimeout = 10 * time.Second
 // RedHatSubscriptionManager is responsible for removing redhat subscriptions.
 type RedHatSubscriptionManager interface {
 	//TODO(irozzo) add context in input to give more control to the caller
-	UnregisterInstance(machineName string) error
+	UnregisterInstance(offlineToken, machineName string) error
 }
 
 type pagination struct {
@@ -56,21 +56,18 @@ type systemsResponse struct {
 
 type defaultRedHatSubscriptionManager struct {
 	apiURL          string
-	client          *http.Client
+	authURL         string
 	requestsLimiter int
 }
 
 var errUnauthenticatedRequest = errors.New("unauthenticated")
 
-func NewRedHatSubscriptionManager(offlineToken string) (RedHatSubscriptionManager, error) {
-	if offlineToken == "" {
-		return nil, errors.New("RedHatSubscriptionManager offline token cannot be empty")
-	}
+func NewRedHatSubscriptionManager() RedHatSubscriptionManager {
 	return &defaultRedHatSubscriptionManager{
 		apiURL:          "https://api.access.redhat.com/management/v1/systems",
-		client:          newOAuthClientWithRefreshToken(offlineToken, "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"),
+		authURL:         "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token",
 		requestsLimiter: 100,
-	}, nil
+	}
 }
 
 func newOAuthClientWithRefreshToken(refreshToken string, tokenURL string) *http.Client {
@@ -95,7 +92,7 @@ func newOAuthClientWithRefreshToken(refreshToken string, tokenURL string) *http.
 	return c
 }
 
-func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string) error {
+func (d *defaultRedHatSubscriptionManager) UnregisterInstance(offlineToken, machineName string) error {
 	ctx := context.Background()
 
 	var (
@@ -104,7 +101,7 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 	)
 
 	for retries < maxRetries {
-		machineUUID, err := d.findSystemsProfile(ctx, machineName)
+		machineUUID, err := d.findSystemsProfile(ctx, offlineToken, machineName)
 		if err != nil {
 			return fmt.Errorf("failed to find system profile: %v", err)
 		}
@@ -114,7 +111,7 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 			return nil
 		}
 
-		err = d.deleteSubscription(ctx, machineUUID)
+		err = d.deleteSubscription(ctx, machineUUID, offlineToken)
 		if err == nil {
 			klog.Infof("subscription for vm %v has been deleted successfully", machineUUID)
 			return nil
@@ -128,10 +125,10 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(machineName string
 	return errors.New("failed to delete system profile after max retires number has been reached")
 }
 
-func (d *defaultRedHatSubscriptionManager) findSystemsProfile(ctx context.Context, name string) (string, error) {
+func (d *defaultRedHatSubscriptionManager) findSystemsProfile(ctx context.Context, offlineToken, name string) (string, error) {
 	var offset int
 	for {
-		systemsInfo, err := d.executeFindSystemsRequest(ctx, offset)
+		systemsInfo, err := d.executeFindSystemsRequest(ctx, offlineToken, offset)
 		if err != nil {
 			return "", fmt.Errorf("failed to retrieve systems: %v", err)
 		}
@@ -153,14 +150,15 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(ctx context.Contex
 	return "", nil
 }
 
-func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Context, uuid string) error {
+func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Context, uuid, offlineToken string) error {
+	client := newOAuthClientWithRefreshToken(offlineToken, d.authURL)
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/%s", d.apiURL, uuid), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete system request: %v", err)
 	}
 	req.WithContext(ctx)
 
-	res, err := d.client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("faild to delete systsem profile: %v", err)
 	}
@@ -182,14 +180,15 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Contex
 	return nil
 }
 
-func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context.Context, offset int) (*systemsResponse, error) {
+func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context.Context, offlineToken string, offset int) (*systemsResponse, error) {
+	client := newOAuthClientWithRefreshToken(offlineToken, d.authURL)
 	req, err := http.NewRequest("GET", fmt.Sprintf(d.apiURL+"?limit=%v&offset=%v", d.requestsLimiter, offset), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetch systems request: %v", err)
 	}
 	req.WithContext(ctx)
 
-	res, err := d.client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed executing fetch systems request: %v", err)
 	}

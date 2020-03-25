@@ -31,7 +31,6 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
@@ -106,7 +105,6 @@ type config struct {
 	multizone             bool
 	regional              bool
 	customImage           string
-	manager               rhsm.RedHatSubscriptionManager
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -190,13 +188,6 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
 	}
 
-	offlineToken, _ := resolver.GetConfigVarStringValue(cpSpec.RHSMOfflineToken)
-	if offlineToken != "" {
-		cfg.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
-		}
-	}
 	return cfg, nil
 }
 

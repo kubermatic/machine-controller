@@ -34,7 +34,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	azuretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
@@ -87,7 +86,6 @@ type config struct {
 
 	AssignPublicIP bool
 	Tags           map[string]string
-	manager        rhsm.RedHatSubscriptionManager
 }
 
 type azureVM struct {
@@ -250,14 +248,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get image id: %v", err)
-	}
-
-	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
-	if offlineToken != "" {
-		c.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
-		}
 	}
 
 	return &c, &pconfig, nil
@@ -572,7 +562,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	config, pc, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
@@ -626,12 +616,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerPublicIP)
 	}); err != nil {
 		return false, err
-	}
-
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.manager != nil {
-		if err := config.manager.UnregisterInstance(machine.Name); err != nil {
-			return false, fmt.Errorf("failed delete machine %s subscription: %v", machine.Name, err)
-		}
 	}
 
 	return true, nil

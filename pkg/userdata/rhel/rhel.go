@@ -18,8 +18,6 @@ package rhel
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -29,6 +27,7 @@ type Config struct {
 	DistUpgradeOnBoot               bool   `json:"distUpgradeOnBoot"`
 	RHELSubscriptionManagerUser     string `json:"rhelSubscriptionManagerUser,omitempty"`
 	RHELSubscriptionManagerPassword string `json:"rhelSubscriptionManagerPassword,omitempty"`
+	RHSMOfflineToken                string `json:"rhsmOfflineToken,omitempty"`
 }
 
 // LoadConfig retrieves the RHEL configuration from raw data.
@@ -40,23 +39,6 @@ func LoadConfig(r runtime.RawExtension) (*Config, error) {
 	if err := json.Unmarshal(r.Raw, cfg); err != nil {
 		return nil, err
 	}
-
-	if cfg.RHELSubscriptionManagerUser == "" {
-		subUser, ok := os.LookupEnv("RHEL_SUBSCRIPTION_MANAGER_USER")
-		if !ok {
-			return nil, fmt.Errorf("RHEL_SUBSCRIPTION_MANAGER_USER env variable is not found")
-		}
-		cfg.RHELSubscriptionManagerUser = subUser
-	}
-
-	if cfg.RHELSubscriptionManagerPassword == "" {
-		subPassword, ok := os.LookupEnv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
-		if !ok {
-			return nil, fmt.Errorf("RHEL_SUBSCRIPTION_MANAGER_PASSWORD env variable is not found")
-		}
-		cfg.RHELSubscriptionManagerPassword = subPassword
-	}
-
 	return cfg, nil
 }
 

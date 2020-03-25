@@ -35,7 +35,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	vspheretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -72,7 +71,6 @@ type Config struct {
 	CPUs             int32
 	MemoryMB         int64
 	DiskSizeGB       *int64
-	Manager          rhsm.RedHatSubscriptionManager
 }
 
 // Ensures that Server implements Instance interface.
@@ -184,13 +182,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.CPUs = rawConfig.CPUs
 	c.MemoryMB = rawConfig.MemoryMB
 	c.DiskSizeGB = rawConfig.DiskSizeGB
-	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
-	if offlineToken != "" {
-		c.Manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
-		}
-	}
 
 	return &c, &pconfig, &rawConfig, nil
 }
@@ -408,12 +399,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 					}
 				}
 			}
-		}
-	}
-
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.Manager != nil {
-		if err := config.Manager.UnregisterInstance(machine.Name); err != nil {
-			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
 		}
 	}
 
