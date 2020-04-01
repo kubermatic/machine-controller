@@ -9,11 +9,11 @@
 | Alibaba Cloud | ? | x | ?  | x | x |
 | AWS | ✓ | ✓ | ✓ | ? | ✓ |
 | Azure | ✓ | x | x | x | x |
-| Digitalocean  | ✓ | ✓ | ✓ | ? | ? |
-| Google Cloud Platform | ✓ | ✓ | x | ? | ? |
+| Digitalocean  | ✓ | ✓ | ✓ | x | x |
+| Google Cloud Platform | ✓ | ✓ | x | x | x |
 | Hetzner | ✓ | x | ✓ | x | ✓ |
 | Linode | ✓ | x | x | ? | ? |
-| Packet | ✓ | ✓ | ✓ | ? | ? |
+| Packet | ✓ | ✓ | ✓ | x | x |
 | Openstack | ✓ | ✓ | ✓ | ? | ? |
 
 ## Configuring a operating system
