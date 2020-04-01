@@ -6,7 +6,7 @@
 
 |   | Ubuntu | Container Linux | CentOS | RHEL | SLES |
 |---|---|---|---|---|---|
-| AWS | ✓ | ✓ | ✓ | ? | ✓ |
+| AWS | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Azure | ✓ | ✓ | ✓ | x | x |
 | Digitalocean  | ✓ | ✓ | ✓ | x | x |
 | Google Cloud Platform | ✓ | ✓ | x | x | x |
