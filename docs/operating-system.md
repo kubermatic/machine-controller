@@ -8,7 +8,7 @@
 |---|---|---|---|---|---|
 | Alibaba Cloud | ? | x | ?  | x | x |
 | AWS | ✓ | ✓ | ✓ | ? | ✓ |
-| Azure | ✓ | x | x | x | x |
+| Azure | ✓ | ✓ | ✓ | x | x |
 | Digitalocean  | ✓ | ✓ | ✓ | x | x |
 | Google Cloud Platform | ✓ | ✓ | x | x | x |
 | Hetzner | ✓ | x | ✓ | x | ✓ |
@@ -35,7 +35,7 @@ Machine controller may work with other OS versions that are not listed in the ta
 
 |   | Versions |
 |---|---|
-| CentOS | 7.6.x, 7.7.x |
+| CentOS | 7.4.x, 7.6.x, 7.7.x |
 | CoreOS | 1855.4.0, 2079.3.0, 2345.3.0 |
 | RHEL | 8.x |
 | SLES |  SLES 15 SP1 |
