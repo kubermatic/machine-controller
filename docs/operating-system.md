@@ -35,8 +35,8 @@ Machine controller may work with other OS versions that are not listed in the ta
 
 |   | Versions |
 |---|---|
-| CentOS | 7.x |
-| CoreOS | 2345.3.0 |
+| CentOS | 7.6.x, 7.7.x |
+| CoreOS | 1855.4.0, 2345.3.0 |
 | RHEL | 8.x |
 | SLES |  SLES 15 SP1 |
 | Ubuntu | 18.04 LTS |
