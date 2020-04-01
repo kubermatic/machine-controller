@@ -4,23 +4,39 @@
 
 ### Cloud provider
 
-|   | Ubuntu | Container Linux | CentOS |
-|---|---|---|---|
-| AWS | ✓ | ✓ | ✓ |
-| Openstack | ✓ | ✓ | ✓ |
-| Digitalocean  | ✓ | ✓ | ✓ |
-| Google Cloud Platform | ✓ | ✓ | x |
-| Hetzner | ✓ | x | ✓ |
-| Linode | ✓ | x | x |
+|   | Ubuntu | Container Linux | CentOS | RHEL | SLES |
+|---|---|---|---|---|---|
+| Alibaba Cloud | ? | ? | ? | ? | ? |
+| AWS | ? | ? | ? | ? | ? |
+| Azure | ✓ | x | x | x | x |
+| Digitalocean  | ✓ | ✓ | ✓ | ? | ? |
+| Google Cloud Platform | ✓ | ✓ | x | ? | ? |
+| Hetzner | ✓ | x | ✓ | x | ✓ |
+| Linode | ✓ | x | x | ? | ? |
+| Packet | ? | ? | ? | ? | ? |
+| Openstack | ✓ | ✓ | ✓ | ? | ? |
 
 ## Configuring a operating system
 
 The operating system to use can be set via `machine.spec.providerConfig.operatingSystem`.
 Allowed values:
+- `centos`
 - `coreos`
+- `rhel`
+- `sles`
 - `ubuntu`
 
 OS specific settings can be set via `machine.spec.providerConfig.operatingSystemSpec`.
+
+### Supported OS versions
+
+|   | Versions |
+|---|---|
+| CentOS | ? |
+| CoreOS | ? |
+| RHEL | ? |
+| SLES | ? |
+| Ubuntu | ? |
 
 ### Ubuntu
 
