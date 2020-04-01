@@ -6,7 +6,7 @@
 
 |   | Ubuntu | Container Linux | CentOS | RHEL | SLES |
 |---|---|---|---|---|---|
-| Alibaba Cloud | ? | ? | ? | ? | ? |
+| Alibaba Cloud | ? | x | ?  | x | x |
 | AWS | ✓ | ✓ | ✓ | ? | ✓ |
 | Azure | ✓ | x | x | x | x |
 | Digitalocean  | ✓ | ✓ | ✓ | ? | ? |
