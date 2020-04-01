@@ -7,12 +7,12 @@
 |   | Ubuntu | Container Linux | CentOS | RHEL | SLES |
 |---|---|---|---|---|---|
 | AWS | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Azure | ✓ | ✓ | ✓ | x | x |
+| Azure | ✓ | ✓ | ✓ | ✓ | x |
 | Digitalocean  | ✓ | ✓ | ✓ | x | x |
-| Google Cloud Platform | ✓ | ✓ | x | x | x |
-| Hetzner | ✓ | x | ✓ | x | ✓ |
+| Google Cloud Platform | ✓ | ✓ | x | ✓ | x |
+| Hetzner | ✓ | x | ✓ | x | x |
 | Packet | ✓ | ✓ | ✓ | x | x |
-| Openstack | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Openstack | ✓ | ✓ | ✓ | ✓ | x |
 
 ## Configuring a operating system
 
