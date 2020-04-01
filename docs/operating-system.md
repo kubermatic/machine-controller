@@ -30,13 +30,16 @@ OS specific settings can be set via `machine.spec.providerConfig.operatingSystem
 
 ### Supported OS versions
 
+Note that the table below lists the OS versions that we are validating in our automated tests.
+Machine controller may work with other OS versions that are not listed in the table but support won’t be provided.
+
 |   | Versions |
 |---|---|
-| CentOS | CentOS 7 |
+| CentOS | 7.x |
 | CoreOS | 2345.3.0 |
-| RHEL |  |
+| RHEL | 8.x |
 | SLES |  SLES 15 SP1 |
-| Ubuntu | 18.04 |
+| Ubuntu | 18.04 LTS |
 
 ### Ubuntu
 
