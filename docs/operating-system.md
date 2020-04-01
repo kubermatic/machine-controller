@@ -7,7 +7,7 @@
 |   | Ubuntu | Container Linux | CentOS | RHEL | SLES |
 |---|---|---|---|---|---|
 | Alibaba Cloud | ? | ? | ? | ? | ? |
-| AWS | ? | ? | ? | ? | ? |
+| AWS | ✓ | ✓ | ✓ | ? | ✓ |
 | Azure | ✓ | x | x | x | x |
 | Digitalocean  | ✓ | ✓ | ✓ | ? | ? |
 | Google Cloud Platform | ✓ | ✓ | x | ? | ? |
@@ -32,11 +32,11 @@ OS specific settings can be set via `machine.spec.providerConfig.operatingSystem
 
 |   | Versions |
 |---|---|
-| CentOS | ? |
-| CoreOS | ? |
-| RHEL | ? |
-| SLES | ? |
-| Ubuntu | ? |
+| CentOS | CentOS 7 |
+| CoreOS | 2345.3.0 |
+| RHEL |  |
+| SLES |  SLES 15 SP1 |
+| Ubuntu | 18.04 |
 
 ### Ubuntu
 
