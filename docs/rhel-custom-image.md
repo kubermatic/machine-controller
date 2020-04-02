@@ -13,7 +13,7 @@ Cloud providers which are listed below, support using rhel as an operating syste
 For amazon web service cloud provider, First of all the RHEL gold image AMIs have to be enabled from the 
 [RedHat Customer Portal](https://access.redhat.com/public-cloud/aws) (this requires a [cloud-provider subscription](https://access.redhat.com/public-cloud)).
 .Afterwards, new images will be added to the aws account under EC2-> Images-> AMIs-> Private Images. Once the images are available in the aws account, 
-the image id for rhel(at the moment we only support 8.x.x versions) should be then added to the `MachineDeployment` spec to the field `ami`.
+the image id for rhel(supported versions are mentioned [here](https://github.com/kubermatic/machine-controller/blob/master/docs/operating-system.md)) should be then added to the `MachineDeployment` spec to the field `ami`.
 
 ####  Azure
 RedHat provides images for Azure, [documentation](https://access.redhat.com/articles/uploading-rhel-image-to-azure) is available on RH customer portal.
