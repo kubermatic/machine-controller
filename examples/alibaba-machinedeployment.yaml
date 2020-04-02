@@ -51,12 +51,15 @@ spec:
                 key: accessKeySecret
             instanceType: "ecs.t1.xsmall"
             instanceName: "alibaba-instance"
+            internetMaxBandwidthOut: 10
             regionID: eu-central-1
-            imageID: "aliyun_2_1903_64_20G_alibase_20190829.vhd"
+            vSwitchID: "vswitchID"
+            zoneID: eu-central-1a
             diskType: "cloud_efficiency"
             diskSize: "40"
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false
+            disableAutoUpdate: true
       versions:
         kubelet: 1.13.1

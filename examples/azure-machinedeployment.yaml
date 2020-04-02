@@ -64,18 +64,21 @@ spec:
                 key: subscriptionID
             location: "westeurope"
             resourceGroup: "<< YOUR_RESOURCE_GROUP >>"
-            vmSize: "Standard_B1ms"
+            vmSize: "Standard_F2"
             # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
             osDiskSize: 30
             dataDiskSize: 30
             vnetName: "<< VNET_NAME >>"
             subnetName: "<< SUBNET_NAME >>"
             routeTableName: "<< ROUTE_TABLE_NAME >>"
+            imageID: "myImageID"
             assignPublicIP: false
             securityGroupName: my-security-group
+          # Can be 'ubuntu', 'coreos' ,'centos' or 'rhel'
           operatingSystem: "coreos"
           operatingSystemSpec:
             distUpgradeOnBoot: false
+            disableAutoUpdate: true
             # 'rhelSubscriptionManagerUser' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_USER`
             rhelSubscriptionManagerUser: "<< RHEL_SUBSCRIPTION_MANAGER_USER >>"
             # 'rhelSubscriptionManagerPassword' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_PASSWORD`
