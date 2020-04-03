@@ -141,16 +141,16 @@ labels:
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
-  token: "<< HETZNER_API_TOKEN >>"
-  serverType: "cx11"
-  datacenter: ""
-  location: "fsn1"
-  # Optional: network IDs or names
-  networks:
-    - "<< YOUR_NETWORK >>"
-  # set node labels
-  labels:
-    "kubernetesCluster": "my-cluster"
+token: "<< HETZNER_API_TOKEN >>"
+serverType: "cx11"
+datacenter: ""
+location: "fsn1"
+# Optional: network IDs or names
+networks:
+  - "<< YOUR_NETWORK >>"
+# set node labels
+labels:
+  "kubernetesCluster": "my-cluster"
 ```
 
 ## Linode
@@ -177,24 +177,24 @@ tags:
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
 # If empty, can be set via ALIBABA_ACCESS_KEY_ID env var
-  accessKeyID: "<< YOUR ACCESS ID >>"
-  accessKeySecret: "<< YOUR ACCESS SECRET >>"
-  # instance type
-  instanceType: "ecs.t1.xsmall"
-  # instance name
-  instanceName: "alibaba-instance"
-  # region
-  regionID: eu-central-1
-  # image id
-  imageID: "aliyun_2_1903_64_20G_alibase_20190829.vhd"
-  # disk type
-  diskType: "cloud_efficiency"
-  # disk size in GB
-  diskSize: "40"
-  # set an existing vSwitch ID to use, VPC default is used if not set.
-  vSwitchID:
-  labels:
-    "kubernetesCluster": "my-cluster"
+accessKeyID: "<< YOUR ACCESS ID >>"
+accessKeySecret: "<< YOUR ACCESS SECRET >>"
+# instance type
+instanceType: "ecs.t1.xsmall"
+# instance name
+instanceName: "alibaba-instance"
+# region
+regionID: eu-central-1
+# image id
+imageID: "aliyun_2_1903_64_20G_alibase_20190829.vhd"
+# disk type
+diskType: "cloud_efficiency"
+# disk size in GB
+diskSize: "40"
+# set an existing vSwitch ID to use, VPC default is used if not set.
+vSwitchID:
+labels:
+  "kubernetesCluster": "my-cluster"
 ```
 
 
