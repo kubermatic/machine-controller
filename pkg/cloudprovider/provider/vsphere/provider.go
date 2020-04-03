@@ -65,6 +65,7 @@ type Config struct {
 	Datacenter       string
 	Cluster          string
 	Folder           string
+	ResourcePool     string
 	Datastore        string
 	DatastoreCluster string
 	AllowInsecure    bool
@@ -164,6 +165,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
+	c.ResourcePool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ResourcePool)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	c.Datastore, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datastore)
 	if err != nil {
 		return nil, nil, nil, err
@@ -224,6 +230,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	if _, err := p.get(ctx, config.Folder, spec, session.Finder); err == nil {
 		return fmt.Errorf("a vm %s/%s already exists", config.Folder, spec.Name)
+	}
+
+	if config.ResourcePool != "" {
+		if _, err := session.Finder.ResourcePool(ctx, config.ResourcePool); err != nil {
+			return fmt.Errorf("failed to get resourcepool %q: %v", config.ResourcePool, err)
+		}
 	}
 
 	templateVM, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)

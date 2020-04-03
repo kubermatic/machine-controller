@@ -84,7 +84,13 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		return nil, fmt.Errorf("failed to resolve datastore: %v", err)
 	}
 
+	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session, tpl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve resourcePool: %v", err)
+	}
+
 	cloneSpec.Location.Datastore = datastoreref
+	cloneSpec.Location.Pool = resourcepoolref
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
 	// It's nicer to tell which specific action failed due to lacking permissions.
@@ -426,4 +432,31 @@ func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.Vir
 		return nil, fmt.Errorf("Failed to parse volPath: %s", props.Summary.Config.VmPathName)
 	}
 	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
+}
+
+func resolveResourcePoolRef(ctx context.Context, config *Config, session *Session, vm *object.VirtualMachine) (*types.ManagedObjectReference, error) {
+	var targetResourcePool *object.ResourcePool
+	var isTemplate, err = vm.IsTemplate(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vm template property: %v", err)
+	}
+	if config.ResourcePool != "" {
+		targetResourcePool, err = session.Finder.ResourcePool(ctx, config.ResourcePool)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get target resourcepool: %v", err)
+		}
+	} else if isTemplate {
+		var targetCluster *object.ClusterComputeResource
+		targetCluster, err = session.Finder.ClusterComputeResource(ctx, config.Cluster)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get target cluster: %v", err)
+		}
+		targetResourcePool, err = targetCluster.ResourcePool(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get target resourcepool from cluster: %v", err)
+		}
+	} else {
+		return nil, nil
+	}
+	return types.NewReference(targetResourcePool.Reference()), nil
 }
