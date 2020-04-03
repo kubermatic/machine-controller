@@ -47,9 +47,8 @@ image to vSphere, follow these steps to create instances from a cloned machine:
 
 - Download Red Hat Enterprise Linux 8.x KVM Guest Image from Red Hat Customer Portal.
 - The image has the format `qcow2` thus should be converted to `vmdk` by running the command: `qemu-img convert -f qcow2 rhel.qcow2 -O vmdk newRHEL.vmdk`
-- Run `vmkfstools -i myImage.vmdk outputName.vmdk -d thin To ensure that the` to ensure that, the `vmdk` is ESXi compatible.
 - Upload the image to vSphere Datastore. Preferably use [`govc`](https://github.com/vmware/govmomi/blob/master/govc/USAGE.md#datastoreupload)
-- Once the image is uploaded create a new instance using that image. During the machine creation process, at the `Customize Hardware`
-step, press on ADD NEW DEVICE and select Existing Hard Disk. 
+- Once the image is uploaded to ESXi host, run `vmkfstools -i newRHEL.vmdk outputRHEL.vmdk -d thin`to ensure that, the `vmdk` image is ESXi compatible.
+- Create a new instance using that image. During the machine creation process, at the `Customize Hardware` step, press on ADD NEW DEVICE and select Existing Hard Disk. 
 - In the Existing Hard Disk wizard select the rhel image file and then create the instance.
 - Use the instance name to clone rhel machine by updating the `MachineDeployment` field `.spec.template.spec.providerSpec.value.cloudProviderSpec.templateVMName`.
