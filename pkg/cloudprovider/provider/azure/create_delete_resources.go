@@ -206,7 +206,8 @@ func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, machineUI
 			PublicIPAddressVersion:   network.IPv4,
 			PublicIPAllocationMethod: network.Static,
 		},
-		Tags: map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
+		Tags:  map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
+		Zones: &c.Zones,
 	}
 	future, err := ipClient.CreateOrUpdate(ctx, c.ResourceGroup, ipName, ipParams)
 	if err != nil {

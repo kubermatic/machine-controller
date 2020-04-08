@@ -39,6 +39,8 @@ spec:
             routeTableName: "machine-controller-e2e"
             imageID: "<< IMAGE_ID >>"
             assignPublicIP: false
+            zones:
+              - "1"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
