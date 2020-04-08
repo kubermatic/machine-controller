@@ -80,6 +80,7 @@ type config struct {
 	AvailabilitySet   string
 	SecurityGroupName string
 	ImageID           string
+	Zones             []string
 
 	OSDiskSize   int32
 	DataDiskSize int32
@@ -241,6 +242,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get the value of \"securityGroupName\" field, error = %v", err)
 	}
 
+	c.Zones = rawCfg.Zones
 	c.Tags = rawCfg.Tags
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
@@ -506,7 +508,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			},
 			StorageProfile: storageProfile,
 		},
-		Tags: tags,
+		Tags:  tags,
+		Zones: &config.Zones,
 	}
 
 	if config.AvailabilitySet != "" {
