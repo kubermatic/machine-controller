@@ -235,6 +235,10 @@ templateVMName: ubuntu-template
 vmNetName: network1
 # Optional
 folder: folder1
+# Optional: Force VMs to be provisoned to the specified resourcePool
+# Default is to use the resourcePool of the template VM
+# example: kubeone or /DC/host/Cluster01/Resources/kubeone
+resourcePool: kubeone
 cluster: cluster1
 # either datastore or datastoreCluster have to be provided.
 datastore: datastore1
@@ -251,7 +255,7 @@ diskSizeGB: 10
 
 ### Datastore and DatastoreCluster
 
-A `Datastore` is the basic unit of storage abstraction in VSphere storage (more details [here][datastore]).
+A `Datastore` is the basic unit of storage abstraction in vSphere storage (more details [here][datastore]).
 
 A `DatastoreCluster` (sometimes referred to as StoragePod) is a logical grouping of `Datastores`, it provides some resource management capabilities (more details [here][datastore_cluster]).
 
