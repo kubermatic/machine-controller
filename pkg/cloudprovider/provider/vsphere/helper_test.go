@@ -18,19 +18,19 @@ package vsphere
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/simulator"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 )
 
-func Test_resolveDatastoreRef(t *testing.T) {
+func TestResolveDatastoreRef(t *testing.T) {
 	tests := []struct {
 		name    string
 		config  *Config
@@ -112,7 +112,6 @@ func Test_resolveDatastoreRef(t *testing.T) {
 				t.Fatalf("error getting virtual machines: %v", err)
 			}
 
-			fmt.Printf("%s with %d hosts", session.Client.Client.ServiceContent.About.ApiType, model.Count().Host)
 			got, err := resolveDatastoreRef(ctx, tt.config, session, vms[2], vmFolder, &types.VirtualMachineCloneSpec{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("resolveDatastoreRef() error = %v, wantErr %v", err, tt.wantErr)
@@ -158,4 +157,89 @@ func (c *CustomStorageResourceManager) RecommendDatastores(req *types.RecommendD
 
 	body.Res = res
 	return body
+}
+
+func TestResolveResourcePoolRef(t *testing.T) {
+	tests := []struct {
+		name                 string
+		config               *Config
+		wantErr              bool
+		wantResourcePool     bool
+		expectedResourcePool string
+	}{
+		{
+			name:             "No Resource Pool specified",
+			config:           &Config{},
+			wantErr:          false,
+			wantResourcePool: false,
+		},
+		{
+			name: "Resource Pool specified",
+			config: &Config{
+				ResourcePool: "DC0_C0_RP1",
+			},
+			wantErr:              false,
+			wantResourcePool:     true,
+			expectedResourcePool: "DC0_C0_RP1",
+		},
+		{
+			name: "Resource Pool specified missing",
+			config: &Config{
+				ResourcePool: "DC0_C0_RP1_WRONG",
+			},
+			wantErr:          true,
+			wantResourcePool: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			model := simulator.VPX()
+			model.Pool++
+			model.Cluster++
+
+			defer model.Remove()
+			err := model.Create()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			s := model.Service.NewServer()
+			defer s.Close()
+
+			// Setup config to be able to login to the simulator
+			// Remove trailing `/sdk` as it is appended by the session constructor
+			tt.config.VSphereURL = strings.TrimSuffix(s.URL.String(), "/sdk")
+			tt.config.Username = simulator.DefaultLogin.Username()
+			tt.config.Password, _ = simulator.DefaultLogin.Password()
+			tt.config.Datacenter = "DC0"
+
+			session, err := NewSession(ctx, tt.config)
+			defer session.Logout()
+			if err != nil {
+				t.Fatalf("error creating session: %v", err)
+			}
+
+			// Obtain a VM from the simulator
+			obj := simulator.Map.Any("VirtualMachine").(*simulator.VirtualMachine)
+			vm := object.NewVirtualMachine(session.Client.Client, obj.Reference())
+
+			got, err := resolveResourcePoolRef(ctx, tt.config, session, vm)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantResourcePool != (got != nil) {
+				t.Errorf("resourcePool = %v, wantResourcePool %v", got, tt.wantResourcePool)
+			}
+			if tt.wantResourcePool {
+				rp := object.NewResourcePool(session.Client.Client, got.Reference())
+				n, _ := rp.ObjectName(ctx)
+				if e, a := tt.expectedResourcePool, n; e != a {
+					t.Errorf("expected resource pool %v but got %+v", e, a)
+				}
+			}
+		})
+	}
 }
