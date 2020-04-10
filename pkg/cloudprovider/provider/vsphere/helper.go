@@ -435,28 +435,13 @@ func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.Vir
 }
 
 func resolveResourcePoolRef(ctx context.Context, config *Config, session *Session, vm *object.VirtualMachine) (*types.ManagedObjectReference, error) {
-	var targetResourcePool *object.ResourcePool
-	var isTemplate, err = vm.IsTemplate(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get vm template property: %v", err)
-	}
 	if config.ResourcePool != "" {
-		targetResourcePool, err = session.Finder.ResourcePool(ctx, config.ResourcePool)
+		targetResourcePool, err := session.Finder.ResourcePool(ctx, config.ResourcePool)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get target resourcepool: %v", err)
 		}
-	} else if isTemplate {
-		var targetCluster *object.ClusterComputeResource
-		targetCluster, err = session.Finder.ClusterComputeResource(ctx, config.Cluster)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get target cluster: %v", err)
-		}
-		targetResourcePool, err = targetCluster.ResourcePool(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get target resourcepool from cluster: %v", err)
-		}
+		return types.NewReference(targetResourcePool.Reference()), nil
 	} else {
 		return nil, nil
 	}
-	return types.NewReference(targetResourcePool.Reference()), nil
 }
