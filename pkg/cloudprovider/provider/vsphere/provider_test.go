@@ -56,6 +56,7 @@ func (m machineSpecArgs) generateMachineSpec(user, password, url string) v1alpha
 						"datacenter": "DC0",
 						%s
 						"folder": "/",
+						"resourcePool": "/DC0/host/DC0_C0/Resources",
 						"memoryMB": 2000,
 						"password": "%s",
 						"templateVMName": "DC0_H0_VM0",
