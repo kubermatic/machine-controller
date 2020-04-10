@@ -441,7 +441,6 @@ func resolveResourcePoolRef(ctx context.Context, config *Config, session *Sessio
 			return nil, fmt.Errorf("failed to get target resourcepool: %v", err)
 		}
 		return types.NewReference(targetResourcePool.Reference()), nil
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
