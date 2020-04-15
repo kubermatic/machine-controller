@@ -60,7 +60,6 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 			oldMachine.Spec.Name = machine.Spec.Name
 		}
 		// Allow mutation when:
-		// * oldMachine has Initializers on it
 		// * machine has the `MigrationBypassSpecNoModificationRequirementAnnotation` annotation (used for type migration)
 		bypassValidationForMigration := machine.Annotations[BypassSpecNoModificationRequirementAnnotation] == "true"
 		if !bypassValidationForMigration {
