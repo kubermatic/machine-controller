@@ -38,6 +38,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -494,13 +495,21 @@ func (d *doInstance) ID() string {
 	return strconv.Itoa(d.droplet.ID)
 }
 
-func (d *doInstance) Addresses() []string {
-	var addresses []string
+func (d *doInstance) Addresses() map[string]v1.NodeAddressType {
+	addresses := map[string]v1.NodeAddressType{}
 	for _, n := range d.droplet.Networks.V4 {
-		addresses = append(addresses, n.IPAddress)
+		if n.Type == "public" {
+			addresses[n.IPAddress] = v1.NodeExternalIP
+		} else {
+			addresses[n.IPAddress] = v1.NodeInternalIP
+		}
 	}
 	for _, n := range d.droplet.Networks.V6 {
-		addresses = append(addresses, n.IPAddress)
+		if n.Type == "public" {
+			addresses[n.IPAddress] = v1.NodeExternalIP
+		} else {
+			addresses[n.IPAddress] = v1.NodeInternalIP
+		}
 	}
 	return addresses
 }

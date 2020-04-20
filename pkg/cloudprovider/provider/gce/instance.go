@@ -26,6 +26,8 @@ import (
 	"google.golang.org/api/compute/v1"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+
+	v1 "k8s.io/api/core/v1"
 )
 
 // Possible instance statuses.
@@ -56,10 +58,10 @@ func (gi *googleInstance) ID() string {
 }
 
 // Addresses implements instance.Instance.
-func (gi *googleInstance) Addresses() []string {
-	var addrs []string
+func (gi *googleInstance) Addresses() map[string]v1.NodeAddressType {
+	addrs := map[string]v1.NodeAddressType{}
 	for _, ifc := range gi.ci.NetworkInterfaces {
-		addrs = append(addrs, ifc.NetworkIP)
+		addrs[ifc.NetworkIP] = v1.NodeInternalIP
 	}
 	return addrs
 }

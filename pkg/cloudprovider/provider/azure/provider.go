@@ -40,6 +40,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
@@ -91,11 +92,11 @@ type config struct {
 
 type azureVM struct {
 	vm          *compute.VirtualMachine
-	ipAddresses []string
+	ipAddresses map[string]v1.NodeAddressType
 	status      instance.Status
 }
 
-func (vm *azureVM) Addresses() []string {
+func (vm *azureVM) Addresses() map[string]v1.NodeAddressType {
 	return vm.ipAddresses
 }
 
@@ -255,8 +256,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	return &c, &pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) ([]string, error) {
-	var ipAddresses []string
+func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) (map[string]v1.NodeAddressType, error) {
+	var (
+		ipAddresses = map[string]v1.NodeAddressType{}
+		err         error
+	)
 
 	if vm.VirtualMachineProperties == nil {
 		return nil, fmt.Errorf("machine is missing properties")
@@ -277,17 +281,16 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 
 		splitIfaceID := strings.Split(*iface.ID, "/")
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
-		addrs, err := getNICIPAddresses(ctx, c, ifaceName)
+		ipAddresses, err = getNICIPAddresses(ctx, c, ifaceName)
 		if vm.NetworkProfile.NetworkInterfaces == nil {
 			return nil, fmt.Errorf("failed to get addresses for interface %q: %v", ifaceName, err)
 		}
-		ipAddresses = append(ipAddresses, addrs...)
 	}
 
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]string, error) {
+func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[string]v1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %v", err)
@@ -298,7 +301,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 		return nil, fmt.Errorf("failed to get interface %q: %v", ifaceName, err.Error())
 	}
 
-	var ipAddresses []string
+	ipAddresses := map[string]v1.NodeAddressType{}
 
 	if netIf.IPConfigurations != nil {
 		for _, conf := range *netIf.IPConfigurations {
@@ -320,15 +323,18 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 				if err != nil {
 					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
 				}
-				ipAddresses = append(ipAddresses, publicIPs...)
+				for _, ip := range publicIPs {
+					ipAddresses[ip] = v1.NodeExternalIP
+				}
 			}
 
 			internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
 			}
-
-			ipAddresses = append(ipAddresses, internalIPs...)
+			for _, ip := range internalIPs {
+				ipAddresses[ip] = v1.NodeExternalIP
+			}
 
 		}
 	}

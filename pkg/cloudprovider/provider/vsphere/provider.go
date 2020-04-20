@@ -82,7 +82,7 @@ type Server struct {
 	name      string
 	id        string
 	status    instance.Status
-	addresses []string
+	addresses map[string]corev1.NodeAddressType
 }
 
 func (vsphereServer Server) Name() string {
@@ -93,7 +93,7 @@ func (vsphereServer Server) ID() string {
 	return vsphereServer.id
 }
 
-func (vsphereServer Server) Addresses() []string {
+func (vsphereServer Server) Addresses() map[string]corev1.NodeAddressType {
 	return vsphereServer.addresses
 }
 
@@ -480,7 +480,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	}
 
 	// virtualMachine.IsToolsRunning panics when executed on a VM that is not powered on
-	addresses := []string{}
+	addresses := map[string]corev1.NodeAddressType{}
 	isGuestToolsRunning, err := virtualMachine.IsToolsRunning(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
@@ -496,7 +496,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 			for _, address := range nic.IpAddress {
 				// Exclude ipv6 link-local addresses and default Docker bridge
 				if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
-					addresses = append(addresses, address)
+					addresses[address] = ""
 				}
 			}
 		}
