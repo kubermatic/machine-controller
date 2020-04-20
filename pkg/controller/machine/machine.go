@@ -572,7 +572,11 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 		if rhelConfig.RHSMOfflineToken != "" {
 			machineName := machine.Name
 			if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
-				machineName = machine.Status.NodeRef.Name
+				for _, address := range machine.Status.Addresses {
+					if address.Type == corev1.NodeInternalDNS {
+						machineName = address.Address
+					}
+				}
 			}
 
 			if err := r.redhatSubscriptionManager.UnregisterInstance(rhelConfig.RHSMOfflineToken, machineName); err != nil {
@@ -698,8 +702,8 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", addresses)
 	r.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", eventMessage)
 	machineAddresses := []corev1.NodeAddress{}
-	for _, address := range addresses {
-		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address})
+	for address, addressType := range addresses {
+		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address, Type: addressType})
 	}
 	if err := r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Addresses = machineAddresses
@@ -873,7 +877,7 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 			}
 		}
 		for _, nodeAddress := range node.Status.Addresses {
-			for _, instanceAddress := range instance.Addresses() {
+			for instanceAddress, _ := range instance.Addresses() {
 				if nodeAddress.Address == instanceAddress {
 					return node.DeepCopy(), true, nil
 				}
