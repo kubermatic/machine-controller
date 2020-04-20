@@ -877,7 +877,7 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 			}
 		}
 		for _, nodeAddress := range node.Status.Addresses {
-			for instanceAddress, _ := range instance.Addresses() {
+			for instanceAddress := range instance.Addresses() {
 				if nodeAddress.Address == instanceAddress {
 					return node.DeepCopy(), true, nil
 				}
