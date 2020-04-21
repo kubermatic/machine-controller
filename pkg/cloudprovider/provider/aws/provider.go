@@ -118,6 +118,12 @@ var (
 			// The AWS marketplace ID from RedHat
 			owner: "309956199498",
 		},
+		providerconfigtypes.OperatingSystemFlatcar: {
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "Flatcar Container Linux stable 2345.3.1 (HVM)",
+			// The AWS marketplace ID from AWS
+			owner: "075585003325",
+		},
 	}
 
 	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
@@ -236,6 +242,8 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 		return rootDevicePathCoreOSSLES, nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rootDevicePathUbuntuCentOSRHEL, nil
+	case providerconfigtypes.OperatingSystemFlatcar:
+		return rootDevicePathCoreOSSLES, nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
@@ -488,8 +496,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
-		// Gzip the userdata in case we don't use CoreOS.
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos &&
+		pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
+		// Gzip the userdata in case we don't use CoreOS and Flatcar
 		userdata, err = convert.GzipString(userdata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to gzip the userdata")
