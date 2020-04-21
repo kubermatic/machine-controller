@@ -1,0 +1,350 @@
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ssh-rsa AAABBB
+        - ssh-rsa CCCDDD
+
+
+systemd:
+  units:
+    - name: update-engine.service
+      mask: true
+    - name: docker.service
+      enabled: true
+
+    - name: download-healthcheck-script.service
+      enabled: true
+      contents: |
+        [Unit]
+        Requires=network-online.target
+        After=network-online.target
+        [Service]
+        Type=oneshot
+        EnvironmentFile=-/etc/environment
+        ExecStart=/opt/bin/download.sh
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: docker-healthcheck.service
+      enabled: true
+      dropins:
+      - name: 40-docker.conf
+        contents: |
+          [Unit]
+          Requires=download-healthcheck-script.service
+          After=download-healthcheck-script.service
+      contents: |
+          [Unit]
+          Requires=docker.service
+          After=docker.service
+
+          [Service]
+          ExecStart=/opt/bin/health-monitor.sh container-runtime
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: kubelet-healthcheck.service
+      enabled: true
+      dropins:
+      - name: 40-docker.conf
+        contents: |
+          [Unit]
+          Requires=download-healthcheck-script.service
+          After=download-healthcheck-script.service
+      contents: |
+          [Unit]
+          Requires=kubelet.service
+          After=kubelet.service
+
+          [Service]
+          ExecStart=/opt/bin/health-monitor.sh kubelet
+
+          [Install]
+          WantedBy=multi-user.target
+
+
+    - name: kubelet.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Kubernetes Kubelet
+        Requires=docker.service
+        After=docker.service
+        [Service]
+        TimeoutStartSec=5min
+        CPUAccounting=true
+        MemoryAccounting=true
+        EnvironmentFile=-/etc/environment
+        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.9.2
+        Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
+          --inherit-env \
+          --insecure-options=image \
+          --volume=resolv,kind=host,source=/etc/resolv.conf \
+          --mount volume=resolv,target=/etc/resolv.conf \
+          --volume cni-bin,kind=host,source=/opt/cni/bin \
+          --mount volume=cni-bin,target=/opt/cni/bin \
+          --volume cni-conf,kind=host,source=/etc/cni/net.d \
+          --mount volume=cni-conf,target=/etc/cni/net.d \
+          --volume etc-kubernetes,kind=host,source=/etc/kubernetes \
+          --mount volume=etc-kubernetes,target=/etc/kubernetes \
+          --volume var-log,kind=host,source=/var/log \
+          --mount volume=var-log,target=/var/log \
+          --volume var-lib-calico,kind=host,source=/var/lib/calico \
+          --mount volume=var-lib-calico,target=/var/lib/calico"
+        ExecStartPre=/bin/mkdir -p /var/lib/calico
+        ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
+        ExecStartPre=/bin/mkdir -p /etc/cni/net.d
+        ExecStartPre=/bin/mkdir -p /opt/cni/bin
+        ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
+        ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
+        ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+        ExecStart=/usr/lib/flatcar/kubelet-wrapper \
+          --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+          --kubeconfig=/var/lib/kubelet/kubeconfig \
+          --config=/etc/kubernetes/kubelet.conf \
+          --allow-privileged=true \
+          --network-plugin=cni \
+          --cni-conf-dir=/etc/cni/net.d \
+          --cni-bin-dir=/opt/cni/bin \
+          --cadvisor-port=0 \
+          --cert-dir=/etc/kubernetes/pki \
+          --cloud-provider=aws \
+          --cloud-config=/etc/kubernetes/cloud-config \
+          --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
+          --exit-on-lock-contention \
+          --lock-file=/tmp/kubelet.lock \
+          --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
+          --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+        ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
+        Restart=always
+        RestartSec=10
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: docker.service
+      enabled: true
+      dropins:
+      - name: 10-environment.conf
+        contents: |
+          [Service]
+          EnvironmentFile=-/etc/environment
+
+storage:
+  files:
+
+    - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          [Journal]
+          SystemMaxUse=5G
+
+
+    - path: "/etc/kubernetes/kubelet.conf"
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          authentication:
+            anonymous:
+              enabled: false
+            webhook:
+              cacheTTL: 0s
+              enabled: true
+            x509:
+              clientCAFile: /etc/kubernetes/pki/ca.crt
+          authorization:
+            mode: Webhook
+            webhook:
+              cacheAuthorizedTTL: 0s
+              cacheUnauthorizedTTL: 0s
+          cgroupDriver: systemd
+          clusterDNS:
+          - 10.10.10.10
+          clusterDomain: cluster.local
+          cpuManagerReconcilePeriod: 0s
+          evictionPressureTransitionPeriod: 0s
+          featureGates:
+            RotateKubeletServerCertificate: true
+          fileCheckFrequency: 0s
+          httpCheckFrequency: 0s
+          imageMinimumGCAge: 0s
+          kind: KubeletConfiguration
+          nodeStatusReportFrequency: 0s
+          nodeStatusUpdateFrequency: 0s
+          protectKernelDefaults: true
+          rotateCertificates: true
+          runtimeRequestTimeout: 0s
+          serverTLSBootstrap: true
+          staticPodPath: /etc/kubernetes/manifests
+          streamingConnectionIdleTimeout: 0s
+          syncFrequency: 0s
+          volumeStatsAggPeriod: 0s
+
+
+    - path: /opt/load-kernel-modules.sh
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          modprobe ip_vs
+          modprobe ip_vs_rr
+          modprobe ip_vs_wrr
+          modprobe ip_vs_sh
+
+          if modinfo nf_conntrack_ipv4 &> /dev/null; then
+            modprobe nf_conntrack_ipv4
+          else
+            modprobe nf_conntrack
+          fi
+
+
+    - path: /etc/sysctl.d/k8s.conf
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
+          kernel.panic_on_oops = 1
+          kernel.panic = 10
+          net.ipv4.ip_forward = 1
+          vm.overcommit_memory = 1
+          fs.inotify.max_user_watches = 1048576
+
+
+    - path: /proc/sys/kernel/panic_on_oops
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          1
+
+    - path: /proc/sys/kernel/panic
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          10
+
+    - path: /proc/sys/vm/overcommit_memory
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          1
+
+    - path: /etc/kubernetes/bootstrap-kubelet.conf
+      filesystem: root
+      mode: 0400
+      contents:
+        inline: |
+          apiVersion: v1
+          clusters:
+          - cluster:
+              certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUVXakNDQTBLZ0F3SUJBZ0lKQUxmUmxXc0k4WVFITUEwR0NTcUdTSWIzRFFFQkJRVUFNSHN4Q3pBSkJnTlYKQkFZVEFsVlRNUXN3Q1FZRFZRUUlFd0pEUVRFV01CUUdBMVVFQnhNTlUyRnVJRVp5WVc1amFYTmpiekVVTUJJRwpBMVVFQ2hNTFFuSmhaR1pwZEhwcGJtTXhFakFRQmdOVkJBTVRDV3h2WTJGc2FHOXpkREVkTUJzR0NTcUdTSWIzCkRRRUpBUllPWW5KaFpFQmtZVzVuWVM1amIyMHdIaGNOTVRRd056RTFNakEwTmpBMVdoY05NVGN3TlRBME1qQTAKTmpBMVdqQjdNUXN3Q1FZRFZRUUdFd0pWVXpFTE1Ba0dBMVVFQ0JNQ1EwRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMEp5WVdSbWFYUjZhVzVqTVJJd0VBWURWUVFERXdsc2IyTmhiR2h2CmMzUXhIVEFiQmdrcWhraUc5dzBCQ1FFV0RtSnlZV1JBWkdGdVoyRXVZMjl0TUlJQklqQU5CZ2txaGtpRzl3MEIKQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdDVmQWpwNGZUY2VrV1VUZnpzcDBreWloMU9ZYnNHTDBLWDFlUmJTUwpSOE9kMCs5UTYySHlueStHRndNVGI0QS9LVThtc3NvSHZjY2VTQUFid2ZieEZLLytzNTFUb2JxVW5PUlpyT29UClpqa1V5Z2J5WERTSzk5WUJiY1IxUGlwOHZ3TVRtNFhLdUx0Q2lnZUJCZGpqQVFkZ1VPMjhMRU5HbHNNbm1lWWsKSmZPRFZHblZtcjVMdGI5QU5BOElLeVRmc25ISjRpT0NTL1BsUGJVajJxN1lub1ZMcG9zVUJNbGdVYi9DeWtYMwptT29MYjR5SkpReUEvaVNUNlp4aUlFajM2RDR5V1o1bGc3WUpsK1VpaUJRSEdDblBkR3lpcHFWMDZleDBoZVlXCmNhaVc4TFdaU1VROTNqUStXVkNIOGhUN0RRTzFkbXN2VW1YbHEvSmVBbHdRL1FJREFRQUJvNEhnTUlIZE1CMEcKQTFVZERnUVdCQlJjQVJPdGhTNFA0VTd2VGZqQnlDNTY5UjdFNkRDQnJRWURWUjBqQklHbE1JR2lnQlJjQVJPdApoUzRQNFU3dlRmakJ5QzU2OVI3RTZLRi9wSDB3ZXpFTE1Ba0dBMVVFQmhNQ1ZWTXhDekFKQmdOVkJBZ1RBa05CCk1SWXdGQVlEVlFRSEV3MVRZVzRnUm5KaGJtTnBjMk52TVJRd0VnWURWUVFLRXd0Q2NtRmtabWwwZW1sdVl6RVMKTUJBR0ExVUVBeE1KYkc5allXeG9iM04wTVIwd0d3WUpLb1pJaHZjTkFRa0JGZzVpY21Ga1FHUmhibWRoTG1OdgpiWUlKQUxmUmxXc0k4WVFITUF3R0ExVWRFd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVGQlFBRGdnRUJBRzZoClU5ZjlzTkgwLzZvQmJHR3kyRVZVMFVnSVRVUUlyRldvOXJGa3JXNWsvWGtEalFtKzNsempUMGlHUjRJeEUvQW8KZVU2c1FodWE3d3JXZUZFbjQ3R0w5OGxuQ3NKZEQ3b1pOaEZtUTk1VGIvTG5EVWpzNVlqOWJyUDBOV3pYZllVNApVSzJabklOSlJjSnBCOGlSQ2FDeEU4RGRjVUYwWHFJRXE2cEEyNzJzbm9MbWlYTE12Tmwza1lFZG0ramU2dm9ECjU4U05WRVVzenR6UXlYbUpFaENwd1ZJMEE2UUNqelhqK3F2cG13M1paSGk4SndYZWk4WlpCTFRTRkJraThaN24Kc0g5QkJIMzgvU3pVbUFONFFIU1B5MWdqcW0wME9BRThOYVlEa2gvYnpFNGQ3bUxHR01XcC9XRTNLUFN1ODJIRgprUGU2WG9TYmlMbS9reGszMlQwPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
+              server: https://server:443
+            name: ""
+          contexts: []
+          current-context: ""
+          kind: Config
+          preferences: {}
+          users:
+          - name: ""
+            user:
+              token: my-token
+
+
+    - path: /etc/kubernetes/cloud-config
+      filesystem: root
+      mode: 0400
+      contents:
+        inline: |
+          {aws-config:true}
+
+    - path: /etc/kubernetes/pki/ca.crt
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          -----BEGIN CERTIFICATE-----
+          MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
+          BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
+          A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
+          DQEJARYOYnJhZEBkYW5nYS5jb20wHhcNMTQwNzE1MjA0NjA1WhcNMTcwNTA0MjA0
+          NjA1WjB7MQswCQYDVQQGEwJVUzELMAkGA1UECBMCQ0ExFjAUBgNVBAcTDVNhbiBG
+          cmFuY2lzY28xFDASBgNVBAoTC0JyYWRmaXR6aW5jMRIwEAYDVQQDEwlsb2NhbGhv
+          c3QxHTAbBgkqhkiG9w0BCQEWDmJyYWRAZGFuZ2EuY29tMIIBIjANBgkqhkiG9w0B
+          AQEFAAOCAQ8AMIIBCgKCAQEAt5fAjp4fTcekWUTfzsp0kyih1OYbsGL0KX1eRbSS
+          R8Od0+9Q62Hyny+GFwMTb4A/KU8mssoHvcceSAAbwfbxFK/+s51TobqUnORZrOoT
+          ZjkUygbyXDSK99YBbcR1Pip8vwMTm4XKuLtCigeBBdjjAQdgUO28LENGlsMnmeYk
+          JfODVGnVmr5Ltb9ANA8IKyTfsnHJ4iOCS/PlPbUj2q7YnoVLposUBMlgUb/CykX3
+          mOoLb4yJJQyA/iST6ZxiIEj36D4yWZ5lg7YJl+UiiBQHGCnPdGyipqV06ex0heYW
+          caiW8LWZSUQ93jQ+WVCH8hT7DQO1dmsvUmXlq/JeAlwQ/QIDAQABo4HgMIHdMB0G
+          A1UdDgQWBBRcAROthS4P4U7vTfjByC569R7E6DCBrQYDVR0jBIGlMIGigBRcAROt
+          hS4P4U7vTfjByC569R7E6KF/pH0wezELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNB
+          MRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRQwEgYDVQQKEwtCcmFkZml0emluYzES
+          MBAGA1UEAxMJbG9jYWxob3N0MR0wGwYJKoZIhvcNAQkBFg5icmFkQGRhbmdhLmNv
+          bYIJALfRlWsI8YQHMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBAG6h
+          U9f9sNH0/6oBbGGy2EVU0UgITUQIrFWo9rFkrW5k/XkDjQm+3lzjT0iGR4IxE/Ao
+          eU6sQhua7wrWeFEn47GL98lnCsJdD7oZNhFmQ95Tb/LnDUjs5Yj9brP0NWzXfYU4
+          UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
+          58SNVEUsztzQyXmJEhCpwVI0A6QCjzXj+qvpmw3ZZHi8JwXei8ZZBLTSFBki8Z7n
+          sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
+          kPe6XoSbiLm/kxk32T0=
+          -----END CERTIFICATE-----
+
+
+    - path: /etc/ssh/sshd_config
+      filesystem: root
+      mode: 0600
+      user:
+        id: 0
+      group:
+        id: 0
+      contents:
+        inline: |
+          # Use most defaults for sshd configuration.
+          Subsystem sftp internal-sftp
+          ClientAliveInterval 180
+          UseDNS no
+          UsePAM yes
+          PrintLastLog no # handled by PAM
+          PrintMotd no # handled by PAM
+          PasswordAuthentication no
+          ChallengeResponseAuthentication no
+
+    - path: /etc/docker/daemon.json
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"}}
+
+    - path: /opt/bin/download.sh
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -xeuo pipefail
+          mkdir -p /opt/bin/
+          mkdir -p /var/lib/calico
+          mkdir -p /etc/kubernetes/manifests
+          mkdir -p /etc/cni/net.d
+          mkdir -p /opt/cni/bin
+          if [ ! -f /opt/cni/bin/loopback ]; then
+              curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz | tar -xvzC /opt/cni/bin -f -
+          fi
+
+          if [[ ! -x /opt/bin/health-monitor.sh ]]; then
+              curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+              chmod +x /opt/bin/health-monitor.sh
+          fi
