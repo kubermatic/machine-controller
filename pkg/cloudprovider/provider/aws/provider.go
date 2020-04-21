@@ -43,6 +43,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -741,13 +742,17 @@ func (d *awsInstance) ID() string {
 	return aws.StringValue(d.instance.InstanceId)
 }
 
-func (d *awsInstance) Addresses() []string {
-	return []string{
-		aws.StringValue(d.instance.PublicIpAddress),
-		aws.StringValue(d.instance.PublicDnsName),
-		aws.StringValue(d.instance.PrivateIpAddress),
-		aws.StringValue(d.instance.PrivateDnsName),
+func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
+	addresses := map[string]v1.NodeAddressType{
+		aws.StringValue(d.instance.PublicIpAddress):  v1.NodeExternalIP,
+		aws.StringValue(d.instance.PublicDnsName):    v1.NodeExternalDNS,
+		aws.StringValue(d.instance.PrivateIpAddress): v1.NodeInternalIP,
+		aws.StringValue(d.instance.PrivateDnsName):   v1.NodeInternalDNS,
 	}
+
+	delete(addresses, "")
+
+	return addresses
 }
 
 func (d *awsInstance) Status() instance.Status {

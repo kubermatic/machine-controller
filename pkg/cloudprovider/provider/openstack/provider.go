@@ -42,6 +42,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -748,12 +749,12 @@ func (d *osInstance) ID() string {
 	return d.server.ID
 }
 
-func (d *osInstance) Addresses() []string {
-	var addresses []string
+func (d *osInstance) Addresses() map[string]v1.NodeAddressType {
+	addresses := map[string]v1.NodeAddressType{}
 	for _, networkAddresses := range d.server.Addresses {
 		for _, element := range networkAddresses.([]interface{}) {
 			address := element.(map[string]interface{})
-			addresses = append(addresses, address["addr"].(string))
+			addresses[address["addr"].(string)] = ""
 		}
 	}
 
