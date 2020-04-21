@@ -333,7 +333,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 				return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
 			}
 			for _, ip := range internalIPs {
-				ipAddresses[ip] = v1.NodeExternalIP
+				ipAddresses[ip] = v1.NodeInternalIP
 			}
 
 		}
