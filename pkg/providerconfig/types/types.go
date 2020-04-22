@@ -95,9 +95,10 @@ type DNSConfig struct {
 
 // NetworkConfig contains a machine's static network configuration
 type NetworkConfig struct {
-	CIDR    string    `json:"cidr"`
-	Gateway string    `json:"gateway"`
-	DNS     DNSConfig `json:"dns"`
+	CIDR      string    `json:"cidr"`
+	Gateway   string    `json:"gateway"`
+	DNS       DNSConfig `json:"dns"`
+	DNSPolicy string    `json:"dnsPolicy"`
 }
 
 type Config struct {
