@@ -31,6 +31,7 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
   --register-with-taints=key1=value1:NoSchedule,key2=value2:NoExecute \
+  --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
   --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
   --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 

@@ -236,6 +236,7 @@ write_files:
       --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
+      --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
       --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
       --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
 
