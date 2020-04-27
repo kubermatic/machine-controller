@@ -140,6 +140,7 @@ systemd:
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
           --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
+          --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
           --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
           --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
