@@ -506,5 +506,5 @@ func dnsPolicy(policy string) (corev1.DNSPolicy, error) {
 		return corev1.DNSNone, nil
 	}
 
-	return "", fmt.Errorf("unkown dns policy: %s", policy)
+	return "", fmt.Errorf("unknown dns policy: %s", policy)
 }
