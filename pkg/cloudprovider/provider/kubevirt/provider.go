@@ -73,7 +73,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 
 type Config struct {
 	Kubeconfig       rest.Config
-	DNSConfig        corev1.PodDNSConfig
+	DNSConfig        *corev1.PodDNSConfig
 	DNSPolicy        corev1.DNSPolicy
 	CPUs             string
 	Memory           string
@@ -170,19 +170,23 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse "dnsPolicy" field: %v`, err)
 	}
-	config.DNSPolicy, err = dnsPolicy(dnsPolicyString)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get dns policy: %v", err)
+	if dnsPolicyString != "" {
+		config.DNSPolicy, err = dnsPolicy(dnsPolicyString)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get dns policy: %v", err)
+		}
 	}
 	dnsConfigString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.DNSConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "dnsConfig" field: %v`, err)
 	}
-	dnsConfig := corev1.PodDNSConfig{}
-	if err := yaml.Unmarshal([]byte(dnsConfigString), &dnsConfig); err != nil {
-		return nil, nil, fmt.Errorf(`failed to unmarshal "dnsConfig" field: %v`, err)
+	if dnsConfigString != "" {
+		dnsConfig := &corev1.PodDNSConfig{}
+		if err := yaml.Unmarshal([]byte(dnsConfigString), &dnsConfig); err != nil {
+			return nil, nil, fmt.Errorf(`failed to unmarshal "dnsConfig" field: %v`, err)
+		}
+		config.DNSConfig = dnsConfig
 	}
-	config.DNSConfig = dnsConfig
 
 	return &config, &pconfig, nil
 }
@@ -263,8 +267,10 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if _, ok := supportedOS[pc.OperatingSystem]; !ok {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
-	if c.DNSPolicy == corev1.DNSNone && len(c.DNSConfig.Nameservers) == 0 {
-		return fmt.Errorf("dns config must be specified when dns policy is None")
+	if c.DNSPolicy == corev1.DNSNone {
+		if c.DNSConfig == nil || len(c.DNSConfig.Nameservers) == 0 {
+			return fmt.Errorf("dns config must be specified when dns policy is None")
+		}
 	}
 	// Check if we can reach the API of the target cluster
 	vmi := &kubevirtv1.VirtualMachineInstance{}
@@ -395,7 +401,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 						},
 					},
 					DNSPolicy: c.DNSPolicy,
-					DNSConfig: &c.DNSConfig,
+					DNSConfig: c.DNSConfig,
 				},
 			},
 			DataVolumeTemplates: []cdi.DataVolume{
