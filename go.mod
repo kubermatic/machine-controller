@@ -79,6 +79,7 @@ require (
 	gopkg.in/ini.v1 v1.46.0 // indirect
 	gopkg.in/resty.v1 v1.12.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.16.4
 	k8s.io/apiextensions-apiserver v0.16.4
 	k8s.io/apimachinery v0.16.4

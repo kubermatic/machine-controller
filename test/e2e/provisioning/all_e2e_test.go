@@ -52,6 +52,7 @@ const (
 	OSUpgradeManifest           = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest      = "./testdata/machine-invalid.yaml"
 	kubevirtManifest            = "./testdata/machinedeployment-kubevirt.yaml"
+	kubevirtManifestDNSConfig   = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
 	alibabaManifest             = "./testdata/machinedeployment-alibaba.yaml"
 )
 
@@ -90,6 +91,30 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 	}
 
 	runScenarios(t, selector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
+}
+
+func TestKubevirtDNSConfigProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG")
+
+	if kubevirtKubeconfig == "" {
+		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
+	}
+
+	scenario := scenario{
+		name:              "Kubevirt with dns config",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "v1.17.0",
+		executor:          verifyCreateAndDelete,
+	}
+
+	testScenario(t, scenario, *testRunIdentifier, params, kubevirtManifestDNSConfig, false)
 }
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
@@ -199,7 +224,7 @@ func TestAWSProvisioningE2EWithEbsEncryptionEnabled(t *testing.T) {
 	}
 
 	scenario := scenario{
-		name:              "Ubuntu",
+		name:              "AWS with ebs encryption enabled",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
 		kubernetesVersion: "v1.15.6",
