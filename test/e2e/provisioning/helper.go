@@ -48,10 +48,11 @@ var (
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemUbuntu): "machine-controller-e2e-ubuntu",
-		string(providerconfigtypes.OperatingSystemCoreos): "machine-controller-e2e-coreos",
-		string(providerconfigtypes.OperatingSystemCentOS): "machine-controller-e2e-centos",
-		string(providerconfigtypes.OperatingSystemRHEL):   "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu",
+		string(providerconfigtypes.OperatingSystemCoreos):  "machine-controller-e2e-coreos",
+		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemRHEL):    "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar",
 	}
 )
 
