@@ -140,6 +140,20 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 		Sku:       to.StringPtr("7-RAW-CI"),
 		Version:   to.StringPtr("7.7.2019081601"),
 	},
+	providerconfigtypes.OperatingSystemFlatcar: {
+		Publisher: to.StringPtr("kinvolk"),
+		Offer:     to.StringPtr("flatcar-container-linux"),
+		Sku:       to.StringPtr("stable"),
+		Version:   to.StringPtr("2345.3.0"),
+	},
+}
+
+var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
+	providerconfigtypes.OperatingSystemFlatcar: {
+		Name:      pointer.StringPtr("stable"),
+		Publisher: pointer.StringPtr("kinvolk"),
+		Product:   pointer.StringPtr("flatcar-container-linux"),
+	},
 }
 
 func getOSImageReference(imageID string, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
@@ -476,7 +490,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	tags[machineUIDTag] = to.StringPtr(string(machine.UID))
 
 	adminUserName := string(providerCfg.OperatingSystem)
-	if adminUserName == "coreos" {
+	if adminUserName == "coreos" || adminUserName == "flatcar" {
 		// CoreOS uses core by default everywhere, so we adhere to that
 		adminUserName = "core"
 	}
@@ -486,6 +500,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
+		Plan:     osPlans[providerCfg.OperatingSystem],
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
 			HardwareProfile: &compute.HardwareProfile{VMSize: compute.VirtualMachineSizeTypes(config.VMSize)},
 			NetworkProfile: &compute.NetworkProfile{
