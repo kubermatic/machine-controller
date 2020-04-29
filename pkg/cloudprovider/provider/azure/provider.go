@@ -489,11 +489,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 	tags[machineUIDTag] = to.StringPtr(string(machine.UID))
 
-	adminUserName := string(providerCfg.OperatingSystem)
-	if adminUserName == "coreos" || adminUserName == "flatcar" {
-		// CoreOS uses core by default everywhere, so we adhere to that
-		adminUserName = "core"
-	}
+	adminUserName := getOSUsername(providerCfg.OperatingSystem)
 	storageProfile, err := getStorageProfile(config, providerCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get StorageProfile: %v", err)
@@ -942,4 +938,15 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
+}
+
+func getOSUsername(os providerconfigtypes.OperatingSystem) string {
+	switch os {
+	case providerconfigtypes.OperatingSystemFlatcar:
+		return "core"
+	case providerconfigtypes.OperatingSystemCoreos:
+		return "core"
+	default:
+		return string(os)
+	}
 }
