@@ -296,7 +296,8 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 	defer session.Logout()
 
 	var containerLinuxUserdata string
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos ||
+		pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
 		containerLinuxUserdata = userdata
 	}
 
@@ -304,13 +305,15 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 		machine.Spec.Name,
 		config,
 		session,
+		pc.OperatingSystem,
 		containerLinuxUserdata,
 	)
 	if err != nil {
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%v'", err))
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos &&
+		pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
 		localUserdataIsoFilePath, err := generateLocalUserdataISO(userdata, machine.Spec.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate local userdadata iso: %v", err)
@@ -426,7 +429,8 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos &&
+		pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
 		filemanager := datastore.NewFileManager(session.Datacenter, false)
 
 		if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {
