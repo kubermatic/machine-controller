@@ -195,7 +195,6 @@ write_files:
     yum install -y docker-ce-18.09.1-3.el7 \
       ebtables \
       ethtool \
-      nfs-utils \
       bash-completion \
       sudo \
       socat \
