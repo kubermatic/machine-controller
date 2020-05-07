@@ -552,6 +552,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			Datacenter:       c.Datacenter,
 			VCenterIP:        u.Hostname(),
 			DefaultDatastore: c.Datastore,
+			DatastoreCluster: c.DatastoreCluster,
 			Folder:           workingDir,
 		},
 		VirtualCenter: map[string]*vspheretypes.VirtualCenterConfig{

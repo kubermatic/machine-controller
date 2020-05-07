@@ -35,6 +35,7 @@ insecure-flag     = {{ .Global.InsecureFlag }}
 working-dir       = {{ .Global.WorkingDir | iniEscape }}
 datacenter        = {{ .Global.Datacenter | iniEscape }}
 datastore         = {{ .Global.DefaultDatastore | iniEscape }}
+datastore-cluster = {{ .Global.DatastoreCluster | iniEscape }}
 server            = {{ .Global.VCenterIP | iniEscape }}
 
 [Disk]
@@ -45,6 +46,7 @@ server            = {{ .Workspace.VCenterIP | iniEscape }}
 datacenter        = {{ .Workspace.Datacenter | iniEscape }}
 folder            = {{ .Workspace.Folder | iniEscape }}
 default-datastore = {{ .Workspace.DefaultDatastore | iniEscape }}
+datastore-cluster = {{ .Workspace.DatastoreCluster | iniEscape }}
 resourcepool-path = {{ .Workspace.ResourcePoolPath | iniEscape }}
 
 {{ range $name, $vc := .VirtualCenter }}
@@ -62,6 +64,7 @@ type WorkspaceOpts struct {
 	Datacenter       string `gcfg:"datacenter"`
 	Folder           string `gcfg:"folder"`
 	DefaultDatastore string `gcfg:"default-datastore"`
+	DatastoreCluster string `gcfg:"datastore-cluster"`
 	ResourcePoolPath string `gcfg:"resourcepool-path"`
 }
 

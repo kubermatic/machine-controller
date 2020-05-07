@@ -6,6 +6,7 @@ insecure-flag     = true
 working-dir       = ""
 datacenter        = ""
 datastore         = ""
+datastore-cluster = ""
 server            = ""
 
 [Disk]
@@ -16,6 +17,7 @@ server            = "https://127.0.0.1:8443"
 datacenter        = "Datacenter"
 folder            = "some-folder"
 default-datastore = "Datastore"
+datastore-cluster = ""
 resourcepool-path = "/some-resource-pool"
 
 

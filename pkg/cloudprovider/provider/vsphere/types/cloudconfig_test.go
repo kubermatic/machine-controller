@@ -87,6 +87,27 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "datastore-cluster-config",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					User:         "admin",
+					Password:     "password",
+					InsecureFlag: true,
+				},
+				Workspace: WorkspaceOpts{
+					VCenterIP:        "https://127.0.0.1:8443",
+					ResourcePoolPath: "/some-resource-pool",
+					DatastoreCluster: "DatastoreCluster",
+					Folder:           "some-folder",
+					Datacenter:       "Datacenter",
+				},
+				Disk: DiskOpts{
+					SCSIControllerType: "pvscsi",
+				},
+				VirtualCenter: map[string]*VirtualCenterConfig{},
+			},
+		},
 	}
 
 	for _, test := range tests {
