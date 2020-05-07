@@ -77,7 +77,6 @@ type GlobalOpts struct {
 	WorkingDir       string `gcfg:"working-dir"`
 	Datacenter       string `gcfg:"datacenter"`
 	DefaultDatastore string `gcfg:"datastore"`
-	DatastoreCluster string `gcfg:"datastore-cluster"`
 	VCenterIP        string `gcfg:"server"`
 }
 
