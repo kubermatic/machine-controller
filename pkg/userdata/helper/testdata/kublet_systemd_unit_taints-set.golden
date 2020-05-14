@@ -27,13 +27,11 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --cert-dir=/etc/kubernetes/pki \
   --cloud-provider=aws \
   --cloud-config=/etc/kubernetes/cloud-config \
-  --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
+  --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
   --register-with-taints=key1=value1:NoSchedule,key2=value2:NoExecute \
-  --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
-  --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-  --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+  --volume-plugin-dir=/var/lib/kubelet/volumeplugins
 
 [Install]
 WantedBy=multi-user.target
