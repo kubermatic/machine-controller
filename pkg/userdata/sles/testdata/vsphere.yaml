@@ -150,12 +150,10 @@ write_files:
       --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
-      --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
+      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
-      --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+      --volume-plugin-dir=/var/lib/kubelet/volumeplugins
 
     [Install]
     WantedBy=multi-user.target
@@ -264,6 +262,10 @@ write_files:
     httpCheckFrequency: 0s
     imageMinimumGCAge: 0s
     kind: KubeletConfiguration
+    kubeReserved:
+      cpu: 100m
+      ephemeral-storage: 1Gi
+      memory: 100Mi
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s
     protectKernelDefaults: true
@@ -273,6 +275,10 @@ write_files:
     staticPodPath: /etc/kubernetes/manifests
     streamingConnectionIdleTimeout: 0s
     syncFrequency: 0s
+    systemReserved:
+      cpu: 100m
+      ephemeral-storage: 1Gi
+      memory: 100Mi
     volumeStatsAggPeriod: 0s
 
 
