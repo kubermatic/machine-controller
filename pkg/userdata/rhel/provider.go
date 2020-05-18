@@ -162,7 +162,7 @@ write_files:
     SELINUXTYPE=targeted
 
 - path: "/opt/bin/setup"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
