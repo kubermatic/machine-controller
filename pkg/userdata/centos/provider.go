@@ -195,10 +195,12 @@ write_files:
       socat \
       wget \
       curl \
-      ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
-      open-vm-tools{{ end }}
+      {{- if eq .CloudProviderName "vsphere" }}
+      open-vm-tools \
+      {{- end }}
+      ipvsadm
 
-{{ downloadBinariesScript .KubeletVersion true | indent 4 }}
+{{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
 
     {{- if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
