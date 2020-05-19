@@ -108,7 +108,6 @@ type userDataTestCase struct {
 	insecureRegistries    []string
 	registryMirrors       []string
 	pauseImage            string
-	hyperkubeImage        string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -370,7 +369,6 @@ func TestUserDataGeneration(t *testing.T) {
 			noProxy:            "192.168.1.0",
 			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
-			hyperkubeImage:     "192.168.100.100:5000/kubernetes/hyperkube",
 		},
 		{
 			name: "v1.12.0-vsphere-mirrors",
@@ -404,7 +402,6 @@ func TestUserDataGeneration(t *testing.T) {
 			noProxy:         "192.168.1.0",
 			registryMirrors: []string{"https://registry.docker-cn.com"},
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
-			hyperkubeImage:  "192.168.100.100:5000/kubernetes/hyperkube",
 		},
 		{
 			name: "v1.17.0",
