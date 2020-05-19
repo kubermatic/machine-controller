@@ -31,7 +31,7 @@ systemd:
     - name: docker.service
       enabled: true
 
-    - name: download-healthcheck-script.service
+    - name: download-binaries-script.service
       enabled: true
       contents: |
         [Unit]
@@ -50,8 +50,8 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-binaries-script.service
+          After=download-binaries-script.service
       contents: |
           [Unit]
           Requires=docker.service
@@ -69,8 +69,8 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-binaries-script.service
+          After=download-binaries-script.service
       contents: |
           [Unit]
           Requires=kubelet.service
@@ -87,39 +87,24 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Description=Kubernetes Kubelet
-        Requires=docker.service
         After=docker.service
+        Requires=docker.service
+
+        Description=kubelet: The Kubernetes Node Agent
+        Documentation=https://kubernetes.io/docs/home/
+
         [Service]
-        TimeoutStartSec=5min
+        Restart=always
+        StartLimitInterval=0
+        RestartSec=10
         CPUAccounting=true
         MemoryAccounting=true
+
+        Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
         EnvironmentFile=-/etc/environment
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.17.0
-        Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
-          --inherit-env \
-          --insecure-options=image \
-          --volume=resolv,kind=host,source=/etc/resolv.conf \
-          --mount volume=resolv,target=/etc/resolv.conf \
-          --volume cni-bin,kind=host,source=/opt/cni/bin \
-          --mount volume=cni-bin,target=/opt/cni/bin \
-          --volume cni-conf,kind=host,source=/etc/cni/net.d \
-          --mount volume=cni-conf,target=/etc/cni/net.d \
-          --volume etc-kubernetes,kind=host,source=/etc/kubernetes \
-          --mount volume=etc-kubernetes,target=/etc/kubernetes \
-          --volume var-log,kind=host,source=/var/log \
-          --mount volume=var-log,target=/var/log \
-          --volume var-lib-calico,kind=host,source=/var/lib/calico \
-          --mount volume=var-lib-calico,target=/var/lib/calico"
-        ExecStartPre=/bin/mkdir -p /var/lib/calico
-        ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
-        ExecStartPre=/bin/mkdir -p /etc/cni/net.d
-        ExecStartPre=/bin/mkdir -p /opt/cni/bin
-        ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
-        ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
+
         ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-        ExecStart=/usr/lib/coreos/kubelet-wrapper \
-          kubelet \
+        ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
           --kubeconfig=/var/lib/kubelet/kubeconfig \
           --config=/etc/kubernetes/kubelet.conf \
@@ -134,9 +119,7 @@ systemd:
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
           --volume-plugin-dir=/var/lib/kubelet/volumeplugins
-        ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
-        Restart=always
-        RestartSec=10
+
         [Install]
         WantedBy=multi-user.target
 
