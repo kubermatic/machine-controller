@@ -162,7 +162,7 @@ systemd:
             Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
 
-    - name: download-healthcheck-script.service
+    - name: download-binaries-script.service
       enabled: true
       contents: |
         [Unit]
@@ -181,8 +181,8 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-binaries-script.service
+          After=download-binaries-script.service
       contents: |
 {{ containerRuntimeHealthCheckSystemdUnit | indent 10 }}
 
@@ -192,58 +192,15 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-binaries-script.service
+          After=download-binaries-script.service
       contents: |
 {{ kubeletHealthCheckSystemdUnit | indent 10 }}
 
     - name: kubelet.service
       enabled: true
       contents: |
-        [Unit]
-        Description=Kubernetes Kubelet
-        Requires=docker.service
-        After=docker.service
-        [Service]
-        TimeoutStartSec=5min
-        CPUAccounting=true
-        MemoryAccounting=true
-        EnvironmentFile=-/etc/environment
-{{- if .HTTPProxy }}
-        Environment=KUBELET_IMAGE=docker://{{ .HyperkubeImage }}:v{{ .KubeletVersion }}
-{{- else }}
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v{{ .KubeletVersion }}
-{{- end }}
-        Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
-          --inherit-env \
-          --insecure-options=image{{if .InsecureHyperkubeImage }},http{{ end }} \
-          --volume=resolv,kind=host,source=/etc/resolv.conf \
-          --mount volume=resolv,target=/etc/resolv.conf \
-          --volume cni-bin,kind=host,source=/opt/cni/bin \
-          --mount volume=cni-bin,target=/opt/cni/bin \
-          --volume cni-conf,kind=host,source=/etc/cni/net.d \
-          --mount volume=cni-conf,target=/etc/cni/net.d \
-          --volume etc-kubernetes,kind=host,source=/etc/kubernetes \
-          --mount volume=etc-kubernetes,target=/etc/kubernetes \
-          --volume var-log,kind=host,source=/var/log \
-          --mount volume=var-log,target=/var/log \
-          --volume var-lib-calico,kind=host,source=/var/lib/calico \
-          --mount volume=var-lib-calico,target=/var/lib/calico"
-        ExecStartPre=/bin/mkdir -p /var/lib/calico
-        ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
-        ExecStartPre=/bin/mkdir -p /etc/cni/net.d
-        ExecStartPre=/bin/mkdir -p /opt/cni/bin
-        ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
-        ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
-        ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-        ExecStart=/usr/lib/flatcar/kubelet-wrapper \
-{{ if semverCompare ">=1.17.0" .KubeletVersion }}{{ print "          kubelet \\\n" }}{{ end -}}
-{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 10 }}
-        ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
-        Restart=always
-        RestartSec=10
-        [Install]
-        WantedBy=multi-user.target
+{{ kubeletSystemdUnit .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 8 }}
 
     - name: docker.service
       enabled: true
