@@ -38,7 +38,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
-	"github.com/docker/distribution/reference"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -81,7 +80,6 @@ var (
 	nodeInsecureRegistries string
 	nodeRegistryMirrors    string
 	nodePauseImage         string
-	nodeHyperkubeImage     string
 )
 
 const (
@@ -165,7 +163,7 @@ func main() {
 	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
-	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag.")
+	flag.String("node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag. (DEPRECATED, NOOP)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
 	flag.Parse()
@@ -197,14 +195,6 @@ func main() {
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
-	}
-	// Check if the hyperkube image has a tag set
-	hyperkubeImageRef, err := reference.Parse(nodeHyperkubeImage)
-	if err != nil {
-		klog.Fatalf("failed to parse --node-hyperkube-image %s: %v", nodeHyperkubeImage, err)
-	}
-	if _, ok := hyperkubeImageRef.(reference.NamedTagged); ok {
-		klog.Fatalf("--node-hyperkube-image must not contain a tag. The tag will be dynamically set for each Machine.")
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -246,11 +236,10 @@ func main() {
 		skipEvictionAfter:     skipEvictionAfter,
 		nodeCSRApprover:       nodeCSRApprover,
 		node: machinecontroller.NodeSettings{
-			ClusterDNSIPs:  clusterDNSIPs,
-			HTTPProxy:      nodeHTTPProxy,
-			NoProxy:        nodeNoProxy,
-			HyperkubeImage: nodeHyperkubeImage,
-			PauseImage:     nodePauseImage,
+			ClusterDNSIPs: clusterDNSIPs,
+			HTTPProxy:     nodeHTTPProxy,
+			NoProxy:       nodeNoProxy,
+			PauseImage:    nodePauseImage,
 		},
 	}
 	if parsedJoinClusterTimeout != nil {

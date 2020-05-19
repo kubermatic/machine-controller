@@ -51,7 +51,6 @@ type UserDataRequest struct {
 	InsecureRegistries    []string
 	RegistryMirrors       []string
 	PauseImage            string
-	HyperkubeImage        string
 }
 
 // UserDataResponse contains the responded user data.

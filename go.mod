@@ -22,7 +22,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.1.3
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
-	github.com/docker/distribution v2.7.1+incompatible
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
@@ -44,7 +43,6 @@ require (
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a
 	github.com/oklog/run v1.0.0
-	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.0

@@ -23,7 +23,6 @@ package coreos
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"text/template"
 
 	"github.com/Masterminds/semver"
@@ -38,7 +37,6 @@ type Provider struct{}
 
 // UserData renders user-data template to string.
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
-
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -73,14 +71,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
-	// We need to reconfigure rkt to allow insecure registries in case the hyperkube image comes from an insecure registry
-	var insecureHyperkubeImage bool
-	for _, registry := range req.InsecureRegistries {
-		if strings.Contains(req.HyperkubeImage, registry) {
-			insecureHyperkubeImage = true
-		}
-	}
-
 	if coreosConfig.DisableAutoUpdate {
 		coreosConfig.DisableLocksmithD = true
 		coreosConfig.DisableUpdateEngine = true
@@ -88,20 +78,18 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec           *providerconfigtypes.Config
-		CoreOSConfig           *Config
-		Kubeconfig             string
-		KubernetesCACert       string
-		KubeletVersion         string
-		InsecureHyperkubeImage bool
+		ProviderSpec     *providerconfigtypes.Config
+		CoreOSConfig     *Config
+		Kubeconfig       string
+		KubernetesCACert string
+		KubeletVersion   string
 	}{
-		UserDataRequest:        req,
-		ProviderSpec:           pconfig,
-		CoreOSConfig:           coreosConfig,
-		Kubeconfig:             kubeconfigString,
-		KubernetesCACert:       kubernetesCACert,
-		KubeletVersion:         kubeletVersion.String(),
-		InsecureHyperkubeImage: insecureHyperkubeImage,
+		UserDataRequest:  req,
+		ProviderSpec:     pconfig,
+		CoreOSConfig:     coreosConfig,
+		Kubeconfig:       kubeconfigString,
+		KubernetesCACert: kubernetesCACert,
+		KubeletVersion:   kubeletVersion.String(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)

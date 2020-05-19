@@ -476,7 +476,6 @@ func TestUserDataGeneration(t *testing.T) {
 				InsecureRegistries:    test.insecureRegistries,
 				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
-				HyperkubeImage:        test.hyperkubeImage,
 			}
 
 			s, err := provider.UserData(req)

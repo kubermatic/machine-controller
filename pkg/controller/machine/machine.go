@@ -123,8 +123,6 @@ type NodeSettings struct {
 	RegistryMirrors []string
 	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it.
 	PauseImage string
-	// The hyperkube image to use. Currently only Container Linux uses it.
-	HyperkubeImage string
 }
 
 type KubeconfigProvider interface {
@@ -656,7 +654,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				InsecureRegistries:    r.nodeSettings.InsecureRegistries,
 				RegistryMirrors:       r.nodeSettings.RegistryMirrors,
 				PauseImage:            r.nodeSettings.PauseImage,
-				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 			}
