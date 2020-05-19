@@ -138,6 +138,8 @@ write_files:
     swapoff -a
 
     export CR_PKG='docker-ce=5:18.09.2~3-0~ubuntu-bionic'
+    export CR_CLI_PKG='docker-ce-cli=5:19.03.8~3-0~ubuntu-bionic'
+    export CR_CONTAINERD_PKG='containerd.io=1.2.13-1'
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
@@ -156,8 +158,12 @@ write_files:
       nfs-common \
       socat \
       util-linux \
+      ${CR_CLI_PKG} \
+      ${CR_CONTAINERD_PKG} \
       ${CR_PKG} \
       ipvsadm
+    apt-mark hold containerd.io || true
+    apt-mark hold docker-ce-cli || true
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
