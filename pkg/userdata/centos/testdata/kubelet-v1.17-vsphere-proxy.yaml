@@ -1,9 +1,19 @@
 #cloud-config
 
+hostname: node1
+
 
 ssh_pwauth: no
 
 write_files:
+- path: "/etc/environment"
+  content: |
+    HTTP_PROXY=http://192.168.100.100:3128
+    http_proxy=http://192.168.100.100:3128
+    HTTPS_PROXY=http://192.168.100.100:3128
+    https_proxy=http://192.168.100.100:3128
+    NO_PROXY=192.168.1.0
+    no_proxy=192.168.1.0
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -68,6 +78,8 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
+    hostnamectl set-hostname node1
+
 
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
@@ -83,6 +95,7 @@ write_files:
       wget \
       curl \
       yum-plugin-versionlock \
+      open-vm-tools \
       ipvsadm
     yum versionlock docker-ce-*
 
@@ -100,7 +113,7 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.12.0}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.17.3}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -123,6 +136,8 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
+
+    systemctl enable --now vmtoolsd.service
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -161,16 +176,17 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --allow-privileged=true \
       --network-plugin=cni \
       --cni-conf-dir=/etc/cni/net.d \
       --cni-bin-dir=/opt/cni/bin \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=aws \
+      --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
+      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
       --volume-plugin-dir=/var/lib/kubelet/volumeplugins
 
     [Install]
@@ -179,7 +195,7 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-    {aws-config:true}
+    {config:true}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"
@@ -299,7 +315,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"}}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"},"insecure-registries":["192.168.100.100:5000","10.0.0.1:5000"]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -327,6 +343,10 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
+- path: /run/containers/registries.conf
+  permissions: "0644"
+  content: |
+    INSECURE_REGISTRY="--insecure-registry 192.168.100.100:5000 --insecure-registry 10.0.0.1:5000 "
 
 - path: /etc/systemd/system/docker.service.d/environment.conf
   permissions: "0644"

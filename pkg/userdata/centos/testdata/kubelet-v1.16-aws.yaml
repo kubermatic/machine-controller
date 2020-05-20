@@ -100,7 +100,7 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.10.2}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.16.6}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -161,11 +161,9 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --allow-privileged=true \
       --network-plugin=cni \
       --cni-conf-dir=/etc/cni/net.d \
       --cni-bin-dir=/opt/cni/bin \
-      --cadvisor-port=0 \
       --cert-dir=/etc/kubernetes/pki \
       --cloud-provider=aws \
       --cloud-config=/etc/kubernetes/cloud-config \
