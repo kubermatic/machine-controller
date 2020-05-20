@@ -5,6 +5,22 @@ passwd:
         - ssh-rsa AAABBB
         - ssh-rsa CCCDDD
 
+networkd:
+  units:
+    - name: static-nic.network
+      contents: |
+        [Match]
+        # Because of difficulty predicting specific NIC names on different cloud providers,
+        # we only support static addressing on VSphere. There should be a single NIC attached
+        # that we will match by name prefix 'en' which denotes ethernet devices.
+        Name=en*
+
+        [Network]
+        DHCP=no
+        Address=192.168.81.4/24
+        Gateway=192.168.81.1
+        DNS=8.8.8.8
+
 
 systemd:
   units:
@@ -79,7 +95,7 @@ systemd:
         CPUAccounting=true
         MemoryAccounting=true
         EnvironmentFile=-/etc/environment
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.9.2
+        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.17.0
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --inherit-env \
           --insecure-options=image \
@@ -103,16 +119,17 @@ systemd:
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
+          kubelet \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
           --kubeconfig=/var/lib/kubelet/kubeconfig \
           --config=/etc/kubernetes/kubelet.conf \
-          --allow-privileged=true \
           --network-plugin=cni \
           --cni-conf-dir=/etc/cni/net.d \
           --cni-bin-dir=/opt/cni/bin \
-          --cadvisor-port=0 \
           --cert-dir=/etc/kubernetes/pki \
-          --cloud-provider=external \
+          --cloud-provider=vsphere \
+          --cloud-config=/etc/kubernetes/cloud-config \
+          --hostname-override=node1 \
           --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
@@ -275,7 +292,9 @@ storage:
       mode: 0400
       contents:
         inline: |
-          {aws-config:true}
+          my
+          custom
+          cloud-config
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
@@ -309,6 +328,11 @@ storage:
           kPe6XoSbiLm/kxk32T0=
           -----END CERTIFICATE-----
 
+    - path: /etc/hostname
+      filesystem: root
+      mode: 0600
+      contents:
+        inline: 'node1'
 
     - path: /etc/ssh/sshd_config
       filesystem: root
@@ -357,7 +381,7 @@ storage:
           tar xvf "$cni_filename"
           rm -f "$cni_filename"
           cd -
-          KUBE_VERSION="${KUBE_VERSION:-v1.9.2}"
+          KUBE_VERSION="${KUBE_VERSION:-v1.17.0}"
           kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
           kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
           kube_sum_file="$kube_dir/sha256"

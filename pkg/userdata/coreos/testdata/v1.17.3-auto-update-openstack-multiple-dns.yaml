@@ -8,8 +8,6 @@ passwd:
 
 systemd:
   units:
-    - name: update-engine.service
-      mask: true
     - name: docker.service
       enabled: true
 
@@ -77,7 +75,7 @@ systemd:
         CPUAccounting=true
         MemoryAccounting=true
         EnvironmentFile=-/etc/environment
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.9.2
+        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.17.3
         Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
           --inherit-env \
           --insecure-options=image \
@@ -101,17 +99,17 @@ systemd:
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
+          kubelet \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
           --kubeconfig=/var/lib/kubelet/kubeconfig \
           --config=/etc/kubernetes/kubelet.conf \
-          --allow-privileged=true \
           --network-plugin=cni \
           --cni-conf-dir=/etc/cni/net.d \
           --cni-bin-dir=/opt/cni/bin \
-          --cadvisor-port=0 \
           --cert-dir=/etc/kubernetes/pki \
-          --cloud-provider=aws \
+          --cloud-provider=openstack \
           --cloud-config=/etc/kubernetes/cloud-config \
+          --hostname-override=node1 \
           --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
@@ -164,6 +162,8 @@ storage:
           cgroupDriver: systemd
           clusterDNS:
           - 10.10.10.10
+          - 10.10.10.11
+          - 10.10.10.12
           clusterDomain: cluster.local
           cpuManagerReconcilePeriod: 0s
           evictionPressureTransitionPeriod: 0s
@@ -274,7 +274,7 @@ storage:
       mode: 0400
       contents:
         inline: |
-          {aws-config:true}
+          {openstack-config:true}
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
@@ -308,6 +308,11 @@ storage:
           kPe6XoSbiLm/kxk32T0=
           -----END CERTIFICATE-----
 
+    - path: /etc/hostname
+      filesystem: root
+      mode: 0600
+      contents:
+        inline: 'node1'
 
     - path: /etc/ssh/sshd_config
       filesystem: root
@@ -356,7 +361,7 @@ storage:
           tar xvf "$cni_filename"
           rm -f "$cni_filename"
           cd -
-          KUBE_VERSION="${KUBE_VERSION:-v1.9.2}"
+          KUBE_VERSION="${KUBE_VERSION:-v1.17.3}"
           kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
           kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
           kube_sum_file="$kube_dir/sha256"
