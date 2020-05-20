@@ -247,6 +247,7 @@ write_files:
     swapoff -a
 
     export CR_PKG='docker-ce=5:18.09.9~3-0~ubuntu-bionic'
+    export CR_CLI_PKG='docker-ce-cli=5:18.09.9~3-0~ubuntu-bionic'
     export DEBIAN_FRONTEND=noninteractive
 
     apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
@@ -263,6 +264,7 @@ write_files:
       socat \
       util-linux \
       ${CR_PKG} \
+      ${CR_CLI_PKG} \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
@@ -271,6 +273,7 @@ write_files:
 {{- /* If something failed during package installation but docker got installed, we need to put it on hold */}}
     apt-mark hold docker.io || true
     apt-mark hold docker-ce || true
+    apt-mark hold docker-ce-cli || true
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
