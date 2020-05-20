@@ -1,9 +1,19 @@
 #cloud-config
 
+hostname: node1
+
 
 ssh_pwauth: no
 
 write_files:
+- path: "/etc/environment"
+  content: |
+    HTTP_PROXY=http://192.168.100.100:3128
+    http_proxy=http://192.168.100.100:3128
+    HTTPS_PROXY=http://192.168.100.100:3128
+    https_proxy=http://192.168.100.100:3128
+    NO_PROXY=192.168.1.0
+    no_proxy=192.168.1.0
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -68,17 +78,17 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
+    hostnamectl set-hostname node1
+
 
     subscription-manager clean
     subscription-manager register --username='' --password=''
     subscription-manager attach --auto
-    yum clean all
-    yum repolist
 
-    yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
     DOCKER_VERSION='18.09.1-3.el7'
-    yum install -y docker-ce-${DOCKER_VERSION} \
+    dnf install -y docker-ce-${DOCKER_VERSION} \
       docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
       ethtool \
@@ -88,9 +98,10 @@ write_files:
       wget \
       curl \
       python3-dnf-plugin-versionlock \
+      open-vm-tools \
       ipvsadm
-    dnf versionlock add docker-ce
     dnf versionlock add docker-ce docker-ce-cli
+    dnf clean all
 
     opt_bin=/opt/bin
     cni_bin_dir=/opt/cni/bin
@@ -106,7 +117,7 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.11.3}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.17.3}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -129,6 +140,8 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
+
+    systemctl enable --now vmtoolsd.service
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -167,17 +180,17 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --allow-privileged=true \
       --network-plugin=cni \
       --cni-conf-dir=/etc/cni/net.d \
       --cni-bin-dir=/opt/cni/bin \
-      --cadvisor-port=0 \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=aws \
+      --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
+      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
       --volume-plugin-dir=/var/lib/kubelet/volumeplugins
 
     [Install]
@@ -186,7 +199,7 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-    {aws-config:true}
+    {config:true}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"
@@ -306,7 +319,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"}}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"},"registry-mirrors":["https://registry.docker-cn.com"]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -334,6 +347,10 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
+- path: /run/containers/registries.conf
+  permissions: "0644"
+  content: |
+    REGISTRIES="--registry-mirror https://registry.docker-cn.com "
 
 - path: /etc/systemd/system/docker.service.d/environment.conf
   permissions: "0644"
