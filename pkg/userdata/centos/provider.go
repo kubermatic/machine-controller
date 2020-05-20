@@ -187,8 +187,12 @@ write_files:
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
-    yum install -y docker-ce-18.09.9-3.el7 \
-      docker-ce-cli-18.09.9-3.el7 \
+{{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
+	See: https://github.com/docker/cli/issues/2533 */}}
+
+    DOCKER_VERSION='18.09.9-3.el7'
+    yum install -y docker-ce-${DOCKER_VERSION} \
+      docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
       ethtool \
       bash-completion \
@@ -196,10 +200,12 @@ write_files:
       socat \
       wget \
       curl \
+      yum-plugin-versionlock \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
       ipvsadm
+    yum versionlock docker-ce-*
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
 
