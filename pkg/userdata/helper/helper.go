@@ -147,20 +147,10 @@ echodate() {
   echo "[$(date -Is)]" "$@"
 }
 
-
-# try to figure out the default gw interface
-DEFAULT_INTERFACE=$(ip route | grep default | grep -oP "dev \K\S+")
-
-if [ -z ${DEFAULT_INTERFACE} ]
-then
-	echodate "Failed to get default route interface"
-	exit 1
-fi
-
 # get the default interface IP address
-DEFAULT_IFC_IP=$(ip addr show dev ${DEFAULT_INTERFACE} | grep -oP "inet \K\S+" | cut -d / -f 1)
+DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
 
-if [ -z ${DEFAULT_IFC_IP} ]
+if [ -z "${DEFAULT_IFC_IP}" ]
 then
 	echodate "Failed to get IP address for the default route interface"
 	exit 1
