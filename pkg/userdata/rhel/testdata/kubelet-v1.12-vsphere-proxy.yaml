@@ -87,6 +87,7 @@ write_files:
     mkdir /etc/docker
 
     yum install -y docker-ce-3:18.09.1-3.el7 \
+      docker-ce-cli-3:18.09.1-3.el7 \
       ebtables \
       ethtool \
       nfs-utils \
