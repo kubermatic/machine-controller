@@ -163,10 +163,15 @@ func main() {
 	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
-	flag.String("node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag. (DEPRECATED, NOOP)")
+	flag.String("node-hyperkube-image", "", "Image for the hyperkube container excluding tag. (DEPRECATED, NOOP)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
 	flag.Parse()
+
+	if fv := flag.Lookup("node-hyperkube-image"); fv.DefValue != fv.Value.String() {
+		klog.Warning("-node-hyperkube-image flag IS DEPRECATED and has no EFFECT ANYMORE")
+	}
+
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
