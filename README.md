@@ -23,10 +23,11 @@
 - Using Ubuntu, CoreOS/RedHat ContainerLinux or CentOS 7 distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
 ## Supported Kubernetes versions
-Machine controller tries to follow as close as possible the Kubernetes version
+machine-controller tries to follow as close as possible the Kubernetes version
 [support policy](https://kubernetes.io/docs/setup/release/version-skew-policy/).
 
 Currently supported K8S versions are:
+- 1.18
 - 1.17
 - 1.16
 - 1.15
