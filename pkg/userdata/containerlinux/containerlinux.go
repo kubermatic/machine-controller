@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package coreos
+package containerlinux
 
 import (
 	"encoding/json"
@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// Config contains specific configuration for CoreOS.
+// Config contains specific configuration for CoreOS/Flatcar Container Linux.
 type Config struct {
 	DisableAutoUpdate   bool `json:"disableAutoUpdate"`
 	DisableLocksmithD   bool `json:"disableLocksmithD"`

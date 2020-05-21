@@ -18,7 +18,7 @@ limitations under the License.
 // UserData plugin for CentOS.
 //
 
-package flatcar
+package containerlinux
 
 import (
 	"encoding/json"
@@ -168,7 +168,9 @@ func TestUserDataGeneration(t *testing.T) {
 					Raw: providerSpecRaw,
 				},
 			}
-			provider := Provider{}
+			provider := Provider{
+				KubeletWrapperPath: "/usr/lib/coreos/kubelet-wrapper",
+			}
 
 			cloudConfig, cloudProviderName, err := test.ccProvider.GetCloudConfig(test.spec)
 			if err != nil {

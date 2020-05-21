@@ -15,10 +15,10 @@ limitations under the License.
 */
 
 //
-// UserData plugin for Flatcar.
+// UserData plugin for CoreOS/Flatcar Container Linux.
 //
 
-package flatcar
+package containerlinux
 
 import (
 	"bytes"
@@ -34,7 +34,9 @@ import (
 )
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
-type Provider struct{}
+type Provider struct {
+	KubeletWrapperPath string
+}
 
 // UserData renders user-data template to string.
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
@@ -58,9 +60,9 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		req.CloudConfig = *pconfig.OverwriteCloudConfig
 	}
 
-	flatcarConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
+	config, err := LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get flatcar config from provider config: %v", err)
+		return "", fmt.Errorf("failed to get container linux config from provider config: %v", err)
 	}
 
 	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
@@ -81,15 +83,16 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		}
 	}
 
-	if flatcarConfig.DisableAutoUpdate {
-		flatcarConfig.DisableLocksmithD = true
-		flatcarConfig.DisableUpdateEngine = true
+	if config.DisableAutoUpdate {
+		config.DisableLocksmithD = true
+		config.DisableUpdateEngine = true
 	}
 
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec           *providerconfigtypes.Config
-		FlatcarConfig          *Config
+		ContainerLinuxConfig   *Config
+		KubeletWrapperPath     string
 		Kubeconfig             string
 		KubernetesCACert       string
 		KubeletVersion         string
@@ -97,7 +100,8 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	}{
 		UserDataRequest:        req,
 		ProviderSpec:           pconfig,
-		FlatcarConfig:          flatcarConfig,
+		ContainerLinuxConfig:   config,
+		KubeletWrapperPath:     p.KubeletWrapperPath,
 		Kubeconfig:             kubeconfigString,
 		KubernetesCACert:       kubernetesCACert,
 		KubeletVersion:         kubeletVersion.String(),
@@ -142,11 +146,11 @@ networkd:
 
 systemd:
   units:
-{{- if .FlatcarConfig.DisableUpdateEngine }}
+{{- if .ContainerLinuxConfig.DisableUpdateEngine }}
     - name: update-engine.service
       mask: true
 {{- end }}
-{{- if .FlatcarConfig.DisableLocksmithD }}
+{{- if .ContainerLinuxConfig.DisableLocksmithD }}
     - name: locksmithd.service
       mask: true
 {{- end }}
@@ -236,7 +240,7 @@ systemd:
         ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
         ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-        ExecStart=/usr/lib/flatcar/kubelet-wrapper \
+        ExecStart={{ .KubeletWrapperPath }} \
 {{ if semverCompare ">=1.17.0" .KubeletVersion }}{{ print "          kubelet \\\n" }}{{ end -}}
 {{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid

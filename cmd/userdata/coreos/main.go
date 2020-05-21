@@ -25,8 +25,8 @@ import (
 
 	"k8s.io/klog"
 
+	"github.com/kubermatic/machine-controller/pkg/userdata/containerlinux"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-	"github.com/kubermatic/machine-controller/pkg/userdata/coreos"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
 
@@ -38,7 +38,9 @@ func main() {
 	flag.Parse()
 
 	// Instantiate provider and start plugin.
-	var provider = &coreos.Provider{}
+	var provider = &containerlinux.Provider{
+		KubeletWrapperPath: "/usr/lib/coreos/kubelet-wrapper",
+	}
 	var p = userdataplugin.New(convert.NewIgnition(provider), debug)
 
 	if err := p.Run(); err != nil {
