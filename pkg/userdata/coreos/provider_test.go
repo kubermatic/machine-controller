@@ -118,7 +118,7 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "v1.9.2-disable-auto-update-aws",
+			name: "v1.17.2-disable-auto-update-aws",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -126,7 +126,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.2",
+					Kubelet: "1.17.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -140,7 +140,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.9.2-disable-locksmith-aws",
+			name: "v1.17.2-disable-locksmith-aws",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -148,7 +148,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.2",
+					Kubelet: "1.17.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -162,7 +162,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.9.2-disable-update-engine-aws",
+			name: "v1.17.2-disable-update-engine-aws",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -170,7 +170,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.2",
+					Kubelet: "1.17.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -184,7 +184,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.9.2-disable-auto-update-aws-external",
+			name: "v1.17.2-disable-auto-update-aws-external",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -192,7 +192,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.9.2",
+					Kubelet: "1.17.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -207,7 +207,7 @@ func TestUserDataGeneration(t *testing.T) {
 			externalCloudProvider: true,
 		},
 		{
-			name: "v1.10.3-auto-update-openstack-multiple-dns",
+			name: "v1.17.3-auto-update-openstack-multiple-dns",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -217,7 +217,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.10.3",
+					Kubelet: "1.17.3",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -241,7 +241,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.9.2",
+					Kubelet: "v1.17.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -255,7 +255,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.11.2-vsphere-static-ipconfig",
+			name: "v1.16.2-vsphere-static-ipconfig",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -272,7 +272,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.11.2",
+					Kubelet: "1.16.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -286,7 +286,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.12.0-vsphere-overwrite-cloudconfig",
+			name: "v1.17.0-vsphere-overwrite-cloudconfig",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				OverwriteCloudConfig: stringPtr("my\ncustom\ncloud-config"),
@@ -302,7 +302,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.12.0",
+					Kubelet: "v1.17.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -339,7 +339,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.12.0-vsphere-proxy",
+			name: "v1.17.0-vsphere-proxy",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -354,7 +354,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.12.0",
+					Kubelet: "v1.17.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -373,7 +373,7 @@ func TestUserDataGeneration(t *testing.T) {
 			hyperkubeImage:     "192.168.100.100:5000/kubernetes/hyperkube",
 		},
 		{
-			name: "v1.12.0-vsphere-mirrors",
+			name: "v1.17.0-vsphere-mirrors",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -388,7 +388,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.12.0",
+					Kubelet: "v1.17.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{

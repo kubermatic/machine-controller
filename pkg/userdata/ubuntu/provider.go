@@ -246,11 +246,11 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
-    export CR_PKG='docker-ce=5:18.09.9~3-0~ubuntu-bionic'
-    export CR_CLI_PKG='docker-ce-cli=5:18.09.9~3-0~ubuntu-bionic'
-    export DEBIAN_FRONTEND=noninteractive
+{{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
+	See: https://github.com/docker/cli/issues/2533 */}}
 
-    apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
+    DOCKER_VERSION='5:18.09.9~3-0~ubuntu-bionic'
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \
       conntrack \
@@ -263,17 +263,15 @@ write_files:
       openssh-client \
       socat \
       util-linux \
-      ${CR_PKG} \
-      ${CR_CLI_PKG} \
+      docker-ce="${DOCKER_VERSION}" \
+      docker-ce-cli="${DOCKER_VERSION}" \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
       ipvsadm
 
 {{- /* If something failed during package installation but docker got installed, we need to put it on hold */}}
-    apt-mark hold docker.io || true
-    apt-mark hold docker-ce || true
-    apt-mark hold docker-ce-cli || true
+    apt-mark hold docker-ce docker-ce-cli || true
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682

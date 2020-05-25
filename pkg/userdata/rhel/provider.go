@@ -187,13 +187,12 @@ write_files:
     subscription-manager clean
     subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}'
     subscription-manager attach --auto
-    yum clean all
-    yum repolist
 
-    yum config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
-    yum install -y docker-ce-18.09.1-3.el7 \
-      docker-ce-cli-18.09.1-3.el7 \
+    DOCKER_VERSION='18.09.1-3.el7'
+    dnf install -y docker-ce-${DOCKER_VERSION} \
+      docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
       ethtool \
       bash-completion \
@@ -201,10 +200,13 @@ write_files:
       socat \
       wget \
       curl \
+      python3-dnf-plugin-versionlock \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
       ipvsadm
+    dnf versionlock add docker-ce docker-ce-cli
+    dnf clean all
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
 
