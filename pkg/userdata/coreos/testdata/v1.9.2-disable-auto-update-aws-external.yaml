@@ -342,7 +342,7 @@ storage:
           mkdir -p /etc/cni/net.d
           mkdir -p /opt/cni/bin
           if [ ! -f /opt/cni/bin/loopback ]; then
-              curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz | tar -xvzC /opt/cni/bin -f -
+              curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.6/cni-plugins-linux-amd64-v0.8.6.tgz | tar -xvzC /opt/cni/bin -f -
           fi
 
           if [[ ! -x /opt/bin/health-monitor.sh ]]; then
