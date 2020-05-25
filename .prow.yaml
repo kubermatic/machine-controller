@@ -1,0 +1,464 @@
+---
+presubmits:
+  - name: pull-machine-controller-build
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - make
+        args:
+        - machine-controller
+        resources:
+          requests:
+            cpu: 1
+
+  - name: pull-machine-controller-dependencies
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    spec:
+      containers:
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - make
+        args:
+        - check-dependencies
+        resources:
+          requests:
+            cpu: 800m
+
+  - name: pull-machine-controller-lint
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    spec:
+      containers:
+      - image: golangci/golangci-lint:v1.16.0
+        command:
+        - make
+        args:
+        - lint
+        resources:
+          requests:
+            cpu: 800m
+            memory: 6Gi
+
+  - name: pull-machine-controller-yamllint
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    spec:
+      containers:
+      - image: quay.io/kubermatic/yamllint:0.1
+        command:
+          - "sh"
+          - "-c"
+          - "rm -r ./vendor && yamllint -c .yamllint.conf ."
+        resources:
+          requests:
+            cpu: 200m
+
+  - name: pull-machine-controller-test
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    spec:
+      containers:
+      - image: golang:1.13.3
+        command:
+          - go
+          - test
+          - -race
+          - ./...
+        env:
+        - name: GO111MODULE
+          value: 'off'
+        resources:
+          requests:
+            cpu: 800m
+
+  - name: pull-machine-controller-e2e-invalid-objects-get-rejected
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-aws: "true"
+      preset-azure: "true"
+      preset-digitalocean: "true"
+      preset-gce: "true"
+      preset-e2e-ssh: "true"
+      preset-hetzner: "true"
+      preset-openstack: "true"
+      preset-vsphere: "true"
+      preset-kubevirt: "true"
+      preset-alibaba: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestInvalidObjectsGetRejected"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-kubevirt
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    max_concurrency: 1
+    labels:
+      preset-kubevirt: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestKubevirtProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-alibaba
+    optional: true
+    always_run: false
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    max_concurrency: 1
+    labels:
+      preset-alibaba: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestAlibabaProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-openstack
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-openstack: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestOpenstackProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-aws
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-aws: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestAWSProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-digitalocean
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-digitalocean: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestDigitalOceanProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-azure
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-azure: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestAzureProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-gce
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-gce: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestGCEProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-hetzner
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestHetznerProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-linode
+    always_run: false
+    run_if_changed: pkg\/cloudprovider\/provider\/linode\/.*
+    optional: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-linode: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestLinodeProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-packet
+    optional: true
+    run_if_changed: pkg\/cloudprovider\/provider\/packet\/.*
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-packet: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestPacketProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-cherryservers
+    optional: true
+    run_if_changed: pkg\/cloudprovider\/provider\/cherryservers\/.*
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-cherryservers: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestCherryServersProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-vsphere
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-vsphere: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestVsphereProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-ubuntu-upgrade
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-openstack: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestUbuntuProvisioningWithUpgradeE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-e2e-deployment-upgrade
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+      # Uses go1.11.1
+      - image: quay.io/kubermatic/dep:0.5.4-2
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestDeploymentControllerUpgradesMachineE2E"
+        env:
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+
+  - name: pull-machine-controller-verify-boilerplate
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    spec:
+      containers:
+      - image: python:2.7
+        command:
+        - "./hack/verify-boilerplate.sh"
+
+postsubmits:
+  - name: ci-push-machine-controller-image
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    branches:
+    # Match on tags
+    - ^v\d+\.\d+\.\d+.*
+    labels:
+      preset-docker-push: "true"
+    spec:
+      containers:
+      - image: quay.io/kubermatic/go-docker:13.3-1806-2
+        command:
+        - /bin/bash
+        - -c
+        - >-
+            set -euo pipefail &&
+            /usr/local/bin/entrypoint.sh &&
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD &&
+            docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io &&
+            make docker-image
+        # docker-in-docker needs privileged mode
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 1Gi
