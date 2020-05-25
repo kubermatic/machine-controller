@@ -1,0 +1,30 @@
+postsubmits:
+  kubermatic/machine-controller:
+  - name: ci-push-machine-controller-image
+    always_run: true
+    decorate: true
+    clone_uri: 'ssh://git@github.com/kubermatic/machine-controller.git'
+    branches:
+    # Match on tags
+    - ^v\d+\.\d+\.\d+.*
+    labels:
+      preset-docker-push: "true"
+    spec:
+      containers:
+      - image: quay.io/kubermatic/go-docker:13.3-1806-2
+        command:
+        - /bin/bash
+        - -c
+        - >-
+            set -euo pipefail &&
+            /usr/local/bin/entrypoint.sh &&
+            docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD &&
+            docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io &&
+            make docker-image
+        # docker-in-docker needs privileged mode
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 1Gi
