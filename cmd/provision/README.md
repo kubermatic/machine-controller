@@ -1,77 +1,43 @@
-# Provisioning
+## Provision
+The `provision` will identify the operating system and execute a set of
+provisioning steps. It helps to provision a host exacly the same way as
+machine-controller would do.
 
-This command offers all required functionality to provision an host to join a Kubernetes cluster.
+## Use-cases
+- Prepare VM images for machine-controller
+- (In future) Join host to existing Kubernetes cluster using bootstrap token
 
-The following operating systems are supported
-- Ubuntu 18.04
-- CentOS 7
-- ContainerLinux / CoreOS (Not tested with RedHat CoreOS)
+## Supported operating systems
+- [x] CentOS 7
+- [ ] CentOS 8
+- [ ] Flatcar Flatcar Container Linux
+- [x] Red Hat Enterprise Linux 8
+- [x] SUSE Linux Enterprise Server
+- [x] Ubuntu 18.04
+- [ ] Ubuntu 20.04
 
-## Requirements
-- The cluster needs to use the bootstrap token authentication
+## CLI / flags
+TBD
 
-## CLI
-
-```bash
-./provision \
-    --kubelet-version="v1.13.1" \
-    --cloud-provider="openstack" \
-    --cloud-config="/etc/kubernetes/cloud-config" \
-    --token="AAAAAAAAAAAAAAAA" \
-    --ca-cert="/etc/kubernetes/ca.crt"
-```
-
-## Process
-
-Nodes will boot with a cloud-init (Or Ignition) which writes required files & a shell script (called `setup.sh` here).
-
-### cloud-init (Or ignition)
-Parts which will be covered by cloud-init (or Ignition)
-
-- Install SSH keys
-- Configure hostname
-- `ca.crt`
-    The CA certificate which got used to issue the certificates of the API server serving certificates
-- `cloud-config`
-    A optional cloud-config used by the kubelet to interact with the cloud provider.
-- `setup.sh`  
-    Is responsible for downloading the `provision` binary and to execute it.
-    The download of the binary might also be done using built-in `cloud-init` (or Ignition) features
-
-### Provision
-
-The `provision` binary will identify the operating system and execute a set of provisioning steps.
-
-The provisioning process gets separated into 2 phases:
-- Base provisioning
-  Install and configure all required dependencies
-- Join
-  Write & start the kubelet systemd unit
-
-#### Base provisioning
-The following steps belong into the base provisioning:
-- Install required packages (apt & yum action)
+## Provisioning steps
+- Install required packages (apt / yum / dnf)
 - Configure required kernel parameter (Like ip forwarding, etc.)
 - Configure required kernel modules
 - Disable swap
 - Download & install the CNI plugins
-- Download & Install docker
-- Download Kubelet
-- Install health checks (Kubelet & Docker)
+- Download & install container runtime
+- Download & install Kubelet
 
-#### Join
+## Outputs
+- `--output=direct` (default)  
+  directy write files in their respected places and execute `/opt/bin/setup.sh`
+  as entrypoint
+- `--output=userdata`  
+  output cloud-init userdata as is
+- `--output=shell`  
+  output shell script intended for remote execution over SSH, that will
+  provision the system like `--output=direct` do.
+- `--output=packer`  
+  generate `package.json` file to be consumed by [Packer][packer]
 
-This part will:
-- Write & start the kubelet systemd unit 
-
-## Offline usage
-
-The `provision` binary should also be usable for "prebaking" images, which then can be used for offline usage.
-
-## Development process
-
-To make sure the local development version of the `provision` command gets used for new machines created by the local running machine controller,
-a new flag `--provision-source` must be introduced. 
-This flag will instruct the machine controller to download the `provision` binary from the specified location.
-
-For simplicity the `/hack/run-machine-controller.sh` will be updated to include a step which will compile the `provoision` command & upload it to a gcs bucket. 
+[packer]: https://www.packer.io
