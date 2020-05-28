@@ -143,14 +143,18 @@ write_files:
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \
+      ceph-common \
+      cifs-utils \
       conntrack \
       e2fsprogs \
       ebtables \
       ethtool \
+      glusterfs-client \
       iptables \
       jq \
       kmod \
       openssh-client \
+      nfs-common \
       socat \
       util-linux \
       docker-ce="${DOCKER_VERSION}" \
