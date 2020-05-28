@@ -164,8 +164,8 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
-    zypper --non-interactive --quiet --color install \
-      ebtables \
+    zypper --non-interactive --quiet --color install ebtables \
+      ceph-common \
       e2fsprogs \
       jq \
       socat \
