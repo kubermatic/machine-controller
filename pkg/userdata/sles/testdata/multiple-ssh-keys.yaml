@@ -104,6 +104,9 @@ write_files:
     fi
 
 
+    # set kubelet nodeip environment variable
+    /opt/bin/setup_net_env.sh
+
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -138,6 +141,7 @@ write_files:
     EnvironmentFile=-/etc/environment
 
     ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+    ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
@@ -150,7 +154,8 @@ write_files:
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --volume-plugin-dir=/var/lib/kubelet/volumeplugins
+      --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
+      --node-ip ${KUBELET_NODE_IP}
 
     [Install]
     WantedBy=multi-user.target
@@ -163,6 +168,36 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
+
+
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+    #!/usr/bin/env bash
+    echodate() {
+      echo "[$(date -Is)]" "$@"
+    }
+
+    # get the default interface IP address
+    DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
+
+    if [ -z "${DEFAULT_IFC_IP}" ]
+    then
+    	echodate "Failed to get IP address for the default route interface"
+    	exit 1
+    fi
+
+    # write the nodeip_env file
+    if grep -q coreos /etc/os-release
+    then
+      echo "KUBELET_NODE_IP=${DEFAULT_IFC_IP}" > /etc/kubernetes/nodeip.conf
+    elif [ ! -d /etc/systemd/system/kubelet.service.d ]
+    then
+    	echodate "Can't find kubelet service extras directory"
+    	exit 1
+    else
+      echo -e "[Service]\nEnvironment=\"KUBELET_NODE_IP=${DEFAULT_IFC_IP}\"" > /etc/systemd/system/kubelet.service.d/nodeip.conf
+    fi
 
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
