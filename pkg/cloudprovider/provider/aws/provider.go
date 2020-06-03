@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -212,6 +213,13 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 
 	if len(imagesOut.Images) == 0 {
 		return "", fmt.Errorf("could not find Image for '%s'", os)
+	}
+
+	if os == providerconfigtypes.OperatingSystemRHEL {
+		imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	image := imagesOut.Images[0]
@@ -930,4 +938,19 @@ func getIntanceCountForMachine(machine v1alpha1.Machine, reservations []*ec2.Res
 		}
 	}
 	return count
+}
+
+func filterSupportedRHELImages(images []*ec2.Image) ([]*ec2.Image, error) {
+	var filteredImages []*ec2.Image
+	for _, image := range images {
+		if strings.HasPrefix(*image.Name, "RHEL-8") {
+			filteredImages = append(filteredImages, image)
+		}
+	}
+
+	if filteredImages == nil {
+		return nil, errors.New("rhel 8 images are not found")
+	}
+
+	return filteredImages, nil
 }
