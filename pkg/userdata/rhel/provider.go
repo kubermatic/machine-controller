@@ -89,6 +89,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ServerAddr       string
 		Kubeconfig       string
 		KubernetesCACert string
+		NodeIPScript     string
 	}{
 		UserDataRequest:  req,
 		ProviderSpec:     pconfig,
@@ -97,6 +98,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ServerAddr:       serverAddr,
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -210,8 +212,11 @@ write_files:
     dnf clean all
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+    # set kubelet nodeip environment variable
+    mkdir -p /etc/systemd/system/kubelet.service.d/
+    /opt/bin/setup_net_env.sh
 
-    {{- if eq .CloudProviderName "vsphere" }}
+    {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
 {{- /* Without this, the conformance tests fail with differing tests causing it, the common denominator: They look for some string in container logs and get an empty log */ -}}
@@ -237,6 +242,11 @@ write_files:
   permissions: "0600"
   content: |
 {{ .CloudConfig | indent 4 }}
+
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+{{ .NodeIPScript | indent 4 }}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"
@@ -276,7 +286,7 @@ write_files:
   permissions: "0644"
   content: |
 {{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
-  
+
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
   content: |
