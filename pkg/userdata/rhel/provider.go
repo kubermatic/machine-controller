@@ -312,9 +312,9 @@ write_files:
     EnvironmentFile=-/etc/environment
 
 rh_subscription:
-  username: "{{.OSConfig.RHELSubscriptionManagerUser}}"
-  password: "{{.OSConfig.RHELSubscriptionManagerPassword}}"
-  auto-attach: true
+    username: "{{.OSConfig.RHELSubscriptionManagerUser}}"
+    password: "{{.OSConfig.RHELSubscriptionManagerPassword}}"
+    auto-attach: true
 
 runcmd:
 - systemctl enable --now setup.service
