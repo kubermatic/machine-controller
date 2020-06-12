@@ -12,87 +12,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SHELL = /bin/bash
+SHELL = /bin/bash -eu -o pipefail
 
-GO_VERSION = 1.12.5
+GO_VERSION = 1.13.8
 
 export CGO_ENABLED := 0
 
-export E2E_SSH_PUBKEY ?= $(shell cat ~/.ssh/id_rsa.pub)
+export E2E_SSH_PUBKEY ?= $(shell test -f ~/.ssh/id_rsa.pub && cat ~/.ssh/id_rsa.pub)
 
 export GIT_TAG ?= $(shell git tag --points-at HEAD)
 
+export GOFLAGS?=-mod=readonly -trimpath
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
+
+LDFLAGS ?= -ldflags '-s -w'
 
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 
+OS = centos coreos ubuntu sles rhel flatcar
+USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
 
-vendor: Gopkg.lock Gopkg.toml
-	dep ensure -vendor-only
+.PHONY: all
+all: build-machine-controller webhook
 
-machine-controller-docker:
-	@docker run --rm \
-		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
-		-v $$PWD/.buildcache:/cache \
-		-e GOCACHE=/cache \
-		-w /go/src/github.com/kubermatic/machine-controller \
-		golang:$(GO_VERSION) \
-			make machine-controller
+.PHONY: build-machine-controller
+build-machine-controller: machine-controller $(USERDATA_BIN)
 
-.PHONY: machine-controller
-machine-controller: $(shell find cmd pkg -name '*.go') vendor
+machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -name '*.go')
 	go build -v \
-		-ldflags '-s -w' \
-		-o machine-controller \
-		github.com/kubermatic/machine-controller/cmd/controller
-	go build -v \
-		-ldflags '-s -w' \
-		-o machine-controller-userdata-centos \
-		github.com/kubermatic/machine-controller/cmd/userdata/centos
-	go build -v \
-		-ldflags '-s -w' \
-		-o machine-controller-userdata-coreos \
-		github.com/kubermatic/machine-controller/cmd/userdata/coreos
-	go build -v \
-		-ldflags '-s -w' \
-		-o machine-controller-userdata-ubuntu \
-		github.com/kubermatic/machine-controller/cmd/userdata/ubuntu
-	go build -v \
-		-ldflags '-s -w' \
-		-o machine-controller-userdata-sles \
-		github.com/kubermatic/machine-controller/cmd/userdata/sles
-	go build -v \
-		-ldflags '-s -w' \
-		-o machine-controller-userdata-rhel \
-		github.com/kubermatic/machine-controller/cmd/userdata/rhel
+		$(LDFLAGS) \
+		-o $@ \
+		github.com/kubermatic/machine-controller/cmd/userdata/$*
 
-webhook-docker:
-	@docker run --rm \
-		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
-		-v $$PWD/.buildcache:/cache \
-		-e GOCACHE=/cache \
-		-w /go/src/github.com/kubermatic/machine-controller \
-		golang:$(GO_VERSION) \
-			make webhook
-
-webhook: $(shell find cmd pkg -name '*.go') vendor
+%: cmd/% $(shell find cmd/$* pkg -name '*.go')
 	go build -v \
-		-ldflags '-s -w' \
-		-o webhook \
-		github.com/kubermatic/machine-controller/cmd/webhook
+		$(LDFLAGS) \
+		-o $@ \
+		github.com/kubermatic/machine-controller/cmd/$*
 
+.PHONY: clean
+clean:
+	rm -f machine-controller \
+		webhook \
+		$(USERDATA_BIN)
+
+.PHONY: lint
 lint:
 	golangci-lint run -v
 
-docker-image: machine-controller webhook docker-image-nodep
+.PHONY: docker-image
+docker-image:
+	docker build --build-arg GO_VERSION=$(GO_VERSION) -t $(IMAGE_NAME) .
 
-docker-image-docker: machine-controller-docker webhook-docker docker-image-nodep
-
-docker-image-nodep:
-	docker build -t $(IMAGE_NAME) .
+.PHONY: docker-image-publish
+docker-image-publish: docker-image
 	docker push $(IMAGE_NAME)
 	if [[ -n "$(GIT_TAG)" ]]; then \
 		$(eval IMAGE_TAG = $(GIT_TAG)) \
@@ -103,6 +80,7 @@ docker-image-nodep:
 		docker push $(IMAGE_NAME) ;\
 	fi
 
+.PHONY: test-unit-docker
 test-unit-docker:
 	@docker run --rm \
 		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
@@ -110,17 +88,38 @@ test-unit-docker:
 		-e GOCACHE=/cache \
 		-w /go/src/github.com/kubermatic/machine-controller \
 		golang:$(GO_VERSION) \
-			make test-unit
+			make test-unit GOFLAGS=$(GOFLAGS)
 
-test-unit: vendor
+machine-controller-docker:
+	@docker run --rm \
+		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD/.buildcache:/cache \
+		-e GOCACHE=/cache \
+		-w /go/src/github.com/kubermatic/machine-controller \
+		golang:$(GO_VERSION) \
+			make machine-controller
+
+webhook-docker:
+	@docker run --rm \
+		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD/.buildcache:/cache \
+		-e GOCACHE=/cache \
+		-w /go/src/github.com/kubermatic/machine-controller \
+		golang:$(GO_VERSION) \
+			make webhook
+
+.PHONY: test-unit
+test-unit:
 	@#The `-race` flag requires CGO
 	CGO_ENABLED=1 go test -race ./...
 
+.PHONY: e2e-cluster
 e2e-cluster: machine-controller webhook
 	make -C test/tools/integration apply
 	./test/tools/integration/provision_master.sh do-not-deploy-machine-controller
 	KUBECONFIG=$(shell pwd)/.kubeconfig kubectl apply -f examples/machine-controller.yaml -l local-testing="true"
 
+.PHONY: e2e-destroy
 e2e-destroy:
 	./test/tools/integration/cleanup_machines.sh
 	make -C test/tools/integration destroy
@@ -146,6 +145,7 @@ examples/admission-cert.pem: examples/admission-key.pem
 		-CAkey examples/ca-key.pem -CAcreateserial \
 		-out examples/admission-cert.pem -days 10000 -sha256
 
+.PHONY: deploy
 deploy: examples/admission-cert.pem
 	@cat examples/machine-controller.yaml \
 		|sed "s/__admission_ca_cert__/$(shell cat examples/ca-cert.pem|base64 -w0)/g" \
@@ -153,8 +153,6 @@ deploy: examples/admission-cert.pem
 		|sed "s/__admission_key__/$(shell cat examples/admission-key.pem|base64 -w0)/g" \
 		|kubectl apply -f -
 
+.PHONY: check-dependencies
 check-dependencies:
-	# We need mercurial for bitbucket.org/ww/goautoneg, otherwise dep hangs forever
-	which hg >/dev/null 2>&1 || apt update && apt install -y mercurial
-	dep version || go get -u github.com/golang/dep/cmd/dep
-	dep check
+	go mod verify

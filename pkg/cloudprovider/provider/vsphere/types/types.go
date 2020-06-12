@@ -30,14 +30,14 @@ type RawConfig struct {
 	Datacenter     providerconfigtypes.ConfigVarString `json:"datacenter"`
 	Cluster        providerconfigtypes.ConfigVarString `json:"cluster"`
 	Folder         providerconfigtypes.ConfigVarString `json:"folder"`
+	ResourcePool   providerconfigtypes.ConfigVarString `json:"resourcePool"`
 
 	// Either Datastore or DatastoreCluster have to be provided.
 	DatastoreCluster providerconfigtypes.ConfigVarString `json:"datastoreCluster"`
 	Datastore        providerconfigtypes.ConfigVarString `json:"datastore"`
 
-	CPUs             int32                               `json:"cpus"`
-	MemoryMB         int64                               `json:"memoryMB"`
-	DiskSizeGB       *int64                              `json:"diskSizeGB,omitempty"`
-	AllowInsecure    providerconfigtypes.ConfigVarBool   `json:"allowInsecure"`
-	RHSMOfflineToken providerconfigtypes.ConfigVarString `json:"rhsmOfflineToken"`
+	CPUs          int32                             `json:"cpus"`
+	MemoryMB      int64                             `json:"memoryMB"`
+	DiskSizeGB    *int64                            `json:"diskSizeGB,omitempty"`
+	AllowInsecure providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
 }

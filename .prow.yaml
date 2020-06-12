@@ -6,12 +6,11 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - make
           args:
-            - machine-controller
+            - all
           resources:
             requests:
               cpu: 1
@@ -22,7 +21,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - make
           args:
@@ -37,7 +36,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: golangci/golangci-lint:v1.16.0
+        - image: golangci/golangci-lint:v1.23.6
           command:
             - make
           args:
@@ -57,7 +56,7 @@ presubmits:
           command:
             - "sh"
             - "-c"
-            - "rm -r ./vendor && yamllint -c .yamllint.conf ."
+            - "yamllint -c .yamllint.conf ."
           resources:
             requests:
               cpu: 200m
@@ -68,7 +67,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: golang:1.13.3
+        - image: golang:1.13.8
           command:
             - make
           args:
@@ -95,8 +94,7 @@ presubmits:
       preset-alibaba: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -119,12 +117,34 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestKubevirtProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-kubevirt-dns-config
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    max_concurrency: 1
+    labels:
+      preset-kubevirt: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-rhel: "true"
+    spec:
+      containers:
+        - image: golang:1.13.8
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestKubevirtDNSConfigProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -143,8 +163,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -166,8 +185,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -189,8 +207,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -211,8 +228,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -223,6 +239,7 @@ presubmits:
               cpu: 500m
 
   - name: pull-machine-controller-e2e-azure
+    always_run: true
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
@@ -230,10 +247,10 @@ presubmits:
       preset-azure: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -252,10 +269,10 @@ presubmits:
       preset-gce: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -275,8 +292,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -299,8 +315,7 @@ presubmits:
       preset-linode: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -322,8 +337,7 @@ presubmits:
       preset-packet: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -345,8 +359,7 @@ presubmits:
       preset-cherryservers: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -368,8 +381,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -390,8 +402,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -411,8 +422,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -444,8 +454,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -466,8 +475,7 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -489,12 +497,33 @@ presubmits:
       preset-e2e-ssh: "true"
     spec:
       containers:
-        # Uses go1.11.1
-        - image: quay.io/kubermatic/dep:0.5.4-2
+        - image: golang:1.13.8
           command:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestVsphereDatastoreClusterProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-vsphere-resource-pool
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-vsphere: "true"
+      preset-rhel: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+        - image: golang:1.13.8
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestVsphereResourcePoolProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -522,7 +551,7 @@ postsubmits:
               /usr/local/bin/entrypoint.sh &&
               docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD &&
               docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io &&
-              make docker-image
+              make docker-image-publish
           # docker-in-docker needs privileged mode
           securityContext:
             privileged: true

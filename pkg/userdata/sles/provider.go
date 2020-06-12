@@ -90,6 +90,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion   string
 		Kubeconfig       string
 		KubernetesCACert string
+		NodeIPScript     string
 	}{
 		UserDataRequest:  req,
 		ProviderSpec:     pconfig,
@@ -98,6 +99,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion:   kubeletVersion.String(),
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -113,6 +115,11 @@ const userDataTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
 {{ end }}
+
+{{- if .OSConfig.DistUpgradeOnBoot }}
+package_upgrade: true
+package_reboot_if_required: true
+{{- end }}
 
 ssh_pwauth: no
 
@@ -164,16 +171,15 @@ write_files:
       e2fsprogs \
       jq \
       socat \
-      ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
-      open-vm-tools{{ end }}
-    {{- if .OSConfig.DistUpgradeOnBoot }}
-    zypper --non-interactive --quiet --color dup
-    {{- end }}
-    if [[ -e /var/run/reboot-required ]]; then
-      reboot
-    fi
+      {{- if eq .CloudProviderName "vsphere" }}
+      open-vm-tools \
+      {{- end }}
+      ipvsadm
 
-{{ downloadBinariesScript .KubeletVersion true | indent 4 }}
+{{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+
+    # set kubelet nodeip environment variable
+    /opt/bin/setup_net_env.sh
 
     systemctl enable --now docker
     systemctl enable --now kubelet
@@ -203,6 +209,11 @@ write_files:
   content: |
 {{ .CloudConfig | indent 4 }}
 
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+{{ .NodeIPScript | indent 4 }}
+
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"
   content: |
@@ -230,31 +241,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-    kind: KubeletConfiguration
-    apiVersion: kubelet.config.k8s.io/v1beta1
-    cgroupDriver: systemd
-    clusterDomain: cluster.local
-    clusterDNS:
-    {{- range .DNSIPs }}
-      - "{{ . }}"
-    {{- end }}
-    rotateCertificates: true
-    podManifestPath: /etc/kubernetes/manifests
-    readOnlyPort: 0
-    featureGates:
-      RotateKubeletServerCertificate: true
-    serverTLSBootstrap: true
-    rotateCertificates: true
-    authorization:
-      mode: Webhook
-    authentication:
-      x509:
-        clientCAFile: /etc/kubernetes/pki/ca.crt
-      webhook:
-        enabled: true
-      anonymous:
-        enabled: false
-    protectKernelDefaults: true
+{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 4 }}
 
 - path: "/etc/profile.d/opt-bin-path.sh"
   permissions: "0644"
@@ -264,7 +251,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
+{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

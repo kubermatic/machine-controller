@@ -49,6 +49,7 @@ var (
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
+		providerconfigtypes.OperatingSystemFlatcar,
 	}
 )
 

@@ -87,7 +87,7 @@ kPe6XoSbiLm/kxk32T0=
 )
 
 const (
-	defaultVersion = "1.11.3"
+	defaultVersion = "1.17.3"
 )
 
 type fakeCloudConfigProvider struct {
@@ -120,10 +120,9 @@ type userDataTestCase struct {
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.9.10"),
-		semver.MustParse("v1.10.10"),
-		semver.MustParse("v1.11.3"),
-		semver.MustParse("v1.12.1"),
+		semver.MustParse("v1.15.10"),
+		semver.MustParse("v1.16.6"),
+		semver.MustParse("v1.17.3"),
 	}
 
 	var tests []userDataTestCase
@@ -226,7 +225,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.11.3",
+					Kubelet: "1.17.3",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -251,7 +250,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.11.3",
+					Kubelet: "1.17.3",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -302,7 +301,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.11.3",
+					Kubelet: "v1.17.3",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -328,7 +327,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.11.3",
+					Kubelet: "v1.17.3",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -354,7 +353,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.11.3",
+					Kubelet: "v1.17.3",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -385,7 +384,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.11.3",
+					Kubelet: "v1.17.3",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{

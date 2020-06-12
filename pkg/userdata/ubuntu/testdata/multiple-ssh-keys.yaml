@@ -54,7 +54,7 @@ write_files:
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
-  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+  content: deb https://download.docker.com/linux/ubuntu bionic stable
 
 - path: "/opt/docker.asc"
   permissions: "0400"
@@ -139,10 +139,8 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
-    export CR_PKG='docker-ce=5:18.09.2~3-0~ubuntu-bionic'
-    export CR_CLI_PKG='docker-ce-cli=5:19.03.8~3-0~ubuntu-bionic'
-    export CR_CONTAINERD_PKG='containerd.io=1.2.13-1'
-
+    DOCKER_VERSION='5:18.09.9~3-0~ubuntu-bionic'
+    CONTAINERD_PKG='1.2.13-1'
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \
@@ -160,40 +158,56 @@ write_files:
       nfs-common \
       socat \
       util-linux \
-      ${CR_CLI_PKG} \
-      ${CR_CONTAINERD_PKG} \
-      ${CR_PKG} \
+      docker-ce="${DOCKER_VERSION}" \
+      docker-ce-cli="${DOCKER_VERSION}" \
+      containerd.io="${CONTAINERD_PKG}" \
       ipvsadm
-    apt-mark hold containerd.io || true
-    apt-mark hold docker-ce-cli || true
-    apt-mark hold docker.io || true
-    apt-mark hold docker-ce || true
+    apt-mark hold docker-ce docker-ce-cli containerd.io || true
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
 
-    if [[ -e /var/run/reboot-required ]]; then
-      reboot
-    fi
 
-    mkdir -p /opt/bin/
-    mkdir -p /var/lib/calico
-    mkdir -p /etc/kubernetes/manifests
-    mkdir -p /etc/cni/net.d
-    mkdir -p /opt/cni/bin
-    if [ ! -f /opt/cni/bin/loopback ]; then
-        curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz | tar -xvzC /opt/cni/bin -f -
-    fi
-    if [ ! -f /opt/bin/kubelet ]; then
-        curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v1.11.3/bin/linux/amd64/kubelet
-        chmod +x /opt/bin/kubelet
-    fi
+    opt_bin=/opt/bin
+    cni_bin_dir=/opt/cni/bin
+    mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+    arch=${HOST_ARCH:-amd64}
+    CNI_VERSION="${CNI_VERSION:-v0.8.6}"
+    cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
+    cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
+    curl -Lfo "$cni_bin_dir/$cni_filename" "$cni_base_url/$cni_filename"
+    cni_sum=$(curl -Lf "$cni_base_url/$cni_filename.sha256")
+    cd "$cni_bin_dir"
+    sha256sum -c <<<"$cni_sum"
+    tar xvf "$cni_filename"
+    rm -f "$cni_filename"
+    cd -
+    KUBE_VERSION="${KUBE_VERSION:-v1.17.3}"
+    kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
+    kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
+    kube_sum_file="$kube_dir/sha256"
+    mkdir -p "$kube_dir"
+    : >"$kube_sum_file"
+
+    for bin in kubelet kubeadm kubectl; do
+        curl -Lfo "$kube_dir/$bin" "$kube_base_url/$bin"
+        chmod +x "$kube_dir/$bin"
+        sum=$(curl -Lf "$kube_base_url/$bin.sha256")
+        echo "$sum  $kube_dir/$bin" >>"$kube_sum_file"
+    done
+    sha256sum -c "$kube_sum_file"
+
+    for bin in kubelet kubeadm kubectl; do
+        ln -sf "$kube_dir/$bin" "$opt_bin"/$bin
+    done
 
     if [[ ! -x /opt/bin/health-monitor.sh ]]; then
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
 
+    # set kubelet nodeip environment variable
+    /opt/bin/setup_net_env.sh
 
     systemctl enable --now docker
     systemctl enable --now kubelet
@@ -229,22 +243,21 @@ write_files:
     EnvironmentFile=-/etc/environment
 
     ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+    ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --allow-privileged=true \
       --network-plugin=cni \
       --cni-conf-dir=/etc/cni/net.d \
       --cni-bin-dir=/opt/cni/bin \
-      --cadvisor-port=0 \
       --cert-dir=/etc/kubernetes/pki \
       --hostname-override=node1 \
-      --dynamic-config-dir /etc/kubernetes/dynamic-config-dir \
+      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --kube-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi \
-      --system-reserved=cpu=100m,memory=100Mi,ephemeral-storage=1Gi
+      --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
+      --node-ip ${KUBELET_NODE_IP}
 
     [Install]
     WantedBy=multi-user.target
@@ -257,6 +270,36 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
+
+
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+    #!/usr/bin/env bash
+    echodate() {
+      echo "[$(date -Is)]" "$@"
+    }
+
+    # get the default interface IP address
+    DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
+
+    if [ -z "${DEFAULT_IFC_IP}" ]
+    then
+    	echodate "Failed to get IP address for the default route interface"
+    	exit 1
+    fi
+
+    # write the nodeip_env file
+    if grep -q coreos /etc/os-release
+    then
+      echo "KUBELET_NODE_IP=${DEFAULT_IFC_IP}" > /etc/kubernetes/nodeip.conf
+    elif [ ! -d /etc/systemd/system/kubelet.service.d ]
+    then
+    	echodate "Can't find kubelet service extras directory"
+    	exit 1
+    else
+      echo -e "[Service]\nEnvironment=\"KUBELET_NODE_IP=${DEFAULT_IFC_IP}\"" > /etc/systemd/system/kubelet.service.d/nodeip.conf
+    fi
 
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
@@ -330,34 +373,56 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-    kind: KubeletConfiguration
     apiVersion: kubelet.config.k8s.io/v1beta1
-    cgroupDriver: systemd
-    clusterDomain: cluster.local
-    clusterDNS:
-      - "10.10.10.10"
-    rotateCertificates: true
-    podManifestPath: /etc/kubernetes/manifests
-    readOnlyPort: 0
-    featureGates:
-      RotateKubeletServerCertificate: true
-    serverTLSBootstrap: true
-    rotateCertificates: true
-    authorization:
-      mode: Webhook
     authentication:
-      x509:
-        clientCAFile: /etc/kubernetes/pki/ca.crt
-      webhook:
-        enabled: true
       anonymous:
         enabled: false
+      webhook:
+        cacheTTL: 0s
+        enabled: true
+      x509:
+        clientCAFile: /etc/kubernetes/pki/ca.crt
+    authorization:
+      mode: Webhook
+      webhook:
+        cacheAuthorizedTTL: 0s
+        cacheUnauthorizedTTL: 0s
+    cgroupDriver: systemd
+    clusterDNS:
+    - 10.10.10.10
+    clusterDomain: cluster.local
+    cpuManagerReconcilePeriod: 0s
+    evictionPressureTransitionPeriod: 0s
+    featureGates:
+      RotateKubeletServerCertificate: true
+    fileCheckFrequency: 0s
+    httpCheckFrequency: 0s
+    imageMinimumGCAge: 0s
+    kind: KubeletConfiguration
+    kubeReserved:
+      cpu: 100m
+      ephemeral-storage: 1Gi
+      memory: 100Mi
+    nodeStatusReportFrequency: 0s
+    nodeStatusUpdateFrequency: 0s
     protectKernelDefaults: true
+    rotateCertificates: true
+    runtimeRequestTimeout: 0s
+    serverTLSBootstrap: true
+    staticPodPath: /etc/kubernetes/manifests
+    streamingConnectionIdleTimeout: 0s
+    syncFrequency: 0s
+    systemReserved:
+      cpu: 100m
+      ephemeral-storage: 1Gi
+      memory: 100Mi
+    volumeStatsAggPeriod: 0s
+
 
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","insecure-registries":[],"registry-mirrors":[]}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"}}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

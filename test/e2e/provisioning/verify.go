@@ -358,7 +358,7 @@ func getMatchingMachinesForMachineset(machineSet *clusterv1alpha1.MachineSet, cl
 }
 
 // getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment
-func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client) ([]clusterv1alpha1.MachineSet, error) {
+func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Reader) ([]clusterv1alpha1.MachineSet, error) {
 	// Ensure we actually have an object from the KubeAPI and not just the result of the yaml parsing, as the latter
 	// can not be the owner of anything due to missing UID
 	if machineDeployment.ResourceVersion == "" {

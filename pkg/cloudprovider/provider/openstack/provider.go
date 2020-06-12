@@ -38,11 +38,11 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	openstacktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -87,8 +87,7 @@ type Config struct {
 	RootDiskSizeGB        *int
 	NodeVolumeAttachLimit *uint
 
-	Tags    map[string]string
-	manager rhsm.RedHatSubscriptionManager
+	Tags map[string]string
 }
 
 const (
@@ -191,13 +190,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		c.Tags = map[string]string{}
 	}
 
-	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
-	if offlineToken != "" {
-		c.manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
-		}
-	}
 	return &c, &pconfig, &rawConfig, err
 }
 
@@ -570,7 +562,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, err
 	}
 
-	c, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -594,12 +586,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	if hasFloatingIPReleaseFinalizer {
 		return false, p.cleanupFloatingIP(machine, data.Update)
-	}
-
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && c.manager != nil {
-		if err := c.manager.UnregisterInstance(machine.Name); err != nil {
-			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
-		}
 	}
 
 	return false, nil
@@ -767,12 +753,12 @@ func (d *osInstance) HostID() string {
 	return d.server.HostID
 }
 
-func (d *osInstance) Addresses() []string {
-	var addresses []string
+func (d *osInstance) Addresses() map[string]v1.NodeAddressType {
+	addresses := map[string]v1.NodeAddressType{}
 	for _, networkAddresses := range d.server.Addresses {
 		for _, element := range networkAddresses.([]interface{}) {
 			address := element.(map[string]interface{})
-			addresses = append(addresses, address["addr"].(string))
+			addresses[address["addr"].(string)] = ""
 		}
 	}
 

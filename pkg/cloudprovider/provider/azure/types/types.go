@@ -35,7 +35,11 @@ type RawConfig struct {
 	RouteTableName    providerconfigtypes.ConfigVarString `json:"routeTableName"`
 	AvailabilitySet   providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	SecurityGroupName providerconfigtypes.ConfigVarString `json:"securityGroupName"`
+	Zones             []string                            `json:"zones"`
 
-	AssignPublicIP providerconfigtypes.ConfigVarBool `json:"assignPublicIP"`
-	Tags           map[string]string                 `json:"tags,omitempty"`
+	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
+	OSDiskSize     int32                               `json:"osDiskSize"`
+	DataDiskSize   int32                               `json:"dataDiskSize"`
+	AssignPublicIP providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
+	Tags           map[string]string                   `json:"tags,omitempty"`
 }

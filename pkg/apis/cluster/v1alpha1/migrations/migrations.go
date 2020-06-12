@@ -46,6 +46,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -141,13 +142,38 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	kubeClient kubernetes.Interface,
 	providerData *cloudprovidertypes.ProviderData) error {
 
-	err := client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1beta1.CustomResourceDefinition{})
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			klog.Infof("CRD %s not present, no migration needed", machines.CRDName)
-			return nil
+	var (
+		cachePopulatingInterval = 15 * time.Second
+		cachePopulatingTimeout  = 10 * time.Minute
+		noMigrationNeed         = false
+	)
+
+	err := wait.Poll(cachePopulatingInterval, cachePopulatingTimeout, func() (done bool, err error) {
+		err = client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1beta1.CustomResourceDefinition{})
+		if err != nil {
+			if kerrors.IsNotFound(err) {
+				noMigrationNeed = true
+				return true, nil
+			}
+
+			if _, ok := err.(*cache.ErrCacheNotStarted); ok {
+				klog.Info("Cache hasn't started yet, trying in 5 seconds")
+				return false, nil
+			}
+
+			return false, fmt.Errorf("failed to get crds: %v", err)
 		}
-		return fmt.Errorf("failed to get crds: %v", err)
+		return true, nil
+	})
+
+	if err != nil {
+		klog.Errorf("Failed waiting for caches to be populated: %v", err)
+		return err
+	}
+
+	if noMigrationNeed {
+		klog.Infof("CRD %s not present, no migration needed", machines.CRDName)
+		return nil
 	}
 
 	err = client.Get(ctx, types.NamespacedName{Name: "machines.cluster.k8s.io"}, &apiextensionsv1beta1.CustomResourceDefinition{})

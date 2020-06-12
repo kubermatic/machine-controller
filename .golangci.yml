@@ -34,7 +34,5 @@ issues:
   - func Convert_Machine_ProviderConfig_To_ProviderSpec should be ConvertMachineProviderConfigToProviderSpec
   - 'counter\.Set is deprecated: Use NewConstMetric'
   - 'eviction\.go:221:4: the surrounding loop is unconditionally terminated'
-  - '`client` can be `github.com/kubermatic/machine-controller/vendor/sigs.k8s.io/controller-runtime/pkg/client.Reader`'
-  - '`client` can be `github.com/kubermatic/machine-controller/vendor/sigs.k8s.io/controller-runtime/pkg/client.StatusWriter`'
   - 'cyclomatic complexity 31 of func `verifyMigrateUID` is high'
   - 'cyclomatic complexity 31 of func `main` is high'

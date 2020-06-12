@@ -40,8 +40,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -78,6 +80,11 @@ type config struct {
 	RouteTableName    string
 	AvailabilitySet   string
 	SecurityGroupName string
+	ImageID           string
+	Zones             []string
+
+	OSDiskSize   int32
+	DataDiskSize int32
 
 	AssignPublicIP bool
 	Tags           map[string]string
@@ -85,11 +92,11 @@ type config struct {
 
 type azureVM struct {
 	vm          *compute.VirtualMachine
-	ipAddresses []string
+	ipAddresses map[string]v1.NodeAddressType
 	status      instance.Status
 }
 
-func (vm *azureVM) Addresses() []string {
+func (vm *azureVM) Addresses() map[string]v1.NodeAddressType {
 	return vm.ipAddresses
 }
 
@@ -131,9 +138,35 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 		Sku:     to.StringPtr("18.04-LTS"),
 		Version: to.StringPtr("latest"),
 	},
+	providerconfigtypes.OperatingSystemRHEL: {
+		Publisher: to.StringPtr("RedHat"),
+		Offer:     to.StringPtr("RHEL"),
+		Sku:       to.StringPtr("7-RAW-CI"),
+		Version:   to.StringPtr("7.7.2019081601"),
+	},
+	providerconfigtypes.OperatingSystemFlatcar: {
+		Publisher: to.StringPtr("kinvolk"),
+		Offer:     to.StringPtr("flatcar-container-linux"),
+		Sku:       to.StringPtr("stable"),
+		Version:   to.StringPtr("2345.3.0"),
+	},
 }
 
-func getOSImageReference(os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
+var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
+	providerconfigtypes.OperatingSystemFlatcar: {
+		Name:      pointer.StringPtr("stable"),
+		Publisher: pointer.StringPtr("kinvolk"),
+		Product:   pointer.StringPtr("flatcar-container-linux"),
+	},
+}
+
+func getOSImageReference(imageID string, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
+	if imageID != "" {
+		return &compute.ImageReference{
+			ID: to.StringPtr(imageID),
+		}, nil
+	}
+
 	ref, supported := imageReferences[os]
 	if !supported {
 		return nil, fmt.Errorf("operating system %q not supported", os)
@@ -228,13 +261,24 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get the value of \"securityGroupName\" field, error = %v", err)
 	}
 
+	c.Zones = rawCfg.Zones
 	c.Tags = rawCfg.Tags
+	c.OSDiskSize = rawCfg.OSDiskSize
+	c.DataDiskSize = rawCfg.DataDiskSize
+
+	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get image id: %v", err)
+	}
 
 	return &c, &pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) ([]string, error) {
-	var ipAddresses []string
+func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) (map[string]v1.NodeAddressType, error) {
+	var (
+		ipAddresses = map[string]v1.NodeAddressType{}
+		err         error
+	)
 
 	if vm.VirtualMachineProperties == nil {
 		return nil, fmt.Errorf("machine is missing properties")
@@ -255,17 +299,16 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 
 		splitIfaceID := strings.Split(*iface.ID, "/")
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
-		addrs, err := getNICIPAddresses(ctx, c, ifaceName)
+		ipAddresses, err = getNICIPAddresses(ctx, c, ifaceName)
 		if vm.NetworkProfile.NetworkInterfaces == nil {
 			return nil, fmt.Errorf("failed to get addresses for interface %q: %v", ifaceName, err)
 		}
-		ipAddresses = append(ipAddresses, addrs...)
 	}
 
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]string, error) {
+func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[string]v1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %v", err)
@@ -276,7 +319,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 		return nil, fmt.Errorf("failed to get interface %q: %v", ifaceName, err.Error())
 	}
 
-	var ipAddresses []string
+	ipAddresses := map[string]v1.NodeAddressType{}
 
 	if netIf.IPConfigurations != nil {
 		for _, conf := range *netIf.IPConfigurations {
@@ -292,12 +335,25 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 				name = splitConfID[len(splitConfID)-1]
 			}
 
-			addrStrings, err := getIPAddressStrings(ctx, c, name)
-			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+			if c.AssignPublicIP {
+				publicIPName := ifaceName + "-pubip"
+				publicIPs, err := getIPAddressStrings(ctx, c, publicIPName)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+				}
+				for _, ip := range publicIPs {
+					ipAddresses[ip] = v1.NodeExternalIP
+				}
 			}
 
-			ipAddresses = append(ipAddresses, addrStrings...)
+			internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
+			if err != nil {
+				return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
+			}
+			for _, ip := range internalIPs {
+				ipAddresses[ip] = v1.NodeInternalIP
+			}
+
 		}
 	}
 
@@ -320,11 +376,30 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 	}
 
 	var ipAddresses []string
-	if ip.IPConfiguration.PublicIPAddress != nil && ip.IPConfiguration.PublicIPAddress.IPAddress != nil {
-		ipAddresses = append(ipAddresses, *ip.IPConfiguration.PublicIPAddress.IPAddress)
+	if ip.IPAddress != nil {
+		ipAddresses = append(ipAddresses, *ip.IPAddress)
 	}
-	if ip.IPConfiguration.PrivateIPAddress != nil {
-		ipAddresses = append(ipAddresses, *ip.IPConfiguration.PrivateIPAddress)
+
+	return ipAddresses, nil
+}
+
+func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigName string) ([]string, error) {
+	var ipAddresses []string
+	ipConfigClient, err := getIPConfigClient(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create IP config client: %v", err)
+	}
+
+	internalIP, err := ipConfigClient.Get(ctx, c.ResourceGroup, inetface, ipconfigName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IP config %q: %v", inetface, err)
+	}
+
+	if internalIP.ID == nil {
+		return nil, fmt.Errorf("private IP %q has nil IPConfiguration", inetface)
+	}
+	if internalIP.PrivateIPAddress != nil {
+		ipAddresses = append(ipAddresses, *internalIP.PrivateIPAddress)
 	}
 
 	return ipAddresses, nil
@@ -332,6 +407,35 @@ func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]str
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
+}
+
+func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
+	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OSImageReference: %v", err)
+	}
+	// initial default storage profile, this will use the VMSize default storage profile
+	sp := &compute.StorageProfile{
+		ImageReference: osRef,
+	}
+	if config.OSDiskSize != 0 {
+		sp.OsDisk = &compute.OSDisk{
+			DiskSizeGB:   pointer.Int32Ptr(config.OSDiskSize),
+			CreateOption: compute.DiskCreateOptionTypesFromImage,
+		}
+	}
+
+	if config.DataDiskSize != 0 {
+		sp.DataDisks = &[]compute.DataDisk{
+			{
+				// this should be in range 0-63 and should be unique per datadisk, since we have only one datadisk, this should be fine
+				Lun:          new(int32),
+				DiskSizeGB:   pointer.Int32Ptr(config.DataDiskSize),
+				CreateOption: compute.DiskCreateOptionTypesEmpty,
+			},
+		}
+	}
+	return sp, nil
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
@@ -348,18 +452,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, fmt.Errorf("failed to create VM client: %v", err)
 	}
 
-	osRef, err := getOSImageReference(providerCfg.OperatingSystem)
-	if err != nil {
-		return nil, err
-	}
-
 	// We genete a random SSH key, since Azure won't let us create a VM without an SSH key or a password
 	key, err := ssh.NewKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
 
-	ifaceName := machine.Spec.Name + "-netiface"
+	ifaceName := machine.Name + "-netiface"
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 	if config.AssignPublicIP {
@@ -394,14 +493,14 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 	tags[machineUIDTag] = to.StringPtr(string(machine.UID))
 
-	adminUserName := string(providerCfg.OperatingSystem)
-	if adminUserName == "coreos" {
-		// CoreOS uses core by default everywhere, so we adhere to that
-		adminUserName = "core"
+	adminUserName := getOSUsername(providerCfg.OperatingSystem)
+	storageProfile, err := getStorageProfile(config, providerCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get StorageProfile: %v", err)
 	}
-
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
+		Plan:     osPlans[providerCfg.OperatingSystem],
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
 			HardwareProfile: &compute.HardwareProfile{VMSize: compute.VirtualMachineSizeTypes(config.VMSize)},
 			NetworkProfile: &compute.NetworkProfile{
@@ -414,7 +513,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			},
 			OsProfile: &compute.OSProfile{
 				AdminUsername: to.StringPtr(adminUserName),
-				ComputerName:  &machine.Spec.Name,
+				ComputerName:  &machine.Name,
 				LinuxConfiguration: &compute.LinuxConfiguration{
 					DisablePasswordAuthentication: to.BoolPtr(true),
 					SSH: &compute.SSHConfiguration{
@@ -428,9 +527,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 				},
 				CustomData: to.StringPtr(base64.StdEncoding.EncodeToString([]byte(userdata))),
 			},
-			StorageProfile: &compute.StorageProfile{ImageReference: osRef},
+			StorageProfile: storageProfile,
 		},
-		Tags: tags,
+		Tags:  tags,
+		Zones: &config.Zones,
 	}
 
 	if config.AvailabilitySet != "" {
@@ -439,7 +539,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
 	}
 
-	klog.Infof("Creating machine %q", machine.Spec.Name)
+	klog.Infof("Creating machine %q", machine.Name)
 	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerDisks) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerDisks)
@@ -451,7 +551,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, err
 	}
 
-	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Spec.Name, vmSpec)
+	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Name, vmSpec)
 	if err != nil {
 		return nil, fmt.Errorf("trying to create a VM: %v", err)
 	}
@@ -467,19 +567,19 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	// get the actual VM object filled in with additional data
-	vm, err = vmClient.Get(context.TODO(), config.ResourceGroup, machine.Spec.Name, "")
+	vm, err = vmClient.Get(context.TODO(), config.ResourceGroup, machine.Name, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %v", machine.Spec.Name, err)
+		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %v", machine.Name, err)
 	}
 
 	ipAddresses, err := getVMIPAddresses(context.TODO(), config, &vm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", machine.Spec.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", machine.Name, err.Error())
 	}
 
-	status, err := getVMStatus(context.TODO(), config, machine.Spec.Name)
+	status, err := getVMStatus(context.TODO(), config, machine.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Spec.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Name, err.Error())
 	}
 
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
@@ -653,7 +753,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*azureVM, error) {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %v", vm.Name, err)
 	}
 
-	status, err := getVMStatus(context.TODO(), config, machine.Spec.Name)
+	status, err := getVMStatus(context.TODO(), config, machine.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve status for VM %v: %v", vm.Name, err)
 	}
@@ -747,7 +847,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	_, err = getOSImageReference(providerCfg.OperatingSystem)
+	_, err = getOSImageReference(c.ImageID, providerCfg.OperatingSystem)
 	return err
 }
 
@@ -768,7 +868,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return fmt.Errorf("failed to create VM client: %v", err)
 	}
 
-	ifaceName := machine.Spec.Name + "-netiface"
+	ifaceName := machine.Name + "-netiface"
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 
@@ -816,7 +916,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	tags[machineUIDTag] = to.StringPtr(string(new))
 
 	vmSpec := compute.VirtualMachine{Location: &config.Location, Tags: tags}
-	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Spec.Name, vmSpec)
+	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec)
 	if err != nil {
 		return fmt.Errorf("failed to update UID of the instance: %v", err)
 	}
@@ -842,4 +942,15 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
+}
+
+func getOSUsername(os providerconfigtypes.OperatingSystem) string {
+	switch os {
+	case providerconfigtypes.OperatingSystemFlatcar:
+		return "core"
+	case providerconfigtypes.OperatingSystemCoreos:
+		return "core"
+	default:
+		return string(os)
+	}
 }

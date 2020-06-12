@@ -44,13 +44,15 @@ var (
 		providerconfigtypes.OperatingSystemCentOS,
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
+		providerconfigtypes.OperatingSystemFlatcar,
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemUbuntu): "machine-controller-e2e-ubuntu",
-		string(providerconfigtypes.OperatingSystemCoreos): "machine-controller-e2e-coreos",
-		string(providerconfigtypes.OperatingSystemCentOS): "machine-controller-e2e-centos",
-		string(providerconfigtypes.OperatingSystemRHEL):   "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu",
+		string(providerconfigtypes.OperatingSystemCoreos):  "machine-controller-e2e-coreos",
+		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemRHEL):    "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar",
 	}
 )
 
@@ -64,37 +66,52 @@ type scenario struct {
 	executor          scenarioExecutor
 }
 
-type scenarioSelector struct {
-	osName                  []string
-	containerRuntime        []string
-	containerRuntimeVersion []string
+// Selector allows to exclude or include the test scenarios.
+type Selector interface {
+	// Match returns `true` if the scenario should be run, `false` otherwise.
+	Match(testCase scenario) bool
 }
 
-func doesSenarioSelectorMatch(selector *scenarioSelector, testCase scenario) bool {
-	for _, selectorOSName := range selector.osName {
+// Not returns the negation of the selector.
+func Not(s Selector) Selector {
+	return &not{s}
+}
+
+// Ensures that not implements Selector interface.
+var _ Selector = &not{}
+
+type not struct {
+	s Selector
+}
+
+func (n *not) Match(tc scenario) bool {
+	return !n.s.Match(tc)
+}
+
+// OsSelector is used to match test scenarios by OS name.
+func OsSelector(osName ...string) Selector {
+	return &osSelector{osName}
+}
+
+// Ensures that osSelector implements Selector interface.
+var _ Selector = &osSelector{}
+
+type osSelector struct {
+	osName []string
+}
+
+func (os *osSelector) Match(testCase scenario) bool {
+	for _, selectorOSName := range os.osName {
 		if testCase.osName == selectorOSName {
 			return true
 		}
 	}
-
-	for _, selectorContainerRuntime := range selector.containerRuntime {
-		if testCase.containerRuntime == selectorContainerRuntime {
-			return true
-		}
-	}
-
-	for _, selectorContainerRuntimeVersion := range selector.containerRuntimeVersion {
-		if testCase.containerRuntime == selectorContainerRuntimeVersion {
-			return true
-		}
-	}
-
 	return false
 }
 
-func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams []string, manifestPath string, cloudProvider string) {
+func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
-		if excludeSelector != nil && doesSenarioSelectorMatch(excludeSelector, testCase) {
+		if selector != nil && !selector.Match(testCase) {
 			continue
 		}
 
@@ -130,18 +147,34 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		rhelSubscriptionManagerUser := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_USER")
 		rhelSubscriptionManagerPassword := os.Getenv("RHEL_SUBSCRIPTION_MANAGER_PASSWORD")
 		rhsmOfflineToken := os.Getenv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
+		if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderAzure)) {
+			rhelImageID := os.Getenv("AZURE_RHEL_IMAGE_ID")
+			if rhelImageID == "" {
+				t.Fatalf("Unable to run e2e tests, AZURE_RHEL_IMAGE_ID must be set when rhel is used as an os in Azure")
+			}
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< IMAGE_ID >>=%s", rhelImageID))
+		}
+
 		if rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" || rhsmOfflineToken == "" {
-			t.Errorf("Unable to run e2e tests, RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD, and " +
+			t.Fatalf("Unable to run e2e tests, RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD, and " +
 				"REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN must be set when rhel is used as an os")
 		}
+
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", rhelSubscriptionManagerUser))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", rhelSubscriptionManagerPassword))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>=%s", rhsmOfflineToken))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 50))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", "ami-0badcc5b522737046"))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_DISK_SIZE >>=%v", 0))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DATA_DISK_SIZE >>=%v", 0))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< CUSTOM-IMAGE >>=%v", "rhel-8-1-custom"))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", "ami-08c04369895785ac4"))
 	} else {
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_DISK_SIZE >>=%v", 30))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DATA_DISK_SIZE >>=%v", 30))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", ""))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< IMAGE_ID >>=%s", ""))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 25))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< CUSTOM-IMAGE >>=%v", ""))
 	}
 
 	// only used by OpenStack scenarios
@@ -167,7 +200,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// we decided to keep this time lower that the global timeout to prevent the following:
 	// the global timeout is set to 20 minutes and the verify tool waits up to 60 hours for a machine to show up.
 	// thus one faulty scenario prevents from showing the results for the whole group, which is confusing because it looks like all tests are broken.
-	if err := testCase.executor(kubeConfig, manifestPath, scenarioParams, 25*time.Minute); err != nil {
+	if err := testCase.executor(kubeConfig, manifestPath, scenarioParams, 35*time.Minute); err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}
 }

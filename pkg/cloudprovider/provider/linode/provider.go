@@ -41,6 +41,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -417,12 +418,12 @@ func (d *linodeInstance) HostID() string {
 	return ""
 }
 
-func (d *linodeInstance) Addresses() []string {
-	var addresses []string
+func (d *linodeInstance) Addresses() map[string]v1.NodeAddressType {
+	addresses := map[string]v1.NodeAddressType{}
 	for _, n := range d.linode.IPv4 {
-		addresses = append(addresses, n.String())
+		addresses[n.String()] = v1.NodeInternalIP
 	}
-	addresses = append(addresses, d.linode.IPv6)
+	addresses[d.linode.IPv6] = v1.NodeInternalIP
 	return addresses
 }
 

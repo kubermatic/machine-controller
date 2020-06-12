@@ -290,6 +290,7 @@ func (p *Provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
+
 	return false, nil
 }
 

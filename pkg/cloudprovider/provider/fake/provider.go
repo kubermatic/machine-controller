@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -44,12 +46,11 @@ func (f CloudProviderInstance) Name() string {
 func (f CloudProviderInstance) ID() string {
 	return ""
 }
-
 func (f CloudProviderInstance) HostID() string {
 	return ""
 }
 
-func (f CloudProviderInstance) Addresses() []string {
+func (f CloudProviderInstance) Addresses() map[string]v1.NodeAddressType {
 	return nil
 }
 func (f CloudProviderInstance) Status() instance.Status {

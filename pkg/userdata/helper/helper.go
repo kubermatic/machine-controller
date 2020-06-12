@@ -102,15 +102,13 @@ SystemMaxUse=5G
 }
 
 type dockerConfig struct {
-	ExecOpts           []string    `json:"exec-opts"`
-	StorageDriver      string      `json:"storage-driver"`
-	InsecureRegistries []string    `json:"insecure-registries"`
-	RegistryMirrors    []string    `json:"registry-mirrors"`
-	LogOptions         *logOptions `json:"log-opts,omitempty"`
-}
-
-type logOptions struct {
-	MaxSize string `json:"max-size,omitempty"`
+	ExecOpts           []string          `json:"exec-opts,omitempty"`
+	StorageDriver      string            `json:"storage-driver,omitempty"`
+	StorageOpts        []string          `json:"storage-opts,omitempty"`
+	LogDriver          string            `json:"log-driver,omitempty"`
+	LogOpts            map[string]string `json:"log-opts,omitempty"`
+	InsecureRegistries []string          `json:"insecure-registries,omitempty"`
+	RegistryMirrors    []string          `json:"registry-mirrors,omitempty"`
 }
 
 // DockerConfig returns the docker daemon.json.
@@ -118,9 +116,10 @@ func DockerConfig(insecureRegistries, registryMirrors []string, MaxLogSize strin
 	cfg := dockerConfig{
 		ExecOpts:           []string{"native.cgroupdriver=systemd"},
 		StorageDriver:      "overlay2",
+		LogDriver:          "json-file",
+		LogOpts:            map[string]string{"max-size": "100m"},
 		InsecureRegistries: insecureRegistries,
 		RegistryMirrors:    registryMirrors,
-		LogOptions:         &logOptions{MaxSize: MaxLogSize},
 	}
 	if insecureRegistries == nil {
 		cfg.InsecureRegistries = []string{}
@@ -128,8 +127,8 @@ func DockerConfig(insecureRegistries, registryMirrors []string, MaxLogSize strin
 	if registryMirrors == nil {
 		cfg.RegistryMirrors = []string{}
 	}
-	if MaxLogSize == "" {
-		cfg.LogOptions = nil
+	if MaxLogSize != "" {
+		cfg.LogOpts["max-size"] = MaxLogSize
 	}
 
 	b, err := json.Marshal(cfg)
@@ -143,4 +142,33 @@ HTTPS_PROXY=%s
 https_proxy=%s
 NO_PROXY=%s
 no_proxy=%s`, proxy, proxy, proxy, proxy, noProxy, noProxy)
+}
+
+func SetupNodeIPEnvScript() string {
+	return `#!/usr/bin/env bash
+echodate() {
+  echo "[$(date -Is)]" "$@"
+}
+
+# get the default interface IP address
+DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
+
+if [ -z "${DEFAULT_IFC_IP}" ]
+then
+	echodate "Failed to get IP address for the default route interface"
+	exit 1
+fi
+
+# write the nodeip_env file
+if grep -q coreos /etc/os-release
+then
+  echo "KUBELET_NODE_IP=${DEFAULT_IFC_IP}" > /etc/kubernetes/nodeip.conf
+elif [ ! -d /etc/systemd/system/kubelet.service.d ]
+then
+	echodate "Can't find kubelet service extras directory"
+	exit 1
+else
+  echo -e "[Service]\nEnvironment=\"KUBELET_NODE_IP=${DEFAULT_IFC_IP}\"" > /etc/systemd/system/kubelet.service.d/nodeip.conf
+fi
+	`
 }

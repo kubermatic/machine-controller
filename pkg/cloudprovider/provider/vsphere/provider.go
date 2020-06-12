@@ -35,7 +35,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	vspheretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/rhsm"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -66,13 +65,13 @@ type Config struct {
 	Datacenter       string
 	Cluster          string
 	Folder           string
+	ResourcePool     string
 	Datastore        string
 	DatastoreCluster string
 	AllowInsecure    bool
 	CPUs             int32
 	MemoryMB         int64
 	DiskSizeGB       *int64
-	Manager          rhsm.RedHatSubscriptionManager
 }
 
 // Ensures that Server implements Instance interface.
@@ -83,7 +82,7 @@ type Server struct {
 	name      string
 	id        string
 	status    instance.Status
-	addresses []string
+	addresses map[string]corev1.NodeAddressType
 }
 
 func (vsphereServer Server) Name() string {
@@ -98,7 +97,7 @@ func (vsphereServer Server) HostID() string {
 	return ""
 }
 
-func (vsphereServer Server) Addresses() []string {
+func (vsphereServer Server) Addresses() map[string]corev1.NodeAddressType {
 	return vsphereServer.addresses
 }
 
@@ -170,6 +169,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
+	c.ResourcePool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ResourcePool)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	c.Datastore, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datastore)
 	if err != nil {
 		return nil, nil, nil, err
@@ -188,13 +192,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.CPUs = rawConfig.CPUs
 	c.MemoryMB = rawConfig.MemoryMB
 	c.DiskSizeGB = rawConfig.DiskSizeGB
-	offlineToken, _ := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.RHSMOfflineToken, "REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
-	if offlineToken != "" {
-		c.Manager, err = rhsm.NewRedHatSubscriptionManager(offlineToken)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to create redhat subscription manager: %v", err)
-		}
-	}
 
 	return &c, &pconfig, &rawConfig, nil
 }
@@ -237,6 +234,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	if _, err := p.get(ctx, config.Folder, spec, session.Finder); err == nil {
 		return fmt.Errorf("a vm %s/%s already exists", config.Folder, spec.Name)
+	}
+
+	if config.ResourcePool != "" {
+		if _, err := session.Finder.ResourcePool(ctx, config.ResourcePool); err != nil {
+			return fmt.Errorf("failed to get resourcepool %q: %v", config.ResourcePool, err)
+		}
 	}
 
 	templateVM, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
@@ -297,7 +300,8 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 	defer session.Logout()
 
 	var containerLinuxUserdata string
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos ||
+		pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
 		containerLinuxUserdata = userdata
 	}
 
@@ -305,13 +309,15 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 		machine.Spec.Name,
 		config,
 		session,
+		pc.OperatingSystem,
 		containerLinuxUserdata,
 	)
 	if err != nil {
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%v'", err))
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos &&
+		pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
 		localUserdataIsoFilePath, err := generateLocalUserdataISO(userdata, machine.Spec.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate local userdadata iso: %v", err)
@@ -415,12 +421,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemRHEL && config.Manager != nil {
-		if err := config.Manager.UnregisterInstance(machine.Name); err != nil {
-			return false, fmt.Errorf("failed to delete machine %s subscription: %v", machine.Name, err)
-		}
-	}
-
 	datastore, err := getDatastoreFromVM(ctx, session, virtualMachine)
 	if err != nil {
 		return false, fmt.Errorf("Error getting datastore from VM %s: %v", virtualMachine.Name(), err)
@@ -433,7 +433,8 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to destroy vm %s: %v", virtualMachine.Name(), err)
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos &&
+		pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
 		filemanager := datastore.NewFileManager(session.Datacenter, false)
 
 		if err := filemanager.Delete(ctx, virtualMachine.Name()); err != nil {
@@ -487,7 +488,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	}
 
 	// virtualMachine.IsToolsRunning panics when executed on a VM that is not powered on
-	addresses := []string{}
+	addresses := map[string]corev1.NodeAddressType{}
 	isGuestToolsRunning, err := virtualMachine.IsToolsRunning(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if guest utils are running: %v", err)
@@ -503,7 +504,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 			for _, address := range nic.IpAddress {
 				// Exclude ipv6 link-local addresses and default Docker bridge
 				if !strings.HasPrefix(address, "fe80:") && !strings.HasPrefix(address, "172.17.") {
-					addresses = append(addresses, address)
+					addresses[address] = ""
 				}
 			}
 		}

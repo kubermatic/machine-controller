@@ -104,6 +104,7 @@ type config struct {
 	assignPublicIPAddress bool
 	multizone             bool
 	regional              bool
+	customImage           string
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -182,6 +183,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("failed to retrieve regional: %v", err)
 	}
 
+	cfg.customImage, err = resolver.GetConfigVarStringValue(cpSpec.CustomImage)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
+	}
+
 	return cfg, nil
 }
 
@@ -220,6 +226,9 @@ func (cfg *config) diskTypeDescriptor() string {
 // sourceImageDescriptor creates the descriptor out of project and family
 // for the source image of an instance boot disk.
 func (cfg *config) sourceImageDescriptor() (string, error) {
+	if cfg.customImage != "" {
+		return fmt.Sprintf("global/images/%s", cfg.customImage), nil
+	}
 	project, ok := imageProjects[cfg.providerConfig.OperatingSystem]
 	if !ok {
 		return "", providerconfigtypes.ErrOSNotSupported

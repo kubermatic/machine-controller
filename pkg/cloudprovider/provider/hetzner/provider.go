@@ -36,6 +36,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 )
@@ -405,16 +406,17 @@ func (s *hetznerServer) HostID() string {
 	return ""
 }
 
-func (s *hetznerServer) Addresses() []string {
-	var addresses []string
+func (s *hetznerServer) Addresses() map[string]v1.NodeAddressType {
+	addresses := map[string]v1.NodeAddressType{}
 	for _, fips := range s.server.PublicNet.FloatingIPs {
-		addresses = append(addresses, fips.IP.String())
+		addresses[fips.IP.String()] = v1.NodeExternalIP
 	}
 	for _, privateNetwork := range s.server.PrivateNet {
-		addresses = append(addresses, privateNetwork.IP.String())
+		addresses[privateNetwork.IP.String()] = v1.NodeInternalIP
 	}
-
-	return append(addresses, s.server.PublicNet.IPv4.IP.String(), s.server.PublicNet.IPv6.IP.String())
+	addresses[s.server.PublicNet.IPv4.IP.String()] = v1.NodeExternalIP
+	addresses[s.server.PublicNet.IPv6.IP.String()] = v1.NodeExternalIP
+	return addresses
 }
 
 func (s *hetznerServer) Status() instance.Status {

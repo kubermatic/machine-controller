@@ -34,6 +34,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -360,11 +361,15 @@ func (s *packetDevice) HostID() string {
 	return ""
 }
 
-func (s *packetDevice) Addresses() []string {
+func (s *packetDevice) Addresses() map[string]v1.NodeAddressType {
 	// returns addresses in CIDR format
-	var addresses []string
+	addresses := map[string]v1.NodeAddressType{}
 	for _, ip := range s.device.Network {
-		addresses = append(addresses, ip.Address)
+		if ip.Public {
+			addresses[ip.Address] = v1.NodeExternalIP
+			continue
+		}
+		addresses[ip.Address] = v1.NodeInternalIP
 	}
 
 	return addresses

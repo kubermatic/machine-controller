@@ -89,6 +89,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ServerAddr       string
 		Kubeconfig       string
 		KubernetesCACert string
+		NodeIPScript     string
 	}{
 		UserDataRequest:  req,
 		ProviderSpec:     pconfig,
@@ -97,6 +98,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ServerAddr:       serverAddr,
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -162,7 +164,7 @@ write_files:
     SELINUXTYPE=targeted
 
 - path: "/opt/bin/setup"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -184,7 +186,15 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    yum install -y docker-1.13.1 \
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+{{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
+	See: https://github.com/docker/cli/issues/2533 */}}
+
+    DOCKER_VERSION='18.09.9-3.el7'
+    yum install -y docker-ce-${DOCKER_VERSION} \
+      docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
       ethtool \
       nfs-utils \
@@ -193,16 +203,21 @@ write_files:
       socat \
       wget \
       curl \
-      ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
-      open-vm-tools{{ end }}
+      yum-plugin-versionlock \
+      {{- if eq .CloudProviderName "vsphere" }}
+      open-vm-tools \
+      {{- end }}
+      ipvsadm
+    yum versionlock docker-ce-*
 
-{{ downloadBinariesScript .KubeletVersion true | indent 4 }}
+{{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+    # set kubelet nodeip environment variable
+    mkdir -p /etc/systemd/system/kubelet.service.d/
+    /opt/bin/setup_net_env.sh
 
-    {{- if eq .CloudProviderName "vsphere" }}
+    {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
-{{- /* Without this, the conformance tests fail with differing tests causing it, the common denominator: They look for some string in container logs and get an empty log */ -}}
-    sed -i 's/journald/json-file/g' /etc/sysconfig/docker
     systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
@@ -226,6 +241,11 @@ write_files:
   content: |
 {{ .CloudConfig | indent 4 }}
 
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+{{ .NodeIPScript | indent 4 }}
+
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"
   content: |
@@ -233,31 +253,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-    kind: KubeletConfiguration
-    apiVersion: kubelet.config.k8s.io/v1beta1
-    cgroupDriver: systemd
-    clusterDomain: cluster.local
-    clusterDNS:
-    {{- range .DNSIPs }}
-      - "{{ . }}"
-    {{- end }}
-    rotateCertificates: true
-    podManifestPath: /etc/kubernetes/manifests
-    readOnlyPort: 0
-    featureGates:
-      RotateKubeletServerCertificate: true
-    serverTLSBootstrap: true
-    rotateCertificates: true
-    authorization:
-      mode: Webhook
-    authentication:
-      x509:
-        clientCAFile: /etc/kubernetes/pki/ca.crt
-      webhook:
-        enabled: true
-      anonymous:
-        enabled: false
-    protectKernelDefaults: true
+{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 4 }}
 
 - path: "/etc/kubernetes/pki/ca.crt"
   content: |
@@ -283,6 +279,11 @@ write_files:
   permissions: "0644"
   content: |
     export PATH="/opt/bin:$PATH"
+
+- path: /etc/docker/daemon.json
+  permissions: "0644"
+  content: |
+{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

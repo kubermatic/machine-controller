@@ -90,6 +90,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion   string
 		Kubeconfig       string
 		KubernetesCACert string
+		NodeIPScript     string
 	}{
 		UserDataRequest:  req,
 		ProviderSpec:     pconfig,
@@ -98,6 +99,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion:   kubeletVersion.String(),
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -113,6 +115,11 @@ const userDataTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
 {{ end }}
+
+{{- if .OSConfig.DistUpgradeOnBoot }}
+package_upgrade: true
+package_reboot_if_required: true
+{{- end }}
 
 ssh_pwauth: no
 
@@ -152,7 +159,7 @@ write_files:
 
 - path: "/etc/apt/sources.list.d/docker.list"
   permissions: "0644"
-  content: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+  content: deb https://download.docker.com/linux/ubuntu bionic stable
 
 - path: "/opt/docker.asc"
   permissions: "0400"
@@ -241,10 +248,11 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
-    export CR_PKG='docker-ce=5:18.09.2~3-0~ubuntu-bionic'
-    export CR_CLI_PKG='docker-ce-cli=5:19.03.8~3-0~ubuntu-bionic'
-    export CR_CONTAINERD_PKG='containerd.io=1.2.13-1'
+{{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
+	See: https://github.com/docker/cli/issues/2533 */}}
 
+    DOCKER_VERSION='5:18.09.9~3-0~ubuntu-bionic'
+    CONTAINERD_PKG='1.2.13-1'
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \
@@ -262,21 +270,16 @@ write_files:
       nfs-common \
       socat \
       util-linux \
-      ${CR_CLI_PKG} \
-      ${CR_CONTAINERD_PKG} \
-      ${CR_PKG} \
-      ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
-      open-vm-tools{{ end }}
+      docker-ce="${DOCKER_VERSION}" \
+      docker-ce-cli="${DOCKER_VERSION}" \
+      containerd.io="${CONTAINERD_PKG}" \
+      {{- if eq .CloudProviderName "vsphere" }}
+      open-vm-tools \
+      {{- end }}
+      ipvsadm
 
 {{- /* If something failed during package installation but docker got installed, we need to put it on hold */}}
-    apt-mark hold containerd.io || true
-    apt-mark hold docker-ce-cli || true
-    apt-mark hold docker.io || true
-    apt-mark hold docker-ce || true
-
-    {{- if .OSConfig.DistUpgradeOnBoot }}
-    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade -y
-    {{- end }}
+    apt-mark hold docker-ce docker-ce-cli containerd.io || true
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
@@ -288,11 +291,10 @@ write_files:
       touch /var/run/reboot-required
     fi
     {{ end }}
-    if [[ -e /var/run/reboot-required ]]; then
-      reboot
-    fi
 
-{{ downloadBinariesScript .KubeletVersion true | indent 4 }}
+{{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+    # set kubelet nodeip environment variable
+    /opt/bin/setup_net_env.sh
 
     systemctl enable --now docker
     systemctl enable --now kubelet
@@ -321,6 +323,11 @@ write_files:
   permissions: "0600"
   content: |
 {{ .CloudConfig | indent 4 }}
+
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+{{ .NodeIPScript | indent 4 }}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"
@@ -354,31 +361,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-    kind: KubeletConfiguration
-    apiVersion: kubelet.config.k8s.io/v1beta1
-    cgroupDriver: systemd
-    clusterDomain: cluster.local
-    clusterDNS:
-    {{- range .DNSIPs }}
-      - "{{ . }}"
-    {{- end }}
-    rotateCertificates: true
-    podManifestPath: /etc/kubernetes/manifests
-    readOnlyPort: 0
-    featureGates:
-      RotateKubeletServerCertificate: true
-    serverTLSBootstrap: true
-    rotateCertificates: true
-    authorization:
-      mode: Webhook
-    authentication:
-      x509:
-        clientCAFile: /etc/kubernetes/pki/ca.crt
-      webhook:
-        enabled: true
-      anonymous:
-        enabled: false
-    protectKernelDefaults: true
+{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 4 }}
 
 - path: /etc/docker/daemon.json
   permissions: "0644"

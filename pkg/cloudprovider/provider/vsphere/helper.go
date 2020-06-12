@@ -28,6 +28,8 @@ import (
 	"os/exec"
 	"text/template"
 
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
@@ -42,7 +44,7 @@ const (
 	local-hostname: {{ .Hostname }}`
 )
 
-func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, containerLinuxUserdata string) (*object.VirtualMachine, error) {
+func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, os providerconfigtypes.OperatingSystem, containerLinuxUserdata string) (*object.VirtualMachine, error) {
 	tpl, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get template vm: %v", err)
@@ -84,7 +86,13 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		return nil, fmt.Errorf("failed to resolve datastore: %v", err)
 	}
 
+	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session, tpl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve resourcePool: %v", err)
+	}
+
 	cloneSpec.Location.Datastore = datastoreref
+	cloneSpec.Location.Pool = resourcepoolref
 	// Create a cloned VM from the template VM's snapshot.
 	// We split the cloning from the reconfiguring as those actions differ on the permission side.
 	// It's nicer to tell which specific action failed due to lacking permissions.
@@ -124,9 +132,23 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 			return nil, fmt.Errorf("no vm config found in template '%s'. Make sure you import the correct OVA with the appropriate coreos settings", config.TemplateVMName)
 		}
 
+		var (
+			guestInfoUserData         string
+			guestInfoUserDataEncoding string
+		)
+
+		switch os {
+		case providerconfigtypes.OperatingSystemCoreos:
+			guestInfoUserData = "guestinfo.coreos.config.data"
+			guestInfoUserDataEncoding = "guestinfo.coreos.config.data.encoding"
+		case providerconfigtypes.OperatingSystemFlatcar:
+			guestInfoUserData = "guestinfo.ignition.config.data"
+			guestInfoUserDataEncoding = "guestinfo.ignition.config.data.encoding"
+		}
+
 		for _, item := range mvm.Config.VAppConfig.GetVmConfigInfo().Property {
 			switch item.Id {
-			case "guestinfo.coreos.config.data":
+			case guestInfoUserData:
 				propertySpecs = append(propertySpecs, types.VAppPropertySpec{
 					ArrayUpdateSpec: types.ArrayUpdateSpec{
 						Operation: types.ArrayUpdateOperationEdit,
@@ -137,7 +159,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 						Value: userdataBase64,
 					},
 				})
-			case "guestinfo.coreos.config.data.encoding":
+			case guestInfoUserDataEncoding:
 				propertySpecs = append(propertySpecs, types.VAppPropertySpec{
 					ArrayUpdateSpec: types.ArrayUpdateSpec{
 						Operation: types.ArrayUpdateOperationEdit,
@@ -426,4 +448,15 @@ func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.Vir
 		return nil, fmt.Errorf("Failed to parse volPath: %s", props.Summary.Config.VmPathName)
 	}
 	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
+}
+
+func resolveResourcePoolRef(ctx context.Context, config *Config, session *Session, vm *object.VirtualMachine) (*types.ManagedObjectReference, error) {
+	if config.ResourcePool != "" {
+		targetResourcePool, err := session.Finder.ResourcePool(ctx, config.ResourcePool)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get target resourcepool: %v", err)
+		}
+		return types.NewReference(targetResourcePool.Reference()), nil
+	}
+	return nil, nil
 }
