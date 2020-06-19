@@ -186,10 +186,6 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    subscription-manager clean
-    subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}'
-    subscription-manager attach --auto
-
     dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
     DOCKER_VERSION='18.09.1-3.el7'
@@ -314,6 +310,11 @@ write_files:
   content: |
     [Service]
     EnvironmentFile=-/etc/environment
+
+rh_subscription:
+    username: "{{.OSConfig.RHELSubscriptionManagerUser}}"
+    password: "{{.OSConfig.RHELSubscriptionManagerPassword}}"
+    auto-attach: true
 
 runcmd:
 - systemctl enable --now setup.service
