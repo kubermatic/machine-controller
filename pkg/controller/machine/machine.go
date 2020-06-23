@@ -108,6 +108,7 @@ type Reconciler struct {
 	skipEvictionAfter                time.Duration
 	nodeSettings                     NodeSettings
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
+	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 }
 
 type NodeSettings struct {
@@ -171,6 +172,7 @@ func Add(
 		skipEvictionAfter:                skipEvictionAfter,
 		nodeSettings:                     nodeSettings,
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
+		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 	}
 	m, err := userdatamanager.New()
 	if err != nil {
@@ -569,18 +571,25 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 			return nil, fmt.Errorf("failed to get rhel os specs: %v", err)
 		}
 
-		if rhelConfig.RHSMOfflineToken != "" {
-			machineName := machine.Name
-			if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
-				for _, address := range machine.Status.Addresses {
-					if address.Type == corev1.NodeInternalDNS {
-						machineName = address.Address
-					}
+		machineName := machine.Name
+		if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
+			for _, address := range machine.Status.Addresses {
+				if address.Type == corev1.NodeInternalDNS {
+					machineName = address.Address
 				}
 			}
+		}
 
+		if rhelConfig.RHSMOfflineToken != "" {
 			if err := r.redhatSubscriptionManager.UnregisterInstance(rhelConfig.RHSMOfflineToken, machineName); err != nil {
 				return nil, fmt.Errorf("failed to delete subscription for machine name %s: %v", machine.Name, err)
+			}
+		}
+
+		if rhelConfig.UseRHSatelliteServer {
+			if err := r.satelliteSubscriptionManager.DeleteSatelliteHost(machineName, rhelConfig.SatelliteServerUsername,
+				rhelConfig.SatelliteServerPassword, rhelConfig.RHSatelliteServer); err != nil {
+				return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %v", machine.Name, err)
 			}
 		}
 

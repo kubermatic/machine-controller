@@ -110,6 +110,12 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 // UserData template.
 const userDataTemplate = `#cloud-config
+{{- if .OSConfig.UseRHSatelliteServer }}
+bootcmd:
+    - curl --insecure --output katello-ca-consumer-latest.noarch.rpm https://{{ .ProviderSpec.OperatingSystemSpec.RHSatelliteServer }}/pub/katello-ca-consumer-latest.noarch.rpm
+    - yum localinstall katello-ca-consumer-latest.noarch.rpm
+{{- end }}
+
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
@@ -312,9 +318,14 @@ write_files:
     EnvironmentFile=-/etc/environment
 
 rh_subscription:
+{{- if .OSConfig.UseRHSatelliteServer }}
+    org: "{{.OSConfig.OrganizationName}}"
+    activation-key: "{{.OSConfig.ActivationKey}}"
+{{- else }}
     username: "{{.OSConfig.RHELSubscriptionManagerUser}}"
     password: "{{.OSConfig.RHELSubscriptionManagerPassword}}"
     auto-attach: true
+{{- end }}
 
 runcmd:
 - systemctl enable --now setup.service
