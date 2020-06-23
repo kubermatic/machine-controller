@@ -1,5 +1,6 @@
 #cloud-config
 
+
 hostname: node1
 
 
