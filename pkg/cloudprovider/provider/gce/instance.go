@@ -62,7 +62,11 @@ func (gi *googleInstance) Addresses() map[string]v1.NodeAddressType {
 	addrs := map[string]v1.NodeAddressType{}
 	for _, ifc := range gi.ci.NetworkInterfaces {
 		addrs[ifc.NetworkIP] = v1.NodeInternalIP
+		for _, ac := range ifc.AccessConfigs {
+			addrs[ac.NatIP] = v1.NodeExternalIP
+		}
 	}
+	addrs[gi.ci.Hostname] = v1.NodeInternalDNS
 	return addrs
 }
 
