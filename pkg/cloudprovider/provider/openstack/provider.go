@@ -497,8 +497,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			return nil, osErrorToTerminalError(err, "failed to create server with volume")
 		}
 	} else {
-		// Setting the image ID when using block device mapping results in an error
-		// with some OpenStack providers/versions .e.g. OpenTelekom Cloud
+		// Image ID should only be set in server options when block device
+		// mapping is not used. Otherwish an error may occur with some
+		// OpenStack providers/versions .e.g. OpenTelekom Cloud
 		serverOpts.ImageRef = image.ID
 		if err := osservers.Create(computeClient, serverOpts).ExtractInto(&server); err != nil {
 			return nil, osErrorToTerminalError(err, "failed to create server")

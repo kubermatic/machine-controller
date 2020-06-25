@@ -33,6 +33,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/googleapis/gnostic v0.4.0 // indirect
 	github.com/gophercloud/gophercloud v0.2.1-0.20190626201551-2949719e8258
 	github.com/hashicorp/golang-lru v0.5.4 // indirect

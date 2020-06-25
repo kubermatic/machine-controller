@@ -200,7 +200,7 @@ func TestCreateServer(t *testing.T) {
 					return nil
 				},
 			}
-			// Use the endpoint of the local server simulating Openstack API
+			// Use the endpoint of the local server simulating OpenStack API
 			tt.specConf.IdentityEndpointURL = th.Endpoint()
 			m := cloudprovidertesting.Creator{
 				Name:               "test",

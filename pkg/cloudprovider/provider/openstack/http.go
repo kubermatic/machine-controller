@@ -23,6 +23,7 @@ import (
 	"net/http/httputil"
 	"time"
 
+	"github.com/google/uuid"
 	"k8s.io/klog"
 )
 
@@ -41,15 +42,19 @@ func newHTTPClient() http.Client {
 	}
 }
 
+// LogRoundTripper is used to log information about requests and responses that
+// may be useful for debugging purposes.
+// Note that setting log level >5 results in full dumps of requests and
+// responses, including sensitive invormation (e.g. Authorization header).
 type LogRoundTripper struct {
 	rt http.RoundTripper
 }
 
-// RoundTrip performs a round-trip HTTP and logs relevant request and response
-// information.
 func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
 	var log []byte
 	var err error
+	// Generate unique ID to correlate requests and responses
+	id := uuid.New()
 	switch {
 	case bool(klog.V(6)):
 		log, err = httputil.DumpRequest(request, true)
@@ -64,10 +69,10 @@ func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 	default:
 		var b bytes.Buffer
 		fmt.Fprintf(&b, "%s %s HTTP/%d.%d", valueOrDefault(request.Method, "GET"),
-			request.RequestURI, request.ProtoMajor, request.ProtoMinor)
+			request.URL.RequestURI(), request.ProtoMajor, request.ProtoMinor)
 		log = b.Bytes()
 	}
-	klog.V(1).Infof("Request sent: %s\n", string(log))
+	klog.V(1).Infof("OpenStack API request sent [%s]: %s\n", id.String(), string(log))
 
 	response, err := lrt.rt.RoundTrip(request)
 	if response == nil {
@@ -90,7 +95,7 @@ func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 		fmt.Fprintf(&b, "HTTP/%d.%d %03d", response.ProtoMajor, response.ProtoMinor, response.StatusCode)
 		log = b.Bytes()
 	}
-	klog.V(1).Infof("Response received: %s\n", string(log))
+	klog.V(1).Infof("OpenStack API request received [%s]: %s\n", id.String(), string(log))
 
 	return response, nil
 }
