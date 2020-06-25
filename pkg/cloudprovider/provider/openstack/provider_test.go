@@ -109,42 +109,42 @@ type openstackProviderSpecConf struct {
 func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 	var out bytes.Buffer
 	tmpl, err := template.New("test").Parse(`{
-					"cloudProvider": "openstack",
-					"cloudProviderSpec": {
-						"availabilityZone": "eu-de-01",
-						"domainName": "openstack_domain_name",
-						"flavor": "m1.tiny",
-						"identityEndpoint": "{{ .IdentityEndpointURL }}",
-						"image": "Standard_Ubuntu_18.04_latest",
-						"network": "public",
-						"nodeVolumeAttachLimit": null,
-						"password": "this_is_a_password",
-						"region": "eu-de",
-						{{- if .RootDiskSizeGB }}
-						"rootDiskSizeGB": {{ .RootDiskSizeGB }},
-						{{- end }}
-						"securityGroups": [
-							"kubernetes-xyz"
-						],
-						"subnet": "subnetid",
-						"tags": {
-							"kubernetes-cluster": "xyz",
-							"system-cluster": "zyx",
-							"system-project": "xxx"
-						},
-						"tenantID": "",
-						"tenantName": "eu-de",
-						"tokenId": "",
-						"trustDevicePath": false,
-						"username": "dummy"
-					},
-					"operatingSystem": "coreos",
-					"operatingSystemSpec": {
-						"disableAutoUpdate": false,
-						"disableLocksmithD": true,
-						"disableUpdateEngine": false
-					}
-				}`)
+	"cloudProvider": "openstack",
+	"cloudProviderSpec": {
+		"availabilityZone": "eu-de-01",
+		"domainName": "openstack_domain_name",
+		"flavor": "m1.tiny",
+		"identityEndpoint": "{{ .IdentityEndpointURL }}",
+		"image": "Standard_Ubuntu_18.04_latest",
+		"network": "public",
+		"nodeVolumeAttachLimit": null,
+		"password": "this_is_a_password",
+		"region": "eu-de",
+		{{- if .RootDiskSizeGB }}
+		"rootDiskSizeGB": {{ .RootDiskSizeGB }},
+		{{- end }}
+		"securityGroups": [
+			"kubernetes-xyz"
+		],
+		"subnet": "subnetid",
+		"tags": {
+			"kubernetes-cluster": "xyz",
+			"system-cluster": "zyx",
+			"system-project": "xxx"
+		},
+		"tenantID": "",
+		"tenantName": "eu-de",
+		"tokenId": "",
+		"trustDevicePath": false,
+		"username": "dummy"
+	},
+	"operatingSystem": "coreos",
+	"operatingSystemSpec": {
+		"disableAutoUpdate": false,
+		"disableLocksmithD": true,
+		"disableUpdateEngine": false
+	}
+}`)
 	if err != nil {
 		t.Fatalf("Error occurred while parsing openstack provider spec template: %v", err)
 	}

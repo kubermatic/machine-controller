@@ -43,34 +43,34 @@ type vsphereProviderSpecConf struct {
 func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 	var out bytes.Buffer
 	tmpl, err := template.New("test").Parse(`{
-		"cloudProvider": "vsphere",
-		"cloudProviderSpec": {
-			"allowInsecure": false,
-			"cluster": "DC0_C0",
-			"cpus": 1,
-			"datacenter": "DC0",
-			{{- if .Datastore }}
-			"datastore": "{{ .Datastore }}",
-			{{- end }}
-			{{- if .DatastoreCluster }}
-			"datastoreCluster": "{{ .DatastoreCluster }}",
-			{{- end }}
-			"folder": "/",
-			"resourcePool": "/DC0/host/DC0_C0/Resources",
-			"memoryMB": 2000,
-			"password": "{{ .Password }}",
-			"templateVMName": "DC0_H0_VM0",
-			"username": "{{ .User }}",
-			"vmNetName": "",
-			"vsphereURL": "{{ .URL }}"
-		},
-		"operatingSystem": "coreos",
-		"operatingSystemSpec": {
-			"disableAutoUpdate": false,
-			"disableLocksmithD": true,
-			"disableUpdateEngine": false
-		}
-	}`)
+	"cloudProvider": "vsphere",
+	"cloudProviderSpec": {
+		"allowInsecure": false,
+		"cluster": "DC0_C0",
+		"cpus": 1,
+		"datacenter": "DC0",
+		{{- if .Datastore }}
+		"datastore": "{{ .Datastore }}",
+		{{- end }}
+		{{- if .DatastoreCluster }}
+		"datastoreCluster": "{{ .DatastoreCluster }}",
+		{{- end }}
+		"folder": "/",
+		"resourcePool": "/DC0/host/DC0_C0/Resources",
+		"memoryMB": 2000,
+		"password": "{{ .Password }}",
+		"templateVMName": "DC0_H0_VM0",
+		"username": "{{ .User }}",
+		"vmNetName": "",
+		"vsphereURL": "{{ .URL }}"
+	},
+	"operatingSystem": "coreos",
+	"operatingSystemSpec": {
+		"disableAutoUpdate": false,
+		"disableLocksmithD": true,
+		"disableUpdateEngine": false
+	}
+}`)
 	if err != nil {
 		t.Fatalf("Error occurred while parsing openstack provider spec template: %v", err)
 	}
