@@ -39,6 +39,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	openstacktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	cloudproviderutil "github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -241,7 +242,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 
 	pc, err := goopenstack.AuthenticatedClient(opts)
 	if pc != nil {
-		pc.HTTPClient = newHTTPClient()
+		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
 	}
 
 	return pc, err

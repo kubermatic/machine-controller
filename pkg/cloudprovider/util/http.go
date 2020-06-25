@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package openstack
+package util
 
 import (
 	"bytes"
@@ -27,18 +27,29 @@ import (
 	"k8s.io/klog"
 )
 
-// TODO(irozzo): Make client timeout customizable
 const defaultClientTimeout = 15 * time.Second
 
-// newHTTPClient return a custom HTTP client that allows for logging
-// requests and responses with openstack API information before and after
-// the HTTP request.
-func newHTTPClient() http.Client {
+type HTTPClientConfig struct {
+	// LogPrefix is pre-pended to request/response logs
+	LogPrefix string
+	// Global timeout used by the client
+	Timeout time.Duration
+}
+
+// New return a custom HTTP client that allows for logging
+// HTTP request and response information.
+func (c HTTPClientConfig) New() http.Client {
+	timeout := c.Timeout
+	// Enforce a global timeout
+	if timeout <= 0 {
+		timeout = defaultClientTimeout
+	}
 	return http.Client{
 		Transport: &LogRoundTripper{
-			rt: http.DefaultTransport,
+			logPrefix: c.LogPrefix,
+			rt:        http.DefaultTransport,
 		},
-		Timeout: defaultClientTimeout,
+		Timeout: timeout,
 	}
 }
 
@@ -47,7 +58,8 @@ func newHTTPClient() http.Client {
 // Note that setting log level >5 results in full dumps of requests and
 // responses, including sensitive invormation (e.g. Authorization header).
 type LogRoundTripper struct {
-	rt http.RoundTripper
+	logPrefix string
+	rt        http.RoundTripper
 }
 
 func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -72,7 +84,7 @@ func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 			request.URL.RequestURI(), request.ProtoMajor, request.ProtoMinor)
 		log = b.Bytes()
 	}
-	klog.V(1).Infof("OpenStack API request sent [%s]: %s\n", id.String(), string(log))
+	klog.V(1).Infof("%s request sent [%s]: %s\n", lrt.logPrefix, id.String(), string(log))
 
 	response, err := lrt.rt.RoundTrip(request)
 	if response == nil {
@@ -95,7 +107,7 @@ func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 		fmt.Fprintf(&b, "HTTP/%d.%d %03d", response.ProtoMajor, response.ProtoMinor, response.StatusCode)
 		log = b.Bytes()
 	}
-	klog.V(1).Infof("OpenStack API request received [%s]: %s\n", id.String(), string(log))
+	klog.V(1).Infof("%s request received [%s]: %s\n", lrt.logPrefix, id.String(), string(log))
 
 	return response, nil
 }
