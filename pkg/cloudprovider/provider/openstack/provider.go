@@ -39,6 +39,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	openstacktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	cloudproviderutil "github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -56,13 +57,26 @@ const (
 	floatingIPIDAnnotationKey  = "kubermatic.io/release-openstack-floating-ip"
 )
 
+// clientGetterFunc returns an OpenStack client.
+type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
+
+// serverReadinessWaiterFunc waits for the server with the given ID to be
+// ACTIVE.
+type serverReadinessWaiterFunc func(computeClient *gophercloud.ServiceClient, serverID string) error
+
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver     *providerconfig.ConfigVarResolver
+	clientGetter          clientGetterFunc
+	serverReadinessWaiter serverReadinessWaiterFunc
 }
 
 // New returns a openstack provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	return &provider{configVarResolver: configVarResolver}
+	return &provider{
+		configVarResolver:     configVarResolver,
+		clientGetter:          getClient,
+		serverReadinessWaiter: waitUntilInstanceIsActive,
+	}
 }
 
 type Config struct {
@@ -226,7 +240,12 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		TokenID:          c.TokenID,
 	}
 
-	return goopenstack.AuthenticatedClient(opts)
+	pc, err := goopenstack.AuthenticatedClient(opts)
+	if pc != nil {
+		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
+	}
+
+	return pc, err
 }
 
 func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
@@ -238,7 +257,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return spec, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -339,7 +358,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return errors.New("flavor must be configured")
 	}
 
-	client, err := getClient(c)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return fmt.Errorf("failed to get a openstack client: %v", err)
 	}
@@ -410,7 +429,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -435,7 +454,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		klog.V(2).Infof("creating security group %s for worker nodes", securityGroupName)
 		err = ensureKubernetesSecurityGroupExist(client, c.Region, securityGroupName)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error occurred creating security groups: %v", err)
 		}
 		securityGroups = append(securityGroups, securityGroupName)
 	}
@@ -452,7 +471,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	serverOpts := osservers.CreateOpts{
 		Name:             machine.Spec.Name,
 		FlavorRef:        flavor.ID,
-		ImageRef:         image.ID,
 		UserData:         []byte(userdata),
 		SecurityGroups:   securityGroups,
 		AvailabilityZone: c.AvailabilityZone,
@@ -464,6 +482,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	if c.RootDiskSizeGB != nil {
 		blockDevices := []bootfromvolume.BlockDevice{
 			{
+				BootIndex:           0,
 				DeleteOnTermination: true,
 				DestinationType:     bootfromvolume.DestinationVolume,
 				SourceType:          bootfromvolume.SourceImage,
@@ -479,12 +498,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			return nil, osErrorToTerminalError(err, "failed to create server with volume")
 		}
 	} else {
+		// Image ID should only be set in server options when block device
+		// mapping is not used. Otherwish an error may occur with some
+		// OpenStack providers/versions .e.g. OpenTelekom Cloud
+		serverOpts.ImageRef = image.ID
 		if err := osservers.Create(computeClient, serverOpts).ExtractInto(&server); err != nil {
 			return nil, osErrorToTerminalError(err, "failed to create server")
 		}
 	}
 
-	if err := waitUntilInstanceIsActive(computeClient, server.ID); err != nil {
+	if err := p.serverReadinessWaiter(computeClient, server.ID); err != nil {
 		defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 		return nil, fmt.Errorf("instance %s became not active: %v", server.ID, err)
 	}
@@ -835,7 +858,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get a openstack client")
 	}
