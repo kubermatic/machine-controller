@@ -34,6 +34,7 @@ spec:
             domainName: "<< DOMAIN_NAME >>"
             region: "<< REGION >>"
             network: "<< NETWORK_NAME >>"
+            rootDiskSizeGB: 20
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
