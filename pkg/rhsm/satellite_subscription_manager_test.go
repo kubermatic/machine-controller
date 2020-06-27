@@ -43,8 +43,11 @@ func TestDefaultRedHatSatelliteManager_DeleteSatelliteHost(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			go tt.testingServer.ListenAndServeTLS("./certs/cert.pem", "./certs/key.pem")
-			defer tt.testingServer.Close()
+			go func() {
+				if err := tt.testingServer.ListenAndServeTLS("./certs/cert.pem", "./certs/key.pem"); err != nil {
+					t.Fatalf("failed to run the tls testing server: %v", err)
+				}
+			}()
 
 			time.Sleep(500 * time.Millisecond)
 

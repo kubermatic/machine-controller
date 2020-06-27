@@ -259,10 +259,11 @@ func TestAzureProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
-// TestAzureProvisioningE2E - a test suite that exercises Azure provider
+// TestAzureRedhatSatelliteProvisioningE2E - a test suite that exercises Azure provider
 // by requesting rhel node and subscribe to redhat satellite server.
-func TestAzureProvisioningE2ERedhatSatellite(t *testing.T) {
+func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 	t.Parallel()
+	t.Skip()
 
 	// test data
 	azureTenantID := os.Getenv("AZURE_E2E_TESTS_TENANT_ID")

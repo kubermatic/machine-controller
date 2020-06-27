@@ -21,8 +21,8 @@ spec:
       providerSpec:
         value:
           sshPublicKeys:
-          cloudProvider: "azure"
             - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "azure"
           cloudProviderSpec:
             tenantID: "<< AZURE_TENANT_ID >>"
             clientID: "<< AZURE_CLIENT_ID >>"
