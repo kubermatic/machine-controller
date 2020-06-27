@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"k8s.io/klog"
 )
@@ -42,6 +43,27 @@ func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(machineName, u
 		return errors.New("satellite server url, username or password cannot be empty")
 	}
 
+	var (
+		retries    = 0
+		maxRetries = 15
+	)
+
+	for retries < maxRetries {
+		if err := s.executeDeleteRequest(machineName, username, password, serverURL); err != nil {
+			klog.Errorf("failed to execute satellite subscription deletion: %v", err)
+			retries++
+			time.Sleep(500 * time.Second)
+			continue
+		}
+
+		klog.Infof("subscription for machine %s deleted successfully", machineName)
+		return nil
+	}
+
+	return errors.New("failed to delete system profile after max retires number has been reached")
+}
+
+func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(machineName, username, password, serverURL string) error {
 	var requestURL url.URL
 	requestURL.Scheme = "https"
 	requestURL.Host = serverURL
@@ -54,31 +76,16 @@ func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(machineName, u
 
 	deleteHostRequest.SetBasicAuth(username, password)
 
-	var (
-		retries    = 0
-		maxRetries = 15
-		response   = &http.Response{}
-	)
+	response, err := s.client.Do(deleteHostRequest)
+	if err != nil {
+		return fmt.Errorf("failed executing delete host request: %v", err)
+	}
+	defer response.Body.Close()
 
-	for retries < maxRetries {
-		response, err = s.client.Do(deleteHostRequest)
-		if err != nil {
-			klog.Errorf("failed executing delete host request: %v", err)
-			retries++
-			continue
-		}
-
-		if response.StatusCode != http.StatusOK {
-			klog.Errorf("error while executing request with status code: %v", response.StatusCode)
-			retries++
-			continue
-		}
-
-		klog.Infof("host %v has been deleted successfully", machineName)
-		response.Body.Close()
-		return nil
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("error while executing request with status code: %v", response.StatusCode)
 	}
 
-	response.Body.Close()
-	return errors.New("failed to delete system profile after max retires number has been reached")
+	klog.Infof("host %v has been deleted successfully", machineName)
+	return nil
 }
