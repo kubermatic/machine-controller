@@ -1,7 +1,6 @@
 #cloud-config
 
 
-
 ssh_pwauth: no
 
 write_files:
