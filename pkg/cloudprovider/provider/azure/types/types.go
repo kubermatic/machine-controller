@@ -18,8 +18,6 @@ package types
 
 import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
 )
 
 // RawConfig is a direct representation of an Azure machine object's configuration
@@ -38,11 +36,18 @@ type RawConfig struct {
 	AvailabilitySet   providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	SecurityGroupName providerconfigtypes.ConfigVarString `json:"securityGroupName"`
 	Zones             []string                            `json:"zones"`
-	ImagePlan         *compute.Plan                       `json:"imagePlan"`
+	ImagePlan         *imagePlan                          `json:"imagePlan"`
 
 	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`
 	DataDiskSize   int32                               `json:"dataDiskSize"`
 	AssignPublicIP providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
 	Tags           map[string]string                   `json:"tags,omitempty"`
+}
+
+// imagePlan contains azure OS Plan fields for the marketplace images
+type imagePlan struct {
+	Name      string `json:"name,omitempty"`
+	Publisher string `json:"publisher,omitempty"`
+	Product   string `json:"product,omitempty"`
 }

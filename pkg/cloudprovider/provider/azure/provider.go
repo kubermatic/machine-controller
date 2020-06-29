@@ -262,7 +262,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.Tags = rawCfg.Tags
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
-	c.ImagePlan = rawCfg.ImagePlan
+
+	if rawCfg.ImagePlan != nil {
+		c.ImagePlan = &compute.Plan{
+			Name:      pointer.StringPtr(rawCfg.ImagePlan.Name),
+			Publisher: pointer.StringPtr(rawCfg.ImagePlan.Publisher),
+			Product:   pointer.StringPtr(rawCfg.ImagePlan.Product),
+		}
+	}
 
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
