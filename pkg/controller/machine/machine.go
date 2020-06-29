@@ -586,9 +586,9 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 			}
 		}
 
-		if rhelConfig.UseRHSatelliteServer {
+		if rhelConfig.RHELUseSatelliteServer {
 			if err := r.satelliteSubscriptionManager.DeleteSatelliteHost(machineName, rhelConfig.RHELSubscriptionManagerUser,
-				rhelConfig.RHELSubscriptionManagerPassword, rhelConfig.RHSatelliteServer); err != nil {
+				rhelConfig.RHELSubscriptionManagerPassword, rhelConfig.RHELSatelliteServer); err != nil {
 				return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %v", machine.Name, err)
 			}
 		}

@@ -50,11 +50,5 @@ spec:
             # 'rhelSubscriptionManagerPassword' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_PASSWORD`
             rhelSubscriptionManagerPassword: "<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>"
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
-            rhSatelliteServer: ""
-            useRHSatelliteServer: false
-            satelliteServerUsername: ""
-            satelliteServerPassword: ""
-            organizationName: ""
-            activationKey: ""
       versions:
         kubelet: "<< KUBERNETES_VERSION >>"

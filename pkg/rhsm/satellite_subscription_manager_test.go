@@ -19,41 +19,43 @@ package rhsm
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
-	"time"
-)
-
-var (
-	satelliteUsername = "satellite-user"
-	satellitePassword = "satellite-password"
 )
 
 func TestDefaultRedHatSatelliteManager_DeleteSatelliteHost(t *testing.T) {
+	var (
+		satelliteUsername = "satellite-user"
+		satellitePassword = "satellite-password"
+	)
 	testCases := []struct {
 		name            string
 		satelliteServer string
-		testingServer   *http.Server
+		testingServer   *httptest.Server
 	}{
 		{
 			name:            "execute redhat satellite unregister instance",
 			satelliteServer: "satellite-test-server",
-			testingServer:   tlsServer(),
+			testingServer:   createSatelliteTestingServer(satelliteUsername, satellitePassword),
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			go func() {
-				if err := tt.testingServer.ListenAndServeTLS("./certs/cert.pem", "./certs/key.pem"); err != nil {
-					t.Fatalf("failed to run the tls testing server: %v", err)
-				}
+			defer func() {
+				tt.testingServer.Close()
 			}()
 
-			time.Sleep(500 * time.Millisecond)
-
 			manager := NewSatelliteSubscriptionManager()
+			manager.(*DefaultSatelliteSubscriptionManager).useHTTP = true
 
-			err := manager.DeleteSatelliteHost("satellite-vm", satelliteUsername, satellitePassword, tt.testingServer.Addr)
+			parsedURL, err := url.Parse(tt.testingServer.URL)
+			if err != nil {
+				t.Fatalf("failed to parse testing server url: %v", err)
+			}
+
+			err = manager.DeleteSatelliteHost("satellite-vm", satelliteUsername, satellitePassword, parsedURL.Host)
 			if err != nil {
 				t.Fatalf("failed to execute redhat host deletion")
 			}
@@ -61,16 +63,15 @@ func TestDefaultRedHatSatelliteManager_DeleteSatelliteHost(t *testing.T) {
 	}
 }
 
-func tlsServer() *http.Server {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func createSatelliteTestingServer(username, password string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uname, pass, _ := r.BasicAuth()
-		if uname != satelliteUsername || pass != satellitePassword {
+		if uname != username || pass != password {
 			w.WriteHeader(http.StatusUnauthorized)
 			fmt.Fprint(w, "fail")
 		}
 
-		if r.URL.Path != "/api/hosts/satellite-vm" {
+		if r.URL.Path != "/api/v2/hosts/satellite-vm" {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, "failed")
 		}
@@ -78,9 +79,4 @@ func tlsServer() *http.Server {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "success")
 	}))
-
-	return &http.Server{
-		Addr:    ":3000",
-		Handler: mux,
-	}
 }

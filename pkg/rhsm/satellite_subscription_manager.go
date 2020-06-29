@@ -36,18 +36,21 @@ type SatelliteSubscriptionManager interface {
 // DefaultSatelliteSubscriptionManager default manager for redhat satellite server.
 type DefaultSatelliteSubscriptionManager struct {
 	client *http.Client
+
+	useHTTP bool
 }
 
 // NewSatelliteSubscriptionManager creates a new Redhat satellite manager.
 func NewSatelliteSubscriptionManager() SatelliteSubscriptionManager {
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			TLSHandshakeTimeout: defaultTimeout,
 		},
+		Timeout: defaultTimeout,
 	}
-
-	client := http.DefaultClient
-	client.Transport = transport
 
 	return &DefaultSatelliteSubscriptionManager{
 		client: client,
@@ -81,9 +84,12 @@ func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(machineName, u
 
 func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(machineName, username, password, serverURL string) error {
 	var requestURL url.URL
-	requestURL.Scheme = "https"
+	requestURL.Scheme = "http"
+	if !s.useHTTP {
+		requestURL.Scheme = "https"
+	}
 	requestURL.Host = serverURL
-	requestURL.Path = path.Join("api", "hosts", machineName)
+	requestURL.Path = path.Join("api", "v2", "hosts", machineName)
 
 	deleteHostRequest, err := http.NewRequest(http.MethodDelete, requestURL.String(), nil)
 	if err != nil {

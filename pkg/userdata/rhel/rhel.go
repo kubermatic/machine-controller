@@ -28,10 +28,10 @@ type Config struct {
 	RHELSubscriptionManagerUser     string `json:"rhelSubscriptionManagerUser,omitempty"`
 	RHELSubscriptionManagerPassword string `json:"rhelSubscriptionManagerPassword,omitempty"`
 	RHSMOfflineToken                string `json:"rhsmOfflineToken,omitempty"`
-	UseRHSatelliteServer            bool   `json:"useRHSatelliteServer"`
-	RHSatelliteServer               string `json:"rhSatelliteServer"`
-	OrganizationName                string `json:"organizationName"`
-	ActivationKey                   string `json:"activationKey"`
+	RHELUseSatelliteServer          bool   `json:"rhelUseSatelliteServer"`
+	RHELSatelliteServer             string `json:"rhelSatelliteServer"`
+	RHELOrganizationName            string `json:"rhelOrganizationName"`
+	RHELActivationKey               string `json:"rhelActivationKey"`
 }
 
 // LoadConfig retrieves the RHEL configuration from raw data.
