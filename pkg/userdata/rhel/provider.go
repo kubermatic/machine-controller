@@ -312,9 +312,16 @@ write_files:
     EnvironmentFile=-/etc/environment
 
 rh_subscription:
+{{- if .OSConfig.RHELUseSatelliteServer }}
+    org: "{{.OSConfig.RHELOrganizationName}}"
+    activation-key: "{{.OSConfig.RHELActivationKey}}"
+    server-hostname: {{ .OSConfig.RHELSatelliteServer }}
+    rhsm-baseurl: https://{{ .OSConfig.RHELSatelliteServer }}/pulp/repos
+{{- else }}
     username: "{{.OSConfig.RHELSubscriptionManagerUser}}"
     password: "{{.OSConfig.RHELSubscriptionManagerPassword}}"
     auto-attach: true
+{{- end }}
 
 runcmd:
 - systemctl enable --now setup.service
