@@ -91,7 +91,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // indirect
 	k8s.io/kubelet v0.16.4
 	k8s.io/utils v0.0.0-20200124190032-861946025e34
-	kubevirt.io/client-go v0.28.0
+	kubevirt.io/client-go v0.30.0
 	kubevirt.io/containerized-data-importer v1.10.6
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
