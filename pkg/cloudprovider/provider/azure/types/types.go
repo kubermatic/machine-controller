@@ -36,7 +36,7 @@ type RawConfig struct {
 	AvailabilitySet   providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	SecurityGroupName providerconfigtypes.ConfigVarString `json:"securityGroupName"`
 	Zones             []string                            `json:"zones"`
-	ImagePlan         *ImagePlan                          `json:"ImagePlan"`
+	ImagePlan         *ImagePlan                          `json:"imagePlan"`
 
 	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`
