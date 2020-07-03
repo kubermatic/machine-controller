@@ -37,6 +37,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -85,10 +86,10 @@ func (a *alibabaInstance) ID() string {
 	return a.instance.InstanceId
 }
 
-func (a *alibabaInstance) Addresses() []string {
-	var primaryIPAddresses []string
+func (a *alibabaInstance) Addresses() map[string]v1.NodeAddressType {
+	primaryIPAddresses := map[string]v1.NodeAddressType{}
 	for _, networkInterface := range a.instance.NetworkInterfaces.NetworkInterface {
-		primaryIPAddresses = append(primaryIPAddresses, networkInterface.PrimaryIpAddress)
+		primaryIPAddresses[networkInterface.PrimaryIpAddress] = v1.NodeInternalIP
 	}
 
 	return primaryIPAddresses

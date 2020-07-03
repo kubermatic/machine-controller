@@ -74,6 +74,10 @@ spec:
             imageID: "myImageID"
             assignPublicIP: false
             securityGroupName: my-security-group
+            # zones is an optional field and it represents Availability Zones is a high-availability offering
+            # that protects your applications and data from datacenter failures.
+            zones:
+              - "1"
           # Can be 'ubuntu', 'coreos' ,'centos' or 'rhel'
           operatingSystem: "coreos"
           operatingSystemSpec:

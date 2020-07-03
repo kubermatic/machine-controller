@@ -90,6 +90,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion   string
 		Kubeconfig       string
 		KubernetesCACert string
+		NodeIPScript     string
 	}{
 		UserDataRequest:  req,
 		ProviderSpec:     pconfig,
@@ -98,6 +99,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion:   kubeletVersion.String(),
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -113,6 +115,11 @@ const userDataTemplate = `#cloud-config
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
 {{ end }}
+
+{{- if .OSConfig.DistUpgradeOnBoot }}
+package_upgrade: true
+package_reboot_if_required: true
+{{- end }}
 
 ssh_pwauth: no
 
@@ -164,16 +171,15 @@ write_files:
       e2fsprogs \
       jq \
       socat \
-      ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
-      open-vm-tools{{ end }}
-    {{- if .OSConfig.DistUpgradeOnBoot }}
-    zypper --non-interactive --quiet --color dup
-    {{- end }}
-    if [[ -e /var/run/reboot-required ]]; then
-      reboot
-    fi
+      {{- if eq .CloudProviderName "vsphere" }}
+      open-vm-tools \
+      {{- end }}
+      ipvsadm
 
-{{ downloadBinariesScript .KubeletVersion true | indent 4 }}
+{{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+
+    # set kubelet nodeip environment variable
+    /opt/bin/setup_net_env.sh
 
     systemctl enable --now docker
     systemctl enable --now kubelet
@@ -202,6 +208,11 @@ write_files:
   permissions: "0600"
   content: |
 {{ .CloudConfig | indent 4 }}
+
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+{{ .NodeIPScript | indent 4 }}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"

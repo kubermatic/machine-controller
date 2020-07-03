@@ -40,6 +40,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
@@ -80,6 +81,8 @@ type config struct {
 	AvailabilitySet   string
 	SecurityGroupName string
 	ImageID           string
+	Zones             []string
+	ImagePlan         *compute.Plan
 
 	OSDiskSize   int32
 	DataDiskSize int32
@@ -90,11 +93,11 @@ type config struct {
 
 type azureVM struct {
 	vm          *compute.VirtualMachine
-	ipAddresses []string
+	ipAddresses map[string]v1.NodeAddressType
 	status      instance.Status
 }
 
-func (vm *azureVM) Addresses() []string {
+func (vm *azureVM) Addresses() map[string]v1.NodeAddressType {
 	return vm.ipAddresses
 }
 
@@ -137,6 +140,20 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 		Offer:     to.StringPtr("RHEL"),
 		Sku:       to.StringPtr("7-RAW-CI"),
 		Version:   to.StringPtr("7.7.2019081601"),
+	},
+	providerconfigtypes.OperatingSystemFlatcar: {
+		Publisher: to.StringPtr("kinvolk"),
+		Offer:     to.StringPtr("flatcar-container-linux"),
+		Sku:       to.StringPtr("stable"),
+		Version:   to.StringPtr("2345.3.0"),
+	},
+}
+
+var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
+	providerconfigtypes.OperatingSystemFlatcar: {
+		Name:      pointer.StringPtr("stable"),
+		Publisher: pointer.StringPtr("kinvolk"),
+		Product:   pointer.StringPtr("flatcar-container-linux"),
 	},
 }
 
@@ -241,9 +258,18 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get the value of \"securityGroupName\" field, error = %v", err)
 	}
 
+	c.Zones = rawCfg.Zones
 	c.Tags = rawCfg.Tags
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
+
+	if rawCfg.ImagePlan != nil {
+		c.ImagePlan = &compute.Plan{
+			Name:      pointer.StringPtr(rawCfg.ImagePlan.Name),
+			Publisher: pointer.StringPtr(rawCfg.ImagePlan.Publisher),
+			Product:   pointer.StringPtr(rawCfg.ImagePlan.Product),
+		}
+	}
 
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
@@ -253,8 +279,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	return &c, &pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) ([]string, error) {
-	var ipAddresses []string
+func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) (map[string]v1.NodeAddressType, error) {
+	var (
+		ipAddresses = map[string]v1.NodeAddressType{}
+		err         error
+	)
 
 	if vm.VirtualMachineProperties == nil {
 		return nil, fmt.Errorf("machine is missing properties")
@@ -275,17 +304,16 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 
 		splitIfaceID := strings.Split(*iface.ID, "/")
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
-		addrs, err := getNICIPAddresses(ctx, c, ifaceName)
+		ipAddresses, err = getNICIPAddresses(ctx, c, ifaceName)
 		if vm.NetworkProfile.NetworkInterfaces == nil {
 			return nil, fmt.Errorf("failed to get addresses for interface %q: %v", ifaceName, err)
 		}
-		ipAddresses = append(ipAddresses, addrs...)
 	}
 
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]string, error) {
+func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[string]v1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %v", err)
@@ -296,7 +324,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 		return nil, fmt.Errorf("failed to get interface %q: %v", ifaceName, err.Error())
 	}
 
-	var ipAddresses []string
+	ipAddresses := map[string]v1.NodeAddressType{}
 
 	if netIf.IPConfigurations != nil {
 		for _, conf := range *netIf.IPConfigurations {
@@ -318,15 +346,18 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) ([]stri
 				if err != nil {
 					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
 				}
-				ipAddresses = append(ipAddresses, publicIPs...)
+				for _, ip := range publicIPs {
+					ipAddresses[ip] = v1.NodeExternalIP
+				}
 			}
 
 			internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
 			}
-
-			ipAddresses = append(ipAddresses, internalIPs...)
+			for _, ip := range internalIPs {
+				ipAddresses[ip] = v1.NodeInternalIP
+			}
 
 		}
 	}
@@ -467,17 +498,19 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 	tags[machineUIDTag] = to.StringPtr(string(machine.UID))
 
-	adminUserName := string(providerCfg.OperatingSystem)
-	if adminUserName == "coreos" {
-		// CoreOS uses core by default everywhere, so we adhere to that
-		adminUserName = "core"
+	osPlane := osPlans[providerCfg.OperatingSystem]
+	if config.ImagePlan != nil {
+		osPlane = config.ImagePlan
 	}
+
+	adminUserName := getOSUsername(providerCfg.OperatingSystem)
 	storageProfile, err := getStorageProfile(config, providerCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get StorageProfile: %v", err)
 	}
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
+		Plan:     osPlane,
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
 			HardwareProfile: &compute.HardwareProfile{VMSize: compute.VirtualMachineSizeTypes(config.VMSize)},
 			NetworkProfile: &compute.NetworkProfile{
@@ -506,7 +539,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			},
 			StorageProfile: storageProfile,
 		},
-		Tags: tags,
+		Tags:  tags,
+		Zones: &config.Zones,
 	}
 
 	if config.AvailabilitySet != "" {
@@ -918,4 +952,15 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
+}
+
+func getOSUsername(os providerconfigtypes.OperatingSystem) string {
+	switch os {
+	case providerconfigtypes.OperatingSystemFlatcar:
+		return "core"
+	case providerconfigtypes.OperatingSystemCoreos:
+		return "core"
+	default:
+		return string(os)
+	}
 }

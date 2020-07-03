@@ -44,13 +44,15 @@ var (
 		providerconfigtypes.OperatingSystemCentOS,
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
+		providerconfigtypes.OperatingSystemFlatcar,
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemUbuntu): "machine-controller-e2e-ubuntu",
-		string(providerconfigtypes.OperatingSystemCoreos): "machine-controller-e2e-coreos",
-		string(providerconfigtypes.OperatingSystemCentOS): "machine-controller-e2e-centos",
-		string(providerconfigtypes.OperatingSystemRHEL):   "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu",
+		string(providerconfigtypes.OperatingSystemCoreos):  "machine-controller-e2e-coreos",
+		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemRHEL):    "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar",
 	}
 )
 
@@ -64,37 +66,52 @@ type scenario struct {
 	executor          scenarioExecutor
 }
 
-type scenarioSelector struct {
-	osName                  []string
-	containerRuntime        []string
-	containerRuntimeVersion []string
+// Selector allows to exclude or include the test scenarios.
+type Selector interface {
+	// Match returns `true` if the scenario should be run, `false` otherwise.
+	Match(testCase scenario) bool
 }
 
-func doesSenarioSelectorMatch(selector *scenarioSelector, testCase scenario) bool {
-	for _, selectorOSName := range selector.osName {
+// Not returns the negation of the selector.
+func Not(s Selector) Selector {
+	return &not{s}
+}
+
+// Ensures that not implements Selector interface.
+var _ Selector = &not{}
+
+type not struct {
+	s Selector
+}
+
+func (n *not) Match(tc scenario) bool {
+	return !n.s.Match(tc)
+}
+
+// OsSelector is used to match test scenarios by OS name.
+func OsSelector(osName ...string) Selector {
+	return &osSelector{osName}
+}
+
+// Ensures that osSelector implements Selector interface.
+var _ Selector = &osSelector{}
+
+type osSelector struct {
+	osName []string
+}
+
+func (os *osSelector) Match(testCase scenario) bool {
+	for _, selectorOSName := range os.osName {
 		if testCase.osName == selectorOSName {
 			return true
 		}
 	}
-
-	for _, selectorContainerRuntime := range selector.containerRuntime {
-		if testCase.containerRuntime == selectorContainerRuntime {
-			return true
-		}
-	}
-
-	for _, selectorContainerRuntimeVersion := range selector.containerRuntimeVersion {
-		if testCase.containerRuntime == selectorContainerRuntimeVersion {
-			return true
-		}
-	}
-
 	return false
 }
 
-func runScenarios(st *testing.T, excludeSelector *scenarioSelector, testParams []string, manifestPath string, cloudProvider string) {
+func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
-		if excludeSelector != nil && doesSenarioSelectorMatch(excludeSelector, testCase) {
+		if selector != nil && !selector.Match(testCase) {
 			continue
 		}
 

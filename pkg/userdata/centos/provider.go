@@ -89,6 +89,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ServerAddr       string
 		Kubeconfig       string
 		KubernetesCACert string
+		NodeIPScript     string
 	}{
 		UserDataRequest:  req,
 		ProviderSpec:     pconfig,
@@ -97,6 +98,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ServerAddr:       serverAddr,
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -162,7 +164,7 @@ write_files:
     SELINUXTYPE=targeted
 
 - path: "/opt/bin/setup"
-  permissions: "0777"
+  permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
@@ -187,7 +189,12 @@ write_files:
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
-    yum install -y docker-ce-18.09.9-3.el7 \
+{{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
+	See: https://github.com/docker/cli/issues/2533 */}}
+
+    DOCKER_VERSION='18.09.9-3.el7'
+    yum install -y docker-ce-${DOCKER_VERSION} \
+      docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
       ethtool \
       nfs-utils \
@@ -196,12 +203,19 @@ write_files:
       socat \
       wget \
       curl \
-      ipvsadm{{ if eq .CloudProviderName "vsphere" }} \
-      open-vm-tools{{ end }}
+      yum-plugin-versionlock \
+      {{- if eq .CloudProviderName "vsphere" }}
+      open-vm-tools \
+      {{- end }}
+      ipvsadm
+    yum versionlock docker-ce-*
 
-{{ downloadBinariesScript .KubeletVersion true | indent 4 }}
+{{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+    # set kubelet nodeip environment variable
+    mkdir -p /etc/systemd/system/kubelet.service.d/
+    /opt/bin/setup_net_env.sh
 
-    {{- if eq .CloudProviderName "vsphere" }}
+    {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
     systemctl enable --now docker
@@ -226,6 +240,11 @@ write_files:
   permissions: "0600"
   content: |
 {{ .CloudConfig | indent 4 }}
+
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+{{ .NodeIPScript | indent 4 }}
 
 - path: "/etc/kubernetes/bootstrap-kubelet.conf"
   permissions: "0600"

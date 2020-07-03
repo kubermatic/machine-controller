@@ -17,126 +17,131 @@ limitations under the License.
 package vsphere
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"log"
 	"strings"
 	"testing"
+	"text/template"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	"github.com/vmware/govmomi/simulator"
-	"k8s.io/apimachinery/pkg/runtime"
 
+	"k8s.io/utils/pointer"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-type machineSpecArgs struct {
-	datastore        *string
-	datastoreCluster *string
+type vsphereProviderSpecConf struct {
+	Datastore        *string
+	DatastoreCluster *string
+	User             string
+	Password         string
+	URL              string
 }
 
-func (m machineSpecArgs) generateMachineSpec(user, password, url string) v1alpha1.MachineSpec {
-	dsSpec := ""
-	if m.datastore != nil {
-		dsSpec = fmt.Sprintf(`"datastore": "%s",`, *m.datastore)
+func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
+	var out bytes.Buffer
+	tmpl, err := template.New("test").Parse(`{
+	"cloudProvider": "vsphere",
+	"cloudProviderSpec": {
+		"allowInsecure": false,
+		"cluster": "DC0_C0",
+		"cpus": 1,
+		"datacenter": "DC0",
+		{{- if .Datastore }}
+		"datastore": "{{ .Datastore }}",
+		{{- end }}
+		{{- if .DatastoreCluster }}
+		"datastoreCluster": "{{ .DatastoreCluster }}",
+		{{- end }}
+		"folder": "/",
+		"resourcePool": "/DC0/host/DC0_C0/Resources",
+		"memoryMB": 2000,
+		"password": "{{ .Password }}",
+		"templateVMName": "DC0_H0_VM0",
+		"username": "{{ .User }}",
+		"vmNetName": "",
+		"vsphereURL": "{{ .URL }}"
+	},
+	"operatingSystem": "coreos",
+	"operatingSystemSpec": {
+		"disableAutoUpdate": false,
+		"disableLocksmithD": true,
+		"disableUpdateEngine": false
 	}
-	if m.datastoreCluster != nil {
-		dsSpec = dsSpec + fmt.Sprintf(`"datastoreCluster": "%s",`, *m.datastoreCluster)
+}`)
+	if err != nil {
+		t.Fatalf("Error occurred while parsing openstack provider spec template: %v", err)
 	}
-	return v1alpha1.MachineSpec{
-		ProviderSpec: v1alpha1.ProviderSpec{
-			Value: &runtime.RawExtension{
-				Raw: []byte(fmt.Sprintf(`{
-					"cloudProvider": "vsphere",
-					"cloudProviderSpec": {
-						"allowInsecure": false,
-						"cluster": "DC0_C0",
-						"cpus": 1,
-						"datacenter": "DC0",
-						%s
-						"folder": "/",
-						"memoryMB": 2000,
-						"password": "%s",
-						"templateVMName": "DC0_H0_VM0",
-						"username": "%s",
-						"vmNetName": "",
-						"vsphereURL": "%s"
-					},
-					"operatingSystem": "coreos",
-					"operatingSystemSpec": {
-						"disableAutoUpdate": false,
-						"disableLocksmithD": true,
-						"disableUpdateEngine": false
-					}
-				}`, dsSpec, password, user, url)),
-			},
-		},
+	err = tmpl.Execute(&out, v)
+	if err != nil {
+		t.Fatalf("Error occurred while executing openstack provider spec template: %v", err)
 	}
+	t.Logf("Generated providerSpec: %s", out.String())
+	return out.Bytes()
 }
-func Test_provider_Validate(t *testing.T) {
-	toPointer := func(s string) *string {
-		return &s
-	}
+
+func TestValidate(t *testing.T) {
 	tests := []struct {
 		name         string
-		args         machineSpecArgs
+		args         vsphereProviderSpecConf
 		getConfigErr error
 		wantErr      bool
 	}{
 		{
 			name: "Valid Datastore",
-			args: machineSpecArgs{
-				datastore: toPointer("LocalDS_0"),
+			args: vsphereProviderSpecConf{
+				Datastore: pointer.StringPtr("LocalDS_0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
 		},
 		{
 			name: "Valid Datastore end empty DatastoreCluster",
-			args: machineSpecArgs{
-				datastore:        toPointer("LocalDS_0"),
-				datastoreCluster: toPointer(""),
+			args: vsphereProviderSpecConf{
+				Datastore:        pointer.StringPtr("LocalDS_0"),
+				DatastoreCluster: pointer.StringPtr(""),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
 		},
 		{
 			name: "Valid DatastoreCluster",
-			args: machineSpecArgs{
-				datastoreCluster: toPointer("DC0_POD0"),
+			args: vsphereProviderSpecConf{
+				DatastoreCluster: pointer.StringPtr("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
 		},
 		{
 			name: "Invalid Datastore",
-			args: machineSpecArgs{
-				datastore: toPointer("LocalDS_10"),
+			args: vsphereProviderSpecConf{
+				Datastore: pointer.StringPtr("LocalDS_10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
 		{
 			name: "Invalid DatastoreCluster",
-			args: machineSpecArgs{
-				datastore: toPointer("DC0_POD10"),
+			args: vsphereProviderSpecConf{
+				Datastore: pointer.StringPtr("DC0_POD10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
 		{
 			name: "Both Datastore and DatastoreCluster specified",
-			args: machineSpecArgs{
-				datastore:        toPointer("DC0_POD10"),
-				datastoreCluster: toPointer("DC0_POD0"),
+			args: vsphereProviderSpecConf{
+				Datastore:        pointer.StringPtr("DC0_POD10"),
+				DatastoreCluster: pointer.StringPtr("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
 		{
 			name:         "Neither Datastore nor DatastoreCluster specified",
-			args:         machineSpecArgs{},
+			args:         vsphereProviderSpecConf{},
 			getConfigErr: nil,
 			wantErr:      true,
 		},
@@ -166,7 +171,12 @@ func Test_provider_Validate(t *testing.T) {
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
 				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
 			}
-			if err := p.Validate(tt.args.generateMachineSpec(username, password, vSphereURL)); (err != nil) != tt.wantErr {
+			tt.args.User = username
+			tt.args.Password = password
+			tt.args.URL = vSphereURL
+			m := cloudprovidertesting.Creator{Name: "test", Namespace: "vsphere", ProviderSpecGetter: tt.args.rawProviderSpec}.
+				CreateMachine(t)
+			if err := p.Validate(m.Spec); (err != nil) != tt.wantErr {
 				t.Errorf("provider.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

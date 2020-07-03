@@ -48,7 +48,7 @@ func init() {
 type fakeInstance struct {
 	name      string
 	id        string
-	addresses []string
+	addresses map[string]corev1.NodeAddressType
 	status    instance.Status
 }
 
@@ -64,7 +64,7 @@ func (i *fakeInstance) Status() instance.Status {
 	return i.status
 }
 
-func (i *fakeInstance) Addresses() []string {
+func (i *fakeInstance) Addresses() map[string]corev1.NodeAddressType {
 	return i.addresses
 }
 
@@ -115,7 +115,7 @@ func TestController_GetNode(t *testing.T) {
 			resNode:  nil,
 			exists:   false,
 			err:      nil,
-			instance: &fakeInstance{id: "99", addresses: []string{"192.168.1.99"}},
+			instance: &fakeInstance{id: "99", addresses: map[string]corev1.NodeAddressType{"192.168.1.99": corev1.NodeInternalIP}},
 		},
 		{
 			name:     "node not found - no suitable node",
@@ -123,7 +123,7 @@ func TestController_GetNode(t *testing.T) {
 			resNode:  nil,
 			exists:   false,
 			err:      nil,
-			instance: &fakeInstance{id: "99", addresses: []string{"192.168.1.99"}},
+			instance: &fakeInstance{id: "99", addresses: map[string]corev1.NodeAddressType{"192.168.1.99": corev1.NodeInternalIP}},
 		},
 		{
 			name:     "node found by provider id",
@@ -131,7 +131,7 @@ func TestController_GetNode(t *testing.T) {
 			resNode:  &node1,
 			exists:   true,
 			err:      nil,
-			instance: &fakeInstance{id: "1", addresses: []string{""}},
+			instance: &fakeInstance{id: "1", addresses: map[string]corev1.NodeAddressType{"": ""}},
 		},
 		{
 			name:     "node found by internal ip",
@@ -139,7 +139,7 @@ func TestController_GetNode(t *testing.T) {
 			resNode:  &node3,
 			exists:   true,
 			err:      nil,
-			instance: &fakeInstance{id: "3", addresses: []string{"192.168.1.3"}},
+			instance: &fakeInstance{id: "3", addresses: map[string]corev1.NodeAddressType{"192.168.1.3": corev1.NodeInternalIP}},
 		},
 		{
 			name:     "node found by external ip",
@@ -147,7 +147,7 @@ func TestController_GetNode(t *testing.T) {
 			resNode:  &node3,
 			exists:   true,
 			err:      nil,
-			instance: &fakeInstance{id: "3", addresses: []string{"172.16.1.3"}},
+			instance: &fakeInstance{id: "3", addresses: map[string]corev1.NodeAddressType{"172.16.1.3": corev1.NodeInternalIP}},
 		},
 	}
 

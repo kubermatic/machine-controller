@@ -36,3 +36,15 @@ func TestDownloadBinariesScript(t *testing.T) {
 		})
 	}
 }
+
+func TestSafeDownloadBinariesScript(t *testing.T) {
+	name := "safe_download_binaries_v1.18.2"
+	t.Run(name, func(t *testing.T) {
+		script, err := SafeDownloadBinariesScript("v1.18.2")
+		if err != nil {
+			t.Error(err)
+		}
+		goldenName := name + ".golden"
+		test.CompareOutput(t, goldenName, script, *update)
+	})
+}

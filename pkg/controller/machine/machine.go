@@ -108,6 +108,7 @@ type Reconciler struct {
 	skipEvictionAfter                time.Duration
 	nodeSettings                     NodeSettings
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
+	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 }
 
 type NodeSettings struct {
@@ -171,6 +172,7 @@ func Add(
 		skipEvictionAfter:                skipEvictionAfter,
 		nodeSettings:                     nodeSettings,
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
+		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 	}
 	m, err := userdatamanager.New()
 	if err != nil {
@@ -569,14 +571,25 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 			return nil, fmt.Errorf("failed to get rhel os specs: %v", err)
 		}
 
-		if rhelConfig.RHSMOfflineToken != "" {
-			machineName := machine.Name
-			if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
-				machineName = machine.Status.NodeRef.Name
+		machineName := machine.Name
+		if machineConfig.CloudProvider == providerconfigtypes.CloudProviderAWS {
+			for _, address := range machine.Status.Addresses {
+				if address.Type == corev1.NodeInternalDNS {
+					machineName = address.Address
+				}
 			}
+		}
 
+		if rhelConfig.RHSMOfflineToken != "" {
 			if err := r.redhatSubscriptionManager.UnregisterInstance(rhelConfig.RHSMOfflineToken, machineName); err != nil {
 				return nil, fmt.Errorf("failed to delete subscription for machine name %s: %v", machine.Name, err)
+			}
+		}
+
+		if rhelConfig.RHELUseSatelliteServer {
+			if err := r.satelliteSubscriptionManager.DeleteSatelliteHost(machineName, rhelConfig.RHELSubscriptionManagerUser,
+				rhelConfig.RHELSubscriptionManagerPassword, rhelConfig.RHELSatelliteServer); err != nil {
+				return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %v", machine.Name, err)
 			}
 		}
 
@@ -698,8 +711,8 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", addresses)
 	r.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", eventMessage)
 	machineAddresses := []corev1.NodeAddress{}
-	for _, address := range addresses {
-		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address})
+	for address, addressType := range addresses {
+		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address, Type: addressType})
 	}
 	if err := r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Addresses = machineAddresses
@@ -873,7 +886,7 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 			}
 		}
 		for _, nodeAddress := range node.Status.Addresses {
-			for _, instanceAddress := range instance.Addresses() {
+			for instanceAddress := range instance.Addresses() {
 				if nodeAddress.Address == instanceAddress {
 					return node.DeepCopy(), true, nil
 				}

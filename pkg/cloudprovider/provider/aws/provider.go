@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -117,6 +119,12 @@ var (
 			description: "Provided by Red Hat, Inc.",
 			// The AWS marketplace ID from RedHat
 			owner: "309956199498",
+		},
+		providerconfigtypes.OperatingSystemFlatcar: {
+			// Be as precise as possible - otherwise we might get a nightly dev build
+			description: "Flatcar Container Linux stable 2345.3.1 (HVM)",
+			// The AWS marketplace ID from AWS
+			owner: "075585003325",
 		},
 	}
 
@@ -207,6 +215,13 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 		return "", fmt.Errorf("could not find Image for '%s'", os)
 	}
 
+	if os == providerconfigtypes.OperatingSystemRHEL {
+		imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	image := imagesOut.Images[0]
 	for _, v := range imagesOut.Images {
 		itime, _ := time.Parse(time.RFC3339, *image.CreationDate)
@@ -236,6 +251,8 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 		return rootDevicePathCoreOSSLES, nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rootDevicePathUbuntuCentOSRHEL, nil
+	case providerconfigtypes.OperatingSystemFlatcar:
+		return rootDevicePathCoreOSSLES, nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
@@ -488,8 +505,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos {
-		// Gzip the userdata in case we don't use CoreOS.
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos &&
+		pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
+		// Gzip the userdata in case we don't use CoreOS and Flatcar
 		userdata, err = convert.GzipString(userdata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to gzip the userdata")
@@ -741,13 +759,17 @@ func (d *awsInstance) ID() string {
 	return aws.StringValue(d.instance.InstanceId)
 }
 
-func (d *awsInstance) Addresses() []string {
-	return []string{
-		aws.StringValue(d.instance.PublicIpAddress),
-		aws.StringValue(d.instance.PublicDnsName),
-		aws.StringValue(d.instance.PrivateIpAddress),
-		aws.StringValue(d.instance.PrivateDnsName),
+func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
+	addresses := map[string]v1.NodeAddressType{
+		aws.StringValue(d.instance.PublicIpAddress):  v1.NodeExternalIP,
+		aws.StringValue(d.instance.PublicDnsName):    v1.NodeExternalDNS,
+		aws.StringValue(d.instance.PrivateIpAddress): v1.NodeInternalIP,
+		aws.StringValue(d.instance.PrivateDnsName):   v1.NodeInternalDNS,
 	}
+
+	delete(addresses, "")
+
+	return addresses
 }
 
 func (d *awsInstance) Status() instance.Status {
@@ -916,4 +938,19 @@ func getIntanceCountForMachine(machine v1alpha1.Machine, reservations []*ec2.Res
 		}
 	}
 	return count
+}
+
+func filterSupportedRHELImages(images []*ec2.Image) ([]*ec2.Image, error) {
+	var filteredImages []*ec2.Image
+	for _, image := range images {
+		if strings.HasPrefix(*image.Name, "RHEL-8") {
+			filteredImages = append(filteredImages, image)
+		}
+	}
+
+	if filteredImages == nil {
+		return nil, errors.New("rhel 8 images are not found")
+	}
+
+	return filteredImages, nil
 }
