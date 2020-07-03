@@ -43,6 +43,8 @@ subnetId: "subnet-2bff4f43"
 assignPublicIP: true
 # instance type
 instanceType: "t2.micro"
+# enable provisioning as spot instance machine, default false
+isSpotInstance: false
 # size of the root disk in gb
 diskSize: 50
 # root disk type (gp2, io1, st1, sc1, or standard)
