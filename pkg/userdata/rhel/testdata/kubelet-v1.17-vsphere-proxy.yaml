@@ -50,7 +50,7 @@ write_files:
     fs.inotify.max_user_watches = 1048576
 
 
-- path: /etc/sysconfig/selinux
+- path: /etc/selinux/config
   content: |
     # This file controls the state of SELinux on the system.
     # SELINUX= can take one of these three values:
@@ -73,18 +73,18 @@ write_files:
     setenforce 0 || true
     systemctl restart systemd-modules-load.service
     sysctl --system
-    cp /etc/fstab /etc/fstab.orig
-    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
-    mv /etc/fstab.noswap /etc/fstab
+    sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
 
     hostnamectl set-hostname node1
 
 
-    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
-    DOCKER_VERSION='18.09.1-3.el7'
-    dnf install -y docker-ce-${DOCKER_VERSION} \
+    DOCKER_VERSION='18.09.9-3.el7'
+    yum install -y docker-ce-${DOCKER_VERSION} \
       docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
       ethtool \
@@ -94,11 +94,10 @@ write_files:
       socat \
       wget \
       curl \
-      python3-dnf-plugin-versionlock \
+      yum-plugin-versionlock \
       open-vm-tools \
       ipvsadm
-    dnf versionlock add docker-ce docker-ce-cli
-    dnf clean all
+    yum versionlock add docker-ce-*
 
     opt_bin=/opt/bin
     cni_bin_dir=/opt/cni/bin
