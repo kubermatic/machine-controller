@@ -28,7 +28,7 @@ spec:
           cloudProviderSpec:
             storageClassName: kubermatic-fast
             pvcSize: "10Gi"
-            sourceURL: http://10.108.49.221/<< OS_NAME >>.img
+            sourceURL: http://10.102.236.197/<< OS_NAME >>.img
             cpus: "1"
             memory: "4096M"
             kubeconfig:
