@@ -207,6 +207,29 @@ func TestAWSSLESProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
+func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
+		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+	}
+
+	amiID := "ami-032025b3afcbb6b34" // official "CentOS 8.2.2004 x86_64"
+
+	params := []string{
+		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+		fmt.Sprintf("<< AMI >>=%s", amiID),
+	}
+
+	// We would like to test CentOS8 image only in this test as the other images are tested in TestAWSProvisioningE2E
+	selector := OsSelector("centos")
+	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+}
+
 // TestAWSProvisioningE2EWithEbsEncryptionEnabled - a test suite that exercises AWS provider with ebs encryption enabled
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
 func TestAWSProvisioningE2EWithEbsEncryptionEnabled(t *testing.T) {
