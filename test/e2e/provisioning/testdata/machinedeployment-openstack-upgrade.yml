@@ -34,6 +34,7 @@ spec:
             domainName: "<< DOMAIN_NAME >>"
             region: "<< REGION >>"
             network: "<< NETWORK_NAME >>"
+            rootDiskSizeGB: 10
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
