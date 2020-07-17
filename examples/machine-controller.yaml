@@ -456,6 +456,30 @@ rules:
   - "pods/eviction"
   verbs:
   - "create"
+# The following roles are required for NodeCSRApprover controller to be able
+# to reconcile CertificateSigningRequests for kubelet serving certificates.
+- apiGroups:
+  - "certificates.k8s.io"
+  resources:
+  - "certificatesigningrequests"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - "certificates.k8s.io"
+  resources:
+  - "certificatesigningrequests/approval"
+  verbs:
+  - "update"
+- apiGroups:
+  - "certificates.k8s.io"
+  resources:
+  - "signers"
+  resourceNames:
+  - "kubernetes.io/kubelet-serving"
+  verbs:
+  - "approve"
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
