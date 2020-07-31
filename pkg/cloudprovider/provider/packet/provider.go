@@ -429,6 +429,8 @@ func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 		return "centos_7", nil
 	case providerconfigtypes.OperatingSystemCoreos:
 		return "coreos_stable", nil
+	case providerconfigtypes.OperatingSystemFlatcar:
+		return "flatcar_stable", nil
 	}
 	return "", providerconfigtypes.ErrOSNotSupported
 }
