@@ -1,5 +1,5 @@
 .idea
-machine-controller*
+/machine-controller*
 .terraform
 terraform.tfstate
 terraform.tfstate.backup

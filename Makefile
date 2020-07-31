@@ -31,7 +31,7 @@ LDFLAGS ?= -ldflags '-s -w'
 
 IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
-IMAGE_NAME = $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
+IMAGE_NAME ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 
 OS = centos coreos ubuntu sles rhel flatcar
 USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
