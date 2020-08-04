@@ -12,3 +12,4 @@ examples/*.pem
 examples/*.csr
 examples/*.srl
 /webhook
+/vendor
