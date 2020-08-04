@@ -4,15 +4,15 @@
 
 ### Cloud provider
 
-|   | Ubuntu | Container Linux | CentOS | RHEL | SLES |
-|---|---|---|---|---|---|
-| AWS | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Azure | ✓ | ✓ | ✓ | ✓ | x |
-| Digitalocean  | ✓ | ✓ | ✓ | x | x |
-| Google Cloud Platform | ✓ | ✓ | x | ✓ | x |
-| Hetzner | ✓ | x | ✓ | x | x |
-| Packet | ✓ | ✓ | ✓ | x | x |
-| Openstack | ✓ | ✓ | ✓ | ✓ | x |
+|   | Ubuntu | Container Linux | CentOS | Flatcar | RHEL | SLES |
+|---|---|---|---|---|---|---|
+| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Azure | ✓ | ✓ | ✓ | ✓ | ✓ | x |
+| Digitalocean  | ✓ | ✓ | ✓ | x | x | x |
+| Google Cloud Platform | ✓ | ✓ | x | x | ✓ | x |
+| Hetzner | ✓ | x | ✓ | x | x | x |
+| Packet | ✓ | ✓ | ✓ | x | x | x |
+| Openstack | ✓ | ✓ | ✓ | x | ✓ | x |
 
 ## Configuring a operating system
 
