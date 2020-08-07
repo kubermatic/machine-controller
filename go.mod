@@ -62,7 +62,6 @@ require (
 	go.uber.org/zap v1.13.0 // indirect
 	go4.org v0.0.0-20200104003542-c7e774b10ea0 // indirect
 	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6
-	golang.org/x/exp v0.0.0-20200213203834-85f925bdd4d0 // indirect
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
 	golang.org/x/mod v0.2.0 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
@@ -70,7 +69,6 @@ require (
 	golang.org/x/sys v0.0.0-20200217220822-9197077df867 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20200219054238-753a1d49df85 // indirect
-	gonum.org/v1/gonum v0.6.2 // indirect
 	google.golang.org/api v0.6.0
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20200212174721-66ed5ce911ce // indirect
@@ -85,8 +83,6 @@ require (
 	k8s.io/apiextensions-apiserver v0.16.4
 	k8s.io/apimachinery v0.16.4
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.16.4
-	k8s.io/gengo v0.0.0-20200205140755-e0e292d8aa12 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // indirect
 	k8s.io/kubelet v0.16.4
