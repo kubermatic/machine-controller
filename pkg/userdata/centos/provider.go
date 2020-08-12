@@ -149,7 +149,7 @@ write_files:
   content: |
 {{ kernelSettings | indent 4 }}
 
-- path: /etc/sysconfig/selinux
+- path: /etc/selinux/config
   content: |
     # This file controls the state of SELinux on the system.
     # SELINUX= can take one of these three values:
@@ -176,9 +176,7 @@ write_files:
     sysctl --system
 
 {{- /* Make sure we always disable swap - Otherwise the kubelet won't start */}}
-    cp /etc/fstab /etc/fstab.orig
-    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
-    mv /etc/fstab.noswap /etc/fstab
+    sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
     {{ if ne .CloudProviderName "aws" }}
 {{- /*  The normal way of setting it via cloud-init is broken, see */}}
@@ -188,6 +186,9 @@ write_files:
 
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+{{- /*	Due to DNF modules we have to do this on docker-ce repo
+		More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473 */}}
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
 {{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
 	See: https://github.com/docker/cli/issues/2533 */}}
@@ -208,7 +209,7 @@ write_files:
       open-vm-tools \
       {{- end }}
       ipvsadm
-    yum versionlock docker-ce-*
+    yum versionlock add docker-ce-*
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
     # set kubelet nodeip environment variable

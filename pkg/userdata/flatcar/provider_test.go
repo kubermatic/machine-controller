@@ -109,6 +109,7 @@ type userDataTestCase struct {
 	registryMirrors       []string
 	pauseImage            string
 	hyperkubeImage        string
+	kubeletImage          string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -145,6 +146,39 @@ func TestUserDataGeneration(t *testing.T) {
 			osConfig: &Config{
 				DisableAutoUpdate: true,
 			},
+			hyperkubeImage: "for-kubernetes-less-then-1.18/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.18/kubeletImage",
+		},
+		{
+			name: "v1.18.0",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.18.0",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.18/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.18/kubeletImage",
 		},
 	}
 
@@ -188,6 +222,7 @@ func TestUserDataGeneration(t *testing.T) {
 				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 				HyperkubeImage:        test.hyperkubeImage,
+				KubeletRepository:     test.kubeletImage,
 			}
 
 			s, err := provider.UserData(req)

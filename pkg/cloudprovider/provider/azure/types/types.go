@@ -36,10 +36,18 @@ type RawConfig struct {
 	AvailabilitySet   providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	SecurityGroupName providerconfigtypes.ConfigVarString `json:"securityGroupName"`
 	Zones             []string                            `json:"zones"`
+	ImagePlan         *ImagePlan                          `json:"imagePlan"`
 
 	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`
 	DataDiskSize   int32                               `json:"dataDiskSize"`
 	AssignPublicIP providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
 	Tags           map[string]string                   `json:"tags,omitempty"`
+}
+
+// ImagePlan contains azure OS Plan fields for the marketplace images
+type ImagePlan struct {
+	Name      string `json:"name,omitempty"`
+	Publisher string `json:"publisher,omitempty"`
+	Product   string `json:"product,omitempty"`
 }

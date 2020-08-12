@@ -82,6 +82,7 @@ type config struct {
 	SecurityGroupName string
 	ImageID           string
 	Zones             []string
+	ImagePlan         *compute.Plan
 
 	OSDiskSize   int32
 	DataDiskSize int32
@@ -265,6 +266,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.Tags = rawCfg.Tags
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
+
+	if rawCfg.ImagePlan != nil {
+		c.ImagePlan = &compute.Plan{
+			Name:      pointer.StringPtr(rawCfg.ImagePlan.Name),
+			Publisher: pointer.StringPtr(rawCfg.ImagePlan.Publisher),
+			Product:   pointer.StringPtr(rawCfg.ImagePlan.Product),
+		}
+	}
 
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
@@ -493,6 +502,11 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 	tags[machineUIDTag] = to.StringPtr(string(machine.UID))
 
+	osPlane := osPlans[providerCfg.OperatingSystem]
+	if config.ImagePlan != nil {
+		osPlane = config.ImagePlan
+	}
+
 	adminUserName := getOSUsername(providerCfg.OperatingSystem)
 	storageProfile, err := getStorageProfile(config, providerCfg)
 	if err != nil {
@@ -500,7 +514,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
-		Plan:     osPlans[providerCfg.OperatingSystem],
+		Plan:     osPlane,
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
 			HardwareProfile: &compute.HardwareProfile{VMSize: compute.VirtualMachineSizeTypes(config.VMSize)},
 			NetworkProfile: &compute.NetworkProfile{

@@ -149,7 +149,7 @@ write_files:
   content: |
 {{ kernelSettings | indent 4 }}
 
-- path: /etc/sysconfig/selinux
+- path: /etc/selinux/config
   content: |
     # This file controls the state of SELinux on the system.
     # SELINUX= can take one of these three values:
@@ -176,9 +176,7 @@ write_files:
     sysctl --system
 
 {{- /* Make sure we always disable swap - Otherwise the kubelet won't start */}}
-    cp /etc/fstab /etc/fstab.orig
-    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
-    mv /etc/fstab.noswap /etc/fstab
+    sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
     {{ if ne .CloudProviderName "aws" }}
 {{- /*  The normal way of setting it via cloud-init is broken, see */}}
@@ -186,14 +184,14 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    subscription-manager clean
-    subscription-manager register --username='{{.OSConfig.RHELSubscriptionManagerUser}}' --password='{{.OSConfig.RHELSubscriptionManagerPassword}}'
-    subscription-manager attach --auto
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+{{- /*	Due to DNF modules we have to do this on docker-ce repo
+		More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473 */}}
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
-    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-
-    DOCKER_VERSION='18.09.1-3.el7'
-    dnf install -y docker-ce-${DOCKER_VERSION} \
+    DOCKER_VERSION='18.09.9-3.el7'
+    yum install -y docker-ce-${DOCKER_VERSION} \
       docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
       ethtool \
@@ -203,13 +201,12 @@ write_files:
       socat \
       wget \
       curl \
-      python3-dnf-plugin-versionlock \
+      yum-plugin-versionlock \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
       ipvsadm
-    dnf versionlock add docker-ce docker-ce-cli
-    dnf clean all
+    yum versionlock add docker-ce-*
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
     # set kubelet nodeip environment variable
@@ -314,6 +311,18 @@ write_files:
   content: |
     [Service]
     EnvironmentFile=-/etc/environment
+
+rh_subscription:
+{{- if .OSConfig.RHELUseSatelliteServer }}
+    org: "{{.OSConfig.RHELOrganizationName}}"
+    activation-key: "{{.OSConfig.RHELActivationKey}}"
+    server-hostname: {{ .OSConfig.RHELSatelliteServer }}
+    rhsm-baseurl: https://{{ .OSConfig.RHELSatelliteServer }}/pulp/repos
+{{- else }}
+    username: "{{.OSConfig.RHELSubscriptionManagerUser}}"
+    password: "{{.OSConfig.RHELSubscriptionManagerPassword}}"
+    auto-attach: true
+{{- end }}
 
 runcmd:
 - systemctl enable --now setup.service

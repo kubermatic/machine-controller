@@ -21,6 +21,7 @@ limitations under the License.
 package gce
 
 import (
+	"fmt"
 	"strconv"
 
 	"google.golang.org/api/compute/v1"
@@ -44,7 +45,9 @@ const (
 
 // googleInstance implements instance.Instance for the Google compute instance.
 type googleInstance struct {
-	ci *compute.Instance
+	ci        *compute.Instance
+	projectID string
+	zone      string
 }
 
 // Name implements instance.Instance.
@@ -66,7 +69,29 @@ func (gi *googleInstance) Addresses() map[string]v1.NodeAddressType {
 	addrs := map[string]v1.NodeAddressType{}
 	for _, ifc := range gi.ci.NetworkInterfaces {
 		addrs[ifc.NetworkIP] = v1.NodeInternalIP
+		for _, ac := range ifc.AccessConfigs {
+			addrs[ac.NatIP] = v1.NodeExternalIP
+		}
 	}
+
+	// GCE has two types of the internal DNS, so we need to take both
+	// into the account:
+	// https://cloud.google.com/compute/docs/internal-dns#instance-fully-qualified-domain-names
+	// Zonal DNS is present for newer projects and has the following FQDN format:
+	// [INSTANCE_NAME].[ZONE].c.[PROJECT_ID].internal
+	zonalDNS := fmt.Sprintf("%s.%s.c.%s.internal", gi.ci.Name, gi.zone, gi.projectID)
+	addrs[zonalDNS] = v1.NodeInternalDNS
+
+	// Global DNS is present for older projects and has the following FQDN format:
+	// [INSTANCE_NAME].c.[PROJECT_ID].internal
+	globalDNS := fmt.Sprintf("%s.c.%s.internal", gi.ci.Name, gi.projectID)
+	addrs[globalDNS] = v1.NodeInternalDNS
+
+	// GCP provides the search paths to resolve the machine's name,
+	// so we add is as a DNS name
+	// https://cloud.google.com/compute/docs/internal-dns#resolv.conf
+	addrs[gi.ci.Name] = v1.NodeInternalDNS
+
 	return addrs
 }
 

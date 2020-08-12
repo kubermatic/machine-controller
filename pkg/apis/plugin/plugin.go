@@ -53,6 +53,7 @@ type UserDataRequest struct {
 	MaxLogSize            string
 	PauseImage            string
 	HyperkubeImage        string
+	KubeletRepository     string
 }
 
 // UserDataResponse contains the responded user data.

@@ -37,23 +37,24 @@ func init() {
 }
 
 const (
-	DOManifest                  = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest                 = "./testdata/machinedeployment-aws.yaml"
-	AWSEBSEncryptedManifest     = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
-	AzureManifest               = "./testdata/machinedeployment-azure.yaml"
-	GCEManifest                 = "./testdata/machinedeployment-gce.yaml"
-	HZManifest                  = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest              = "./testdata/machinedeployment-packet.yaml"
-	LinodeManifest              = "./testdata/machinedeployment-linode.yaml"
-	VSPhereManifest             = "./testdata/machinedeployment-vsphere.yaml"
-	VSPhereDSCManifest          = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
-	VSPhereResourcePoolManifest = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
-	OSManifest                  = "./testdata/machinedeployment-openstack.yaml"
-	OSUpgradeManifest           = "./testdata/machinedeployment-openstack-upgrade.yml"
-	invalidMachineManifest      = "./testdata/machine-invalid.yaml"
-	kubevirtManifest            = "./testdata/machinedeployment-kubevirt.yaml"
-	kubevirtManifestDNSConfig   = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
-	alibabaManifest             = "./testdata/machinedeployment-alibaba.yaml"
+	DOManifest                   = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest                  = "./testdata/machinedeployment-aws.yaml"
+	AWSEBSEncryptedManifest      = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
+	AzureManifest                = "./testdata/machinedeployment-azure.yaml"
+	AzureRedhatSatelliteManifest = "./testdata/machinedeployment-azure.yaml"
+	GCEManifest                  = "./testdata/machinedeployment-gce.yaml"
+	HZManifest                   = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest               = "./testdata/machinedeployment-packet.yaml"
+	LinodeManifest               = "./testdata/machinedeployment-linode.yaml"
+	VSPhereManifest              = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereDSCManifest           = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
+	VSPhereResourcePoolManifest  = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
+	OSManifest                   = "./testdata/machinedeployment-openstack.yaml"
+	OSUpgradeManifest            = "./testdata/machinedeployment-openstack-upgrade.yml"
+	invalidMachineManifest       = "./testdata/machine-invalid.yaml"
+	kubevirtManifest             = "./testdata/machinedeployment-kubevirt.yaml"
+	kubevirtManifestDNSConfig    = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
+	alibabaManifest              = "./testdata/machinedeployment-alibaba.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -85,7 +86,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := Not(OsSelector("sles", "flatcar"))
+	selector := Not(OsSelector("sles", "flatcar", "rhel"))
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
 	}
@@ -176,7 +177,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := Not(OsSelector("sles", "rhel"))
+	selector := Not(OsSelector("sles"))
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -203,6 +204,29 @@ func TestAWSSLESProvisioningE2E(t *testing.T) {
 
 	// We would like to test SLES image only in this test as the other images are tested in TestAWSProvisioningE2E
 	selector := OsSelector("sles")
+	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+}
+
+func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
+		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+	}
+
+	amiID := "ami-032025b3afcbb6b34" // official "CentOS 8.2.2004 x86_64"
+
+	params := []string{
+		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+		fmt.Sprintf("<< AMI >>=%s", amiID),
+	}
+
+	// We would like to test CentOS8 image only in this test as the other images are tested in TestAWSProvisioningE2E
+	selector := OsSelector("centos")
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
@@ -247,7 +271,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel"))
+	selector := Not(OsSelector("sles"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -256,6 +280,40 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
 	}
 	runScenarios(t, selector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+}
+
+// TestAzureRedhatSatelliteProvisioningE2E - a test suite that exercises Azure provider
+// by requesting rhel node and subscribe to redhat satellite server.
+func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
+	t.Parallel()
+	t.Skip()
+
+	// test data
+	azureTenantID := os.Getenv("AZURE_E2E_TESTS_TENANT_ID")
+	azureSubscriptionID := os.Getenv("AZURE_E2E_TESTS_SUBSCRIPTION_ID")
+	azureClientID := os.Getenv("AZURE_E2E_TESTS_CLIENT_ID")
+	azureClientSecret := os.Getenv("AZURE_E2E_TESTS_CLIENT_SECRET")
+	if len(azureTenantID) == 0 || len(azureSubscriptionID) == 0 || len(azureClientID) == 0 || len(azureClientSecret) == 0 {
+		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
+	}
+
+	// act
+	params := []string{
+		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
+		fmt.Sprintf("<< AZURE_SUBSCRIPTION_ID >>=%s", azureSubscriptionID),
+		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
+		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
+	}
+
+	scenario := scenario{
+		name:              "Azure redhat satellite server subscription",
+		osName:            "rhel",
+		containerRuntime:  "docker",
+		kubernetesVersion: "v1.17.0",
+		executor:          verifyCreateAndDelete,
+	}
+
+	testScenario(t, scenario, *testRunIdentifier, params, AzureRedhatSatelliteManifest, false)
 }
 
 // TestGCEProvisioningE2E - a test suite that exercises Google Cloud provider
@@ -406,7 +464,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar", "rhel"))
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, selector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
