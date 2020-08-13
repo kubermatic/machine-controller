@@ -21,7 +21,6 @@ cd $(dirname $0)
 
 export ADDR=$(terraform output -json|jq '.ip.value' -r)
 
-
 ssh_exec() { ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@$ADDR $@; }
 
 for try in {1..100}; do
@@ -39,8 +38,10 @@ for try in {1..20}; do
 if cat <<EOEXEC |ssh_exec
 set -ex
 
-echo "$E2E_SSH_PUBKEY" >> .ssh/authorized_keys
+# make job variables available on the remote server
+export EXTERNAL_CLOUD_PROVIDER="${EXTERNAL_CLOUD_PROVIDER:-false}"
 
+echo "$E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 
 # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
 systemctl mask swap.target
@@ -101,12 +102,12 @@ if ! ls machine-controller-deployed; then
   touch machine-controller-deployed
 fi
 
-for try in {1..10}; do
+for try in {1..20}; do
   if kubectl get pods -n kube-system|egrep '^machine-controller'|grep -v webhook|grep Running; then
     echo "Success!"
     exit 0
   fi
-  sleep 10s
+  sleep 5s
 done
 
 echo "Error: machine-controller didn't come up within 100 seconds!"

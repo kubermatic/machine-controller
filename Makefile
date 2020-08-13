@@ -24,6 +24,8 @@ export GIT_TAG ?= $(shell git tag --points-at HEAD)
 
 export GOFLAGS?=-mod=readonly -trimpath
 
+export EXTERNAL_CLOUD_PROVIDER ?= false
+
 REGISTRY ?= docker.io
 REGISTRY_NAMESPACE ?= kubermatic
 
@@ -130,6 +132,7 @@ examples/admission-cert.pem: examples/admission-key.pem
 .PHONY: deploy
 deploy: examples/admission-cert.pem
 	@cat examples/machine-controller.yaml \
+		|sed "s/__external_cloud_provider__/$(EXTERNAL_CLOUD_PROVIDER)/g" \
 		|sed "s/__admission_ca_cert__/$(shell cat examples/ca-cert.pem|base64 -w0)/g" \
 		|sed "s/__admission_cert__/$(shell cat examples/admission-cert.pem|base64 -w0)/g" \
 		|sed "s/__admission_key__/$(shell cat examples/admission-key.pem|base64 -w0)/g" \

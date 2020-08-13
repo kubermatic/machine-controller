@@ -33,9 +33,9 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.15.6"),
-		semver.MustParse("v1.16.3"),
-		semver.MustParse("v1.17.0"),
+		semver.MustParse("v1.16.14"),
+		semver.MustParse("v1.17.11"),
+		semver.MustParse("v1.18.8"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
@@ -48,6 +48,14 @@ var (
 	}
 
 	openStackImages = map[string]string{
+		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu",
+		string(providerconfigtypes.OperatingSystemCoreos):  "machine-controller-e2e-coreos",
+		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemRHEL):    "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar",
+	}
+
+	otcImages = map[string]string{
 		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu",
 		string(providerconfigtypes.OperatingSystemCoreos):  "machine-controller-e2e-coreos",
 		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
@@ -179,6 +187,9 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
+
+	// only used by OTC scenarios
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< IMAGE_NAME >>=%s", otcImages[testCase.osName]))
 
 	// default kubeconfig to the hardcoded path at which `make e2e-cluster` creates its new kubeconfig
 	gopath := os.Getenv("GOPATH")

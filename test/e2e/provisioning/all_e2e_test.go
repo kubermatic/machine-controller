@@ -51,6 +51,7 @@ const (
 	VSPhereResourcePoolManifest  = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
 	OSManifest                   = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest            = "./testdata/machinedeployment-openstack-upgrade.yml"
+	OTCManifest                  = "./testdata/machinedeployment-otc.yaml"
 	invalidMachineManifest       = "./testdata/machine-invalid.yaml"
 	kubevirtManifest             = "./testdata/machinedeployment-kubevirt.yaml"
 	kubevirtManifestDNSConfig    = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
@@ -145,6 +146,35 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 
 	selector := Not(OsSelector("sles", "rhel"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
+}
+
+func TestOTCProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	accessKey := os.Getenv("OS_ACCESS_KEY")
+	secretKey := os.Getenv("OS_SECRET_KEY")
+	domainName := os.Getenv("OS_DOMAIN_NAME")
+	tenantID := os.Getenv("OS_TENANT_ID")
+	networkName := os.Getenv("OS_NETWORK_NAME")
+	vpcID := os.Getenv("OS_VPC_ID")
+	region := os.Getenv("OS_REGION")
+
+	if accessKey == "" || secretKey == "" || domainName == "" || tenantID == "" || networkName == "" || vpcID == "" || region == "" {
+		t.Fatal("unable to run test suite, all of OS_ACCESS_KEY, OS_SECRET_KEY, OS_DOMAIN_NAME, OS_TENANT_ID, OS_NETWORK_NAME, OS_VPC_ID and OS_REGION must be set!")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< ACCESS_KEY >>=%s", accessKey),
+		fmt.Sprintf("<< SECRET_KEY >>=%s", secretKey),
+		fmt.Sprintf("<< DOMAIN_NAME >>=%s", domainName),
+		fmt.Sprintf("<< TENANT_ID >>=%s", tenantID),
+		fmt.Sprintf("<< NETWORK_NAME >>=%s", networkName),
+		fmt.Sprintf("<< VPC_ID >>=%s", vpcID),
+		fmt.Sprintf("<< REGION >>=%s", region),
+	}
+
+	selector := Not(OsSelector("sles", "rhel"))
+	runScenarios(t, selector, params, OTCManifest, fmt.Sprintf("otc-%s", *testRunIdentifier))
 }
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider

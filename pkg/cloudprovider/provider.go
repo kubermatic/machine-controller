@@ -30,6 +30,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/otc"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/packet"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -52,6 +53,9 @@ var (
 		},
 		providerconfigtypes.CloudProviderOpenstack: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return openstack.New(cvr)
+		},
+		providerconfigtypes.CloudProviderOTC: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return otc.New(cvr)
 		},
 		providerconfigtypes.CloudProviderGoogle: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return gce.New(cvr)

@@ -72,11 +72,11 @@ func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 	}
 }`)
 	if err != nil {
-		t.Fatalf("Error occurred while parsing openstack provider spec template: %v", err)
+		t.Fatalf("Error occurred while parsing vsphere provider spec template: %v", err)
 	}
 	err = tmpl.Execute(&out, v)
 	if err != nil {
-		t.Fatalf("Error occurred while executing openstack provider spec template: %v", err)
+		t.Fatalf("Error occurred while executing vsphere provider spec template: %v", err)
 	}
 	t.Logf("Generated providerSpec: %s", out.String())
 	return out.Bytes()

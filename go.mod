@@ -11,6 +11,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/Masterminds/semver v1.4.2
 	github.com/Masterminds/sprig v2.15.0+incompatible
+	github.com/RainbowMango/huaweicloud-sdk-go v0.0.0
 	github.com/ajeddeloh/go-json v0.0.0-20170920214419-6a2fe990e083 // indirect
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190828035149-111b102694f9
@@ -96,6 +97,7 @@ require (
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.3.0+incompatible
+	github.com/RainbowMango/huaweicloud-sdk-go => github.com/RainbowMango/huaweicloud-sdk-go v1.0.21-0.20200208034621-214008016257
 	github.com/coreos/prometheus-operator => github.com/coreos/prometheus-operator v0.28.0
 	k8s.io/client-go => k8s.io/client-go v0.16.4
 )

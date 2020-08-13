@@ -17,10 +17,10 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-
-COREOS_IMAGE_NAME=${COREOS_IMAGE_NAME:-"machine-controller-coreos"}
-UBUNTU_IMAGE_NAME=${UBUNTU_IMAGE_NAME:-"machine-controller-ubuntu"}
-CENTOS_IMAGE_NAME=${CENTOS_IMAGE_NAME:-"machine-controller-centos"}
+COREOS_IMAGE_NAME=${COREOS_IMAGE_NAME:-"machine-controller-e2e-coreos"}
+FLATCAR_IMAGE_NAME=${FLATCAR_IMAGE_NAME:-"machine-controller-e2e-flatcar"}
+UBUNTU_IMAGE_NAME=${UBUNTU_IMAGE_NAME:-"machine-controller-e2e-ubuntu"}
+CENTOS_IMAGE_NAME=${CENTOS_IMAGE_NAME:-"machine-controller-e2e-centos"}
 
 echo "Downloading Ubuntu 18.04 image from upstream..."
 curl -L -o ubuntu.img http://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img
@@ -44,6 +44,18 @@ openstack image create \
   ${COREOS_IMAGE_NAME}
 rm coreos.img
 echo "Successfully uploaded ${COREOS_IMAGE_NAME} to OpenStack..."
+
+echo "Downloading Flatcar image from upstream..."
+curl -L -o flatcar.img.bz2 https://stable.release.flatcar-linux.net/amd64-usr/current/flatcar_production_openstack_image.img.bz2
+bunzip2 flatcar.img.bz2
+echo "Uploading Flatcar image to OpenStack..."
+openstack image create \
+  --container-format bare \
+  --disk-format qcow2 \
+  --file flatcar.img \
+  ${FLATCAR_IMAGE_NAME}
+rm flatcar.img
+echo "Successfully uploaded ${FLATCAR_IMAGE_NAME} to OpenStack..."
 
 echo "Downloading CentOS 7 image from upstream..."
 curl -L -o centos.qcow2 http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2

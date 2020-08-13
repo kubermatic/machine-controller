@@ -61,6 +61,16 @@ presubmits:
             requests:
               cpu: 200m
 
+  - name: pull-machine-controller-verify-boilerplate
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    spec:
+      containers:
+        - image: python:2.7
+          command:
+            - "./hack/verify-boilerplate.sh"
+
   - name: pull-machine-controller-test
     always_run: true
     decorate: true
@@ -456,16 +466,6 @@ presubmits:
               memory: 1Gi
               cpu: 500m
 
-  - name: pull-machine-controller-verify-boilerplate
-    always_run: true
-    decorate: true
-    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
-    spec:
-      containers:
-        - image: python:2.7
-          command:
-            - "./hack/verify-boilerplate.sh"
-
   - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
     always_run: true
     decorate: true
@@ -568,6 +568,33 @@ presubmits:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestVsphereResourcePoolProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-otc
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-otc: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.13.8
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestOTCProvisioningE2E"
+          env:
+          - name: OS_NETWORK_NAME
+            value: e2e-tests
+          - name: EXTERNAL_CLOUD_PROVIDER
+            value: "true"
           resources:
             requests:
               memory: 1Gi

@@ -291,14 +291,15 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 	}
 
 	if shouldExist != nodeForMachineExists {
-		return fmt.Errorf("expected node to exists=%v but could find node=%v", shouldExist, nodeForMachineExists)
+		return fmt.Errorf("expected node to exists=%v, but it does not", shouldExist)
 	}
+
 	return nil
 }
 
 func isNodeForMachine(node *corev1.Node, machine *clusterv1alpha1.Machine) bool {
 	// This gets called before the Objects are persisted in the API
-	// which means UI will be emppy for machine
+	// which means UID will be empty for machine
 	if string(machine.UID) == "" {
 		return false
 	}

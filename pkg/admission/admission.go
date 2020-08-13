@@ -109,7 +109,6 @@ type mutator func(admissionv1beta1.AdmissionReview) (*admissionv1beta1.Admission
 
 func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		// We must always return an AdmissionReview with an AdmissionResponse
 		// even on error, hence the admissionExecutor  func, this makes error handling much easier
 		admissionResponse, err := admissionExecutor(r, mutate)
@@ -126,6 +125,7 @@ func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) 
 			klog.Errorf("failed to marshal admissionResponse: %v", err)
 			return
 		}
+
 		if _, err := w.Write(resp); err != nil {
 			klog.Errorf("failed to write admissionResponse: %v", err)
 		}

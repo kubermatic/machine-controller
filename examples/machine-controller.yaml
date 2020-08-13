@@ -164,6 +164,7 @@ spec:
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -internal-listen-address=0.0.0.0:8085
+            - -external-cloud-provider=__external_cloud_provider__
             # Machines that fail to join the cluster within this timeout and
             # are owned by a MachineSet will get deleted so the MachineSet
             # controller re-creates them
