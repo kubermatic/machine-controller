@@ -397,4 +397,4 @@ rh_subscription:
     auto-attach: true
 
 runcmd:
-- systemctl enable --now setup.service
+- systemctl start setup.service
