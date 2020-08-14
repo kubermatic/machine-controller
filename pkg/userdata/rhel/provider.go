@@ -325,5 +325,5 @@ rh_subscription:
 {{- end }}
 
 runcmd:
-- systemctl enable --now setup.service
+- systemctl start setup.service
 `

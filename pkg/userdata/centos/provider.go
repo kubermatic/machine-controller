@@ -315,5 +315,5 @@ write_files:
     EnvironmentFile=-/etc/environment
 
 runcmd:
-- systemctl enable --now setup.service
+- systemctl start setup.service
 `
