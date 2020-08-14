@@ -409,4 +409,6 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
-{{ safeDownloadBinariesScript .KubeletVersion | indent 10 }}`
+{{ safeDownloadBinariesScript .KubeletVersion | indent 10 }}
+          systemctl disable download-script.service
+`
