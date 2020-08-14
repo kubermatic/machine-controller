@@ -56,6 +56,7 @@ spec:
             subnetId: "subnet-2bff4f43"
             instanceType: "t2.micro"
             instanceProfile: "kubernetes-v1"
+            isSpotInstance: false
             diskSize: 50
             diskType: "gp2"
             ebsVolumeEncrypted: false

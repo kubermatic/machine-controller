@@ -23,7 +23,6 @@ package flatcar
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"text/template"
 
 	"github.com/Masterminds/semver"
@@ -33,12 +32,15 @@ import (
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
 
+const (
+	lessThen118Check = "< 1.18"
+)
+
 // Provider is a pkg/userdata/plugin.Provider implementation.
 type Provider struct{}
 
 // UserData renders user-data template to string.
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
-
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %v", err)
@@ -73,37 +75,40 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
-	// We need to reconfigure rkt to allow insecure registries in case the hyperkube image comes from an insecure registry
-	var insecureHyperkubeImage bool
-	for _, registry := range req.InsecureRegistries {
-		if strings.Contains(req.HyperkubeImage, registry) {
-			insecureHyperkubeImage = true
-		}
-	}
-
 	if flatcarConfig.DisableAutoUpdate {
 		flatcarConfig.DisableLocksmithD = true
 		flatcarConfig.DisableUpdateEngine = true
 	}
 
+	kubeletImage := req.KubeletRepository
+	lessThen118, err := semver.NewConstraint(lessThen118Check)
+	if err != nil {
+		return "", err
+	}
+
+	if lessThen118.Check(kubeletVersion) {
+		kubeletImage = req.HyperkubeImage
+	}
+	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
+
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec           *providerconfigtypes.Config
-		FlatcarConfig          *Config
-		Kubeconfig             string
-		KubernetesCACert       string
-		KubeletVersion         string
-		InsecureHyperkubeImage bool
-		NodeIPScript           string
+		ProviderSpec     *providerconfigtypes.Config
+		FlatcarConfig    *Config
+		Kubeconfig       string
+		KubernetesCACert string
+		KubeletImage     string
+		KubeletVersion   string
+		NodeIPScript     string
 	}{
-		UserDataRequest:        req,
-		ProviderSpec:           pconfig,
-		FlatcarConfig:          flatcarConfig,
-		Kubeconfig:             kubeconfigString,
-		KubernetesCACert:       kubernetesCACert,
-		KubeletVersion:         kubeletVersion.String(),
-		InsecureHyperkubeImage: insecureHyperkubeImage,
-		NodeIPScript:           userdatahelper.SetupNodeIPEnvScript(),
+		UserDataRequest:  req,
+		ProviderSpec:     pconfig,
+		FlatcarConfig:    flatcarConfig,
+		Kubeconfig:       kubeconfigString,
+		KubernetesCACert: kubernetesCACert,
+		KubeletImage:     kubeletImage,
+		KubeletVersion:   kubeletVersion.String(),
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -164,7 +169,7 @@ systemd:
             Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
 
-    - name: download-healthcheck-script.service
+    - name: download-script.service
       enabled: true
       contents: |
         [Unit]
@@ -183,8 +188,8 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-script.service
+          After=download-script.service
       contents: |
 {{ containerRuntimeHealthCheckSystemdUnit | indent 10 }}
 
@@ -194,8 +199,8 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-script.service
+          After=download-script.service
       contents: |
 {{ kubeletHealthCheckSystemdUnit | indent 10 }}
 
@@ -227,38 +232,42 @@ systemd:
         MemoryAccounting=true
         EnvironmentFile=-/etc/environment
         EnvironmentFile=/etc/kubernetes/nodeip.conf
-{{- if .HTTPProxy }}
-        Environment=KUBELET_IMAGE=docker://{{ .HyperkubeImage }}:v{{ .KubeletVersion }}
-{{- else }}
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v{{ .KubeletVersion }}
-{{- end }}
-        Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
-          --inherit-env \
-          --insecure-options=image{{if .InsecureHyperkubeImage }},http{{ end }} \
-          --volume=resolv,kind=host,source=/etc/resolv.conf \
-          --mount volume=resolv,target=/etc/resolv.conf \
-          --volume cni-bin,kind=host,source=/opt/cni/bin \
-          --mount volume=cni-bin,target=/opt/cni/bin \
-          --volume cni-conf,kind=host,source=/etc/cni/net.d \
-          --mount volume=cni-conf,target=/etc/cni/net.d \
-          --volume etc-kubernetes,kind=host,source=/etc/kubernetes \
-          --mount volume=etc-kubernetes,target=/etc/kubernetes \
-          --volume var-log,kind=host,source=/var/log \
-          --mount volume=var-log,target=/var/log \
-          --volume var-lib-calico,kind=host,source=/var/lib/calico \
-          --mount volume=var-lib-calico,target=/var/lib/calico"
+        Environment=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/bin
         ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
         ExecStartPre=/bin/mkdir -p /var/lib/calico
         ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
         ExecStartPre=/bin/mkdir -p /etc/cni/net.d
         ExecStartPre=/bin/mkdir -p /opt/cni/bin
-        ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
-        ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-        ExecStart=/usr/lib/flatcar/kubelet-wrapper \
-{{ if semverCompare ">=1.17.0" .KubeletVersion }}{{ print "          kubelet \\\n" }}{{ end -}}
+        ExecStartPre=/bin/sh -c '/usr/bin/env > /tmp/environment'
+        ExecStart=/usr/bin/docker run --name %n \
+          --rm --tty --restart no \
+          --network host \
+          --pid host \
+          --env-file /tmp/environment \
+          --privileged \
+          --cgroup-parent system.slice \
+          --entrypoint kubelet \
+          -v /dev:/dev \
+          -v /etc/cni/net.d:/etc/cni/net.d \
+          -v /etc/kubernetes:/etc/kubernetes \
+          -v /etc/machine-id:/etc/machine-id:ro \
+          -v /etc/os-release:/etc/os-release:ro \
+          -v /etc/resolv.conf:/etc/resolv.conf:ro \
+          -v /lib/modules:/lib/modules \
+          -v /mnt:/mnt:rshared \
+          -v /opt/cni/bin:/opt/cni/bin:ro \
+          -v /run:/run \
+          -v /sys:/sys \
+          -v /usr/sbin/iscsiadm:/usr/sbin/iscsiadm \
+          -v /var/lib/calico:/var/lib/calico:ro \
+          -v /var/lib/cni:/var/lib/cni \
+          -v /var/lib/docker:/var/lib/docker \
+          -v /var/lib/kubelet:/var/lib/kubelet:rshared \
+          -v /var/log/pods:/var/log/pods \
+          {{ .KubeletImage }} \
 {{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 10 }}
-        ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
+        ExecStop=-/usr/bin/docker stop %n
         Restart=always
         RestartSec=10
         [Install]

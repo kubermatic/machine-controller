@@ -22,27 +22,38 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "openstack"
+          cloudProvider: "azure"
           cloudProviderSpec:
-            identityEndpoint: "<< IDENTITY_ENDPOINT >>"
-            username: "<< USERNAME >>"
-            password: "<< PASSWORD >>"
-            tenantName: "<< TENANT_NAME >>"
-            image: "machine-controller-e2e-ubuntu"
-            flavor: "m1.small"
-            floatingIpPool: ""
-            domainName: "<< DOMAIN_NAME >>"
-            region: "<< REGION >>"
-            network: "<< NETWORK_NAME >>"
-            rootDiskSizeGB: 10
-            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
+            tenantID: "<< AZURE_TENANT_ID >>"
+            clientID: "<< AZURE_CLIENT_ID >>"
+            clientSecret: "<< AZURE_CLIENT_SECRET >>"
+            subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
+            location: "westeurope"
+            resourceGroup: "machine-controller-e2e"
+            vmSize: "Standard_F2"
+            # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
+            vnetName: "machine-controller-e2e"
+            subnetName: "machine-controller-e2e"
+            imageID: "<< IMAGE_ID >>"
+            assignPublicIP: true
+            zones:
+              - "1"
+            imagePlan:
+              name: ""
+              publisher: ""
+              product: ""
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
-            distUpgradeOnBoot: true
+            distUpgradeOnBoot: false
             disableAutoUpdate: true
             # 'rhelSubscriptionManagerUser' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_USER`
             rhelSubscriptionManagerUser: "<< RHEL_SUBSCRIPTION_MANAGER_USER >>"
             # 'rhelSubscriptionManagerPassword' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_PASSWORD`
             rhelSubscriptionManagerPassword: "<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>"
+            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
+            rhelSatelliteServer: ""
+            rhelUseSatelliteServer: false
+            rhelOrganizationName: ""
+            rhelActivationKey: ""
       versions:
-        kubelet: "<< KUBERNETES_VERSION >>"
+        kubelet: "1.17.0"

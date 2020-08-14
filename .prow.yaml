@@ -260,6 +260,29 @@ presubmits:
               memory: 1Gi
               cpu: 500m
 
+  - name: pull-machine-controller-e2e-azure-redhat-satellite
+    optional: true
+    always_run: false
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-azure: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-rhel: "true"
+    spec:
+      containers:
+        - image: golang:1.13.8
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAzureProvisioningE2ERedhatSatellite"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
   - name: pull-machine-controller-e2e-gce
     always_run: true
     decorate: true
@@ -480,6 +503,27 @@ presubmits:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestAWSSLESProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-aws-centos8
+    always_run: false
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-aws: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+    spec:
+      containers:
+        - image: golang:1.13.8
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAWSCentOS8ProvisioningE2E"
           resources:
             requests:
               memory: 1Gi

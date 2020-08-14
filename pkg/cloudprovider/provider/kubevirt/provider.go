@@ -332,7 +332,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		annotations map[string]string
 	)
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos ||
+		pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
 		annotations = map[string]string{
 			"kubevirt.io/ignitiondata": userdata,
 		}

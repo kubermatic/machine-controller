@@ -160,7 +160,11 @@ func (p *Provider) get(machine *v1alpha1.Machine) (*googleInstance, error) {
 	if len(insts.Items) > 1 {
 		return nil, newError(common.InvalidConfigurationMachineError, errGotTooManyInstances)
 	}
-	return &googleInstance{insts.Items[0]}, nil
+	return &googleInstance{
+		ci:        insts.Items[0],
+		projectID: cfg.projectID,
+		zone:      cfg.zone,
+	}, nil
 }
 
 // GetCloudConfig returns the cloud provider specific cloud-config for the kubelet.
