@@ -608,19 +608,39 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 }
 
 func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
-	selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
-	if err != nil {
-		return fmt.Errorf("failed to parse label selector: %v", err)
-	}
-	listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
-	nodes := &corev1.NodeList{}
-	if err := r.client.List(r.ctx, nodes, listOpts); err != nil {
-		return fmt.Errorf("failed to list nodes: %v", err)
-	}
+	// If there's NodeRef on the Machine object, remove the Node by using the
+	// value of the NodeRef. If there's no NodeRef, try to find the Node by
+	// listing nodes using the NodeOwner label selector.
+	if machine.Status.NodeRef != nil {
+		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
+		node := &corev1.Node{}
+		if err := r.client.Get(r.ctx, objKey, node); err != nil {
+			return fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
+		}
 
-	for _, node := range nodes.Items {
-		if err := r.client.Delete(r.ctx, &node); err != nil {
+		if err := r.client.Delete(r.ctx, node); err != nil {
 			return err
+		}
+	} else {
+		selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
+		if err != nil {
+			return fmt.Errorf("failed to parse label selector: %v", err)
+		}
+		listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
+		nodes := &corev1.NodeList{}
+		if err := r.client.List(r.ctx, nodes, listOpts); err != nil {
+			return fmt.Errorf("failed to list nodes: %v", err)
+		}
+		if len(nodes.Items) == 0 {
+			// We just want log that we didn't found the node. We don't want to
+			// return here, as we want to remove finalizers at the end.
+			klog.V(3).Infof("No node found for the machine %s", machine.Spec.Name)
+		}
+
+		for _, node := range nodes.Items {
+			if err := r.client.Delete(r.ctx, &node); err != nil {
+				return err
+			}
 		}
 	}
 
