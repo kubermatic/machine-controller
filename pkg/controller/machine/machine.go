@@ -619,7 +619,10 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 		}
 
 		if err := r.client.Delete(r.ctx, node); err != nil {
-			return err
+			if !kerrors.IsNotFound(err) {
+				return err
+			}
+			klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
 		}
 	} else {
 		selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
@@ -910,6 +913,15 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 		}
 		for _, nodeAddress := range node.Status.Addresses {
 			for instanceAddress := range instance.Addresses() {
+				// Hetzner reuses IP addresses, so if we rollout a Machine, it can happen that a new
+				// Machine has the same addresses as the old Machine.
+				// If we compare just IP addresses, machine-controller can adopt a Node object that is supposed
+				// to be deleted soon.
+				// TODO: Investigate about fixing this for other providers. Although, other providers don't
+				// reuse IP addresses that often.
+				if provider == providerconfigtypes.CloudProviderHetzner && node.Name != instance.Name() {
+					continue
+				}
 				if nodeAddress.Address == instanceAddress {
 					return node.DeepCopy(), true, nil
 				}
