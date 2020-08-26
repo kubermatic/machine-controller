@@ -99,7 +99,8 @@ func TestController_GetNode(t *testing.T) {
 	node1 := getTestNode("1", "aws")
 	node2 := getTestNode("2", "openstack")
 	node3 := getTestNode("3", "")
-	nodeList := []*corev1.Node{&node1, &node2, &node3}
+	node4 := getTestNode("4", "hetzner")
+	nodeList := []*corev1.Node{&node1, &node2, &node3, &node4}
 
 	tests := []struct {
 		name     string
@@ -148,6 +149,38 @@ func TestController_GetNode(t *testing.T) {
 			exists:   true,
 			err:      nil,
 			instance: &fakeInstance{id: "3", addresses: map[string]corev1.NodeAddressType{"172.16.1.3": corev1.NodeInternalIP}},
+		},
+		{
+			name:     "hetzner node found by internal ip",
+			provider: "hetzner",
+			resNode:  &node3,
+			exists:   true,
+			err:      nil,
+			instance: &fakeInstance{id: "3", name: "node3", addresses: map[string]corev1.NodeAddressType{"192.168.1.3": corev1.NodeInternalIP}},
+		},
+		{
+			name:     "hetzner node found by external ip",
+			provider: "hetzner",
+			resNode:  &node3,
+			exists:   true,
+			err:      nil,
+			instance: &fakeInstance{id: "3", name: "node3", addresses: map[string]corev1.NodeAddressType{"172.16.1.3": corev1.NodeExternalIP}},
+		},
+		{
+			name:     "hetzner node not found - node and instance names mismatch",
+			provider: "hetzner",
+			resNode:  nil,
+			exists:   false,
+			err:      nil,
+			instance: &fakeInstance{id: "3", name: "instance3", addresses: map[string]corev1.NodeAddressType{"192.168.1.3": corev1.NodeInternalIP}},
+		},
+		{
+			name:     "hetzner node found by provider id",
+			provider: "hetzner",
+			resNode:  &node4,
+			exists:   true,
+			err:      nil,
+			instance: &fakeInstance{id: "4", addresses: map[string]corev1.NodeAddressType{"": ""}},
 		},
 	}
 
