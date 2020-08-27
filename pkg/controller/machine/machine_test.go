@@ -26,6 +26,7 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -99,7 +101,8 @@ func TestController_GetNode(t *testing.T) {
 	node1 := getTestNode("1", "aws")
 	node2 := getTestNode("2", "openstack")
 	node3 := getTestNode("3", "")
-	nodeList := []*corev1.Node{&node1, &node2, &node3}
+	node4 := getTestNode("4", "hetzner")
+	nodeList := []*corev1.Node{&node1, &node2, &node3, &node4}
 
 	tests := []struct {
 		name     string
@@ -148,6 +151,38 @@ func TestController_GetNode(t *testing.T) {
 			exists:   true,
 			err:      nil,
 			instance: &fakeInstance{id: "3", addresses: map[string]corev1.NodeAddressType{"172.16.1.3": corev1.NodeInternalIP}},
+		},
+		{
+			name:     "hetzner node found by internal ip",
+			provider: "hetzner",
+			resNode:  &node3,
+			exists:   true,
+			err:      nil,
+			instance: &fakeInstance{id: "3", name: "node3", addresses: map[string]corev1.NodeAddressType{"192.168.1.3": corev1.NodeInternalIP}},
+		},
+		{
+			name:     "hetzner node found by external ip",
+			provider: "hetzner",
+			resNode:  &node3,
+			exists:   true,
+			err:      nil,
+			instance: &fakeInstance{id: "3", name: "node3", addresses: map[string]corev1.NodeAddressType{"172.16.1.3": corev1.NodeExternalIP}},
+		},
+		{
+			name:     "hetzner node not found - node and instance names mismatch",
+			provider: "hetzner",
+			resNode:  nil,
+			exists:   false,
+			err:      nil,
+			instance: &fakeInstance{id: "3", name: "instance3", addresses: map[string]corev1.NodeAddressType{"192.168.1.3": corev1.NodeInternalIP}},
+		},
+		{
+			name:     "hetzner node found by provider id",
+			provider: "hetzner",
+			resNode:  &node4,
+			exists:   true,
+			err:      nil,
+			instance: &fakeInstance{id: "4", addresses: map[string]corev1.NodeAddressType{"": ""}},
 		},
 	}
 
@@ -423,6 +458,140 @@ func TestControllerShouldEvict(t *testing.T) {
 
 			if shouldEvict != test.shouldEvict {
 				t.Errorf("Expected shouldEvict to be %v but got %v instead", test.shouldEvict, shouldEvict)
+			}
+		})
+	}
+}
+
+func TestControllerDeleteNodeForMachine(t *testing.T) {
+	machineUID := types.UID("test-1")
+
+	tests := []struct {
+		name             string
+		machine          *clusterv1alpha1.Machine
+		nodes            []runtime.Object
+		err              error
+		shouldDeleteNode string
+	}{
+		{
+			name: "delete node by nodeRef",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "machine-1",
+					Finalizers: []string{"machine-node-delete-finalizer"},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "node-1"},
+				},
+			},
+			nodes: []runtime.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node-0",
+				}}, &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node-1",
+				}},
+			},
+			err:              nil,
+			shouldDeleteNode: "node-1",
+		},
+		{
+			name: "delete node by NodeOwner label",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "machine-1",
+					Finalizers: []string{"machine-node-delete-finalizer"},
+					UID:        machineUID,
+				},
+				Status: clusterv1alpha1.MachineStatus{},
+			},
+			nodes: []runtime.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-0",
+						Labels: map[string]string{
+							NodeOwnerLabelName: string(machineUID),
+						},
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+					},
+				},
+			},
+			err:              nil,
+			shouldDeleteNode: "node-0",
+		},
+		{
+			name: "no node should be deleted",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "machine-1",
+					Finalizers: []string{"machine-node-delete-finalizer"},
+					UID:        machineUID,
+				},
+				Status: clusterv1alpha1.MachineStatus{},
+			},
+			nodes: []runtime.Object{
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-0",
+					},
+				},
+				&corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+					},
+				},
+			},
+			err:              nil,
+			shouldDeleteNode: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			objects := []runtime.Object{test.machine}
+			objects = append(objects, test.nodes...)
+
+			client := ctrlruntimefake.NewFakeClient(objects...)
+
+			ctx := context.TODO()
+			providerData := &cloudprovidertypes.ProviderData{
+				Ctx:    ctx,
+				Update: cloudprovidertypes.GetMachineUpdater(ctx, client),
+				Client: client,
+			}
+
+			reconciler := &Reconciler{
+				client:       client,
+				recorder:     &record.FakeRecorder{},
+				providerData: providerData,
+			}
+
+			err := reconciler.deleteNodeForMachine(test.machine)
+			if diff := deep.Equal(err, test.err); diff != nil {
+				t.Errorf("expected to get %v instead got: %v", test.err, err)
+			}
+			if err != nil {
+				return
+			}
+
+			if test.shouldDeleteNode != "" {
+				err = client.Get(ctx, types.NamespacedName{Name: test.shouldDeleteNode}, &corev1.Node{})
+				if !kerrors.IsNotFound(err) {
+					t.Errorf("expected node %q to be deleted, but got: %v", test.shouldDeleteNode, err)
+				}
+			} else {
+				nodes := &corev1.NodeList{}
+				err = client.List(ctx, nodes, &ctrlruntimeclient.ListOptions{})
+				if err != nil {
+					t.Errorf("error listing nodes: %v", err)
+				}
+				if len(test.nodes) != len(nodes.Items) {
+					t.Errorf("expected %d nodes, but got %d", len(test.nodes), len(nodes.Items))
+				}
 			}
 		})
 	}

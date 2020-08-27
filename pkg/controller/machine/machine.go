@@ -608,19 +608,42 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 }
 
 func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
-	selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
-	if err != nil {
-		return fmt.Errorf("failed to parse label selector: %v", err)
-	}
-	listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
-	nodes := &corev1.NodeList{}
-	if err := r.client.List(r.ctx, nodes, listOpts); err != nil {
-		return fmt.Errorf("failed to list nodes: %v", err)
-	}
+	// If there's NodeRef on the Machine object, remove the Node by using the
+	// value of the NodeRef. If there's no NodeRef, try to find the Node by
+	// listing nodes using the NodeOwner label selector.
+	if machine.Status.NodeRef != nil {
+		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
+		node := &corev1.Node{}
+		if err := r.client.Get(r.ctx, objKey, node); err != nil {
+			return fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
+		}
 
-	for _, node := range nodes.Items {
-		if err := r.client.Delete(r.ctx, &node); err != nil {
-			return err
+		if err := r.client.Delete(r.ctx, node); err != nil {
+			if !kerrors.IsNotFound(err) {
+				return err
+			}
+			klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
+		}
+	} else {
+		selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
+		if err != nil {
+			return fmt.Errorf("failed to parse label selector: %v", err)
+		}
+		listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
+		nodes := &corev1.NodeList{}
+		if err := r.client.List(r.ctx, nodes, listOpts); err != nil {
+			return fmt.Errorf("failed to list nodes: %v", err)
+		}
+		if len(nodes.Items) == 0 {
+			// We just want log that we didn't found the node. We don't want to
+			// return here, as we want to remove finalizers at the end.
+			klog.V(3).Infof("No node found for the machine %s", machine.Spec.Name)
+		}
+
+		for _, node := range nodes.Items {
+			if err := r.client.Delete(r.ctx, &node); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -888,8 +911,31 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 				return node.DeepCopy(), true, nil
 			}
 		}
+		// If we were unable to find Node by ProviderID, fallback to IP address matching.
+		// This usually happens if there's no CCM deployed in the cluster.
+		//
+		// This mechanism is not always reliable, as providers reuse the IP addresses after
+		// some time.
+		//
+		// If we rollout a Machine, it can happen that a new instance has the same
+		// IP addresses as the instance that has just been deleted. If machine-controller
+		// processes the new Machine before removing the old Machine and the corresponding
+		// Node object, machine-controller could update the NodeOwner label on the old Node
+		// object to point to the Machine that just got created, as IP addresses would match.
+		// This causes machine-controller to fail to delete the old Node object, which could
+		// then cause cluster stability issues in some cases.
 		for _, nodeAddress := range node.Status.Addresses {
 			for instanceAddress := range instance.Addresses() {
+				// We observed that the issue described above happens often on Hetzner.
+				// As we know that the Node and the instance name will always be same
+				// on Hetzner, we can use it as an additional check to prevent this
+				// issue.
+				// TODO: We should do this for other providers, but there are providers where
+				// the node and the instance names will not match, so it requires further
+				// investigation (e.g. AWS).
+				if provider == providerconfigtypes.CloudProviderHetzner && node.Name != instance.Name() {
+					continue
+				}
 				if nodeAddress.Address == instanceAddress {
 					return node.DeepCopy(), true, nil
 				}
