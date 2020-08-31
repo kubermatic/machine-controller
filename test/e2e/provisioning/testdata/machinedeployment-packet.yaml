@@ -26,9 +26,9 @@ spec:
           cloudProviderSpec:
             apiKey: << PACKET_API_KEY >>
             projectID: << PACKET_PROJECT_ID >>
-            instanceType: "t1.small.x86"
+            instanceType: "c1.small.x86"
             facilities:
-            - "ewr1"
+            - "ams1"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
