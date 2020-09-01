@@ -614,15 +614,22 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 	if machine.Status.NodeRef != nil {
 		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
 		node := &corev1.Node{}
+		nodeFound := true
 		if err := r.client.Get(r.ctx, objKey, node); err != nil {
-			return fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
+			if !kerrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
+			}
+			nodeFound = false
+			klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
 		}
 
-		if err := r.client.Delete(r.ctx, node); err != nil {
-			if !kerrors.IsNotFound(err) {
-				return err
+		if nodeFound {
+			if err := r.client.Delete(r.ctx, node); err != nil {
+				if !kerrors.IsNotFound(err) {
+					return err
+				}
+				klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
 			}
-			klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
 		}
 	} else {
 		selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
