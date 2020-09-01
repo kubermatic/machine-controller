@@ -48,6 +48,11 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("invalid kubelet version: '%v'", err)
 	}
 
+	dockerVersion, err := userdatahelper.DockerVersionYum(kubeletVersion)
+	if err != nil {
+		return "", fmt.Errorf("invalid docker version: %v", err)
+	}
+
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get provider config: %v", err)
@@ -86,6 +91,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ProviderSpec     *providerconfigtypes.Config
 		OSConfig         *Config
 		KubeletVersion   string
+		DockerVersion    string
 		ServerAddr       string
 		Kubeconfig       string
 		KubernetesCACert string
@@ -95,6 +101,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ProviderSpec:     pconfig,
 		OSConfig:         centosConfig,
 		KubeletVersion:   kubeletVersion.String(),
+		DockerVersion:    dockerVersion,
 		ServerAddr:       serverAddr,
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
@@ -193,7 +200,7 @@ write_files:
 {{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
 	See: https://github.com/docker/cli/issues/2533 */}}
 
-    DOCKER_VERSION='18.09.9-3.el7'
+    DOCKER_VERSION='{{ .DockerVersion }}'
     yum install -y docker-ce-${DOCKER_VERSION} \
       docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
