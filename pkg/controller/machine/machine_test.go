@@ -548,6 +548,25 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 			err:              nil,
 			shouldDeleteNode: "",
 		},
+		{
+			name: "node referred by nodeRef doesn't exist",
+			machine: &clusterv1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "machine-1",
+					Finalizers: []string{"machine-node-delete-finalizer"},
+				},
+				Status: clusterv1alpha1.MachineStatus{
+					NodeRef: &corev1.ObjectReference{Name: "node-1"},
+				},
+			},
+			nodes: []runtime.Object{&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node-0",
+				}},
+			},
+			err:              nil,
+			shouldDeleteNode: "",
+		},
 	}
 
 	for _, test := range tests {
