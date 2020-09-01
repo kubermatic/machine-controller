@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -140,7 +141,7 @@ func DockerVersionApt(kubernetesVersion *semver.Version) (string, error) {
 	}
 
 	lessThen117, _ := semver.NewConstraint("< 1.17")
-	
+
 	if lessThen117.Check(kubernetesVersion) {
 		return "5:18.09.9~3-0~ubuntu-bionic", nil
 	}
@@ -156,7 +157,7 @@ func DockerVersionYum(kubernetesVersion *semver.Version) (string, error) {
 	}
 
 	lessThen117, _ := semver.NewConstraint("< 1.17")
-	
+
 	if lessThen117.Check(kubernetesVersion) {
 		return "18.09.9-3.el7", nil
 	}
