@@ -58,6 +58,7 @@ type Config struct {
 	Token      string
 	ServerType string
 	Datacenter string
+	Image      string
 	Location   string
 	Networks   []string
 	Labels     map[string]string
@@ -97,18 +98,27 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %v", err)
 	}
+
 	c.ServerType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerType)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	c.Datacenter, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Datacenter)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	c.Image, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Image)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Location)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	for _, network := range rawConfig.Networks {
 		networkValue, err := p.configVarResolver.GetConfigVarStringValue(network)
 		if err != nil {
@@ -116,6 +126,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		}
 		c.Networks = append(c.Networks, networkValue)
 	}
+
 	c.Labels = rawConfig.Labels
 	return &c, &pconfig, err
 }
@@ -154,6 +165,12 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
+	if c.Image != "" {
+		if _, _, err = client.Image.Get(ctx, c.Image); err != nil {
+			return fmt.Errorf("failed to get image: %v", err)
+		}
+	}
+
 	if len(c.Networks) != 0 {
 		for _, network := range c.Networks {
 			if _, _, err = client.Network.Get(ctx, network); err != nil {
@@ -181,17 +198,21 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	ctx := context.TODO()
 	client := getClient(c.Token)
 
-	imageName, err := getNameForOS(pc.OperatingSystem)
-	if err != nil {
-		return nil, cloudprovidererrors.TerminalError{
-			Reason:  common.InvalidConfigurationMachineError,
-			Message: fmt.Sprintf("Invalid operating system specified %q, details = %v", pc.OperatingSystem, err),
+	if c.Image == "" {
+		imageName, err := getNameForOS(pc.OperatingSystem)
+		if err != nil {
+			return nil, cloudprovidererrors.TerminalError{
+				Reason:  common.InvalidConfigurationMachineError,
+				Message: fmt.Sprintf("Invalid operating system specified %q, details = %v", pc.OperatingSystem, err),
+			}
 		}
+		c.Image = imageName
 	}
 
 	if c.Labels == nil {
 		c.Labels = map[string]string{}
 	}
+
 	c.Labels[machineUIDLabelKey] = string(machine.UID)
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
@@ -224,7 +245,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		}
 	}
 
-	serverCreateOpts.Image, _, err = client.Image.Get(ctx, imageName)
+	serverCreateOpts.Image, _, err = client.Image.Get(ctx, c.Image)
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to get image")
 	}
