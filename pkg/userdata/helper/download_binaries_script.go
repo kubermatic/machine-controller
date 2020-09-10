@@ -99,7 +99,7 @@ mkdir -p /opt/cni/bin
 
 {{- /* # cni */}}
 if [ ! -f /opt/cni/bin/loopback ]; then
-    curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.6/cni-plugins-linux-amd64-v0.8.6.tgz | tar -xvzC /opt/cni/bin -f -
+    curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.7/cni-plugins-linux-amd64-v0.8.7.tgz | tar -xvzC /opt/cni/bin -f -
 fi
 
 {{- if .DownloadKubelet }}
@@ -125,7 +125,7 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
 
-	const CNIVersion = "v0.8.6"
+	const CNIVersion = "v0.8.7"
 
 	// force v in case if it's not there
 	if !strings.HasPrefix(kubeVersion, "v") {
