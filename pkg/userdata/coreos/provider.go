@@ -86,6 +86,11 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		coreosConfig.DisableUpdateEngine = true
 	}
 
+	kubeletFeatureGates, err := userdatahelper.KubeletFeatureGates(req.KubeletFeatureGates)
+	if err != nil {
+		return "", fmt.Errorf("error extracting kubelet feature gates: %v", err)
+	}
+
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec           *providerconfigtypes.Config
@@ -93,6 +98,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig             string
 		KubernetesCACert       string
 		KubeletVersion         string
+		KubeletFeatureGates    map[string]bool
 		InsecureHyperkubeImage bool
 		NodeIPScript           string
 	}{
@@ -102,6 +108,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig:             kubeconfigString,
 		KubernetesCACert:       kubernetesCACert,
 		KubeletVersion:         kubeletVersion.String(),
+		KubeletFeatureGates:    kubeletFeatureGates,
 		InsecureHyperkubeImage: insecureHyperkubeImage,
 		NodeIPScript:           userdatahelper.SetupNodeIPEnvScript(),
 	}
@@ -296,7 +303,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root

@@ -87,26 +87,33 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
+	kubeletFeatureGates, err := userdatahelper.KubeletFeatureGates(req.KubeletFeatureGates)
+	if err != nil {
+		return "", fmt.Errorf("error extracting kubelet feature gates: %v", err)
+	}
+
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec     *providerconfigtypes.Config
-		OSConfig         *Config
-		ServerAddr       string
-		KubeletVersion   string
-		DockerVersion    string
-		Kubeconfig       string
-		KubernetesCACert string
-		NodeIPScript     string
+		ProviderSpec        *providerconfigtypes.Config
+		OSConfig            *Config
+		ServerAddr          string
+		KubeletVersion      string
+		DockerVersion       string
+		Kubeconfig          string
+		KubernetesCACert    string
+		KubeletFeatureGates map[string]bool
+		NodeIPScript        string
 	}{
-		UserDataRequest:  req,
-		ProviderSpec:     pconfig,
-		OSConfig:         ubuntuConfig,
-		ServerAddr:       serverAddr,
-		KubeletVersion:   kubeletVersion.String(),
-		DockerVersion:    dockerVersion,
-		Kubeconfig:       kubeconfigString,
-		KubernetesCACert: kubernetesCACert,
-		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
+		UserDataRequest:     req,
+		ProviderSpec:        pconfig,
+		OSConfig:            ubuntuConfig,
+		ServerAddr:          serverAddr,
+		KubeletVersion:      kubeletVersion.String(),
+		DockerVersion:       dockerVersion,
+		Kubeconfig:          kubeconfigString,
+		KubernetesCACert:    kubernetesCACert,
+		KubeletFeatureGates: kubeletFeatureGates,
+		NodeIPScript:        userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -366,7 +373,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 4 }}
 
 - path: /etc/docker/daemon.json
   permissions: "0644"

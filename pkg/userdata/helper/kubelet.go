@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -137,7 +138,7 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 }
 
 // kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration
-func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP) (string, error) {
+func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool) (string, error) {
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
 		clusterDNSstr = append(clusterDNSstr, ip.String())
@@ -165,7 +166,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP) (string, er
 		CgroupDriver:          "systemd",
 		ClusterDNS:            clusterDNSstr,
 		ClusterDomain:         clusterDomain,
-		FeatureGates:          map[string]bool{"RotateKubeletServerCertificate": true},
+		FeatureGates:          featureGates,
 		ProtectKernelDefaults: true,
 		ReadOnlyPort:          0,
 		RotateCertificates:    true,
@@ -215,6 +216,28 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 	}
 
 	return b.String(), nil
+}
+
+// KubeletFeatureGates converts a feature gates slices to a map
+func KubeletFeatureGates(featureGates []string) (map[string]bool, error) {
+	featureGatesMap := map[string]bool{}
+	for _, featureGate := range featureGates {
+		featureGateArr := strings.Split(featureGate, "=")
+		if len(featureGateArr) != 2 {
+			return nil, fmt.Errorf("invalid kubelet feature gate: %q", featureGate)
+		}
+		featureGateEnable, err := strconv.ParseBool(featureGateArr[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse kubelet feature gate: %q", featureGate)
+		}
+
+		featureGatesMap[featureGateArr[0]] = featureGateEnable
+	}
+	if len(featureGatesMap) == 0 {
+		featureGatesMap["RotateKubeletServerCertificate"] = true
+	}
+
+	return featureGatesMap, nil
 }
 
 // KubeletHealthCheckSystemdUnit kubelet health checking systemd unit
