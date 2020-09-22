@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -181,6 +182,11 @@ func main() {
 		klog.Fatalf("invalid cluster dns specified: %v", err)
 	}
 
+	kubeletFeatureGates, err := parseKubeletFeatureGates(nodeKubeletFeatureGates)
+	if err != nil {
+		klog.Fatalf("invalid kubelet feature gates specified: %v", err)
+	}
+
 	var parsedJoinClusterTimeout *time.Duration
 	if joinClusterTimeout != "" {
 		parsedJoinClusterTimeoutLiteral, err := time.ParseDuration(joinClusterTimeout)
@@ -246,8 +252,6 @@ func main() {
 	}
 
 	prometheusRegistry := prometheus.DefaultRegisterer
-
-	kubeletFeatureGates := strings.Split(nodeKubeletFeatureGates, ",")
 
 	kubeconfigProvider := clusterinfo.New(cfg, kubeClient)
 	runOptions := controllerRunOptions{
@@ -548,4 +552,27 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+func parseKubeletFeatureGates(s string) (map[string]bool, error) {
+	featureGates := map[string]bool{}
+	sFeatureGates := strings.Split(s, ",")
+
+	for _, featureGate := range sFeatureGates {
+		sFeatureGate := strings.Split(featureGate, "=")
+		if len(sFeatureGate) != 2 {
+			return nil, fmt.Errorf("invalid kubelet feature gate: %q", featureGate)
+		}
+		featureGateEnabled, err := strconv.ParseBool(sFeatureGate[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse kubelet feature gate: %q", featureGate)
+		}
+
+		featureGates[sFeatureGate[0]] = featureGateEnabled
+	}
+	if len(featureGates) == 0 {
+		featureGates["RotateKubeletServerCertificate"] = true
+	}
+
+	return featureGates, nil
 }

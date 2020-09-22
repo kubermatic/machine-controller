@@ -129,9 +129,8 @@ type NodeSettings struct {
 	// The kubelet repository to use. Currently only Flatcar Linux uses it.
 	KubeletRepository string
 	// Translates to feature gates on the kubelet.
-	// Expected input: FeatureGateName=true|false,...
 	// Default: RotateKubeletServerCertificate=true
-	KubeletFeatureGates []string
+	KubeletFeatureGates map[string]bool
 }
 
 type KubeconfigProvider interface {
