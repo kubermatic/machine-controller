@@ -296,7 +296,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root

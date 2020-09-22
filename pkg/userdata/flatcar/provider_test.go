@@ -81,6 +81,10 @@ kPe6XoSbiLm/kxk32T0=
 			},
 		},
 	}
+
+	kubeletFeatureGates = map[string]bool{
+		"RotateKubeletServerCertificate": true,
+	}
 )
 
 // fakeCloudConfigProvider simulates cloud config provider for test.
@@ -223,6 +227,7 @@ func TestUserDataGeneration(t *testing.T) {
 				PauseImage:            test.pauseImage,
 				HyperkubeImage:        test.hyperkubeImage,
 				KubeletRepository:     test.kubeletImage,
+				KubeletFeatureGates:   kubeletFeatureGates,
 			}
 
 			s, err := provider.UserData(req)

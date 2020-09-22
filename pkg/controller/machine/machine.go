@@ -128,6 +128,9 @@ type NodeSettings struct {
 	HyperkubeImage string
 	// The kubelet repository to use. Currently only Flatcar Linux uses it.
 	KubeletRepository string
+	// Translates to feature gates on the kubelet.
+	// Default: RotateKubeletServerCertificate=true
+	KubeletFeatureGates map[string]bool
 }
 
 type KubeconfigProvider interface {
@@ -699,6 +702,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				PauseImage:            r.nodeSettings.PauseImage,
 				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
 				KubeletRepository:     r.nodeSettings.KubeletRepository,
+				KubeletFeatureGates:   r.nodeSettings.KubeletFeatureGates,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 			}

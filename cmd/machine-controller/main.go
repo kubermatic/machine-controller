@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -76,13 +77,14 @@ var (
 	skipEvictionAfter                time.Duration
 	nodeCSRApprover                  bool
 
-	nodeHTTPProxy          string
-	nodeNoProxy            string
-	nodeInsecureRegistries string
-	nodeRegistryMirrors    string
-	nodePauseImage         string
-	nodeHyperkubeImage     string
-	nodeKubeletRepository  string
+	nodeHTTPProxy           string
+	nodeNoProxy             string
+	nodeInsecureRegistries  string
+	nodeRegistryMirrors     string
+	nodePauseImage          string
+	nodeHyperkubeImage      string
+	nodeKubeletRepository   string
+	nodeKubeletFeatureGates string
 )
 
 const (
@@ -168,6 +170,7 @@ func main() {
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag. Only has effect on CoreOS Container Linux and Flatcar Linux, and for kubernetes < 1.18.")
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/poseidon/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
+	flag.StringVar(&nodeKubeletFeatureGates, "node-kubelet-feature-gates", "RotateKubeletServerCertificate=true", "Feature gates to set on the kubelet. Default: RotateKubeletServerCertificate=true")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
 	flag.Parse()
@@ -177,6 +180,11 @@ func main() {
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
 		klog.Fatalf("invalid cluster dns specified: %v", err)
+	}
+
+	kubeletFeatureGates, err := parseKubeletFeatureGates(nodeKubeletFeatureGates)
+	if err != nil {
+		klog.Fatalf("invalid kubelet feature gates specified: %v", err)
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
@@ -258,12 +266,13 @@ func main() {
 		skipEvictionAfter:     skipEvictionAfter,
 		nodeCSRApprover:       nodeCSRApprover,
 		node: machinecontroller.NodeSettings{
-			ClusterDNSIPs:     clusterDNSIPs,
-			HTTPProxy:         nodeHTTPProxy,
-			NoProxy:           nodeNoProxy,
-			HyperkubeImage:    nodeHyperkubeImage,
-			KubeletRepository: nodeKubeletRepository,
-			PauseImage:        nodePauseImage,
+			ClusterDNSIPs:       clusterDNSIPs,
+			HTTPProxy:           nodeHTTPProxy,
+			NoProxy:             nodeNoProxy,
+			HyperkubeImage:      nodeHyperkubeImage,
+			KubeletRepository:   nodeKubeletRepository,
+			KubeletFeatureGates: kubeletFeatureGates,
+			PauseImage:          nodePauseImage,
 		},
 	}
 	if parsedJoinClusterTimeout != nil {
@@ -543,4 +552,27 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
+}
+
+func parseKubeletFeatureGates(s string) (map[string]bool, error) {
+	featureGates := map[string]bool{}
+	sFeatureGates := strings.Split(s, ",")
+
+	for _, featureGate := range sFeatureGates {
+		sFeatureGate := strings.Split(featureGate, "=")
+		if len(sFeatureGate) != 2 {
+			return nil, fmt.Errorf("invalid kubelet feature gate: %q", featureGate)
+		}
+		featureGateEnabled, err := strconv.ParseBool(sFeatureGate[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse kubelet feature gate: %q", featureGate)
+		}
+
+		featureGates[sFeatureGate[0]] = featureGateEnabled
+	}
+	if len(featureGates) == 0 {
+		featureGates["RotateKubeletServerCertificate"] = true
+	}
+
+	return featureGates, nil
 }

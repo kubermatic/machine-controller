@@ -437,6 +437,10 @@ func TestUserDataGeneration(t *testing.T) {
 		},
 	}
 
+	kubeletFeatureGates := map[string]bool{
+		"RotateKubeletServerCertificate": true,
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			rProviderSpec := test.providerSpec
@@ -477,6 +481,7 @@ func TestUserDataGeneration(t *testing.T) {
 				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 				HyperkubeImage:        test.hyperkubeImage,
+				KubeletFeatureGates:   kubeletFeatureGates,
 			}
 
 			s, err := provider.UserData(req)
