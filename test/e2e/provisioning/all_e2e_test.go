@@ -159,7 +159,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environement varialbe cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
 	runScenarios(t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
@@ -271,7 +271,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	}
 
 	// Act. GCE does not support CentOS.
-	selector := OsSelector("ubuntu", "coreos")
+	selector := OsSelector("ubuntu")
 	params := []string{
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 	}
