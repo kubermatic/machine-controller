@@ -194,6 +194,10 @@ func TestUserDataGeneration(t *testing.T) {
 	}
 	provider := Provider{}
 
+	kubeletFeatureGates := map[string]bool{
+		"RotateKubeletServerCertificate": true,
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
@@ -227,6 +231,7 @@ func TestUserDataGeneration(t *testing.T) {
 				InsecureRegistries:    test.insecureRegistries,
 				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
+				KubeletFeatureGates:   kubeletFeatureGates,
 			}
 			s, err := provider.UserData(req)
 			if err != nil {

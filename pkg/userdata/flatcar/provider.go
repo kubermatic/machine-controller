@@ -91,31 +91,24 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	}
 	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
 
-	kubeletFeatureGates, err := userdatahelper.KubeletFeatureGates(req.KubeletFeatureGates)
-	if err != nil {
-		return "", fmt.Errorf("error extracting kubelet feature gates: %v", err)
-	}
-
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec        *providerconfigtypes.Config
-		FlatcarConfig       *Config
-		Kubeconfig          string
-		KubernetesCACert    string
-		KubeletImage        string
-		KubeletVersion      string
-		KubeletFeatureGates map[string]bool
-		NodeIPScript        string
+		ProviderSpec     *providerconfigtypes.Config
+		FlatcarConfig    *Config
+		Kubeconfig       string
+		KubernetesCACert string
+		KubeletImage     string
+		KubeletVersion   string
+		NodeIPScript     string
 	}{
-		UserDataRequest:     req,
-		ProviderSpec:        pconfig,
-		FlatcarConfig:       flatcarConfig,
-		Kubeconfig:          kubeconfigString,
-		KubernetesCACert:    kubernetesCACert,
-		KubeletImage:        kubeletImage,
-		KubeletVersion:      kubeletVersion.String(),
-		KubeletFeatureGates: kubeletFeatureGates,
-		NodeIPScript:        userdatahelper.SetupNodeIPEnvScript(),
+		UserDataRequest:  req,
+		ProviderSpec:     pconfig,
+		FlatcarConfig:    flatcarConfig,
+		Kubeconfig:       kubeconfigString,
+		KubernetesCACert: kubernetesCACert,
+		KubeletImage:     kubeletImage,
+		KubeletVersion:   kubeletVersion.String(),
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)

@@ -86,33 +86,26 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
-	kubeletFeatureGates, err := userdatahelper.KubeletFeatureGates(req.KubeletFeatureGates)
-	if err != nil {
-		return "", fmt.Errorf("error extracting kubelet feature gates: %v", err)
-	}
-
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec        *providerconfigtypes.Config
-		OSConfig            *Config
-		KubeletVersion      string
-		DockerVersion       string
-		ServerAddr          string
-		Kubeconfig          string
-		KubernetesCACert    string
-		KubeletFeatureGates map[string]bool
-		NodeIPScript        string
+		ProviderSpec     *providerconfigtypes.Config
+		OSConfig         *Config
+		KubeletVersion   string
+		DockerVersion    string
+		ServerAddr       string
+		Kubeconfig       string
+		KubernetesCACert string
+		NodeIPScript     string
 	}{
-		UserDataRequest:     req,
-		ProviderSpec:        pconfig,
-		OSConfig:            centosConfig,
-		KubeletVersion:      kubeletVersion.String(),
-		DockerVersion:       dockerVersion,
-		ServerAddr:          serverAddr,
-		Kubeconfig:          kubeconfigString,
-		KubernetesCACert:    kubernetesCACert,
-		KubeletFeatureGates: kubeletFeatureGates,
-		NodeIPScript:        userdatahelper.SetupNodeIPEnvScript(),
+		UserDataRequest:  req,
+		ProviderSpec:     pconfig,
+		OSConfig:         centosConfig,
+		KubeletVersion:   kubeletVersion.String(),
+		DockerVersion:    dockerVersion,
+		ServerAddr:       serverAddr,
+		Kubeconfig:       kubeconfigString,
+		KubernetesCACert: kubernetesCACert,
+		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
