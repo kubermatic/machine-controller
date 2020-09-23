@@ -395,6 +395,7 @@ storage:
           PasswordAuthentication no
           ChallengeResponseAuthentication no
 
+{{- if not .FlatcarConfig.DisableAutoUpdate }}
     - path: "/etc/polkit-1/rules.d/60-noreboot_norestart.rule"
       filesystem: root
       mode: 0644
@@ -410,6 +411,7 @@ storage:
                   }
               }
           });
+{{- end }}
 
     - path: /etc/docker/daemon.json
       filesystem: root
