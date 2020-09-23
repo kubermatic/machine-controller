@@ -395,6 +395,22 @@ storage:
           PasswordAuthentication no
           ChallengeResponseAuthentication no
 
+    - path: "/etc/polkit-1/rules.d/60-noreboot_norestart.rule"
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          polkit.addRule(function(action, subject) {
+              if (action.id == "org.freedesktop.login1.reboot" ||
+                  action.id == "org.freedesktop.login1.reboot-multiple-sessions") {
+                  if (subject.user == "core") {
+                      return polkit.Result.YES;
+                  } else {
+                      return polkit.Result.AUTH_ADMIN;
+                  }
+              }
+          });
+
     - path: /etc/docker/daemon.json
       filesystem: root
       mode: 0644
