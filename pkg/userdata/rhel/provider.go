@@ -186,7 +186,12 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+{{- /*	Due to DNF modules we have to do this on docker-ce repo
+		More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473 */}}
+    sed -i 's/\$releasever/7/g' /etc/yum.repos.d/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
     DOCKER_VERSION='18.09.1-3.el7'
     dnf install -y docker-ce-${DOCKER_VERSION} \
