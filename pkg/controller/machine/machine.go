@@ -81,9 +81,12 @@ const (
 
 	deletionRetryWaitPeriod = 10 * time.Second
 
-	controllerNameLabelKey = "machine.k8s.io/controller"
-	NodeOwnerLabelName     = "machine-controller/owned-by"
-	HostIdLabelName        = "machine-controller/host-id"
+	controllerNameLabelKey  = "machine.k8s.io/controller"
+	NodeOwnerLabelName      = "machine-controller/owned-by"
+	PhysicalHostIDLabelName = "machine-controller/physical-host-id"
+	// HostIDLabelName label key to specify physical host id the node is running on.
+	// Deprecated: Key was replaced, use PhysicalHostIDLabelName.
+	HostIDLabelName = "machine-controller/host-id"
 
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
 	// cluster-api provider to match Nodes to Machines
@@ -795,7 +798,8 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 		nodeLabels = map[string]string{}
 	}
 	if providerInstance.HostID() != "" {
-		nodeLabels[HostIdLabelName] = providerInstance.HostID()
+		nodeLabels[HostIDLabelName] = providerInstance.HostID()
+		nodeLabels[PhysicalHostIDLabelName] = providerInstance.HostID()
 	}
 	for k, v := range nodeLabels {
 		if _, exists := node.Labels[k]; !exists {
