@@ -69,7 +69,10 @@ write_files:
     swapoff -a
 
 
-    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    sed -i 's/\$releasever/7/g' /etc/yum.repos.d/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
     DOCKER_VERSION='18.09.1-3.el7'
     dnf install -y docker-ce-${DOCKER_VERSION} \
