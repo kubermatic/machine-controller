@@ -488,6 +488,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createOpts = &osservers.CreateOpts{
 		Name:             machine.Spec.Name,
 		FlavorRef:        flavor.ID,
+		ImageRef:         image.ID,
 		UserData:         []byte(userdata),
 		SecurityGroups:   securityGroups,
 		AvailabilityZone: c.AvailabilityZone,
