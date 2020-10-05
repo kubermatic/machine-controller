@@ -396,7 +396,7 @@ storage:
           ChallengeResponseAuthentication no
 
 {{- if not .FlatcarConfig.DisableAutoUpdate }}
-    - path: "/etc/polkit-1/rules.d/60-noreboot_norestart.rule"
+    - path: "/etc/polkit-1/rules.d/60-noreboot_norestart.rules"
       filesystem: root
       mode: 0644
       contents:
