@@ -154,13 +154,12 @@ const userDataTemplate = `passwd:
 {{- if .ProviderSpec.Network }}
 networkd:
   units:
-{{- /* SysEleven block start */ }}
+{{- /* SysEleven block start */}}
     - name: kubelet-restart.service
       enabled: true
       contents:
-        inline: |
 {{ kubeletRestartOnNotReadyScript | indent 10 }}
-{{- /* SysEleven block end */ }}
+{{- /* SysEleven block end */}}
 
     - name: static-nic.network
       contents: |
@@ -312,11 +311,11 @@ systemd:
 storage:
   files:
 {{- /* SysEleven block start */}}
-	- path: /opt/restart-kubelet.sh
-	  filesystem: root
-	  permissions: 0755
-	  contents:
-	    inline: |
+    - path: /opt/kubelet-restart.sh
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
 {{ kubeletRestartOnNotReadyScript | indent 10 }}
 {{- /* SysEleven block end */}}
 
