@@ -21,7 +21,6 @@ require (
 	github.com/coreos/ignition v0.24.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.1.3
-	github.com/dnaeon/go-vcr v1.0.1 // indirect
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
@@ -53,6 +52,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.4.1
 	github.com/prometheus/procfs v0.0.10 // indirect
+	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.7
 	github.com/sethvargo/go-password v0.1.2
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb // indirect

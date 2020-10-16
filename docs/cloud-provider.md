@@ -1,5 +1,26 @@
 # Cloud providers
 
+## Scaleway
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+# your scaleway access key
+accessKey: "<< SCW_ACCESS_KEY >>"
+# your scaleway secret key
+secretKey: "<< SCW_SECRET_KEY >>"
+# your scaleway project ID
+projectId: "<< SCW_DEFAULT_PROJECT_ID >>"
+# server zone
+zone: "fr-par-1"
+# server commercial type
+commercialType: "DEV1-M"
+# enable ipv6 for the server
+ipv6: false
+# add the following tags to the server
+tags:
+- "machine-controller"
+```
+
 ## Digitalocean
 
 ### machine.spec.providerConfig.cloudProviderSpec
