@@ -144,7 +144,7 @@ systemd:
           -v /var/lib/docker:/var/lib/docker \
           -v /var/lib/kubelet:/var/lib/kubelet:rshared \
           -v /var/log/pods:/var/log/pods \
-          for-kubernetes-more-then-1.18/kubeletImage:v1.18.0 \
+          for-kubernetes-less-then-1.19/hyperkubeImage:v1.18.0 \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
           --kubeconfig=/var/lib/kubelet/kubeconfig \
           --config=/etc/kubernetes/kubelet.conf \
