@@ -330,16 +330,6 @@ func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, ma
 	}
 	instance, err := prov.Create(machine, r.providerData, userdata)
 	if err != nil {
-		// Remove the finalizer if creation failed. We always add it initially to be 100% sure
-		// its there if an instance was created
-		if updateMachineError := r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
-			if s := sets.NewString(m.Finalizers...); s.Has(FinalizerDeleteInstance) {
-				s.Delete(FinalizerDeleteInstance)
-			}
-		}); updateMachineError != nil {
-			return nil, fmt.Errorf("failed to remove %q finalizer with err=%q after instance creation failed with err=%q",
-				FinalizerDeleteInstance, updateMachineError, err)
-		}
 		return nil, err
 	}
 	return instance, nil
