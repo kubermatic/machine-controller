@@ -144,7 +144,7 @@ systemd:
           -v /var/lib/docker:/var/lib/docker \
           -v /var/lib/kubelet:/var/lib/kubelet:rshared \
           -v /var/log/pods:/var/log/pods \
-          for-kubernetes-less-then-1.19/hyperkubeImage:v1.17.0 \
+          for-kubernetes-more-then-1.19/kubeletImage:v1.19.0 \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
           --kubeconfig=/var/lib/kubelet/kubeconfig \
           --config=/etc/kubernetes/kubelet.conf \
@@ -437,7 +437,7 @@ storage:
           tar xvf "$cni_filename"
           rm -f "$cni_filename"
           cd -
-          KUBE_VERSION="${KUBE_VERSION:-v1.17.0}"
+          KUBE_VERSION="${KUBE_VERSION:-v1.19.0}"
           kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
           kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
           kube_sum_file="$kube_dir/sha256"
