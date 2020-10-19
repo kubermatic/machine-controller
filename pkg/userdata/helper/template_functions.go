@@ -41,6 +41,10 @@ func TxtFuncMap() template.FuncMap {
 	funcMap["dockerConfig"] = DockerConfig
 	funcMap["proxyEnvironment"] = ProxyEnvironment
 
+	// Syseleven Block: Workaround for kubelet stopped posting node status
+	funcMap["kubeletRestartOnNotReadyScript"] = KubeletRestartOnNotReadyScript
+	funcMap["kubeletRestartOnNotReadySystemdUnit"] = KubeletRestartOnNotReadySystemdUnit
+
 	return funcMap
 }
 
