@@ -15,6 +15,7 @@
 SHELL = /bin/bash -eu -o pipefail
 
 GO_VERSION = 1.13.8
+GOOS ?= $(shell go env GOOS)
 
 export CGO_ENABLED := 0
 
@@ -43,13 +44,13 @@ all: build-machine-controller webhook
 build-machine-controller: machine-controller $(USERDATA_BIN)
 
 machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -name '*.go')
-	go build -v \
+	GOOS=$(GOOS) go build -v \
 		$(LDFLAGS) \
 		-o $@ \
 		github.com/kubermatic/machine-controller/cmd/userdata/$*
 
 %: cmd/% $(shell find cmd/$* pkg -name '*.go')
-	go build -v \
+	GOOS=$(GOOS) go build -v \
 		$(LDFLAGS) \
 		-o $@ \
 		github.com/kubermatic/machine-controller/cmd/$*
