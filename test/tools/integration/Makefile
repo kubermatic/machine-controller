@@ -51,7 +51,6 @@ plan apply destroy: .terraform
 		-var hcloud_test_server_name="machine-controller-test-$(BUILD_ID)"
 
 provision: apply
-	cd ../verify/ && make verify
-	cd ../../../ && make all
+	make -C ../../../ clean
+	make -C ../../../ all GOOS=linux
 	./provision_master.sh
-	./create-and-destroy-machine.sh

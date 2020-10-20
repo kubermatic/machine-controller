@@ -86,7 +86,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := Not(OsSelector("sles", "flatcar", "rhel"))
+	selector := Not(OsSelector("sles", "flatcar", "rhel", "coreos"))
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
 	}
@@ -143,7 +143,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("sles", "rhel"))
+	selector := Not(OsSelector("sles", "rhel", "coreos"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -453,7 +453,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "rhel"))
+	selector := Not(OsSelector("sles", "rhel", "coreos"))
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))

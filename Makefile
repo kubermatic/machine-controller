@@ -15,6 +15,7 @@
 SHELL = /bin/bash -eu -o pipefail
 
 GO_VERSION = 1.13.8
+GOOS ?= $(shell go env GOOS)
 
 export CGO_ENABLED := 0
 
@@ -43,19 +44,19 @@ all: build-machine-controller webhook
 build-machine-controller: machine-controller $(USERDATA_BIN)
 
 machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -name '*.go')
-	go build -v \
+	GOOS=$(GOOS) go build -v \
 		$(LDFLAGS) \
 		-o $@ \
 		github.com/kubermatic/machine-controller/cmd/userdata/$*
 
 %: cmd/% $(shell find cmd/$* pkg -name '*.go')
-	go build -v \
+	GOOS=$(GOOS) go build -v \
 		$(LDFLAGS) \
 		-o $@ \
 		github.com/kubermatic/machine-controller/cmd/$*
 
 .PHONY: clean
-clean:
+clean: clean-certs
 	rm -f machine-controller \
 		webhook \
 		$(USERDATA_BIN)
@@ -120,12 +121,22 @@ examples/admission-key.pem: examples/ca-cert.pem
 
 examples/admission-cert.pem: examples/admission-key.pem
 	openssl req -new -sha256 \
-    -key examples/admission-key.pem \
-    -subj "/C=US/ST=CA/O=Acme/CN=machine-controller-webhook.kube-system.svc" \
-    -out examples/admission.csr
-	openssl x509 -req -in examples/admission.csr -CA examples/ca-cert.pem \
-		-CAkey examples/ca-key.pem -CAcreateserial \
-		-out examples/admission-cert.pem -days 10000 -sha256
+		-key examples/admission-key.pem \
+		-config examples/webhook-certificate.cnf -extensions v3_req \
+		-out examples/admission.csr
+	openssl x509 -req \
+		-sha256 \
+		-days 10000 \
+		-extensions v3_req \
+		-extfile examples/webhook-certificate.cnf \
+		-in examples/admission.csr \
+		-CA examples/ca-cert.pem \
+		-CAkey examples/ca-key.pem \
+		-CAcreateserial \
+		-out examples/admission-cert.pem
+
+clean-certs:
+	cd examples/ && rm -f admission.csr admission-cert.pem admission-key.pem ca-cert.pem ca-key.pem
 
 .PHONY: deploy
 deploy: examples/admission-cert.pem
