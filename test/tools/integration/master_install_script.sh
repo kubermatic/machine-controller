@@ -17,7 +17,7 @@
 set -euo pipefail
 set -x
 
-K8S_VERSION=1.18.10
+K8S_VERSION=1.19.3
 echo "$LC_E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 
 # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
@@ -55,8 +55,7 @@ if ! ls $HOME/.kube/config; then
   kubectl taint nodes --all node-role.kubernetes.io/master-
 fi
 if ! ls kube-flannel.yml; then
-  curl -LO https://raw.githubusercontent.com/coreos/flannel/v0.13.0/Documentation/kube-flannel.yml
-  kubectl apply -f kube-flannel.yml
+  kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.13.0/Documentation/kube-flannel.yml
 fi
 
 if ! grep -q kubectl /root/.bashrc; then
