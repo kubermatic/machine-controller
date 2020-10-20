@@ -38,7 +38,7 @@ done
 
 if [[ "${1:-deploy_machine_controller}"  != "do-not-deploy-machine-controller" ]]; then
 rsync -avR  -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
-    ${MC_ROOT}/./{Makefile,examples/machine-controller.yaml,machine-controller,machine-controller-userdata-*,Dockerfile,webhook} \
+    ${MC_ROOT}/./{Makefile,examples/machine-controller.yaml,examples/webhook-certificate.cnf,machine-controller,machine-controller-userdata-*,Dockerfile,webhook} \
     root@${LC_ADDR}:/root/
 fi
 
