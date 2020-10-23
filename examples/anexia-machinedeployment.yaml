@@ -1,0 +1,48 @@
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: anexia-machinedeployment
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      name: anexia-machinedeployment
+  template:
+    metadata:
+      labels:
+        name: anexia-machinedeployment
+    spec:
+      providerSpec:
+        value:
+          cloudProvider: anexia
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProviderSpec:
+            # If empty, can be set via ANXCLOUD_TOKEN env var
+            token:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-anexia
+                key: token
+            vlanID: "<< ANEXIA_VLAN_ID >>"
+            # Currently only the flatcar template is supported: 12c28aa7-604d-47e9-83fb-5f1d1f1837b3
+            templateID: "<< ANEXIA_TEMPLATE_ID >>"
+            locationID: "<< ANEXIA_LOCATION_ID >>"
+            cpus: 4
+            memory: 4096
+            diskSize: 20
+          # Flatcar is the only supported operating system
+          operatingSystem: "flatcar"
+          operatingSystemSpec:
+            # Force cloud-init instead of ignition. Anexia supports cloud-init only.
+            provisioningUtility: "cloud-init"
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+      versions:
+        kubelet: "1.19.1"
