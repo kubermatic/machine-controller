@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"testing"
 	"text/template"
+	"time"
 
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -120,6 +121,8 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"nodeVolumeAttachLimit": null,
 		"password": "this_is_a_password",
 		"region": "eu-de",
+		"instanceReadyCheckPeriod": "2m",
+		"instanceReadyCheckTimeout": "2m",
 		{{- if .RootDiskSizeGB }}
 		"rootDiskSizeGB": {{ .RootDiskSizeGB }},
 		{{- end }}
@@ -196,7 +199,7 @@ func TestCreateServer(t *testing.T) {
 					return pc.ProviderClient, nil
 				},
 				// mock server readiness checker
-				serverReadinessWaiter: func(computeClient *gophercloud.ServiceClient, serverID string) error {
+				serverReadinessWaiter: func(computeClient *gophercloud.ServiceClient, serverID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error {
 					return nil
 				},
 			}
