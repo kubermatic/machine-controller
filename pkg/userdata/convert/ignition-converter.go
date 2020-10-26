@@ -55,7 +55,7 @@ func ToIgnition(s string) (string, error) {
 		return "", fmt.Errorf("failed to convert container linux config to ignition: %s", report.String())
 	}
 
-	out, err := json.MarshalIndent(ignCfg, "", "  ")
+	out, err := json.Marshal(ignCfg)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal ignition config: %v", err)
 	}
