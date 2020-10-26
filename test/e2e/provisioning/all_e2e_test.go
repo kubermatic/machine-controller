@@ -25,6 +25,8 @@ import (
 	"testing"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
+
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
 )
@@ -181,6 +183,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
 	}
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
@@ -204,6 +207,27 @@ func TestAWSSLESProvisioningE2E(t *testing.T) {
 
 	// We would like to test SLES image only in this test as the other images are tested in TestAWSProvisioningE2E
 	selector := OsSelector("sles")
+	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+}
+
+func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
+		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.CloudInit),
+	}
+
+	// We would like to test flatcar with CoreOS-cloud-init
+	selector := OsSelector("flatcar")
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
