@@ -29,7 +29,6 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudInstance "github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	scalewaytypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway/types"
@@ -112,11 +111,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"secret_key\" field, error = %v", err)
 	}
-	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, scw.ScwDefaultProjectIDEnv)
+	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ProjectID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"project_id\" field, error = %v", err)
 	}
-	c.Zone, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Zone, scw.ScwDefaultZoneEnv)
+	c.Zone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Zone)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"zone\" field, error = %v", err)
 	}
@@ -191,11 +190,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		return nil, err
 	}
 
-	sshkey, err := ssh.NewKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
-	}
-
 	imageName, err := getImageNameForOS(pc.OperatingSystem)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -207,7 +201,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		Image:          imageName,
 		Name:           machine.Spec.Name,
 		CommercialType: c.CommercialType,
-		Tags:           append(c.Tags, string(machine.UID), "AUTHORIZED_KEY="+strings.TrimSpace(sshkey.PublicKey)),
+		Tags:           append(c.Tags, string(machine.UID)),
 		EnableIPv6:     c.IPv6,
 	}
 
@@ -296,7 +290,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
 		Tags: []string{string(machine.UID)},
 	}, scw.WithAllPages())
 	if err != nil {
-		return nil, err
+		return nil, scalewayErrToTerminalError(err)
 	}
 
 	for _, server := range serversResp.Servers {
@@ -336,7 +330,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		ServerID: server.ID(),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update tags: %v", err)
+		return scalewayErrToTerminalError(err)
 	}
 
 	return nil
