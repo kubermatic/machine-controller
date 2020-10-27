@@ -1,0 +1,37 @@
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: << MACHINE_NAME >>
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      name: << MACHINE_NAME >>
+  template:
+    metadata:
+      labels:
+        name: << MACHINE_NAME >>
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "scaleway"
+          cloudProviderSpec:
+            accessKey: << SCW_ACCESS_KEY >>
+            secretKey: << SCW_SECRET_KEY >>
+            projectId: << SCW_DEFAULT_PROJECT_ID >>
+            commercialType: "DEV1-M"
+            zone: "fr-par-1"
+          operatingSystem: "<< OS_NAME >>"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+      versions:
+        kubelet: "<< KUBERNETES_VERSION >>"
