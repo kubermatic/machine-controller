@@ -14,9 +14,11 @@ require (
 	github.com/ajeddeloh/go-json v0.0.0-20170920214419-6a2fe990e083 // indirect
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190828035149-111b102694f9
+	github.com/anexia-it/go-anxcloud v0.1.0
 	github.com/aokoli/goutils v1.0.1 // indirect
 	github.com/aws/aws-sdk-go v1.19.25
 	github.com/coreos/container-linux-config-transpiler v0.9.0
+	github.com/coreos/etcd v3.3.17+incompatible
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/ignition v0.24.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
@@ -61,7 +63,7 @@ require (
 	go.uber.org/multierr v1.4.0 // indirect
 	go.uber.org/zap v1.13.0 // indirect
 	go4.org v0.0.0-20200104003542-c7e774b10ea0 // indirect
-	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6
+	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
 	golang.org/x/mod v0.2.0 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect

@@ -17,7 +17,20 @@ limitations under the License.
 package types
 
 import (
+	"time"
+
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+)
+
+const (
+	AnxTokenEnv = "ANXCLOUD_TOKEN"
+
+	CreateRequestTimeout = 15 * time.Minute
+	GetRequestTimeout    = 1 * time.Minute
+	DeleteRequestTimeout = 1 * time.Minute
+
+	VmxNet3NIC       = "vmxnet3"
+	MachinePoweredOn = "poweredOn"
 )
 
 type RawConfig struct {
@@ -28,4 +41,10 @@ type RawConfig struct {
 	CPUs       int                                 `json:"cpus"`
 	Memory     int                                 `json:"memory"`
 	DiskSize   int                                 `json:"diskSize"`
+}
+
+type ProviderStatus struct {
+	InstanceID     string `json:"instanceID"`
+	ProvisioningID string `json:"provisioningID"`
+	// TODO: add conditions to track progress on the provider side
 }
