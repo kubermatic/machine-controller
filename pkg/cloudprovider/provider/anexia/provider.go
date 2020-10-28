@@ -34,11 +34,10 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	anx "github.com/anexia-it/go-anxcloud/pkg"
 	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
-	anxinfo "github.com/anexia-it/go-anxcloud/pkg/info"
-	anxips "github.com/anexia-it/go-anxcloud/pkg/provisioning/ips"
-	anxprog "github.com/anexia-it/go-anxcloud/pkg/provisioning/progress"
-	anxvm "github.com/anexia-it/go-anxcloud/pkg/provisioning/vm"
+
+	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -151,7 +150,7 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	client, err := getClient()
+	apiClient, err := getClient()
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to get api-client: %v", err)
 	}
@@ -167,7 +166,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.GetRequestTimeout)
 	defer cancel()
 
-	info, err := anxinfo.Get(ctx, status.InstanceID, client)
+	info, err := apiClient.VSphere().Info().Get(ctx, status.InstanceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed get machine info: %w", err)
 	}
@@ -188,7 +187,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
 	}
 
-	client, err := getClient()
+	apiClient, err := getClient()
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to get api-client: %v", err)
 	}
@@ -196,7 +195,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.CreateRequestTimeout)
 	defer cancel()
 
-	ips, err := anxips.GetFree(ctx, config.LocationID, config.VlanID, client)
+	ips, err := apiClient.VSphere().Provisioning().IPs().GetFree(ctx, config.LocationID, config.VlanID)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to get ip pool", err)
 	}
@@ -210,7 +209,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 		VLAN:    config.VlanID,
 	}}
 
-	vm := anxvm.NewDefinition(
+	vm := apiClient.VSphere().Provisioning().VM().NewDefinition(
 		config.LocationID,
 		"templates",
 		config.TemplateID,
@@ -237,7 +236,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 
 	if status.ProvisioningID == "" {
 		klog.Infof("Provisioning a new machine %s", machine.ObjectMeta.Name)
-		provisionResponse, err := anxvm.Provision(ctx, vm, client)
+		provisionResponse, err := apiClient.VSphere().Provisioning().VM().Provision(ctx, vm)
 		if err != nil {
 			return nil, newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 		}
@@ -248,7 +247,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 	}
 
 	klog.Infof("Awaiting machine %s provisioning completion", machine.ObjectMeta.Name)
-	instanceID, err := anxprog.AwaitCompletion(ctx, status.ProvisioningID, client)
+	instanceID, err := apiClient.VSphere().Provisioning().Progress().AwaitCompletion(ctx, status.ProvisioningID)
 	if err != nil {
 		return nil, newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 	}
@@ -263,7 +262,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	client, err := getClient()
+	apiClient, err := getClient()
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to get api-client: %v", err)
 	}
@@ -276,7 +275,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.DeleteRequestTimeout)
 	defer cancel()
 
-	err = anxvm.Deprovision(ctx, status.InstanceID, false, client)
+	err = apiClient.VSphere().Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
 	if err != nil {
 		var respErr *anxclient.ResponseError
 		if errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound {
@@ -300,12 +299,12 @@ func (p *provider) SetMetricsForMachines(machine v1alpha1.MachineList) error {
 	return nil
 }
 
-func getClient() (anxclient.Client, error) {
+func getClient() (anx.API, error) {
 	client, err := anxclient.NewAnyClientFromEnvs(true, nil)
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	return anx.NewAPI(client), nil
 }
 
 func getStatus(rawStatus *runtime.RawExtension) (*anxtypes.ProviderStatus, error) {

@@ -3,7 +3,7 @@ package anexia
 import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 
-	"github.com/anexia-it/go-anxcloud/pkg/info"
+	"github.com/anexia-it/go-anxcloud/pkg/vsphere/info"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	v1 "k8s.io/api/core/v1"
 )
