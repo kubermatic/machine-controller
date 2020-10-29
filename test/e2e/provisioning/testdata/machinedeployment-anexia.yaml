@@ -30,7 +30,7 @@ spec:
             locationID: "52b5f6b2fd3a4a7eaaedf1a7c019e9ea"
             cpus: 4
             memory: 4096
-            diskSize: 20
+            diskSize: 100
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             provisioningUtility: "cloud-init"
