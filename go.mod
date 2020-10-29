@@ -18,7 +18,6 @@ require (
 	github.com/aokoli/goutils v1.0.1 // indirect
 	github.com/aws/aws-sdk-go v1.19.25
 	github.com/coreos/container-linux-config-transpiler v0.9.0
-	github.com/coreos/etcd v3.3.17+incompatible
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/ignition v0.24.0 // indirect
 	github.com/davecgh/go-spew v1.1.1

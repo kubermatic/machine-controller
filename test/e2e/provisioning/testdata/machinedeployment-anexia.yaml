@@ -1,0 +1,40 @@
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: << MACHINE_NAME >>
+  namespace: kube-system
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      name: << MACHINE_NAME >>
+  template:
+    metadata:
+      labels:
+        name: << MACHINE_NAME >>
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+          - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: anexia
+          cloudProviderSpec:
+            token: "<< ANEXIA_TOKEN >>"
+            vlanID: "e37d7134ab934f5683fabcc72d28e036"
+            templateID: "12c28aa7-604d-47e9-83fb-5f1d1f1837b3"
+            locationID: "52b5f6b2fd3a4a7eaaedf1a7c019e9ea"
+            cpus: 4
+            memory: 4096
+            diskSize: 20
+          operatingSystem: "<< OS_NAME >>"
+          operatingSystemSpec:
+            provisioningUtility: "cloud-init"
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+      versions:
+        kubelet: "<< KUBERNETES_VERSION >>"

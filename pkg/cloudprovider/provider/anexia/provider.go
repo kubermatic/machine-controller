@@ -36,11 +36,9 @@ import (
 
 	anx "github.com/anexia-it/go-anxcloud/pkg"
 	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
-
 	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
 )
 
 type Config struct {
@@ -195,63 +193,64 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.CreateRequestTimeout)
 	defer cancel()
 
-	ips, err := apiClient.VSphere().Provisioning().IPs().GetFree(ctx, config.LocationID, config.VlanID)
-	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, "failed to get ip pool", err)
-	}
-	if len(ips) < 1 {
-		return nil, newError(common.InsufficientResourcesMachineError, "no ip address is available for this machine")
-	}
-
-	networkInterfaces := []anxvm.Network{{
-		NICType: anxtypes.VmxNet3NIC,
-		IPs:     []string{ips[0].Identifier},
-		VLAN:    config.VlanID,
-	}}
-
-	vm := apiClient.VSphere().Provisioning().VM().NewDefinition(
-		config.LocationID,
-		"templates",
-		config.TemplateID,
-		machine.ObjectMeta.Name,
-		config.CPUs,
-		config.Memory,
-		config.DiskSize,
-		networkInterfaces,
-	)
-	vm.Script = base64.StdEncoding.EncodeToString(
-		[]byte(fmt.Sprintf("anexia: true\n\n%s", userdata)),
-	)
-
-	sshKey, err := ssh.NewKey()
-	if err != nil {
-		return nil, newError(common.CreateMachineError, "failed to generate ssh key: %v", err)
-	}
-	vm.SSH = sshKey.PublicKey
-
 	status, err := getStatus(machine.Status.ProviderStatus)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
 	}
 
 	if status.ProvisioningID == "" {
-		klog.Infof("Provisioning a new machine %s", machine.ObjectMeta.Name)
+		ips, err := apiClient.VSphere().Provisioning().IPs().GetFree(ctx, config.LocationID, config.VlanID)
+		if err != nil {
+			return nil, newError(common.InvalidConfigurationMachineError, "failed to get ip pool: %v", err)
+		}
+		if len(ips) < 1 {
+			return nil, newError(common.InsufficientResourcesMachineError, "no ip address is available for this machine")
+		}
+
+		ipID := ips[0].Identifier
+		networkInterfaces := []anxvm.Network{{
+			NICType: anxtypes.VmxNet3NIC,
+			IPs:     []string{ipID},
+			VLAN:    config.VlanID,
+		}}
+
+		vm := apiClient.VSphere().Provisioning().VM().NewDefinition(
+			config.LocationID,
+			"templates",
+			config.TemplateID,
+			machine.ObjectMeta.Name,
+			config.CPUs,
+			config.Memory,
+			config.DiskSize,
+			networkInterfaces,
+		)
+
+		vm.Script = base64.StdEncoding.EncodeToString(
+			[]byte(fmt.Sprintf("anexia: true\n\n%s", userdata)),
+		)
+
+		sshKey, err := ssh.NewKey()
+		if err != nil {
+			return nil, newError(common.CreateMachineError, "failed to generate ssh key: %v", err)
+		}
+		vm.SSH = sshKey.PublicKey
+
 		provisionResponse, err := apiClient.VSphere().Provisioning().VM().Provision(ctx, vm)
 		if err != nil {
 			return nil, newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 		}
+
 		status.ProvisioningID = provisionResponse.Identifier
+		status.IPAllocationID = ipID
 		if err := updateStatus(machine, status, providerData.Update); err != nil {
 			return nil, newError(common.UpdateMachineError, "machine status update failed: %v", err)
 		}
 	}
 
-	klog.Infof("Awaiting machine %s provisioning completion", machine.ObjectMeta.Name)
 	instanceID, err := apiClient.VSphere().Provisioning().Progress().AwaitCompletion(ctx, status.ProvisioningID)
 	if err != nil {
 		return nil, newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 	}
-	klog.Infof("Machine %s provisioned", machine.ObjectMeta.Name)
 
 	status.InstanceID = instanceID
 	if err := updateStatus(machine, status, providerData.Update); err != nil {
@@ -278,10 +277,19 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	err = apiClient.VSphere().Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
 	if err != nil {
 		var respErr *anxclient.ResponseError
-		if errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound {
-			return true, nil
+		// Only error if the error was not "not found"
+		if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
+			return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
 		}
-		return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
+	}
+
+	err = apiClient.IPAM().Address().Delete(ctx, status.IPAllocationID)
+	if err != nil {
+		var respErr *anxclient.ResponseError
+		// Only error if the error was not "not found"
+		if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
+			return false, newError(common.DeleteMachineError, "failed to delete machine ip allocation: %v", err)
+		}
 	}
 
 	return true, nil
