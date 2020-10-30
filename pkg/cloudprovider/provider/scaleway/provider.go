@@ -262,7 +262,43 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (cloudInstance.Instance, error) {
-	return p.get(machine)
+	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
+	}
+
+	api, err := c.getInstanceAPI()
+	if err != nil {
+		return nil, err
+	}
+
+	i, err := p.get(machine)
+	if err != nil {
+		return nil, err
+	}
+
+	switch i.server.State {
+	case instance.ServerStateStopped, instance.ServerStateStoppedInPlace:
+		_, err := api.ServerAction(&instance.ServerActionRequest{
+			Action:   instance.ServerActionPoweron,
+			ServerID: i.server.ID,
+		})
+		if err != nil {
+			return nil, scalewayErrToTerminalError(err)
+		}
+		server, err := api.GetServer(&instance.GetServerRequest{
+			ServerID: i.server.ID,
+		})
+		if err != nil {
+			return nil, scalewayErrToTerminalError(err)
+		}
+		return &scwServer{server: server.Server}, nil
+	default:
+		return i, nil
+	}
 }
 
 func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
