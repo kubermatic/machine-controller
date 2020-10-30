@@ -21,11 +21,11 @@ import (
 )
 
 type RawConfig struct {
-	AccessKey      providerconfigtypes.ConfigVarString   `json:"accessKey,omitempty"`
-	SecretKey      providerconfigtypes.ConfigVarString   `json:"secretKey,omitempty"`
-	ProjectID      providerconfigtypes.ConfigVarString   `json:"projectId,omitempty"`
-	Zone           providerconfigtypes.ConfigVarString   `json:"zone,omitempty"`
-	CommercialType providerconfigtypes.ConfigVarString   `json:"commercialType"`
-	IPv6           providerconfigtypes.ConfigVarBool     `json:"ipv6"`
-	Tags           []providerconfigtypes.ConfigVarString `json:"tags,omitempty"`
+	AccessKey      providerconfigtypes.ConfigVarString `json:"accessKey,omitempty"`
+	SecretKey      providerconfigtypes.ConfigVarString `json:"secretKey,omitempty"`
+	ProjectID      providerconfigtypes.ConfigVarString `json:"projectId,omitempty"`
+	Zone           providerconfigtypes.ConfigVarString `json:"zone,omitempty"`
+	CommercialType providerconfigtypes.ConfigVarString `json:"commercialType"`
+	IPv6           providerconfigtypes.ConfigVarBool   `json:"ipv6"`
+	Tags           []string                            `json:"tags,omitempty"`
 }

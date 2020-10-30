@@ -69,7 +69,7 @@ func (c *Config) getInstanceAPI() (*instance.API, error) {
 		scw.WithUserAgent("kubermatic/machine-controller"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize the scaleway client: %s", err.Error())
 	}
 
 	return instance.NewAPI(client), nil
@@ -127,13 +127,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, tag := range rawConfig.Tags {
-		tagVal, err := p.configVarResolver.GetConfigVarStringValue(tag)
-		if err != nil {
-			return nil, nil, err
-		}
-		c.Tags = append(c.Tags, tagVal)
-	}
+	c.Tags = rawConfig.Tags
 
 	return &c, &pconfig, err
 }
