@@ -126,13 +126,6 @@ const userDataTemplate = `passwd:
 {{- if .ProviderSpec.Network }}
 networkd:
   units:
-{{- /* SysEleven block start */}}
-    - name: kubelet-restart.service
-      enabled: true
-      contents:
-{{ kubeletRestartOnNotReadyScript | indent 10 }}
-{{- /* SysEleven block end */}}
-
     - name: static-nic.network
       contents: |
         [Match]
@@ -151,6 +144,11 @@ networkd:
 
 systemd:
   units:
+    - name: kubelet-restart.service
+      enabled: true
+      contents: |
+{{ kubeletRestartOnNotReadySystemdUnit | indent 8 }}
+
 {{- if .CoreOSConfig.DisableUpdateEngine }}
     - name: update-engine.service
       mask: true
@@ -282,14 +280,12 @@ systemd:
 
 storage:
   files:
-{{- /* SysEleven block start */}}
     - path: /opt/kubelet-restart.sh
       filesystem: root
       mode: 0755
       contents:
         inline: |
 {{ kubeletRestartOnNotReadyScript | indent 10 }}
-{{- /* SysEleven block end */}}
 
 {{- if .HTTPProxy }}
     - path: /etc/environment

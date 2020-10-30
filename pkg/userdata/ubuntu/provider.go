@@ -138,7 +138,6 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
-{{- /* SysEleven block start */}}
 - path: "/opt/kubelet-restart.sh"
   permissions: "0755"
   content: |
@@ -148,7 +147,6 @@ write_files:
   permissions: "0644"
   content: |
 {{ kubeletRestartOnNotReadySystemdUnit | indent 4 }}
-{{- /* SysEleven block end */}}
 
 {{- if .HTTPProxy }}
 - path: "/etc/environment"
@@ -317,9 +315,7 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
-{{- /* SysEleven block start */}}
     systemctl enable --now --no-block kubelet-restart.service
-{{- /* SysEleven block end */}}
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"

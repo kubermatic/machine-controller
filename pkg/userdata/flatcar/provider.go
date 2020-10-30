@@ -175,12 +175,10 @@ networkd:
 
 systemd:
   units:
-{{- /* SysEleven block start */}}
     - name: kubelet-restart.service
       enabled: true
       contents: |
 {{ kubeletRestartOnNotReadySystemdUnit | indent 10 }}
-{{- /* SysEleven block end */}}
 
 {{- if .FlatcarConfig.DisableUpdateEngine }}
     - name: update-engine.service
@@ -316,14 +314,12 @@ systemd:
 
 storage:
   files:
-{{- /* SysEleven block start */}}
     - path: /opt/kubelet-restart.sh
       filesystem: root
       mode: 0755
       contents:
         inline: |
 {{ kubeletRestartOnNotReadyScript | indent 10 }}
-{{- /* SysEleven block end */}}
 
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root

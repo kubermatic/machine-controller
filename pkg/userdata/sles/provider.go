@@ -131,6 +131,16 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
+- path: "/opt/kubelet-restart.sh"
+  permissions: "0755"
+  content: |
+{{ kubeletRestartOnNotReadyScript | indent 4 }}
+
+- path: "/etc/systemd/system/kubelet-restart.service"
+  permissions: "0644"
+  content: |
+{{ kubeletRestartOnNotReadySystemdUnit | indent 4 }}
+
 {{- if .HTTPProxy }}
 - path: "/etc/environment"
   content: |
@@ -185,6 +195,7 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
+    systemctl enable --now --no-block kubelet-restart.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
