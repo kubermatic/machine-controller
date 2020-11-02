@@ -516,25 +516,25 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 // TestScalewayProvisioning - a test suite that exercises scaleway provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
 //
-// note that tests require the follwoing environement variable:
-// - SCW_E2E_TEST_ACCESS_KEY -> the Scaleway Access Key
-// - SCW_E2E_TEST_SECRET_KEY -> the Scaleway Secret Key
-// - SCW_E2E_TEST_PROJECT_ID -> the Scaleway Project ID
+// note that tests require the following environement variable:
+// - SCW_ACCESS_KEY -> the Scaleway Access Key
+// - SCW_SECRET_KEY -> the Scaleway Secret Key
+// - SCW_DEFAULT_PROJECT_ID -> the Scaleway Project ID
 func TestScalewayProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// test data
-	scwAccessKey := os.Getenv("SCW_E2E_TEST_ACCESS_KEY")
+	scwAccessKey := os.Getenv("SCW_ACCESS_KEY")
 	if len(scwAccessKey) == 0 {
 		t.Fatal("unable to run the test suite, SCW_E2E_TEST_ACCESS_KEY environement varialbe cannot be empty")
 	}
 
-	scwSecretKey := os.Getenv("SCW_E2E_TEST_SECRET_KEY")
+	scwSecretKey := os.Getenv("SCW_SECRET_KEY")
 	if len(scwSecretKey) == 0 {
 		t.Fatal("unable to run the test suite, SCW_E2E_TEST_SECRET_KEY environement varialbe cannot be empty")
 	}
 
-	scwProjectID := os.Getenv("SCW_E2E_TEST_PROJECT_ID")
+	scwProjectID := os.Getenv("SCW_DEFAULT_PROJECT_ID")
 	if len(scwProjectID) == 0 {
 		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environement varialbe cannot be empty")
 	}
