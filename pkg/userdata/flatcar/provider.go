@@ -175,11 +175,6 @@ networkd:
 
 systemd:
   units:
-    - name: kubelet-restart.service
-      enabled: true
-      contents: |
-{{ kubeletRestartOnNotReadySystemdUnit | indent 10 }}
-
 {{- if .FlatcarConfig.DisableUpdateEngine }}
     - name: update-engine.service
       mask: true
@@ -314,12 +309,14 @@ systemd:
 
 storage:
   files:
-    - path: /opt/kubelet-restart.sh
+{{- if .HTTPProxy }}
+    - path: /etc/environment
       filesystem: root
-      mode: 0755
+      mode: 0644
       contents:
         inline: |
-{{ kubeletRestartOnNotReadyScript | indent 10 }}
+{{ proxyEnvironment .HTTPProxy .NoProxy | indent 10 }}
+{{- end }}
 
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root

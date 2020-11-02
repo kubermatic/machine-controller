@@ -144,11 +144,6 @@ networkd:
 
 systemd:
   units:
-    - name: kubelet-restart.service
-      enabled: true
-      contents: |
-{{ kubeletRestartOnNotReadySystemdUnit | indent 8 }}
-
 {{- if .CoreOSConfig.DisableUpdateEngine }}
     - name: update-engine.service
       mask: true
@@ -280,13 +275,6 @@ systemd:
 
 storage:
   files:
-    - path: /opt/kubelet-restart.sh
-      filesystem: root
-      mode: 0755
-      contents:
-        inline: |
-{{ kubeletRestartOnNotReadyScript | indent 10 }}
-
 {{- if .HTTPProxy }}
     - path: /etc/environment
       filesystem: root

@@ -10,38 +10,6 @@ ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 
 write_files:
-- path: "/opt/kubelet-restart.sh"
-  permissions: "0755"
-  content: |
-    #!/bin/bash
-
-    while true; do
-        output=$(journalctl -u kubelet -n 1 | grep "use of closed network connection")
-        if [[ $? != 0 ]]; then
-            echo "Error not found in logs"
-        elif [[ $output ]]; then
-            echo "Restart kubelet"
-            systemctl restart kubelet
-        fi
-
-        # Runs every 10 minutes
-        sleep 600
-    done
-
-- path: "/etc/systemd/system/kubelet-restart.service"
-  permissions: "0644"
-  content: |
-    [Unit]
-    Description=Restarts kubelet on use of closed network connection error
-    Requires=kubelet.service
-    After=kubelet.service
-
-    [Service]
-    ExecStart=/opt/kubelet-restart.sh
-
-    [Install]
-    WantedBy=multi-user.target
-
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -143,7 +111,6 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
-    systemctl enable --now --no-block kubelet-restart.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"

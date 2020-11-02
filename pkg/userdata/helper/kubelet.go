@@ -243,36 +243,3 @@ ExecStart=/opt/bin/health-monitor.sh container-runtime
 [Install]
 WantedBy=multi-user.target`
 }
-
-// KubeletRestartOnNotReadyScript script to check kubelet stopped posting node status every 10 minutes
-func KubeletRestartOnNotReadyScript() string {
-	return `#!/bin/bash
-
-while true; do
-    output=$(journalctl -u kubelet -n 1 | grep "use of closed network connection")
-    if [[ $? != 0 ]]; then
-        echo "Error not found in logs"
-    elif [[ $output ]]; then
-        echo "Restart kubelet"
-        systemctl restart kubelet
-    fi
-
-    # Runs every 10 minutes
-    sleep 600
-done`
-}
-
-// KubeletRestartOnNotReadySystemdUnit restart kubelet on error
-func KubeletRestartOnNotReadySystemdUnit() string {
-	return `[Unit]
-Description=Restarts kubelet on use of closed network connection error
-Requires=kubelet.service
-After=kubelet.service
-
-[Service]
-ExecStart=/opt/kubelet-restart.sh
-
-[Install]
-WantedBy=multi-user.target
-`
-}

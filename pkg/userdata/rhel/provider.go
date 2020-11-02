@@ -40,7 +40,7 @@ type Provider struct{}
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
-		return "", fmt.Errorf("FAILED TO PARSE USER-DATA TEMPLATE: %V", err)
+		return "", fmt.Errorf("failed to parse user-data template: %v", err)
 	}
 
 	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
@@ -137,16 +137,6 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
-- path: "/opt/kubelet-restart.sh"
-  permissions: "0755"
-  content: |
-{{ kubeletRestartOnNotReadyScript | indent 4 }}
-
-- path: "/etc/systemd/system/kubelet-restart.service"
-  permissions: "0644"
-  content: |
-{{ kubeletRestartOnNotReadySystemdUnit | indent 4 }}
-
 {{- if .HTTPProxy }}
 - path: "/etc/environment"
   content: |
@@ -239,7 +229,6 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
-    systemctl enable --now --no-block kubelet-restart.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
