@@ -215,16 +215,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 
 	klog.V(6).Infof("Scaleway server (id='%s') got fully created", serverResp.Server.ID)
 
-	_, err = api.ServerAction(&instance.ServerActionRequest{
-		Action:   instance.ServerActionPoweron,
-		ServerID: serverResp.Server.ID,
-	})
-	if err != nil {
-		return nil, scalewayErrToTerminalError(err)
-	}
-
-	klog.V(6).Infof("Scaleway server (id='%s') started", serverResp.Server.ID)
-
 	return &scwServer{server: serverResp.Server}, err
 }
 
@@ -280,8 +270,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		return nil, err
 	}
 
-	switch i.server.State {
-	case instance.ServerStateStopped, instance.ServerStateStoppedInPlace:
+	if i.server.State == instance.ServerStateStopped || i.server.State == instance.ServerStateStoppedInPlace {
 		_, err := api.ServerAction(&instance.ServerActionRequest{
 			Action:   instance.ServerActionPoweron,
 			ServerID: i.server.ID,
@@ -289,16 +278,11 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		if err != nil {
 			return nil, scalewayErrToTerminalError(err)
 		}
-		server, err := api.GetServer(&instance.GetServerRequest{
-			ServerID: i.server.ID,
-		})
-		if err != nil {
-			return nil, scalewayErrToTerminalError(err)
-		}
-		return &scwServer{server: server.Server}, nil
-	default:
-		return i, nil
+
+		return nil, fmt.Errorf("scaleway instance %s is in a stopped state, powering the instance on is in progress", i.Name())
 	}
+
+	return i, nil
 }
 
 func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
