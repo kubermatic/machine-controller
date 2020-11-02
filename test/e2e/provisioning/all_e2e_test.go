@@ -51,6 +51,7 @@ const (
 	VSPhereManifest              = "./testdata/machinedeployment-vsphere.yaml"
 	VSPhereDSCManifest           = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	VSPhereResourcePoolManifest  = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
+	ScalewayManifest             = "./testdata/machinedeployment-scaleway.yaml"
 	OSManifest                   = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest            = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest       = "./testdata/machine-invalid.yaml"
@@ -510,6 +511,42 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 	}
 
 	testScenario(t, scenario, *testRunIdentifier, params, VSPhereResourcePoolManifest, false)
+}
+
+// TestScalewayProvisioning - a test suite that exercises scaleway provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+//
+// note that tests require the following environement variable:
+// - SCW_ACCESS_KEY -> the Scaleway Access Key
+// - SCW_SECRET_KEY -> the Scaleway Secret Key
+// - SCW_DEFAULT_PROJECT_ID -> the Scaleway Project ID
+func TestScalewayProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	scwAccessKey := os.Getenv("SCW_ACCESS_KEY")
+	if len(scwAccessKey) == 0 {
+		t.Fatal("unable to run the test suite, SCW_E2E_TEST_ACCESS_KEY environement varialbe cannot be empty")
+	}
+
+	scwSecretKey := os.Getenv("SCW_SECRET_KEY")
+	if len(scwSecretKey) == 0 {
+		t.Fatal("unable to run the test suite, SCW_E2E_TEST_SECRET_KEY environement varialbe cannot be empty")
+	}
+
+	scwProjectID := os.Getenv("SCW_DEFAULT_PROJECT_ID")
+	if len(scwProjectID) == 0 {
+		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environement varialbe cannot be empty")
+	}
+
+	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
+	// act
+	params := []string{
+		fmt.Sprintf("<< SCW_ACCESS_KEY >>=%s", scwAccessKey),
+		fmt.Sprintf("<< SCW_SECRET_KEY >>=%s", scwSecretKey),
+		fmt.Sprintf("<< SCW_DEFAULT_PROJECT_ID >>=%s", scwProjectID),
+	}
+	runScenarios(t, selector, params, ScalewayManifest, fmt.Sprintf("scw-%s", *testRunIdentifier))
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
