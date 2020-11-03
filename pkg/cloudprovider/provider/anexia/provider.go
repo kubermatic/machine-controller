@@ -24,6 +24,10 @@ import (
 	"fmt"
 	"net/http"
 
+	anx "github.com/anexia-it/go-anxcloud/pkg"
+	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
+	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
@@ -34,9 +38,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
-	anx "github.com/anexia-it/go-anxcloud/pkg"
-	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
-	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
@@ -49,7 +50,6 @@ type Config struct {
 	CPUs       int
 	Memory     int
 	DiskSize   int
-	SSHKey     string
 }
 
 type provider struct {
@@ -109,7 +109,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-// Validate returns success or failure based according to its FakeCloudProviderSpec
+// Validate returns success or failure based according to its ProviderSpec
 func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	config, _, err := p.getConfig(machinespec.ProviderSpec)
 	if err != nil {

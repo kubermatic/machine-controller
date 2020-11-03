@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	AnxTokenEnv = "ANXCLOUD_TOKEN"
+	AnxTokenEnv = "ANEXIA_TOKEN"
 
 	CreateRequestTimeout = 15 * time.Minute
 	GetRequestTimeout    = 1 * time.Minute
