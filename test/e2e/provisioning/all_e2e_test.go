@@ -58,6 +58,7 @@ const (
 	kubevirtManifest             = "./testdata/machinedeployment-kubevirt.yaml"
 	kubevirtManifestDNSConfig    = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
 	alibabaManifest              = "./testdata/machinedeployment-alibaba.yaml"
+	anexiaManifest               = "./testdata/machinedeployment-anexia.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -609,4 +610,20 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		executor:          verifyCreateUpdateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)
+}
+
+func TestAnexiaProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	token := os.Getenv("ANEXIA_TOKEN")
+	if token == "" {
+		t.Fatal("unable to run the test suite, ANEXIA_TOKEN environment variable cannot be empty")
+	}
+
+	selector := OsSelector("flatcar")
+	params := []string{
+		fmt.Sprintf("<< ANEXIA_TOKEN >>=%s", token),
+	}
+
+	runScenarios(t, selector, params, anexiaManifest, fmt.Sprintf("anexia-%s", *testRunIdentifier))
 }
