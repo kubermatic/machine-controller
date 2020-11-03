@@ -13,6 +13,8 @@ stringData:
   domainName: << OS_DOMAIN_NAME >>
   tenantName: << OS_TENANT_NAME >>
   region: << OS_REGION_NAME >>
+  instanceReadyCheckPeriod: << INSTANCE_READY_CHECK_PERIOD >>
+  instanceReadyCheckTimeout: << INSTANCE_READY_TIMEOUT >>
 ---
 apiVersion: v1
 kind: ConfigMap
