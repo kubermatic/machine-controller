@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 
@@ -176,16 +174,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, fmt.Errorf("failed to get dns policy: %v", err)
 		}
 	}
-	dnsConfigString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.DNSConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "dnsConfig" field: %v`, err)
-	}
-	if dnsConfigString != "" {
-		dnsConfig := &corev1.PodDNSConfig{}
-		if err := yaml.Unmarshal([]byte(dnsConfigString), &dnsConfig); err != nil {
-			return nil, nil, fmt.Errorf(`failed to unmarshal "dnsConfig" field: %v`, err)
-		}
-		config.DNSConfig = dnsConfig
+	if rawConfig.DNSConfig != nil {
+		config.DNSConfig = rawConfig.DNSConfig
 	}
 
 	return &config, &pconfig, nil
