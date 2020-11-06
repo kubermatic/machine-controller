@@ -154,13 +154,17 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"InstanceReadyCheckPeriod\" field, error = %v", err)
 	}
 
-	c.InstanceReadyCheckPeriod, err = time.ParseDuration(instanceReadyCheckPeriodStr)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckPeriod\" field (%s), error = %v", instanceReadyCheckPeriodStr, err)
-	}
+	if instanceReadyCheckPeriodStr != "" {
+		c.InstanceReadyCheckPeriod, err = time.ParseDuration(instanceReadyCheckPeriodStr)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckPeriod\" field (%s), error = %v", instanceReadyCheckPeriodStr, err)
+		}
 
-	if c.InstanceReadyCheckPeriod < 60*time.Second {
-		c.InstanceReadyCheckPeriod = 120 * time.Second
+		if c.InstanceReadyCheckPeriod < 0 {
+			c.InstanceReadyCheckPeriod = 5 * time.Second
+		}
+	} else {
+		c.InstanceReadyCheckPeriod = 5 * time.Second
 	}
 
 	instanceReadyCheckTimeoutStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceReadyCheckTimeout)
@@ -168,13 +172,17 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"InstanceReadyCheckTimeout\" field, error = %v", err)
 	}
 
-	c.InstanceReadyCheckTimeout, err = time.ParseDuration(instanceReadyCheckTimeoutStr)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckTimeout\" field (%s), error = %v", instanceReadyCheckTimeoutStr, err)
-	}
+	if instanceReadyCheckTimeoutStr != "" {
+		c.InstanceReadyCheckTimeout, err = time.ParseDuration(instanceReadyCheckTimeoutStr)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckTimeout\" field (%s), error = %v", instanceReadyCheckTimeoutStr, err)
+		}
 
-	if c.InstanceReadyCheckPeriod < 60*time.Second {
-		c.InstanceReadyCheckPeriod = 120 * time.Second
+		if c.InstanceReadyCheckTimeout < 0 {
+			c.InstanceReadyCheckTimeout = 10 * time.Second
+		}
+	} else {
+		c.InstanceReadyCheckTimeout = 10 * time.Second
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3

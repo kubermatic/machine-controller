@@ -36,7 +36,7 @@ spec:
             network: "<< NETWORK_NAME >>"
             rootDiskSizeGB: 10
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
-            instanceReadyCheckPeriod: 2m
+            instanceReadyCheckPeriod: 5s
             instanceReadyCheckTimeout: 2m
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
