@@ -34,7 +34,7 @@ spec:
             domainName: "<< DOMAIN_NAME >>"
             region: "<< REGION >>"
             network: "<< NETWORK_NAME >>"
-            instanceReadyCheckPeriod: 2m
+            instanceReadyCheckPeriod: 5s
             instanceReadyCheckTimeout: 2m
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
