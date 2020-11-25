@@ -220,8 +220,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	}
 
 	c.VNetResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetResourceGroup)
-	if err != nil || len(c.VNetResourceGroup) == 0 {
-		c.VNetResourceGroup = c.ResourceGroup
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"VNetResourceGroup\" field, error = %v", err)
 	}
 
 	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.Location)

@@ -247,7 +247,7 @@ func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
 		return network.Subnet{}, fmt.Errorf("failed to create subnets client: %v", err)
 	}
 
-	return subnetsClient.Get(ctx, c.ResourceGroup, c.VNetName, c.SubnetName, "")
+	return subnetsClient.Get(ctx, c.VNetResourceGroup, c.VNetName, c.SubnetName, "")
 }
 
 func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, error) {
@@ -256,7 +256,7 @@ func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, 
 		return network.VirtualNetwork{}, err
 	}
 
-	return virtualNetworksClient.Get(ctx, c.ResourceGroup, c.VNetName, "")
+	return virtualNetworksClient.Get(ctx, c.VNetResourceGroup, c.VNetName, "")
 }
 
 func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP *network.PublicIPAddress) (*network.Interface, error) {
