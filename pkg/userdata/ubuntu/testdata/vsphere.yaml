@@ -138,7 +138,6 @@ write_files:
     swapoff -a
 
     DOCKER_VERSION='5:19.03.12~3-0~ubuntu-bionic'
-    CONTAINERD_PKG='1.2.13-1'
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \
@@ -158,10 +157,9 @@ write_files:
       util-linux \
       docker-ce="${DOCKER_VERSION}" \
       docker-ce-cli="${DOCKER_VERSION}" \
-      containerd.io="${CONTAINERD_PKG}" \
       open-vm-tools \
       ipvsadm
-    apt-mark hold docker-ce docker-ce-cli containerd.io || true
+    apt-mark hold docker-ce docker-ce-cli || true
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682

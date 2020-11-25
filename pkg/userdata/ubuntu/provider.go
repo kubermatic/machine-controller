@@ -271,7 +271,6 @@ write_files:
 	See: https://github.com/docker/cli/issues/2533 */}}
 
     DOCKER_VERSION='{{ .DockerVersion }}'
-    CONTAINERD_PKG='1.2.13-1'
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \
@@ -291,14 +290,13 @@ write_files:
       util-linux \
       docker-ce="${DOCKER_VERSION}" \
       docker-ce-cli="${DOCKER_VERSION}" \
-      containerd.io="${CONTAINERD_PKG}" \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
       ipvsadm
 
 {{- /* If something failed during package installation but docker got installed, we need to put it on hold */}}
-    apt-mark hold docker-ce docker-ce-cli containerd.io || true
+    apt-mark hold docker-ce docker-ce-cli || true
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
