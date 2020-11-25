@@ -237,6 +237,8 @@ subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
 location: "westeurope"
 # Azure resource group
 resourceGroup: "<< YOUR_RESOURCE_GROUP >>"
+# Azure resource group of the vnet	
+vnetResourceGroup: "<< YOUR_VNET_RESOURCE_GROUP >>"
 # Azure availability set
 availabilitySet: "<< YOUR AVAILABILITY SET >>"
 # VM size

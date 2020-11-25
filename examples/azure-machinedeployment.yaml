@@ -64,6 +64,7 @@ spec:
                 key: subscriptionID
             location: "westeurope"
             resourceGroup: "<< YOUR_RESOURCE_GROUP >>"
+            vnetResourceGroup: "<< YOUR_VNET_RESOURCE_GROUP >>"
             vmSize: "Standard_F2"
             # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
             osDiskSize: 30
