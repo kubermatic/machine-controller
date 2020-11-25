@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	lessThen118Check = "< 1.18"
+	lessThen119Check = "< 1.19"
 )
 
 // Provider is a pkg/userdata/plugin.Provider implementation.
@@ -81,12 +81,12 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	}
 
 	kubeletImage := req.KubeletRepository
-	lessThen118, err := semver.NewConstraint(lessThen118Check)
+	lessThen119, err := semver.NewConstraint(lessThen119Check)
 	if err != nil {
 		return "", err
 	}
 
-	if lessThen118.Check(kubeletVersion) {
+	if lessThen119.Check(kubeletVersion) {
 		kubeletImage = req.HyperkubeImage
 	}
 	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
@@ -311,7 +311,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root
@@ -434,4 +434,6 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
-{{ safeDownloadBinariesScript .KubeletVersion | indent 10 }}`
+{{ safeDownloadBinariesScript .KubeletVersion | indent 10 }}
+          systemctl disable download-script.service
+`

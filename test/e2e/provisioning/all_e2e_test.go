@@ -160,7 +160,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environement varialbe cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
 	runScenarios(t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
@@ -177,7 +177,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := Not(OsSelector("sles"))
+	selector := Not(OsSelector("coreos", "sles"))
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -271,7 +271,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles"))
+	selector := Not(OsSelector("coreos", "sles"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -329,7 +329,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	}
 
 	// Act. GCE does not support CentOS.
-	selector := OsSelector("ubuntu", "coreos")
+	selector := OsSelector("ubuntu")
 	params := []string{
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 	}
@@ -371,7 +371,7 @@ func TestPacketProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel"))
 
 	// act
 	params := []string{

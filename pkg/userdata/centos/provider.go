@@ -48,6 +48,11 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("invalid kubelet version: '%v'", err)
 	}
 
+	dockerVersion, err := userdatahelper.DockerVersionYum(kubeletVersion)
+	if err != nil {
+		return "", fmt.Errorf("invalid docker version: %v", err)
+	}
+
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get provider config: %v", err)
@@ -86,6 +91,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ProviderSpec     *providerconfigtypes.Config
 		OSConfig         *Config
 		KubeletVersion   string
+		DockerVersion    string
 		ServerAddr       string
 		Kubeconfig       string
 		KubernetesCACert string
@@ -95,6 +101,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ProviderSpec:     pconfig,
 		OSConfig:         centosConfig,
 		KubeletVersion:   kubeletVersion.String(),
+		DockerVersion:    dockerVersion,
 		ServerAddr:       serverAddr,
 		Kubeconfig:       kubeconfigString,
 		KubernetesCACert: kubernetesCACert,
@@ -188,12 +195,13 @@ write_files:
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 {{- /*	Due to DNF modules we have to do this on docker-ce repo
 		More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473 */}}
+    sed -i 's/\$releasever/7/g' /etc/yum.repos.d/docker-ce.repo
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
 {{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
 	See: https://github.com/docker/cli/issues/2533 */}}
 
-    DOCKER_VERSION='18.09.9-3.el7'
+    DOCKER_VERSION='{{ .DockerVersion }}'
     yum install -y docker-ce-${DOCKER_VERSION} \
       docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
@@ -254,7 +262,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 4 }}
 
 - path: "/etc/kubernetes/pki/ca.crt"
   content: |
@@ -315,5 +323,5 @@ write_files:
     EnvironmentFile=-/etc/environment
 
 runcmd:
-- systemctl enable --now setup.service
+- systemctl start setup.service
 `

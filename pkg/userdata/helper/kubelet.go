@@ -137,7 +137,7 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 }
 
 // kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration
-func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP) (string, error) {
+func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool) (string, error) {
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
 		clusterDNSstr = append(clusterDNSstr, ip.String())
@@ -165,7 +165,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP) (string, er
 		CgroupDriver:          "systemd",
 		ClusterDNS:            clusterDNSstr,
 		ClusterDomain:         clusterDomain,
-		FeatureGates:          map[string]bool{"RotateKubeletServerCertificate": true},
+		FeatureGates:          featureGates,
 		ProtectKernelDefaults: true,
 		ReadOnlyPort:          0,
 		RotateCertificates:    true,

@@ -69,9 +69,10 @@ write_files:
 
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    sed -i 's/\$releasever/7/g' /etc/yum.repos.d/docker-ce.repo
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
-    DOCKER_VERSION='18.09.9-3.el7'
+    DOCKER_VERSION='19.03.12-3.el7'
     yum install -y docker-ce-${DOCKER_VERSION} \
       docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
@@ -90,7 +91,7 @@ write_files:
     cni_bin_dir=/opt/cni/bin
     mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
     arch=${HOST_ARCH:-amd64}
-    CNI_VERSION="${CNI_VERSION:-v0.8.6}"
+    CNI_VERSION="${CNI_VERSION:-v0.8.7}"
     cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
     cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
     curl -Lfo "$cni_bin_dir/$cni_filename" "$cni_base_url/$cni_filename"
@@ -370,4 +371,4 @@ write_files:
     EnvironmentFile=-/etc/environment
 
 runcmd:
-- systemctl enable --now setup.service
+- systemctl start setup.service

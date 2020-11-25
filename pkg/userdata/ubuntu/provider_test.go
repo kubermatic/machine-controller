@@ -84,6 +84,10 @@ kPe6XoSbiLm/kxk32T0=
 			},
 		},
 	}
+
+	kubeletFeatureGates = map[string]bool{
+		"RotateKubeletServerCertificate": true,
+	}
 )
 
 const (
@@ -444,6 +448,7 @@ func TestUserDataGeneration(t *testing.T) {
 				RegistryMirrors:       test.registryMirrors,
 				MaxLogSize:            test.maxLogSize,
 				PauseImage:            test.pauseImage,
+				KubeletFeatureGates:   kubeletFeatureGates,
 			}
 			s, err := provider.UserData(req)
 			if err != nil {

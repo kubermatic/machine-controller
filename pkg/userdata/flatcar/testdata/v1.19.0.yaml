@@ -5,15 +5,33 @@ passwd:
         - ssh-rsa AAABBB
         - ssh-rsa CCCDDD
 
+networkd:
+  units:
+    - name: static-nic.network
+      contents: |
+        [Match]
+        # Because of difficulty predicting specific NIC names on different cloud providers,
+        # we only support static addressing on VSphere. There should be a single NIC attached
+        # that we will match by name prefix 'en' which denotes ethernet devices.
+        Name=en*
+
+        [Network]
+        DHCP=no
+        Address=192.168.81.4/24
+        Gateway=192.168.81.1
+        DNS=8.8.8.8
+
 
 systemd:
   units:
     - name: update-engine.service
       mask: true
+    - name: locksmithd.service
+      mask: true
     - name: docker.service
       enabled: true
 
-    - name: download-healthcheck-script.service
+    - name: download-script.service
       enabled: true
       contents: |
         [Unit]
@@ -23,7 +41,6 @@ systemd:
         Type=oneshot
         EnvironmentFile=-/etc/environment
         ExecStart=/opt/bin/download.sh
-        ExecPost=systemctl daemon-reload
         [Install]
         WantedBy=multi-user.target
 
@@ -33,8 +50,8 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-script.service
+          After=download-script.service
       contents: |
           [Unit]
           Requires=docker.service
@@ -52,8 +69,8 @@ systemd:
       - name: 40-docker.conf
         contents: |
           [Unit]
-          Requires=download-healthcheck-script.service
-          After=download-healthcheck-script.service
+          Requires=download-script.service
+          After=download-script.service
       contents: |
           [Unit]
           Requires=kubelet.service
@@ -81,7 +98,6 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-
     - name: kubelet.service
       enabled: true
       contents: |
@@ -95,31 +111,40 @@ systemd:
         MemoryAccounting=true
         EnvironmentFile=-/etc/environment
         EnvironmentFile=/etc/kubernetes/nodeip.conf
-        Environment=KUBELET_IMAGE=docker://k8s.gcr.io/hyperkube-amd64:v1.17.2
-        Environment="RKT_RUN_ARGS=--uuid-file-save=/var/cache/kubelet-pod.uuid \
-          --inherit-env \
-          --insecure-options=image \
-          --volume=resolv,kind=host,source=/etc/resolv.conf \
-          --mount volume=resolv,target=/etc/resolv.conf \
-          --volume cni-bin,kind=host,source=/opt/cni/bin \
-          --mount volume=cni-bin,target=/opt/cni/bin \
-          --volume cni-conf,kind=host,source=/etc/cni/net.d \
-          --mount volume=cni-conf,target=/etc/cni/net.d \
-          --volume etc-kubernetes,kind=host,source=/etc/kubernetes \
-          --mount volume=etc-kubernetes,target=/etc/kubernetes \
-          --volume var-log,kind=host,source=/var/log \
-          --mount volume=var-log,target=/var/log \
-          --volume var-lib-calico,kind=host,source=/var/lib/calico \
-          --mount volume=var-lib-calico,target=/var/lib/calico"
+        Environment=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/bin
+        ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
         ExecStartPre=/bin/mkdir -p /var/lib/calico
         ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
         ExecStartPre=/bin/mkdir -p /etc/cni/net.d
         ExecStartPre=/bin/mkdir -p /opt/cni/bin
-        ExecStartPre=-/usr/bin/rkt rm --uuid-file=/var/cache/kubelet-pod.uuid
-        ExecStartPre=-/bin/rm -rf /var/lib/rkt/cas/tmp/
         ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-        ExecStart=/usr/lib/coreos/kubelet-wrapper \
-          kubelet \
+        ExecStartPre=/bin/sh -c '/usr/bin/env > /tmp/environment'
+        ExecStart=/usr/bin/docker run --name %n \
+          --rm --tty --restart no \
+          --network host \
+          --pid host \
+          --env-file /tmp/environment \
+          --privileged \
+          --cgroup-parent system.slice \
+          --entrypoint kubelet \
+          -v /dev:/dev \
+          -v /etc/cni/net.d:/etc/cni/net.d \
+          -v /etc/kubernetes:/etc/kubernetes \
+          -v /etc/machine-id:/etc/machine-id:ro \
+          -v /etc/os-release:/etc/os-release:ro \
+          -v /etc/resolv.conf:/etc/resolv.conf:ro \
+          -v /lib/modules:/lib/modules \
+          -v /mnt:/mnt:rshared \
+          -v /opt/cni/bin:/opt/cni/bin:ro \
+          -v /run:/run \
+          -v /sys:/sys \
+          -v /usr/sbin/iscsiadm:/usr/sbin/iscsiadm \
+          -v /var/lib/calico:/var/lib/calico:ro \
+          -v /var/lib/cni:/var/lib/cni \
+          -v /var/lib/docker:/var/lib/docker \
+          -v /var/lib/kubelet:/var/lib/kubelet:rshared \
+          -v /var/log/pods:/var/log/pods \
+          for-kubernetes-more-then-1.19/kubeletImage:v1.19.0 \
           --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
           --kubeconfig=/var/lib/kubelet/kubeconfig \
           --config=/etc/kubernetes/kubelet.conf \
@@ -127,14 +152,15 @@ systemd:
           --cni-conf-dir=/etc/cni/net.d \
           --cni-bin-dir=/opt/cni/bin \
           --cert-dir=/etc/kubernetes/pki \
-          --cloud-provider=aws \
+          --cloud-provider=vsphere \
           --cloud-config=/etc/kubernetes/cloud-config \
+          --hostname-override=node1 \
           --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
           --volume-plugin-dir=/var/lib/kubelet/volumeplugins \
           --node-ip ${KUBELET_NODE_IP}
-        ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
+        ExecStop=-/usr/bin/docker stop %n
         Restart=always
         RestartSec=10
         [Install]
@@ -324,7 +350,7 @@ storage:
       mode: 0400
       contents:
         inline: |
-          {aws-config:true}
+          {vsphere-config:true}
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
@@ -358,6 +384,11 @@ storage:
           kPe6XoSbiLm/kxk32T0=
           -----END CERTIFICATE-----
 
+    - path: /etc/hostname
+      filesystem: root
+      mode: 0600
+      contents:
+        inline: 'node1'
 
     - path: /etc/ssh/sshd_config
       filesystem: root
@@ -406,7 +437,7 @@ storage:
           tar xvf "$cni_filename"
           rm -f "$cni_filename"
           cd -
-          KUBE_VERSION="${KUBE_VERSION:-v1.17.2}"
+          KUBE_VERSION="${KUBE_VERSION:-v1.19.0}"
           kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
           kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
           kube_sum_file="$kube_dir/sha256"
@@ -429,3 +460,5 @@ storage:
               curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
               chmod +x /opt/bin/health-monitor.sh
           fi
+
+          systemctl disable download-script.service

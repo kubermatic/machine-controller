@@ -47,6 +47,7 @@ spec:
             # Optional
             datacenter: ""
             location: "fsn1"
+            image: "ubuntu-20.04"
             # Optional: network IDs or names
             networks:
               - "<< YOUR_NETWORK >>"
