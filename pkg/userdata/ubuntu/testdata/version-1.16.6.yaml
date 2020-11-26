@@ -8,6 +8,37 @@ ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 
 write_files:
+- path: "/opt/kubelet-restart.sh"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+
+    while true; do
+    	output=$(journalctl -u kubelet -n 1 | grep "use of closed network connection")
+    	if [[ $? != 0 ]]; then
+    	  echo "Error not found in logs"
+    	elif [[ $output ]]; then
+    	  echo "Restart kubelet"
+    	  systemctl restart kubelet
+    	fi
+
+    	# Runs every 10 minutes
+    	sleep 600
+    done
+
+- path: "/etc/systemd/system/kubelet-restart.service"
+  permissions: "0644"
+  content: |
+    [Unit]
+    Description=Restarts kubelet on use of closed network connection error
+    Requires=kubelet.service
+    After=kubelet.service
+
+    [Service]
+    ExecStart=/opt/kubelet-restart.sh
+
+    [Install]
+    WantedBy=multi-user.target
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -138,7 +169,6 @@ write_files:
     swapoff -a
 
     DOCKER_VERSION='5:18.09.9~3-0~ubuntu-bionic'
-    CONTAINERD_PKG='1.2.13-1'
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \
@@ -158,9 +188,8 @@ write_files:
       util-linux \
       docker-ce="${DOCKER_VERSION}" \
       docker-ce-cli="${DOCKER_VERSION}" \
-      containerd.io="${CONTAINERD_PKG}" \
       ipvsadm
-    apt-mark hold docker-ce docker-ce-cli containerd.io || true
+    apt-mark hold docker-ce docker-ce-cli || true
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
@@ -211,6 +240,7 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
+    systemctl enable --now --no-block kubelet-restart.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
