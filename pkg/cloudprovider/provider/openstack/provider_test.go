@@ -79,7 +79,7 @@ const expectedBlockDeviceBootRequest = `{
 	  }
 	],
 	"flavorRef": "1",
-	"imageRef": "",
+	"imageRef": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
 	"metadata": {
 	  "kubernetes-cluster": "xyz",
 	  "machine-uid": "",
