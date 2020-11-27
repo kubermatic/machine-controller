@@ -40,7 +40,7 @@ type Provider struct{}
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
-		return "", fmt.Errorf("FAILED TO PARSE USER-DATA TEMPLATE: %V", err)
+		return "", fmt.Errorf("FAILED TO PARSE USER-DATA TEMPLATE: %v", err)
 	}
 
 	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
