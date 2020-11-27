@@ -154,13 +154,6 @@ const userDataTemplate = `passwd:
 {{- if .ProviderSpec.Network }}
 networkd:
   units:
-{{- /* SysEleven block start */}}
-    - name: kubelet-restart.service
-      enabled: true
-      contents:
-{{ kubeletRestartOnNotReadyScript | indent 10 }}
-{{- /* SysEleven block end */}}
-
     - name: static-nic.network
       contents: |
         [Match]

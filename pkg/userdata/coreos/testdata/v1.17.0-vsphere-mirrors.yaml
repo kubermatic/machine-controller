@@ -176,6 +176,25 @@ systemd:
 
 storage:
   files:
+    - path: /opt/kubelet-restart.sh
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+
+          while true; do
+          	output=$(journalctl -u kubelet -n 1 | grep "use of closed network connection")
+          	if [[ $? != 0 ]]; then
+          	  echo "Error not found in logs"
+          	elif [[ $output ]]; then
+          	  echo "Restart kubelet"
+          	  systemctl restart kubelet
+          	fi
+
+          	# Runs every 10 minutes
+          	sleep 600
+          done
     - path: /etc/environment
       filesystem: root
       mode: 0644
