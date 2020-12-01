@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG GO_VERSION=1.13
+ARG GO_VERSION=1.15.1
 FROM golang:${GO_VERSION} AS builder
 WORKDIR /go/src/github.com/kubermatic/machine-controller
 COPY . .
 RUN make all
 
-FROM alpine:3.11
+FROM alpine:3.12
 
 RUN apk add --no-cache ca-certificates cdrkit
 
-COPY --from=builder /go/src/github.com/kubermatic/machine-controller/machine-controller \
+COPY --from=builder \
+    /go/src/github.com/kubermatic/machine-controller/machine-controller \
     /go/src/github.com/kubermatic/machine-controller/machine-controller-userdata-* \
     /go/src/github.com/kubermatic/machine-controller/webhook \
     /usr/local/bin/
