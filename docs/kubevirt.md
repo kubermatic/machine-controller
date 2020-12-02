@@ -1,7 +1,11 @@
 # Kubevirt
 
 In order to use the machine-controller to create machines using [Kubevirt](https://kubevirt.io)
-you must first install the latter. We provider a manifest for this, simply run `kubectl apply -f examples/kubevirt-operator-0.17.4.yaml`.
+you must first install the latter. We provide a manifest for this, simply run `kubectl apply -f examples/kubevirt-operator-0.19.0.yaml`.
+We strongly recommend installing a version which is equal or higher than `0.19.0`. Machine Controller also uses the KubeVirt CDI which can be found 
+under `examples/cdi-operator.yaml` to provision storage. It is important to have a basic understanding of Kubernetes storage. For more 
+information regarding which types of storage can be used please refer to [KubeVirt documentation](https://github.com/kubevirt/containerized-data-importer/blob/master/doc/basic_pv_pvc_dv.md).
+
 
 Afterwards, you can use the provided `exampes/examples/kubevirt-machinedeployment.yaml` as base. There
 are some things you need to keep in mind:
