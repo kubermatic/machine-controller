@@ -32,7 +32,22 @@ cni_bin_dir=/opt/cni/bin
 mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
 
 {{- /* HOST_ARCH can be defined outside of machine-controller (in kubeone for example) */}}
-arch=${HOST_ARCH:-amd64}
+arch=${HOST_ARCH-}
+if [ -z "$arch" ]
+then
+case $(uname -m) in
+x86_64)
+    arch="amd64"
+    ;;
+aarch64)
+    arch="arm64"
+    ;;
+*)
+    echo "unsupported CPU architecture, exiting"
+    exit 1
+    ;;
+esac
+fi
 
 {{- /* # CNI variables */}}
 CNI_VERSION="${CNI_VERSION:-{{ .CNIVersion }}}"
