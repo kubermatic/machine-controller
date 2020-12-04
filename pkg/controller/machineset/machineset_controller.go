@@ -119,7 +119,7 @@ type ReconcileMachineSet struct {
 // +kubebuilder:rbac:groups=cluster.k8s.io,resources=machines,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileMachineSet) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the MachineSet instance
-	ctx := context.TODO()
+	ctx := context.Background()
 	machineSet := &clusterv1alpha1.MachineSet{}
 	if err := r.Get(ctx, request.NamespacedName, machineSet); err != nil {
 		if apierrors.IsNotFound(err) {

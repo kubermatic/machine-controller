@@ -72,9 +72,7 @@ func Add(mgr manager.Manager) error {
 }
 
 func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err := r.reconcile(ctx, request)
+	err := r.reconcile(context.Background(), request)
 	if err != nil {
 		klog.Errorf("Reconciliation of request %s failed: %v", request.NamespacedName.String(), err)
 	}

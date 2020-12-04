@@ -114,8 +114,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.ToRequestsFu
 func (r *ReconcileMachineDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the MachineDeployment instance
 	d := &v1alpha1.MachineDeployment{}
-	ctx := context.TODO()
-	if err := r.Get(context.TODO(), request.NamespacedName, d); err != nil {
+	ctx := context.Background()
+	if err := r.Get(ctx, request.NamespacedName, d); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.

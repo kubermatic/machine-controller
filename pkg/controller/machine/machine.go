@@ -164,6 +164,7 @@ func Add(
 		prometheusRegistry.MustRegister(metrics.Errors, metrics.Workers)
 	}
 	reconciler := &Reconciler{
+		ctx:                              ctx,
 		kubeClient:                       kubeClient,
 		client:                           mgr.GetClient(),
 		recorder:                         mgr.GetEventRecorderFor(ControllerName),
