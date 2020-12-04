@@ -259,7 +259,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
 		{
-			name:              "machine older than joinClusterTimout doesnt get deletet when ownerReference.Kind != MachineSet",
+			name:              "machine older than joinClusterTimout does not get deleted when ownerReference.Kind != MachineSet",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
 			hasNode:           false,
 			ownerReferences:   []metav1.OwnerReference{{Name: "owner", Kind: "Cat"}},

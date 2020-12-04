@@ -216,7 +216,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	createInstanceRequest := ecs.CreateCreateInstanceRequest()
 	createInstanceRequest.ImageId, err = p.getImageIDForOS(machine.Spec, pc.OperatingSystem)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get a valied image for machine : %v", err)
+		return nil, fmt.Errorf("failed to get a valid image for machine : %v", err)
 	}
 	createInstanceRequest.InstanceName = machine.Name
 	createInstanceRequest.InstanceType = c.InstanceType

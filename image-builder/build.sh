@@ -77,7 +77,7 @@ fi
 TEMPDIR="$(mktemp -d)"
 TARGETFS="$TEMPDIR/targetfs"
 mkdir -p "$TARGETFS" "$SCRIPT_DIR/downloads"
-# on failure unmount target filesystem (if mounted) and delte the temporary directory
+# on failure unmount target filesystem (if mounted) and delete the temporary directory
 trap "sudo mountpoint --quiet $TARGETFS && sudo umount --recursive $TARGETFS; rm -rf $TEMPDIR" EXIT SIGINT
 
 get_coreos_image() {

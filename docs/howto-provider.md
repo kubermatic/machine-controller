@@ -24,7 +24,7 @@ Validate(spec v1alpha1.MachineSpec) error
 Get(machine *v1alpha1.Machine) (instance.Instance, error)
 ```
 
-`Get` gets a node that is associated with the given machine. Note that this method can return a so called _terminal error_, which indicates that a manual interaction is required to recover from this state. See `v1alpha1.MachineStatus` for more info and `errors.TerminalError` type. 
+`Get` gets a node that is associated with the given machine. Note that this method can return a so called _terminal error_, which indicates that a manual interaction is required to recover from this state. See `v1alpha1.MachineStatus` for more info and `errors.TerminalError` type.
 
 In case the instance cannot be found, the returned error has to be `github.com/kubermatic/machine-controller/pkg/cloudprovider/errors.ErrInstanceNotFound` for proper evaluation by the machine controller.
 
@@ -44,7 +44,7 @@ Create(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData, userdata 
 Cleanup(machine *v1alpha1.Machine, data *cloud.MachineCreateDeleteData) (bool, error)
 ```
 
-`Cleanup` will delete the instance associated with the machine and all associated resources. If all resources have been cleaned up, true will be returned. In case the cleanup involves ansynchronous deletion of resources & those resources are not gone yet, false should be returned. This is to indicate that the cleanup is not done, but needs to be called again at a later point.
+`Cleanup` will delete the instance associated with the machine and all associated resources. If all resources have been cleaned up, true will be returned. In case the cleanup involves asynchronous deletion of resources & those resources are not gone yet, false should be returned. This is to indicate that the cleanup is not done, but needs to be called again at a later point.
 
 ```go
 MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error)
@@ -79,11 +79,11 @@ For each cloud provider a unique string constant has to be defined in file `type
 
 ## Add example manifest
 
-For documentation of the different configuration options an according example manifest with helpful comments has to be added to `github.com/kubermatic/machine-controller/examples`. Naming scheme is `<package-name>-machinedeployment.yaml`. 
+For documentation of the different configuration options an according example manifest with helpful comments has to be added to `github.com/kubermatic/machine-controller/examples`. Naming scheme is `<package-name>-machinedeployment.yaml`.
 
 ## Integrate provider into CI
 
-Like the example manifest a more concrete one named `machinedeployment-<package-name>.yaml` has to be added to `github.com/kubermatic/machine-controller/test/e2e/provisioning/testdata`. Additionally file `all_e2e_test.go` in package `github.com/kubermatic/machine-controller/test/e2e/provisioning` containes all provider tests. Like the existing ones the test for the new provider has to be placed here. Mainly it's the retrieval of test data, especially the access data, from the environment and the starting of the test scenarios.
+Like the example manifest a more concrete one named `machinedeployment-<package-name>.yaml` has to be added to `github.com/kubermatic/machine-controller/test/e2e/provisioning/testdata`. Additionally file `all_e2e_test.go` in package `github.com/kubermatic/machine-controller/test/e2e/provisioning` contains all provider tests. Like the existing ones the test for the new provider has to be placed here. Mainly it's the retrieval of test data, especially the access data, from the environment and the starting of the test scenarios.
 
 Now the provider is ready to be added into the project for CI tests.
 

@@ -161,7 +161,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 	// test data
 	doToken := os.Getenv("DO_E2E_TESTS_TOKEN")
 	if len(doToken) == 0 {
-		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environement varialbe cannot be empty")
+		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
 	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
@@ -517,7 +517,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 // TestScalewayProvisioning - a test suite that exercises scaleway provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
 //
-// note that tests require the following environement variable:
+// note that tests require the following environment variable:
 // - SCW_ACCESS_KEY -> the Scaleway Access Key
 // - SCW_SECRET_KEY -> the Scaleway Secret Key
 // - SCW_DEFAULT_PROJECT_ID -> the Scaleway Project ID
@@ -527,17 +527,17 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 	// test data
 	scwAccessKey := os.Getenv("SCW_ACCESS_KEY")
 	if len(scwAccessKey) == 0 {
-		t.Fatal("unable to run the test suite, SCW_E2E_TEST_ACCESS_KEY environement varialbe cannot be empty")
+		t.Fatal("unable to run the test suite, SCW_E2E_TEST_ACCESS_KEY environment variable cannot be empty")
 	}
 
 	scwSecretKey := os.Getenv("SCW_SECRET_KEY")
 	if len(scwSecretKey) == 0 {
-		t.Fatal("unable to run the test suite, SCW_E2E_TEST_SECRET_KEY environement varialbe cannot be empty")
+		t.Fatal("unable to run the test suite, SCW_E2E_TEST_SECRET_KEY environment variable cannot be empty")
 	}
 
 	scwProjectID := os.Getenv("SCW_DEFAULT_PROJECT_ID")
 	if len(scwProjectID) == 0 {
-		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environement varialbe cannot be empty")
+		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environment variable cannot be empty")
 	}
 
 	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))

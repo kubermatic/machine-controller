@@ -431,7 +431,7 @@ rules:
   - "*"
 # Pods are required for draining
 # PVs are required for vsphere to detach them prior to deleting the instance
-# Secrets and configmaps are needed for the boostrap token creation and when a ref is used for a
+# Secrets and configmaps are needed for the bootstrap token creation and when a ref is used for a
 # value in the machineSpec
 - apiGroups:
   - ""

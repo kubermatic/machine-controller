@@ -54,7 +54,7 @@ func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, 
 	}
 }
 
-// Run excutes the eviction
+// Run executes the eviction
 func (ne *NodeEviction) Run() (bool, error) {
 	node := &corev1.Node{}
 	if err := ne.client.Get(ne.ctx, types.NamespacedName{Name: ne.nodeName}, node); err != nil {

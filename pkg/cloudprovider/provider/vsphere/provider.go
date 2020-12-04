@@ -379,7 +379,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to get virtual machine power state: %v", err)
 	}
 
-	// We cannot destroy a VM thats powered on, but we also
+	// We cannot destroy a VM that's powered on, but we also
 	// cannot power off a machine that is already off.
 	if powerState != types.VirtualMachinePowerStatePoweredOff {
 		powerOffTask, err := virtualMachine.PowerOff(ctx)

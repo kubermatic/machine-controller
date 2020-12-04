@@ -117,7 +117,7 @@ type controllerRunOptions struct {
 
 	// parentCtxDone allows you to close parentCtx
 	// since context can form a tree-like structure it seems to be odd to pass done function of a parent
-	// and allow dependant function to close the parent.
+	// and allow dependent function to close the parent.
 	// it should be the other way around i.e. derive a new context from the parent
 	parentCtxDone context.CancelFunc
 

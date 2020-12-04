@@ -10,7 +10,7 @@
 To use the machine-controller to create machines on VMWare vsphere, you must first
 create a VM to be used as a template.
 
-*Note that:* 
+*Note that:*
 `template VMs` in this document refers to regular VMs and not
 [VM Templates][vm_templates] according to vSphere terminology.
 The difference is quite subtle, but VM Templates are not supported yet by
@@ -132,13 +132,13 @@ Procedure:
     }
     ```
 
-4. Create a VM from the `OVA`: 
+4. Create a VM from the `OVA`:
 
     ```
     govc import.ova -options=options.json $(basename "${OVA_URL}")
     ```
 
-### Create template VM from qcow2 
+### Create template VM from qcow2
 
 Prerequisites:
 
@@ -150,7 +150,7 @@ Prerequisites:
 Procedure:
 
 1. Download the guest image in qcow2 format end export an environment variable
-   whith the name of the file.
+   with the name of the file.
 
     ```
     # The URL below is just an example
