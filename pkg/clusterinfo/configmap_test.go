@@ -17,6 +17,7 @@ limitations under the License.
 package clusterinfo
 
 import (
+	"context"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -112,6 +113,8 @@ func TestKubeconfigProvider_GetKubeconfig(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			client := fake.NewSimpleClientset(test.objects...)
@@ -121,7 +124,7 @@ func TestKubeconfigProvider_GetKubeconfig(t *testing.T) {
 				kubeClient:   client,
 			}
 
-			resConfig, err := provider.GetKubeconfig()
+			resConfig, err := provider.GetKubeconfig(ctx)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Error(diff)
 			}

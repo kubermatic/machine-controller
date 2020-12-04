@@ -134,7 +134,7 @@ type NodeSettings struct {
 }
 
 type KubeconfigProvider interface {
-	GetKubeconfig() (*clientcmdapi.Config, error)
+	GetKubeconfig(context.Context) (*clientcmdapi.Config, error)
 }
 
 // MetricsCollection is a struct of all metrics used in
@@ -949,7 +949,7 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 func (r *Reconciler) ReadinessChecks() map[string]healthcheck.Check {
 	return map[string]healthcheck.Check{
 		"valid-info-kubeconfig": func() error {
-			cm, err := r.kubeconfigProvider.GetKubeconfig()
+			cm, err := r.kubeconfigProvider.GetKubeconfig(r.ctx)
 			if err != nil {
 				err := fmt.Errorf("failed to get cluster-info configmap: %v", err)
 				klog.V(2).Info(err)

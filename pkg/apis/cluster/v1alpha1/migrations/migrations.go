@@ -61,7 +61,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 	machineSetGVR := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machinesets"}
 	machineDeploymentsGVR := schema.GroupVersionResource{Group: "cluster.k8s.io", Version: "v1alpha1", Resource: "machinedeployments"}
 
-	machines, err := dynamicClient.Resource(machineGVR).List(metav1.ListOptions{})
+	machines, err := dynamicClient.Resource(machineGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list machine objects: %v", err)
 	}
@@ -89,7 +89,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 		}
 	}
 
-	machineSets, err := dynamicClient.Resource(machineSetGVR).List(metav1.ListOptions{})
+	machineSets, err := dynamicClient.Resource(machineSetGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list MachineSets: %v", err)
 	}
@@ -111,7 +111,7 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 		}
 	}
 
-	machineDeployments, err := dynamicClient.Resource(machineDeploymentsGVR).List(metav1.ListOptions{})
+	machineDeployments, err := dynamicClient.Resource(machineDeploymentsGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list MachineDeplyoments: %v", err)
 	}
