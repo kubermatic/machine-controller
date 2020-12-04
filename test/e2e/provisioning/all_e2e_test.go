@@ -41,6 +41,7 @@ func init() {
 const (
 	DOManifest                   = "./testdata/machinedeployment-digitalocean.yaml"
 	AWSManifest                  = "./testdata/machinedeployment-aws.yaml"
+	AWSManifestARM               = "./testdata/machinedeployment-aws-arm-machines.yaml"
 	AWSEBSEncryptedManifest      = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
 	AzureManifest                = "./testdata/machinedeployment-azure.yaml"
 	AzureRedhatSatelliteManifest = "./testdata/machinedeployment-azure.yaml"
@@ -188,6 +189,26 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
 	}
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+}
+
+// TestAWSARMProvisioningE2E - a test suite that exercises AWS provider for arm machines
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestAWSARMProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
+		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+	}
+	selector := OsSelector("ubuntu")
+	// act
+	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
+	}
+	runScenarios(t, selector, params, AWSManifestARM, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestAWSSLESProvisioningE2E - a test suite that exercises AWS provider
