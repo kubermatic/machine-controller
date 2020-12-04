@@ -401,7 +401,22 @@ storage:
           opt_bin=/opt/bin
           cni_bin_dir=/opt/cni/bin
           mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
-          arch=${HOST_ARCH:-amd64}
+          arch=${HOST_ARCH-}
+          if [ -z "$arch" ]
+          then
+          case $(uname -m) in
+          x86_64)
+              arch="amd64"
+              ;;
+          aarch64)
+              arch="arm64"
+              ;;
+          *)
+              echo "unsupported CPU architecture, exiting"
+              exit 1
+              ;;
+          esac
+          fi
           CNI_VERSION="${CNI_VERSION:-v0.8.7}"
           cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
           cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
