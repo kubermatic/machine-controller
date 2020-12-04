@@ -191,9 +191,9 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
-// TestAWSProvisioningE2EARM - a test suite that exercises AWS provider for arm machines
+// TestAWSARMProvisioningE2E - a test suite that exercises AWS provider for arm machines
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-func TestAWSProvisioningE2EARM(t *testing.T) {
+func TestAWSARMProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// test data
@@ -202,7 +202,7 @@ func TestAWSProvisioningE2EARM(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := Not(OsSelector("coreos", "sles"))
+	selector := OsSelector("ubuntu")
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),

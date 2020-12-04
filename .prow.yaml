@@ -226,14 +226,13 @@ presubmits:
       preset-aws: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
-      preset-rhel: "true"
     spec:
       containers:
         - image: golang:1.15.3
           command:
             - "./hack/ci-e2e-test.sh"
           args:
-            - "TestAWSProvisioningE2EARM"
+            - "TestAWSARMProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
