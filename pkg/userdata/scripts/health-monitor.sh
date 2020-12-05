@@ -58,7 +58,7 @@ function container_runtime_monitoring {
       echo "Container runtime ${container_runtime_name} failed!"
       if [[ "$container_runtime_name" == "docker" ]]; then
           # Dump stack of docker daemon for investigation.
-          # Log fle name looks like goroutine-stacks-TIMESTAMP and will be saved to
+          # Log file name looks like goroutine-stacks-TIMESTAMP and will be saved to
           # the exec root directory, which is /var/run/docker/ on Ubuntu and COS.
           pkill -SIGUSR1 dockerd
       fi

@@ -53,13 +53,13 @@ echo "Copying machine-controller plugins"
 cp machine-controller-userdata-* /usr/local/bin
 ls -l /usr/local/bin
 
-# Generate ssh keypair
-echo "Generating ssh keypair"
+# Generate ssh key pair
+echo "Generating ssh key pair"
 chmod 0700 $HOME/.ssh
 ssh-keygen -t rsa -N ""  -f ~/.ssh/id_ed25519
 
 # Initialize terraform
-echo "Initalizing terraform"
+echo "Initializing terraform"
 cd test/tools/integration
 make terraform
 cp provider.tf{.disabled,}

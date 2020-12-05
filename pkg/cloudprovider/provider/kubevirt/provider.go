@@ -213,7 +213,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}
 
 	// Deletion takes some time, so consider the VMI as deleted as soon as it has a DeletionTimestamp
-	// because once the node got into status not ready its informers wont fire again
+	// because once the node got into status not ready its informers won't fire again
 	// With the current approach we may run into a conflict when creating the VMI again, however this
 	// results in the machine being reqeued
 	if virtualMachineInstance.DeletionTimestamp != nil {

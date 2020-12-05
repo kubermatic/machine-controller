@@ -245,7 +245,7 @@ func Add(
 			if newNode.ResourceVersion == oldNode.ResourceVersion {
 				return false
 			}
-			// Dont do anything if the ready condition hasnt changed
+			// Don't do anything if the ready condition hasn't changed
 			for _, newCondition := range newNode.Status.Conditions {
 				if newCondition.Type != corev1.NodeReady {
 					continue
@@ -499,7 +499,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 	}
 
 	// If we arrived here we didn't find any machine without a NodeRef and we didn't
-	// find any node that is schedulable, so eviction cant succeed
+	// find any node that is schedulable, so eviction can't succeed
 	klog.V(4).Infof("Skipping eviction for machine %q since there is no possible target for an eviction", machine.Name)
 	return false, nil
 }

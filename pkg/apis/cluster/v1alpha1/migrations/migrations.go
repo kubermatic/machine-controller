@@ -206,7 +206,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 
 	// Convert the machine, create the new machine, delete the old one, wait for it to be absent
 	// We do this in one loop to avoid ending up having all machines in  both the new and the old format if deletion
-	// failes for whatever reason
+	// fails for whatever reason
 	for _, machinesV1Alpha1Machine := range machinesv1Alpha1Machines.Items {
 		klog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 		convertedClusterv1alpha1Machine := &clusterv1alpha1.Machine{}
@@ -230,7 +230,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 		}
 
-		// We will set that to whats finally in the apisever, be that a created a clusterv1alpha1machine
+		// We will set that to what's finally in the apisever, be that a created a clusterv1alpha1machine
 		// or a preexisting one, because the migration got interrupted
 		// It is required to set the ownerRef of the node
 		var finalClusterV1Alpha1Machine *clusterv1alpha1.Machine

@@ -77,7 +77,7 @@ ebsVolumeEncrypted: false
 # optional! the ami id to use. Needs to fit to the specified operating system
 ami: ""
 # optional! The security group ids for the instance.
-# When not set a 'kubernetes-v1' security gruop will get created
+# When not set a 'kubernetes-v1' security group will get created
 securityGroupIDs:
 - ""
 # name of the instance profile to use.

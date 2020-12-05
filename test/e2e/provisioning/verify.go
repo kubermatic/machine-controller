@@ -87,7 +87,7 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 	if err != nil {
 		return nil, nil, err
 	}
-	// Enforce the kube-system namespace, otherwise cleanup wont work
+	// Enforce the kube-system namespace, otherwise cleanup won't work
 	newMachineDeployment.Namespace = metav1.NamespaceSystem
 	// Dont evict during testing
 	newMachineDeployment.Spec.Template.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}
@@ -108,7 +108,7 @@ func prepareMachine(kubeConfig, manifestPath string, parameters []string) (ctrlr
 	if err != nil {
 		return nil, nil, err
 	}
-	// Enforce the kube-system namespace, otherwise cleanup wont work
+	// Enforce the kube-system namespace, otherwise cleanup won't work
 	newMachine.Namespace = metav1.NamespaceSystem
 	// Dont evict during testing
 	newMachine.Spec.Annotations = map[string]string{evictiontypes.SkipEvictionAnnotationKey: "true"}

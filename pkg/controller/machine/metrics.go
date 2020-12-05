@@ -118,7 +118,7 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 		metricGatheringExecutor := func() {
 			machines := &clusterv1alpha1.MachineList{}
 			if err := client.List(ctx, machines); err != nil {
-				utilruntime.HandleError(fmt.Errorf("faild to list machines for SetMetricsForMachines: %v", err))
+				utilruntime.HandleError(fmt.Errorf("failed to list machines for SetMetricsForMachines: %v", err))
 				return
 			}
 			var machineList clusterv1alpha1.MachineList
