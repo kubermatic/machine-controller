@@ -10,12 +10,11 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.3.0
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/Masterminds/semver v1.4.2
-	github.com/Masterminds/sprig v2.15.0+incompatible
+	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/ajeddeloh/go-json v0.0.0-20170920214419-6a2fe990e083 // indirect
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190828035149-111b102694f9
 	github.com/anexia-it/go-anxcloud v0.2.0
-	github.com/aokoli/goutils v1.0.1 // indirect
 	github.com/aws/aws-sdk-go v1.19.25
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
@@ -34,7 +33,6 @@ require (
 	github.com/gophercloud/gophercloud v0.2.1-0.20190626201551-2949719e8258
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.15.1
-	github.com/huandu/xstrings v1.0.0 // indirect
 	github.com/linode/linodego v0.7.1
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a
