@@ -62,7 +62,7 @@ func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 		}
 	}
 
-	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig()
+	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig(r.ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package machines
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -44,9 +45,9 @@ var resourceNames = []resource{
 	},
 }
 
-func EnsureCustomResourceDefinitions(clientset apiextensionsclient.Interface) error {
+func EnsureCustomResourceDefinitions(ctx context.Context, clientset apiextensionsclient.Interface) error {
 	for _, res := range resourceNames {
-		if err := createCustomResourceDefinition(res.plural, res.kind, clientset); err != nil {
+		if err := createCustomResourceDefinition(ctx, res.plural, res.kind, clientset); err != nil {
 			return err
 		}
 	}
@@ -54,8 +55,8 @@ func EnsureCustomResourceDefinitions(clientset apiextensionsclient.Interface) er
 	return nil
 }
 
-func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.Interface) (bool, error) {
-	crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
+func CustomResourceDefinitionExists(ctx context.Context, name string, clientset apiextensionsclient.Interface) (bool, error) {
+	crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -67,7 +68,7 @@ func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.I
 			}
 		case apiextensionsv1beta1.NamesAccepted:
 			if cond.Status == apiextensionsv1beta1.ConditionFalse {
-				return false, fmt.Errorf("Name conflict: %v\n", cond.Reason)
+				return false, fmt.Errorf("name conflict: %v", cond.Reason)
 			}
 		}
 	}
@@ -75,7 +76,7 @@ func CustomResourceDefinitionExists(name string, clientset apiextensionsclient.I
 	return false, nil
 }
 
-func createCustomResourceDefinition(plural, kind string, clientset apiextensionsclient.Interface) error {
+func createCustomResourceDefinition(ctx context.Context, plural, kind string, clientset apiextensionsclient.Interface) error {
 	crd := &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: CRDName,
@@ -91,7 +92,7 @@ func createCustomResourceDefinition(plural, kind string, clientset apiextensions
 		},
 	}
 
-	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(ctx, crd, metav1.CreateOptions{})
 	if err != nil {
 		if kerrors.IsAlreadyExists(err) {
 			return nil
@@ -101,10 +102,10 @@ func createCustomResourceDefinition(plural, kind string, clientset apiextensions
 
 	// wait for CRD being established
 	err = wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
-		return CustomResourceDefinitionExists(CRDName, clientset)
+		return CustomResourceDefinitionExists(ctx, CRDName, clientset)
 	})
 	if err != nil {
-		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(CRDName, nil)
+		deleteErr := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Delete(ctx, CRDName, metav1.DeleteOptions{})
 		if deleteErr != nil {
 			return errors.NewAggregate([]error{err, deleteErr})
 		}

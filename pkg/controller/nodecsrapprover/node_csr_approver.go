@@ -27,6 +27,7 @@ import (
 
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	certificatesv1beta1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"k8s.io/klog"
@@ -71,9 +72,7 @@ func Add(mgr manager.Manager) error {
 }
 
 func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err := r.reconcile(ctx, request)
+	err := r.reconcile(context.Background(), request)
 	if err != nil {
 		klog.Errorf("Reconciliation of request %s failed: %v", request.NamespacedName.String(), err)
 	}
@@ -145,7 +144,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	}
 	csr.Status.Conditions = append(csr.Status.Conditions, approvalCondition)
 
-	if _, err := r.certClient.UpdateApproval(csr); err != nil {
+	if _, err := r.certClient.UpdateApproval(ctx, csr, v1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("failed to approve CSR %q: %v", csr.Name, err)
 	}
 

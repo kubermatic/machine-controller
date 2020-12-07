@@ -17,6 +17,8 @@ limitations under the License.
 package health
 
 import (
+	"context"
+
 	"github.com/heptiolabs/healthcheck"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,9 +26,9 @@ import (
 	"k8s.io/klog"
 )
 
-func ApiserverReachable(client kubernetes.Interface) healthcheck.Check {
+func ApiserverReachable(ctx context.Context, client kubernetes.Interface) healthcheck.Check {
 	return func() error {
-		_, err := client.CoreV1().Nodes().List(metav1.ListOptions{})
+		_, err := client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			klog.V(2).Infof("[healthcheck] Unable to list nodes check: %v", err)
 		}

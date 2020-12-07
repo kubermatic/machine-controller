@@ -122,7 +122,7 @@ func (ne *NodeEviction) getFilteredPods() ([]corev1.Pod, error) {
 	// The lister-backed client from the mgr automatically creates a lister for all objects requested through it.
 	// We explicitly do not want that for pods, hence we have to use the kubernetes core client
 	// TODO @alvaroaleman: Add source code ref for this
-	pods, err := ne.kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(metav1.ListOptions{
+	pods, err := ne.kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ne.ctx, metav1.ListOptions{
 		FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": ne.nodeName}).String(),
 	})
 	if err != nil {
@@ -200,7 +200,7 @@ func (ne *NodeEviction) evictPod(pod *corev1.Pod) error {
 			Namespace: pod.Namespace,
 		},
 	}
-	return ne.kubeClient.PolicyV1beta1().Evictions(eviction.Namespace).Evict(eviction)
+	return ne.kubeClient.PolicyV1beta1().Evictions(eviction.Namespace).Evict(ne.ctx, eviction)
 }
 
 func (ne *NodeEviction) updateNode(modify func(*corev1.Node)) (*corev1.Node, error) {
