@@ -29,12 +29,12 @@ require (
 	github.com/go-openapi/swag v0.19.7 // indirect
 	github.com/go-test/deep v1.0.7
 	github.com/google/uuid v1.1.2
-	github.com/gophercloud/gophercloud v0.2.1-0.20190626201551-2949719e8258
+	github.com/gophercloud/gophercloud v0.14.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.23.1
 	github.com/linode/linodego v0.24.0
 	github.com/mailru/easyjson v0.7.1 // indirect
-	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a
+	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/oklog/run v1.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/packethost/packngo v0.5.1
