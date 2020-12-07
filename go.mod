@@ -3,7 +3,7 @@ module github.com/kubermatic/machine-controller
 go 1.13
 
 require (
-	cloud.google.com/go v0.71.0
+	cloud.google.com/go v0.73.0
 	cloud.google.com/go/logging v1.1.2
 	github.com/Azure/azure-sdk-for-go v49.0.0+incompatible
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
@@ -13,8 +13,8 @@ require (
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/ajeddeloh/go-json v0.0.0-20170920214419-6a2fe990e083 // indirect
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
-	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190828035149-111b102694f9
-	github.com/anexia-it/go-anxcloud v0.2.0
+	github.com/aliyun/alibaba-cloud-sdk-go v1.61.751
+	github.com/anexia-it/go-anxcloud v0.3.6
 	github.com/aws/aws-sdk-go v1.36.2
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
@@ -32,7 +32,7 @@ require (
 	github.com/gophercloud/gophercloud v0.2.1-0.20190626201551-2949719e8258
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.23.1
-	github.com/linode/linodego v0.7.1
+	github.com/linode/linodego v0.24.0
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a
 	github.com/oklog/run v1.1.0
@@ -51,8 +51,8 @@ require (
 	go.uber.org/multierr v1.4.0 // indirect
 	go4.org v0.0.0-20200104003542-c7e774b10ea0 // indirect
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
-	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
-	google.golang.org/api v0.35.0
+	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
+	google.golang.org/api v0.36.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/ini.v1 v1.46.0 // indirect
