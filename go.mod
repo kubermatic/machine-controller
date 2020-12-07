@@ -37,7 +37,7 @@ require (
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a
 	github.com/oklog/run v1.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
-	github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
+	github.com/packethost/packngo v0.5.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
@@ -69,7 +69,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-replace (
-	github.com/coreos/prometheus-operator => github.com/coreos/prometheus-operator v0.28.0
-	k8s.io/client-go => k8s.io/client-go v0.19.4
-)
+replace k8s.io/client-go => k8s.io/client-go v0.19.4
