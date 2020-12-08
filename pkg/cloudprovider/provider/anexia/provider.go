@@ -222,9 +222,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 			networkInterfaces,
 		)
 
-		vm.Script = base64.StdEncoding.EncodeToString(
-			[]byte(fmt.Sprintf("anexia: true\n\n%s", userdata)),
-		)
+		vm.Script = base64.StdEncoding.EncodeToString([]byte(userdata))
 
 		sshKey, err := ssh.NewKey()
 		if err != nil {
