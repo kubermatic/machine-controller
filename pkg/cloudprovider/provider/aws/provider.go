@@ -50,19 +50,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 var (
-	prometheusRegisterer       = &sync.Once{}
 	metricInstancesForMachines = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "machine_controller_aws_instances_for_machine",
 		Help: "The number of instances at aws for a given machine"}, []string{"machine"})
 )
 
 func init() {
-	prometheusRegisterer.Do(func() {
-		prometheus.MustRegister(metricInstancesForMachines)
-	})
+	metrics.Registry.MustRegister(metricInstancesForMachines)
 }
 
 type provider struct {

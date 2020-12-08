@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,23 +47,23 @@ const (
 	contextIdentifier string = "c"
 )
 
-func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
+func (r *Reconciler) createBootstrapKubeconfig(ctx context.Context, name string) (*clientcmdapi.Config, error) {
 	var token string
 	var err error
 
 	if r.bootstrapTokenServiceAccountName != nil {
-		token, err = r.getTokenFromServiceAccount(*r.bootstrapTokenServiceAccountName)
+		token, err = r.getTokenFromServiceAccount(ctx, *r.bootstrapTokenServiceAccountName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %v", r.bootstrapTokenServiceAccountName.Namespace, r.bootstrapTokenServiceAccountName.Name, err)
 		}
 	} else {
-		token, err = r.createBootstrapToken(name)
+		token, err = r.createBootstrapToken(ctx, name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bootstrap token: %v", err)
 		}
 	}
 
-	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig(r.ctx)
+	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -95,16 +96,16 @@ func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 	return outConfig, nil
 }
 
-func (r *Reconciler) getTokenFromServiceAccount(name types.NamespacedName) (string, error) {
+func (r *Reconciler) getTokenFromServiceAccount(ctx context.Context, name types.NamespacedName) (string, error) {
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name.Name, Namespace: name.Namespace}}
-	raw, err := r.getAsUnstructured(sa)
+	raw, err := r.getAsUnstructured(ctx, sa)
 	if err != nil {
 		return "", fmt.Errorf("failed to get serviceAccount %q: %v", name.String(), err)
 	}
 	sa = raw.(*corev1.ServiceAccount)
 	for _, serviceAccountSecretName := range sa.Secrets {
 		serviceAccountSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}}
-		raw, err = r.getAsUnstructured(serviceAccountSecret)
+		raw, err = r.getAsUnstructured(ctx, serviceAccountSecret)
 		if err != nil {
 			return "", fmt.Errorf("failed to get serviceAccountSecret: %v", err)
 		}
@@ -117,13 +118,13 @@ func (r *Reconciler) getTokenFromServiceAccount(name types.NamespacedName) (stri
 	return "", errors.New("no serviceAccountSecret found")
 }
 
-func (r *Reconciler) createBootstrapToken(name string) (string, error) {
-	existingSecret, err := r.getSecretIfExists(name)
+func (r *Reconciler) createBootstrapToken(ctx context.Context, name string) (string, error) {
+	existingSecret, err := r.getSecretIfExists(ctx, name)
 	if err != nil {
 		return "", err
 	}
 	if existingSecret != nil {
-		return r.updateSecretExpirationAndGetToken(existingSecret)
+		return r.updateSecretExpirationAndGetToken(ctx, existingSecret)
 	}
 
 	tokenID := rand.String(6)
@@ -147,14 +148,14 @@ func (r *Reconciler) createBootstrapToken(name string) (string, error) {
 		},
 	}
 
-	if err := r.client.Create(r.ctx, &secret); err != nil {
+	if err := r.client.Create(ctx, &secret); err != nil {
 		return "", fmt.Errorf("failed to create bootstrap token secret: %v", err)
 	}
 
 	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
 }
 
-func (r *Reconciler) updateSecretExpirationAndGetToken(secret *corev1.Secret) (string, error) {
+func (r *Reconciler) updateSecretExpirationAndGetToken(ctx context.Context, secret *corev1.Secret) (string, error) {
 	if secret.Data == nil {
 		secret.Data = map[string][]byte{}
 	}
@@ -174,20 +175,20 @@ func (r *Reconciler) updateSecretExpirationAndGetToken(secret *corev1.Secret) (s
 		return token, nil
 	}
 
-	if err := r.client.Update(r.ctx, secret); err != nil {
+	if err := r.client.Update(ctx, secret); err != nil {
 		return "", fmt.Errorf("failed to update secret: %v", err)
 	}
 	return token, nil
 }
 
-func (r *Reconciler) getSecretIfExists(name string) (*corev1.Secret, error) {
+func (r *Reconciler) getSecretIfExists(ctx context.Context, name string) (*corev1.Secret, error) {
 	req, err := labels.NewRequirement(machineNameLabelKey, selection.Equals, []string{name})
 	if err != nil {
 		return nil, err
 	}
 	selector := labels.NewSelector().Add(*req)
 	secrets := &corev1.SecretList{}
-	if err := r.client.List(r.ctx, secrets,
+	if err := r.client.List(ctx, secrets,
 		&ctrlruntimeclient.ListOptions{
 			Namespace:     metav1.NamespaceSystem,
 			LabelSelector: selector}); err != nil {
@@ -207,7 +208,7 @@ func (r *Reconciler) getSecretIfExists(name string) (*corev1.Secret, error) {
 // The purpose of this is to avoid establishing a lister, which the cache-backed client automatically
 // does. The object passed in must have name and namespace set. The returned object will
 // be the same as the passed in one, if there was no error.
-func (r *Reconciler) getAsUnstructured(obj runtime.Object) (runtime.Object, error) {
+func (r *Reconciler) getAsUnstructured(ctx context.Context, obj runtime.Object) (runtime.Object, error) {
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
 		return nil, errors.New("can not assert object as metav1.Object")
@@ -226,7 +227,7 @@ func (r *Reconciler) getAsUnstructured(obj runtime.Object) (runtime.Object, erro
 	target.SetKind(kind)
 	name := types.NamespacedName{Name: metaObj.GetName(), Namespace: metaObj.GetNamespace()}
 
-	if err := r.client.Get(r.ctx, name, target); err != nil {
+	if err := r.client.Get(ctx, name, target); err != nil {
 		return nil, fmt.Errorf("failed to get object: %v", err)
 	}
 

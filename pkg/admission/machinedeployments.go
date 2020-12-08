@@ -22,11 +22,11 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 )
 
-func (ad *admissionData) mutateMachineDeployments(ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
+func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionReview) (*admissionv1.AdmissionResponse, error) {
 
 	machineDeployment := clusterv1alpha1.MachineDeployment{}
 	if err := json.Unmarshal(ar.Request.Object.Raw, &machineDeployment); err != nil {
@@ -41,7 +41,7 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1beta1.AdmissionR
 
 	// Do not validate the spec if it hasn't changed
 	machineSpecNeedsValidation := true
-	if ar.Request.Operation == admissionv1beta1.Update {
+	if ar.Request.Operation == admissionv1.Update {
 		var oldMachineDeployment clusterv1alpha1.MachineDeployment
 		if err := json.Unmarshal(ar.Request.OldObject.Raw, &oldMachineDeployment); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OldObject: %v", err)

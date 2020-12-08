@@ -17,6 +17,7 @@ limitations under the License.
 package machinedeployment
 
 import (
+	"context"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -30,8 +31,8 @@ import (
 )
 
 // rolloutRolling implements the logic for rolling a new machine set.
-func (r *ReconcileMachineDeployment) rolloutRolling(d *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet, machineMap map[types.UID]*v1alpha1.MachineList) error {
-	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(d, msList, machineMap, true)
+func (r *ReconcileMachineDeployment) rolloutRolling(ctx context.Context, d *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet, machineMap map[types.UID]*v1alpha1.MachineList) error {
+	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(ctx, d, msList, machineMap, true)
 	if err != nil {
 		return err
 	}
@@ -46,25 +47,25 @@ func (r *ReconcileMachineDeployment) rolloutRolling(d *v1alpha1.MachineDeploymen
 	allMSs := append(oldMSs, newMS)
 
 	// Scale up, if we can.
-	if err := r.reconcileNewMachineSet(allMSs, newMS, d); err != nil {
+	if err := r.reconcileNewMachineSet(ctx, allMSs, newMS, d); err != nil {
 		return err
 	}
 
-	if err := r.syncDeploymentStatus(allMSs, newMS, d); err != nil {
+	if err := r.syncDeploymentStatus(ctx, allMSs, newMS, d); err != nil {
 		return err
 	}
 
 	// Scale down, if we can.
-	if err := r.reconcileOldMachineSets(allMSs, oldMSs, newMS, d); err != nil {
+	if err := r.reconcileOldMachineSets(ctx, allMSs, oldMSs, newMS, d); err != nil {
 		return err
 	}
 
-	if err := r.syncDeploymentStatus(allMSs, newMS, d); err != nil {
+	if err := r.syncDeploymentStatus(ctx, allMSs, newMS, d); err != nil {
 		return err
 	}
 
 	if dutil.DeploymentComplete(d, &d.Status) {
-		if err := r.cleanupDeployment(oldMSs, d); err != nil {
+		if err := r.cleanupDeployment(ctx, oldMSs, d); err != nil {
 			return err
 		}
 	}
@@ -72,7 +73,7 @@ func (r *ReconcileMachineDeployment) rolloutRolling(d *v1alpha1.MachineDeploymen
 	return nil
 }
 
-func (r *ReconcileMachineDeployment) reconcileNewMachineSet(allMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) error {
+func (r *ReconcileMachineDeployment) reconcileNewMachineSet(ctx context.Context, allMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) error {
 	if deployment.Spec.Replicas == nil {
 		return errors.Errorf("spec replicas for deployment set %v is nil, this is unexpected", deployment.Name)
 	}
@@ -88,7 +89,7 @@ func (r *ReconcileMachineDeployment) reconcileNewMachineSet(allMSs []*v1alpha1.M
 
 	if *(newMS.Spec.Replicas) > *(deployment.Spec.Replicas) {
 		// Scale down.
-		_, err := r.scaleMachineSet(newMS, *(deployment.Spec.Replicas), deployment)
+		_, err := r.scaleMachineSet(ctx, newMS, *(deployment.Spec.Replicas), deployment)
 		return err
 	}
 
@@ -96,11 +97,11 @@ func (r *ReconcileMachineDeployment) reconcileNewMachineSet(allMSs []*v1alpha1.M
 	if err != nil {
 		return err
 	}
-	_, err = r.scaleMachineSet(newMS, newReplicasCount, deployment)
+	_, err = r.scaleMachineSet(ctx, newMS, newReplicasCount, deployment)
 	return err
 }
 
-func (r *ReconcileMachineDeployment) reconcileOldMachineSets(allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) error {
+func (r *ReconcileMachineDeployment) reconcileOldMachineSets(ctx context.Context, allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) error {
 	if deployment.Spec.Replicas == nil {
 		return errors.Errorf("spec replicas for deployment set %v is nil, this is unexpected", deployment.Name)
 	}
@@ -158,7 +159,7 @@ func (r *ReconcileMachineDeployment) reconcileOldMachineSets(allMSs []*v1alpha1.
 
 	// Clean up unhealthy replicas first, otherwise unhealthy replicas will block deployment
 	// and cause timeout. See https://github.com/kubernetes/kubernetes/issues/16737
-	oldMSs, cleanupCount, err := r.cleanupUnhealthyReplicas(oldMSs, deployment, maxScaledDown)
+	oldMSs, cleanupCount, err := r.cleanupUnhealthyReplicas(ctx, oldMSs, deployment, maxScaledDown)
 	if err != nil {
 		return nil
 	}
@@ -167,7 +168,7 @@ func (r *ReconcileMachineDeployment) reconcileOldMachineSets(allMSs []*v1alpha1.
 
 	// Scale down old machine sets, need check maxUnavailable to ensure we can scale down
 	allMSs = append(oldMSs, newMS)
-	scaledDownCount, err := r.scaleDownOldMachineSetsForRollingUpdate(allMSs, oldMSs, deployment)
+	scaledDownCount, err := r.scaleDownOldMachineSetsForRollingUpdate(ctx, allMSs, oldMSs, deployment)
 	if err != nil {
 		return err
 	}
@@ -177,7 +178,7 @@ func (r *ReconcileMachineDeployment) reconcileOldMachineSets(allMSs []*v1alpha1.
 }
 
 // cleanupUnhealthyReplicas will scale down old machine sets with unhealthy replicas, so that all unhealthy replicas will be deleted.
-func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment, maxCleanupCount int32) ([]*v1alpha1.MachineSet, int32, error) {
+func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(ctx context.Context, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment, maxCleanupCount int32) ([]*v1alpha1.MachineSet, int32, error) {
 	sort.Sort(dutil.MachineSetsByCreationTimestamp(oldMSs))
 
 	// Safely scale down all old machine sets with unhealthy replicas. Replica set will sort the machines in the order
@@ -216,7 +217,7 @@ func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(oldMSs []*v1alpha1
 			return nil, 0, errors.Errorf("when cleaning up unhealthy replicas, got invalid request to scale down %s/%s %d -> %d", targetMS.Namespace, targetMS.Name, oldMSReplicas, newReplicasCount)
 		}
 
-		if _, err := r.scaleMachineSet(targetMS, newReplicasCount, deployment); err != nil {
+		if _, err := r.scaleMachineSet(ctx, targetMS, newReplicasCount, deployment); err != nil {
 			return nil, totalScaledDown, err
 		}
 
@@ -228,7 +229,7 @@ func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(oldMSs []*v1alpha1
 
 // scaleDownOldMachineSetsForRollingUpdate scales down old machine sets when deployment strategy is "RollingUpdate".
 // Need check maxUnavailable to ensure availability
-func (r *ReconcileMachineDeployment) scaleDownOldMachineSetsForRollingUpdate(allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) (int32, error) {
+func (r *ReconcileMachineDeployment) scaleDownOldMachineSetsForRollingUpdate(ctx context.Context, allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) (int32, error) {
 	if deployment.Spec.Replicas == nil {
 		return 0, errors.Errorf("spec replicas for deployment %v is nil, this is unexpected", deployment.Name)
 	}
@@ -273,7 +274,7 @@ func (r *ReconcileMachineDeployment) scaleDownOldMachineSetsForRollingUpdate(all
 			return totalScaledDown, errors.Errorf("when scaling down old MS, got invalid request to scale down %s/%s %d -> %d", targetMS.Namespace, targetMS.Name, *(targetMS.Spec.Replicas), newReplicasCount)
 		}
 
-		if _, err := r.scaleMachineSet(targetMS, newReplicasCount, deployment); err != nil {
+		if _, err := r.scaleMachineSet(ctx, targetMS, newReplicasCount, deployment); err != nil {
 			return totalScaledDown, err
 		}
 

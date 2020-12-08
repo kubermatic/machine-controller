@@ -147,7 +147,7 @@ spec:
     metadata:
       annotations:
         "prometheus.io/scrape": "true"
-        "prometheus.io/port": "8085"
+        "prometheus.io/port": "8080"
         "prometheus.io/path": "/metrics"
       labels:
         app: machine-controller
@@ -163,7 +163,8 @@ spec:
             - -v=3
             - -worker-count=5
             - -cluster-dns=10.10.10.10
-            - -internal-listen-address=0.0.0.0:8085
+            - -metrics-address=0.0.0.0:8080
+            - -health-probe-address=0.0.0.0:8085
             # Machines that fail to join the cluster within this timeout and
             # are owned by a MachineSet will get deleted so the MachineSet
             # controller re-creates them

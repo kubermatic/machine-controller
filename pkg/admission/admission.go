@@ -27,7 +27,7 @@ import (
 
 	"github.com/mattbaird/jsonpatch"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,7 +43,7 @@ type admissionData struct {
 	userDataManager *userdatamanager.Manager
 }
 
-var jsonPatch = admissionv1beta1.PatchTypeJSONPatch
+var jsonPatch = admissionv1.PatchTypeJSONPatch
 
 func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamanager.Manager) *http.Server {
 	m := http.NewServeMux()
@@ -84,8 +84,8 @@ func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperat
 	return jsonpatch.CreatePatch(ori, cur)
 }
 
-func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1beta1.AdmissionResponse, error) {
-	response := &admissionv1beta1.AdmissionResponse{}
+func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.AdmissionResponse, error) {
+	response := &admissionv1.AdmissionResponse{}
 	response.Allowed = true
 	if !apiequality.Semantic.DeepEqual(original, mutated) {
 		patchOpts, err := newJSONPatch(original, mutated)
@@ -105,7 +105,7 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1beta
 	return response, nil
 }
 
-type mutator func(admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error)
+type mutator func(admissionv1.AdmissionReview) (*admissionv1.AdmissionResponse, error)
 
 func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -114,11 +114,11 @@ func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) 
 		// even on error, hence the admissionExecutor  func, this makes error handling much easier
 		admissionResponse, err := admissionExecutor(r, mutate)
 		if err != nil {
-			admissionResponse = &admissionv1beta1.AdmissionResponse{}
+			admissionResponse = &admissionv1.AdmissionResponse{}
 			admissionResponse.Result = &metav1.Status{Message: err.Error()}
 		}
 
-		admissionReview := admissionv1beta1.AdmissionReview{}
+		admissionReview := admissionv1.AdmissionReview{}
 		admissionReview.Response = admissionResponse
 
 		resp, err := json.Marshal(admissionReview)
@@ -132,7 +132,7 @@ func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
-func admissionExecutor(r *http.Request, mutate mutator) (*admissionv1beta1.AdmissionResponse, error) {
+func admissionExecutor(r *http.Request, mutate mutator) (*admissionv1.AdmissionResponse, error) {
 	var body []byte
 	if r.Body == nil {
 		return nil, fmt.Errorf("request has no body")
@@ -147,7 +147,7 @@ func admissionExecutor(r *http.Request, mutate mutator) (*admissionv1beta1.Admis
 		return nil, fmt.Errorf("header Content-Type was %s, expected application/json", contentType)
 	}
 
-	admissionReview := admissionv1beta1.AdmissionReview{}
+	admissionReview := admissionv1.AdmissionReview{}
 	if err := json.Unmarshal(body, &admissionReview); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal request into admissionReview: %v", err)
 	}

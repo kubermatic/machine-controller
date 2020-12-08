@@ -28,4 +28,5 @@ $(dirname $0)/../machine-controller \
   -v=6 \
   -cluster-dns=172.16.0.10 \
   -enable-profiling \
-  -internal-listen-address=0.0.0.0:8085
+  -metrics-address=0.0.0.0:8080 \
+  -health-probe-address=0.0.0.0:8085

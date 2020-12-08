@@ -57,6 +57,7 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -91,7 +92,6 @@ const (
 
 // Reconciler is the controller implementation for machine resources
 type Reconciler struct {
-	ctx        context.Context
 	kubeClient kubernetes.Interface
 	client     ctrlruntimeclient.Client
 
@@ -144,13 +144,16 @@ type MetricsCollection struct {
 	Errors  prometheus.Counter
 }
 
+func (mc *MetricsCollection) MustRegister(registerer prometheus.Registerer) {
+	registerer.MustRegister(mc.Errors, mc.Workers)
+}
+
 func Add(
 	ctx context.Context,
 	mgr manager.Manager,
 	kubeClient kubernetes.Interface,
 	numWorkers int,
 	metrics *MetricsCollection,
-	prometheusRegistry prometheus.Registerer,
 	kubeconfigProvider KubeconfigProvider,
 	providerData *cloudprovidertypes.ProviderData,
 	joinClusterTimeout *time.Duration,
@@ -160,11 +163,7 @@ func Add(
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings) error {
 
-	if prometheusRegistry != nil {
-		prometheusRegistry.MustRegister(metrics.Errors, metrics.Workers)
-	}
 	reconciler := &Reconciler{
-		ctx:                              ctx,
 		kubeClient:                       kubeClient,
 		client:                           mgr.GetClient(),
 		recorder:                         mgr.GetEventRecorderFor(ControllerName),
@@ -201,45 +200,43 @@ func Add(
 
 	return c.Watch(
 		&source.Kind{Type: &corev1.Node{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(func(node handler.MapObject) (result []reconcile.Request) {
-				machinesList := &clusterv1alpha1.MachineList{}
-				if err := mgr.GetClient().List(ctx, machinesList); err != nil {
-					utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
-					return
-				}
+		handler.EnqueueRequestsFromMapFunc(func(node client.Object) (result []reconcile.Request) {
+			machinesList := &clusterv1alpha1.MachineList{}
+			if err := mgr.GetClient().List(ctx, machinesList); err != nil {
+				utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
+				return
+			}
 
-				var ownerUIDString string
-				var exists bool
-				if labels := node.Meta.GetLabels(); labels != nil {
-					ownerUIDString, exists = labels[NodeOwnerLabelName]
-				}
-				if !exists {
-					// We get triggered by node{Add,Update}, so enqeue machines if they
-					// have no nodeRef yet to make matching happen ASAP
-					for _, machine := range machinesList.Items {
-						if machine.Status.NodeRef == nil {
-							result = append(result, reconcile.Request{
-								NamespacedName: types.NamespacedName{
-									Namespace: machine.Namespace,
-									Name:      machine.Name}})
-						}
-					}
-					return
-				}
-
+			var ownerUIDString string
+			var exists bool
+			if labels := node.GetLabels(); labels != nil {
+				ownerUIDString, exists = labels[NodeOwnerLabelName]
+			}
+			if !exists {
+				// We get triggered by node{Add,Update}, so enqeue machines if they
+				// have no nodeRef yet to make matching happen ASAP
 				for _, machine := range machinesList.Items {
-					if string(machine.UID) == ownerUIDString {
-						klog.V(6).Infof("Processing node: %s (machine=%s)", node.Meta.GetName(), machine.Name)
-						return []reconcile.Request{{NamespacedName: types.NamespacedName{
-							Namespace: machine.Namespace,
-							Name:      machine.Name,
-						}}}
+					if machine.Status.NodeRef == nil {
+						result = append(result, reconcile.Request{
+							NamespacedName: types.NamespacedName{
+								Namespace: machine.Namespace,
+								Name:      machine.Name}})
 					}
 				}
 				return
-			}),
-		},
+			}
+
+			for _, machine := range machinesList.Items {
+				if string(machine.UID) == ownerUIDString {
+					klog.V(6).Infof("Processing node: %s (machine=%s)", node.GetName(), machine.Name)
+					return []reconcile.Request{{NamespacedName: types.NamespacedName{
+						Namespace: machine.Namespace,
+						Name:      machine.Name,
+					}}}
+				}
+			}
+			return
+		}),
 		predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
 			oldNode := e.ObjectOld.(*corev1.Node)
 			newNode := e.ObjectNew.(*corev1.Node)
@@ -289,9 +286,9 @@ func nodeIsReady(node *corev1.Node) bool {
 	return false
 }
 
-func (r *Reconciler) getNodeByNodeRef(nodeRef *corev1.ObjectReference) (*corev1.Node, error) {
+func (r *Reconciler) getNodeByNodeRef(ctx context.Context, nodeRef *corev1.ObjectReference) (*corev1.Node, error) {
 	node := &corev1.Node{}
-	if err := r.client.Get(r.ctx, types.NamespacedName{Name: nodeRef.Name}, node); err != nil {
+	if err := r.client.Get(ctx, types.NamespacedName{Name: nodeRef.Name}, node); err != nil {
 		return nil, err
 	}
 	return node, nil
@@ -336,9 +333,9 @@ func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, ma
 	return instance, nil
 }
 
-func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	machine := &clusterv1alpha1.Machine{}
-	if err := r.client.Get(r.ctx, request.NamespacedName, machine); err != nil {
+	if err := r.client.Get(ctx, request.NamespacedName, machine); err != nil {
 		if kerrors.IsNotFound(err) {
 			klog.V(2).Infof("machine %q in work queue no longer exists", request.NamespacedName.String())
 			return reconcile.Result{}, nil
@@ -357,7 +354,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	}
 
 	recorderMachine := machine.DeepCopy()
-	result, err := r.reconcile(machine)
+	result, err := r.reconcile(ctx, machine)
 	if err != nil {
 		// We have no guarantee that machine is non-nil after reconciliation
 		klog.Errorf("Failed to reconcile machine %q: %v", recorderMachine.Name, err)
@@ -371,8 +368,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 	return *result, err
 }
 
-func (r *Reconciler) reconcile(machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
-
+func (r *Reconciler) reconcile(ctx context.Context, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
 	// This must stay in the controller, it can not be moved into the webhook
 	// as the webhook does not get the name of machineset controller generated
 	// machines on the CREATE request, because they only have `GenerateName` set,
@@ -385,7 +381,7 @@ func (r *Reconciler) reconcile(machine *clusterv1alpha1.Machine) (*reconcile.Res
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider config: %v", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(r.ctx, r.client)
+	skg := providerconfig.NewConfigVarResolver(ctx, r.client)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
@@ -393,7 +389,7 @@ func (r *Reconciler) reconcile(machine *clusterv1alpha1.Machine) (*reconcile.Res
 
 	// step 2: check if a user requested to delete the machine
 	if machine.DeletionTimestamp != nil {
-		return r.deleteMachine(prov, machine)
+		return r.deleteMachine(ctx, prov, machine)
 	}
 
 	// Step 3: Essentially creates an instance for the given machine.
@@ -404,10 +400,10 @@ func (r *Reconciler) reconcile(machine *clusterv1alpha1.Machine) (*reconcile.Res
 
 	// case 3.2: creates an instance if there is no node associated with the given machine
 	if machine.Status.NodeRef == nil {
-		return r.ensureInstanceExistsForMachine(prov, machine, userdataPlugin, providerConfig)
+		return r.ensureInstanceExistsForMachine(ctx, prov, machine, userdataPlugin, providerConfig)
 	}
 
-	node, err := r.getNodeByNodeRef(machine.Status.NodeRef)
+	node, err := r.getNodeByNodeRef(ctx, machine.Status.NodeRef)
 	if err != nil {
 		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
 		if kerrors.IsNotFound(err) {
@@ -427,11 +423,11 @@ func (r *Reconciler) reconcile(machine *clusterv1alpha1.Machine) (*reconcile.Res
 		}
 	} else {
 		// Node is not ready anymore? Maybe it got deleted
-		return r.ensureInstanceExistsForMachine(prov, machine, userdataPlugin, providerConfig)
+		return r.ensureInstanceExistsForMachine(ctx, prov, machine, userdataPlugin, providerConfig)
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
-	return nil, r.ensureNodeLabelsAnnotationsAndTaints(node, machine)
+	return nil, r.ensureNodeLabelsAnnotationsAndTaints(ctx, node, machine)
 }
 
 func (r *Reconciler) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1.Machine) error {
@@ -448,7 +444,7 @@ func (r *Reconciler) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 }
 
 // evictIfNecessary checks if the machine has a node and evicts it if necessary
-func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error) {
+func (r *Reconciler) shouldEvict(ctx context.Context, machine *clusterv1alpha1.Machine) (bool, error) {
 	// If the deletion got triggered a few hours ago, skip eviction.
 	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
 	if time.Since(machine.DeletionTimestamp.Time) > r.skipEvictionAfter {
@@ -463,7 +459,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 	}
 
 	node := &corev1.Node{}
-	if err := r.client.Get(r.ctx, types.NamespacedName{Name: machine.Status.NodeRef.Name}, node); err != nil {
+	if err := r.client.Get(ctx, types.NamespacedName{Name: machine.Status.NodeRef.Name}, node); err != nil {
 		// Node does not exist  - Nothing to evict
 		if kerrors.IsNotFound(err) {
 			klog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
@@ -477,7 +473,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 	// * There is at least one machine without a valid NodeRef because that means it probably just got created
 	// * There is at least one Node that is schedulable (`.Spec.Unschedulable == false`)
 	machines := &clusterv1alpha1.MachineList{}
-	if err := r.client.List(r.ctx, machines); err != nil {
+	if err := r.client.List(ctx, machines); err != nil {
 		return false, fmt.Errorf("failed to get machines from lister: %v", err)
 	}
 	for _, machine := range machines.Items {
@@ -486,7 +482,7 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 		}
 	}
 	nodes := &corev1.NodeList{}
-	if err := r.client.List(r.ctx, nodes); err != nil {
+	if err := r.client.List(ctx, nodes); err != nil {
 		return false, fmt.Errorf("failed to get nodes from lister: %v", err)
 	}
 	for _, node := range nodes.Items {
@@ -506,14 +502,14 @@ func (r *Reconciler) shouldEvict(machine *clusterv1alpha1.Machine) (bool, error)
 }
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
-func (r *Reconciler) deleteMachine(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
-	shouldEvict, err := r.shouldEvict(machine)
+func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
+	shouldEvict, err := r.shouldEvict(ctx, machine)
 	if err != nil {
 		return nil, err
 	}
 
 	if shouldEvict {
-		evictedSomething, err := eviction.New(r.ctx, machine.Status.NodeRef.Name, r.client, r.kubeClient).Run()
+		evictedSomething, err := eviction.New(ctx, machine.Status.NodeRef.Name, r.client, r.kubeClient).Run()
 		if err != nil {
 			return nil, fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
 		}
@@ -535,7 +531,7 @@ func (r *Reconciler) deleteMachine(prov cloudprovidertypes.Provider, machine *cl
 		return nil, nil
 	}
 
-	return nil, r.deleteNodeForMachine(machine)
+	return nil, r.deleteNodeForMachine(ctx, machine)
 }
 
 func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
@@ -601,7 +597,7 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 	})
 }
 
-func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) error {
+func (r *Reconciler) deleteNodeForMachine(ctx context.Context, machine *clusterv1alpha1.Machine) error {
 	// If there's NodeRef on the Machine object, remove the Node by using the
 	// value of the NodeRef. If there's no NodeRef, try to find the Node by
 	// listing nodes using the NodeOwner label selector.
@@ -609,7 +605,7 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
 		node := &corev1.Node{}
 		nodeFound := true
-		if err := r.client.Get(r.ctx, objKey, node); err != nil {
+		if err := r.client.Get(ctx, objKey, node); err != nil {
 			if !kerrors.IsNotFound(err) {
 				return fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
 			}
@@ -618,7 +614,7 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 		}
 
 		if nodeFound {
-			if err := r.client.Delete(r.ctx, node); err != nil {
+			if err := r.client.Delete(ctx, node); err != nil {
 				if !kerrors.IsNotFound(err) {
 					return err
 				}
@@ -632,7 +628,7 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 		}
 		listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
 		nodes := &corev1.NodeList{}
-		if err := r.client.List(r.ctx, nodes, listOpts); err != nil {
+		if err := r.client.List(ctx, nodes, listOpts); err != nil {
 			return fmt.Errorf("failed to list nodes: %v", err)
 		}
 		if len(nodes.Items) == 0 {
@@ -642,7 +638,7 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 		}
 
 		for _, node := range nodes.Items {
-			if err := r.client.Delete(r.ctx, &node); err != nil {
+			if err := r.client.Delete(ctx, &node); err != nil {
 				return err
 			}
 		}
@@ -659,7 +655,11 @@ func (r *Reconciler) deleteNodeForMachine(machine *clusterv1alpha1.Machine) erro
 }
 
 func (r *Reconciler) ensureInstanceExistsForMachine(
-	prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
+	ctx context.Context,
+	prov cloudprovidertypes.Provider,
+	machine *clusterv1alpha1.Machine,
+	userdataPlugin userdataplugin.Provider,
+	providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
 	klog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
 	providerInstance, err := prov.Get(machine, r.providerData)
@@ -671,7 +671,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			klog.V(3).Infof("Validated machine spec of %s", machine.Name)
 
-			kubeconfig, err := r.createBootstrapKubeconfig(machine.Name)
+			kubeconfig, err := r.createBootstrapKubeconfig(ctx, machine.Name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
@@ -747,18 +747,18 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	}); err != nil {
 		return nil, fmt.Errorf("failed to update machine after setting .status.addresses: %v", err)
 	}
-	return r.ensureNodeOwnerRefAndConfigSource(providerInstance, machine, providerConfig)
+	return r.ensureNodeOwnerRefAndConfigSource(ctx, providerInstance, machine, providerConfig)
 }
 
-func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
-	node, exists, err := r.getNode(providerInstance, providerConfig.CloudProvider)
+func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(ctx context.Context, providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
+	node, exists, err := r.getNode(ctx, providerInstance, providerConfig.CloudProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node for machine %s: %v", machine.Name, err)
 	}
 
 	if exists {
 		if val := node.Labels[NodeOwnerLabelName]; val != string(machine.UID) {
-			if err := r.updateNode(node, func(n *corev1.Node) {
+			if err := r.updateNode(ctx, node, func(n *corev1.Node) {
 				n.Labels[NodeOwnerLabelName] = string(machine.UID)
 			}); err != nil {
 				return nil, fmt.Errorf("failed to update node %q after adding owner label: %v", node.Name, err)
@@ -766,7 +766,7 @@ func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
-			if err := r.updateNode(node, func(n *corev1.Node) {
+			if err := r.updateNode(ctx, node, func(n *corev1.Node) {
 				n.Spec.ConfigSource = machine.Spec.ConfigSource
 			}); err != nil {
 				return nil, fmt.Errorf("failed to update node %s after setting the config source: %v", node.Name, err)
@@ -782,7 +782,7 @@ func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(providerInstance instance
 		if r.joinClusterTimeout != nil && ownerReferencesHasMachineSetKind(machine.OwnerReferences) {
 			if time.Since(machine.CreationTimestamp.Time) > *r.joinClusterTimeout {
 				klog.V(3).Infof("Join cluster timeout expired for machine %s, deleting it", machine.Name)
-				if err := r.client.Delete(r.ctx, machine); err != nil {
+				if err := r.client.Delete(ctx, machine); err != nil {
 					return nil, fmt.Errorf("failed to delete machine %s/%s that didn't join cluster within expected period of %s: %v",
 						machine.Namespace, machine.Name, r.joinClusterTimeout.String(), err)
 				}
@@ -804,7 +804,7 @@ func ownerReferencesHasMachineSetKind(ownerReferences []metav1.OwnerReference) b
 	return false
 }
 
-func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, machine *clusterv1alpha1.Machine) error {
+func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(ctx context.Context, node *corev1.Node, machine *clusterv1alpha1.Machine) error {
 	var modifiers []func(*corev1.Node)
 
 	for k, v := range machine.Spec.Labels {
@@ -858,7 +858,7 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(node *corev1.Node, mac
 	}
 
 	if len(modifiers) > 0 {
-		if err := r.updateNode(node, modifiers...); err != nil {
+		if err := r.updateNode(ctx, node, modifiers...); err != nil {
 			return fmt.Errorf("failed to update node %s after setting labels/annotations/taints: %v", node.Name, err)
 		}
 		r.recorder.Event(machine, corev1.EventTypeNormal, "LabelsAnnotationsTaintsUpdated", "Successfully updated labels/annotations/taints")
@@ -891,12 +891,12 @@ func (r *Reconciler) updateMachineStatus(machine *clusterv1alpha1.Machine, node 
 	return nil
 }
 
-func (r *Reconciler) getNode(instance instance.Instance, provider providerconfigtypes.CloudProvider) (node *corev1.Node, exists bool, err error) {
+func (r *Reconciler) getNode(ctx context.Context, instance instance.Instance, provider providerconfigtypes.CloudProvider) (node *corev1.Node, exists bool, err error) {
 	if instance == nil {
 		return nil, false, fmt.Errorf("getNode called with nil provider instance")
 	}
 	nodes := &corev1.NodeList{}
-	if err := r.client.List(r.ctx, nodes); err != nil {
+	if err := r.client.List(ctx, nodes); err != nil {
 		return nil, false, err
 	}
 
@@ -947,10 +947,10 @@ func (r *Reconciler) getNode(instance instance.Instance, provider providerconfig
 	return nil, false, nil
 }
 
-func (r *Reconciler) ReadinessChecks() map[string]healthcheck.Check {
+func (r *Reconciler) ReadinessChecks(ctx context.Context) map[string]healthcheck.Check {
 	return map[string]healthcheck.Check{
 		"valid-info-kubeconfig": func() error {
-			cm, err := r.kubeconfigProvider.GetKubeconfig(r.ctx)
+			cm, err := r.kubeconfigProvider.GetKubeconfig(ctx)
 			if err != nil {
 				err := fmt.Errorf("failed to get cluster-info configmap: %v", err)
 				klog.V(2).Info(err)
@@ -993,16 +993,16 @@ func (r *Reconciler) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machin
 	return machine, nil
 }
 
-func (r *Reconciler) updateNode(node *corev1.Node, modifiers ...func(*corev1.Node)) error {
+func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifiers ...func(*corev1.Node)) error {
 	// Store name here, because the object can be nil if an update failed
 	name := types.NamespacedName{Name: node.Name}
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		if err := r.client.Get(r.ctx, name, node); err != nil {
+		if err := r.client.Get(ctx, name, node); err != nil {
 			return err
 		}
 		for _, modify := range modifiers {
 			modify(node)
 		}
-		return r.client.Update(r.ctx, node)
+		return r.client.Update(ctx, node)
 	})
 }

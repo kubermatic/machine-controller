@@ -24,7 +24,6 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v0.3.0 // indirect
 	github.com/go-openapi/spec v0.19.6 // indirect
 	github.com/go-openapi/swag v0.19.7 // indirect
 	github.com/go-test/deep v1.0.7
@@ -35,7 +34,6 @@ require (
 	github.com/linode/linodego v0.24.0
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
-	github.com/oklog/run v1.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -47,8 +45,6 @@ require (
 	github.com/sethvargo/go-password v0.2.0
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb // indirect
 	github.com/vmware/govmomi v0.23.1
-	go.uber.org/atomic v1.5.1 // indirect
-	go.uber.org/multierr v1.4.0 // indirect
 	go4.org v0.0.0-20200104003542-c7e774b10ea0 // indirect
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
@@ -65,7 +61,7 @@ require (
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	kubevirt.io/client-go v0.30.0
 	kubevirt.io/containerized-data-importer v1.10.6
-	sigs.k8s.io/controller-runtime v0.6.4
+	sigs.k8s.io/controller-runtime v0.7.0
 	sigs.k8s.io/yaml v1.2.0
 )
 

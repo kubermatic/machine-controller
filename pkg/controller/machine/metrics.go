@@ -111,7 +111,6 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 }
 
 func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *MachineCollector {
-
 	// Start periodically calling the providers SetMetricsForMachines in a dedicated go routine
 	skg := providerconfig.NewConfigVarResolver(ctx, client)
 	go func() {
