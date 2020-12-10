@@ -418,7 +418,8 @@ func TestPacketProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel"))
+	// coreos is not supported by packet anymore.
+	selector := Not(OsSelector("sles", "rhel", "coreos"))
 
 	// act
 	params := []string{
