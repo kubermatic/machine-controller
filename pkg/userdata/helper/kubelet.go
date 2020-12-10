@@ -171,8 +171,8 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		RotateCertificates:    true,
 		ServerTLSBootstrap:    true,
 		StaticPodPath:         "/etc/kubernetes/manifests",
-		KubeReserved:          map[string]string{"cpu": "100m", "memory": "100Mi", "ephemeral-storage": "1Gi"},
-		SystemReserved:        map[string]string{"cpu": "100m", "memory": "100Mi", "ephemeral-storage": "1Gi"},
+		KubeReserved:          map[string]string{"cpu": "500m", "memory": "500Mi", "ephemeral-storage": "1Gi"},
+		SystemReserved:        map[string]string{"cpu": "500m", "memory": "500Mi", "ephemeral-storage": "1Gi"},
 	}
 
 	buf, err := kyaml.Marshal(cfg)
