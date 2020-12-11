@@ -194,9 +194,9 @@ storage:
           imageMinimumGCAge: 0s
           kind: KubeletConfiguration
           kubeReserved:
-            cpu: 500m
+            cpu: 200m
             ephemeral-storage: 1Gi
-            memory: 500Mi
+            memory: 200Mi
           logging: {}
           nodeStatusReportFrequency: 0s
           nodeStatusUpdateFrequency: 0s
@@ -208,9 +208,9 @@ storage:
           streamingConnectionIdleTimeout: 0s
           syncFrequency: 0s
           systemReserved:
-            cpu: 500m
+            cpu: 200m
             ephemeral-storage: 1Gi
-            memory: 500Mi
+            memory: 200Mi
           volumeStatsAggPeriod: 0s
 
 
