@@ -18,35 +18,35 @@ set -euo pipefail
 set -o monitor
 
 function cleanup {
-    set +e
+  set +e
 
-    # Clean up machines
-    echo "Cleaning up machines."
-    ./test/tools/integration/cleanup_machines.sh
+  # Clean up machines
+  echo "Cleaning up machines."
+  ./test/tools/integration/cleanup_machines.sh
 
-    cd test/tools/integration
-    for try in {1..20}; do
-      # Clean up master
-      echo "Cleaning up controller, attempt ${try}"
-      terraform destroy -force
-      if [[ $? == 0 ]]; then break; fi
-      echo "Sleeping for $try seconds"
-      sleep ${try}s
-    done
+  cd test/tools/integration
+  for try in {1..20}; do
+    # Clean up master
+    echo "Cleaning up controller, attempt ${try}"
+    terraform destroy -force
+    if [[ $? == 0 ]]; then break; fi
+    echo "Sleeping for $try seconds"
+    sleep ${try}s
+  done
 }
 trap cleanup EXIT
 
 # Install dependencies
 echo "Installing dependencies."
 apt update && apt install -y jq rsync unzip genisoimage
-curl --retry 5  -LO \
+curl --retry 5 --location --remote-name \
   https://storage.googleapis.com/kubernetes-release/release/v1.12.4/bin/linux/amd64/kubectl &&
 chmod +x kubectl &&
 mv kubectl /usr/local/bin
 
 # Build binaries
 echo "Building machine-controller and webhook"
-make all
+make download-gocache all
 
 # Copy individual plugins with success control.
 echo "Copying machine-controller plugins"
