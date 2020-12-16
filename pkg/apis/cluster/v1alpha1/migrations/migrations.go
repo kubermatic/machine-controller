@@ -292,13 +292,13 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			klog.Infof("Attempting to update the UID at the cloud provider for machine.cluster.k8s.io/v1alpha1 %s", machinesV1Alpha1Machine.Name)
 			newMachineWithOldUID := finalClusterV1Alpha1Machine.DeepCopy()
 			newMachineWithOldUID.UID = machinesV1Alpha1Machine.UID
-			if err := prov.MigrateUID(newMachineWithOldUID, finalClusterV1Alpha1Machine.UID); err != nil {
+			if err := prov.MigrateUID(ctx, newMachineWithOldUID, finalClusterV1Alpha1Machine.UID); err != nil {
 				return fmt.Errorf("running the provider migration for the UID failed: %v", err)
 			}
 			// Block until we can actually GET the instance with the new UID
 			var isMigrated bool
 			for i := 0; i < 100; i++ {
-				if _, err := prov.Get(finalClusterV1Alpha1Machine, providerData); err == nil {
+				if _, err := prov.Get(ctx, finalClusterV1Alpha1Machine, providerData); err == nil {
 					isMigrated = true
 					break
 				}

@@ -17,6 +17,7 @@ limitations under the License.
 package admission
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -37,7 +38,7 @@ import (
 // the `providerConfig` field to `providerSpec`
 const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requirement"
 
-func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
+func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
 
 	machine := clusterv1alpha1.Machine{}
 	if err := json.Unmarshal(ar.Request.Object.Raw, &machine); err != nil {
@@ -79,7 +80,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 	// Default and verify .Spec on CREATE only, its expensive and not required to do it on UPDATE
 	// as we disallow .Spec changes anyways
 	if ar.Request.Operation == admissionv1beta1.Create {
-		if err := ad.defaultAndValidateMachineSpec(&machine.Spec); err != nil {
+		if err := ad.defaultAndValidateMachineSpec(ctx, &machine.Spec); err != nil {
 			return nil, err
 		}
 	}
@@ -87,12 +88,12 @@ func (ad *admissionData) mutateMachines(ar admissionv1beta1.AdmissionReview) (*a
 	return createAdmissionResponse(machineOriginal, &machine)
 }
 
-func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.MachineSpec) error {
+func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec *clusterv1alpha1.MachineSpec) error {
 	providerConfig, err := providerconfigtypes.GetConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(ad.ctx, ad.client)
+	skg := providerconfig.NewConfigVarResolver(ctx, ad.client)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
@@ -113,13 +114,13 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("Invalid public keys specified: %v", err)
 	}
 
-	defaultedSpec, err := prov.AddDefaults(*spec)
+	defaultedSpec, err := prov.AddDefaults(ctx, *spec)
 	if err != nil {
 		return fmt.Errorf("failed to default machineSpec: %v", err)
 	}
 	spec = &defaultedSpec
 
-	if err := prov.Validate(*spec); err != nil {
+	if err := prov.Validate(ctx, *spec); err != nil {
 		return fmt.Errorf("validation failed: %v", err)
 	}
 

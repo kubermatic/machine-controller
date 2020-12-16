@@ -21,10 +21,10 @@ limitations under the License.
 package gce
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -50,8 +50,8 @@ type service struct {
 }
 
 // connectComputeService establishes a service connection to the Compute Engine.
-func connectComputeService(cfg *config) (*service, error) {
-	svc, err := compute.New(cfg.jwtConfig.Client(oauth2.NoContext))
+func connectComputeService(ctx context.Context, cfg *config) (*service, error) {
+	svc, err := compute.New(cfg.jwtConfig.Client(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud: %v", err)
 	}

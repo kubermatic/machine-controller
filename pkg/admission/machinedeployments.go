@@ -17,6 +17,7 @@ limitations under the License.
 package admission
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -26,7 +27,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 )
 
-func (ad *admissionData) mutateMachineDeployments(ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
+func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error) {
 
 	machineDeployment := clusterv1alpha1.MachineDeployment{}
 	if err := json.Unmarshal(ar.Request.Object.Raw, &machineDeployment); err != nil {
@@ -52,7 +53,7 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1beta1.AdmissionR
 	}
 
 	if machineSpecNeedsValidation {
-		if err := ad.defaultAndValidateMachineSpec(&machineDeployment.Spec.Template.Spec); err != nil {
+		if err := ad.defaultAndValidateMachineSpec(ctx, &machineDeployment.Spec.Template.Spec); err != nil {
 			return nil, err
 		}
 	}

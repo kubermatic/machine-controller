@@ -17,8 +17,10 @@ limitations under the License.
 package fake
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -57,12 +59,12 @@ func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ context.Context, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
 // Validate returns success or failure based according to its FakeCloudProviderSpec
-func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, machinespec v1alpha1.MachineSpec) error {
 	pconfig := providerconfigtypes.Config{}
 	err := json.Unmarshal(machinespec.ProviderSpec.Value.Raw, &pconfig)
 	if err != nil {
@@ -83,24 +85,24 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	return fmt.Errorf("failing validation as requested")
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, error) {
+func (p *provider) GetCloudConfig(_ context.Context, _ v1alpha1.MachineSpec) (string, string, error) {
 	return "", "", nil
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(_ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, _ string) (instance.Instance, error) {
+func (p *provider) Create(_ context.Context, _ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, _ string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) Cleanup(_ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(_ context.Context, _ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	return true, nil
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 

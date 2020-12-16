@@ -19,6 +19,7 @@ limitations under the License.
 package provisioning
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -73,7 +74,9 @@ func TestInvalidObjectsGetRejected(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		testScenario(t,
+		testScenario(
+			context.Background(),
+			t,
 			test,
 			fmt.Sprintf("invalid-machine-%v", i),
 			nil,
@@ -120,7 +123,7 @@ func TestKubevirtDNSConfigProvisioningE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, *testRunIdentifier, params, kubevirtManifestDNSConfig, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, kubevirtManifestDNSConfig, false)
 }
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
@@ -301,7 +304,7 @@ func TestAWSProvisioningE2EWithEbsEncryptionEnabled(t *testing.T) {
 		kubernetesVersion: "v1.15.6",
 		executor:          verifyCreateAndDelete,
 	}
-	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
+	testScenario(context.Background(), t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
 }
 
 // TestAzureProvisioningE2E - a test suite that exercises Azure provider
@@ -360,7 +363,7 @@ func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, *testRunIdentifier, params, AzureRedhatSatelliteManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, AzureRedhatSatelliteManifest, false)
 }
 
 // TestGCEProvisioningE2E - a test suite that exercises Google Cloud provider
@@ -533,7 +536,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, *testRunIdentifier, params, VSPhereResourcePoolManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, VSPhereResourcePoolManifest, false)
 }
 
 // TestScalewayProvisioning - a test suite that exercises scaleway provider
@@ -607,7 +610,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, *testRunIdentifier, params, OSUpgradeManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, OSUpgradeManifest, false)
 }
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
@@ -631,7 +634,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		kubernetesVersion: "1.16.2",
 		executor:          verifyCreateUpdateAndDelete,
 	}
-	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, HZManifest, false)
 }
 
 func TestAnexiaProvisioningE2E(t *testing.T) {

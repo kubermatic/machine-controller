@@ -43,18 +43,18 @@ const (
 	machineReadyCheckPeriod = 15 * time.Second
 )
 
-func verifyCreateMachineFails(kubeConfig, manifestPath string, parameters []string, _ time.Duration) error {
+func verifyCreateMachineFails(ctx context.Context, kubeConfig, manifestPath string, parameters []string, _ time.Duration) error {
 	client, machine, err := prepareMachine(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
 	}
-	if err := client.Create(context.Background(), machine); err != nil {
+	if err := client.Create(ctx, machine); err != nil {
 		return nil
 	}
 	return fmt.Errorf("expected create of Machine %s to fail but succeeded", machine.Name)
 }
 
-func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
+func verifyCreateAndDelete(ctx context.Context, kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 
 	client, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {

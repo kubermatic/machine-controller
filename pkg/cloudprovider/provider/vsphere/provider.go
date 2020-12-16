@@ -104,7 +104,7 @@ func (vsphereServer Server) Status() instance.Status {
 // Ensures that provider implements Provider interface.
 var _ cloudprovidertypes.Provider = &provider{}
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ context.Context, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
@@ -192,9 +192,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	return &c, &pconfig, &rawConfig, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (p *provider) Validate(ctx context.Context, spec v1alpha1.MachineSpec) error {
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %v", err)
@@ -269,10 +267,10 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	vm, err := p.create(machine, userdata)
+func (p *provider) Create(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+	vm, err := p.create(ctx, machine, userdata)
 	if err != nil {
-		_, cleanupErr := p.Cleanup(machine, data)
+		_, cleanupErr := p.Cleanup(ctx, machine, data)
 		if cleanupErr != nil {
 			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %v", cleanupErr, err)
 		}
@@ -281,9 +279,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return vm, nil
 }
 
-func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
-	ctx := context.Background()
-
+func (p *provider) create(ctx context.Context, machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
@@ -351,10 +347,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (p *provider) Cleanup(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse config: %v", err)
@@ -445,9 +438,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	return true, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	ctx := context.Background()
-
+func (p *provider) Get(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
@@ -511,11 +502,11 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
+func (p *provider) MigrateUID(ctx context.Context, machine *v1alpha1.Machine, new ktypes.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(ctx context.Context, spec v1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)

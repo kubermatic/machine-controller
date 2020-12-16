@@ -132,11 +132,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	return &c, &pconfig, err
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ context.Context, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec v1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -169,7 +169,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (cloudInstance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (cloudInstance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -178,7 +178,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		}
 	}
 
-	ctx := context.TODO()
 	api, err := c.getInstanceAPI()
 	if err != nil {
 		return nil, err
@@ -208,7 +207,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		Key:      "cloud-init",
 		ServerID: serverResp.Server.ID,
 		Content:  strings.NewReader(userdata),
-	})
+	}, scw.WithContext(ctx))
 	if err != nil {
 		return nil, scalewayErrToTerminalError(err)
 	}
@@ -218,8 +217,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	return &scwServer{server: serverResp.Server}, err
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	i, err := p.get(machine)
+func (p *provider) Cleanup(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+	i, err := p.get(ctx, machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
@@ -234,7 +233,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	ctx := context.TODO()
+
 	api, err := c.getInstanceAPI()
 	if err != nil {
 		return false, err
@@ -251,7 +250,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (cloudInstance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (cloudInstance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -265,7 +264,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		return nil, err
 	}
 
-	i, err := p.get(machine)
+	i, err := p.get(ctx, machine)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +273,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		_, err := api.ServerAction(&instance.ServerActionRequest{
 			Action:   instance.ServerActionPoweron,
 			ServerID: i.server.ID,
-		})
+		}, scw.WithContext(ctx))
 		if err != nil {
 			return nil, scalewayErrToTerminalError(err)
 		}
@@ -285,7 +284,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	return i, nil
 }
 
-func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
+func (p *provider) get(ctx context.Context, machine *v1alpha1.Machine) (*scwServer, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -302,7 +301,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
 	serversResp, err := api.ListServers(&instance.ListServersRequest{
 		Name: scw.StringPtr(machine.Spec.Name),
 		Tags: []string{string(machine.UID)},
-	}, scw.WithAllPages())
+	}, scw.WithAllPages(), scw.WithContext(ctx))
 	if err != nil {
 		return nil, scalewayErrToTerminalError(err)
 	}
@@ -316,7 +315,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(ctx context.Context, machine *v1alpha1.Machine, new types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %v", err)
@@ -326,7 +325,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return err
 	}
 
-	server, err := p.get(machine)
+	server, err := p.get(ctx, machine)
 	if err != nil {
 		return err
 	}
@@ -342,7 +341,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	_, err = api.UpdateServer(&instance.UpdateServerRequest{
 		Tags:     scw.StringsPtr(newTags),
 		ServerID: server.ID(),
-	})
+	}, scw.WithContext(ctx))
 	if err != nil {
 		return scalewayErrToTerminalError(err)
 	}
@@ -350,7 +349,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ context.Context, _ v1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 

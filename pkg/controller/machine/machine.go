@@ -329,7 +329,7 @@ func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, ma
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %v", FinalizerDeleteInstance, err)
 	}
-	instance, err := prov.Create(machine, r.providerData, userdata)
+	instance, err := prov.Create(r.ctx, machine, r.providerData, userdata)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +545,7 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 	}
 
 	// Delete the instance
-	completelyGone, err := prov.Cleanup(machine, r.providerData)
+	completelyGone, err := prov.Cleanup(r.ctx, machine, r.providerData)
 	if err != nil {
 		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, FinalizerDeleteInstance)
 		return nil, r.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
@@ -662,7 +662,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdataPlugin userdataplugin.Provider, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
 	klog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
-	providerInstance, err := prov.Get(machine, r.providerData)
+	providerInstance, err := prov.Get(r.ctx, machine, r.providerData)
 
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
@@ -676,7 +676,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
-			cloudConfig, cloudProviderName, err := prov.GetCloudConfig(machine.Spec)
+			cloudConfig, cloudProviderName, err := prov.GetCloudConfig(r.ctx, machine.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to render cloud config: %v", err)
 			}

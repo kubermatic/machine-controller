@@ -148,6 +148,8 @@ func TestValidate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			model := simulator.VPX()
 			// Pod == StoragePod == StorageCluster
 			model.Pod++
@@ -169,14 +171,14 @@ func TestValidate(t *testing.T) {
 			password, _ := simulator.DefaultLogin.Password()
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+				configVarResolver: providerconfig.NewConfigVarResolver(ctx, fakeclient.NewFakeClient()),
 			}
 			tt.args.User = username
 			tt.args.Password = password
 			tt.args.URL = vSphereURL
 			m := cloudprovidertesting.Creator{Name: "test", Namespace: "vsphere", ProviderSpecGetter: tt.args.rawProviderSpec}.
 				CreateMachine(t)
-			if err := p.Validate(m.Spec); (err != nil) != tt.wantErr {
+			if err := p.Validate(ctx, m.Spec); (err != nil) != tt.wantErr {
 				t.Errorf("provider.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -105,12 +105,12 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 // AddDefaults adds omitted optional values to the given MachineSpec
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ context.Context, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
 // Validate returns success or failure based according to its ProviderSpec
-func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, machinespec v1alpha1.MachineSpec) error {
 	config, _, err := p.getConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -147,7 +147,7 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -166,7 +166,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.GetRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, anxtypes.GetRequestTimeout)
 	defer cancel()
 
 	info, err := apiClient.VSphere().Info().Get(ctx, status.InstanceID)
@@ -179,12 +179,12 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}, nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, error) {
+func (p *provider) GetCloudConfig(_ context.Context, spec v1alpha1.MachineSpec) (string, string, error) {
 	return "", "", nil
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *v1alpha1.Machine, providerData *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -195,7 +195,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 		return nil, newError(common.InvalidConfigurationMachineError, "invalid token: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.CreateRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, anxtypes.CreateRequestTimeout)
 	defer cancel()
 
 	status, err := getStatus(machine.Status.ProviderStatus)
@@ -260,10 +260,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 		return nil, newError(common.UpdateMachineError, "machine status update failed: %v", err)
 	}
 
-	return p.Get(machine, providerData)
+	return p.Get(ctx, machine, providerData)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -279,7 +279,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return false, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.DeleteRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, anxtypes.DeleteRequestTimeout)
 	defer cancel()
 
 	err = apiClient.VSphere().Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
@@ -303,7 +303,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	return true, nil
 }
 
-func (p *provider) MigrateUID(_ *v1alpha1.Machine, _ k8stypes.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *v1alpha1.Machine, _ k8stypes.UID) error {
 	return nil
 }
 

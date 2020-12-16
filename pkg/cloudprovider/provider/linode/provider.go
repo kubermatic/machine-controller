@@ -101,12 +101,12 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	return "", providerconfigtypes.ErrOSNotSupported
 }
 
-func getClient(token string) linodego.Client {
+func getClient(ctx context.Context, token string) linodego.Client {
 	tokenSource := &TokenSource{
 		AccessToken: token,
 	}
 
-	oauthClient := oauth2.NewClient(context.Background(), tokenSource)
+	oauthClient := oauth2.NewClient(ctx, tokenSource)
 
 	client := linodego.NewClient(oauthClient)
 	client.SetUserAgent("Kubermatic linodego")
@@ -162,11 +162,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	return &c, &pconfig, err
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ context.Context, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec v1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -189,8 +189,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	_, err = client.GetRegion(ctx, c.Region)
 	if err != nil {
@@ -215,7 +214,7 @@ func createRandomPassword() (string, error) {
 	return rootPass, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -224,8 +223,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		}
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	sshkey, err := ssh.NewKey()
 	if err != nil {
@@ -277,8 +275,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	return &linodeInstance{linode: linode}, err
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.Get(machine, data)
+func (p *provider) Cleanup(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.Get(ctx, machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
@@ -293,8 +291,8 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	ctx := context.TODO()
-	client := getClient(c.Token)
+
+	client := getClient(ctx, c.Token)
 
 	linodeID, err := strconv.Atoi(instance.ID())
 	if err != nil {
@@ -318,7 +316,7 @@ func getListOptions(name string) *linodego.ListOptions {
 	return listOptions
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -327,8 +325,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		}
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	listOptions := getListOptions(machine.Spec.Name)
 	linodes, err := client.ListInstances(ctx, listOptions)
@@ -346,15 +343,14 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (p *provider) MigrateUID(ctx context.Context, machine *v1alpha1.Machine, new types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %v", err)
 	}
-	client := getClient(c.Token)
+
+	client := getClient(ctx, c.Token)
+
 	listOptions := getListOptions(machine.Spec.Name)
 	linodes, err := client.ListInstances(ctx, listOptions)
 	if err != nil {
@@ -385,7 +381,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ context.Context, _ v1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 

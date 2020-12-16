@@ -28,8 +28,7 @@ import (
 	"k8s.io/klog"
 )
 
-func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
-
+func verifyCreateUpdateAndDelete(ctx context.Context, kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 	client, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
@@ -105,7 +104,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 		oldMachineSet.Name)
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
 		machineSet := &clusterv1alpha1.MachineSet{}
-		if err := client.Get(context.Background(), types.NamespacedName{Namespace: oldMachineSet.Namespace, Name: oldMachineSet.Name}, machineSet); err != nil {
+		if err := client.Get(ctx, types.NamespacedName{Namespace: oldMachineSet.Namespace, Name: oldMachineSet.Name}, machineSet); err != nil {
 			return false, err
 		}
 		if *machineSet.Spec.Replicas != int32(0) {
@@ -139,11 +138,11 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	klog.Infof("Successfully waited for MachineDeployment %s to not have any associated machines", machineDeployment.Name)
 
 	klog.Infof("Deleting MachineDeployment %s and waiting for it to disappear", machineDeployment.Name)
-	if err := client.Delete(context.Background(), machineDeployment); err != nil {
+	if err := client.Delete(ctx, machineDeployment); err != nil {
 		return fmt.Errorf("failed to delete MachineDeployment %s: %v", machineDeployment.Name, err)
 	}
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
-		err := client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
+		err := client.Get(ctx, types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
 		if kerrors.IsNotFound(err) {
 			return true, nil
 		}

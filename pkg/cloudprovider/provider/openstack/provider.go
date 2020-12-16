@@ -17,6 +17,7 @@ limitations under the License.
 package openstack
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -58,7 +59,7 @@ const (
 )
 
 // clientGetterFunc returns an OpenStack client.
-type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
+type clientGetterFunc func(ctx context.Context, c *Config) (*gophercloud.ProviderClient, error)
 
 // serverReadinessWaiterFunc waits for the server with the given ID to be
 // ACTIVE.
@@ -266,7 +267,7 @@ func setProviderSpec(rawConfig openstacktypes.RawConfig, s v1alpha1.ProviderSpec
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
-func getClient(c *Config) (*gophercloud.ProviderClient, error) {
+func getClient(ctx context.Context, c *Config) (*gophercloud.ProviderClient, error) {
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: c.IdentityEndpoint,
 		Username:         c.Username,
@@ -281,11 +282,12 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	if pc != nil {
 		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
 	}
+	pc.Context = ctx
 
 	return pc, err
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(ctx context.Context, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	c, _, rawConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, cloudprovidererrors.TerminalError{
@@ -294,7 +296,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
-	client, err := p.clientGetter(c)
+	client, err := p.clientGetter(ctx, c)
 	if err != nil {
 		return spec, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -365,7 +367,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec v1alpha1.MachineSpec) error {
 	c, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -395,7 +397,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return errors.New("flavor must be configured")
 	}
 
-	client, err := p.clientGetter(c)
+	client, err := p.clientGetter(ctx, c)
 	if err != nil {
 		return fmt.Errorf("failed to get a openstack client: %v", err)
 	}
@@ -457,7 +459,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -466,7 +468,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	client, err := p.clientGetter(c)
+	client, err := p.clientGetter(ctx, c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -603,17 +605,17 @@ func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, se
 	klog.V(0).Infof("Instance %s got deleted", serverID)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	var hasFloatingIPReleaseFinalizer bool
 	if finalizers := sets.NewString(machine.Finalizers...); finalizers.Has(floatingIPReleaseFinalizer) {
 		hasFloatingIPReleaseFinalizer = true
 	}
 
-	instance, err := p.Get(machine, data)
+	instance, err := p.Get(ctx, machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			if hasFloatingIPReleaseFinalizer {
-				if err := p.cleanupFloatingIP(machine, data.Update); err != nil {
+				if err := p.cleanupFloatingIP(ctx, machine, data.Update); err != nil {
 					return false, fmt.Errorf("failed to clean up floating ip: %v", err)
 				}
 			}
@@ -630,7 +632,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := getClient(ctx, c)
 	if err != nil {
 		return false, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -645,13 +647,13 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	if hasFloatingIPReleaseFinalizer {
-		return false, p.cleanupFloatingIP(machine, data.Update)
+		return false, p.cleanupFloatingIP(ctx, machine, data.Update)
 	}
 
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -660,7 +662,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := getClient(ctx, c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -694,7 +696,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(ctx context.Context, machine *v1alpha1.Machine, new types.UID) error {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -703,7 +705,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := getClient(ctx, c)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -742,7 +744,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ context.Context, spec v1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
@@ -880,7 +882,7 @@ type forbiddenResponse struct {
 	} `json:"forbidden"`
 }
 
-func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudprovidertypes.MachineUpdater) error {
+func (p *provider) cleanupFloatingIP(ctx context.Context, machine *v1alpha1.Machine, updater cloudprovidertypes.MachineUpdater) error {
 	floatingIPID, exists := machine.Annotations[floatingIPIDAnnotationKey]
 	if !exists {
 		return osErrorToTerminalError(fmt.Errorf("failed to release floating ip"),
@@ -895,7 +897,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 		}
 	}
 
-	client, err := p.clientGetter(c)
+	client, err := p.clientGetter(ctx, c)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get a openstack client")
 	}

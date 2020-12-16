@@ -190,8 +190,9 @@ func TestCreateServer(t *testing.T) {
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
 				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
 				// mock client config getter
-				clientGetter: func(c *Config) (*gophercloud.ProviderClient, error) {
+				clientGetter: func(ctx context.Context, c *Config) (*gophercloud.ProviderClient, error) {
 					pc := client.ServiceClient()
+					pc.Context = ctx
 					// endpoint locator used to redirect to local test endpoint
 					pc.ProviderClient.EndpointLocator = func(_ gophercloud.EndpointOpts) (string, error) {
 						return pc.Endpoint, nil
@@ -213,7 +214,7 @@ func TestCreateServer(t *testing.T) {
 			// It only verifies that the content of the create request matches
 			// the expectation
 			// TODO(irozzo) check the returned instance too
-			_, err := p.Create(m, tt.data, tt.userdata)
+			_, err := p.Create(context.Background(), m, tt.data, tt.userdata)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("provider.Create() or = %v, wantErr %v", err, tt.wantErr)
 				return

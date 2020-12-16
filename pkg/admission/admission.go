@@ -38,7 +38,6 @@ import (
 )
 
 type admissionData struct {
-	ctx             context.Context
 	client          ctrlruntimeclient.Client
 	userDataManager *userdatamanager.Manager
 }
@@ -57,7 +56,7 @@ func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamana
 
 	return &http.Server{
 		Addr:    listenAddress,
-		Handler: http.TimeoutHandler(m, 25*time.Second, "timeout"),
+		Handler: m,
 	}
 }
 
@@ -105,14 +104,18 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1beta
 	return response, nil
 }
 
-type mutator func(admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error)
+type mutator func(context.Context, admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error)
 
 func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// cancel any validation after at most 30 seconds, which is the maximum time
+		// the kube-apiserver will every wait for a webhook to answer
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
 
 		// We must always return an AdmissionReview with an AdmissionResponse
 		// even on error, hence the admissionExecutor  func, this makes error handling much easier
-		admissionResponse, err := admissionExecutor(r, mutate)
+		admissionResponse, err := admissionExecutor(ctx, r, mutate)
 		if err != nil {
 			admissionResponse = &admissionv1beta1.AdmissionResponse{}
 			admissionResponse.Result = &metav1.Status{Message: err.Error()}
@@ -132,7 +135,7 @@ func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) 
 	}
 }
 
-func admissionExecutor(r *http.Request, mutate mutator) (*admissionv1beta1.AdmissionResponse, error) {
+func admissionExecutor(ctx context.Context, r *http.Request, mutate mutator) (*admissionv1beta1.AdmissionResponse, error) {
 	var body []byte
 	if r.Body == nil {
 		return nil, fmt.Errorf("request has no body")
@@ -152,7 +155,7 @@ func admissionExecutor(r *http.Request, mutate mutator) (*admissionv1beta1.Admis
 		return nil, fmt.Errorf("failed to unmarshal request into admissionReview: %v", err)
 	}
 
-	admissionResponse, err := mutate(admissionReview)
+	admissionResponse, err := mutate(ctx, admissionReview)
 	if err != nil {
 		return nil, fmt.Errorf("defaulting or validation failed: %v", err)
 	}

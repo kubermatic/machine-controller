@@ -410,7 +410,7 @@ func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigNa
 	return ipAddresses, nil
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ context.Context, spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
@@ -443,7 +443,7 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 	return sp, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -474,7 +474,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}); err != nil {
 			return nil, err
 		}
-		publicIP, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
+		publicIP, err = createOrUpdatePublicIPAddress(ctx, publicIPName, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %v", err)
 		}
@@ -487,7 +487,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}); err != nil {
 		return nil, err
 	}
-	iface, err := createOrUpdateNetworkInterface(context.TODO(), ifaceName, machine.UID, config, publicIP)
+	iface, err := createOrUpdateNetworkInterface(ctx, ifaceName, machine.UID, config, publicIP)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
 	}
@@ -561,12 +561,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, err
 	}
 
-	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Name, vmSpec)
+	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec)
 	if err != nil {
 		return nil, fmt.Errorf("trying to create a VM: %v", err)
 	}
 
-	err = future.WaitForCompletionRef(context.TODO(), vmClient.Client)
+	err = future.WaitForCompletionRef(ctx, vmClient.Client)
 	if err != nil {
 		return nil, fmt.Errorf("waiting for operation returned: %v", err.Error())
 	}
@@ -577,17 +577,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	// get the actual VM object filled in with additional data
-	vm, err = vmClient.Get(context.TODO(), config.ResourceGroup, machine.Name, "")
+	vm, err = vmClient.Get(ctx, config.ResourceGroup, machine.Name, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %v", machine.Name, err)
 	}
 
-	ipAddresses, err := getVMIPAddresses(context.TODO(), config, &vm)
+	ipAddresses, err := getVMIPAddresses(ctx, config, &vm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", machine.Name, err.Error())
 	}
 
-	status, err := getVMStatus(context.TODO(), config, machine.Name)
+	status, err := getVMStatus(ctx, config, machine.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Name, err.Error())
 	}
@@ -595,13 +595,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
-	_, err = p.get(machine)
+	_, err = p.get(ctx, machine)
 	// If a defunct VM got created, the `Get` call returns an error - But not because the request
 	// failed but because the VM has an invalid config hence always delete except on err == cloudprovidererrors.ErrInstanceNotFound
 	if err != nil {
@@ -612,7 +612,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	klog.Infof("deleting VM %q", machine.Name)
-	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
+	if err = deleteVMsByMachineUID(ctx, config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
 	}
 
@@ -623,7 +623,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	klog.Infof("deleting disks of VM %q", machine.Name)
-	if err := deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
+	if err := deleteDisksByMachineUID(ctx, config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
 	}
 	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
@@ -633,7 +633,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	klog.Infof("deleting network interfaces of VM %q", machine.Name)
-	if err := deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
+	if err := deleteInterfacesByMachineUID(ctx, config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
 	}
 	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
@@ -643,7 +643,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	klog.Infof("deleting public IP addresses of VM %q", machine.Name)
-	if err := deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
+	if err := deleteIPAddressesByMachineUID(ctx, config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
 	}
 	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
@@ -739,17 +739,17 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	}
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return p.get(machine)
+func (p *provider) Get(ctx context.Context, machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return p.get(ctx, machine)
 }
 
-func (p *provider) get(machine *v1alpha1.Machine) (*azureVM, error) {
+func (p *provider) get(ctx context.Context, machine *v1alpha1.Machine) (*azureVM, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
-	vm, err := getVMByUID(context.TODO(), config, machine.UID)
+	vm, err := getVMByUID(ctx, config, machine.UID)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -758,12 +758,12 @@ func (p *provider) get(machine *v1alpha1.Machine) (*azureVM, error) {
 		return nil, fmt.Errorf("failed to find machine %q by its UID: %v", machine.UID, err)
 	}
 
-	ipAddresses, err := getVMIPAddresses(context.TODO(), config, vm)
+	ipAddresses, err := getVMIPAddresses(ctx, config, vm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %v", vm.Name, err)
 	}
 
-	status, err := getVMStatus(context.TODO(), config, machine.Name)
+	status, err := getVMStatus(ctx, config, machine.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve status for VM %v: %v", vm.Name, err)
 	}
@@ -771,7 +771,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*azureVM, error) {
 	return &azureVM{vm: vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ context.Context, spec v1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
@@ -801,7 +801,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return s, "azure", nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec v1alpha1.MachineSpec) error {
 	c, providerCfg, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -844,16 +844,16 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to (create) vm client: %v", err.Error())
 	}
 
-	_, err = vmClient.ListAll(context.TODO())
+	_, err = vmClient.ListAll(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list all: %v", err.Error())
 	}
 
-	if _, err := getVirtualNetwork(context.TODO(), c); err != nil {
+	if _, err := getVirtualNetwork(ctx, c); err != nil {
 		return fmt.Errorf("failed to get virtual network: %v", err)
 	}
 
-	if _, err := getSubnet(context.TODO(), c); err != nil {
+	if _, err := getSubnet(ctx, c); err != nil {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
@@ -861,10 +861,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return err
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (p *provider) MigrateUID(ctx context.Context, machine *v1alpha1.Machine, new types.UID) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
