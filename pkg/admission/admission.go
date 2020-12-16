@@ -57,7 +57,7 @@ func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamana
 
 	return &http.Server{
 		Addr:    listenAddress,
-		Handler: http.TimeoutHandler(m, 25*time.Second, "timeout"),
+		Handler: http.TimeoutHandler(m, 50*time.Second, "timeout"),
 	}
 }
 

@@ -503,6 +503,7 @@ metadata:
 webhooks:
 - name: machinedeployments.machine-controller.kubermatic.io
   failurePolicy: Fail
+  timeoutSeconds: 50
   rules:
   - apiGroups:
     - "cluster.k8s.io"
