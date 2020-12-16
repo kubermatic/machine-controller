@@ -215,7 +215,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 
 	c.Labels[machineUIDLabelKey] = string(machine.UID)
 	serverCreateOpts := hcloud.ServerCreateOpts{
-		Name:     machine.Spec.Name,
+		Name:     machine.Name,
 		UserData: userdata,
 		Labels:   c.Labels,
 	}
@@ -266,6 +266,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	hkey, res, err := client.SSHKey.Create(ctx, hcloud.SSHKeyCreateOpts{
 		Name:      sshkey.Name,
 		PublicKey: sshkey.PublicKey,
+		Labels:    map[string]string{"kubermatic.io/machine-controller": "temp-ssh-key"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating temporary ssh key failed with error %v", err)
