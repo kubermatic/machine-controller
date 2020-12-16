@@ -33,7 +33,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gophercloud/gophercloud v0.2.1-0.20190626201551-2949719e8258
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
-	github.com/hetznercloud/hcloud-go v1.15.1
+	github.com/hetznercloud/hcloud-go v1.23.1
 	github.com/huandu/xstrings v1.0.0 // indirect
 	github.com/linode/linodego v0.7.1
 	github.com/mailru/easyjson v0.7.1 // indirect
