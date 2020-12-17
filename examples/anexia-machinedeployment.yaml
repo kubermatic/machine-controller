@@ -34,9 +34,9 @@ spec:
             # Currently only the flatcar template is supported: 12c28aa7-604d-47e9-83fb-5f1d1f1837b3
             templateID: "<< ANEXIA_TEMPLATE_ID >>"
             locationID: "<< ANEXIA_LOCATION_ID >>"
-            cpus: 4
-            memory: 4096
-            diskSize: 20
+            cpus: 2
+            memory: 2048
+            diskSize: 60
           # Flatcar is the only supported operating system
           operatingSystem: "flatcar"
           operatingSystemSpec:

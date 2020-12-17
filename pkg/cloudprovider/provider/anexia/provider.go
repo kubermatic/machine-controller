@@ -24,8 +24,9 @@ import (
 	"fmt"
 	"net/http"
 
-	anx "github.com/anexia-it/go-anxcloud/pkg"
 	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
+	anxaddr "github.com/anexia-it/go-anxcloud/pkg/ipam/address"
+	anxvsphere "github.com/anexia-it/go-anxcloud/pkg/vsphere"
 	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
@@ -153,10 +154,11 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
 	}
 
-	apiClient, err := getClient(config.Token)
+	cli, err := getClient(config.Token)
 	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, "invalid token: %v", err)
+		return nil, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
+	vsphere := anxvsphere.NewAPI(cli)
 
 	status, err := getStatus(machine.Status.ProviderStatus)
 	if err != nil {
@@ -169,7 +171,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.GetRequestTimeout)
 	defer cancel()
 
-	info, err := apiClient.VSphere().Info().Get(ctx, status.InstanceID)
+	info, err := vsphere.Info().Get(ctx, status.InstanceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed get machine info: %w", err)
 	}
@@ -190,10 +192,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
 	}
 
-	apiClient, err := getClient(config.Token)
+	cli, err := getClient(config.Token)
 	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, "invalid token: %v", err)
+		return nil, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
+	vsphere := anxvsphere.NewAPI(cli)
+	addr := anxaddr.NewAPI(cli)
 
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.CreateRequestTimeout)
 	defer cancel()
@@ -204,22 +208,25 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 	}
 
 	if status.ProvisioningID == "" {
-		ips, err := apiClient.VSphere().Provisioning().IPs().GetFree(ctx, config.LocationID, config.VlanID)
+		res, err := addr.ReserveRandom(ctx, anxaddr.ReserveRandom{
+			LocationID: config.LocationID,
+			VlanID:     config.VlanID,
+			Count:      1,
+		})
 		if err != nil {
-			return nil, newError(common.InvalidConfigurationMachineError, "failed to get ip pool: %v", err)
+			return nil, newError(common.InvalidConfigurationMachineError, "failed to reserve an ip address: %v", err)
 		}
-		if len(ips) < 1 {
+		if len(res.Data) < 1 {
 			return nil, newError(common.InsufficientResourcesMachineError, "no ip address is available for this machine")
 		}
 
-		ipID := ips[0].Identifier
 		networkInterfaces := []anxvm.Network{{
 			NICType: anxtypes.VmxNet3NIC,
-			IPs:     []string{ipID},
+			IPs:     []string{res.Data[0].Address},
 			VLAN:    config.VlanID,
 		}}
 
-		vm := apiClient.VSphere().Provisioning().VM().NewDefinition(
+		vm := vsphere.Provisioning().VM().NewDefinition(
 			config.LocationID,
 			"templates",
 			config.TemplateID,
@@ -238,19 +245,18 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 		}
 		vm.SSH = sshKey.PublicKey
 
-		provisionResponse, err := apiClient.VSphere().Provisioning().VM().Provision(ctx, vm)
+		provisionResponse, err := vsphere.Provisioning().VM().Provision(ctx, vm)
 		if err != nil {
 			return nil, newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 		}
 
 		status.ProvisioningID = provisionResponse.Identifier
-		status.IPAllocationID = ipID
 		if err := updateStatus(machine, status, providerData.Update); err != nil {
 			return nil, newError(common.UpdateMachineError, "machine status update failed: %v", err)
 		}
 	}
 
-	instanceID, err := apiClient.VSphere().Provisioning().Progress().AwaitCompletion(ctx, status.ProvisioningID)
+	instanceID, err := vsphere.Provisioning().Progress().AwaitCompletion(ctx, status.ProvisioningID)
 	if err != nil {
 		return nil, newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 	}
@@ -269,10 +275,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
 	}
 
-	apiClient, err := getClient(config.Token)
+	cli, err := getClient(config.Token)
 	if err != nil {
-		return false, newError(common.InvalidConfigurationMachineError, "invalid token: %v", err)
+		return false, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
+	vsphere := anxvsphere.NewAPI(cli)
 
 	status, err := getStatus(machine.Status.ProviderStatus)
 	if err != nil {
@@ -282,21 +289,12 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.DeleteRequestTimeout)
 	defer cancel()
 
-	err = apiClient.VSphere().Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
+	err = vsphere.Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
 	if err != nil {
 		var respErr *anxclient.ResponseError
 		// Only error if the error was not "not found"
 		if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
 			return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
-		}
-	}
-
-	err = apiClient.IPAM().Address().Delete(ctx, status.IPAllocationID)
-	if err != nil {
-		var respErr *anxclient.ResponseError
-		// Only error if the error was not "not found"
-		if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
-			return false, newError(common.DeleteMachineError, "failed to delete machine ip allocation: %v", err)
 		}
 	}
 
@@ -315,13 +313,9 @@ func (p *provider) SetMetricsForMachines(machine v1alpha1.MachineList) error {
 	return nil
 }
 
-func getClient(token string) (anx.API, error) {
-	client, err := anxclient.New(anxclient.TokenFromString(token))
-	if err != nil {
-		return nil, err
-	}
-
-	return anx.NewAPI(client), nil
+func getClient(token string) (anxclient.Client, error) {
+	tokenOpt := anxclient.TokenFromString(token)
+	return anxclient.New(tokenOpt)
 }
 
 func getStatus(rawStatus *runtime.RawExtension) (*anxtypes.ProviderStatus, error) {
