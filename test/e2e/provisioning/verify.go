@@ -147,10 +147,26 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
 	}
 
-	klog.Infof("creating a new \"%s\" MachineDeployment\n", machineDeployment.Name)
-	if err := client.Create(context.Background(), machineDeployment); err != nil {
-		return nil, err
+	klog.Infof("Creating a new %q MachineDeployment", machineDeployment.Name)
+
+	// Some cloud provider API's are slow (e.g. hetzner), and it can happen that our webhook
+	// needs longer to validate a MachineDeployment than the kube-apiserver is willing to wait.
+	// In real world scenarios this is not that critical, but for tests we need to pay closer
+	// attention and retry the creation a few times.
+	err = wait.PollImmediate(3*time.Second, 180*time.Second, func() (bool, error) {
+		err := client.Create(context.Background(), machineDeployment)
+		if err != nil {
+			klog.Warningf("Creation of %q failed, retrying: %v", machineDeployment.Name, err)
+			return false, nil
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MachineDeployment %q: %v", machineDeployment.Name, err)
 	}
+
+	klog.Infof("MachineDeployment %q created", machineDeployment.Name)
 
 	var pollErr error
 	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
