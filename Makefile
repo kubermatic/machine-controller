@@ -96,6 +96,10 @@ test-unit:
 	@#The `-race` flag requires CGO
 	CGO_ENABLED=1 go test -race ./...
 
+.PHONY: build-tests
+build-tests:
+	go test -run nope ./...
+
 .PHONY: e2e-cluster
 e2e-cluster: machine-controller webhook
 	make -C test/tools/integration apply
@@ -149,3 +153,7 @@ deploy: examples/admission-cert.pem
 .PHONY: check-dependencies
 check-dependencies:
 	go mod verify
+
+.PHONY: download-gocache
+download-gocache:
+	@./hack/ci-download-gocache.sh
