@@ -50,8 +50,8 @@ func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamana
 		client:          client,
 		userDataManager: um,
 	}
-	m.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))
-	m.HandleFunc("/machines", handleFuncFactory(ad.mutateMachines))
+	m.HandleFunc("/machinedeployments", handlerFuncFactory(ad.mutateMachineDeployments))
+	m.HandleFunc("/machines", handlerFuncFactory(ad.mutateMachines))
 	m.HandleFunc("/healthz", healthZHandler)
 
 	return &http.Server{
@@ -106,8 +106,8 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1beta
 
 type mutator func(context.Context, admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error)
 
-// handleFuncFactory wraps a mutator as an HTTP HandlerFunc.
-func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) {
+// handlerFuncFactory wraps a mutator as an HTTP HandlerFunc.
+func handlerFuncFactory(mutate mutator) http.HandlerFunc {
 	/*
 		Within the handler we create below, the actual mutation logic is
 		running in a separate goroutine. This is because sometimes some
