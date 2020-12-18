@@ -21,7 +21,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/sethvargo/go-password/password"
 	"gopkg.in/gcfg.v1"
 )

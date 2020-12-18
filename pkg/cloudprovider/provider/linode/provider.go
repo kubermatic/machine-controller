@@ -109,8 +109,7 @@ func getClient(token string) linodego.Client {
 	oauthClient := oauth2.NewClient(context.Background(), tokenSource)
 
 	client := linodego.NewClient(oauthClient)
-	ua := fmt.Sprintf("Kubermatic linodego/%s", linodego.Version)
-	client.SetUserAgent(ua)
+	client.SetUserAgent("Kubermatic linodego")
 
 	return client
 }
