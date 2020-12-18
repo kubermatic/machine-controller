@@ -257,7 +257,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	client := getClient(c.APIKey)
 
-	res, err := client.Devices.Delete(instance.(*packetDevice).device.ID, false)
+	res, err := client.Devices.Delete(instance.(*packetDevice).device.ID)
 	if err != nil {
 		return false, packetErrorToTerminalError(err, res, "failed to delete the server")
 	}
