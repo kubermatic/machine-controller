@@ -33,7 +33,6 @@ require (
 	github.com/hetznercloud/hcloud-go v1.23.1
 	github.com/linode/linodego v0.24.0
 	github.com/mailru/easyjson v0.7.1 // indirect
-	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -48,6 +47,7 @@ require (
 	go4.org v0.0.0-20200104003542-c7e774b10ea0 // indirect
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
+	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/api v0.36.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/gcfg.v1 v1.2.3
