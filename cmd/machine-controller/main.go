@@ -277,8 +277,19 @@ func main() {
 	ctx := context.Background()
 	mgrSyncPeriod := 5 * time.Minute
 
-	mgr, err := manager.New(runOptions.cfg, manager.Options{
-		SyncPeriod:              &mgrSyncPeriod,
+	mgr, err := createManager(ctx, mgrSyncPeriod, runOptions)
+	if err != nil {
+		klog.Fatalf("failed to create runtime manager: %v", err)
+	}
+
+	if err := mgr.Start(ctx); err != nil {
+		klog.Errorf("failed to start kubebuilder manager: %v", err)
+	}
+}
+
+func createManager(ctx context.Context, syncPeriod time.Duration, options controllerRunOptions) (manager.Manager, error) {
+	mgr, err := manager.New(options.cfg, manager.Options{
+		SyncPeriod:              &syncPeriod,
 		LeaderElection:          true,
 		LeaderElectionID:        "machine-controller",
 		LeaderElectionNamespace: defaultLeaderElectionNamespace,
@@ -286,19 +297,19 @@ func main() {
 		MetricsBindAddress:      metricsAddress,
 	})
 	if err != nil {
-		klog.Fatalf("error building ctrlruntime manager: %v", err)
+		return nil, fmt.Errorf("error building ctrlruntime manager: %v", err)
 	}
 
 	if err := mgr.AddReadyzCheck("alive", healthz.Ping); err != nil {
-		klog.Fatalf("failed to add readiness check: %v", err)
+		return nil, fmt.Errorf("failed to add readiness check: %v", err)
 	}
 
-	if err := mgr.AddHealthzCheck("kubeconfig", health.KubeconfigAvailable(kubeconfigProvider)); err != nil {
-		klog.Fatalf("failed to add health check: %v", err)
+	if err := mgr.AddHealthzCheck("kubeconfig", health.KubeconfigAvailable(options.kubeconfigProvider)); err != nil {
+		return nil, fmt.Errorf("failed to add health check: %v", err)
 	}
 
-	if err := mgr.AddHealthzCheck("apiserver-connection", health.ApiserverReachable(kubeClient)); err != nil {
-		klog.Fatalf("failed to add health check: %v", err)
+	if err := mgr.AddHealthzCheck("apiserver-connection", health.ApiserverReachable(options.kubeClient)); err != nil {
+		return nil, fmt.Errorf("failed to add health check: %v", err)
 	}
 
 	if profiling {
@@ -310,20 +321,18 @@ func main() {
 		m.HandleFunc("/trace", pprof.Trace)
 
 		if err := mgr.AddMetricsExtraHandler("/debug/pprof/", m); err != nil {
-			klog.Fatalf("failed to add pprof http handlers: %v", err)
+			return nil, fmt.Errorf("failed to add pprof http handlers: %v", err)
 		}
 	}
 
 	if err := mgr.Add(&controllerBootstrap{
 		mgr: mgr,
-		opt: runOptions,
+		opt: options,
 	}); err != nil {
-		klog.Fatalf("failed to add bootstrap runnable: %v", err)
+		return nil, fmt.Errorf("failed to add bootstrap runnable: %v", err)
 	}
 
-	if err := mgr.Start(ctx); err != nil {
-		klog.Errorf("failed to start kubebuilder manager: %v", err)
-	}
+	return mgr, nil
 }
 
 type controllerBootstrap struct {
