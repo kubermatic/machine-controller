@@ -103,7 +103,7 @@ spec:
      # status enables the status subresource.
      status: {}
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: machine-controller:kubelet-bootstrap
@@ -173,13 +173,13 @@ spec:
           - containerPort: 8085
           livenessProbe:
             httpGet:
-              path: /live
+              path: /readyz
               port: 8085
             initialDelaySeconds: 5
             periodSeconds: 5
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /healthz
               port: 8085
             periodSeconds: 5
 ---
@@ -261,7 +261,7 @@ metadata:
   labels:
     local-testing: "true"
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: machine-controller
@@ -293,8 +293,14 @@ rules:
   - endpoints
   verbs:
   - create
+- apiGroups:
+  - "coordination.k8s.io"
+  resources:
+  - leases
+  verbs:
+  - "*"
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: machine-controller
@@ -311,7 +317,7 @@ rules:
   - watch
   - list
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: machine-controller
@@ -328,7 +334,7 @@ rules:
   - watch
   - list
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: machine-controller
@@ -344,7 +350,7 @@ subjects:
   name: machine-controller
   namespace: kube-system
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: machine-controller
@@ -360,7 +366,7 @@ subjects:
   name: machine-controller
   namespace: kube-system
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: machine-controller
@@ -376,7 +382,7 @@ subjects:
   name: machine-controller
   namespace: kube-system
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: machine-controller
@@ -483,7 +489,7 @@ rules:
   verbs:
   - "approve"
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: machine-controller
