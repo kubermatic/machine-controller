@@ -37,10 +37,10 @@ import (
 // the `providerConfig` field to `providerSpec`
 const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requirement"
 
-func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionReview) (*admissionv1.AdmissionResponse, error) {
+func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 
 	machine := clusterv1alpha1.Machine{}
-	if err := json.Unmarshal(ar.Request.Object.Raw, &machine); err != nil {
+	if err := json.Unmarshal(ar.Object.Raw, &machine); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	machineOriginal := machine.DeepCopy()
@@ -51,9 +51,9 @@ func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionReview) (*admiss
 	// because otherwise it can never add the delete finalizer as it internally defaults the Name
 	// as well, since on the CREATE request for machines, there is only Metadata.GenerateName set
 	// so we can't default it initially
-	if ar.Request.Operation == admissionv1.Update {
+	if ar.Operation == admissionv1.Update {
 		oldMachine := clusterv1alpha1.Machine{}
-		if err := json.Unmarshal(ar.Request.OldObject.Raw, &oldMachine); err != nil {
+		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachine); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OldObject: %v", err)
 		}
 		if oldMachine.Spec.Name != machine.Spec.Name && machine.Spec.Name == machine.Name {
@@ -78,7 +78,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionReview) (*admiss
 
 	// Default and verify .Spec on CREATE only, its expensive and not required to do it on UPDATE
 	// as we disallow .Spec changes anyways
-	if ar.Request.Operation == admissionv1.Create {
+	if ar.Operation == admissionv1.Create {
 		if err := ad.defaultAndValidateMachineSpec(&machine.Spec); err != nil {
 			return nil, err
 		}

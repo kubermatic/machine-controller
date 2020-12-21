@@ -26,10 +26,9 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 )
 
-func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionReview) (*admissionv1.AdmissionResponse, error) {
-
+func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 	machineDeployment := clusterv1alpha1.MachineDeployment{}
-	if err := json.Unmarshal(ar.Request.Object.Raw, &machineDeployment); err != nil {
+	if err := json.Unmarshal(ar.Object.Raw, &machineDeployment); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	machineDeploymentOriginal := machineDeployment.DeepCopy()
@@ -41,9 +40,9 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionReview
 
 	// Do not validate the spec if it hasn't changed
 	machineSpecNeedsValidation := true
-	if ar.Request.Operation == admissionv1.Update {
+	if ar.Operation == admissionv1.Update {
 		var oldMachineDeployment clusterv1alpha1.MachineDeployment
-		if err := json.Unmarshal(ar.Request.OldObject.Raw, &oldMachineDeployment); err != nil {
+		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachineDeployment); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OldObject: %v", err)
 		}
 		if equal := apiequality.Semantic.DeepEqual(oldMachineDeployment.Spec.Template.Spec, machineDeployment.Spec.Template.Spec); equal {
