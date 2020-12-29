@@ -37,6 +37,7 @@ type kubeletFlagTestCase struct {
 	external      bool
 	pauseImage    string
 	initialTaints []corev1.Taint
+	extraFlags    []string
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -116,6 +117,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 				test.external,
 				test.pauseImage,
 				test.initialTaints,
+				test.extraFlags,
 			)
 			if err != nil {
 				t.Error(err)

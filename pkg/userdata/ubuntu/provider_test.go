@@ -28,9 +28,10 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
-	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -119,6 +120,7 @@ type userDataTestCase struct {
 	insecureRegistries    []string
 	registryMirrors       []string
 	pauseImage            string
+	containerruntime      string
 }
 
 func simpleVersionTests() []userDataTestCase {
@@ -443,10 +445,13 @@ func TestUserDataGeneration(t *testing.T) {
 				ExternalCloudProvider: test.externalCloudProvider,
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
-				InsecureRegistries:    test.insecureRegistries,
-				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				ContainerRuntime: containerruntime.Get(
+					test.containerruntime,
+					containerruntime.WithInsecureRegistries(test.insecureRegistries),
+					containerruntime.WithRegistryMirrors(test.registryMirrors),
+				),
 			}
 			s, err := provider.UserData(req)
 			if err != nil {
