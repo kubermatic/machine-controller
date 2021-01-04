@@ -28,9 +28,9 @@ spec:
             vlanID: "e37d7134ab934f5683fabcc72d28e036"
             templateID: "12c28aa7-604d-47e9-83fb-5f1d1f1837b3"
             locationID: "52b5f6b2fd3a4a7eaaedf1a7c019e9ea"
-            cpus: 4
-            memory: 4096
-            diskSize: 100
+            cpus: 2
+            memory: 2048
+            diskSize: 60
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             provisioningUtility: "cloud-init"
