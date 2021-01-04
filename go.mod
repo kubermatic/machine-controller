@@ -14,7 +14,7 @@ require (
 	github.com/ajeddeloh/go-json v0.0.0-20170920214419-6a2fe990e083 // indirect
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.751
-	github.com/anexia-it/go-anxcloud v0.3.6
+	github.com/anexia-it/go-anxcloud v0.3.8
 	github.com/aws/aws-sdk-go v1.36.2
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
