@@ -30,6 +30,7 @@ spec:
             subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
             location: "westeurope"
             resourceGroup: "machine-controller-e2e"
+            vnetResourceGroup: ""
             vmSize: "Standard_F2"
             # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
             osDiskSize: << OS_DISK_SIZE >>
