@@ -220,7 +220,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	}
 
 	c.VNetResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetResourceGroup)
-	if err != nil || len(c.VNetResourceGroup) == 0 {
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"vnetResourceGroup\" field, error = %v", err)
+	}
+
+	if c.VNetResourceGroup == "" {
 		c.VNetResourceGroup = c.ResourceGroup
 	}
 
@@ -832,10 +836,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	if c.ResourceGroup == "" {
 		return errors.New("resourceGroup is missing")
-	}
-
-	if c.VNetResourceGroup == "" {
-		c.VNetResourceGroup = c.ResourceGroup
 	}
 
 	if c.VMSize == "" {
