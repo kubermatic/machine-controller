@@ -49,9 +49,9 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 	}
 
 	reconciler := Reconciler{}
-	ctx := context.Background()
 
 	for _, testCase := range tests {
+		ctx := context.Background()
 		secret := &corev1.Secret{}
 		secret.Name = "secret"
 		secret.Namespace = metav1.NamespaceSystem

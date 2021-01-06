@@ -284,7 +284,7 @@ func main() {
 		cancel()
 	}()
 
-	mgr, err := createManager(ctx, 5*time.Minute, runOptions)
+	mgr, err := createManager(5*time.Minute, runOptions)
 	if err != nil {
 		klog.Fatalf("failed to create runtime manager: %v", err)
 	}
@@ -294,7 +294,7 @@ func main() {
 	}
 }
 
-func createManager(ctx context.Context, syncPeriod time.Duration, options controllerRunOptions) (manager.Manager, error) {
+func createManager(syncPeriod time.Duration, options controllerRunOptions) (manager.Manager, error) {
 	mgr, err := manager.New(options.cfg, manager.Options{
 		SyncPeriod:              &syncPeriod,
 		LeaderElection:          true,

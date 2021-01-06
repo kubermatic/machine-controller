@@ -186,10 +186,10 @@ func TestController_GetNode(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			nodes := []runtime.Object{}
 			for _, node := range nodeList {
 				nodes = append(nodes, node)
@@ -278,10 +278,10 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			machine := &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "my-machine",
@@ -442,10 +442,9 @@ func TestControllerShouldEvict(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 
 			objects := []runtime.Object{test.machine}
 			objects = append(objects, test.existingNodes...)
@@ -575,10 +574,10 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			objects := []runtime.Object{test.machine}
 			objects = append(objects, test.nodes...)
 

@@ -209,8 +209,8 @@ func Add(
 
 			var ownerUIDString string
 			var exists bool
-			if labels := node.GetLabels(); labels != nil {
-				ownerUIDString, exists = labels[NodeOwnerLabelName]
+			if nodeLabels := node.GetLabels(); nodeLabels != nil {
+				ownerUIDString, exists = nodeLabels[NodeOwnerLabelName]
 			}
 			if !exists {
 				// We get triggered by node{Add,Update}, so enqeue machines if they
