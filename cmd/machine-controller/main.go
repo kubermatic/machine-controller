@@ -46,6 +46,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/controller/nodecsrapprover"
 	"github.com/kubermatic/machine-controller/pkg/health"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/signals"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/klog"
@@ -274,10 +275,16 @@ func main() {
 		runOptions.bootstrapTokenServiceAccountName = &types.NamespacedName{Namespace: flagParts[0], Name: flagParts[1]}
 	}
 
-	ctx := context.Background()
-	mgrSyncPeriod := 5 * time.Minute
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	signalCh := signals.SetupSignalHandler()
+	go func() {
+		<-signalCh
+		klog.Info("caught signal, shutting down...")
+		cancel()
+	}()
 
-	mgr, err := createManager(ctx, mgrSyncPeriod, runOptions)
+	mgr, err := createManager(ctx, 5*time.Minute, runOptions)
 	if err != nil {
 		klog.Fatalf("failed to create runtime manager: %v", err)
 	}
