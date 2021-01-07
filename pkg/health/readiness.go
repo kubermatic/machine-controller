@@ -17,21 +17,49 @@ limitations under the License.
 package health
 
 import (
-	"context"
+	"errors"
+	"fmt"
+	"net/http"
 
-	"github.com/heptiolabs/healthcheck"
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 )
 
-func ApiserverReachable(ctx context.Context, client kubernetes.Interface) healthcheck.Check {
-	return func() error {
-		_, err := client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+func ApiserverReachable(client kubernetes.Interface) healthz.Checker {
+	return func(req *http.Request) error {
+		_, err := client.CoreV1().Nodes().List(req.Context(), metav1.ListOptions{})
 		if err != nil {
-			klog.V(2).Infof("[healthcheck] Unable to list nodes check: %v", err)
+			return fmt.Errorf("unable to list nodes check: %v", err)
 		}
-		return err
+
+		return nil
+	}
+}
+
+func KubeconfigAvailable(kubeconfigProvider machinecontroller.KubeconfigProvider) healthz.Checker {
+	return func(req *http.Request) error {
+		cm, err := kubeconfigProvider.GetKubeconfig(req.Context())
+		if err != nil {
+			return fmt.Errorf("unable to get kubeconfig: %v", err)
+		}
+
+		if len(cm.Clusters) != 1 {
+			return errors.New("invalid kubeconfig: no clusters found")
+		}
+
+		for name, c := range cm.Clusters {
+			if len(c.CertificateAuthorityData) == 0 {
+				return fmt.Errorf("invalid kubeconfig: no certificate authority data was specified for kuberconfig.clusters.'%s'", name)
+			}
+
+			if len(c.Server) == 0 {
+				return fmt.Errorf("invalid kubeconfig: no server was specified for kuberconfig.clusters.'%s'", name)
+			}
+		}
+
+		return nil
 	}
 }
