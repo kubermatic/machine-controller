@@ -1,0 +1,52 @@
+opt_bin=/opt/bin
+cni_bin_dir=/opt/cni/bin
+mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+arch=${HOST_ARCH-}
+if [ -z "$arch" ]
+then
+case $(uname -m) in
+x86_64)
+    arch="amd64"
+    ;;
+aarch64)
+    arch="arm64"
+    ;;
+*)
+    echo "unsupported CPU architecture, exiting"
+    exit 1
+    ;;
+esac
+fi
+CNI_VERSION="${CNI_VERSION:-v0.8.7}"
+cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
+cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
+curl -Lfo "$cni_bin_dir/$cni_filename" "$cni_base_url/$cni_filename"
+cni_sum=$(curl -Lf "$cni_base_url/$cni_filename.sha256")
+cd "$cni_bin_dir"
+sha256sum -c <<<"$cni_sum"
+tar xvf "$cni_filename"
+rm -f "$cni_filename"
+cd -
+KUBE_VERSION="${KUBE_VERSION:-v1.20.1}"
+kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
+kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
+kube_sum_file="$kube_dir/sha256"
+mkdir -p "$kube_dir"
+: >"$kube_sum_file"
+
+for bin in kubelet kubeadm kubectl; do
+    curl -Lfo "$kube_dir/$bin" "$kube_base_url/$bin"
+    chmod +x "$kube_dir/$bin"
+    sum=$(curl -Lf "$kube_base_url/$bin.sha256")
+    echo "$sum  $kube_dir/$bin" >>"$kube_sum_file"
+done
+sha256sum -c "$kube_sum_file"
+
+for bin in kubelet kubeadm kubectl; do
+    ln -sf "$kube_dir/$bin" "$opt_bin"/$bin
+done
+
+if [[ ! -x /opt/bin/health-monitor.sh ]]; then
+    curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+    chmod +x /opt/bin/health-monitor.sh
+fi

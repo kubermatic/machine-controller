@@ -91,7 +91,7 @@ kPe6XoSbiLm/kxk32T0=
 )
 
 const (
-	defaultVersion = "1.17.3"
+	defaultVersion = "1.20.1"
 )
 
 type fakeCloudConfigProvider struct {
@@ -123,9 +123,10 @@ type userDataTestCase struct {
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.15.10"),
-		semver.MustParse("v1.16.6"),
-		semver.MustParse("v1.17.3"),
+		semver.MustParse("v1.17.16"),
+		semver.MustParse("v1.18.14"),
+		semver.MustParse("v1.19.6"),
+		semver.MustParse("v1.20.1"),
 	}
 
 	var tests []userDataTestCase

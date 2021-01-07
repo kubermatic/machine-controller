@@ -61,7 +61,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 	tests = append(tests, []kubeletFlagTestCase{
 		{
 			name:    "multiple-dns-servers",
-			version: semver.MustParse("v1.10.1"),
+			version: semver.MustParse("v1.20.1"),
 			dnsIPs: []net.IP{
 				net.ParseIP("10.10.10.10"),
 				net.ParseIP("10.10.10.11"),
@@ -71,14 +71,14 @@ func TestKubeletSystemdUnit(t *testing.T) {
 		},
 		{
 			name:          "cloud-provider-set",
-			version:       semver.MustParse("v1.10.1"),
+			version:       semver.MustParse("v1.20.1"),
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
 		},
 		{
 			name:          "pause-image-set",
-			version:       semver.MustParse("v1.13.5"),
+			version:       semver.MustParse("v1.20.1"),
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
@@ -86,7 +86,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 		},
 		{
 			name:          "taints-set",
-			version:       semver.MustParse("v1.13.5"),
+			version:       semver.MustParse("v1.20.1"),
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
