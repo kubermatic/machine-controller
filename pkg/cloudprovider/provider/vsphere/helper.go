@@ -41,7 +41,7 @@ import (
 const (
 	localTempDir     = "/tmp"
 	metaDataTemplate = `instance-id: {{ .InstanceID}}
-	local-hostname: {{ .Hostname }}`
+local-hostname: {{ .Hostname }}`
 )
 
 func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, os providerconfigtypes.OperatingSystem, containerLinuxUserdata string) (*object.VirtualMachine, error) {
