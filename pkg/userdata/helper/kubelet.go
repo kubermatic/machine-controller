@@ -34,15 +34,9 @@ const (
 	kubeletFlagsTpl = `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
-{{- if semverCompare "<1.15.0-0" .KubeletVersion }}
---allow-privileged=true \
-{{- end }}
 --network-plugin=cni \
 --cni-conf-dir=/etc/cni/net.d \
 --cni-bin-dir=/opt/cni/bin \
-{{- if semverCompare "<1.12.0-0" .KubeletVersion }}
---cadvisor-port=0 \
-{{- end }}
 --cert-dir=/etc/kubernetes/pki \
 {{- if or (.CloudProvider) (.IsExternal) }}
 {{ cloudProviderFlags .CloudProvider .IsExternal }} \
