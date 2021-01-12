@@ -442,7 +442,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.19.6-vsphere",
+			name: "v1.19.4-vsphere",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -457,7 +457,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.19.6",
+					Kubelet: "v1.19.4",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{

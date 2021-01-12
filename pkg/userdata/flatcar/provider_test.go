@@ -184,7 +184,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "ignition_v1.19.6",
+			name: "ignition_v1.19.4",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -199,7 +199,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.19.6",
+					Kubelet: "v1.19.4",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -312,7 +312,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "cloud-init_v1.19.6",
+			name: "cloud-init_v1.19.4",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -327,7 +327,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.19.6",
+					Kubelet: "v1.19.4",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
