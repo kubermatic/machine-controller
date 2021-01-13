@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"gopkg.in/gcfg.v1"
+	"k8s.io/utils/pointer"
 
 	"github.com/kubermatic/machine-controller/pkg/ini"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
@@ -53,6 +54,54 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
+				},
+				Version: "1.10.0",
+			},
+		},
+		{
+			name: "use-octavia-explicitly-enabled",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					AuthURL:    "https://127.0.0.1:8443",
+					Username:   "admin",
+					Password:   "password",
+					DomainName: "Default",
+					TenantName: "Test",
+					Region:     "eu-central1",
+				},
+				BlockStorage: BlockStorageOpts{
+					BSVersion:             "v2",
+					IgnoreVolumeAZ:        true,
+					TrustDevicePath:       true,
+					NodeVolumeAttachLimit: 25,
+				},
+				LoadBalancer: LoadBalancerOpts{
+					ManageSecurityGroups: true,
+					UseOctavia:           pointer.BoolPtr(true),
+				},
+				Version: "1.10.0",
+			},
+		},
+		{
+			name: "use-octavia-explicitly-disabled",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					AuthURL:    "https://127.0.0.1:8443",
+					Username:   "admin",
+					Password:   "password",
+					DomainName: "Default",
+					TenantName: "Test",
+					Region:     "eu-central1",
+				},
+				BlockStorage: BlockStorageOpts{
+					BSVersion:             "v2",
+					IgnoreVolumeAZ:        true,
+					TrustDevicePath:       true,
+					NodeVolumeAttachLimit: 25,
+				},
+				LoadBalancer: LoadBalancerOpts{
+					ManageSecurityGroups: true,
+					UseOctavia:           pointer.BoolPtr(false),
 				},
 				Version: "1.10.0",
 			},
@@ -109,6 +158,7 @@ func TestCloudConfigToString(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			t.Logf("Marshaled config: %s\n", s)
 			nc := &CloudConfig{}
 			if err := gcfg.ReadStringInto(nc, s); err != nil {
 				t.Logf("\n%s", s)
