@@ -374,6 +374,9 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		return fmt.Errorf("migration of providerConfig field to providerSpec field failed: %v", err)
 	}
 
+	machineCollector := machinecontroller.NewMachineCollector(ctx, bs.mgr.GetClient())
+	metrics.Registry.MustRegister(machineCollector)
+
 	if err := machinecontroller.Add(
 		ctx,
 		bs.mgr,
