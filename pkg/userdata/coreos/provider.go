@@ -75,7 +75,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	// We need to reconfigure rkt to allow insecure registries in case the hyperkube image comes from an insecure registry
 	var insecureHyperkubeImage bool
-	for _, registry := range req.InsecureRegistries {
+	for _, registry := range req.ContainerRuntime.InsecureRegistries {
 		if strings.Contains(req.HyperkubeImage, registry) {
 			insecureHyperkubeImage = true
 		}
@@ -95,6 +95,9 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion         string
 		InsecureHyperkubeImage bool
 		NodeIPScript           string
+		ExtraKubeletFlags      []string
+		InsecureRegistries     []string
+		RegistryMirrors        []string
 	}{
 		UserDataRequest:        req,
 		ProviderSpec:           pconfig,
@@ -104,6 +107,8 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion:         kubeletVersion.String(),
 		InsecureHyperkubeImage: insecureHyperkubeImage,
 		NodeIPScript:           userdatahelper.SetupNodeIPEnvScript(),
+		InsecureRegistries:     req.ContainerRuntime.InsecureRegistries,
+		RegistryMirrors:        req.ContainerRuntime.RegistryMirrors,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -258,7 +263,7 @@ systemd:
         ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
         ExecStart=/usr/lib/coreos/kubelet-wrapper \
 {{ if semverCompare ">=1.17.0" .KubeletVersion }}{{ print "          kubelet \\\n" }}{{ end -}}
-{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 10 }}
+{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 10 }}
         ExecStop=-/usr/bin/rkt stop --uuid-file=/var/cache/kubelet-pod.uuid
         Restart=always
         RestartSec=10

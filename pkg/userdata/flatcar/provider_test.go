@@ -28,13 +28,14 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
@@ -113,6 +114,7 @@ type userDataTestCase struct {
 	pauseImage            string
 	hyperkubeImage        string
 	kubeletImage          string
+	containerruntime      string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -413,12 +415,15 @@ func TestUserDataGeneration(t *testing.T) {
 				ExternalCloudProvider: test.externalCloudProvider,
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
-				InsecureRegistries:    test.insecureRegistries,
-				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 				HyperkubeImage:        test.hyperkubeImage,
 				KubeletRepository:     test.kubeletImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				ContainerRuntime: containerruntime.Get(
+					test.containerruntime,
+					containerruntime.WithInsecureRegistries(test.insecureRegistries),
+					containerruntime.WithRegistryMirrors(test.registryMirrors),
+				),
 			}
 
 			s, err := provider.UserData(req)

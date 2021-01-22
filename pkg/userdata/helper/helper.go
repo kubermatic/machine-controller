@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Masterminds/semver"
+	"github.com/BurntSushi/toml"
 
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -103,6 +103,95 @@ SystemMaxUse=5G
 `
 }
 
+type containerdConfigManifest struct {
+	Version int                    `toml:"version"`
+	Metrics *containerdMetrics     `toml:"metrics"`
+	Plugins map[string]interface{} `toml:"plugins"`
+}
+
+type containerdMetrics struct {
+	Address string `toml:"address"`
+}
+
+type containerdCRIPlugin struct {
+	Containerd *containerdCRISettings `toml:"containerd"`
+	Registry   *containerdCRIRegistry `toml:"registry"`
+}
+
+type containerdCRISettings struct {
+	Runtimes map[string]containerdCRIRuntime `toml:"runtimes"`
+}
+
+type containerdCRIRuntime struct {
+	RuntimeType string      `toml:"runtime_type"`
+	Options     interface{} `toml:"options"`
+}
+
+type containerdCRIRuncOptions struct {
+	SystemdCgroup bool
+}
+
+type containerdCRIRegistry struct {
+	Mirrors map[string]containerdMirror `toml:"mirrors"`
+}
+
+type containerdMirror struct {
+	Endpoint []string `toml:"endpoint"`
+}
+
+func ContainerdConfig(insecureRegistries, registryMirrors []string) (string, error) {
+	criPlugin := containerdCRIPlugin{
+		Containerd: &containerdCRISettings{
+			Runtimes: map[string]containerdCRIRuntime{
+				"runc": {
+					RuntimeType: "io.containerd.runc.v2",
+					Options: containerdCRIRuncOptions{
+						SystemdCgroup: true,
+					},
+				},
+			},
+		},
+		Registry: &containerdCRIRegistry{
+			Mirrors: map[string]containerdMirror{
+				"docker.io": {
+					Endpoint: []string{"https://registry-1.docker.io"},
+				},
+			},
+		},
+	}
+
+	for _, insecureRegistry := range insecureRegistries {
+		criPlugin.Registry.Mirrors[insecureRegistry] = containerdMirror{
+			Endpoint: []string{fmt.Sprintf("http://%s", insecureRegistry)},
+		}
+	}
+
+	if len(registryMirrors) > 0 {
+		criPlugin.Registry.Mirrors["docker.io"] = containerdMirror{
+			Endpoint: registryMirrors,
+		}
+	}
+
+	cfg := containerdConfigManifest{
+		Version: 2,
+		Metrics: &containerdMetrics{
+			// metrics available at http://127.0.0.1:1338/v1/metrics
+			Address: "127.0.0.1:1338",
+		},
+
+		Plugins: map[string]interface{}{
+			"io.containerd.grpc.v1.cri": criPlugin,
+		},
+	}
+
+	var buf strings.Builder
+	enc := toml.NewEncoder(&buf)
+	enc.Indent = ""
+	err := enc.Encode(cfg)
+
+	return buf.String(), err
+}
+
 type dockerConfig struct {
 	ExecOpts           []string          `json:"exec-opts,omitempty"`
 	StorageDriver      string            `json:"storage-driver,omitempty"`
@@ -132,38 +221,6 @@ func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) 
 
 	b, err := json.Marshal(cfg)
 	return string(b), err
-}
-
-// DockerVersionApt returns Docker version to be installed on instances using apt (Ubuntu).
-func DockerVersionApt(kubernetesVersion *semver.Version) (string, error) {
-	if kubernetesVersion == nil {
-		return "", fmt.Errorf("invalid kubernetes version")
-	}
-
-	lessThen117, _ := semver.NewConstraint("< 1.17")
-
-	if lessThen117.Check(kubernetesVersion) {
-		return "5:18.09.9~3-0~ubuntu-bionic", nil
-	}
-
-	// return default
-	return "5:19.03.12~3-0~ubuntu-bionic", nil
-}
-
-// DockerVersionYum returns Docker version to be installed on instances using yum (CentOS/RHEL).
-func DockerVersionYum(kubernetesVersion *semver.Version) (string, error) {
-	if kubernetesVersion == nil {
-		return "", fmt.Errorf("invalid kubernetes version")
-	}
-
-	lessThen117, _ := semver.NewConstraint("< 1.17")
-
-	if lessThen117.Check(kubernetesVersion) {
-		return "18.09.9-3.el7", nil
-	}
-
-	// return default
-	return "19.03.12-3.el7", nil
 }
 
 func ProxyEnvironment(proxy, noProxy string) string {
