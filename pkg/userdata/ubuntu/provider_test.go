@@ -407,6 +407,32 @@ func TestUserDataGeneration(t *testing.T) {
 			registryMirrors: []string{"https://registry.docker-cn.com"},
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
+		{
+			name:             "containerd",
+			containerruntime: "containerd",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: true,
+			},
+		},
 	}...)
 
 	for _, test := range tests {
