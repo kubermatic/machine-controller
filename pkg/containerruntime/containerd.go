@@ -54,14 +54,16 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 
 	args := struct {
 		ContainerdVersion string
-	}{ContainerdVersion: DefaultContainerdVersion}
+	}{
+		ContainerdVersion: DefaultContainerdVersion,
+	}
 
 	switch os {
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL:
 		err := containerdYumTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemUbuntu:
-		err := containerdAptTemplate.Execute(&buf, nil)
+		err := containerdAptTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemFlatcar, types.OperatingSystemCoreos:
 		return "", nil
