@@ -29,15 +29,16 @@ import (
 )
 
 type kubeletFlagTestCase struct {
-	name          string
-	version       *semver.Version
-	dnsIPs        []net.IP
-	hostname      string
-	cloudProvider string
-	external      bool
-	pauseImage    string
-	initialTaints []corev1.Taint
-	extraFlags    []string
+	name             string
+	containerRuntime string
+	version          *semver.Version
+	dnsIPs           []net.IP
+	hostname         string
+	cloudProvider    string
+	external         bool
+	pauseImage       string
+	initialTaints    []corev1.Taint
+	extraFlags       []string
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -110,6 +111,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 		name := fmt.Sprintf("kublet_systemd_unit_%s", test.name)
 		t.Run(name, func(t *testing.T) {
 			out, err := KubeletSystemdUnit(
+				defaultTo(test.containerRuntime, "docker"),
 				test.version.String(),
 				test.cloudProvider,
 				test.hostname,
@@ -126,4 +128,12 @@ func TestKubeletSystemdUnit(t *testing.T) {
 			testhelper.CompareOutput(t, goldenName, out, *update)
 		})
 	}
+}
+
+func defaultTo(in string, defaultValue string) string {
+	if in == "" {
+		return defaultValue
+	}
+
+	return in
 }

@@ -55,8 +55,8 @@ const (
 --node-ip ${KUBELET_NODE_IP}`
 
 	kubeletSystemdUnitTpl = `[Unit]
-After=docker.service
-Requires=docker.service
+After={{ .ContainerRuntime }}.service
+Requires={{ .ContainerRuntime }}.service
 
 Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
@@ -96,13 +96,14 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet
-func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %v", err)
 	}
 
 	data := struct {
+		ContainerRuntime  string
 		KubeletVersion    string
 		CloudProvider     string
 		Hostname          string
@@ -112,6 +113,7 @@ func KubeletSystemdUnit(kubeletVersion, cloudProvider, hostname string, dnsIPs [
 		InitialTaints     []corev1.Taint
 		ExtraKubeletFlags []string
 	}{
+		ContainerRuntime:  containerRuntime,
 		KubeletVersion:    kubeletVersion,
 		CloudProvider:     cloudProvider,
 		Hostname:          hostname,
