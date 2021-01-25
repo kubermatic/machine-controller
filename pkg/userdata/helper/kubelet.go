@@ -33,6 +33,7 @@ const (
 	kubeletFlagsTpl = `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
+--network-plugin=cni \
 --cert-dir=/etc/kubernetes/pki \
 {{- if or (.CloudProvider) (.IsExternal) }}
 {{ cloudProviderFlags .CloudProvider .IsExternal }} \

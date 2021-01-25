@@ -169,6 +169,7 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
+      --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
       --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \

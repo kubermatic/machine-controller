@@ -203,6 +203,7 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
+      --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
       --hostname-override=node1 \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
