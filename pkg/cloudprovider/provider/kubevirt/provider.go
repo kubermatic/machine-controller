@@ -55,7 +55,6 @@ func init() {
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
 	providerconfigtypes.OperatingSystemCentOS: nil,
-	providerconfigtypes.OperatingSystemCoreos: nil,
 	providerconfigtypes.OperatingSystemUbuntu: nil,
 	providerconfigtypes.OperatingSystemRHEL:   nil,
 }
@@ -318,8 +317,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		annotations map[string]string
 	)
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos ||
-		pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
 		annotations = map[string]string{
 			"kubevirt.io/ignitiondata": userdata,
 		}

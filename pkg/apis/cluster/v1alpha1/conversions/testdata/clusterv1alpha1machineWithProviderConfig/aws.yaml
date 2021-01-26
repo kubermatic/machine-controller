@@ -28,7 +28,7 @@ spec:
         tags:
           KubernetesCluster: 6qsm86c2d
         vpcId: vpc-819f62e9
-      operatingSystem: coreos
+      operatingSystem: flatcar
       operatingSystemSpec:
         disableAutoUpdate: true
       sshPublicKeys:

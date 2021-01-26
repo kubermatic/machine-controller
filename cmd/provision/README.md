@@ -5,7 +5,7 @@ This command offers all required functionality to provision an host to join a Ku
 The following operating systems are supported
 - Ubuntu 18.04
 - CentOS 7
-- ContainerLinux / CoreOS (Not tested with RedHat CoreOS)
+- Flatcar
 
 ## Requirements
 - The cluster needs to use the bootstrap token authentication

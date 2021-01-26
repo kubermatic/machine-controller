@@ -65,7 +65,7 @@ spec:
       # the list of tags you would like to attach to the instance
       tags:
         tagKey: tagValue
-    # Can be 'ubuntu', 'coreos' or 'centos'
+    # Can be 'ubuntu' or 'centos'
     operatingSystem: "ubuntu"
     operatingSystemSpec:
       distUpgradeOnBoot: true

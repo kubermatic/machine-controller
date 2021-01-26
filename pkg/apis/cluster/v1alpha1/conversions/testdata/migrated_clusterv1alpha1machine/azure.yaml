@@ -38,7 +38,7 @@ spec:
             namespace: kube-system
         vmSize: Standard_B1ms
         vnetName: << VNET_NAME >>
-      operatingSystem: coreos
+      operatingSystem: flatcar
       operatingSystemSpec:
         distUpgradeOnBoot: false
       sshPublicKeys:

@@ -115,12 +115,6 @@ func (vm *azureVM) Status() instance.Status {
 }
 
 var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageReference{
-	providerconfigtypes.OperatingSystemCoreos: {
-		Publisher: to.StringPtr("CoreOS"),
-		Offer:     to.StringPtr("CoreOS"),
-		Sku:       to.StringPtr("Stable"),
-		Version:   to.StringPtr("latest"),
-	},
 	providerconfigtypes.OperatingSystemCentOS: {
 		Publisher: to.StringPtr("OpenLogic"),
 		Offer:     to.StringPtr("CentOS"),
@@ -968,8 +962,6 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 func getOSUsername(os providerconfigtypes.OperatingSystem) string {
 	switch os {
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return "core"
-	case providerconfigtypes.OperatingSystemCoreos:
 		return "core"
 	default:
 		return string(os)
