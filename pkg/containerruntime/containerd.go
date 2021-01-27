@@ -65,7 +65,7 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 	case types.OperatingSystemUbuntu:
 		err := containerdAptTemplate.Execute(&buf, args)
 		return buf.String(), err
-	case types.OperatingSystemFlatcar, types.OperatingSystemCoreos:
+	case types.OperatingSystemFlatcar:
 		return "", nil
 	case types.OperatingSystemSLES:
 		return "", nil

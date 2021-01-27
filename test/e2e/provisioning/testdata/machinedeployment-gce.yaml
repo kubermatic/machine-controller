@@ -38,7 +38,7 @@ spec:
                 "kubernetes_cluster": "gce-test-cluster"
             assignPublicIPAddress: true
             customImage: "<< CUSTOM-IMAGE >>"
-          # Can be 'ubuntu' or 'coreos'
+          # Can be 'ubuntu' or 'rhel'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false

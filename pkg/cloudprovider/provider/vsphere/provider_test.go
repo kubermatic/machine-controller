@@ -64,7 +64,7 @@ func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"vmNetName": "",
 		"vsphereURL": "{{ .URL }}"
 	},
-	"operatingSystem": "coreos",
+	"operatingSystem": "flatcar",
 	"operatingSystemSpec": {
 		"disableAutoUpdate": false,
 		"disableLocksmithD": true,

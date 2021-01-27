@@ -19,7 +19,7 @@ spec:
       monitoring: false
       tags:
         - "machine-controller"
-    operatingSystem: "coreos"
+    operatingSystem: "ubuntu"
     operatingSystemSpec:
       disableAutoUpdate: true
   roles:

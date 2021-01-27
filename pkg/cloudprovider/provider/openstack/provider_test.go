@@ -141,7 +141,7 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"trustDevicePath": false,
 		"username": "dummy"
 	},
-	"operatingSystem": "coreos",
+	"operatingSystem": "flatcar",
 	"operatingSystemSpec": {
 		"disableAutoUpdate": false,
 		"disableLocksmithD": true,

@@ -248,6 +248,7 @@ then
 fi
 
 # write the nodeip_env file
+# we need the line below because flatcar has the same string "coreos" in that file
 if grep -q coreos /etc/os-release
 then
   echo "KUBELET_NODE_IP=${DEFAULT_IFC_IP}" > /etc/kubernetes/nodeip.conf

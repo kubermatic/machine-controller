@@ -23,7 +23,7 @@ spec:
       diskType: "gp2"
       tags:
         "KubernetesCluster": "6qsm86c2d"
-    operatingSystem: "coreos"
+    operatingSystem: "flatcar"
     operatingSystemSpec:
       disableAutoUpdate: true
   roles:

@@ -69,7 +69,7 @@ func TestInvalidObjectsGetRejected(t *testing.T) {
 
 	tests := []scenario{
 		{osName: "invalid", executor: verifyCreateMachineFails},
-		{osName: "coreos", executor: verifyCreateMachineFails},
+		{osName: "flatcar", executor: verifyCreateMachineFails},
 	}
 
 	for i, test := range tests {
@@ -91,7 +91,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := Not(OsSelector("sles", "flatcar", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "flatcar", "rhel"))
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
 	}
@@ -148,7 +148,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "rhel"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -165,7 +165,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
 	runScenarios(t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
@@ -182,7 +182,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := Not(OsSelector("coreos", "sles"))
+	selector := Not(OsSelector("sles"))
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -318,7 +318,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("coreos", "sles"))
+	selector := Not(OsSelector("sles"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -394,8 +394,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
-	// Hetzner does not support coreos
-	selector := Not(OsSelector("coreos", "sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
@@ -418,8 +417,7 @@ func TestPacketProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
 	}
 
-	// coreos is not supported by packet anymore.
-	selector := Not(OsSelector("sles", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "rhel"))
 
 	// act
 	params := []string{
@@ -443,7 +441,7 @@ func TestAlibabaProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, ALIBABA_ACCESS_KEY_SECRET environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("coreos", "sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 
 	// act
 	params := []string{
@@ -466,8 +464,7 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, LINODE_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	// we're shimming userdata through Linode stackscripts, and Linode's coreos does not support stackscripts
-	// and the stackscript hasn't been verified for use with centos
+	// we're shimming userdata through Linode stackscripts and the stackscript hasn't been verified for use with centos
 	selector := OsSelector("ubuntu")
 
 	// act
@@ -501,7 +498,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "rhel"))
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -527,7 +524,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 	// We do not need to test all combinations.
 	scenario := scenario{
 		name:              "vSphere resource pool provisioning",
-		osName:            "coreos",
+		osName:            "flatcar",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.17.0",
 		executor:          verifyCreateAndDelete,
@@ -562,7 +559,7 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< SCW_ACCESS_KEY >>=%s", scwAccessKey),

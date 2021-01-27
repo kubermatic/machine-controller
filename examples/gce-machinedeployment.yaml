@@ -63,8 +63,8 @@ spec:
             # Whether to assign a public IP Address. Required for Internet access
             assignPublicIPAddress: true
             customImage: "myCustomImage"
-          # Can be 'ubuntu' 'rhel' or 'coreos'
-          operatingSystem: "coreos"
+          # Can be 'ubuntu' or 'rhel'
+          operatingSystem: "ubuntu"
           operatingSystemSpec:
             disableAutoUpdate: true
             # 'rhelSubscriptionManagerUser' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_USER`

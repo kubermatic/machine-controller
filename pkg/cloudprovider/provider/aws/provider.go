@@ -89,11 +89,6 @@ var (
 	)
 
 	amiFilters = map[providerconfigtypes.OperatingSystem]amiFilter{
-		providerconfigtypes.OperatingSystemCoreos: {
-			description: "CoreOS Container Linux stable*",
-			// The AWS marketplace ID from CoreOS
-			owner: "595879546273",
-		},
 		providerconfigtypes.OperatingSystemCentOS: {
 			description: "CentOS Linux 7 x86_64 HVM EBS*",
 			// The AWS marketplace ID from AWS
@@ -236,21 +231,19 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
 	const (
 		rootDevicePathUbuntuCentOSRHEL = "/dev/sda1"
-		rootDevicePathCoreOSSLES       = "/dev/xvda"
+		rootDevicePathSLES             = "/dev/xvda"
 	)
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return rootDevicePathUbuntuCentOSRHEL, nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return rootDevicePathUbuntuCentOSRHEL, nil
-	case providerconfigtypes.OperatingSystemCoreos:
-		return rootDevicePathCoreOSSLES, nil
 	case providerconfigtypes.OperatingSystemSLES:
-		return rootDevicePathCoreOSSLES, nil
+		return rootDevicePathSLES, nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rootDevicePathUbuntuCentOSRHEL, nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return rootDevicePathCoreOSSLES, nil
+		return rootDevicePathSLES, nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
@@ -503,9 +496,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if pc.OperatingSystem != providerconfigtypes.OperatingSystemCoreos &&
-		pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
-		// Gzip the userdata in case we don't use CoreOS and Flatcar
+	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
+		// Gzip the userdata in case we don't use Flatcar
 		userdata, err = convert.GzipString(userdata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to gzip the userdata")

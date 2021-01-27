@@ -76,7 +76,7 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 	case types.OperatingSystemUbuntu:
 		err := dockerAptTemplate.Execute(&buf, args)
 		return buf.String(), err
-	case types.OperatingSystemFlatcar, types.OperatingSystemCoreos:
+	case types.OperatingSystemFlatcar:
 		return "", nil
 	case types.OperatingSystemSLES:
 		return "", nil

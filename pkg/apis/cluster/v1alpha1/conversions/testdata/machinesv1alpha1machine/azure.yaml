@@ -38,7 +38,7 @@ spec:
       subnetName: "<< SUBNET_NAME >>"
       routeTableName: "<< ROUTE_TABLE_NAME >>"
       assignPublicIP: false
-    operatingSystem: "coreos"
+    operatingSystem: "flatcar"
     operatingSystemSpec:
       distUpgradeOnBoot: false
   roles:

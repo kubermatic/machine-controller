@@ -33,7 +33,7 @@ spec:
             monitoring: false
             tags:
               - "machine-controller"
-          # Can be 'ubuntu', 'coreos' or 'centos'
+          # Can be 'ubuntu' or 'centos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
