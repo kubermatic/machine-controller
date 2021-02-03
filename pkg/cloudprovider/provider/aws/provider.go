@@ -48,9 +48,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+)
+
+const (
+	// Interval and timeout for polling.
+	pollInterval = 2 * time.Second
+	pollTimeout  = 5 * time.Minute
 )
 
 var (
@@ -586,6 +593,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, awsErrorToTerminalError(err, "failed create instance at aws")
 	}
 
+	if err = p.waitForInstance(machine); err != nil {
+		return nil, awsErrorToTerminalError(err, "failed provision instance at aws")
+	}
+
 	return &awsInstance{instance: runOut.Instances[0]}, nil
 }
 
@@ -951,4 +962,27 @@ func filterSupportedRHELImages(images []*ec2.Image) ([]*ec2.Image, error) {
 	}
 
 	return filteredImages, nil
+}
+
+// waitForInstance waits for AWS instance to be created.
+// If machine-controller tries to get an instance before it's fully-created,
+// but after the instance request has been issued, it could
+// happen that it detects that there's no instance and create it again.
+// That could result in two or more instances created for one Machine object.
+// This happens more often in some AWS regions because some regions have
+// slower instance creation (e.g. us-east-1 and us-west-2).
+func (p *provider) waitForInstance(machine *v1alpha1.Machine) error {
+	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
+		_, err := p.get(machine)
+		if err == cloudprovidererrors.ErrInstanceNotFound {
+			// Retry if instance is not found
+			return false, nil
+		} else if err != nil {
+			// If it's any error other then InstanceNotFound,
+			// return the error and stop retrying.
+			return false, err
+		}
+
+		return true, nil
+	})
 }
