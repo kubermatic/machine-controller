@@ -39,27 +39,28 @@ func init() {
 }
 
 const (
-	DOManifest                   = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest                  = "./testdata/machinedeployment-aws.yaml"
-	AWSManifestARM               = "./testdata/machinedeployment-aws-arm-machines.yaml"
-	AWSEBSEncryptedManifest      = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
-	AzureManifest                = "./testdata/machinedeployment-azure.yaml"
-	AzureRedhatSatelliteManifest = "./testdata/machinedeployment-azure.yaml"
-	GCEManifest                  = "./testdata/machinedeployment-gce.yaml"
-	HZManifest                   = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest               = "./testdata/machinedeployment-packet.yaml"
-	LinodeManifest               = "./testdata/machinedeployment-linode.yaml"
-	VSPhereManifest              = "./testdata/machinedeployment-vsphere.yaml"
-	VSPhereDSCManifest           = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
-	VSPhereResourcePoolManifest  = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
-	ScalewayManifest             = "./testdata/machinedeployment-scaleway.yaml"
-	OSManifest                   = "./testdata/machinedeployment-openstack.yaml"
-	OSUpgradeManifest            = "./testdata/machinedeployment-openstack-upgrade.yml"
-	invalidMachineManifest       = "./testdata/machine-invalid.yaml"
-	kubevirtManifest             = "./testdata/machinedeployment-kubevirt.yaml"
-	kubevirtManifestDNSConfig    = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
-	alibabaManifest              = "./testdata/machinedeployment-alibaba.yaml"
-	anexiaManifest               = "./testdata/machinedeployment-anexia.yaml"
+	DOManifest                        = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest                       = "./testdata/machinedeployment-aws.yaml"
+	AWSManifestARM                    = "./testdata/machinedeployment-aws-arm-machines.yaml"
+	AWSEBSEncryptedManifest           = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
+	AzureManifest                     = "./testdata/machinedeployment-azure.yaml"
+	AzureRedhatSatelliteManifest      = "./testdata/machinedeployment-azure.yaml"
+	AzureCustomImageReferenceManifest = "./testdata/machinedeployment-azure-custom-image-reference.yaml"
+	GCEManifest                       = "./testdata/machinedeployment-gce.yaml"
+	HZManifest                        = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest                    = "./testdata/machinedeployment-packet.yaml"
+	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
+	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
+	VSPhereResourcePoolManifest       = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
+	ScalewayManifest                  = "./testdata/machinedeployment-scaleway.yaml"
+	OSManifest                        = "./testdata/machinedeployment-openstack.yaml"
+	OSUpgradeManifest                 = "./testdata/machinedeployment-openstack-upgrade.yml"
+	invalidMachineManifest            = "./testdata/machine-invalid.yaml"
+	kubevirtManifest                  = "./testdata/machinedeployment-kubevirt.yaml"
+	kubevirtManifestDNSConfig         = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
+	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
+	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -327,6 +328,31 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
 	}
 	runScenarios(t, selector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+}
+
+// TestAzureCustomImageReferenceProvisioningE2E - a test suite that exercises Azure provider
+// by requesting nodes with different combination of container runtime type, container runtime version and custom Image reference.
+func TestAzureCustomImageReferenceProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	azureTenantID := os.Getenv("AZURE_E2E_TESTS_TENANT_ID")
+	azureSubscriptionID := os.Getenv("AZURE_E2E_TESTS_SUBSCRIPTION_ID")
+	azureClientID := os.Getenv("AZURE_E2E_TESTS_CLIENT_ID")
+	azureClientSecret := os.Getenv("AZURE_E2E_TESTS_CLIENT_SECRET")
+	if len(azureTenantID) == 0 || len(azureSubscriptionID) == 0 || len(azureClientID) == 0 || len(azureClientSecret) == 0 {
+		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
+	}
+
+	selector := OsSelector("ubuntu")
+	// act
+	params := []string{
+		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
+		fmt.Sprintf("<< AZURE_SUBSCRIPTION_ID >>=%s", azureSubscriptionID),
+		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
+		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
+	}
+	runScenarios(t, selector, params, AzureCustomImageReferenceManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
 // TestAzureRedhatSatelliteProvisioningE2E - a test suite that exercises Azure provider
