@@ -18,6 +18,8 @@ package types
 
 import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 type RawConfig struct {
@@ -29,5 +31,5 @@ type RawConfig struct {
 	PVCSize          providerconfigtypes.ConfigVarString `json:"pvcSize,omitempty"`
 	StorageClassName providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
 	DNSPolicy        providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
-	DNSConfig        providerconfigtypes.ConfigVarString `json:"dnsConfig,omitempty"`
+	DNSConfig        *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
 }

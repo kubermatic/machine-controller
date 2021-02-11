@@ -119,20 +119,27 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "v1.17.2-disable-auto-update-aws",
+			name: "v1.17.16-vsphere",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "aws",
+				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.2",
+					Kubelet: "v1.17.16",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "aws",
-				config: "{aws-config:true}",
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -141,122 +148,36 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.17.2-disable-locksmith-aws",
+			name: "v1.18.14-vsphere",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "aws",
+				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.2",
+					Kubelet: "v1.18.14",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "aws",
-				config: "{aws-config:true}",
-				err:    nil,
-			},
-			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &Config{
-				DisableLocksmithD: true,
-			},
-		},
-		{
-			name: "v1.17.2-disable-update-engine-aws",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "aws",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.2",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "aws",
-				config: "{aws-config:true}",
-				err:    nil,
-			},
-			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &Config{
-				DisableUpdateEngine: true,
-			},
-		},
-		{
-			name: "v1.17.2-disable-auto-update-aws-external",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "aws",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.2",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "aws",
-				config: "{aws-config:true}",
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
 			osConfig: &Config{
 				DisableAutoUpdate: true,
 			},
-			externalCloudProvider: true,
 		},
 		{
-			name: "v1.17.3-auto-update-openstack-multiple-dns",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "openstack",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.3",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "openstack",
-				config: "{openstack-config:true}",
-				err:    nil,
-			},
-			DNSIPs: []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
-			osConfig: &Config{
-				DisableAutoUpdate: false,
-			},
-		},
-		{
-			name: "auto-update-openstack-kubelet-v-version-prefix",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "openstack",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.17.2",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "openstack",
-				config: "{openstack-config:true}",
-				err:    nil,
-			},
-			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &Config{
-				DisableAutoUpdate: false,
-			},
-		},
-		{
-			name: "v1.16.2-vsphere-static-ipconfig",
+			name: "v1.18.14-vsphere-static-ipconfig",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -273,7 +194,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.16.2",
+					Kubelet: "v1.18.14",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -287,7 +208,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.17.0-vsphere-overwrite-cloudconfig",
+			name: "v1.18.14-vsphere-overwrite-cloudconfig",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				OverwriteCloudConfig: stringPtr("my\ncustom\ncloud-config"),
@@ -303,7 +224,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.17.0",
+					Kubelet: "v1.18.14",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -317,30 +238,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "v1.15.0-vsphere",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.15.0-beta.2",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
-				err:    nil,
-			},
-			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &Config{
-				DisableAutoUpdate: true,
-			},
-		},
-		{
-			name: "v1.17.0-vsphere-proxy",
+			name: "v1.18.14-vsphere-proxy",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -355,7 +253,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.17.0",
+					Kubelet: "v1.18.14",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -374,7 +272,7 @@ func TestUserDataGeneration(t *testing.T) {
 			hyperkubeImage:     "192.168.100.100:5000/kubernetes/hyperkube",
 		},
 		{
-			name: "v1.17.0-vsphere-mirrors",
+			name: "v1.18.14-vsphere-mirrors",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -389,7 +287,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.17.0",
+					Kubelet: "v1.18.14",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -406,6 +304,172 @@ func TestUserDataGeneration(t *testing.T) {
 			registryMirrors: []string{"https://registry.docker-cn.com"},
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 			hyperkubeImage:  "192.168.100.100:5000/kubernetes/hyperkube",
+		},
+		{
+			name: "v1.18.14-aws-disable-auto-update",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.18.14",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
+		},
+		{
+			name: "v1.18.14-aws-disable-locksmith",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.18.14",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableLocksmithD: true,
+			},
+		},
+		{
+			name: "v1.18.14-aws-disable-update-engine",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.18.14",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableUpdateEngine: true,
+			},
+		},
+		{
+			name: "v1.18.14-aws-disable-auto-update-external",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "aws",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.18.14",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "aws",
+				config: "{aws-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
+			externalCloudProvider: true,
+		},
+		{
+			name: "v1.18.14-openstack-auto-update-multiple-dns",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "openstack",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.18.14",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			osConfig: &Config{
+				DisableAutoUpdate: false,
+			},
+		},
+		{
+			name: "v1.18.14-openstack-auto-update-kubelet-v-version-prefix",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "openstack",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.18.14",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: false,
+			},
+		},
+		{
+			name: "v1.19.4-vsphere",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.19.4",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
 		},
 		{
 			name:       "v1.17.0",
@@ -425,6 +489,35 @@ func TestUserDataGeneration(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "v1.17.0",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate: true,
+			},
+		},
+		{
+			name: "v1.20.1-vsphere",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.20.1",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{

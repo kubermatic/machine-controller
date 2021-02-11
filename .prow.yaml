@@ -4,12 +4,15 @@ presubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - make
           args:
+            - download-gocache
             - all
           resources:
             requests:
@@ -19,9 +22,11 @@ presubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - make
           args:
@@ -34,6 +39,8 @@ presubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
     spec:
       containers:
         - image: golangci/golangci-lint:v1.23.6
@@ -50,6 +57,8 @@ presubmits:
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
     spec:
       containers:
         - image: quay.io/kubermatic/yamllint:0.1
@@ -61,16 +70,29 @@ presubmits:
             requests:
               cpu: 200m
 
-  - name: pull-machine-controller-test
+  - name: pull-machine-controller-verify-boilerplate
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: python:2.7
+          command:
+            - "./hack/verify-boilerplate.sh"
+
+  - name: pull-machine-controller-test
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.15.1
           command:
             - make
           args:
+            - download-gocache
             - test-unit
           resources:
             requests:
@@ -92,9 +114,10 @@ presubmits:
       preset-vsphere: "true"
       preset-kubevirt: "true"
       preset-alibaba: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -115,9 +138,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -138,9 +162,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -161,9 +186,10 @@ presubmits:
       preset-alibaba: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -183,9 +209,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -205,13 +232,36 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestAWSProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-aws-arm
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-aws: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.15.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAWSARMProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -226,9 +276,10 @@ presubmits:
       preset-digitalocean: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -248,9 +299,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -271,9 +323,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -293,9 +346,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -313,9 +367,10 @@ presubmits:
     labels:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -336,9 +391,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-linode: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -358,9 +414,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-packet: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -380,9 +437,10 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-cherryservers: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -402,9 +460,10 @@ presubmits:
       preset-e2e-ssh: "true"
       preset-vsphere: "true"
       preset-rhel: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -413,6 +472,28 @@ presubmits:
             requests:
               memory: 1Gi
               cpu: 500m
+
+  - name: pull-machine-controller-e2e-anexia
+    always_run: false
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-anexia: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+      - image: golang:1.15.1
+        command:
+        - "./hack/ci-e2e-test.sh"
+        args:
+        - "TestAnexiaProvisioningE2E"
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
 
   - name: pull-machine-controller-e2e-ubuntu-upgrade
     always_run: true
@@ -423,9 +504,10 @@ presubmits:
       preset-openstack: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -443,9 +525,10 @@ presubmits:
     labels:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -456,16 +539,6 @@ presubmits:
               memory: 1Gi
               cpu: 500m
 
-  - name: pull-machine-controller-verify-boilerplate
-    always_run: true
-    decorate: true
-    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
-    spec:
-      containers:
-        - image: python:2.7
-          command:
-            - "./hack/verify-boilerplate.sh"
-
   - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
     always_run: true
     decorate: true
@@ -475,9 +548,10 @@ presubmits:
       preset-aws: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -496,13 +570,36 @@ presubmits:
       preset-aws: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestAWSSLESProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-aws-flatcar-coreos-cloud-init
+    always_run: false
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-aws: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.15.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -517,9 +614,10 @@ presubmits:
       preset-aws: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -539,9 +637,10 @@ presubmits:
       preset-rhel: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -561,13 +660,36 @@ presubmits:
       preset-rhel: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.13.8
+        - image: golang:1.15.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestVsphereResourcePoolProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-scaleway
+    always_run: false
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-scaleway: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.15.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestScalewayProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -584,9 +706,10 @@ postsubmits:
       - ^v\d+\.\d+\.\d+.*
     labels:
       preset-docker-push: "true"
+      preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/go-docker:13.3-1806-2
+        - image: quay.io/kubermatic/go-docker:15.1-1903-0
           command:
             - /bin/bash
             - -c
@@ -595,10 +718,28 @@ postsubmits:
               /usr/local/bin/entrypoint.sh &&
               docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD &&
               docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io &&
-              make docker-image-publish
+              make download-gocache docker-image-publish
           # docker-in-docker needs privileged mode
           securityContext:
             privileged: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 1Gi
+
+  - name: ci-push-machine-controller-upload-gocache
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    branches:
+      - ^master$
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/go-docker:15.1-1903-0
+          command:
+            - "./hack/ci-upload-gocache.sh"
           resources:
             requests:
               cpu: 100m

@@ -25,6 +25,8 @@ spec:
             name: machine-controller-openstack
             namespace: kube-system
         image: Ubuntu 16.04 amd64
+        instanceReadyCheckPeriod: 2m
+        instanceReadyCheckTimeout: 2m
         network: ""
         password:
           secretKeyRef:

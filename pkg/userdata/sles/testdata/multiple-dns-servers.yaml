@@ -66,7 +66,22 @@ write_files:
     opt_bin=/opt/bin
     cni_bin_dir=/opt/cni/bin
     mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
-    arch=${HOST_ARCH:-amd64}
+    arch=${HOST_ARCH-}
+    if [ -z "$arch" ]
+    then
+    case $(uname -m) in
+    x86_64)
+        arch="amd64"
+        ;;
+    aarch64)
+        arch="arm64"
+        ;;
+    *)
+        echo "unsupported CPU architecture, exiting"
+        exit 1
+        ;;
+    esac
+    fi
     CNI_VERSION="${CNI_VERSION:-v0.8.7}"
     cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
     cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
@@ -77,7 +92,7 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.17.3}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.20.1}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -207,7 +222,7 @@ write_files:
         certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUVXakNDQTBLZ0F3SUJBZ0lKQUxmUmxXc0k4WVFITUEwR0NTcUdTSWIzRFFFQkJRVUFNSHN4Q3pBSkJnTlYKQkFZVEFsVlRNUXN3Q1FZRFZRUUlFd0pEUVRFV01CUUdBMVVFQnhNTlUyRnVJRVp5WVc1amFYTmpiekVVTUJJRwpBMVVFQ2hNTFFuSmhaR1pwZEhwcGJtTXhFakFRQmdOVkJBTVRDV3h2WTJGc2FHOXpkREVkTUJzR0NTcUdTSWIzCkRRRUpBUllPWW5KaFpFQmtZVzVuWVM1amIyMHdIaGNOTVRRd056RTFNakEwTmpBMVdoY05NVGN3TlRBME1qQTAKTmpBMVdqQjdNUXN3Q1FZRFZRUUdFd0pWVXpFTE1Ba0dBMVVFQ0JNQ1EwRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMEp5WVdSbWFYUjZhVzVqTVJJd0VBWURWUVFERXdsc2IyTmhiR2h2CmMzUXhIVEFiQmdrcWhraUc5dzBCQ1FFV0RtSnlZV1JBWkdGdVoyRXVZMjl0TUlJQklqQU5CZ2txaGtpRzl3MEIKQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdDVmQWpwNGZUY2VrV1VUZnpzcDBreWloMU9ZYnNHTDBLWDFlUmJTUwpSOE9kMCs5UTYySHlueStHRndNVGI0QS9LVThtc3NvSHZjY2VTQUFid2ZieEZLLytzNTFUb2JxVW5PUlpyT29UClpqa1V5Z2J5WERTSzk5WUJiY1IxUGlwOHZ3TVRtNFhLdUx0Q2lnZUJCZGpqQVFkZ1VPMjhMRU5HbHNNbm1lWWsKSmZPRFZHblZtcjVMdGI5QU5BOElLeVRmc25ISjRpT0NTL1BsUGJVajJxN1lub1ZMcG9zVUJNbGdVYi9DeWtYMwptT29MYjR5SkpReUEvaVNUNlp4aUlFajM2RDR5V1o1bGc3WUpsK1VpaUJRSEdDblBkR3lpcHFWMDZleDBoZVlXCmNhaVc4TFdaU1VROTNqUStXVkNIOGhUN0RRTzFkbXN2VW1YbHEvSmVBbHdRL1FJREFRQUJvNEhnTUlIZE1CMEcKQTFVZERnUVdCQlJjQVJPdGhTNFA0VTd2VGZqQnlDNTY5UjdFNkRDQnJRWURWUjBqQklHbE1JR2lnQlJjQVJPdApoUzRQNFU3dlRmakJ5QzU2OVI3RTZLRi9wSDB3ZXpFTE1Ba0dBMVVFQmhNQ1ZWTXhDekFKQmdOVkJBZ1RBa05CCk1SWXdGQVlEVlFRSEV3MVRZVzRnUm5KaGJtTnBjMk52TVJRd0VnWURWUVFLRXd0Q2NtRmtabWwwZW1sdVl6RVMKTUJBR0ExVUVBeE1KYkc5allXeG9iM04wTVIwd0d3WUpLb1pJaHZjTkFRa0JGZzVpY21Ga1FHUmhibWRoTG1OdgpiWUlKQUxmUmxXc0k4WVFITUF3R0ExVWRFd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVGQlFBRGdnRUJBRzZoClU5ZjlzTkgwLzZvQmJHR3kyRVZVMFVnSVRVUUlyRldvOXJGa3JXNWsvWGtEalFtKzNsempUMGlHUjRJeEUvQW8KZVU2c1FodWE3d3JXZUZFbjQ3R0w5OGxuQ3NKZEQ3b1pOaEZtUTk1VGIvTG5EVWpzNVlqOWJyUDBOV3pYZllVNApVSzJabklOSlJjSnBCOGlSQ2FDeEU4RGRjVUYwWHFJRXE2cEEyNzJzbm9MbWlYTE12Tmwza1lFZG0ramU2dm9ECjU4U05WRVVzenR6UXlYbUpFaENwd1ZJMEE2UUNqelhqK3F2cG13M1paSGk4SndYZWk4WlpCTFRTRkJraThaN24Kc0g5QkJIMzgvU3pVbUFONFFIU1B5MWdqcW0wME9BRThOYVlEa2gvYnpFNGQ3bUxHR01XcC9XRTNLUFN1ODJIRgprUGU2WG9TYmlMbS9reGszMlQwPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
         server: https://server:443
       name: ""
-    contexts: []
+    contexts: null
     current-context: ""
     kind: Config
     preferences: {}
@@ -293,9 +308,10 @@ write_files:
     imageMinimumGCAge: 0s
     kind: KubeletConfiguration
     kubeReserved:
-      cpu: 100m
+      cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 100Mi
+      memory: 200Mi
+    logging: {}
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s
     protectKernelDefaults: true
@@ -306,9 +322,9 @@ write_files:
     streamingConnectionIdleTimeout: 0s
     syncFrequency: 0s
     systemReserved:
-      cpu: 100m
+      cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 100Mi
+      memory: 200Mi
     volumeStatsAggPeriod: 0s
 
 

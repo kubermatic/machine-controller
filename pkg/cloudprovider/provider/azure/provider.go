@@ -74,6 +74,7 @@ type config struct {
 
 	Location          string
 	ResourceGroup     string
+	VNetResourceGroup string
 	VMSize            string
 	VNetName          string
 	SubnetName        string
@@ -220,6 +221,15 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.ResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ResourceGroup)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"resourceGroup\" field, error = %v", err)
+	}
+
+	c.VNetResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetResourceGroup)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"vnetResourceGroup\" field, error = %v", err)
+	}
+
+	if c.VNetResourceGroup == "" {
+		c.VNetResourceGroup = c.ResourceGroup
 	}
 
 	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.Location)
@@ -788,6 +798,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		AADClientID:                c.ClientID,
 		AADClientSecret:            c.ClientSecret,
 		ResourceGroup:              c.ResourceGroup,
+		VnetResourceGroup:          c.VNetResourceGroup,
 		Location:                   c.Location,
 		VNetName:                   c.VNetName,
 		SubnetName:                 c.SubnetName,

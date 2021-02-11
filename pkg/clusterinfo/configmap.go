@@ -17,6 +17,7 @@ limitations under the License.
 package clusterinfo
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -52,18 +53,18 @@ type KubeconfigProvider struct {
 	kubeClient kubernetes.Interface
 }
 
-func (p *KubeconfigProvider) GetKubeconfig() (*clientcmdapi.Config, error) {
-	cm, err := p.getKubeconfigFromConfigMap()
+func (p *KubeconfigProvider) GetKubeconfig(ctx context.Context) (*clientcmdapi.Config, error) {
+	cm, err := p.getKubeconfigFromConfigMap(ctx)
 	if err != nil {
 		klog.V(6).Infof("could not get cluster-info kubeconfig from configmap: %v", err)
 		klog.V(6).Info("falling back to retrieval via endpoint")
-		return p.buildKubeconfigFromEndpoint()
+		return p.buildKubeconfigFromEndpoint(ctx)
 	}
 	return cm, nil
 }
 
-func (p *KubeconfigProvider) getKubeconfigFromConfigMap() (*clientcmdapi.Config, error) {
-	cm, err := p.kubeClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(configMapName, metav1.GetOptions{})
+func (p *KubeconfigProvider) getKubeconfigFromConfigMap(ctx context.Context) (*clientcmdapi.Config, error) {
+	cm, err := p.kubeClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(ctx, configMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +75,8 @@ func (p *KubeconfigProvider) getKubeconfigFromConfigMap() (*clientcmdapi.Config,
 	return clientcmd.Load([]byte(data))
 }
 
-func (p *KubeconfigProvider) buildKubeconfigFromEndpoint() (*clientcmdapi.Config, error) {
-	e, err := p.kubeClient.CoreV1().Endpoints(metav1.NamespaceDefault).Get(kubernetesEndpointsName, metav1.GetOptions{})
+func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*clientcmdapi.Config, error) {
+	e, err := p.kubeClient.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, kubernetesEndpointsName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get endpoint from lister: %v", err)
 	}

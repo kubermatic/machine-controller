@@ -77,7 +77,7 @@ func (p *Plugin) Run() error {
 	return p.printResponse(resp)
 }
 
-// printResponse marshals the respons and prints it to stdout.
+// printResponse marshals the response and prints it to stdout.
 func (p *Plugin) printResponse(resp interface{}) error {
 	bs, err := json.Marshal(resp)
 	if err != nil {

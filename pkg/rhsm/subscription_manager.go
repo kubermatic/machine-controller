@@ -160,7 +160,7 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Contex
 
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("faild to delete systsem profile: %v", err)
+		return fmt.Errorf("failed to delete system profile: %v", err)
 	}
 	defer res.Body.Close()
 

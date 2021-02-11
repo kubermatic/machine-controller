@@ -56,7 +56,7 @@ type Provider interface {
 
 	// Cleanup will delete the instance associated with the machine and all associated resources.
 	// If all resources have been cleaned up, true will be returned.
-	// In case the cleanup involves ansynchronous deletion of resources & those resources are not gone yet,
+	// In case the cleanup involves asynchronous deletion of resources & those resources are not gone yet,
 	// false should be returned. This is to indicate that the cleanup is not done, but needs to be called again at a later point
 	Cleanup(machine *clusterv1alpha1.Machine, data *ProviderData) (bool, error)
 

@@ -34,7 +34,7 @@ spec:
             kubeconfig:
               value: '<< KUBECONFIG >>'
             namespace: kube-system
-          # Can also be `centos`, must align witht he configured registryImage above
+          # Can also be `centos`, must align with he configured registryImage above
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false

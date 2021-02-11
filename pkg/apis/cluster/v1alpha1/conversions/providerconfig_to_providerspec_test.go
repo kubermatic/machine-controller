@@ -54,7 +54,7 @@ func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T)
 		}
 		convertedMachineDeploymentJSONBytes, err := json.Marshal(*convertedMachineDeployment)
 		if err != nil {
-			t.Errorf("faile to marshal converted machineDeployment %s: %v", convertedMachineDeployment.Name, err)
+			t.Errorf("failed to marshal converted machineDeployment %s: %v", convertedMachineDeployment.Name, err)
 			continue
 		}
 		convertedMachineDeploymentYamlBytes, err := yaml.JSONToYAML(convertedMachineDeploymentJSONBytes)
@@ -94,7 +94,7 @@ func Test_Convert_MachineSet_ProviderConfig_To_ProviderSpec(t *testing.T) {
 
 		convertedMachineSetJSONBytes, err := json.Marshal(*convertedMachineSet)
 		if err != nil {
-			t.Errorf("faile to marshal converted machineSet %s: %v", convertedMachineSet.Name, err)
+			t.Errorf("failed to marshal converted machineSet %s: %v", convertedMachineSet.Name, err)
 			continue
 		}
 		convertedMachineSetYamlBytes, err := yaml.JSONToYAML(convertedMachineSetJSONBytes)
@@ -133,7 +133,7 @@ func Test_Convert_Machine_ProviderConfig_To_ProviderSpec(t *testing.T) {
 		}
 		convertedMachineJSONBytes, err := json.Marshal(*convertedMachine)
 		if err != nil {
-			t.Errorf("faile to marshal converted machine %s: %v", convertedMachine.Name, err)
+			t.Errorf("failed to marshal converted machine %s: %v", convertedMachine.Name, err)
 			continue
 		}
 		convertedMachineYamlBytes, err := yaml.JSONToYAML(convertedMachineJSONBytes)

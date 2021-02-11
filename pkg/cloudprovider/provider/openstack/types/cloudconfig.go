@@ -19,13 +19,17 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"text/template"
 
 	"github.com/kubermatic/machine-controller/pkg/ini"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 )
 
+//  use-octavia is enabled by default in CCM since v1.17.0, and disabled by
+//  default with the in-tree cloud provider.
+//  https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
 const (
 	cloudConfigTpl = `[Global]
 auth-url    = {{ .Global.AuthURL | iniEscape }}
@@ -42,6 +46,9 @@ subnet-id = {{ .LoadBalancer.SubnetID | iniEscape }}
 floating-network-id = {{ .LoadBalancer.FloatingNetworkID | iniEscape }}
 lb-method = {{ default "ROUND_ROBIN" .LoadBalancer.LBMethod | iniEscape }}
 lb-provider = {{ .LoadBalancer.LBProvider | iniEscape }}
+{{- if .LoadBalancer.UseOctavia }}
+use-octavia = {{ .LoadBalancer.UseOctavia | boolPtr }}
+{{- end }}
 
 {{- if .LoadBalancer.CreateMonitor }}
 create-monitor = {{ .LoadBalancer.CreateMonitor }}
@@ -76,6 +83,7 @@ type LoadBalancerOpts struct {
 	MonitorTimeout       ini.Duration `gcfg:"monitor-timeout"`
 	MonitorMaxRetries    uint         `gcfg:"monitor-max-retries"`
 	ManageSecurityGroups bool         `gcfg:"manage-security-groups"`
+	UseOctavia           *bool        `gcfg:"use-octavia"`
 }
 
 type BlockStorageOpts struct {
@@ -106,6 +114,7 @@ type CloudConfig struct {
 func CloudConfigToString(c *CloudConfig) (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
+	funcMap["boolPtr"] = func(b *bool) string { return strconv.FormatBool(*b) }
 
 	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
 	if err != nil {

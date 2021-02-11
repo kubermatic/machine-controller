@@ -192,6 +192,8 @@ func TestController_GetNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			nodes := []runtime.Object{}
 			for _, node := range nodeList {
 				nodes = append(nodes, node)
@@ -199,7 +201,7 @@ func TestController_GetNode(t *testing.T) {
 			client := ctrlruntimefake.NewFakeClient(nodes...)
 			reconciler := Reconciler{client: client}
 
-			node, exists, err := reconciler.getNode(test.instance, test.provider)
+			node, exists, err := reconciler.getNode(ctx, test.instance, test.provider)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}
@@ -263,7 +265,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			joinTimeoutConfig: durationPtr(10 * time.Minute),
 		},
 		{
-			name:              "machine older than joinClusterTimout doesnt get deletet when ownerReference.Kind != MachineSet",
+			name:              "machine older than joinClusterTimout does not get deleted when ownerReference.Kind != MachineSet",
 			creationTimestamp: metav1.Time{Time: time.Now().Add(-20 * time.Minute)},
 			hasNode:           false,
 			ownerReferences:   []metav1.OwnerReference{{Name: "owner", Kind: "Cat"}},
@@ -282,6 +284,8 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			machine := &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "my-machine",
@@ -306,11 +310,11 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 				joinClusterTimeout: test.joinTimeoutConfig,
 			}
 
-			if _, err := reconciler.ensureNodeOwnerRefAndConfigSource(instance, machine, providerConfig); err != nil {
+			if _, err := reconciler.ensureNodeOwnerRefAndConfigSource(ctx, instance, machine, providerConfig); err != nil {
 				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
 			}
 
-			err := client.Get(context.Background(), types.NamespacedName{Name: machine.Name}, &clusterv1alpha1.Machine{})
+			err := client.Get(ctx, types.NamespacedName{Name: machine.Name}, &clusterv1alpha1.Machine{})
 			wasDeleted := kerrors.IsNotFound(err)
 
 			if wasDeleted != test.getsDeleted {
@@ -444,6 +448,7 @@ func TestControllerShouldEvict(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
 
 			objects := []runtime.Object{test.machine}
 			objects = append(objects, test.existingNodes...)
@@ -455,7 +460,7 @@ func TestControllerShouldEvict(t *testing.T) {
 				skipEvictionAfter: 2 * time.Hour,
 			}
 
-			shouldEvict, err := reconciler.shouldEvict(test.machine)
+			shouldEvict, err := reconciler.shouldEvict(ctx, test.machine)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -575,12 +580,13 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			objects := []runtime.Object{test.machine}
 			objects = append(objects, test.nodes...)
 
 			client := ctrlruntimefake.NewFakeClient(objects...)
 
-			ctx := context.TODO()
 			providerData := &cloudprovidertypes.ProviderData{
 				Ctx:    ctx,
 				Update: cloudprovidertypes.GetMachineUpdater(ctx, client),
@@ -593,7 +599,7 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 				providerData: providerData,
 			}
 
-			err := reconciler.deleteNodeForMachine(test.machine)
+			err := reconciler.deleteNodeForMachine(ctx, test.machine)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}

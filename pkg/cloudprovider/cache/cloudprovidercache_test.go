@@ -55,7 +55,7 @@ func TestCloudproviderCache(t *testing.T) {
 		t.Fatalf("Error getting m1 from cache after changing name: %v", err)
 	}
 	if !exists {
-		t.Error("Expected val to exist when getting m1 from cache after chaning name")
+		t.Error("Expected val to exist when getting m1 from cache after changing name")
 	}
 	if val != nil {
 		t.Errorf("Expected m1 val to be nil after changing name but was %v", val)

@@ -109,7 +109,7 @@ type MachineSpec struct {
 
 	// To populate in the associated Node for dynamic kubelet config. This
 	// field already exists in Node, so any updates to it in the Machine
-	// spec will be automatially copied to the linked NodeRef from the
+	// spec will be automatically copied to the linked NodeRef from the
 	// status. The rest of dynamic kubelet config support should then work
 	// as-is.
 	// +optional
@@ -182,7 +182,7 @@ type MachineStatus struct {
 	// spec, values that are unsupported by the controller, or the
 	// responsible controller itself being critically misconfigured.
 	//
-	// Any transient errors that occur during the reconcilation of Machines
+	// Any transient errors that occur during the reconciliation of Machines
 	// can be added as events to the Machine object and/or logged in the
 	// controller's output.
 	// +optional

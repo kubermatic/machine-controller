@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"text/template"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 )
 
 // TxtFuncMap returns an aggregated template function map. Currently (custom functions + sprig)

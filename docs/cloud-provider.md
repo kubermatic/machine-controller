@@ -1,5 +1,26 @@
 # Cloud providers
 
+## Scaleway
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+# your scaleway access key
+accessKey: "<< SCW_ACCESS_KEY >>"
+# your scaleway secret key
+secretKey: "<< SCW_SECRET_KEY >>"
+# your scaleway project ID
+projectId: "<< SCW_DEFAULT_PROJECT_ID >>"
+# server zone
+zone: "fr-par-1"
+# server commercial type
+commercialType: "DEV1-M"
+# enable ipv6 for the server
+ipv6: false
+# add the following tags to the server
+tags:
+- "machine-controller"
+```
+
 ## Digitalocean
 
 ### machine.spec.providerConfig.cloudProviderSpec
@@ -56,7 +77,7 @@ ebsVolumeEncrypted: false
 # optional! the ami id to use. Needs to fit to the specified operating system
 ami: ""
 # optional! The security group ids for the instance.
-# When not set a 'kubernetes-v1' security gruop will get created
+# When not set a 'kubernetes-v1' security group will get created
 securityGroupIDs:
 - ""
 # name of the instance profile to use.
@@ -216,6 +237,8 @@ subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
 location: "westeurope"
 # Azure resource group
 resourceGroup: "<< YOUR_RESOURCE_GROUP >>"
+# Azure resource group of the vnet	
+vnetResourceGroup: "<< YOUR_VNET_RESOURCE_GROUP >>"
 # Azure availability set
 availabilitySet: "<< YOUR AVAILABILITY SET >>"
 # VM size

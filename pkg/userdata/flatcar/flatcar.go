@@ -22,11 +22,23 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// ProvisioningUtility specifies the type of provisioning utility.
+type ProvisioningUtility string
+
+const (
+	Ignition  ProvisioningUtility = "ignition"
+	CloudInit ProvisioningUtility = "cloud-init"
+)
+
 // Config contains specific configuration for Flatcar.
 type Config struct {
 	DisableAutoUpdate   bool `json:"disableAutoUpdate"`
 	DisableLocksmithD   bool `json:"disableLocksmithD"`
 	DisableUpdateEngine bool `json:"disableUpdateEngine"`
+
+	// ProvisioningUtility specifies the type of provisioning utility, allowed values are cloud-init and ignition.
+	// Defaults to ignition.
+	ProvisioningUtility `json:"provisioningUtility,omitempty"`
 }
 
 // LoadConfig retrieves the Flatcar configuration from raw data.

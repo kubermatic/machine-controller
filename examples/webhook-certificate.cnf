@@ -1,0 +1,18 @@
+[ req ]
+prompt             = no
+default_bits       = 2048
+distinguished_name = req_distinguished_name
+req_extensions     = v3_req
+[ req_distinguished_name ]
+countryName                 = EU
+stateOrProvinceName         = FR
+localityName               = Sophia-Antipolis
+organizationName           = Kubermatic
+commonName                 = machine-controller-webhook.kube-system.svc
+[ v3_req ]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1   = machine-controller-webhook.kube-system.svc
+DNS.2   = machine-controller-webhook.kube-system.svc.cluster.local

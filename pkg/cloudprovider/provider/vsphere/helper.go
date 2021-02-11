@@ -41,7 +41,7 @@ import (
 const (
 	localTempDir     = "/tmp"
 	metaDataTemplate = `instance-id: {{ .InstanceID}}
-	local-hostname: {{ .Hostname }}`
+local-hostname: {{ .Hostname }}`
 )
 
 func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, os providerconfigtypes.OperatingSystem, containerLinuxUserdata string) (*object.VirtualMachine, error) {
@@ -222,7 +222,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		return nil, fmt.Errorf("error when waiting for result of the reconfigure task: %v", err)
 	}
 
-	// Ubuntu wont boot with attached floppy device, because it tries to write to it
+	// Ubuntu won't boot with attached floppy device, because it tries to write to it
 	// which fails, because the floppy device does not contain a floppy disk
 	// Upstream issue: https://bugs.launchpad.net/cloud-images/+bug/1573095
 	if err := removeFloppyDevice(ctx, virtualMachine); err != nil {
@@ -390,7 +390,7 @@ func removeFloppyDevice(ctx context.Context, virtualMachine *object.VirtualMachi
 	}
 
 	// If there is more than one floppy device attached, you will simply get the first one. We
-	// assume this wont happen.
+	// assume this won't happen.
 	floppyDevice, err := vmDevices.FindFloppy("")
 	if err != nil {
 		if err.Error() == "no floppy device found" {

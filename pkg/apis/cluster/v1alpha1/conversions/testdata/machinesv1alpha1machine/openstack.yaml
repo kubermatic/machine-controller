@@ -35,7 +35,7 @@ spec:
           namespace: kube-system
           name: machine-controller-openstack
           key: domainName
-    # If empty, ca be set via OS_TENANT_NAME env var
+   # If empty, ca be set via OS_TENANT_NAME env var
       tenantName:
         secretKeyRef:
           namespace: kube-system
@@ -58,6 +58,10 @@ spec:
       network: ""
       # Only required if the network has more than one subnet
       subnet: ""
+      # Can be increased for slower OpenStack setups. No values below 1m (60s) possible as this makes no sense.
+      instanceReadyCheckPeriod: 2m
+      # Can be increased for slower OpenStack setups. No values below 1m (60s) possible as this makes no sense.
+      instanceReadyCheckTimeout: 2m
       # the list of tags you would like to attach to the instance
       tags:
         tagKey: tagValue
