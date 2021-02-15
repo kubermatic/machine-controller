@@ -138,12 +138,9 @@ func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *
 }
 
 func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
-	ctx context.Context,
-	client ctrlruntimeclient.Client,
+	ctx context.Context, client ctrlruntimeclient.Client,
 	kubeClient kubernetes.Interface,
-	providerData *cloudprovidertypes.ProviderData,
-	caBundleFile string,
-) error {
+	providerData *cloudprovidertypes.ProviderData) error {
 
 	var (
 		cachePopulatingInterval = 15 * time.Second
@@ -184,7 +181,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		return fmt.Errorf("error when checking for existence of 'machines.cluster.k8s.io' crd: %v", err)
 	}
 
-	if err := migrateMachines(ctx, client, kubeClient, providerData, caBundleFile); err != nil {
+	if err := migrateMachines(ctx, client, kubeClient, providerData); err != nil {
 		return fmt.Errorf("failed to migrate machines: %v", err)
 	}
 	klog.Infof("Attempting to delete CRD %s", machines.CRDName)
@@ -195,7 +192,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	return nil
 }
 
-func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface, providerData *cloudprovidertypes.ProviderData, caBundleFile string) error {
+func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface, providerData *cloudprovidertypes.ProviderData) error {
 	klog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
 
 	// Get machinesv1Alpha1Machines
@@ -228,7 +225,7 @@ func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeC
 			return fmt.Errorf("failed to get provider config: %v", err)
 		}
 		skg := providerconfig.NewConfigVarResolver(ctx, client)
-		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg, caBundleFile)
+		prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 		if err != nil {
 			return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 		}

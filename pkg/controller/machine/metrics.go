@@ -60,9 +60,8 @@ func NewMachineControllerMetrics() *MetricsCollection {
 }
 
 type MachineCollector struct {
-	ctx          context.Context
-	client       ctrlruntimeclient.Client
-	caBundleFile string
+	ctx    context.Context
+	client ctrlruntimeclient.Client
 
 	machines       *prometheus.Desc
 	machineCreated *prometheus.Desc
@@ -111,7 +110,7 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 	return counter
 }
 
-func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client, caBundleFile string) *MachineCollector {
+func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *MachineCollector {
 	// Start periodically calling the providers SetMetricsForMachines in a dedicated go routine
 	skg := providerconfig.NewConfigVarResolver(ctx, client)
 	go func() {
@@ -143,7 +142,7 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client, c
 			}
 
 			for provider, providerMachineList := range providerMachineMap {
-				prov, err := cloudprovider.ForProvider(provider, skg, caBundleFile)
+				prov, err := cloudprovider.ForProvider(provider, skg)
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("failed to get cloud provider for SetMetricsForMachines:: %q: %v", provider, err))
 					continue
@@ -162,9 +161,8 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client, c
 	}()
 
 	return &MachineCollector{
-		ctx:          ctx,
-		client:       client,
-		caBundleFile: caBundleFile,
+		ctx:    ctx,
+		client: client,
 
 		machines: prometheus.NewDesc(
 			metricsPrefix+"machines",
@@ -224,7 +222,7 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, cvr, mc.caBundleFile)
+		provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, cvr)
 		if err != nil {
 			utilruntime.HandleError(fmt.Errorf("failed to determine provider provider: %v", err))
 			continue

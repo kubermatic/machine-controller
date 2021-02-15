@@ -18,10 +18,13 @@ package vsphere
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
@@ -34,10 +37,8 @@ type Session struct {
 	Datacenter *object.Datacenter
 }
 
-// NewSession creates a vCenter client with initialized finder. If caBundleFile
-// is not empty, it will be used as the sole source for CA certificates, instead
-// of relying on the host CAs.
-func NewSession(ctx context.Context, config *Config, caBundleFile string) (*Session, error) {
+// NewSession creates a vCenter client with initialized finder.
+func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	clientURL, err := url.Parse(fmt.Sprintf("%s/sdk", config.VSphereURL))
 	if err != nil {
 		return nil, err
@@ -49,10 +50,9 @@ func NewSession(ctx context.Context, config *Config, caBundleFile string) (*Sess
 		return nil, fmt.Errorf("failed to build client: %v", err)
 	}
 
-	if caBundleFile != "" {
-		if err := client.SetRootCAs(caBundleFile); err != nil {
-			return nil, fmt.Errorf("failed to set CA bundle: %v", err)
-		}
+	// inject our global set of CA certificates
+	client.DefaultTransport().TLSClientConfig = &tls.Config{
+		RootCAs: util.CABundle,
 	}
 
 	finder := find.NewFinder(client.Client, true)

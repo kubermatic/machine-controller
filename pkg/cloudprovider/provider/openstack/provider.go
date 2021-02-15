@@ -17,11 +17,9 @@ limitations under the License.
 package openstack
 
 import (
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -41,7 +39,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	openstacktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	cloudproviderutil "github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -61,7 +58,7 @@ const (
 )
 
 // clientGetterFunc returns an OpenStack client.
-type clientGetterFunc func(c *Config, caBundleFile string) (*gophercloud.ProviderClient, error)
+type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 
 // serverReadinessWaiterFunc waits for the server with the given ID to be
 // ACTIVE.
@@ -71,16 +68,14 @@ type provider struct {
 	configVarResolver     *providerconfig.ConfigVarResolver
 	clientGetter          clientGetterFunc
 	serverReadinessWaiter serverReadinessWaiterFunc
-	caBundleFile          string
 }
 
 // New returns a openstack provider
-func New(configVarResolver *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
+func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{
 		configVarResolver:     configVarResolver,
 		clientGetter:          getClient,
 		serverReadinessWaiter: waitUntilInstanceIsActive,
-		caBundleFile:          caBundleFile,
 	}
 }
 
@@ -271,7 +266,7 @@ func setProviderSpec(rawConfig openstacktypes.RawConfig, s v1alpha1.ProviderSpec
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
-func getClient(c *Config, caBundleFile string) (*gophercloud.ProviderClient, error) {
+func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	opts := gophercloud.AuthOptions{
 		IdentityEndpoint: c.IdentityEndpoint,
 		Username:         c.Username,
@@ -284,27 +279,9 @@ func getClient(c *Config, caBundleFile string) (*gophercloud.ProviderClient, err
 
 	pc, err := goopenstack.AuthenticatedClient(opts)
 	if pc != nil {
+		// use the util's HTTP client to benefit, among other things, from its CA bundle
 		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
 	}
-
-	httpConfig := util.HTTPClientConfig{
-		// before machine-controller v1.25 this used the default client with no timeout,
-		// so this is deliberately set to a high value to avoid too many disruptions
-		Timeout: 60 * time.Second,
-	}
-
-	if caBundleFile != "" {
-		caCert, err := ioutil.ReadFile(caBundleFile)
-		if err != nil {
-			return pc, fmt.Errorf("failed to read CA bundle: %v", err)
-		}
-
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-		httpConfig.RootCAs = caCertPool
-	}
-
-	pc.HTTPClient = httpConfig.New()
 
 	return pc, err
 }
@@ -318,7 +295,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
-	client, err := p.clientGetter(c, p.caBundleFile)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return spec, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -419,7 +396,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return errors.New("flavor must be configured")
 	}
 
-	client, err := p.clientGetter(c, p.caBundleFile)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return fmt.Errorf("failed to get a openstack client: %v", err)
 	}
@@ -490,7 +467,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	client, err := p.clientGetter(c, p.caBundleFile)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -654,7 +631,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	client, err := p.clientGetter(c, p.caBundleFile)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return false, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -684,7 +661,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		}
 	}
 
-	client, err := p.clientGetter(c, p.caBundleFile)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -727,7 +704,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		}
 	}
 
-	client, err := p.clientGetter(c, p.caBundleFile)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -919,7 +896,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 		}
 	}
 
-	client, err := p.clientGetter(c, p.caBundleFile)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get a openstack client")
 	}

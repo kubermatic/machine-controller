@@ -17,11 +17,10 @@ limitations under the License.
 package main
 
 import (
-	"crypto/x509"
 	"flag"
-	"io/ioutil"
 
 	"github.com/kubermatic/machine-controller/pkg/admission"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -49,19 +48,14 @@ func main() {
 	flag.StringVar(&admissionListenAddress, "listen-address", ":9876", "The address on which the MutatingWebhook will listen on")
 	flag.StringVar(&admissionTLSCertPath, "tls-cert-path", "/tmp/cert/cert.pem", "The path of the TLS cert for the MutatingWebhook")
 	flag.StringVar(&admissionTLSKeyPath, "tls-key-path", "/tmp/cert/key.pem", "The path of the TLS key for the MutatingWebhook")
-	flag.StringVar(&caBundleFile, "ca-bundle", "", "(optional) path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates)")
+	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
 	if caBundleFile != "" {
-		content, err := ioutil.ReadFile(caBundleFile)
-		if err != nil {
-			klog.Fatalf("failed to read -ca-bundle: %v", err)
-		}
-
-		if !x509.NewCertPool().AppendCertsFromPEM(content) {
-			klog.Fatalf("-ca-bundle file does not contain valid PEM-encoded certificates")
+		if err := util.SetCABundleFile(caBundleFile); err != nil {
+			klog.Fatalf("-ca-bundle is invalid: %v", err)
 		}
 	}
 
@@ -80,7 +74,7 @@ func main() {
 		klog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
-	s := admission.New(admissionListenAddress, client, um, caBundleFile)
+	s := admission.New(admissionListenAddress, client, um)
 	if err := s.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath); err != nil {
 		klog.Fatalf("Failed to start server: %v", err)
 	}

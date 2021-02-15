@@ -110,7 +110,6 @@ type Reconciler struct {
 	nodeSettings                     NodeSettings
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
-	caBundleFile                     string
 }
 
 type NodeSettings struct {
@@ -165,8 +164,7 @@ func Add(
 	name string,
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
-	nodeSettings NodeSettings,
-	caBundleFile string) error {
+	nodeSettings NodeSettings) error {
 
 	reconciler := &Reconciler{
 		kubeClient:                       kubeClient,
@@ -183,7 +181,6 @@ func Add(
 		nodeSettings:                     nodeSettings,
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
-		caBundleFile:                     caBundleFile,
 	}
 	m, err := userdatamanager.New()
 	if err != nil {
@@ -388,7 +385,7 @@ func (r *Reconciler) reconcile(ctx context.Context, machine *clusterv1alpha1.Mac
 		return nil, fmt.Errorf("failed to get provider config: %v", err)
 	}
 	skg := providerconfig.NewConfigVarResolver(ctx, r.client)
-	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg, r.caBundleFile)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
 	}

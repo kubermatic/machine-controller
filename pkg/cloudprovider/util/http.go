@@ -20,7 +20,9 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"time"
@@ -31,13 +33,35 @@ import (
 
 const defaultClientTimeout = 15 * time.Second
 
+var (
+	// CABundle is set globally once by the main() function
+	// and is used to overwrite the default set of CA certificates
+	// loaded from the host system/pod
+	CABundle *x509.CertPool
+)
+
+// SetCABundleFile reads a PEM-encoded file and replaces the current
+// global CABundle with a new one. The file must contain at least one
+// valid certificate.
+func SetCABundleFile(filename string) error {
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	CABundle = x509.NewCertPool()
+	if !CABundle.AppendCertsFromPEM(content) {
+		return errors.New("file does not contain valid PEM-encoded certificates")
+	}
+
+	return nil
+}
+
 type HTTPClientConfig struct {
 	// LogPrefix is prepended to request/response logs
 	LogPrefix string
 	// Global timeout used by the client
 	Timeout time.Duration
-	// RootCAs overwrites the default set of CAs used to validate server-side certificates
-	RootCAs *x509.CertPool
 }
 
 // New return a custom HTTP client that allows for logging
@@ -54,7 +78,7 @@ func (c HTTPClientConfig) New() http.Client {
 			logPrefix: c.LogPrefix,
 			rt: &http.Transport{
 				TLSClientConfig: &tls.Config{
-					RootCAs: c.RootCAs,
+					RootCAs: CABundle,
 				},
 			},
 		},
