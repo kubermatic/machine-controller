@@ -18,8 +18,10 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -70,6 +72,7 @@ var (
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
 	nodeCSRApprover                  bool
+	caBundleFile                     string
 
 	nodeHTTPProxy           string
 	nodeNoProxy             string
@@ -123,6 +126,9 @@ type controllerRunOptions struct {
 	// Enable NodeCSRApprover controller to automatically approve node serving certificate requests.
 	nodeCSRApprover bool
 
+	// caBundleFile is an optional path to a PEM-encoded CA certificate file
+	caBundleFile string
+
 	node machinecontroller.NodeSettings
 }
 
@@ -156,6 +162,7 @@ func main() {
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
 	flag.StringVar(&nodeKubeletFeatureGates, "node-kubelet-feature-gates", "RotateKubeletServerCertificate=true", "Feature gates to set on the kubelet. Default: RotateKubeletServerCertificate=true")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
+	flag.StringVar(&caBundleFile, "ca-bundle", "", "(optional) path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
 	flag.Parse()
@@ -215,9 +222,20 @@ func main() {
 		klog.Fatalf("error building kubeconfig: %v", err)
 	}
 
+	if caBundleFile != "" {
+		content, err := ioutil.ReadFile(caBundleFile)
+		if err != nil {
+			klog.Fatalf("failed to read -ca-bundle: %v", err)
+		}
+
+		if !x509.NewCertPool().AppendCertsFromPEM(content) {
+			klog.Fatalf("-ca-bundle file does not contain valid PEM-encoded certificates")
+		}
+	}
+
 	// rest.Config has no DeepCopy() that returns another rest.Config, thus
 	// we simply build it twice
-	// We need a dedicated one for machines because we want to increate the
+	// We need a dedicated one for machines because we want to increase the
 	// QPS and Burst config there
 	machineCfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -258,6 +276,8 @@ func main() {
 		externalCloudProvider: externalCloudProvider,
 		skipEvictionAfter:     skipEvictionAfter,
 		nodeCSRApprover:       nodeCSRApprover,
+		caBundleFile:          caBundleFile,
+		joinClusterTimeout:    parsedJoinClusterTimeout,
 		node: machinecontroller.NodeSettings{
 			ClusterDNSIPs:       clusterDNSIPs,
 			HTTPProxy:           nodeHTTPProxy,
@@ -272,10 +292,6 @@ func main() {
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
 		},
-	}
-
-	if parsedJoinClusterTimeout != nil {
-		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
 	}
 
 	if bootstrapTokenServiceAccountName != "" {
@@ -376,7 +392,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 	}
 
 	// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
-	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, client, bs.opt.kubeClient, providerData); err != nil {
+	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, client, bs.opt.kubeClient, providerData, bs.opt.caBundleFile); err != nil {
 		return fmt.Errorf("migration to clusterv1alpha1 failed: %v", err)
 	}
 
@@ -385,7 +401,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		return fmt.Errorf("migration of providerConfig field to providerSpec field failed: %v", err)
 	}
 
-	machineCollector := machinecontroller.NewMachineCollector(ctx, bs.mgr.GetClient())
+	machineCollector := machinecontroller.NewMachineCollector(ctx, bs.mgr.GetClient(), bs.opt.caBundleFile)
 	metrics.Registry.MustRegister(machineCollector)
 
 	if err := machinecontroller.Add(
@@ -402,6 +418,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
+		bs.opt.caBundleFile,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)
 	}

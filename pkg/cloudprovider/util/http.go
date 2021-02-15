@@ -18,6 +18,8 @@ package util
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -30,10 +32,12 @@ import (
 const defaultClientTimeout = 15 * time.Second
 
 type HTTPClientConfig struct {
-	// LogPrefix is pre-pended to request/response logs
+	// LogPrefix is prepended to request/response logs
 	LogPrefix string
 	// Global timeout used by the client
 	Timeout time.Duration
+	// RootCAs overwrites the default set of CAs used to validate server-side certificates
+	RootCAs *x509.CertPool
 }
 
 // New return a custom HTTP client that allows for logging
@@ -44,10 +48,15 @@ func (c HTTPClientConfig) New() http.Client {
 	if timeout <= 0 {
 		timeout = defaultClientTimeout
 	}
+
 	return http.Client{
 		Transport: &LogRoundTripper{
 			logPrefix: c.LogPrefix,
-			rt:        http.DefaultTransport,
+			rt: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: c.RootCAs,
+				},
+			},
 		},
 		Timeout: timeout,
 	}

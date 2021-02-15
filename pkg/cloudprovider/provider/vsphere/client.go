@@ -34,8 +34,10 @@ type Session struct {
 	Datacenter *object.Datacenter
 }
 
-// NewSession creates a vCenter client with initialized finder
-func NewSession(ctx context.Context, config *Config) (*Session, error) {
+// NewSession creates a vCenter client with initialized finder. If caBundleFile
+// is not empty, it will be used as the sole source for CA certificates, instead
+// of relying on the host CAs.
+func NewSession(ctx context.Context, config *Config, caBundleFile string) (*Session, error) {
 	clientURL, err := url.Parse(fmt.Sprintf("%s/sdk", config.VSphereURL))
 	if err != nil {
 		return nil, err
@@ -45,6 +47,12 @@ func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	client, err := govmomi.NewClient(ctx, clientURL, config.AllowInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build client: %v", err)
+	}
+
+	if caBundleFile != "" {
+		if err := client.SetRootCAs(caBundleFile); err != nil {
+			return nil, fmt.Errorf("failed to set CA bundle: %v", err)
+		}
 	}
 
 	finder := find.NewFinder(client.Client, true)

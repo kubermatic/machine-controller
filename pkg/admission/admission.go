@@ -42,15 +42,17 @@ type admissionData struct {
 	ctx             context.Context
 	client          ctrlruntimeclient.Client
 	userDataManager *userdatamanager.Manager
+	caBundleFile    string
 }
 
 var jsonPatch = admissionv1.PatchTypeJSONPatch
 
-func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamanager.Manager) *http.Server {
+func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamanager.Manager, caBundleFile string) *http.Server {
 	m := http.NewServeMux()
 	ad := &admissionData{
 		client:          client,
 		userDataManager: um,
+		caBundleFile:    caBundleFile,
 	}
 	m.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))
 	m.HandleFunc("/machines", handleFuncFactory(ad.mutateMachines))

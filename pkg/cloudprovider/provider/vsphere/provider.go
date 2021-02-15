@@ -47,12 +47,15 @@ import (
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
+	caBundleFile      string
 }
 
 // New returns a VSphere provider.
-func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	provider := &provider{configVarResolver: configVarResolver}
-	return provider
+func New(configVarResolver *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
+	return &provider{
+		configVarResolver: configVarResolver,
+		caBundleFile:      caBundleFile,
+	}
 }
 
 // Config contains vSphere provider configuration.
@@ -200,7 +203,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get config: %v", err)
 	}
 
-	session, err := NewSession(ctx, config)
+	session, err := NewSession(ctx, config, p.caBundleFile)
 	if err != nil {
 		return fmt.Errorf("failed to create vCenter session: %v", err)
 	}
@@ -289,7 +292,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	session, err := NewSession(ctx, config)
+	session, err := NewSession(ctx, config, p.caBundleFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vCenter session: %v", err)
 	}
@@ -358,7 +361,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	session, err := NewSession(ctx, config)
+	session, err := NewSession(ctx, config, p.caBundleFile)
 	if err != nil {
 		return false, fmt.Errorf("failed to create vCenter session: %v", err)
 	}
@@ -450,7 +453,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	session, err := NewSession(ctx, config)
+	session, err := NewSession(ctx, config, p.caBundleFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vCenter session: %v", err)
 	}

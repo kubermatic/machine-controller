@@ -45,56 +45,56 @@ var (
 	// ErrProviderNotFound tells that the requested cloud provider was not found
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
-	providers = map[providerconfigtypes.CloudProvider]func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider{
-		providerconfigtypes.CloudProviderDigitalocean: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+	providers = map[providerconfigtypes.CloudProvider]func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider{
+		providerconfigtypes.CloudProviderDigitalocean: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return digitalocean.New(cvr)
 		},
-		providerconfigtypes.CloudProviderAWS: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderAWS: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return aws.New(cvr)
 		},
-		providerconfigtypes.CloudProviderOpenstack: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return openstack.New(cvr)
+		providerconfigtypes.CloudProviderOpenstack: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
+			return openstack.New(cvr, caBundleFile)
 		},
-		providerconfigtypes.CloudProviderGoogle: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderGoogle: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return gce.New(cvr)
 		},
-		providerconfigtypes.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return hetzner.New(cvr)
 		},
-		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return linode.New(cvr)
 		},
-		providerconfigtypes.CloudProviderVsphere: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return vsphere.New(cvr)
+		providerconfigtypes.CloudProviderVsphere: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
+			return vsphere.New(cvr, caBundleFile)
 		},
-		providerconfigtypes.CloudProviderAzure: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderAzure: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return azure.New(cvr)
 		},
-		providerconfigtypes.CloudProviderPacket: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderPacket: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return packet.New(cvr)
 		},
-		providerconfigtypes.CloudProviderFake: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderFake: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return fake.New(cvr)
 		},
-		providerconfigtypes.CloudProviderKubeVirt: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderKubeVirt: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return kubevirt.New(cvr)
 		},
-		providerconfigtypes.CloudProviderAlibaba: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderAlibaba: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return alibaba.New(cvr)
 		},
-		providerconfigtypes.CloudProviderScaleway: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderScaleway: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return scaleway.New(cvr)
 		},
-		providerconfigtypes.CloudProviderAnexia: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+		providerconfigtypes.CloudProviderAnexia: func(cvr *providerconfig.ConfigVarResolver, caBundleFile string) cloudprovidertypes.Provider {
 			return anexia.New(cvr)
 		},
 	}
 )
 
 // ForProvider returns a CloudProvider actuator for the requested provider
-func ForProvider(p providerconfigtypes.CloudProvider, cvr *providerconfig.ConfigVarResolver) (cloudprovidertypes.Provider, error) {
+func ForProvider(p providerconfigtypes.CloudProvider, cvr *providerconfig.ConfigVarResolver, caBundleFile string) (cloudprovidertypes.Provider, error) {
 	if p, found := providers[p]; found {
-		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
+		return NewValidationCacheWrappingCloudProvider(p(cvr, caBundleFile)), nil
 	}
 	return nil, ErrProviderNotFound
 }
