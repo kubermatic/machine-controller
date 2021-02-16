@@ -199,6 +199,29 @@ presubmits:
               memory: 1Gi
               cpu: 500m
 
+  - name: pull-machine-controller-e2e-custom-ca
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-openstack: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-rhel: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.15.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestCustomCAsAreApplied"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
   - name: pull-machine-controller-e2e-openstack
     always_run: true
     decorate: true

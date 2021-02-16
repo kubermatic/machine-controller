@@ -19,16 +19,28 @@ limitations under the License.
 package provisioning
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -54,6 +66,7 @@ const (
 	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	VSPhereResourcePoolManifest       = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
 	ScalewayManifest                  = "./testdata/machinedeployment-scaleway.yaml"
+	OSMachineManifest                 = "./testdata/machine-openstack.yaml"
 	OSManifest                        = "./testdata/machinedeployment-openstack.yaml"
 	OSUpgradeManifest                 = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest            = "./testdata/machine-invalid.yaml"
@@ -81,6 +94,186 @@ func TestInvalidObjectsGetRejected(t *testing.T) {
 			invalidMachineManifest,
 			false)
 	}
+}
+
+// TestCustomCAsAreApplied ensures that the configured CA bundle is actually
+// being used by performing a negative test: It purposefully replaces the
+// valid CA bundle with a bundle that contains one random self-signed cert
+// and then expects openstack provisioning to _fail_.
+func TestCustomCAsAreApplied(t *testing.T) {
+	t.Parallel()
+
+	osAuthURL := os.Getenv("OS_AUTH_URL")
+	osDomain := os.Getenv("OS_DOMAIN")
+	osPassword := os.Getenv("OS_PASSWORD")
+	osRegion := os.Getenv("OS_REGION")
+	osUsername := os.Getenv("OS_USERNAME")
+	osTenant := os.Getenv("OS_TENANT_NAME")
+	osNetwork := os.Getenv("OS_NETWORK_NAME")
+
+	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthURL),
+		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
+		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
+		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
+		fmt.Sprintf("<< REGION >>=%s", osRegion),
+		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
+	}
+
+	testScenario(
+		t,
+		scenario{
+			name:              "ca-test",
+			containerRuntime:  "docker",
+			kubernetesVersion: versions[0].String(),
+			osName:            string(providerconfigtypes.OperatingSystemUbuntu),
+
+			executor: func(kubeConfig, manifestPath string, parameters []string, d time.Duration) error {
+				if err := updateMachineControllerForCustomCA(kubeConfig); err != nil {
+					return fmt.Errorf("failed to add CA: %v", err)
+				}
+
+				return verifyCreateMachineFails(kubeConfig, manifestPath, parameters, d)
+			},
+		},
+		"dummy-machine",
+		params,
+		OSMachineManifest,
+		false,
+	)
+}
+
+func updateMachineControllerForCustomCA(kubeconfig string) error {
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return fmt.Errorf("Error building kubeconfig: %v", err)
+	}
+
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
+	if err != nil {
+		return fmt.Errorf("failed to create Client: %v", err)
+	}
+
+	ctx := context.Background()
+	ns := metav1.NamespaceSystem
+
+	// create intentionally valid but useless CA bundle
+	caBundle := &corev1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: ns,
+			Name:      "ca-bundle",
+		},
+		Data: map[string]string{
+			// this certificate was created using `make examples/ca-cert.pem`
+			"ca-bundle.pem": strings.TrimSpace(`
+-----BEGIN CERTIFICATE-----
+MIIFezCCA2OgAwIBAgIUV9en2WQLDZ1VzPYgzblnuhrg1sQwDQYJKoZIhvcNAQEL
+BQAwTTELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMQ0wCwYDVQQKDARBY21lMSIw
+IAYDVQQDDBlrOHMtbWFjaGluZS1jb250cm9sbGVyLWNhMB4XDTIwMDgxOTEzNDEw
+MloXDTQ4MDEwNTEzNDEwMlowTTELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMQ0w
+CwYDVQQKDARBY21lMSIwIAYDVQQDDBlrOHMtbWFjaGluZS1jb250cm9sbGVyLWNh
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAtHUcIL+zTd7jmYazQCL0
+auCJxbICdthFzW3Hs8FwQ3zhXiqP7bsgMgLsG5lxmRA1iyRRUQklV/Cu6XTWQkPA
+Z8WqA06zhoNl7/f5tfhilJS6RP3ftlDJ9UMVb2DaG560VF+31QHZKL8Hr0KgPdz9
+WgUFTpD1LpOk0wHJdjc/WzKaTFrZm3UAZRcZIkR0+5LrUudmUPYfbHWtYSYLX2vB
+Y0+9oKqcpTtoFE2jGa993dtSPSE7grG3kfKb+IhwHUDXOW0xiT/uue7JAJYc6fDd
+RoRdf3vSIESl9+R7lxymcW5R9YrQ26YJ6HlVr14BpT0hNVgvrpJINstYBpj5PbQV
+kpIcHmrDOoZEgb+QTAtzga0mZctWWa7U1AJ8KoWejrJgNCAE4nrecFaPQ7aDjSe4
+ca0/Gx1TtLPhswMFqQhihK4bxuV1iTTsk++h8rK5ii6jO6ioS+AF9Nqye+1tYuE8
+JePXMMkO1pnwKeyiRGs8poJdQEXzu0xYbc/f2FZqP4b9X4TfsVC5WQIO/xhfhaOI
+l0cIKTaBn5mWW5gn/ag+AnaTHZ7aX3A4zAuE/riyTFC2GWNLO5PqlTgo6c/+5ynC
+x5Q6CUBIMFw4LP8DMC2bWhyJjRaCre9+3bXSXQ8XCWxAyfTjDTcIgBEv0+peGko0
+wb697GGWGgiqlRpW8GBZPeUCAwEAAaNTMFEwHQYDVR0OBBYEFO2EDvPI7jRqR6rK
+vKkqj8BxCCZvMB8GA1UdIwQYMBaAFO2EDvPI7jRqR6rKvKkqj8BxCCZvMA8GA1Ud
+EwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggIBAJMXHPxnorj4h+HePA1TaqBs
+LPfrARxPGi+/mFWGtT8JpLf8cP1YT3j74sdD9oiDCxDSL+Cg5JY3IKa5U+jnS6Go
+a26D4U9MOUl2hPOa/f4BEEN9+6jNvB/jg1Jd1YC1Q7hdWjBZKx1n+qMhq+bwNJZo
+du0t/zmgk6sJVa7E50ILv/WmEQDCo0NFpOBSku0M35iA+maMgxq5/7EBybl2Qo2F
+j6IPTxGBRbOE13I8virmYz9MdloiKX1GDUDCP3yRSSnPVveKlaGYa/lCNbSEhynb
+KZHbzcro71RRAgne1cNaFIqr5oCZMSSx+hlsc/mkenr7Dg1/o6FexFc1IYO85Fs4
+VC8Yb5V2oD8IDZlRVo7G74cZqEly8OYHO17zO0ib3S70aPGTUtFXEyMiirWCbVCb
+L3I2dvQcO19WTQ8CfujWGtbL2lhBZvJTfa9fzrz3uYQRIeBHIWZvi8sEIQ1pmeOi
+9PQkGHHJO+jfJkbOdR9cAmHUyuHH26WzZctg5CR2+f6xA8kO/8tUMEAJ9hUJa1iJ
+Br0c+gPd5UmjrHLikc40/CgjmfLkaSJcnmiYP0xxYM3Rqm8ptKJM7asHDDbeBK8m
+rh3NiRD903zsNpRiUXKkQs7N382SkRaBTB/rJTONM00pXEQYAivs5nIEfCQzen/Z
+C8QmzsMaZhk+mVFr1sGy
+-----END CERTIFICATE-----
+`),
+		},
+	}
+
+	if err := client.Create(ctx, caBundle); err != nil {
+		return fmt.Errorf("failed to create ca-bundle ConfigMap: %v", err)
+	}
+
+	// add CA to deployments
+	deployments := []string{"machine-controller", "machine-controller-webhook"}
+	for _, deployment := range deployments {
+		if err := addCAToDeployment(ctx, client, deployment, ns); err != nil {
+			return fmt.Errorf("failed to add CA to %s Deployment: %v", deployment, err)
+		}
+	}
+
+	// wait for deployments to roll out
+	for _, deployment := range deployments {
+		if err := wait.Poll(3*time.Second, 30*time.Second, func() (done bool, err error) {
+			d := &appsv1.Deployment{}
+			key := types.NamespacedName{Namespace: ns, Name: deployment}
+
+			if err := client.Get(ctx, key, d); err != nil {
+				return false, fmt.Errorf("failed to get Deployment: %v", err)
+			}
+
+			return d.Status.AvailableReplicas > 0, nil
+		}); err != nil {
+			return fmt.Errorf("%s Deployment never became ready: %v", deployment, err)
+		}
+	}
+
+	return nil
+}
+
+func addCAToDeployment(ctx context.Context, client ctrlruntimeclient.Client, name string, namespace string) error {
+	deployment := &appsv1.Deployment{}
+	key := types.NamespacedName{Namespace: namespace, Name: name}
+
+	if err := client.Get(ctx, key, deployment); err != nil {
+		return fmt.Errorf("failed to get Deployment: %v", err)
+	}
+
+	caVolume := corev1.Volume{
+		Name: "ca-bundle",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "ca-bundle",
+				},
+			},
+		},
+	}
+
+	caVolumeMount := corev1.VolumeMount{
+		Name:      "ca-bundle",
+		ReadOnly:  true,
+		MountPath: "/etc/machine-controller",
+	}
+
+	oldDeployment := deployment.DeepCopy()
+
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, caVolume)
+
+	container := deployment.Spec.Template.Spec.Containers[0]
+	container.VolumeMounts = append(container.VolumeMounts, caVolumeMount)
+	container.Command = append(container.Command, "-ca-bundle=/etc/machine-controller/ca-bundle.pem")
+
+	deployment.Spec.Template.Spec.Containers[0] = container
+
+	return client.Patch(ctx, deployment, ctrlruntimeclient.MergeFrom(oldDeployment))
 }
 
 func TestKubevirtProvisioningE2E(t *testing.T) {

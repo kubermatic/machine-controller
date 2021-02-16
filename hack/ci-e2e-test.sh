@@ -37,7 +37,7 @@ function cleanup {
 trap cleanup EXIT
 
 # Install dependencies
-echo "Installing dependencies."
+echo "Installing dependencies..."
 apt update && apt install -y jq rsync unzip genisoimage
 curl --retry 5 --location --remote-name \
   https://storage.googleapis.com/kubernetes-release/release/v1.12.4/bin/linux/amd64/kubectl &&
@@ -45,21 +45,21 @@ chmod +x kubectl &&
 mv kubectl /usr/local/bin
 
 # Build binaries
-echo "Building machine-controller and webhook"
+echo "Building machine-controller and webhook..."
 make download-gocache all
 
 # Copy individual plugins with success control.
-echo "Copying machine-controller plugins"
+echo "Copying machine-controller plugins..."
 cp machine-controller-userdata-* /usr/local/bin
 ls -l /usr/local/bin
 
 # Generate ssh key pair
-echo "Generating ssh key pair"
+echo "Generating SSH key pair..."
 chmod 0700 $HOME/.ssh
 ssh-keygen -t rsa -N ""  -f ~/.ssh/id_ed25519
 
 # Initialize terraform
-echo "Initializing terraform"
+echo "Initializing Terraform..."
 cd test/tools/integration
 make terraform
 cp provider.tf{.disabled,}
@@ -72,7 +72,7 @@ export TF_VAR_hcloud_test_server_name="machine-controller-test-${BUILD_ID}"
 for try in {1..20}; do
   set +e
   # Create environment at cloud provider
-  echo "Creating environment at cloud provider."
+  echo "Creating environment at cloud provider..."
   terraform apply -auto-approve
   TF_RC=$?
   if [[ $TF_RC == 0 ]]; then break; fi
@@ -80,20 +80,18 @@ for try in {1..20}; do
     echo "Creating cloud provider env failed!"
     exit 1
   fi
-  echo "Sleeping for $try seconds"
+  echo "Sleeping for $try seconds..."
   sleep ${try}s
 done
 
 set -e
 cd -
 
-# Create kubeadm cluster and install machine-controller onto it
-echo "Creating kubeadm cluster and install machine-controller onto it."
+echo "Creating kubeadm cluster and installing machine-controller into it..."
 export E2E_SSH_PUBKEY="$(cat ~/.ssh/id_rsa.pub)"
 ./test/tools/integration/provision_master.sh
 
-# Run e2e test
-echo "Running e2e test."
+echo "Running e2e tests..."
 export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig
 EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then
