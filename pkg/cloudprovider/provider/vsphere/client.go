@@ -18,10 +18,13 @@ package vsphere
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
@@ -34,7 +37,7 @@ type Session struct {
 	Datacenter *object.Datacenter
 }
 
-// NewSession creates a vCenter client with initialized finder
+// NewSession creates a vCenter client with initialized finder.
 func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	clientURL, err := url.Parse(fmt.Sprintf("%s/sdk", config.VSphereURL))
 	if err != nil {
@@ -45,6 +48,11 @@ func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	client, err := govmomi.NewClient(ctx, clientURL, config.AllowInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build client: %v", err)
+	}
+
+	// inject our global set of CA certificates
+	client.DefaultTransport().TLSClientConfig = &tls.Config{
+		RootCAs: util.CABundle,
 	}
 
 	finder := find.NewFinder(client.Client, true)

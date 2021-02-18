@@ -39,6 +39,7 @@ import (
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
@@ -70,6 +71,7 @@ var (
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
 	nodeCSRApprover                  bool
+	caBundleFile                     string
 
 	nodeHTTPProxy           string
 	nodeNoProxy             string
@@ -156,6 +158,7 @@ func main() {
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
 	flag.StringVar(&nodeKubeletFeatureGates, "node-kubelet-feature-gates", "RotateKubeletServerCertificate=true", "Feature gates to set on the kubelet. Default: RotateKubeletServerCertificate=true")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
+	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
 	flag.Parse()
@@ -215,9 +218,15 @@ func main() {
 		klog.Fatalf("error building kubeconfig: %v", err)
 	}
 
+	if caBundleFile != "" {
+		if err := util.SetCABundleFile(caBundleFile); err != nil {
+			klog.Fatalf("-ca-bundle is invalid: %v", err)
+		}
+	}
+
 	// rest.Config has no DeepCopy() that returns another rest.Config, thus
 	// we simply build it twice
-	// We need a dedicated one for machines because we want to increate the
+	// We need a dedicated one for machines because we want to increase the
 	// QPS and Burst config there
 	machineCfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {

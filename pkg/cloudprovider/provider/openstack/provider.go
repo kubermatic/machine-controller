@@ -279,6 +279,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 
 	pc, err := goopenstack.AuthenticatedClient(opts)
 	if pc != nil {
+		// use the util's HTTP client to benefit, among other things, from its CA bundle
 		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
 	}
 
@@ -630,7 +631,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return false, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -660,7 +661,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
@@ -703,7 +704,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		}
 	}
 
-	client, err := getClient(c)
+	client, err := p.clientGetter(c)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get a openstack client")
 	}
