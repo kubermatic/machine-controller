@@ -38,6 +38,7 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
+	"github.com/kubermatic/machine-controller/pkg/apis/nodesettings"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
@@ -116,16 +117,13 @@ type controllerRunOptions struct {
 	// deleted by the machine-controller
 	joinClusterTimeout *time.Duration
 
-	// Flag to initialize kubelets with --cloud-provider=external
-	externalCloudProvider bool
-
 	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
 	skipEvictionAfter time.Duration
 
 	// Enable NodeCSRApprover controller to automatically approve node serving certificate requests.
 	nodeCSRApprover bool
 
-	node machinecontroller.NodeSettings
+	node nodesettings.NodeSettings
 }
 
 func main() {
@@ -258,16 +256,15 @@ func main() {
 	}
 
 	runOptions := controllerRunOptions{
-		kubeClient:            kubeClient,
-		kubeconfigProvider:    kubeconfigProvider,
-		name:                  name,
-		cfg:                   machineCfg,
-		metrics:               ctrlMetrics,
-		prometheusRegisterer:  metrics.Registry,
-		externalCloudProvider: externalCloudProvider,
-		skipEvictionAfter:     skipEvictionAfter,
-		nodeCSRApprover:       nodeCSRApprover,
-		node: machinecontroller.NodeSettings{
+		kubeClient:           kubeClient,
+		kubeconfigProvider:   kubeconfigProvider,
+		name:                 name,
+		cfg:                  machineCfg,
+		metrics:              ctrlMetrics,
+		prometheusRegisterer: metrics.Registry,
+		skipEvictionAfter:    skipEvictionAfter,
+		nodeCSRApprover:      nodeCSRApprover,
+		node: nodesettings.NodeSettings{
 			ClusterDNSIPs:       clusterDNSIPs,
 			HTTPProxy:           nodeHTTPProxy,
 			NoProxy:             nodeNoProxy,
@@ -280,6 +277,7 @@ func main() {
 				containerruntime.WithInsecureRegistries(insecureRegistries),
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
+			ExternalCloudProvider: externalCloudProvider,
 		},
 	}
 
@@ -406,16 +404,14 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.kubeconfigProvider,
 		providerData,
 		bs.opt.joinClusterTimeout,
-		bs.opt.externalCloudProvider,
 		bs.opt.name,
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
-		bs.opt.node,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)
 	}
 
-	if err := machinesetcontroller.Add(bs.mgr); err != nil {
+	if err := machinesetcontroller.Add(bs.mgr, bs.opt.node); err != nil {
 		return fmt.Errorf("failed to add MachineSet controller to manager: %v", err)
 	}
 

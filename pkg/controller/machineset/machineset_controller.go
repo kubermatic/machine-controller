@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/apis/nodesettings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,14 +61,14 @@ var (
 
 // Add creates a new MachineSet Controller and adds it to the Manager with default RBAC.
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	r := newReconciler(mgr)
+func Add(mgr manager.Manager, nodeSettings nodesettings.NodeSettings) error {
+	r := &ReconcileMachineSet{
+		Client:       mgr.GetClient(),
+		scheme:       mgr.GetScheme(),
+		recorder:     mgr.GetEventRecorderFor(controllerName),
+		nodeSettings: nodeSettings,
+	}
 	return add(mgr, r, r.MachineToMachineSets)
-}
-
-// newReconciler returns a new reconcile.Reconciler.
-func newReconciler(mgr manager.Manager) *ReconcileMachineSet {
-	return &ReconcileMachineSet{Client: mgr.GetClient(), scheme: mgr.GetScheme(), recorder: mgr.GetEventRecorderFor(controllerName)}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler.
@@ -108,8 +109,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 // ReconcileMachineSet reconciles a MachineSet object
 type ReconcileMachineSet struct {
 	client.Client
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
+	scheme       *runtime.Scheme
+	recorder     record.EventRecorder
+	nodeSettings nodesettings.NodeSettings
 }
 
 // Reconcile reads that state of the cluster for a MachineSet object and makes changes based on the state read
@@ -332,6 +334,7 @@ func (r *ReconcileMachineSet) createMachine(machineSet *clusterv1alpha1.MachineS
 	machine.ObjectMeta.GenerateName = fmt.Sprintf("%s-", machineSet.Name)
 	machine.ObjectMeta.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(machineSet, controllerKind)}
 	machine.Namespace = machineSet.Namespace
+	r.nodeSettings.Set(machine)
 	return machine
 }
 

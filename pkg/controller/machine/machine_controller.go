@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"strings"
 	"time"
 
@@ -29,12 +28,12 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/apis/nodesettings"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -107,33 +106,8 @@ type Reconciler struct {
 	name                             string
 	bootstrapTokenServiceAccountName *types.NamespacedName
 	skipEvictionAfter                time.Duration
-	nodeSettings                     NodeSettings
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
-}
-
-type NodeSettings struct {
-	// Translates to --cluster-dns on the kubelet.
-	ClusterDNSIPs []net.IP
-	// If set, this proxy will be configured on all nodes.
-	HTTPProxy string
-	// If set this will be set as NO_PROXY on the node.
-	NoProxy string
-	// If set, those registries will be configured as insecure on the container runtime.
-	InsecureRegistries []string
-	// If set, these mirrors will be take for pulling all required images on the node.
-	RegistryMirrors []string
-	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it.
-	PauseImage string
-	// The hyperkube image to use. Currently only Container Linux and Flatcar Linux uses it.
-	HyperkubeImage string
-	// The kubelet repository to use. Currently only Flatcar Linux uses it.
-	KubeletRepository string
-	// Translates to feature gates on the kubelet.
-	// Default: RotateKubeletServerCertificate=true
-	KubeletFeatureGates map[string]bool
-	// container runtime to install
-	ContainerRuntime containerruntime.Config
 }
 
 type KubeconfigProvider interface {
@@ -160,11 +134,9 @@ func Add(
 	kubeconfigProvider KubeconfigProvider,
 	providerData *cloudprovidertypes.ProviderData,
 	joinClusterTimeout *time.Duration,
-	externalCloudProvider bool,
 	name string,
 	bootstrapTokenServiceAccountName *types.NamespacedName,
-	skipEvictionAfter time.Duration,
-	nodeSettings NodeSettings) error {
+	skipEvictionAfter time.Duration) error {
 
 	reconciler := &Reconciler{
 		kubeClient:                       kubeClient,
@@ -174,11 +146,9 @@ func Add(
 		kubeconfigProvider:               kubeconfigProvider,
 		providerData:                     providerData,
 		joinClusterTimeout:               joinClusterTimeout,
-		externalCloudProvider:            externalCloudProvider,
 		name:                             name,
 		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
 		skipEvictionAfter:                skipEvictionAfter,
-		nodeSettings:                     nodeSettings,
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 	}
@@ -683,21 +653,22 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			if err != nil {
 				return nil, fmt.Errorf("failed to render cloud config: %v", err)
 			}
+			nodeSettings, err := nodesettings.FromMachine(machine)
 
 			req := plugin.UserDataRequest{
 				MachineSpec:           machine.Spec,
 				Kubeconfig:            kubeconfig,
 				CloudConfig:           cloudConfig,
 				CloudProviderName:     cloudProviderName,
-				ExternalCloudProvider: r.externalCloudProvider,
-				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
-				PauseImage:            r.nodeSettings.PauseImage,
-				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
-				KubeletRepository:     r.nodeSettings.KubeletRepository,
-				KubeletFeatureGates:   r.nodeSettings.KubeletFeatureGates,
-				NoProxy:               r.nodeSettings.NoProxy,
-				HTTPProxy:             r.nodeSettings.HTTPProxy,
-				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
+				ExternalCloudProvider: nodeSettings.ExternalCloudProvider,
+				DNSIPs:                nodeSettings.ClusterDNSIPs,
+				PauseImage:            nodeSettings.PauseImage,
+				HyperkubeImage:        nodeSettings.HyperkubeImage,
+				KubeletRepository:     nodeSettings.KubeletRepository,
+				KubeletFeatureGates:   nodeSettings.KubeletFeatureGates,
+				NoProxy:               nodeSettings.NoProxy,
+				HTTPProxy:             nodeSettings.HTTPProxy,
+				ContainerRuntime:      nodeSettings.ContainerRuntime,
 			}
 
 			userdata, err := userdataPlugin.UserData(req)
