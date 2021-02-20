@@ -149,6 +149,38 @@ func TestCloudConfigToString(t *testing.T) {
 				Version:      "1.10.0",
 			},
 		},
+		{
+			name: "use-application-credentials",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					AuthURL:                     "https://127.0.0.1:8443",
+					ApplicationCredentialID:     "app-cred-id",
+					ApplicationCredentialSecret: "app-cred-secret",
+					DomainName:                  "Default",
+					Region:                      "eu-central1",
+				},
+				BlockStorage: BlockStorageOpts{},
+				LoadBalancer: LoadBalancerOpts{},
+				Version:      "1.10.0",
+			},
+		},
+		{
+			name: "use-application-credentials-ignore-userpass",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					AuthURL:                     "https://127.0.0.1:8443",
+					ApplicationCredentialID:     "app-cred-id",
+					ApplicationCredentialSecret: "app-cred-secret",
+					Username:                    "admin",
+					Password:                    "password",
+					DomainName:                  "Default",
+					Region:                      "eu-central1",
+				},
+				BlockStorage: BlockStorageOpts{},
+				LoadBalancer: LoadBalancerOpts{},
+				Version:      "1.10.0",
+			},
+		},
 	}
 
 	for _, test := range tests {
