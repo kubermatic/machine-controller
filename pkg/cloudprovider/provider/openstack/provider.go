@@ -122,7 +122,7 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	c.ApplicationCredentialID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialID, "OS_APPLICATION_CREDENTIAL_ID")
 	if err == nil {
 		klog.V(6).Infof("applicationCredentialID from configuration or environment was found.")
-		c.ApplicationCredentialSecret, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
+		c.ApplicationCredentialSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
 		if err != nil {
 			return fmt.Errorf("failed to get the value of \"applicationCredentialSecret\" field, error = %v", err)
 		}
