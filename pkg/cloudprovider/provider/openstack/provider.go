@@ -127,23 +127,21 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 			return fmt.Errorf(`failed to get the value of "applicationCredentialSecret" field, error = %v`, err)
 		}
 		return nil
-	} else {
-		c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
-		if err != nil {
-			return fmt.Errorf("failed to get the value of \"username\" field, error = %v", err)
-		}
-		c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
-		if err != nil {
-			return fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
-		}
-		c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
-		if err != nil {
-			return fmt.Errorf("failed to get the value of \"tenantName\" field, error = %v", err)
-		}
-		c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
-		if err != nil {
-			return fmt.Errorf("failed to get the value of \"tenantID\" field, error = %v", err)
-		}
+	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"username\" field, error = %v", err)
+	}
+	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
+	}
+	c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"tenantName\" field, error = %v", err)
+	}
+	c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"tenantID\" field, error = %v", err)
 	}
 	return nil
 }
