@@ -21,9 +21,9 @@ limitations under the License.
 package centos
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/semver"
@@ -40,22 +40,17 @@ type Provider struct{}
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+		return "", fmt.Errorf("failed to parse user-data template: %w", err)
 	}
 
 	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
 	if err != nil {
-		return "", fmt.Errorf("invalid kubelet version: '%v'", err)
-	}
-
-	dockerVersion, err := userdatahelper.DockerVersionYum(kubeletVersion)
-	if err != nil {
-		return "", fmt.Errorf("invalid docker version: %v", err)
+		return "", fmt.Errorf("invalid kubelet version: %w", err)
 	}
 
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get provider config: %v", err)
+		return "", fmt.Errorf("failed to get provider config: %w", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {
@@ -68,12 +63,12 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	centosConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse OperatingSystemSpec: '%v'", err)
+		return "", fmt.Errorf("failed to parse OperatingSystemSpec: %w", err)
 	}
 
 	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(req.Kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
+		return "", fmt.Errorf("error extracting server address from kubeconfig: %w", err)
 	}
 
 	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
@@ -83,36 +78,54 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	kubernetesCACert, err := userdatahelper.GetCACert(req.Kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting cacert: %v", err)
+		return "", fmt.Errorf("error extracting cacert: %w", err)
+	}
+
+	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemCentOS)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)
+	}
+
+	crConfig, err := crEngine.Config()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
 	}
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec     *providerconfigtypes.Config
-		OSConfig         *Config
-		KubeletVersion   string
-		DockerVersion    string
-		ServerAddr       string
-		Kubeconfig       string
-		KubernetesCACert string
-		NodeIPScript     string
+		ProviderSpec                   *providerconfigtypes.Config
+		OSConfig                       *Config
+		KubeletVersion                 string
+		ServerAddr                     string
+		Kubeconfig                     string
+		KubernetesCACert               string
+		NodeIPScript                   string
+		ExtraKubeletFlags              []string
+		ContainerRuntimeScript         string
+		ContainerRuntimeConfigFileName string
+		ContainerRuntimeConfig         string
 	}{
-		UserDataRequest:  req,
-		ProviderSpec:     pconfig,
-		OSConfig:         centosConfig,
-		KubeletVersion:   kubeletVersion.String(),
-		DockerVersion:    dockerVersion,
-		ServerAddr:       serverAddr,
-		Kubeconfig:       kubeconfigString,
-		KubernetesCACert: kubernetesCACert,
-		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
+		UserDataRequest:                req,
+		ProviderSpec:                   pconfig,
+		OSConfig:                       centosConfig,
+		KubeletVersion:                 kubeletVersion.String(),
+		ServerAddr:                     serverAddr,
+		Kubeconfig:                     kubeconfigString,
+		KubernetesCACert:               kubernetesCACert,
+		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
+		ExtraKubeletFlags:              crEngine.KubeletFlags(),
+		ContainerRuntimeScript:         crScript,
+		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
+		ContainerRuntimeConfig:         crConfig,
 	}
-	b := &bytes.Buffer{}
-	err = tmpl.Execute(b, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to execute user-data template: %v", err)
+
+	buf := strings.Builder{}
+	if err = tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute user-data template: %w", err)
 	}
-	return userdatahelper.CleanupTemplateOutput(b.String())
+
+	return userdatahelper.CleanupTemplateOutput(buf.String())
 }
 
 // UserData template.
@@ -191,19 +204,9 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
-    yum install -y yum-utils
-    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-{{- /*	Due to DNF modules we have to do this on docker-ce repo
-		More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473 */}}
-    sed -i 's/\$releasever/7/g' /etc/yum.repos.d/docker-ce.repo
-    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
-
-{{- /* We need to explicitly specify docker-ce and docker-ce-cli to the same version.
-	See: https://github.com/docker/cli/issues/2533 */}}
-
-    DOCKER_VERSION='{{ .DockerVersion }}'
-    yum install -y docker-ce-${DOCKER_VERSION} \
-      docker-ce-cli-${DOCKER_VERSION} \
+    yum install -y \
+      device-mapper-persistent-data \
+      lvm2 \
       ebtables \
       ethtool \
       nfs-utils \
@@ -212,12 +215,12 @@ write_files:
       socat \
       wget \
       curl \
-      yum-plugin-versionlock \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
       ipvsadm
-    yum versionlock add docker-ce-*
+
+{{ .ContainerRuntimeScript | indent 4 }}
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
     # set kubelet nodeip environment variable
@@ -227,10 +230,8 @@ write_files:
     {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
-    systemctl enable --now docker
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
-    systemctl enable --now --no-block docker-healthcheck.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -243,7 +244,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 4 }}
+{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
 
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
@@ -289,38 +290,15 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/docker/daemon.json
+- path: {{ .ContainerRuntimeConfigFileName }}
   permissions: "0644"
   content: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 4 }}
+{{ .ContainerRuntimeConfig | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
   content: |
 {{ kubeletHealthCheckSystemdUnit | indent 4 }}
-
-- path: /etc/systemd/system/docker-healthcheck.service
-  permissions: "0644"
-  content: |
-{{ containerRuntimeHealthCheckSystemdUnit | indent 4 }}
-
-{{- if or .InsecureRegistries .RegistryMirrors }}
-- path: /run/containers/registries.conf
-  permissions: "0644"
-  content: |
-    {{- if .InsecureRegistries}}
-    INSECURE_REGISTRY="{{range .InsecureRegistries}}--insecure-registry {{.}} {{end}}"
-    {{- end}}
-    {{- if .RegistryMirrors}}
-    REGISTRIES="{{range .RegistryMirrors}}--registry-mirror {{.}} {{end}}"
-    {{- end}}
-{{- end}}
-
-- path: /etc/systemd/system/docker.service.d/environment.conf
-  permissions: "0644"
-  content: |
-    [Service]
-    EnvironmentFile=-/etc/environment
 
 runcmd:
 - systemctl start setup.service

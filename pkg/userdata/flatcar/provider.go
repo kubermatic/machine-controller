@@ -99,22 +99,29 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec     *providerconfigtypes.Config
-		FlatcarConfig    *Config
-		Kubeconfig       string
-		KubernetesCACert string
-		KubeletImage     string
-		KubeletVersion   string
-		NodeIPScript     string
+		ProviderSpec       *providerconfigtypes.Config
+		FlatcarConfig      *Config
+		Kubeconfig         string
+		KubernetesCACert   string
+		KubeletImage       string
+		KubeletVersion     string
+		NodeIPScript       string
+		ExtraKubeletFlags  []string
+		InsecureRegistries []string
+		RegistryMirrors    []string
+		MaxLogSize         string
 	}{
-		UserDataRequest:  req,
-		ProviderSpec:     pconfig,
-		FlatcarConfig:    flatcarConfig,
-		Kubeconfig:       kubeconfigString,
-		KubernetesCACert: kubernetesCACert,
-		KubeletImage:     kubeletImage,
-		KubeletVersion:   kubeletVersion.String(),
-		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
+		UserDataRequest:    req,
+		ProviderSpec:       pconfig,
+		FlatcarConfig:      flatcarConfig,
+		Kubeconfig:         kubeconfigString,
+		KubernetesCACert:   kubernetesCACert,
+		KubeletImage:       kubeletImage,
+		KubeletVersion:     kubeletVersion.String(),
+		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
+		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
+		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		MaxLogSize:         req.ContainerRuntime.NodeMaxLogSize,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -175,13 +182,6 @@ networkd:
 
 systemd:
   units:
-{{- /* SysEleven block start */}}
-    - name: kubelet-restart.service
-      enabled: true
-      contents: |
-{{ kubeletRestartOnNotReadySystemdUnit | indent 10 }}
-{{- /* SysEleven block end */}}
-
 {{- if .FlatcarConfig.DisableUpdateEngine }}
     - name: update-engine.service
       mask: true
@@ -299,7 +299,7 @@ systemd:
           -v /var/lib/kubelet:/var/lib/kubelet:rshared \
           -v /var/log/pods:/var/log/pods \
           {{ .KubeletImage }} \
-{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 10 }}
+{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 10 }}
         ExecStop=-/usr/bin/docker stop %n
         Restart=always
         RestartSec=10
@@ -316,15 +316,6 @@ systemd:
 
 storage:
   files:
-{{- /* SysEleven block start */}}
-    - path: /opt/kubelet-restart.sh
-      filesystem: root
-      mode: 0755
-      contents:
-        inline: |
-{{ kubeletRestartOnNotReadyScript | indent 10 }}
-{{- /* SysEleven block end */}}
-
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root
       mode: 0644
@@ -614,7 +605,7 @@ coreos:
         -v /var/lib/kubelet:/var/lib/kubelet:rshared \
         -v /var/log/pods:/var/log/pods \
         {{ .KubeletImage }} \
-{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 10 }}
+{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 10 }}
       ExecStop=-/usr/bin/docker stop %n
       Restart=always
       RestartSec=10

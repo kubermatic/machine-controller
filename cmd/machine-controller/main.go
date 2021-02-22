@@ -41,6 +41,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinedeploymentcontroller "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment"
 	machinesetcontroller "github.com/kubermatic/machine-controller/pkg/controller/machineset"
@@ -80,6 +81,7 @@ var (
 	nodeHyperkubeImage      string
 	nodeKubeletRepository   string
 	nodeKubeletFeatureGates string
+	nodeContainerRuntime    string
 )
 
 const (
@@ -154,8 +156,9 @@ func main() {
 	flag.StringVar(&nodeMaxLogSize, "node-max-log-size", "", "Maximum size for docker logfile")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag. Only has effect on CoreOS Container Linux and Flatcar Linux, and for kubernetes < 1.18.")
-	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/poseidon/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
+	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
 	flag.StringVar(&nodeKubeletFeatureGates, "node-kubelet-feature-gates", "RotateKubeletServerCertificate=true", "Feature gates to set on the kubelet. Default: RotateKubeletServerCertificate=true")
+	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
 	flag.Parse()
@@ -234,6 +237,20 @@ func main() {
 	ctrlMetrics := machinecontroller.NewMachineControllerMetrics()
 	ctrlMetrics.MustRegister(metrics.Registry)
 
+	var insecureRegistries []string
+	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
+		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {
+			insecureRegistries = append(insecureRegistries, trimmedRegistry)
+		}
+	}
+
+	var registryMirrors []string
+	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
+		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
+			registryMirrors = append(registryMirrors, trimmedMirror)
+		}
+	}
+
 	runOptions := controllerRunOptions{
 		kubeClient:            kubeClient,
 		kubeconfigProvider:    kubeconfigProvider,
@@ -252,29 +269,17 @@ func main() {
 			KubeletRepository:   nodeKubeletRepository,
 			KubeletFeatureGates: kubeletFeatureGates,
 			PauseImage:          nodePauseImage,
+			ContainerRuntime: containerruntime.Get(
+				nodeContainerRuntime,
+				containerruntime.WithInsecureRegistries(insecureRegistries),
+				containerruntime.WithRegistryMirrors(registryMirrors),
+				containerruntime.WithNodeMaxLogSize(nodeMaxLogSize),
+			),
 		},
 	}
+
 	if parsedJoinClusterTimeout != nil {
 		runOptions.joinClusterTimeout = parsedJoinClusterTimeout
-	}
-
-	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
-		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {
-			runOptions.node.InsecureRegistries = append(runOptions.node.InsecureRegistries, trimmedRegistry)
-		}
-	}
-
-	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
-		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
-			runOptions.node.RegistryMirrors = append(runOptions.node.RegistryMirrors, trimmedMirror)
-		}
-	}
-
-	if nodeMaxLogSize != "" {
-		if err := validateSize(nodeMaxLogSize); err != nil {
-			klog.Fatalf("error parsing max-log-size: %s is not a valid size", nodeMaxLogSize)
-		}
-		runOptions.node.MaxLogSize = nodeMaxLogSize
 	}
 
 	if bootstrapTokenServiceAccountName != "" {

@@ -84,22 +84,29 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec     *providerconfigtypes.Config
-		OSConfig         *Config
-		ServerAddr       string
-		KubeletVersion   string
-		Kubeconfig       string
-		KubernetesCACert string
-		NodeIPScript     string
+		ProviderSpec       *providerconfigtypes.Config
+		OSConfig           *Config
+		ServerAddr         string
+		KubeletVersion     string
+		Kubeconfig         string
+		KubernetesCACert   string
+		NodeIPScript       string
+		ExtraKubeletFlags  []string
+		InsecureRegistries []string
+		RegistryMirrors    []string
+		MaxLogSize         string
 	}{
-		UserDataRequest:  req,
-		ProviderSpec:     pconfig,
-		OSConfig:         slesConfig,
-		ServerAddr:       serverAddr,
-		KubeletVersion:   kubeletVersion.String(),
-		Kubeconfig:       kubeconfigString,
-		KubernetesCACert: kubernetesCACert,
-		NodeIPScript:     userdatahelper.SetupNodeIPEnvScript(),
+		UserDataRequest:    req,
+		ProviderSpec:       pconfig,
+		OSConfig:           slesConfig,
+		ServerAddr:         serverAddr,
+		KubeletVersion:     kubeletVersion.String(),
+		Kubeconfig:         kubeconfigString,
+		KubernetesCACert:   kubernetesCACert,
+		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
+		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
+		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		MaxLogSize:         req.ContainerRuntime.NodeMaxLogSize,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -197,7 +204,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints | indent 4 }}
+{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |

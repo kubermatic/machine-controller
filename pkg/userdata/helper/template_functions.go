@@ -39,6 +39,7 @@ func TxtFuncMap() template.FuncMap {
 	funcMap["kubeletHealthCheckSystemdUnit"] = KubeletHealthCheckSystemdUnit
 	funcMap["containerRuntimeHealthCheckSystemdUnit"] = ContainerRuntimeHealthCheckSystemdUnit
 	funcMap["dockerConfig"] = DockerConfig
+	funcMap["containerdConfig"] = ContainerdConfig
 	funcMap["proxyEnvironment"] = ProxyEnvironment
 
 	// Syseleven Block: Workaround for kubelet stopped posting node status

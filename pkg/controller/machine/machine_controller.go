@@ -25,15 +25,16 @@ import (
 	"time"
 
 	"github.com/heptiolabs/healthcheck"
-	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -137,6 +138,8 @@ type NodeSettings struct {
 	// Translates to feature gates on the kubelet.
 	// Default: RotateKubeletServerCertificate=true
 	KubeletFeatureGates map[string]bool
+	// container runtime to install
+	ContainerRuntime containerruntime.Config
 }
 
 type KubeconfigProvider interface {
@@ -694,16 +697,15 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				CloudProviderName:     cloudProviderName,
 				ExternalCloudProvider: r.externalCloudProvider,
 				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
-				InsecureRegistries:    r.nodeSettings.InsecureRegistries,
-				RegistryMirrors:       r.nodeSettings.RegistryMirrors,
-				MaxLogSize:            r.nodeSettings.MaxLogSize,
 				PauseImage:            r.nodeSettings.PauseImage,
 				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
 				KubeletRepository:     r.nodeSettings.KubeletRepository,
 				KubeletFeatureGates:   r.nodeSettings.KubeletFeatureGates,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
+				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
 			}
+
 			userdata, err := userdataPlugin.UserData(req)
 			if err != nil {
 				return nil, fmt.Errorf("failed get userdata: %v", err)
