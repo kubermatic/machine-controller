@@ -77,10 +77,19 @@ function kubelet_monitoring() {
   sleep 120
   local -r max_seconds=10
   local output=""
-  while [ 1 ]; do
-    if ! output=$(curl -m "${max_seconds}" -f -s -S http://127.0.0.1:10248/healthz 2>&1); then
+  while true; do
+    local failed=false
+
+    if journalctl -u kubelet -n 1 | grep -q "use of closed network connection"; then
+      failed=true
+      echo "Kubelet stopped posting node status. Restarting"
+    elif ! output=$(curl -m "${max_seconds}" -f -s -S http://127.0.0.1:10248/healthz 2>&1); then
+      failed=true
       # Print the response and/or errors.
-      echo $output
+      echo "$output"
+    fi
+
+    if [[ "$failed" == "true" ]]; then
       echo "Kubelet is unhealthy!"
       systemctl kill kubelet
       # Wait for a while, as we don't want to kill it again before it is really up.
