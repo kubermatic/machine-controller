@@ -30,7 +30,7 @@ set -o pipefail
 
 # We simply kill the process when there is a failure. Another systemd service will
 # automatically restart the process.
-function container_runtime_monitoring {
+function container_runtime_monitoring() {
   local -r max_attempts=5
   local attempt=1
   local -r crictl="${KUBE_HOME}/bin/crictl"
@@ -45,22 +45,22 @@ function container_runtime_monitoring {
   fi
   # Container runtime startup takes time. Make initial attempts before starting
   # killing the container runtime.
-  until timeout 60 ${healthcheck_command} > /dev/null; do
-    if (( attempt == max_attempts )); then
+  until timeout 60 "${healthcheck_command}" >/dev/null; do
+    if ((attempt == max_attempts)); then
       echo "Max attempt ${max_attempts} reached! Proceeding to monitor container runtime healthiness."
       break
     fi
     echo "$attempt initial attempt \"${healthcheck_command}\"! Trying again in $attempt seconds..."
-    sleep "$(( 2 ** attempt++ ))"
+    sleep "$((2 ** attempt++))"
   done
   while true; do
-    if ! timeout 60 ${healthcheck_command} > /dev/null; then
+    if ! timeout 60 "${healthcheck_command}" >/dev/null; then
       echo "Container runtime ${container_runtime_name} failed!"
       if [[ "$container_runtime_name" == "docker" ]]; then
-          # Dump stack of docker daemon for investigation.
-          # Log file name looks like goroutine-stacks-TIMESTAMP and will be saved to
-          # the exec root directory, which is /var/run/docker/ on Ubuntu and COS.
-          pkill -SIGUSR1 dockerd
+        # Dump stack of docker daemon for investigation.
+        # Log file name looks like goroutine-stacks-TIMESTAMP and will be saved to
+        # the exec root directory, which is /var/run/docker/ on Ubuntu and COS.
+        pkill -SIGUSR1 dockerd
       fi
       systemctl kill --kill-who=main "${container_runtime_name}"
       # Wait for a while, as we don't want to kill it again before it is really up.
@@ -71,7 +71,7 @@ function container_runtime_monitoring {
   done
 }
 
-function kubelet_monitoring {
+function kubelet_monitoring() {
   echo "Wait for 2 minutes for kubelet to be functional"
   # TODO(andyzheng0831): replace it with a more reliable method if possible.
   sleep 120
@@ -91,7 +91,6 @@ function kubelet_monitoring {
   done
 }
 
-
 ############## Main Function ################
 if [[ "$#" -ne 1 ]]; then
   echo "Usage: health-monitor.sh <container-runtime/kubelet>"
@@ -108,5 +107,5 @@ if [[ "${component}" == "container-runtime" ]]; then
 elif [[ "${component}" == "kubelet" ]]; then
   kubelet_monitoring
 else
-  echo "Health monitoring for component "${component}" is not supported!"
+  echo "Health monitoring for component ${component} is not supported!"
 fi
