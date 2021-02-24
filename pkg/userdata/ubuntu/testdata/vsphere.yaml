@@ -160,7 +160,7 @@ write_files:
     done
 
     if [[ ! -x /opt/bin/health-monitor.sh ]]; then
-        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/88b46cccdaa3352d657c1b7a0d85a5ae029459da/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
 
