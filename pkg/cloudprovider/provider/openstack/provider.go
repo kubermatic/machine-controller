@@ -289,13 +289,15 @@ func setProviderSpec(rawConfig openstacktypes.RawConfig, s v1alpha1.ProviderSpec
 
 func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	opts := gophercloud.AuthOptions{
-		IdentityEndpoint: c.IdentityEndpoint,
-		Username:         c.Username,
-		Password:         c.Password,
-		DomainName:       c.DomainName,
-		TenantName:       c.TenantName,
-		TenantID:         c.TenantID,
-		TokenID:          c.TokenID,
+		IdentityEndpoint:            c.IdentityEndpoint,
+		Username:                    c.Username,
+		Password:                    c.Password,
+		DomainName:                  c.DomainName,
+		TenantName:                  c.TenantName,
+		TenantID:                    c.TenantID,
+		TokenID:                     c.TokenID,
+		ApplicationCredentialID:     c.ApplicationCredentialID,
+		ApplicationCredentialSecret: c.ApplicationCredentialSecret,
 	}
 
 	pc, err := goopenstack.AuthenticatedClient(opts)
