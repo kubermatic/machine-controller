@@ -120,7 +120,10 @@ var floatingIPAssignLock = &sync.Mutex{}
 func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig) error {
 	var err error
 	c.ApplicationCredentialID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialID, "OS_APPLICATION_CREDENTIAL_ID")
-	if err == nil {
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"applicationCredentialID\" field, error = %v", err)
+	}
+	if c.ApplicationCredentialID != "" {
 		klog.V(6).Infof("applicationCredentialID from configuration or environment was found.")
 		c.ApplicationCredentialSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
 		if err != nil {
