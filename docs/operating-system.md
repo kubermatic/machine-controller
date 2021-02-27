@@ -4,15 +4,15 @@
 
 ### Cloud provider
 
-|   | Ubuntu | Container Linux | CentOS | Flatcar | RHEL | SLES | Amazon Linux 2 |
-|---|---|---|---|---|---|---|---|
-| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Azure | ✓ | ✓ | ✓ | ✓ | ✓ | x | x |
-| Digitalocean  | ✓ | ✓ | ✓ | x | x | x | x |
-| Google Cloud Platform | ✓ | ✓ | x | x | ✓ | x | x |
-| Hetzner | ✓ | x | ✓ | x | x | x | x |
-| Packet | ✓ | ✓ | ✓ | x | x | x | x |
-| Openstack | ✓ | ✓ | ✓ | x | ✓ | x | x |
+|   | Ubuntu | Container Linux | CentOS | Flatcar | RHEL | SLES | Amazon Linux 2 | Windows |
+|---|---|---|---|---|---|---|---|---|
+| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ? |
+| Azure | ✓ | ✓ | ✓ | ✓ | ✓ | x | x | ? |
+| Digitalocean  | ✓ | ✓ | ✓ | x | x | x | x | ? |
+| Google Cloud Platform | ✓ | ✓ | x | x | ✓ | x | x | ? |
+| Hetzner | ✓ | x | ✓ | x | x | x | x | ? |
+| Packet | ✓ | ✓ | ✓ | x | x | x | x | ? |
+| Openstack | ✓ | ✓ | ✓ | x | ✓ | x | x | ✓ |
 
 ## Configuring a operating system
 
@@ -23,6 +23,7 @@ Allowed values:
 - `rhel`
 - `sles`
 - `ubuntu`
+- `windows`
 
 OS specific settings can be set via `machine.spec.providerConfig.operatingSystemSpec`.
 
@@ -38,6 +39,7 @@ Machine controller may work with other OS versions that are not listed in the ta
 | RHEL | 8.0, 8.1 |
 | SLES |  SLES 15 SP1 |
 | Ubuntu | 18.04 LTS |
+| Windows | 2019, 20H2.3 |
 
 ### Ubuntu
 
@@ -136,4 +138,35 @@ spec:
         value:
           ...
           operatingSystem: "centos"
+```
+
+### Windows
+
+```yaml
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: machine1
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerConfig:
+        value:
+          ...
+          operatingSystem: "windows"
 ```

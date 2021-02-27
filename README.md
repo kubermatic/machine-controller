@@ -20,7 +20,7 @@
 # Features
 ## What works
 - Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, VMWare Vsphere, Linode, Hetzner cloud and Kubevirt (experimental)
-- Using Ubuntu, Flatcar or CentOS 7 distributions ([not all distributions work on all providers](/docs/operating-system.md))
+- Using Ubuntu, Flatcar, CentOS 7 or Windows distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
 ## Supported Kubernetes versions
 machine-controller tries to follow as close as possible the Kubernetes version

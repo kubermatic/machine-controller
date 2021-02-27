@@ -27,9 +27,9 @@ const (
 )
 
 type Engine interface {
-	KubeletFlags() []string
+	KubeletFlags(os types.OperatingSystem) []string
 	ScriptFor(os types.OperatingSystem) (string, error)
-	ConfigFileName() string
+	ConfigFileName(os types.OperatingSystem) string
 	Config() (string, error)
 }
 

@@ -71,7 +71,7 @@ Provider implementations are located in individual packages in `github.com/kuber
 When retrieving the individual configuration from the provider specification a type for unmarshalling is needed. Here first the provider configuration is read and based on it the individual values of the configuration are retrieved. Typically the access data (token, ID/key combination, document with all information) alternatively can be passed via an environment variable. According
 methods of the used `providerconfig.ConfigVarResolver` do support this.
 
-For creation of new machines the support of the possible information has to be checked. The machine controller supports _CentOS_, _Flatcar_ and _Ubuntu_. In case one or more aren't supported by the cloud infrastructure the error `providerconfig.ErrOSNotSupported` has to be returned.
+For creation of new machines the support of the possible information has to be checked. The machine controller supports _CentOS_, _Flatcar_, _Ubuntu_ and _Windows_. In case one or more aren't supported by the cloud infrastructure the error `providerconfig.ErrOSNotSupported` has to be returned.
 
 ## Integrate provider into the Machine Controller
 

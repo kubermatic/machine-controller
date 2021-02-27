@@ -38,11 +38,22 @@ func (eng *Containerd) Config() (string, error) {
 	return helper.ContainerdConfig(eng.insecureRegistries, eng.registryMirrors)
 }
 
-func (eng *Containerd) ConfigFileName() string {
+func (eng *Containerd) ConfigFileName(os types.OperatingSystem) string {
+	switch os {
+	case types.OperatingSystemWindows:
+		return "C:/Program Files/containerd/config.toml"
+	}
 	return "/etc/containerd/config.toml"
 }
 
-func (eng *Containerd) KubeletFlags() []string {
+func (eng *Containerd) KubeletFlags(os types.OperatingSystem) []string {
+	switch os {
+	case types.OperatingSystemWindows:
+		return []string{
+			"--container-runtime=remote",
+			"--container-runtime-endpoint=npipe:////./pipe/containerd-containerd",
+		}
+	}
 	return []string{
 		"--container-runtime=remote",
 		"--container-runtime-endpoint=unix:///run/containerd/containerd.sock",
@@ -72,6 +83,9 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 		return "", nil
 	case types.OperatingSystemSLES:
 		return "", nil
+	case types.OperatingSystemWindows:
+		err := containerdWindowsTemplate.Execute(&buf, args)
+		return buf.String(), err
 	}
 
 	return "", fmt.Errorf("unknown OS: %s", os)
@@ -149,5 +163,21 @@ apt-mark hold containerd.io
 
 systemctl daemon-reload
 systemctl enable --now containerd
+`))
+
+	// grpc: address = "\\\\.\\pipe\\containerd-containerd"
+	// bin_dir = "C:\\Program Files\\containerd\\cni\\bin"
+    // conf_dir = "C:\\Program Files\\containerd\\cni\\conf"
+	containerdAptTemplate = template.Must(template.New("containerd-windows").Parse(`
+Set-Location -Path "$env:tmp"
+Start-Process -FilePath "curl.exe" -ArgumentList @("-OL", "https://github.com/containerd/containerd/releases/download/v{{ .ContainerdVersion }}/containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait
+Start-Process -FilePath "tar.exe" -ArgumentList @("xvf", ".\containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait
+
+Copy-Item -Path ".\bin\" -Destination "$env:ProgramFiles\containerd" -Recurse -Force
+Set-Location -Path "$env:ProgramFiles\containerd\"
+.\containerd.exe config default | Out-File -PSPath "config.toml" -Encoding ascii
+
+Start-Process -FilePath "$env:ProgramFiles\containerd\containerd.exe" -ArgumentList @("--register-service") -Wait
+Start-Service -Name "containerd"
 `))
 )

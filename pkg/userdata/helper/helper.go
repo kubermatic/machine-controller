@@ -269,3 +269,36 @@ func SSHConfigAddendum() string {
 	return `TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
 CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa`
 }
+
+func SetupWinNodeIPEnvScript() string {
+	return `#ps1
+[string[]]$DEFAULT_IF_IPS = Get-NetRoute | Where-Object {
+	$_.DestinationPrefix -in @("::/0", "0.0.0.0/0")
+} | ForEach-Object {
+	Get-NetIPAddress -ifIndex $_.ifIndex
+} | Select-Object -ExpandProperty IPAddress | Where-Object {
+	$_ -notmatch "(fe80::|169.254)"
+}
+if ($DEFAULT_IF_IPS.Count -eq 0) {
+	# We neither have a global prefix nor a non APIPA address.
+	# Therefore use these.
+	[string[]]$DEFAULT_IF_IPS = Get-NetRoute | Where-Object {
+		$_.DestinationPrefix -in @("::/0", "0.0.0.0/0")
+	} | ForEach-Object {
+		Get-NetIPAddress -ifIndex $_.ifIndex
+	} | Select-Object -ExpandProperty IPAddress
+}
+[string]$DEFAULT_IF_IP = if ($DEFAULT_IF_IPS.Count -eq 1) {
+	$DEFAULT_IF_IPS[0] | Wrte-Output
+} else {
+	[string]$ipv6 = $DEFAULT_IF_IPS | Where-Object { $_ -like "*:*" } | Select-Object -First 1
+	if ([String]::IsNullOrEmpty($ipv6)) {
+		// Node doesn't have an usable IPv6 address
+		$DEFAULT_IF_IPS | Where-Object { $_ -like "*.*" } | Select-Object -First 1 | Write-Output
+	} else {
+		$ipv6 | Write-Output
+	}
+}
+Write-Output "KUBELET_NODE_IP=${DEFAULT_IF_IP}" | Out-File -PSPath "C:/k/nodeip.conf" -Force -Encoding ascii
+`
+}

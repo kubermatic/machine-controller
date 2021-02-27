@@ -209,6 +209,12 @@ CentOS 7 image can be found at the following link: <https://cloud.centos.org/cen
 
 Follow [qcow2](#create-template-vm-from-qcow2) template VM creation guide.
 
+#### Windows
+
+Windows Server 2019 images (testing only and registration required) can be found at the following link: <https://www.microsoft.com/evalcenter/evaluate-windows-server-2019>.
+Windows Server Semi-Annual images can be found only within the VLSC or Visual Studio Subscription portal.
+More information at the following link: <https://docs.microsoft.com/windows-server/get-started-19/servicing-channels-19>.
+
 ## Provider configuration
 
 VSphere provider accepts the following configuration parameters:

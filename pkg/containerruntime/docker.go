@@ -42,11 +42,22 @@ func (eng *Docker) Config() (string, error) {
 	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors)
 }
 
-func (eng *Docker) ConfigFileName() string {
+func (eng *Docker) ConfigFileName(os types.OperatingSystem) string {
+	switch os {
+	case types.OperatingSystemWindows:
+		return "C:/ProgramData/Docker/config/daemon.json"
+	}
 	return "/etc/docker/daemon.json"
 }
 
-func (eng *Docker) KubeletFlags() []string {
+func (eng *Docker) KubeletFlags(os types.OperatingSystem) []string {
+	switch os {
+	case type.OperatingSystemWindows:
+		return []string{
+			"--container-runtime=docker",
+			"--container-runtime-endpoint=npipe:////./pipe/docker_engine",
+		}
+	}
 	return []string{
 		"--container-runtime=docker",
 		"--container-runtime-endpoint=unix:///var/run/dockershim.sock",
@@ -84,6 +95,9 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 		return "", nil
 	case types.OperatingSystemSLES:
 		return "", nil
+	case types.OperatingSystemWindows:
+		err := dockerWindowsTemplate.Execute(&buf, args)
+		return buf.String(), err
 	}
 
 	return "", fmt.Errorf("unknown OS: %s", os)
@@ -161,5 +175,13 @@ apt-mark hold docker-ce* containerd.io
 
 systemctl daemon-reload
 systemctl enable --now docker
+`))
+
+	// https://docs.microsoft.com/virtualization/windowscontainers/quick-start/set-up-environment?tabs=Windows-Server
+	dockerWindowsTemplate = template.Must(template.New("docker-windows").Parse(`
+Install-Module -Name DockerMsftProvider -Repository PSGallery -Force
+Install-Package -Name docker -ProviderName DockerMsftProvider -RequiredVersion "{{ .DockerVersion }}" -Force
+# TODO: Windows needs to reboot here. Or the rest of this will fail.
+Start-Service Docker
 `))
 )

@@ -6,6 +6,7 @@ The following operating systems are supported
 - Ubuntu 18.04
 - CentOS 7
 - Flatcar
+- Windows
 
 ## Requirements
 - The cluster needs to use the bootstrap token authentication
