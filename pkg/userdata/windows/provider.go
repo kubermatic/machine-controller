@@ -160,6 +160,78 @@ write_files:
       C:/k/PrepareNode.ps1 -KubernetesVersion "v{{ .KubeletVersion }}" -ContainerRuntime "{{ .ContainerRuntimeName }}"
       # set kubelet nodeip environment variable
       C:/k/setup_net_env.ps1
+      C:/k/Install-PowerShellCore.ps1
+      C:/k/Install-OpenSSH.ps1
+      # Enable ICMP echo requests this instance over IPv4 and IPv6
+      (Get-NetFirewallRule -Group "@FirewallAPI.dll,-28502").Where{$_.Name -like "*ICMP*"} | Enable-NetFirewallRule
+      # Contact Microsoft activation servers and activate windows if possible (will silently fail if no activation is possible)
+      $null = Start-Process "C:\Windows\System32\cscript.exe" -ArgumentList @("C:\Windows\System32\slmgr.vbs", "/ato")
+      # Disable IPv6 Privacy Extension (causes conflicts with Portsecurity implementations)
+      Set-NetIPv6Protocol -RandomizeIdentifiers Disabled -UseTemporaryAddresses Disabled
+  - path: "C:/k/Install-PowerShellCore.ps1
+    permissions: '0644'
+    content: |
+      $pwshInstallPath = 'C:/Program Files/PowerShell/7'
+      $pwshTempFile = Join-Path -Path $env:TEMP -ChildPath 'PWSH.msi'
+      $pwshTempFileQ = '"' + $pwshTempFile + '"'
+      $newVersionJson = ConvertFrom-Json -InputObject (Invoke-WebRequest -Uri 'https://api.github.com/repos/PowerShell/PowerShell/releases/latest' -UseBasicParsing).Content
+      $newVersionURL = $newVersionJson.assets.where{$_.name -like 'PowerShell-*-win-x64.msi'}.browser_download_url
+      Invoke-WebRequest -Uri $newVersionURL -OutFile $pwshTempFile -UseBasicParsing
+      Get-Package -ProviderName msi -Name "PowerShell *" | ForEach-Object { $_ | Uninstall-Package -Force -PackageManagementProvider msi | Out-Null }
+      $installArguments = @('/i', $pwshTempFileQ, '/qn', '/norestart')
+      Start-Process -FilePath 'msiexec.exe' -ArgumentList $installArguments -Wait -NoNewWindow
+      Remove-Item -Path $pwshTempFile -Force
+      Push-Location -Path $pwshInstallPath
+      $pwshSetupRemoting = @('-NoLogo', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-NoProfile', '-File', "$pwshInstallPath\Install-PowerShellRemoting.ps1")
+      Start-Process -FilePath '.\pwsh.exe' -ArgumentList $pwshArguments -Wait -NoNewWindow
+      Pop-Location
+      $path = [Environment]::GetEnvironmentVariable('Path', [System.EnvironmentVariableTarget]::Machine) -split ';'
+      if ($path -notcontains $pwshInstallPath) {
+        $path += $pwshInstallPath
+      }
+      [Environment]::SetEnvironmentVariable('Path', $path -join ';', [System.EnvironmentVariableTarget]::Machine)
+  - path: "C:/k/Install-OpenSSH.ps1
+    permissions: '0644'
+    content: |
+      $OpenSSHTempFile = Join-Path -Path $env:TEMP -ChildPath 'openssh.zip'
+      $OpenSSHInstallPath = 'C:/Program Files/OpenSSH-Win64'
+      $latestVersionURL = (ConvertFrom-Json -InputObject (Invoke-WebRequest -Uri 'https://api.github.com/repos/PowerShell/Win32-OpenSSH/releases/latest' -UseBasicParsing).Content).assets.where{$_.name -eq 'OpenSSH-Win64.zip'}.browser_download_url
+      Invoke-WebRequest -Uri $latestVersionURL -OutFile $OpenSSHTempFile -UseBasicParsing
+      if (Test-Path -Path $OpenSSHInstallPath) {
+        Push-Location -Path $OpenSSHInstallPath
+        try { ./uninstall-sshd.ps1 } catch {}
+        Pop-Location
+        Item -Path $OpenSSHInstallPath -Recurse -Force
+      }
+      Expand-Archive -Path $OpenSSHTempFile -DestinationPath $OpenSSHInstallPath -Force
+      Remove-Item -Path $OpenSSHTempFile -Force
+      Push-Location -Path $OpenSSHInstallPath
+      ./install-sshd.ps1
+      Pop-Location
+      New-Item -Path $env:ProgramData -Name 'ssh' -ItemType Directory -Force
+      $path = [Environment]::GetEnvironmentVariable('Path', [System.EnvironmentVariableTarget]::Machine) -split ';'
+      if ($path -notcontains $OpenSSHInstallPath) {
+        $path += $OpenSSHInstallPath
+      }
+      [Environment]::SetEnvironmentVariable('Path', $path -join ';', [System.EnvironmentVariableTarget]::Machine)
+      try { Remove-NetFirewallRule -Name 'sshd' } catch {}
+      New-NetFirewallRule -Name 'sshd' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+      Set-Service -Name 'sshd' -StartupType Automatic
+      Set-Service -Name 'ssh-agent' -StartupType Automatic
+      Start-Service -Name 'sshd'
+      Start-Service -Name 'ssh-agent'
+  - path: "C:/ProgramData/ssh/sshd_config"
+    permissions: "0644"
+    content: |
+      $configFile = @'
+      Port 22
+      AuthorizedKeysFile  .ssh/authorized_keys
+      PasswordAuthentication yes
+      PubkeyAuthentication yes
+      Subsystem sftp  sftp-server.exe
+      Subsystem powershell  pwsh.exe -sshs -NoLogo -NoProfile
+      '@
+
   - path: "C:/k/cloud-config"
     permissions: "0600"
     content: |
