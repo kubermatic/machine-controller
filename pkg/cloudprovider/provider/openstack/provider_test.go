@@ -103,8 +103,10 @@ const expectedBlockDeviceBootRequest = `{
 }`
 
 type openstackProviderSpecConf struct {
-	IdentityEndpointURL string
-	RootDiskSizeGB      *int32
+	IdentityEndpointURL         string
+	RootDiskSizeGB              *int32
+	ApplicationCredentialID     string
+	ApplicationCredentialSecret string
 }
 
 func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -119,7 +121,6 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"image": "Standard_Ubuntu_18.04_latest",
 		"network": "public",
 		"nodeVolumeAttachLimit": null,
-		"password": "this_is_a_password",
 		"region": "eu-de",
 		"instanceReadyCheckPeriod": "2m",
 		"instanceReadyCheckTimeout": "2m",
@@ -135,11 +136,17 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 			"system-cluster": "zyx",
 			"system-project": "xxx"
 		},
+		{{- if .ApplicationCredentialID }}
+		"applicationCredentialID": "{{ .ApplicationCredentialID }}",
+		"applicationCredentialSecret": "{{ .ApplicationCredentialSecret }}",
+		{{- else }}
 		"tenantID": "",
 		"tenantName": "eu-de",
+		"username": "dummy",
+		"password": "this_is_a_password",
+		{{- end }}
 		"tokenId": "",
-		"trustDevicePath": false,
-		"username": "dummy"
+		"trustDevicePath": false
 	},
 	"operatingSystem": "flatcar",
 	"operatingSystemSpec": {
@@ -179,6 +186,12 @@ func TestCreateServer(t *testing.T) {
 			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10)},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootRequest,
+		},
+		{
+			name:          "Application Credentials",
+			specConf:      openstackProviderSpecConf{ApplicationCredentialID: "app-cred-id", ApplicationCredentialSecret: "app-cred-secret"},
+			userdata:      "fake-userdata",
+			wantServerReq: expectedServerRequest,
 		},
 	}
 	for _, tt := range tests {

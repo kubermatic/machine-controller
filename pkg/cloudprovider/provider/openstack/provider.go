@@ -80,14 +80,16 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	IdentityEndpoint string
-	Username         string
-	Password         string
-	DomainName       string
-	TenantName       string
-	TenantID         string
-	TokenID          string
-	Region           string
+	IdentityEndpoint            string
+	ApplicationCredentialID     string
+	ApplicationCredentialSecret string
+	Username                    string
+	Password                    string
+	DomainName                  string
+	TenantName                  string
+	TenantID                    string
+	TokenID                     string
+	Region                      string
 
 	// Machine details
 	Image                 string
@@ -115,6 +117,39 @@ const (
 // Protects floating ip assignment
 var floatingIPAssignLock = &sync.Mutex{}
 
+func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig) error {
+	var err error
+	c.ApplicationCredentialID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialID, "OS_APPLICATION_CREDENTIAL_ID")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"applicationCredentialID\" field, error = %v", err)
+	}
+	if c.ApplicationCredentialID != "" {
+		klog.V(6).Infof("applicationCredentialID from configuration or environment was found.")
+		c.ApplicationCredentialSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
+		if err != nil {
+			return fmt.Errorf("failed to get the value of \"applicationCredentialSecret\" field, error = %v", err)
+		}
+		return nil
+	}
+	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"username\" field, error = %v", err)
+	}
+	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
+	}
+	c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"tenantName\" field, error = %v", err)
+	}
+	c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"tenantID\" field, error = %v", err)
+	}
+	return nil
+}
+
 func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
@@ -134,13 +169,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"identityEndpoint\" field, error = %v", err)
 	}
-	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
+	// Retrieve authentication config, username/password or application credentials
+	err = p.getConfigAuth(&c, &rawConfig)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"username\" field, error = %v", err)
-	}
-	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to retrieve authentication credentials, error = %v", err)
 	}
 	// Ignore Region not found as Region might not be found and we can default it later
 	c.Region, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
@@ -187,14 +219,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
 	c.DomainName, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
-	c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"tenantName\" field, error = %v", err)
-	}
-	c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"tenantID\" field, error = %v", err)
-	}
 	c.TokenID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TokenID)
 	if err != nil {
 		return nil, nil, nil, err
@@ -268,13 +292,15 @@ func setProviderSpec(rawConfig openstacktypes.RawConfig, s v1alpha1.ProviderSpec
 
 func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	opts := gophercloud.AuthOptions{
-		IdentityEndpoint: c.IdentityEndpoint,
-		Username:         c.Username,
-		Password:         c.Password,
-		DomainName:       c.DomainName,
-		TenantName:       c.TenantName,
-		TenantID:         c.TenantID,
-		TokenID:          c.TokenID,
+		IdentityEndpoint:            c.IdentityEndpoint,
+		Username:                    c.Username,
+		Password:                    c.Password,
+		DomainName:                  c.DomainName,
+		TenantName:                  c.TenantName,
+		TenantID:                    c.TenantID,
+		TokenID:                     c.TokenID,
+		ApplicationCredentialID:     c.ApplicationCredentialID,
+		ApplicationCredentialSecret: c.ApplicationCredentialSecret,
 	}
 
 	pc, err := goopenstack.AuthenticatedClient(opts)
@@ -372,20 +398,26 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	if c.Username == "" {
-		return errors.New("username must be configured")
-	}
+	if c.ApplicationCredentialID == "" {
+		if c.Username == "" {
+			return errors.New("username must be configured")
+		}
 
-	if c.Password == "" {
-		return errors.New("password must be configured")
+		if c.Password == "" {
+			return errors.New("password must be configured")
+		}
+
+		if c.TenantID == "" && c.TenantName == "" {
+			return errors.New("either tenantID or tenantName must be configured")
+		}
+	} else {
+		if c.ApplicationCredentialSecret == "" {
+			return errors.New("applicationCredentialSecret must be configured in conjunction with applicationCredentialID")
+		}
 	}
 
 	if c.DomainName == "" {
 		return errors.New("domainName must be configured")
-	}
-
-	if c.TenantID == "" && c.TenantName == "" {
-		return errors.New("either tenantID or tenantName must be configured")
 	}
 
 	if c.Image == "" {

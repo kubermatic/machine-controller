@@ -33,10 +33,15 @@ import (
 const (
 	cloudConfigTpl = `[Global]
 auth-url    = {{ .Global.AuthURL | iniEscape }}
+{{- if .Global.ApplicationCredentialID }}
+application-credential-id     = {{ .Global.ApplicationCredentialID | iniEscape }}
+application-credential-secret = {{ .Global.ApplicationCredentialSecret | iniEscape }}
+{{- else }}
 username    = {{ .Global.Username | iniEscape }}
 password    = {{ .Global.Password | iniEscape }}
 tenant-name = {{ .Global.TenantName | iniEscape }}
 tenant-id   = {{ .Global.TenantID | iniEscape }}
+{{- end }}
 domain-name = {{ .Global.DomainName | iniEscape }}
 region      = {{ .Global.Region | iniEscape }}
 
@@ -94,13 +99,15 @@ type BlockStorageOpts struct {
 }
 
 type GlobalOpts struct {
-	AuthURL    string `gcfg:"auth-url"`
-	Username   string
-	Password   string
-	TenantName string `gcfg:"tenant-name"`
-	TenantID   string `gcfg:"tenant-id"`
-	DomainName string `gcfg:"domain-name"`
-	Region     string
+	AuthURL                     string `gcfg:"auth-url"`
+	Username                    string
+	Password                    string
+	ApplicationCredentialID     string `gcfg:"application-credential-id"`
+	ApplicationCredentialSecret string `gcfg:"application-credential-secret"`
+	TenantName                  string `gcfg:"tenant-name"`
+	TenantID                    string `gcfg:"tenant-id"`
+	DomainName                  string `gcfg:"domain-name"`
+	Region                      string
 }
 
 // CloudConfig is used to read and store information from the cloud configuration file
