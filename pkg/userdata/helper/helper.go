@@ -289,11 +289,11 @@ if ($DEFAULT_IF_IPS.Count -eq 0) {
 	} | Select-Object -ExpandProperty IPAddress
 }
 [string]$DEFAULT_IF_IP = if ($DEFAULT_IF_IPS.Count -eq 1) {
-	$DEFAULT_IF_IPS[0] | Wrte-Output
+	$DEFAULT_IF_IPS[0] | Write-Output
 } else {
 	[string]$ipv6 = $DEFAULT_IF_IPS | Where-Object { $_ -like "*:*" } | Select-Object -First 1
 	if ([String]::IsNullOrEmpty($ipv6)) {
-		// Node doesn't have an usable IPv6 address
+		# Node doesn't have an usable IPv6 address
 		$DEFAULT_IF_IPS | Where-Object { $_ -like "*.*" } | Select-Object -First 1 | Write-Output
 	} else {
 		$ipv6 | Write-Output

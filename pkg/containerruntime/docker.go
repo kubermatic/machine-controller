@@ -52,7 +52,7 @@ func (eng *Docker) ConfigFileName(os types.OperatingSystem) string {
 
 func (eng *Docker) KubeletFlags(os types.OperatingSystem) []string {
 	switch os {
-	case type.OperatingSystemWindows:
+	case types.OperatingSystemWindows:
 		return []string{
 			"--container-runtime=docker",
 			"--container-runtime-endpoint=npipe:////./pipe/docker_engine",

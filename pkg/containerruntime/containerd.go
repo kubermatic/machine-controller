@@ -168,12 +168,14 @@ systemctl enable --now containerd
 	// grpc: address = "\\\\.\\pipe\\containerd-containerd"
 	// bin_dir = "C:\\Program Files\\containerd\\cni\\bin"
     // conf_dir = "C:\\Program Files\\containerd\\cni\\conf"
-	containerdAptTemplate = template.Must(template.New("containerd-windows").Parse(`
+	containerdWindowsTemplate = template.Must(template.New("containerd-windows").Parse(`
 Set-Location -Path "$env:tmp"
 Start-Process -FilePath "curl.exe" -ArgumentList @("-OL", "https://github.com/containerd/containerd/releases/download/v{{ .ContainerdVersion }}/containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait
 Start-Process -FilePath "tar.exe" -ArgumentList @("xvf", ".\containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait
 
-Copy-Item -Path ".\bin\" -Destination "$env:ProgramFiles\containerd" -Recurse -Force
+Stop-Service -Name "containerd" -Force -ErrorAction SilentlyContinue
+
+Copy-Item -Path ".\bin\*" -Destination "$env:ProgramFiles\containerd" -Recurse -Force
 Set-Location -Path "$env:ProgramFiles\containerd\"
 .\containerd.exe config default | Out-File -PSPath "config.toml" -Encoding ascii
 

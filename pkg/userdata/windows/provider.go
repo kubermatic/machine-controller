@@ -138,6 +138,7 @@ users:
   - name: Administrator
     primary_group: Users
     groups: Administrators
+    passwd: euJ7Ang3hichop2iev0A
 {{- if ne (len .ProviderSpec.SSHPublicKeys) 0 }}
     inactive: False
     ssh_authorized_keys:
@@ -155,20 +156,35 @@ write_files:
   - path: C:\setup-node.ps1
     permissions: '0644'
     content: |
-{{ .ContainerRuntimeScript | indent 6 }}
-      Invoke-WebRequest -Uri "https://github.com/kubernetes-sigs/sig-windows-tools/releases/latest/download/PrepareNode.ps1" -UseBasicParsing -OutFile "C:/k/PrepareNode.ps1"
-      C:/k/PrepareNode.ps1 -KubernetesVersion "v{{ .KubeletVersion }}" -ContainerRuntime "{{ .ContainerRuntimeName }}"
-      # set kubelet nodeip environment variable
-      C:/k/setup_net_env.ps1
-      C:/k/Install-PowerShellCore.ps1
-      C:/k/Install-OpenSSH.ps1
-      # Enable ICMP echo requests this instance over IPv4 and IPv6
-      (Get-NetFirewallRule -Group "@FirewallAPI.dll,-28502").Where{$_.Name -like "*ICMP*"} | Enable-NetFirewallRule
-      # Contact Microsoft activation servers and activate windows if possible (will silently fail if no activation is possible)
-      $null = Start-Process "C:\Windows\System32\cscript.exe" -ArgumentList @("C:\Windows\System32\slmgr.vbs", "/ato")
-      # Disable IPv6 Privacy Extension (causes conflicts with Portsecurity implementations)
-      Set-NetIPv6Protocol -RandomizeIdentifiers Disabled -UseTemporaryAddresses Disabled
-  - path: "C:/k/Install-PowerShellCore.ps1
+      try {
+        Set-StrictMode -Version 2
+        $ProgressPreference = "SilentlyContinue"
+        $DebugPreference = "SilentlyContinue"
+        $WarningPreference = "Continue"
+        $ErrorActionPreference = "Stop"
+{{ .ContainerRuntimeScript | indent 8 }}
+        Install-WindowsFeature Containers
+        Invoke-WebRequest -Uri "https://github.com/kubernetes-sigs/sig-windows-tools/releases/latest/download/PrepareNode.ps1" -UseBasicParsing -OutFile "C:/k/PrepareNode.ps1"
+        Get-Process -Name "wins" -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq "C:\k\wins.exe"} | Stop-Process -Force
+        # TODO: Curently the next comman fails if Hyper-V isn't present.
+        # But hyper-V fails to install if no nested virtualization feature is present...
+        C:/k/PrepareNode.ps1 -KubernetesVersion "v{{ .KubeletVersion }}" -ContainerRuntime "{{ .ContainerRuntimeName }}"
+        # set kubelet nodeip environment variable
+        C:/k/setup_net_env.ps1
+        C:/k/Install-PowerShellCore.ps1
+        C:/k/Install-OpenSSH.ps1
+        # Enable ICMP echo requests this instance over IPv4 and IPv6
+        (Get-NetFirewallRule -Group "@FirewallAPI.dll,-28502").Where{$_.Name -like "*ICMP*"} | Enable-NetFirewallRule
+        # Contact Microsoft activation servers and activate windows if possible (will silently fail if no activation is possible)
+        $null = Start-Process "C:\Windows\System32\cscript.exe" -ArgumentList @("C:\Windows\System32\slmgr.vbs", "/ato")
+        # Disable IPv6 Privacy Extension (causes conflicts with Portsecurity implementations)
+        Set-NetIPv6Protocol -RandomizeIdentifiers Disabled -UseTemporaryAddresses Disabled
+        exit 0
+      } catch {
+        Restart-Computer -Force -AsJob
+        exit 1003
+      }
+  - path: C:/k/Install-PowerShellCore.ps1
     permissions: '0644'
     content: |
       $pwshInstallPath = 'C:/Program Files/PowerShell/7'
@@ -182,15 +198,15 @@ write_files:
       Start-Process -FilePath 'msiexec.exe' -ArgumentList $installArguments -Wait -NoNewWindow
       Remove-Item -Path $pwshTempFile -Force
       Push-Location -Path $pwshInstallPath
-      $pwshSetupRemoting = @('-NoLogo', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-NoProfile', '-File', "$pwshInstallPath\Install-PowerShellRemoting.ps1")
-      Start-Process -FilePath '.\pwsh.exe' -ArgumentList $pwshArguments -Wait -NoNewWindow
+      $pwshSetupRemoting = @('-NoLogo', '-NonInteractive', '-ExecutionPolicy', 'RemoteSigned', '-NoProfile', '-File', "$pwshInstallPath\Install-PowerShellRemoting.ps1", '-Force')
+      Start-Process -FilePath '.\pwsh.exe' -ArgumentList $pwshSetupRemoting -Wait -NoNewWindow
       Pop-Location
       $path = [Environment]::GetEnvironmentVariable('Path', [System.EnvironmentVariableTarget]::Machine) -split ';'
       if ($path -notcontains $pwshInstallPath) {
         $path += $pwshInstallPath
       }
       [Environment]::SetEnvironmentVariable('Path', $path -join ';', [System.EnvironmentVariableTarget]::Machine)
-  - path: "C:/k/Install-OpenSSH.ps1
+  - path: C:/k/Install-OpenSSH.ps1
     permissions: '0644'
     content: |
       $OpenSSHTempFile = Join-Path -Path $env:TEMP -ChildPath 'openssh.zip'
@@ -201,7 +217,7 @@ write_files:
         Push-Location -Path $OpenSSHInstallPath
         try { ./uninstall-sshd.ps1 } catch {}
         Pop-Location
-        Item -Path $OpenSSHInstallPath -Recurse -Force
+        Remove-Item -Path $OpenSSHInstallPath -Recurse -Force
       }
       Expand-Archive -Path $OpenSSHTempFile -DestinationPath $OpenSSHInstallPath -Force
       Remove-Item -Path $OpenSSHTempFile -Force
@@ -220,40 +236,36 @@ write_files:
       Set-Service -Name 'ssh-agent' -StartupType Automatic
       Start-Service -Name 'sshd'
       Start-Service -Name 'ssh-agent'
-  - path: "C:/ProgramData/ssh/sshd_config"
+  - path: C:/ProgramData/ssh/sshd_config
     permissions: "0644"
     content: |
-      $configFile = @'
       Port 22
       AuthorizedKeysFile  .ssh/authorized_keys
       PasswordAuthentication yes
       PubkeyAuthentication yes
       Subsystem sftp  sftp-server.exe
       Subsystem powershell  pwsh.exe -sshs -NoLogo -NoProfile
-      '@
-
-  - path: "C:/k/cloud-config"
+  - path: C:/k/cloud-config
     permissions: "0600"
     content: |
 {{ .CloudConfig | indent 6 }}
-  - path: "C:/k/setup_net_env.ps1"
+  - path: C:/k/setup_net_env.ps1
     permissions: "0755"
     content: |
 {{ .NodeIPScript | indent 6 }}
-  - path: "C:/k/bootstrap-kubelet.conf"
+  - path: C:/k/bootstrap-kubelet.conf
     permissions: "0600"
     content: |
 {{ .Kubeconfig | indent 6 }}
-  - path: "C:/k/kubelet.conf"
+  - path: C:/k/kubelet.conf
     content: |
 {{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 6 }}
-  - path: "C:/k/pki/ca.crt"
+  - path: C:/k/pki/ca.crt
     content: |
 {{ .KubernetesCACert | indent 6 }}
   - path: {{ .ContainerRuntimeConfigFileName }}
     permissions: "0644"
     content: |
-{{ /* TODO: .ContainerRuntimeConfig | indent 6 */ }}
       version = 2
       root = "C:\\ProgramData\\containerd\\root"
       state = "C:\\ProgramData\\containerd\\state"
