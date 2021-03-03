@@ -28,6 +28,8 @@ spec:
             serverType: "cx11"
             datacenter: ""
             location: "nbg1"
+            networks:
+              - "machine-controller-e2e"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
