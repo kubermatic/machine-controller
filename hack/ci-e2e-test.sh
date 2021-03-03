@@ -41,8 +41,8 @@ echo "Installing dependencies..."
 apt update && apt install -y jq rsync unzip genisoimage
 curl --retry 5 --location --remote-name \
   https://storage.googleapis.com/kubernetes-release/release/v1.12.4/bin/linux/amd64/kubectl &&
-chmod +x kubectl &&
-mv kubectl /usr/local/bin
+  chmod +x kubectl &&
+  mv kubectl /usr/local/bin
 
 # Build binaries
 echo "Building machine-controller and webhook..."
@@ -56,7 +56,7 @@ ls -l /usr/local/bin
 # Generate ssh key pair
 echo "Generating SSH key pair..."
 chmod 0700 $HOME/.ssh
-ssh-keygen -t rsa -N ""  -f ~/.ssh/id_ed25519
+ssh-keygen -t rsa -N "" -f ~/.ssh/id_ed25519
 
 # Initialize terraform
 echo "Initializing Terraform..."
@@ -97,4 +97,4 @@ EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then
   EXTRA_ARGS="-run $1"
 fi
-go test -race -tags=e2e -parallel 240 -v -timeout 70m  ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS
+go test -race -tags=e2e -parallel 240 -v -timeout 70m ./test/e2e/... -identifier=$BUILD_ID $EXTRA_ARGS

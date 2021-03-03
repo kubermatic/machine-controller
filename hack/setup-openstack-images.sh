@@ -17,7 +17,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-
 UBUNTU_IMAGE_NAME=${UBUNTU_IMAGE_NAME:-"machine-controller-ubuntu"}
 CENTOS_IMAGE_NAME=${CENTOS_IMAGE_NAME:-"machine-controller-centos"}
 
