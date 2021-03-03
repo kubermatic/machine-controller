@@ -157,3 +157,7 @@ check-dependencies:
 .PHONY: download-gocache
 download-gocache:
 	@./hack/ci-download-gocache.sh
+
+.PHONY: shfmt
+shfmt:
+	shfmt -w -sr -i 2 hack
