@@ -202,6 +202,7 @@ write_files:
       $null = Start-Process "C:\Windows\System32\cscript.exe" -ArgumentList @("C:\Windows\System32\slmgr.vbs", "/ato")
       # Disable IPv6 Privacy Extension (causes conflicts with Portsecurity implementations)
       Set-NetIPv6Protocol -RandomizeIdentifiers Disabled -UseTemporaryAddresses Disabled
+      Start-Service kubelet
       exit 0
   - path: C:/k/Install-PowerShellCore.ps1
     permissions: '0644'
