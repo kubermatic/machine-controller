@@ -150,11 +150,12 @@ users:
 {{- end }}
 
 runcmd:
-  - 'call powershell -File C:\setup-node-stage-001.ps1 -NoLogo -ExecutionPolicy ByPass -OutputFormat Text -InputFormat Text -NonInteractive'
-  - 'call powershell -File C:\setup-node-stage-002.ps1 -NoLogo -ExecutionPolicy ByPass -OutputFormat Text -InputFormat Text -NonInteractive'
+  - 'call powershell -File C:/setup-node-stage-001.ps1 -NoLogo -ExecutionPolicy ByPass -OutputFormat Text -InputFormat Text -NonInteractive'
+  - 'timeout 10'
+  - 'call powershell -File C:/setup-node-stage-002.ps1 -NoLogo -ExecutionPolicy ByPass -OutputFormat Text -InputFormat Text -NonInteractive'
 
 write_files:
-  - path: C:\setup-node-stage-001.ps1
+  - path: C:/setup-node-stage-001.ps1
     permissions: '0644'
     content: |
       Set-StrictMode -Version 2
@@ -162,15 +163,22 @@ write_files:
       $DebugPreference = "SilentlyContinue"
       $WarningPreference = "Continue"
       $ErrorActionPreference = "Stop"
+      if ([bool](Test-Path -Path "C:/stage-001-complete")) {
+        # We already ran and configured the node.
+        return 0
+      }
 {{ .ContainerRuntimeScript | indent 6 }}
       New-Item -ItemType Directory -Force C:/var/lib/kubelet/etc/kubernetes/manifests
       New-Item -ItemType Directory -Force C:/proc
       Invoke-WebRequest -Uri "https://github.com/kubernetes-sigs/sig-windows-tools/releases/latest/download/PrepareNode.ps1" -UseBasicParsing -OutFile "C:/k/PrepareNode.ps1"
       Install-WindowsFeature Containers
       Rename-Computer -Force -NewName "{{ .MachineSpec.Name }}"
+      New-Item -ItemType File -Path C:/stage-001-complete
+      # schedule a reboot if rebooting is not allowed by cloudbase cloudinit
       shutdown.exe /r /t 5 /f /c "rebooting"
+      # signal to cloudbase cloudinit to reboot (if enabled)
       exit 1003
-  - path: C:\setup-node-stage-002.ps1
+  - path: C:/setup-node-stage-002.ps1
     permissions: '0644'
     content: |
       Set-StrictMode -Version 2
@@ -178,6 +186,16 @@ write_files:
       $DebugPreference = "SilentlyContinue"
       $WarningPreference = "Continue"
       $ErrorActionPreference = "Stop"
+      if ([bool](Test-Path -Path "C:/stage-002-complete")) {
+        # We already ran and configured the node.
+        exit 0
+      } elseif (-not [bool](Test-Path -Path "C:/stage-001-complete")) {
+        # Workaround for cloudbase init reboot being not allowed
+        # If cloudbase starts us without stage 001 having completed
+        # we're going to invoke it now.
+        . /setup-node-stage-001.ps1
+        exit 1003
+      }
       # Workaround for sig-windows-tools#130
       if ([bool](Get-Service -Name "rancher-wins" -ErrorAction Ignore)) {
         Stop-Service -Name "rancher-wins"
@@ -185,8 +203,8 @@ write_files:
       if ([bool](Get-NetFirewallRule -Name "kubelet" -ErrorAction Ignore)) {
         Remove-NetFirewallRule -Name "kubelet"
       }
-      if ([bool](Test-Path -Path "C:\var\lib\kubelet\etc\kubernetes\pki")) {
-        cmd /c rmdir "C:\var\lib\kubelet\etc\kubernetes\pki"
+      if ([bool](Test-Path -Path "C:/var/lib/kubelet/etc/kubernetes/pki")) {
+        cmd /c rmdir "C:/var/lib/kubelet/etc/kubernetes/pki"
       }
       # TODO: Curently the next comman fails if docker is used as runtime but Hyper-V isn't present.
       # But hyper-V fails to install if no nested virtualization feature is present...
@@ -199,10 +217,11 @@ write_files:
       # Enable ICMP echo requests this instance over IPv4 and IPv6
       (Get-NetFirewallRule -Group "@FirewallAPI.dll,-28502").Where{$_.Name -like "*ICMP*"} | Enable-NetFirewallRule
       # Contact Microsoft activation servers and activate windows if possible (will silently fail if no activation is possible)
-      $null = Start-Process "C:\Windows\System32\cscript.exe" -ArgumentList @("C:\Windows\System32\slmgr.vbs", "/ato")
+      $null = Start-Process "C:/Windows/System32/cscript.exe" -ArgumentList @("C:/Windows/System32/slmgr.vbs", "/ato")
       # Disable IPv6 Privacy Extension (causes conflicts with Portsecurity implementations)
       Set-NetIPv6Protocol -RandomizeIdentifiers Disabled -UseTemporaryAddresses Disabled
       Start-Service kubelet
+      New-Item -ItemType File -Path C:/stage-002-complete
       exit 0
   - path: C:/k/Install-PowerShellCore.ps1
     permissions: '0644'
