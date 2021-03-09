@@ -29,7 +29,7 @@ endif
 .PHONY: terraform
 terraform:
 	@if ! which terraform; then \
-		curl https://releases.hashicorp.com/terraform/0.11.11/terraform_0.11.11_linux_amd64.zip \
+		curl https://releases.hashicorp.com/terraform/0.13.5/terraform_0.13.5_linux_amd64.zip \
 			--retry 5 \
 			-o	/tmp/terraform.zip && \
 		unzip -n /tmp/terraform.zip terraform && \
@@ -51,7 +51,6 @@ plan apply destroy: .terraform
 		-var hcloud_test_server_name="machine-controller-test-$(BUILD_ID)"
 
 provision: apply
-	cd ../verify/ && make verify
-	cd ../../../ && make all
+	make -C ../../../ clean
+	make -C ../../../ all GOOS=linux
 	./provision_master.sh
-	./create-and-destroy-machine.sh

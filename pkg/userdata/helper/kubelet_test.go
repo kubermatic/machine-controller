@@ -29,14 +29,16 @@ import (
 )
 
 type kubeletFlagTestCase struct {
-	name          string
-	version       *semver.Version
-	dnsIPs        []net.IP
-	hostname      string
-	cloudProvider string
-	external      bool
-	pauseImage    string
-	initialTaints []corev1.Taint
+	name             string
+	containerRuntime string
+	version          *semver.Version
+	dnsIPs           []net.IP
+	hostname         string
+	cloudProvider    string
+	external         bool
+	pauseImage       string
+	initialTaints    []corev1.Taint
+	extraFlags       []string
 }
 
 func TestKubeletSystemdUnit(t *testing.T) {
@@ -61,7 +63,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 	tests = append(tests, []kubeletFlagTestCase{
 		{
 			name:    "multiple-dns-servers",
-			version: semver.MustParse("v1.10.1"),
+			version: semver.MustParse("v1.20.1"),
 			dnsIPs: []net.IP{
 				net.ParseIP("10.10.10.10"),
 				net.ParseIP("10.10.10.11"),
@@ -71,14 +73,14 @@ func TestKubeletSystemdUnit(t *testing.T) {
 		},
 		{
 			name:          "cloud-provider-set",
-			version:       semver.MustParse("v1.10.1"),
+			version:       semver.MustParse("v1.20.1"),
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
 		},
 		{
 			name:          "pause-image-set",
-			version:       semver.MustParse("v1.13.5"),
+			version:       semver.MustParse("v1.20.1"),
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
@@ -86,7 +88,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 		},
 		{
 			name:          "taints-set",
-			version:       semver.MustParse("v1.13.5"),
+			version:       semver.MustParse("v1.20.1"),
 			dnsIPs:        []net.IP{net.ParseIP("10.10.10.10")},
 			hostname:      "some-test-node",
 			cloudProvider: "aws",
@@ -109,6 +111,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 		name := fmt.Sprintf("kublet_systemd_unit_%s", test.name)
 		t.Run(name, func(t *testing.T) {
 			out, err := KubeletSystemdUnit(
+				defaultTo(test.containerRuntime, "docker"),
 				test.version.String(),
 				test.cloudProvider,
 				test.hostname,
@@ -116,6 +119,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 				test.external,
 				test.pauseImage,
 				test.initialTaints,
+				test.extraFlags,
 			)
 			if err != nil {
 				t.Error(err)
@@ -124,4 +128,12 @@ func TestKubeletSystemdUnit(t *testing.T) {
 			testhelper.CompareOutput(t, goldenName, out, *update)
 		})
 	}
+}
+
+func defaultTo(in string, defaultValue string) string {
+	if in == "" {
+		return defaultValue
+	}
+
+	return in
 }

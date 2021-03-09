@@ -25,7 +25,6 @@ import (
 
 	"k8s.io/klog"
 
-	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 )
@@ -33,13 +32,12 @@ import (
 func main() {
 	// Parse flags.
 	var debug bool
-
 	flag.BoolVar(&debug, "debug", false, "Switch for enabling the plugin debugging")
 	flag.Parse()
 
 	// Instantiate provider and start plugin.
 	var provider = &flatcar.Provider{}
-	var p = userdataplugin.New(convert.NewIgnition(provider), debug)
+	var p = userdataplugin.New(provider, debug)
 
 	if err := p.Run(); err != nil {
 		klog.Fatalf("error running flatcar plugin: %v", err)

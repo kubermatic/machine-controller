@@ -19,15 +19,16 @@ package admission
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"reflect"
 	"time"
 
-	"github.com/mattbaird/jsonpatch"
+	"gomodules.xyz/jsonpatch/v2"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,7 +44,7 @@ type admissionData struct {
 	userDataManager *userdatamanager.Manager
 }
 
-var jsonPatch = admissionv1beta1.PatchTypeJSONPatch
+var jsonPatch = admissionv1.PatchTypeJSONPatch
 
 func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamanager.Manager) *http.Server {
 	m := http.NewServeMux()
@@ -84,8 +85,8 @@ func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperat
 	return jsonpatch.CreatePatch(ori, cur)
 }
 
-func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1beta1.AdmissionResponse, error) {
-	response := &admissionv1beta1.AdmissionResponse{}
+func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.AdmissionResponse, error) {
+	response := &admissionv1.AdmissionResponse{}
 	response.Allowed = true
 	if !apiequality.Semantic.DeepEqual(original, mutated) {
 		patchOpts, err := newJSONPatch(original, mutated)
@@ -105,34 +106,50 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1beta
 	return response, nil
 }
 
-type mutator func(admissionv1beta1.AdmissionReview) (*admissionv1beta1.AdmissionResponse, error)
+type mutator func(admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error)
 
 func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		// We must always return an AdmissionReview with an AdmissionResponse
-		// even on error, hence the admissionExecutor  func, this makes error handling much easier
-		admissionResponse, err := admissionExecutor(r, mutate)
+		review, err := readReview(r)
 		if err != nil {
-			admissionResponse = &admissionv1beta1.AdmissionResponse{}
-			admissionResponse.Result = &metav1.Status{Message: err.Error()}
+			klog.Warningf("invalid admission review: %v", err)
+
+			// proper AdmissionReview responses require metadata that is not available
+			// in broken requests, so we return a basic failure response
+			w.WriteHeader(http.StatusBadRequest)
+			if _, err := w.Write([]byte(fmt.Sprintf("invalid request: %v", err))); err != nil {
+				klog.Errorf("failed to write badRequest: %v", err)
+			}
+			return
 		}
 
-		admissionReview := admissionv1beta1.AdmissionReview{}
-		admissionReview.Response = admissionResponse
+		// run the mutation logic
+		response, err := mutate(*review.Request)
+		if err != nil {
+			response = &admissionv1.AdmissionResponse{}
+			response.Result = &metav1.Status{Message: err.Error()}
+		}
+		response.UID = review.Request.UID
 
-		resp, err := json.Marshal(admissionReview)
+		resp, err := json.Marshal(&admissionv1.AdmissionReview{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: admissionv1.SchemeGroupVersion.String(),
+				Kind:       "AdmissionReview",
+			},
+			Response: response,
+		})
 		if err != nil {
 			klog.Errorf("failed to marshal admissionResponse: %v", err)
 			return
 		}
+
 		if _, err := w.Write(resp); err != nil {
 			klog.Errorf("failed to write admissionResponse: %v", err)
 		}
 	}
 }
 
-func admissionExecutor(r *http.Request, mutate mutator) (*admissionv1beta1.AdmissionResponse, error) {
+func readReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 	var body []byte
 	if r.Body == nil {
 		return nil, fmt.Errorf("request has no body")
@@ -147,15 +164,13 @@ func admissionExecutor(r *http.Request, mutate mutator) (*admissionv1beta1.Admis
 		return nil, fmt.Errorf("header Content-Type was %s, expected application/json", contentType)
 	}
 
-	admissionReview := admissionv1beta1.AdmissionReview{}
-	if err := json.Unmarshal(body, &admissionReview); err != nil {
+	admissionReview := &admissionv1.AdmissionReview{}
+	if err := json.Unmarshal(body, admissionReview); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal request into admissionReview: %v", err)
 	}
-
-	admissionResponse, err := mutate(admissionReview)
-	if err != nil {
-		return nil, fmt.Errorf("defaulting or validation failed: %v", err)
+	if admissionReview.Request == nil {
+		return nil, errors.New("invalid admission review: no request defined")
 	}
 
-	return admissionResponse, nil
+	return admissionReview, nil
 }

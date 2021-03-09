@@ -63,7 +63,7 @@ type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 
 // serverReadinessWaiterFunc waits for the server with the given ID to be
 // ACTIVE.
-type serverReadinessWaiterFunc func(computeClient *gophercloud.ServiceClient, serverID string) error
+type serverReadinessWaiterFunc func(computeClient *gophercloud.ServiceClient, serverID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
 
 type provider struct {
 	configVarResolver     *providerconfig.ConfigVarResolver
@@ -104,15 +104,15 @@ type Config struct {
 
 	ServerGroupID string
 
+	InstanceReadyCheckPeriod  time.Duration
+	InstanceReadyCheckTimeout time.Duration
+
 	Tags map[string]string
 }
 
 const (
 	machineUIDMetaKey = "machine-uid"
 	securityGroupName = "kubernetes-v1"
-
-	instanceReadyCheckPeriod  = 2 * time.Second
-	instanceReadyCheckTimeout = 2 * time.Minute
 )
 
 // Protects floating ip assignment
@@ -149,6 +149,43 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.Region, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
 	if err != nil {
 		klog.V(6).Infof("Region from configuration or environment variable not found")
+	}
+
+	// Load timeout
+	instanceReadyCheckPeriodStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceReadyCheckPeriod)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"InstanceReadyCheckPeriod\" field, error = %v", err)
+	}
+
+	if instanceReadyCheckPeriodStr != "" {
+		c.InstanceReadyCheckPeriod, err = time.ParseDuration(instanceReadyCheckPeriodStr)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckPeriod\" field (%s), error = %v", instanceReadyCheckPeriodStr, err)
+		}
+
+		if c.InstanceReadyCheckPeriod < 0 {
+			c.InstanceReadyCheckPeriod = 5 * time.Second
+		}
+	} else {
+		c.InstanceReadyCheckPeriod = 5 * time.Second
+	}
+
+	instanceReadyCheckTimeoutStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceReadyCheckTimeout)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"InstanceReadyCheckTimeout\" field, error = %v", err)
+	}
+
+	if instanceReadyCheckTimeoutStr != "" {
+		c.InstanceReadyCheckTimeout, err = time.ParseDuration(instanceReadyCheckTimeoutStr)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckTimeout\" field (%s), error = %v", instanceReadyCheckTimeoutStr, err)
+		}
+
+		if c.InstanceReadyCheckTimeout < 0 {
+			c.InstanceReadyCheckTimeout = 10 * time.Second
+		}
+	} else {
+		c.InstanceReadyCheckTimeout = 10 * time.Second
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
@@ -482,7 +519,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	allTags := c.Tags
 	allTags[machineUIDMetaKey] = string(machine.UID)
 
-	// Declare as interface so we can safely extend request via request extentions
+	// Declare as interface so we can safely extend request via request extensions
 	var createOpts osservers.CreateOptsBuilder
 
 	createOpts = &osservers.CreateOpts{
@@ -530,7 +567,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if err := p.serverReadinessWaiter(computeClient, server.ID); err != nil {
+	if err := p.serverReadinessWaiter(computeClient, server.ID, c.InstanceReadyCheckPeriod, c.InstanceReadyCheckTimeout); err != nil {
 		defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 		return nil, fmt.Errorf("instance %s became not active: %v", server.ID, err)
 	}
@@ -546,7 +583,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return &osInstance{server: &server}, nil
 }
 
-func waitUntilInstanceIsActive(computeClient *gophercloud.ServiceClient, serverID string) error {
+func waitUntilInstanceIsActive(computeClient *gophercloud.ServiceClient, serverID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error {
 	started := time.Now()
 	klog.V(2).Infof("Waiting for the instance %s to become active...", serverID)
 

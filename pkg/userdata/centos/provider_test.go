@@ -27,6 +27,7 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 
@@ -89,6 +90,7 @@ type userDataTestCase struct {
 	insecureRegistries    []string
 	registryMirrors       []string
 	pauseImage            string
+	containerruntime      string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -98,29 +100,11 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "kubelet-v1.15-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.15.10",
-				},
-			},
-		},
-		{
-			name: "kubelet-v1.16-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.16.6",
-				},
-			},
-		},
-		{
 			name: "kubelet-v1.17-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.3",
+					Kubelet: "1.17.16",
 				},
 			},
 		},
@@ -129,7 +113,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.3",
+					Kubelet: "1.17.16",
 				},
 			},
 			externalCloudProvider: true,
@@ -139,7 +123,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.3",
+					Kubelet: "1.17.16",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
@@ -149,7 +133,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.3",
+					Kubelet: "1.17.16",
 				},
 			},
 			cloudProviderName:  stringPtr("vsphere"),
@@ -163,7 +147,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.3",
+					Kubelet: "1.17.16",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
@@ -171,6 +155,33 @@ func TestUserDataGeneration(t *testing.T) {
 			noProxy:           "192.168.1.0",
 			registryMirrors:   []string{"https://registry.docker-cn.com"},
 			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
+		},
+		{
+			name: "kubelet-v1.18-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.18.14",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.19-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.19.4",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.20-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.20.1",
+				},
+			},
 		},
 	}
 
@@ -228,11 +239,15 @@ func TestUserDataGeneration(t *testing.T) {
 				ExternalCloudProvider: test.externalCloudProvider,
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
-				InsecureRegistries:    test.insecureRegistries,
-				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				ContainerRuntime: containerruntime.Get(
+					test.containerruntime,
+					containerruntime.WithInsecureRegistries(test.insecureRegistries),
+					containerruntime.WithRegistryMirrors(test.registryMirrors),
+				),
 			}
+
 			s, err := provider.UserData(req)
 			if err != nil {
 				t.Errorf("error getting userdata: '%v'", err)

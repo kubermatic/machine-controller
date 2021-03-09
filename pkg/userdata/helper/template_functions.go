@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"text/template"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 )
 
 // TxtFuncMap returns an aggregated template function map. Currently (custom functions + sprig)
@@ -39,6 +39,7 @@ func TxtFuncMap() template.FuncMap {
 	funcMap["kubeletHealthCheckSystemdUnit"] = KubeletHealthCheckSystemdUnit
 	funcMap["containerRuntimeHealthCheckSystemdUnit"] = ContainerRuntimeHealthCheckSystemdUnit
 	funcMap["dockerConfig"] = DockerConfig
+	funcMap["containerdConfig"] = ContainerdConfig
 	funcMap["proxyEnvironment"] = ProxyEnvironment
 
 	// Syseleven Block: Workaround for kubelet stopped posting node status

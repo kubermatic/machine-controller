@@ -27,6 +27,7 @@ import (
 
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	certificatesv1beta1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"k8s.io/klog"
@@ -70,9 +71,7 @@ func Add(mgr manager.Manager) error {
 	return c.Watch(&source.Kind{Type: &certificatesv1beta1.CertificateSigningRequest{}}, &handler.EnqueueRequestForObject{})
 }
 
-func (r *reconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	err := r.reconcile(ctx, request)
 	if err != nil {
 		klog.Errorf("Reconciliation of request %s failed: %v", request.NamespacedName.String(), err)
@@ -111,7 +110,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	}
 
 	// Get machine name for the appropriate node
-	machine, found, err := r.getMachineForNode(nodeName)
+	machine, found, err := r.getMachineForNode(ctx, nodeName)
 	if err != nil {
 		return fmt.Errorf("failed to get machine for node '%s': %v", nodeName, err)
 	}
@@ -145,7 +144,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	}
 	csr.Status.Conditions = append(csr.Status.Conditions, approvalCondition)
 
-	if _, err := r.certClient.UpdateApproval(csr); err != nil {
+	if _, err := r.certClient.UpdateApproval(ctx, csr, v1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("failed to approve CSR %q: %v", csr.Name, err)
 	}
 
@@ -229,11 +228,11 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1beta1.CertificateSigning
 	return nil
 }
 
-func (r *reconciler) getMachineForNode(nodeName string) (v1alpha1.Machine, bool, error) {
+func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1alpha1.Machine, bool, error) {
 	// List all Machines in all namespaces
 	machines := &v1alpha1.MachineList{}
 	listOptions := &client.ListOptions{Namespace: ""}
-	if err := r.Client.List(context.Background(), machines, listOptions); err != nil {
+	if err := r.Client.List(ctx, machines, listOptions); err != nil {
 		return v1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %v", err)
 	}
 

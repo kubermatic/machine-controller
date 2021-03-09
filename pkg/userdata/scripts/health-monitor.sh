@@ -58,7 +58,7 @@ function container_runtime_monitoring {
       echo "Container runtime ${container_runtime_name} failed!"
       if [[ "$container_runtime_name" == "docker" ]]; then
           # Dump stack of docker daemon for investigation.
-          # Log fle name looks like goroutine-stacks-TIMESTAMP and will be saved to
+          # Log file name looks like goroutine-stacks-TIMESTAMP and will be saved to
           # the exec root directory, which is /var/run/docker/ on Ubuntu and COS.
           pkill -SIGUSR1 dockerd
       fi
@@ -77,10 +77,18 @@ function kubelet_monitoring {
   sleep 120
   local -r max_seconds=10
   local output=""
+  local failed="false"
   while [ 1 ]; do
-    if ! output=$(curl -m "${max_seconds}" -f -s -S http://127.0.0.1:10248/healthz 2>&1); then
+    if journalctl -u kubelet -n 10 | grep -q "use of closed network connection"; then
+      failed=true
+      echo "Kubelet stopped posting node status. Restarting"
+    elif ! output=$(curl -m "${max_seconds}" -f -s -S http://127.0.0.1:10248/healthz 2>&1); then
+      failed=true
       # Print the response and/or errors.
-      echo $output
+      echo "$output"
+    fi
+
+    if [ $failed == "true" ]; then
       echo "Kubelet is unhealthy!"
       systemctl kill kubelet
       # Wait for a while, as we don't want to kill it again before it is really up.

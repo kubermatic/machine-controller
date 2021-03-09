@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
 	kubevirtv1 "kubevirt.io/client-go/api/v1"
 	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 
@@ -180,16 +178,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, fmt.Errorf("failed to get dns policy: %v", err)
 		}
 	}
-	dnsConfigString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.DNSConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "dnsConfig" field: %v`, err)
-	}
-	if dnsConfigString != "" {
-		dnsConfig := &corev1.PodDNSConfig{}
-		if err := yaml.Unmarshal([]byte(dnsConfigString), &dnsConfig); err != nil {
-			return nil, nil, fmt.Errorf(`failed to unmarshal "dnsConfig" field: %v`, err)
-		}
-		config.DNSConfig = dnsConfig
+	if rawConfig.DNSConfig != nil {
+		config.DNSConfig = rawConfig.DNSConfig
 	}
 
 	return &config, &pconfig, nil
@@ -227,7 +217,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}
 
 	// Deletion takes some time, so consider the VMI as deleted as soon as it has a DeletionTimestamp
-	// because once the node got into status not ready its informers wont fire again
+	// because once the node got into status not ready its informers won't fire again
 	// With the current approach we may run into a conflict when creating the VMI again, however this
 	// results in the machine being reqeued
 	if virtualMachineInstance.DeletionTimestamp != nil {

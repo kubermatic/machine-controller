@@ -24,14 +24,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"k8s.io/utils/pointer"
 	"net"
 	"testing"
+
+	"k8s.io/utils/pointer"
 
 	"github.com/Masterminds/semver"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -92,7 +94,7 @@ kPe6XoSbiLm/kxk32T0=
 )
 
 const (
-	defaultVersion = "1.17.3"
+	defaultVersion = "1.20.1"
 )
 
 type fakeCloudConfigProvider struct {
@@ -119,14 +121,17 @@ type userDataTestCase struct {
 	noProxy               string
 	insecureRegistries    []string
 	registryMirrors       []string
+	nodeMaxLogSize        string
 	pauseImage            string
+	containerruntime      string
 }
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.15.10"),
-		semver.MustParse("v1.16.3"),
-		semver.MustParse("v1.17.1"),
+		semver.MustParse("v1.17.16"),
+		semver.MustParse("v1.18.14"),
+		semver.MustParse("v1.19.4"),
+		semver.MustParse("v1.20.1"),
 	}
 
 	var tests []userDataTestCase
@@ -443,10 +448,14 @@ func TestUserDataGeneration(t *testing.T) {
 				ExternalCloudProvider: test.externalCloudProvider,
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
-				InsecureRegistries:    test.insecureRegistries,
-				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				ContainerRuntime: containerruntime.Get(
+					test.containerruntime,
+					containerruntime.WithInsecureRegistries(test.insecureRegistries),
+					containerruntime.WithRegistryMirrors(test.registryMirrors),
+					containerruntime.WithNodeMaxLogSize(test.nodeMaxLogSize),
+				),
 			}
 			s, err := provider.UserData(req)
 			if err != nil {

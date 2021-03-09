@@ -34,7 +34,22 @@ cni_bin_dir=/opt/cni/bin
 mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
 
 {{- /* HOST_ARCH can be defined outside of machine-controller (in kubeone for example) */}}
-arch=${HOST_ARCH:-amd64}
+arch=${HOST_ARCH-}
+if [ -z "$arch" ]
+then
+case $(uname -m) in
+x86_64)
+    arch="amd64"
+    ;;
+aarch64)
+    arch="arm64"
+    ;;
+*)
+    echo "unsupported CPU architecture, exiting"
+    exit 1
+    ;;
+esac
+fi
 
 {{- /* # CNI variables */}}
 CNI_VERSION="${CNI_VERSION:-{{ .CNIVersion }}}"
@@ -107,7 +122,7 @@ fi
 {{- if .DownloadKubelet }}
 {{- /* kubelet */}}
 if [ ! -f /opt/bin/kubelet ]; then
-    curl -Lfo /opt/bin/kubelet {{ .KubeletUrl }}
+    curl -Lfo /opt/bin/kubelet {{ .KubeletURL }}
     chmod +x /opt/bin/kubelet
 fi
 {{- end }}
@@ -160,12 +175,12 @@ func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string
 	}
 
 	// Use patched kubelet where necessary
-	var kubeletDownloadUrl string
+	var kubeletDownloadURL string
 	{
-		upstreamUrl := "https://storage.googleapis.com/kubernetes-release/release/v" + kubeletVersion + "/bin/linux/amd64/kubelet"
+		upstreamURL := "https://storage.googleapis.com/kubernetes-release/release/v" + kubeletVersion + "/bin/linux/amd64/kubelet"
 		sys11Url := "https://s3.dbl.cloud.syseleven.net/sys11-metakube-kubelet/v" + kubeletVersion + "-sys11-2/kubelet"
 
-		kubeletDownloadUrl = upstreamUrl
+		kubeletDownloadURL = upstreamURL
 
 		kubeletSemVersion, err := semver.NewVersion(kubeletVersion)
 		if err != nil {
@@ -175,28 +190,28 @@ func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string
 		switch kubeletSemVersion.Minor() {
 		case 15:
 			if kubeletSemVersion.Patch() < 8 {
-				kubeletDownloadUrl = sys11Url
+				kubeletDownloadURL = sys11Url
 			}
 
 		case 16:
 			if kubeletSemVersion.Patch() < 5 {
-				kubeletDownloadUrl = sys11Url
+				kubeletDownloadURL = sys11Url
 			}
 
 		case 17:
 			if kubeletSemVersion.Patch() < 1 {
-				kubeletDownloadUrl = sys11Url
+				kubeletDownloadURL = sys11Url
 			}
 		}
 	}
 
 	data := struct {
 		KubeletVersion  string
-		KubeletUrl      string
+		KubeletURL      string
 		DownloadKubelet bool
 	}{
 		KubeletVersion:  kubeletVersion,
-		KubeletUrl:      kubeletDownloadUrl,
+		KubeletURL:      kubeletDownloadURL,
 		DownloadKubelet: downloadKubelet,
 	}
 	b := &bytes.Buffer{}

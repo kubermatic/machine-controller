@@ -1,0 +1,22 @@
+[Global]
+auth-url    = "https://127.0.0.1:8443"
+username    = "admin"
+password    = "password"
+tenant-name = "Test"
+tenant-id   = ""
+domain-name = "Default"
+region      = "eu-central1"
+
+[LoadBalancer]
+lb-version = "v2"
+subnet-id = ""
+floating-network-id = ""
+lb-method = "ROUND_ROBIN"
+lb-provider = ""
+use-octavia = true
+
+[BlockStorage]
+ignore-volume-az  = true
+trust-device-path = true
+bs-version        = "v2"
+node-volume-attach-limit = 25

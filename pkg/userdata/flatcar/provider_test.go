@@ -28,14 +28,14 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
-	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
@@ -111,9 +111,11 @@ type userDataTestCase struct {
 	noProxy               string
 	insecureRegistries    []string
 	registryMirrors       []string
+	nodeMaxLogSize        string
 	pauseImage            string
 	hyperkubeImage        string
 	kubeletImage          string
+	containerruntime      string
 }
 
 // TestUserDataGeneration runs the data generation for different
@@ -123,7 +125,7 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "v1.17.0",
+			name: "ignition_v1.17.16",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -138,7 +140,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.17.0",
+					Kubelet: "v1.17.16",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -154,7 +156,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "v1.18.0",
+			name: "ignition_v1.18.14",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -169,7 +171,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.18.0",
+					Kubelet: "v1.18.14",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -185,7 +187,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "v1.19.0",
+			name: "ignition_v1.19.4",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -200,7 +202,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.19.0",
+					Kubelet: "v1.19.4",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -210,7 +212,168 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
 			osConfig: &Config{
-				DisableAutoUpdate: true,
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: Ignition,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
+		{
+			name: "ignition_v1.20.1",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.20.1",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: Ignition,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
+		{
+			name: "cloud-init_v1.17.16",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "anexia",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.17.16",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "anexia",
+				config: "{anexia-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: CloudInit,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
+		{
+			name: "cloud-init_v1.18.14",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "anexia",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.18.14",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "anexia",
+				config: "{anexia-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: CloudInit,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
+		{
+			name: "cloud-init_v1.19.4",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "anexia",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.19.4",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "anexia",
+				config: "{anexia-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: CloudInit,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
+		{
+			name: "cloud-init_v1.20.1",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "anexia",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.20.1",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "anexia",
+				config: "{anexia-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: CloudInit,
 			},
 			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
@@ -253,12 +416,16 @@ func TestUserDataGeneration(t *testing.T) {
 				ExternalCloudProvider: test.externalCloudProvider,
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
-				InsecureRegistries:    test.insecureRegistries,
-				RegistryMirrors:       test.registryMirrors,
 				PauseImage:            test.pauseImage,
 				HyperkubeImage:        test.hyperkubeImage,
 				KubeletRepository:     test.kubeletImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				ContainerRuntime: containerruntime.Get(
+					test.containerruntime,
+					containerruntime.WithInsecureRegistries(test.insecureRegistries),
+					containerruntime.WithRegistryMirrors(test.registryMirrors),
+					containerruntime.WithNodeMaxLogSize(test.nodeMaxLogSize),
+				),
 			}
 
 			s, err := provider.UserData(req)
@@ -266,11 +433,13 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// Check if we can convert it to ignition.
-			if _, err := convert.ToIgnition(s); err != nil {
-				t.Fatal(err)
+			goldenName := test.name
+			if test.osConfig.ProvisioningUtility == Ignition || test.osConfig.ProvisioningUtility == "" {
+				goldenName += ".json"
+			} else {
+				goldenName += ".yaml"
 			}
-			goldenName := test.name + ".yaml"
+
 			testhelper.CompareOutput(t, goldenName, s, *update)
 		})
 	}

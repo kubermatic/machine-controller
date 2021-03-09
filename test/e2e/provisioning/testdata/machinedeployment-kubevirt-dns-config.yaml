@@ -33,9 +33,8 @@ spec:
             memory: "4096M"
             dnsPolicy: "None"
             dnsConfig:
-              value: |
-                nameservers:
-                - 8.8.8.8
+              nameservers:
+              - 8.8.8.8
             kubeconfig:
               value: '<< KUBECONFIG >>'
             namespace: kube-system

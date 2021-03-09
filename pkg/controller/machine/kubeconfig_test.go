@@ -47,9 +47,11 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 			shouldRenew:             true,
 		},
 	}
-	reconciler := Reconciler{ctx: context.Background()}
+
+	reconciler := Reconciler{}
 
 	for _, testCase := range tests {
+		ctx := context.Background()
 		secret := &corev1.Secret{}
 		secret.Name = "secret"
 		secret.Namespace = metav1.NamespaceSystem
@@ -60,12 +62,12 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		secret.Data = data
 		reconciler.client = ctrlruntimefake.NewFakeClient(runtime.Object(secret))
 
-		if _, err := reconciler.updateSecretExpirationAndGetToken(secret); err != nil {
+		if _, err := reconciler.updateSecretExpirationAndGetToken(ctx, secret); err != nil {
 			t.Fatalf("Unexpected error running updateSecretExpirationAndGetToken: %v", err)
 		}
 
 		updatedSecret := &corev1.Secret{}
-		if err := reconciler.client.Get(reconciler.ctx, types.NamespacedName{
+		if err := reconciler.client.Get(ctx, types.NamespacedName{
 			Namespace: metav1.NamespaceSystem,
 			Name:      "secret",
 		}, updatedSecret); err != nil {

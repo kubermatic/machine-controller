@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-scaleway
+  namespace: kube-system
+type: Opaque
+stringData:
+  access_key: << SCW_ACCESS_KEY >>
+  secret_key: << SCW_SECRET_KEY >>
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: scaleway-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "scaleway"
+          cloudProviderSpec:
+            # If empty, can be set via SCW_ACCESS_KEY env var
+            accessKey:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-scaleway
+                key: access_key
+            # If empty, can be set via SCW_SECRET_KEY env var
+            secretKey:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-scaleway
+                key: secret_key
+            projectId: << SCW_DEFAULT_PROJECT_ID >>
+            zone: fr-par-1
+            commercialType: DEV1-M
+            ipv6: false
+            tags:
+              - "machine-controller"
+          # Can be 'ubuntu' or 'centos'
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            disableAutoUpdate: true
+      versions:
+        kubelet: 1.18.8

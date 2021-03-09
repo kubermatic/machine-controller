@@ -28,9 +28,10 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
-	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 	"github.com/kubermatic/machine-controller/pkg/userdata/cloud"
@@ -91,7 +92,7 @@ kPe6XoSbiLm/kxk32T0=
 )
 
 const (
-	defaultVersion = "1.17.3"
+	defaultVersion = "1.20.1"
 )
 
 type fakeCloudConfigProvider struct {
@@ -120,13 +121,15 @@ type userDataTestCase struct {
 	registryMirrors       []string
 	maxLogSize            string
 	pauseImage            string
+	containerruntime      string
 }
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.15.10"),
-		semver.MustParse("v1.16.6"),
-		semver.MustParse("v1.17.3"),
+		semver.MustParse("v1.17.16"),
+		semver.MustParse("v1.18.14"),
+		semver.MustParse("v1.19.4"),
+		semver.MustParse("v1.20.1"),
 	}
 
 	var tests []userDataTestCase
@@ -406,6 +409,32 @@ func TestUserDataGeneration(t *testing.T) {
 			registryMirrors: []string{"https://registry.docker-cn.com"},
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
+		{
+			name:             "containerd",
+			containerruntime: "containerd",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: true,
+			},
+		},
 	}...)
 
 	for _, test := range tests {
@@ -444,11 +473,13 @@ func TestUserDataGeneration(t *testing.T) {
 				ExternalCloudProvider: test.externalCloudProvider,
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
-				InsecureRegistries:    test.insecureRegistries,
-				RegistryMirrors:       test.registryMirrors,
-				MaxLogSize:            test.maxLogSize,
 				PauseImage:            test.pauseImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				ContainerRuntime: containerruntime.Get(
+					test.containerruntime,
+					containerruntime.WithInsecureRegistries(test.insecureRegistries),
+					containerruntime.WithRegistryMirrors(test.registryMirrors),
+				),
 			}
 			s, err := provider.UserData(req)
 			if err != nil {
