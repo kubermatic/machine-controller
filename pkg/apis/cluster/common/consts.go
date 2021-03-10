@@ -16,6 +16,14 @@ limitations under the License.
 
 package common
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 // Constants aren't automatically generated for unversioned packages.
 // Instead share the same constant for all versioned packages
 type MachineStatusError string
@@ -119,3 +127,69 @@ const (
 	// i.e. gradually scale down the old MachineSet and scale up the new one.
 	RollingUpdateMachineDeploymentStrategyType MachineDeploymentStrategyType = "RollingUpdate"
 )
+
+type KubeletFlags string
+
+const (
+	ExternalCloudProviderKubeletFlag KubeletFlags = "ExternalCloudProvider"
+)
+
+const (
+	// Annotation prefixes, used on Machine objects to indicate the parameters that been used to create those Machines
+	KubeletFeatureGatesAnnotationPrefixV1 = "v1.kubelet-featuregates.machine-controller.kubermatic.io"
+	KubeletFlagsGroupAnnotationPrefixV1   = "v1.kubelet-flags.machine-controller.kubermatic.io"
+)
+
+// SetKubeletFeatureGates marshal and save featureGates into metaobject annotations with
+// KubeletFeatureGatesAnnotationPrefixV1 prefix
+func SetKubeletFeatureGates(metaobj metav1.Object, featureGates map[string]bool) {
+	annts := metaobj.GetAnnotations()
+	if annts == nil {
+		annts = map[string]string{}
+	}
+	for k, v := range featureGates {
+		annts[fmt.Sprintf("%s/%s", KubeletFeatureGatesAnnotationPrefixV1, k)] = fmt.Sprintf("%t", v)
+	}
+	metaobj.SetAnnotations(annts)
+}
+
+// SetKubeletFlags marshal and save flags into metaobject annotations with KubeletFlagsGroupAnnotationPrefixV1 prefix
+func SetKubeletFlags(metaobj metav1.Object, flags map[KubeletFlags]string) {
+	annts := metaobj.GetAnnotations()
+	if annts == nil {
+		annts = map[string]string{}
+	}
+	for k, v := range flags {
+		annts[fmt.Sprintf("%s/%s", KubeletFlagsGroupAnnotationPrefixV1, k)] = v
+	}
+	metaobj.SetAnnotations(annts)
+}
+
+func GetKubeletFeatureGates(metaobj metav1.Object) map[string]bool {
+	result := map[string]bool{}
+	for name, value := range metaobj.GetAnnotations() {
+		if strings.HasPrefix(name, KubeletFeatureGatesAnnotationPrefixV1) {
+			nameGateValue := strings.Split(name, "/")
+			if len(nameGateValue) != 2 {
+				continue
+			}
+			realBool, _ := strconv.ParseBool(value)
+			result[nameGateValue[1]] = realBool
+		}
+	}
+	return result
+}
+
+func GetKubeletFlags(metaobj metav1.Object) map[KubeletFlags]string {
+	result := map[KubeletFlags]string{}
+	for name, value := range metaobj.GetAnnotations() {
+		if strings.HasPrefix(name, KubeletFlagsGroupAnnotationPrefixV1) {
+			nameFlagValue := strings.Split(name, "/")
+			if len(nameFlagValue) != 2 {
+				continue
+			}
+			result[KubeletFlags(nameFlagValue[1])] = value
+		}
+	}
+	return result
+}

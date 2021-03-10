@@ -23,7 +23,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"strconv"
 	"strings"
 	"time"
 
@@ -48,6 +47,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/controller/nodecsrapprover"
 	"github.com/kubermatic/machine-controller/pkg/health"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/node"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -67,21 +67,19 @@ var (
 	name                             string
 	joinClusterTimeout               string
 	workerCount                      int
-	externalCloudProvider            bool
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
 	nodeCSRApprover                  bool
 	caBundleFile                     string
 
-	nodeHTTPProxy           string
-	nodeNoProxy             string
-	nodeInsecureRegistries  string
-	nodeRegistryMirrors     string
-	nodePauseImage          string
-	nodeHyperkubeImage      string
-	nodeKubeletRepository   string
-	nodeKubeletFeatureGates string
-	nodeContainerRuntime    string
+	nodeHTTPProxy          string
+	nodeNoProxy            string
+	nodeInsecureRegistries string
+	nodeRegistryMirrors    string
+	nodePauseImage         string
+	nodeHyperkubeImage     string
+	nodeKubeletRepository  string
+	nodeContainerRuntime   string
 )
 
 const (
@@ -116,9 +114,6 @@ type controllerRunOptions struct {
 	// deleted by the machine-controller
 	joinClusterTimeout *time.Duration
 
-	// Flag to initialize kubelets with --cloud-provider=external
-	externalCloudProvider bool
-
 	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
 	skipEvictionAfter time.Duration
 
@@ -129,6 +124,8 @@ type controllerRunOptions struct {
 }
 
 func main() {
+	nodeFlags := node.NewFlags(flag.CommandLine)
+
 	klog.InitFlags(nil)
 	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
 	// we have to guard it
@@ -147,7 +144,6 @@ func main() {
 	flag.StringVar(&joinClusterTimeout, "join-cluster-timeout", "", "when set, machines that have an owner and do not join the cluster within the configured duration will be deleted, so the owner re-creats them")
 	flag.StringVar(&bootstrapTokenServiceAccountName, "bootstrap-token-service-account-name", "", "When set use the service account token from this SA as bootstrap token instead of creating a temporary one. Passed in namespace/name format")
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
-	flag.BoolVar(&externalCloudProvider, "external-cloud-provider", false, "when set, kubelets will receive --cloud-provider=external flag")
 	flag.DurationVar(&skipEvictionAfter, "skip-eviction-after", 2*time.Hour, "Skips the eviction if a machine is not gone after the specified duration.")
 	flag.StringVar(&nodeHTTPProxy, "node-http-proxy", "", "If set, it configures the 'HTTP_PROXY' & 'HTTPS_PROXY' environment variable on the nodes.")
 	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1", "If set, it configures the 'NO_PROXY' environment variable on the nodes.")
@@ -156,7 +152,6 @@ func main() {
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag. Only has effect on Flatcar Linux, and for kubernetes < 1.18.")
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
-	flag.StringVar(&nodeKubeletFeatureGates, "node-kubelet-feature-gates", "RotateKubeletServerCertificate=true", "Feature gates to set on the kubelet. Default: RotateKubeletServerCertificate=true")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", false, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
@@ -168,11 +163,6 @@ func main() {
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
 		klog.Fatalf("invalid cluster dns specified: %v", err)
-	}
-
-	kubeletFeatureGates, err := parseKubeletFeatureGates(nodeKubeletFeatureGates)
-	if err != nil {
-		klog.Fatalf("invalid kubelet feature gates specified: %v", err)
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
@@ -258,29 +248,31 @@ func main() {
 	}
 
 	runOptions := controllerRunOptions{
-		kubeClient:            kubeClient,
-		kubeconfigProvider:    kubeconfigProvider,
-		name:                  name,
-		cfg:                   machineCfg,
-		metrics:               ctrlMetrics,
-		prometheusRegisterer:  metrics.Registry,
-		externalCloudProvider: externalCloudProvider,
-		skipEvictionAfter:     skipEvictionAfter,
-		nodeCSRApprover:       nodeCSRApprover,
+		kubeClient:           kubeClient,
+		kubeconfigProvider:   kubeconfigProvider,
+		name:                 name,
+		cfg:                  machineCfg,
+		metrics:              ctrlMetrics,
+		prometheusRegisterer: metrics.Registry,
+		skipEvictionAfter:    skipEvictionAfter,
+		nodeCSRApprover:      nodeCSRApprover,
 		node: machinecontroller.NodeSettings{
-			ClusterDNSIPs:       clusterDNSIPs,
-			HTTPProxy:           nodeHTTPProxy,
-			NoProxy:             nodeNoProxy,
-			HyperkubeImage:      nodeHyperkubeImage,
-			KubeletRepository:   nodeKubeletRepository,
-			KubeletFeatureGates: kubeletFeatureGates,
-			PauseImage:          nodePauseImage,
+			ClusterDNSIPs:     clusterDNSIPs,
+			HTTPProxy:         nodeHTTPProxy,
+			HyperkubeImage:    nodeHyperkubeImage,
+			KubeletRepository: nodeKubeletRepository,
+			NoProxy:           nodeNoProxy,
+			PauseImage:        nodePauseImage,
 			ContainerRuntime: containerruntime.Get(
 				nodeContainerRuntime,
 				containerruntime.WithInsecureRegistries(insecureRegistries),
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
 		},
+	}
+
+	if err := nodeFlags.UpdateNodeSettings(&runOptions.node); err != nil {
+		klog.Fatalf("failed to update nodesettings: %v", err)
 	}
 
 	if parsedJoinClusterTimeout != nil {
@@ -406,7 +398,6 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.kubeconfigProvider,
 		providerData,
 		bs.opt.joinClusterTimeout,
-		bs.opt.externalCloudProvider,
 		bs.opt.name,
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
@@ -445,27 +436,4 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 		ips = append(ips, ip)
 	}
 	return ips, nil
-}
-
-func parseKubeletFeatureGates(s string) (map[string]bool, error) {
-	featureGates := map[string]bool{}
-	sFeatureGates := strings.Split(s, ",")
-
-	for _, featureGate := range sFeatureGates {
-		sFeatureGate := strings.Split(featureGate, "=")
-		if len(sFeatureGate) != 2 {
-			return nil, fmt.Errorf("invalid kubelet feature gate: %q", featureGate)
-		}
-		featureGateEnabled, err := strconv.ParseBool(sFeatureGate[1])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse kubelet feature gate: %q", featureGate)
-		}
-
-		featureGates[sFeatureGate[0]] = featureGateEnabled
-	}
-	if len(featureGates) == 0 {
-		featureGates["RotateKubeletServerCertificate"] = true
-	}
-
-	return featureGates, nil
 }

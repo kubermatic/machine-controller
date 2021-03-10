@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,7 +104,6 @@ type Reconciler struct {
 	providerData                     *cloudprovidertypes.ProviderData
 	userDataManager                  *userdatamanager.Manager
 	joinClusterTimeout               *time.Duration
-	externalCloudProvider            bool
 	name                             string
 	bootstrapTokenServiceAccountName *types.NamespacedName
 	skipEvictionAfter                time.Duration
@@ -132,6 +132,8 @@ type NodeSettings struct {
 	// Translates to feature gates on the kubelet.
 	// Default: RotateKubeletServerCertificate=true
 	KubeletFeatureGates map[string]bool
+	// Used to set kubelet flag --cloud-provider=external
+	ExternalCloudProvider bool
 	// container runtime to install
 	ContainerRuntime containerruntime.Config
 }
@@ -160,12 +162,11 @@ func Add(
 	kubeconfigProvider KubeconfigProvider,
 	providerData *cloudprovidertypes.ProviderData,
 	joinClusterTimeout *time.Duration,
-	externalCloudProvider bool,
 	name string,
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
-	nodeSettings NodeSettings) error {
-
+	nodeSettings NodeSettings,
+) error {
 	reconciler := &Reconciler{
 		kubeClient:                       kubeClient,
 		client:                           mgr.GetClient(),
@@ -174,7 +175,6 @@ func Add(
 		kubeconfigProvider:               kubeconfigProvider,
 		providerData:                     providerData,
 		joinClusterTimeout:               joinClusterTimeout,
-		externalCloudProvider:            externalCloudProvider,
 		name:                             name,
 		bootstrapTokenServiceAccountName: bootstrapTokenServiceAccountName,
 		skipEvictionAfter:                skipEvictionAfter,
@@ -662,7 +662,8 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	prov cloudprovidertypes.Provider,
 	machine *clusterv1alpha1.Machine,
 	userdataPlugin userdataplugin.Provider,
-	providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
+	providerConfig *providerconfigtypes.Config,
+) (*reconcile.Result, error) {
 	klog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
 	providerInstance, err := prov.Get(machine, r.providerData)
@@ -684,17 +685,33 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				return nil, fmt.Errorf("failed to render cloud config: %v", err)
 			}
 
+			// grab kubelet featureGates from the annotations
+			kubeletFeatureGates := common.GetKubeletFeatureGates(machine)
+			if len(kubeletFeatureGates) == 0 {
+				// fallback to command-line input
+				kubeletFeatureGates = r.nodeSettings.KubeletFeatureGates
+			}
+
+			// grab kubelet general options from the annotations
+			kubeletFlags := common.GetKubeletFlags(machine)
+
+			// look up for ExternalCloudProvider feature, with fallback to command-line input
+			externalCloudProvider := r.nodeSettings.ExternalCloudProvider
+			if val, ok := kubeletFlags[common.ExternalCloudProviderKubeletFlag]; ok {
+				externalCloudProvider, _ = strconv.ParseBool(val)
+			}
+
 			req := plugin.UserDataRequest{
 				MachineSpec:           machine.Spec,
 				Kubeconfig:            kubeconfig,
 				CloudConfig:           cloudConfig,
 				CloudProviderName:     cloudProviderName,
-				ExternalCloudProvider: r.externalCloudProvider,
+				ExternalCloudProvider: externalCloudProvider,
 				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
 				PauseImage:            r.nodeSettings.PauseImage,
 				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
 				KubeletRepository:     r.nodeSettings.KubeletRepository,
-				KubeletFeatureGates:   r.nodeSettings.KubeletFeatureGates,
+				KubeletFeatureGates:   kubeletFeatureGates,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
