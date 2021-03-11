@@ -21,6 +21,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/admission"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	"github.com/kubermatic/machine-controller/pkg/node"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -38,6 +39,8 @@ var (
 )
 
 func main() {
+	nodeFlags := node.NewFlags(flag.CommandLine)
+
 	klog.InitFlags(nil)
 	if flag.Lookup("kubeconfig") == nil {
 		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
@@ -74,12 +77,16 @@ func main() {
 		klog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
-	s := admission.New(admissionListenAddress, client, um)
-	if err := s.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath); err != nil {
+	srv, err := admission.New(admissionListenAddress, client, um, nodeFlags)
+	if err != nil {
+		klog.Fatalf("failed to create admission hook: %v", err)
+	}
+
+	if err := srv.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath); err != nil {
 		klog.Fatalf("Failed to start server: %v", err)
 	}
 	defer func() {
-		if err := s.Close(); err != nil {
+		if err := srv.Close(); err != nil {
 			klog.Fatalf("Failed to shutdown server: %v", err)
 		}
 	}()

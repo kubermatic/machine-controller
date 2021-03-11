@@ -14,7 +14,8 @@
 
 SHELL = /bin/bash -eu -o pipefail
 
-GO_VERSION = 1.15.1
+GO_VERSION ?= 1.16.1
+
 GOOS ?= $(shell go env GOOS)
 
 export CGO_ENABLED := 0

@@ -22,6 +22,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -38,11 +39,11 @@ import (
 const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requirement"
 
 func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
-
 	machine := clusterv1alpha1.Machine{}
 	if err := json.Unmarshal(ar.Object.Raw, &machine); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
+
 	machineOriginal := machine.DeepCopy()
 	klog.V(3).Infof("Defaulting and validating machine %s/%s", machine.Namespace, machine.Name)
 
@@ -82,6 +83,11 @@ func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admis
 		if err := ad.defaultAndValidateMachineSpec(&machine.Spec); err != nil {
 			return nil, err
 		}
+
+		common.SetKubeletFeatureGates(&machine, ad.nodeSettings.KubeletFeatureGates)
+		common.SetKubeletFlags(&machine, map[common.KubeletFlags]string{
+			common.ExternalCloudProviderKubeletFlag: fmt.Sprintf("%t", ad.nodeSettings.ExternalCloudProvider),
+		})
 	}
 
 	return createAdmissionResponse(machineOriginal, &machine)
