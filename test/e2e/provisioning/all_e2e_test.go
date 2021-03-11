@@ -20,6 +20,7 @@ package provisioning
 
 import (
 	"context"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"os"
@@ -285,9 +286,14 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
+	kubevirtKubeconfigDecoded, err := base64.StdEncoding.DecodeString(kubevirtKubeconfig)
+	if err != nil {
+		t.Fatalf("Failed to decode kubevirt kubeconfig: %v", err)
+	}
+
 	selector := Not(OsSelector("sles", "flatcar", "rhel"))
 	params := []string{
-		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
+		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfigDecoded),
 	}
 
 	runScenarios(t, selector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
@@ -302,8 +308,13 @@ func TestKubevirtDNSConfigProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
+	kubevirtKubeconfigDecoded, err := base64.StdEncoding.DecodeString(kubevirtKubeconfig)
+	if err != nil {
+		t.Fatalf("Failed to decode kubevirt kubeconfig: %v", err)
+	}
+
 	params := []string{
-		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
+		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfigDecoded),
 	}
 
 	scenario := scenario{
