@@ -151,8 +151,6 @@ users:
 
 runcmd:
   - 'call powershell -File C:/setup-node-stage-001.ps1 -NoLogo -ExecutionPolicy ByPass -OutputFormat Text -InputFormat Text -NonInteractive'
-  - 'timeout 10'
-  - 'call powershell -File C:/setup-node-stage-002.ps1 -NoLogo -ExecutionPolicy ByPass -OutputFormat Text -InputFormat Text -NonInteractive'
 
 write_files:
   - path: C:/setup-node-stage-001.ps1
@@ -167,12 +165,18 @@ write_files:
         # We already ran and configured the node.
         return 0
       }
+      New-Item -Force -ItemType File -Path C:/stage-001-started
 {{ .ContainerRuntimeScript | indent 6 }}
       New-Item -ItemType Directory -Force C:/var/lib/kubelet/etc/kubernetes/manifests
       New-Item -ItemType Directory -Force C:/proc
       Invoke-WebRequest -Uri "https://github.com/kubernetes-sigs/sig-windows-tools/releases/latest/download/PrepareNode.ps1" -UseBasicParsing -OutFile "C:/k/PrepareNode.ps1"
       Install-WindowsFeature Containers
       Rename-Computer -Force -NewName "{{ .MachineSpec.Name }}"
+      # Register stage 002 for next startup
+      $action = New-ScheduledTaskAction -Execute '%SYSTEMROOT%\System32\WindowsPowerShell\v1.0\Powershell.exe' -Argument '-File C:/setup-node-stage-002.ps1 -NoLogo -ExecutionPolicy ByPass -OutputFormat Text -InputFormat Text -NonInteractive'
+      $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+      $trigger = New-ScheduledTaskTrigger -AtStartup
+      Register-ScheduledTask -Action $action -TaskName 'setup-node-stage-002' -TaskPath '\' -Principal $principal -Trigger $trigger
       New-Item -ItemType File -Path C:/stage-001-complete
       # schedule a reboot if rebooting is not allowed by cloudbase cloudinit
       shutdown.exe /r /t 5 /f /c "rebooting"
@@ -190,12 +194,11 @@ write_files:
         # We already ran and configured the node.
         exit 0
       } elseif (-not [bool](Test-Path -Path "C:/stage-001-complete")) {
-        # Workaround for cloudbase init reboot being not allowed
-        # If cloudbase starts us without stage 001 having completed
-        # we're going to invoke it now.
+        # Stage 001 was never ran, so start it now
         . /setup-node-stage-001.ps1
         exit 1003
       }
+      Unregister-ScheduledTask -TaskName 'setup-node-stage-002' -Confirm:$false -ErrorAction SilentlyContinue
       # Workaround for sig-windows-tools#130
       if ([bool](Get-Service -Name "rancher-wins" -ErrorAction Ignore)) {
         Stop-Service -Name "rancher-wins"
@@ -213,7 +216,7 @@ write_files:
       C:/k/setup_net_env.ps1
       (Get-Content -Path 'C:/k/StartKubelet.ps1' -Raw).Replace('$(hostname)','{{ .MachineSpec.Name }} --node-ip=$((Get-Content -Path "C:/k/nodeip.conf" | Where-Object {$_.StartsWith("KUBELET_NODE_IP")}).Split("=", 2)[1])') | Out-File -Encoding ascii -PSPath C:/k/StartKubelet.ps1
       C:/k/Install-PowerShellCore.ps1
-      C:/k/Install-OpenSSH.ps1
+      #C:/k/Install-OpenSSH.ps1
       # Enable ICMP echo requests this instance over IPv4 and IPv6
       (Get-NetFirewallRule -Group "@FirewallAPI.dll,-28502").Where{$_.Name -like "*ICMP*"} | Enable-NetFirewallRule
       # Contact Microsoft activation servers and activate windows if possible (will silently fail if no activation is possible)
@@ -254,6 +257,11 @@ write_files:
       $latestVersionURL = (ConvertFrom-Json -InputObject (Invoke-WebRequest -Uri 'https://api.github.com/repos/PowerShell/Win32-OpenSSH/releases/latest' -UseBasicParsing).Content).assets.where{$_.name -eq 'OpenSSH-Win64.zip'}.browser_download_url
       Invoke-WebRequest -Uri $latestVersionURL -OutFile $OpenSSHTempFile -UseBasicParsing
       if (Test-Path -Path $OpenSSHInstallPath) {
+        if ([bool](Get-Service -Name 'sshd' -ErrorAction SilentlyContinue)) {
+          Stop-Service -Name 'sshd' -Force
+          Get-CimInstance -ClassName Win32_Service -Filter "Name='sshd'" | Remove-CimInstance -Confirm:$false
+        }
+        Get-Process -Name 'sshd' -ErrorAction SilentlyContinue | Stop-Process -Force
         Push-Location -Path $OpenSSHInstallPath
         try { ./uninstall-sshd.ps1 } catch {}
         Pop-Location
