@@ -33,7 +33,6 @@ set -o pipefail
 function container_runtime_monitoring() {
   local -r max_attempts=5
   local attempt=1
-  local -r crictl="${KUBE_HOME}/bin/crictl"
   local -r container_runtime_name="${CONTAINER_RUNTIME_NAME:-docker}"
   # We still need to use 'docker ps' when container runtime is "docker". This is because
   # dockershim is still part of kubelet today. When kubelet is down, crictl pods
@@ -41,11 +40,11 @@ function container_runtime_monitoring() {
   # docker live restore is disabled.
   local healthcheck_command="docker ps"
   if [[ "${CONTAINER_RUNTIME:-docker}" != "docker" ]]; then
-    healthcheck_command="${crictl} pods"
+    healthcheck_command="crictl pods"
   fi
   # Container runtime startup takes time. Make initial attempts before starting
   # killing the container runtime.
-  until timeout 60 "${healthcheck_command}" >/dev/null; do
+  until timeout 60 ${healthcheck_command} > /dev/null; do
     if ((attempt == max_attempts)); then
       echo "Max attempt ${max_attempts} reached! Proceeding to monitor container runtime healthiness."
       break
@@ -54,7 +53,7 @@ function container_runtime_monitoring() {
     sleep "$((2 ** attempt++))"
   done
   while true; do
-    if ! timeout 60 "${healthcheck_command}" >/dev/null; then
+    if ! timeout 60 ${healthcheck_command} > /dev/null; then
       echo "Container runtime ${container_runtime_name} failed!"
       if [[ "$container_runtime_name" == "docker" ]]; then
         # Dump stack of docker daemon for investigation.
@@ -105,8 +104,6 @@ if [[ "$#" -ne 1 ]]; then
   echo "Usage: health-monitor.sh <container-runtime/kubelet>"
   exit 1
 fi
-
-KUBE_HOME="/home/kubernetes"
 
 SLEEP_SECONDS=10
 component=$1
