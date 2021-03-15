@@ -170,7 +170,8 @@ systemctl enable --now containerd
     // conf_dir = "C:\\Program Files\\containerd\\cni\\conf"
 	containerdWindowsTemplate = template.Must(template.New("containerd-windows").Parse(`
 Set-Location -Path "$env:tmp"
-Start-Process -FilePath "curl.exe" -ArgumentList @("-OL", "https://github.com/containerd/containerd/releases/download/v{{ .ContainerdVersion }}/containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait
+[string]$arch = $env:PROCESSOR_ARCHITECTURE.ToLower()
+Start-Process -FilePath "curl.exe" -ArgumentList @("-OL", "https://github.com/containerd/containerd/releases/download/v{{ .ContainerdVersion }}/containerd-{{ .ContainerdVersion }}-windows-$arch.tar.gz") -Wait
 Start-Process -FilePath "tar.exe" -ArgumentList @("xvf", ".\containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait
 
 Stop-Service -Name "containerd" -Force -ErrorAction SilentlyContinue
@@ -178,6 +179,36 @@ Stop-Service -Name "containerd" -Force -ErrorAction SilentlyContinue
 Copy-Item -Path ".\bin\*" -Destination "$env:ProgramFiles\containerd" -Recurse -Force
 Set-Location -Path "$env:ProgramFiles\containerd\"
 .\containerd.exe config default | Out-File -PSPath "config.toml" -Encoding ascii
+
+# Network cni setup based upon: https://github.com/kubernetes-sigs/sig-windows-tools/releases/download/v0.1.5/Install-Containerd.ps1
+$config = Get-Content "config.toml"
+$config = $config -replace "bin_dir = (.)*$", 'bin_dir = "c:/opt/cni/bin"'
+$config = $config -replace "conf_dir = (.)*$", '"conf_dir = "c:/etc/cni/net.d"'
+$config | Out-File -PSPath "config.toml" -Encoding ascii -Force
+New-Item -ItemType Directory -Path "C:\opt\cni\bin" -Force
+New-Item -ItemType Directory -Path "C:\opt\cni\net.d" -Force
+$IPv4DefaultRoute = Get-NetRoute "0.0.0.0/0"
+$IPv4Address = Get-NetIPAddress -ifIndex $IPv4DefaultRoute.ifIndex -AddressFamily IPv4
+@"
+{{
+    "cniVersion": "0.2.0",
+    "name": "nat",
+    "type": "nat",
+    "master": "Ethernet",
+    "ipam": {{
+        "subnet": "{0}/{1}",
+        "routes": [
+            {{
+                "GW": "{2}"
+            }}
+        ]
+    }},
+    "capabilities": {{
+        "portMappings": true,
+        "dns": true
+    }}
+}}
+"@ -f $IPv4Address.IPAddress, $IPv4Address.PrefixLength, $IPv4DefaultRoute.NextHop | Set-Content "c:\etc\cni\net.d\0-containerd-nat.json" -Force
 
 Start-Process -FilePath "$env:ProgramFiles\containerd\containerd.exe" -ArgumentList @("--register-service") -Wait
 Start-Service -Name "containerd"
