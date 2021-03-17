@@ -88,6 +88,11 @@ func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admis
 		common.SetKubeletFlags(&machine, map[common.KubeletFlags]string{
 			common.ExternalCloudProviderKubeletFlag: fmt.Sprintf("%t", ad.nodeSettings.ExternalCloudProvider),
 		})
+		providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+		if err != nil {
+			return nil, err
+		}
+		common.SetOSLabel(&machine, string(providerConfig.OperatingSystem))
 	}
 
 	return createAdmissionResponse(machineOriginal, &machine)
