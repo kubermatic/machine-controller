@@ -23,6 +23,7 @@ package gce
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"golang.org/x/oauth2/google"
@@ -74,6 +75,10 @@ func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*gcetypes.CloudProviderSp
 	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
+	}
+
+	if providerConfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 	// Retrieve cloud provider specification from cloud provider specification.
 	cpSpec := &gcetypes.CloudProviderSpec{}
