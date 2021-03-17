@@ -193,3 +193,17 @@ func GetKubeletFlags(metaobj metav1.Object) map[KubeletFlags]string {
 	}
 	return result
 }
+
+const OperatingSystemLabelV1 = "v1.machine-controller.kubermatic.io/operating-system"
+
+func SetOSLabel(metaobj metav1.Object, osName string) {
+	lbs := metaobj.GetLabels()
+
+	if _, found := lbs[OperatingSystemLabelV1]; !found {
+		if lbs == nil {
+			lbs = map[string]string{}
+		}
+		lbs[OperatingSystemLabelV1] = osName
+		metaobj.SetLabels(lbs)
+	}
+}
