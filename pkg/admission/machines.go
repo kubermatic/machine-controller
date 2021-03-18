@@ -92,7 +92,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admis
 		if err != nil {
 			return nil, err
 		}
-		common.SetOSLabel(&machine, string(providerConfig.OperatingSystem))
+		common.SetOSLabel(&machine.Spec, string(providerConfig.OperatingSystem))
 	}
 
 	return createAdmissionResponse(machineOriginal, &machine)
