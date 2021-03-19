@@ -83,8 +83,6 @@ yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce
     More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473
 */}}
 yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
-yum install -y containerd.io-{{ .ContainerdVersion }} yum-plugin-versionlock
-yum versionlock add containerd.io
 
 cat <<EOF | tee /etc/crictl.yaml
 runtime-endpoint: unix:///run/containerd/containerd.sock
@@ -96,6 +94,9 @@ cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
 Restart=always
 EnvironmentFile=-/etc/environment
 EOF
+
+yum install -y containerd.io-{{ .ContainerdVersion }} yum-plugin-versionlock
+yum versionlock add containerd.io
 
 systemctl daemon-reload
 systemctl enable --now containerd
@@ -106,7 +107,6 @@ apt-get update
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-apt-get install -y containerd.io={{ .ContainerdVersion }}*
 
 cat <<EOF | tee /etc/crictl.yaml
 runtime-endpoint: unix:///run/containerd/containerd.sock
@@ -118,6 +118,9 @@ cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
 Restart=always
 EnvironmentFile=-/etc/environment
 EOF
+
+apt-get install -y containerd.io={{ .ContainerdVersion }}*
+apt-mark hold containerd.io
 
 systemctl daemon-reload
 systemctl enable --now containerd

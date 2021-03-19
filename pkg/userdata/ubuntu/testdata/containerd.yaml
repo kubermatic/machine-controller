@@ -93,7 +93,6 @@ write_files:
     apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
     add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    apt-get install -y containerd.io=1.4.3*
 
     cat <<EOF | tee /etc/crictl.yaml
     runtime-endpoint: unix:///run/containerd/containerd.sock
@@ -105,6 +104,9 @@ write_files:
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
+
+    apt-get install -y containerd.io=1.4.3*
+    apt-mark hold containerd.io
 
     systemctl daemon-reload
     systemctl enable --now containerd
