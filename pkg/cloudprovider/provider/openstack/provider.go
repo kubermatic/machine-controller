@@ -185,7 +185,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			c.InstanceReadyCheckTimeout = 10 * time.Second
 		}
 	} else {
-		c.InstanceReadyCheckTimeout = 10 * time.Second
+		c.InstanceReadyCheckTimeout = 100 * time.Second
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
