@@ -20,16 +20,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 	baremetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -102,15 +105,37 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 }
 
 func (p provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
-	return spec, nil
+	_, _, _, err := p.getConfig(spec.ProviderSpec)
+	return spec, err
 }
 
-func (p provider) Validate(machinespec v1alpha1.MachineSpec) error {
+func (p provider) Validate(spec v1alpha1.MachineSpec) error {
+	c, _, _, err := p.getConfig(spec.ProviderSpec)
+	if err != nil {
+		return fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	if c.driver == "" {
+		return fmt.Errorf("baremetal provider's driver name cannot be empty")
+	}
+
+	if c.driverSpec.Raw == nil {
+		return fmt.Errorf("baremetal provider's driver spec cannot be empty")
+	}
+
 	return nil
 }
 
 func (p provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	panic("implement me")
+	_, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
+	}
+
+	return &bareMetalServer{}, nil
 }
 
 func (p provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
@@ -118,11 +143,27 @@ func (p provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name
 }
 
 func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	panic("implement me")
+	_, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
+	}
+
+	return &bareMetalServer{}, nil
 }
 
 func (p provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	panic("implement me")
+	_, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return false, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
+		}
+	}
+
+	return false, nil
 }
 
 func (p provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
