@@ -99,7 +99,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 	c.driver = plugins.Driver(driverName)
 
-	// TODO(MQ): add the right driver spec based on the used driver.
 	c.driverSpec = rawConfig.DriverSpec
 	return &c, &pconfig, &rawConfig, err
 }
