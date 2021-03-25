@@ -108,6 +108,22 @@ presubmits:
           command:
             - "./hack/verify-boilerplate.sh"
 
+  - name: pull-machine-controller-license-validation
+    run_if_changed: "^go.(mod|sum)$"
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+      - image: quay.io/kubermatic/wwhrd:0.4.0-1
+        command:
+        - ./hack/verify-licenses.sh
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 1
+
   - name: pull-machine-controller-test
     always_run: true
     decorate: true
