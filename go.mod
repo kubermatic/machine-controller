@@ -39,6 +39,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
+	github.com/pkg/sftp v1.13.0
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.8.0
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.7
@@ -46,7 +47,7 @@ require (
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb // indirect
 	github.com/vmware/govmomi v0.23.1
 	go4.org v0.0.0-20200104003542-c7e774b10ea0 // indirect
-	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/api v0.36.0

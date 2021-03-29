@@ -17,9 +17,11 @@ limitations under the License.
 package baremetal
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/ssh"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -70,7 +72,8 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	driver     plugins.Driver
+	driver     plugins.PluginDriver
+	driverName plugins.Driver
 	driverSpec runtime.RawExtension
 }
 
@@ -97,9 +100,13 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get baremetal provider's driver name: %v", err)
 	}
-	c.driver = plugins.Driver(driverName)
+	c.driverName = plugins.Driver(driverName)
 
-	// TODO(MQ): add the right driver spec based on the used driver.
+	switch c.driverName {
+	case plugins.SSHDriver:
+		c.driver = ssh.NewSSHDriver(context.Background())
+	}
+
 	c.driverSpec = rawConfig.DriverSpec
 	return &c, &pconfig, &rawConfig, err
 }
@@ -115,7 +122,7 @@ func (p provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	if c.driver == "" {
+	if c.driverName == "" {
 		return fmt.Errorf("baremetal provider's driver name cannot be empty")
 	}
 
@@ -127,7 +134,7 @@ func (p provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 func (p provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	_, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -135,7 +142,18 @@ func (p provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provid
 		}
 	}
 
-	return &bareMetalServer{}, nil
+	server, err := c.driver.GetServer(context.TODO(), machine.UID, c.driverSpec)
+	if err != nil {
+		if cloudprovidererrors.IsNotFound(err) {
+			return nil, cloudprovidererrors.ErrInstanceNotFound
+		}
+
+		return nil, fmt.Errorf("failed to fetch server: %v", err)
+	}
+
+	return &bareMetalServer{
+		server: server,
+	}, nil
 }
 
 func (p provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
@@ -143,7 +161,7 @@ func (p provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name
 }
 
 func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	_, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -151,7 +169,14 @@ func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pro
 		}
 	}
 
-	return &bareMetalServer{}, nil
+	server, err := c.driver.ProvisionServer(context.TODO(), machine.UID, c.driverSpec, userdata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to provisioner server: %v", err)
+	}
+
+	return &bareMetalServer{
+		server: server,
+	}, nil
 }
 
 func (p provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {

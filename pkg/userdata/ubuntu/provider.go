@@ -308,5 +308,6 @@ write_files:
 {{ kubeletHealthCheckSystemdUnit | indent 4 }}
 
 runcmd:
-- systemctl start setup.service
+- systemctl restart setup.service
+- systemctl daemon-reload
 `
