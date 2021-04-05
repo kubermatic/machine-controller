@@ -135,3 +135,7 @@ func getCAData(config *rest.Config) ([]byte, error) {
 
 	return ioutil.ReadFile(config.TLSClientConfig.CAFile)
 }
+
+func (p *KubeconfigProvider) GetBearerToken() string {
+	return p.clientConfig.BearerToken
+}
