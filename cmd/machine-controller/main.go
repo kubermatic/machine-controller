@@ -71,6 +71,8 @@ var (
 	nodeCSRApprover                  bool
 	caBundleFile                     string
 
+	useOSM bool
+
 	nodeHTTPProxy          string
 	nodeNoProxy            string
 	nodeInsecureRegistries string
@@ -123,6 +125,8 @@ type controllerRunOptions struct {
 
 	node machinecontroller.NodeSettings
 
+	useOSM bool
+
 	// Assigns the POD networks that will be allocated.
 	podCidr string
 
@@ -164,6 +168,8 @@ func main() {
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
 	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
+
+	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -278,6 +284,7 @@ func main() {
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
 		},
+		useOSM: useOSM,
 		podCidr:       podCidr,
 		nodePortRange: nodePortRange,
 	}
@@ -413,6 +420,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
+		bs.opt.useOSM,
 		bs.opt.podCidr,
 		bs.opt.nodePortRange,
 	); err != nil {

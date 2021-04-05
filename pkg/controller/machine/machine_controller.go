@@ -17,9 +17,12 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"html/template"
 	"net"
 	"strconv"
 	"strings"
@@ -27,6 +30,7 @@ import (
 
 	"github.com/heptiolabs/healthcheck"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -111,6 +115,8 @@ type Reconciler struct {
 	nodeSettings                     NodeSettings
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
+
+	useOSM bool
 	podCIDR                          string
 	nodePortRange                    string
 }
@@ -169,6 +175,7 @@ func Add(
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
+	useOSM bool,
 	podCIDR string,
 	nodePortRange string,
 ) error {
@@ -186,6 +193,8 @@ func Add(
 		nodeSettings:                     nodeSettings,
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
+
+		useOSM: useOSM,
 		podCIDR:                          podCIDR,
 		nodePortRange:                    nodePortRange,
 	}
@@ -732,10 +741,21 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				PodCIDR:               r.podCIDR,
 				NodePortRange:         r.nodePortRange,
 			}
+			// Here we do stuff!
+			var userdata string
 
-			userdata, err := userdataPlugin.UserData(req)
-			if err != nil {
-				return nil, fmt.Errorf("failed get userdata: %v", err)
+			if useOSM {
+				userdata, err = getOSMBootstrapUserdata(req)
+				if err != nil {
+					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
+				}
+
+				logrus.Infof("mmelsayed--------------------------------------\n%v", userdata)
+			} else {
+				userdata, err = userdataPlugin.UserData(req)
+				if err != nil {
+					return nil, fmt.Errorf("failed get userdata: %v", err)
+				}
 			}
 
 			// Create the instance
@@ -1042,3 +1062,106 @@ func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifier
 		return r.client.Update(ctx, node)
 	})
 }
+
+func getOSMBootstrapUserdata(req plugin.UserDataRequest) (string, error) {
+
+	var clusterName string
+	for key := range req.Kubeconfig.Clusters {
+		clusterName = key
+	}
+	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
+	if err != nil {
+		return "", fmt.Errorf("failed to get providerSpec: %v", err)
+	}
+	data := struct {
+		Token        string
+		SecretName   string
+		ServerURL    string
+		MachineName  string
+		ProviderSpec *providerconfigtypes.Config
+	}{
+		Token:        req.Kubeconfig.AuthInfos[req.Kubeconfig.CurrentContext].Token,
+		SecretName:   fmt.Sprintf("%s-osc-bootstrap", strings.Join(strings.SplitN(req.MachineSpec.Name, "-", 4)[:3], "-")),
+		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
+		MachineName:  req.MachineSpec.Name,
+		ProviderSpec: pconfig,
+	}
+	bsScript, err := template.New("bootstrap-cloud-init").Parse(bootstrapBinContentTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse bootstrapBinContentTemplate template: %v", err)
+	}
+	script := &bytes.Buffer{}
+	err = bsScript.Execute(script, data)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template: %v", err)
+	}
+	bsCloudInit, err := template.New("bootstrap-cloud-init").Parse(cloudInitTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
+	}
+
+	cloudInit := &bytes.Buffer{}
+	err = bsCloudInit.Execute(cloudInit, struct {
+		Script       string
+		Service      string
+		ProviderSpec *providerconfigtypes.Config
+		plugin.UserDataRequest
+	}{
+		Script:          base64.StdEncoding.EncodeToString(script.Bytes()),
+		Service:         base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
+		ProviderSpec:    pconfig,
+		UserDataRequest: req,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %v", err)
+	}
+	return cloudInit.String(), nil
+}
+
+const (
+	bootstrapBinContentTemplate = `#!/bin/bash
+	set -xeuo pipefail
+	apt update && apt install -y curl jq
+	curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' \
+	{{ .ServerURL }}/api/v1/namespaces/kube-system/secrets/{{ .SecretName }} \\
+	| jq '.data["cloud-init"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+	cloud-init clean
+	cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
+	systemctl start provision.service`
+
+	bootstrapServiceContentTemplate = `[Install]
+	WantedBy=multi-user.target
+	
+	[Unit]
+	Requires=network-online.target
+	After=network-online.target
+	[Service]
+	Type=oneshot
+	RemainAfterExit=true
+	ExecStart=/opt/bin/bootstrap`
+
+	cloudInitTemplate = `#cloud-config
+{{ if ne .CloudProviderName "aws" }}
+hostname: {{ .MachineSpec.Name }}
+{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
+{{ end }}
+ssh_pwauth: no
+ssh_authorized_keys:
+- "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDGJ68uKjwlOT0H/gFSzbtGsJHrU6DR8OYvcpph4LnS2Ob97iAvUWJ7q0qp7se6qHAOcqcDqGVIOZaD+mFO34FtTfiDP781awvQu1/NZeJ+Xqp6kWT4vndJ/ZcAV7cMOCHjetyEOQvZEYofeAumCxo9hSn/Cza0boX1AeKnlMPSA/ThKCZl5V6Hv2eRCOSezQBbJKk1CfCF+U70mbnvI184J+Kb+96OP7kj1YxlbvgaMQkF33bwao5JvMMql/Bha3Pqh8DJMJ7TjZHP4rpy0iZa/QDbtpW9qZL/3WJ62uyWnVtMR0UPUt74mHOEyd2Y0y731ZerOKC9zSSsdNhCcLoH broken@Bane"
+
+write_files:
+- path: /opt/bin/bootstrap
+  permissions: '0755'
+  encoding: b64
+  content: |
+    {{ .Script }}
+- path: /etc/systemd/system/bootstrap.service
+  permissions: '0644'
+  encoding: b64
+  content: |
+    {{ .Service }}
+runcmd:
+- systemctl restart bootstrap.service
+- systemctl daemon-reload
+`
+)
