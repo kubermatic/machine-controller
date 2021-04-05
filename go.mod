@@ -43,6 +43,7 @@ require (
 	github.com/prometheus/client_golang v1.8.0
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.7
 	github.com/sethvargo/go-password v0.2.0
+	github.com/sirupsen/logrus v1.6.0
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb // indirect
 	github.com/vmware/govmomi v0.23.1
 	go4.org v0.0.0-20200104003542-c7e774b10ea0 // indirect

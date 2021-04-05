@@ -91,7 +91,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
 	}
-
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec                   *providerconfigtypes.Config
