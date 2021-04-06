@@ -21,17 +21,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell"
 	baremetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -115,10 +115,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %v", err)
 		}
 
-		c.driver, err = tinkerbell.NewTinkerbellDriver(driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %v", err)
-		}
+		//c.driver, err = tinkerbell.NewTinkerbellDriver(driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
+		//if err != nil {
+		//	return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %v", err)
+		//}
 	default:
 		return nil, nil, fmt.Errorf("unsupported baremetal driver: %s", pconfig.CloudProvider)
 	}
@@ -148,6 +148,7 @@ func (p provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 func (p provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return nil, cloudprovidererrors.ErrInstanceNotFound
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -183,7 +184,29 @@ func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pro
 		}
 	}
 
-	server, err := c.driver.ProvisionServer(context.Background(), machine.UID, c.driverSpec)
+	ctx := context.Background()
+	token, err := util.ExtractCloudInitSettingsToken(ctx, data.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract cloud-init-getter token: %v", err)
+	}
+
+	tmpl, err := util.GenerateCloudInitGetterScript(token, machine.Name, userdata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate bootstrap template: %v", err)
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      machine.Name,
+			Namespace: util.CloudInitNamespace,
+		},
+		Data: map[string][]byte{"cloud_init": []byte(userdata)},
+	}
+	if err := data.Client.Create(ctx, secret); err != nil {
+		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
+	}
+
+	server, err := c.driver.ProvisionServer(ctx, machine.UID, tmpl, c.driverSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provisioner server: %v", err)
 	}

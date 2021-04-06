@@ -18,7 +18,13 @@ package tinkerbell
 
 import "github.com/tinkerbell/tink/workflow"
 
-func createTemplate(worker, tinkServerAddress, imageRepoAddress string) *workflow.Workflow {
+type workflowConfig struct {
+	WorkerMACAddress  string
+	TinkServerAddress string
+	CloudInit         string
+}
+
+func createTemplate(config *workflowConfig) *workflow.Workflow {
 	return &workflow.Workflow{
 		Version:       "0.1",
 		Name:          "ubuntu_provisioning",
@@ -26,7 +32,7 @@ func createTemplate(worker, tinkServerAddress, imageRepoAddress string) *workflo
 		Tasks: []workflow.Task{
 			{
 				Name:       "os-installation",
-				WorkerAddr: worker,
+				WorkerAddr: config.WorkerMACAddress,
 				Volumes: []string{
 					"/dev:/dev",
 					"/dev/console:/dev/console",
@@ -43,7 +49,7 @@ func createTemplate(worker, tinkServerAddress, imageRepoAddress string) *workflo
 						Image:   "disk-partition:v1",
 						Timeout: 180,
 						Environment: map[string]string{
-							"MIRROR_HOST": tinkServerAddress,
+							"MIRROR_HOST": config.TinkServerAddress,
 						},
 						Volumes: []string{
 							"/statedir:/statedir",
@@ -54,7 +60,7 @@ func createTemplate(worker, tinkServerAddress, imageRepoAddress string) *workflo
 						Image:   "install-root-fs:v1",
 						Timeout: 600,
 						Environment: map[string]string{
-							"MIRROR_HOST": imageRepoAddress,
+							"MIRROR_HOST": config.TinkServerAddress,
 						},
 						Volumes: nil,
 					},
@@ -63,7 +69,19 @@ func createTemplate(worker, tinkServerAddress, imageRepoAddress string) *workflo
 						Image:   "install-grub:v1",
 						Timeout: 600,
 						Environment: map[string]string{
-							"MIRROR_HOST": imageRepoAddress,
+							"MIRROR_HOST": config.TinkServerAddress,
+						},
+						Volumes: []string{
+							"/statedir:/statedir",
+						},
+					},
+					{
+						Name:    "cloud-init",
+						Image:   "cloud-init:v3",
+						Timeout: 600,
+						Environment: map[string]string{
+							"MIRROR_HOST":       config.TinkServerAddress,
+							"CUSTOM_CLOUD_INIT": config.CloudInit,
 						},
 						Volumes: []string{
 							"/statedir:/statedir",

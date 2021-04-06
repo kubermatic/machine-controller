@@ -87,7 +87,7 @@ func (d *driver) GetServer(ctx context.Context, uid types.UID, hwSpec runtime.Ra
 	}, nil
 }
 
-func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, hwSpec runtime.RawExtension) (plugins.Server, error) {
+func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, userdata string, hwSpec runtime.RawExtension) (plugins.Server, error) {
 	hw := HardwareSpec{}
 	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %v", err)
@@ -98,7 +98,13 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, hwSpec runt
 		return nil, fmt.Errorf("failed to register hardware to tink-server: %v", err)
 	}
 
-	tmpl := createTemplate(hw.GetMACAddress(), d.TinkServerAddress, d.ImageRepoAddress)
+	cfg := &workflowConfig{
+		WorkerMACAddress:  hw.GetMACAddress(),
+		TinkServerAddress: d.TinkServerAddress,
+		CloudInit:         d.ImageRepoAddress,
+	}
+
+	tmpl := createTemplate(cfg)
 	payload, err := yaml.Marshal(tmpl)
 	if err != nil {
 		return nil, fmt.Errorf("failed marshalling workflow template: %v", err)
