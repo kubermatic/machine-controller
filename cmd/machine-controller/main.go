@@ -43,6 +43,7 @@ import (
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	"github.com/kubermatic/machine-controller/pkg/signals"
+	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -198,6 +199,11 @@ func main() {
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+	}
+
+	// needed for OSM
+	if err := osmv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
 	}
 
 	// Check if the hyperkube image has a tag set
