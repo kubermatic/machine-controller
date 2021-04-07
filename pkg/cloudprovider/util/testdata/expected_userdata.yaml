@@ -1,0 +1,36 @@
+#cloud-config
+
+write_files:
+  - path: "/opt/bin/bootstrap"
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -xeuo pipefail
+      apt-get update
+      apt-get install jq -y
+      wget --no-check-certificate --quiet \
+        --directory-prefix /etc/cloud/cloud.cfg.d/ \
+        --method GET \
+        --timeout=60 \
+        --header 'Authorization: Bearer eyTestToken' \
+        'https://88.99.224.97:6443/api/v1/namespaces/cloud-init-settings/secrets/cloud-init-getter-token'
+      cat /etc/cloud/cloud.cfg.d/cloud-init-getter-token | jq '.data.cloud_init' -r | base64 -d > /etc/cloud/cloud.cfg.d/99-provisioning-config.cfg
+      cloud-init clean
+      cloud-init --file /etc/cloud/cloud.cfg.d/99-provisioning-config.cfg init
+      systemctl daemon-reload
+      systemctl start setup.service
+
+  - path: /etc/systemd/system/bootstrap.service
+    permissions: "0644"
+    content: |
+      [Install]
+      WantedBy=multi-user.target
+      [Unit]
+      Requires=network-online.target
+      After=network-online.target
+      [Service]
+      Type=oneshot
+      RemainAfterExit=true
+      ExecStart=/opt/bin/bootstrap
+runcmd:
+  - systemctl restart bootstrap.service

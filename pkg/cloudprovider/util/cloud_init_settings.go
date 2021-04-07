@@ -21,11 +21,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"html/template"
 	"strings"
+	"text/template"
+
+	"gopkg.in/yaml.v3"
 
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -49,10 +53,13 @@ write_files:
       --method GET \
       --timeout=60 \
       --header 'Authorization: Bearer {{ .Token }}' \
-      '{{ .ClusterHost }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }}'
-    cat /etc/cloud/cloud.cfg.d/{{ .SecretName }} | jq '.data.cloud-init' -r | base64 -d > 99-provisioning-config.cfg
+      '{{ .ClusterHost }}/api/v1/namespaces/{{ .CloudInitSettingsNamespace }}/secrets/{{ .SecretName }}'
+    cat /etc/cloud/cloud.cfg.d/{{ .SecretName }} | jq '.data.cloud_init' -r | base64 -d > /etc/cloud/cloud.cfg.d/99-provisioning-config.cfg
+    rm /etc/cloud/cloud.cfg.d/{{ .SecretName }}
     cloud-init clean
     cloud-init --file /etc/cloud/cloud.cfg.d/99-provisioning-config.cfg init
+    systemctl daemon-reload
+    systemctl start setup.service 
 
 - path: /etc/systemd/system/bootstrap.service
   permissions: "0644"
@@ -67,9 +74,7 @@ write_files:
     RemainAfterExit=true
     ExecStart=/opt/bin/bootstrap
 runcmd:
-- systemctl restart bootstrap.service
-- systemctl daemon-reload
-`
+- systemctl restart bootstrap.service`
 )
 
 func ExtractCloudInitSettingsToken(ctx context.Context, client ctrlruntimeclient.Client) (string, error) {
@@ -105,18 +110,42 @@ func GenerateCloudInitGetterScript(token, secretName, userdata string) (string, 
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, &struct {
-		Token       string
-		SecretName  string
-		ClusterHost string
+		Token                      string
+		SecretName                 string
+		ClusterHost                string
+		CloudInitSettingsNamespace string
 	}{
-		Token:       token,
-		SecretName:  secretName,
-		ClusterHost: clusterHost,
+		Token:                      token,
+		SecretName:                 secretName,
+		ClusterHost:                clusterHost,
+		CloudInitSettingsNamespace: CloudInitNamespace,
 	}); err != nil {
 		return "", fmt.Errorf("failed to execute bootstrap template: %v", err)
 	}
 
 	return buf.String(), nil
+}
+
+func CreateMachineCloudInitSecret(ctx context.Context, userdata, machineName string, client ctrlruntimeclient.Client) error {
+	secret := &corev1.Secret{}
+	if err := client.Get(ctx, types.NamespacedName{Namespace: CloudInitNamespace, Name: machineName}, secret); err != nil {
+		if kerrors.IsNotFound(err) {
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      machineName,
+					Namespace: CloudInitNamespace,
+				},
+				Data: map[string][]byte{"cloud_init": []byte(userdata)},
+			}
+			if err := client.Create(ctx, secret); err != nil {
+				return fmt.Errorf("failed to create secret for userdata: %v", err)
+			}
+		}
+
+		return fmt.Errorf("failed to fetch cloud-init secret: %v", err)
+	}
+
+	return nil
 }
 
 type file struct {
