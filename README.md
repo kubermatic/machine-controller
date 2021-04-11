@@ -104,6 +104,7 @@ locally, the following steps are required:
 * Populate the environment variable `HZ_E2E_TOKEN` with a valid Hetzner cloud token
 * Run `make e2e-cluster` to get a simple kubeadm cluster on Hetzner
 * Run `hack/run-machine-controller.sh` to locally run the machine-controller for your freshly created cluster
+* Run `hack/run-machine-controller-containerd.sh` to locally run the machine-controller by using containerd instead of docker
 
 If you want to use an existing cluster to test against, you can simply set the `KUBECONFIG` environment variable.
 In this case, first make sure that a kubeconfig created by `make e2e-cluster` at `$(go env GOPATH)/src/github.com/kubermatic/machine-controller/.kubeconfig`
