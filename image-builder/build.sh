@@ -23,7 +23,7 @@ TARGET_OS=""
 
 usage() {
   echo -e "usage:"
-  echo -e "\t$0 --target-os centos7|debian9|ubuntu-xenial|ubuntu-bionic [--release K8S-RELEASE]"
+  echo -e "\t$0 --target-os centos7|debian9|ubuntu-xenial|ubuntu-bionic|windows-20H2.3 [--release K8S-RELEASE]"
 }
 
 while [ $# -gt 0 ]; do
@@ -34,7 +34,7 @@ while [ $# -gt 0 ]; do
       ;;
     --target-os)
       if [[ -z "$2" ]]; then
-        echo "You must specify target OS. Currently 'centos7' is supported."
+        echo "You must specify a target OS."
         exit 1
       fi
       TARGET_OS="$2"
@@ -127,6 +127,11 @@ get_debian9_image() {
   mv "$TEMPDIR/debian-9-openstack-amd64.qcow2" "$SCRIPT_DIR/downloads/debian-9-openstack-amd64.qcow2"
 }
 
+build_windows_image() {
+  . "$SCRIPT_DIR/windows/check.sh"
+  . "$SCRIPT_DIR/windows/build.sh"
+}
+
 get_ubuntu_image() {
   local UBUNTU_CLOUD_IMAGE_SIGNING_KEY_FINGERPRINT="D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81"
   local RELEASE="$1"
@@ -203,6 +208,11 @@ case $TARGET_OS in
       get_ubuntu_image bionic
     fi
     ;;
+  windows-20H2.3)
+    CLEAN_IMAGE="$SCRIPT_DIR/windows/output/Win Server STD CORE 20H2.3 English/*"
+    if [[ ! -f "$CLEAN_IMAGE"]]; then
+      build_windows_image
+    fi
   *)
     usage
     exit 1

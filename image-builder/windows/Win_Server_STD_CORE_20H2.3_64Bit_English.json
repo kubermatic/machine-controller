@@ -1,0 +1,77 @@
+{
+  "builders": [
+    {
+      "accelerator": "kvm",
+      "communicator": "ssh",
+      "cpus": 2,
+      "disable_vnc": true,
+      "disk_interface": "virtio",
+      "disk_size": "20G",
+      "display": "none",
+      "headless": true,
+      "floppy_dirs": [
+        "./driver/qemu/NetKVM",
+        "./driver/qemu/vioscsi",
+        "./driver/qemu/viostor"
+      ],
+      "floppy_files": [
+        "./Autounattend.xml",
+        "./scripts/Enable-MicrosoftUpdates.ps1",
+        "./scripts/Install-GuestTools.ps1",
+        "./scripts/Install-PowerShellCore.ps1",
+        "./scripts/Install-OpenSSH.ps1"
+      ],
+      "format": "qcow2",
+      "iso_checksum": "{{env `qemu_iso_checksum`}}",
+      "iso_url": "{{env `qemu_iso_path`}}",
+      "memory": 4096,
+      "net_device": "virtio-net",
+      "output_directory": "output/{{env `qemu_vm_name`}}",
+      "shutdown_command": "shutdown /s /t 20 /f",
+      "ssh_password": "{{env `win_admin_password`}}",
+      "ssh_timeout": "2h",
+      "ssh_username": "{{env `win_admin_username`}}",
+      "type": "qemu",
+      "vm_name": "{{env `qemu_vm_name`}}",
+      "winrm_insecure": true,
+      "winrm_password": "{{env `win_admin_password`}}",
+      "winrm_username": "{{env `win_admin_username`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "execute_command": "powershell $ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';. {{.Vars}};. {{.Path}};",
+      "scripts": [
+        "./scripts/Set-WindowsTimeZone.ps1",
+        "./scripts/Set-ProductKey.ps1",
+        "./scripts/Configure-WindowsSecurity.ps1",
+        "./scripts/Enable-InsecureWinRM.ps1"
+      ],
+      "type": "powershell"
+    },
+    {
+      "filters": [
+        "exclude:$_.Title -like '*Preview*'",
+        "exclude:$_.Title -like '*Silverlight*'",
+        "include:$_.Title -like '*Cumulative Update for .NET Framework*'",
+        "include:$_.Title -like '*Cumulative Update for Windows*'",
+        "include:$_.AutoSelectOnWebSites"
+      ],
+      "type": "windows-update"
+    },
+    {
+      "restart_check_command": "powershell -command \"\u0026 {Write-Output 'restarted.'}\"",
+      "restart_timeout": "2h",
+      "type": "windows-restart"
+    },
+    {
+      "execute_command": "powershell $ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';. {{.Vars}};. {{.Path}};",
+      "scripts": [
+        "./scripts/Enable-SecureWinRM.ps1",
+        "./scripts/Start-CleanUp.ps1",
+        "./scripts/Install-CloudbaseInit.ps1"
+      ],
+      "type": "powershell"
+    }
+  ]
+}
