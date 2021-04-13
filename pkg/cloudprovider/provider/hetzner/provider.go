@@ -181,6 +181,8 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 				return fmt.Errorf("failed to get network %q: %v", network, err)
 			}
 		}
+	} else {
+		return fmt.Errorf("networks is empty")
 	}
 
 	if _, _, err = client.ServerType.Get(ctx, c.ServerType); err != nil {
