@@ -87,7 +87,7 @@ func (d *driver) GetServer(ctx context.Context, uid types.UID, hwSpec runtime.Ra
 	}, nil
 }
 
-func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, hwSpec runtime.RawExtension) (plugins.Server, error) {
+func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugins.CloudConfigSettings, hwSpec runtime.RawExtension) (plugins.Server, error) {
 	hw := HardwareSpec{}
 	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %v", err)
@@ -98,19 +98,25 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, hwSpec runt
 		return nil, fmt.Errorf("failed to register hardware to tink-server: %v", err)
 	}
 
-	tmpl := createTemplate(hw.GetMACAddress(), d.TinkServerAddress, d.ImageRepoAddress)
-	payload, err := yaml.Marshal(tmpl)
+	workflowTemplate, err := d.templateClient.Get(ctx, "", provisioningTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("failed marshalling workflow template: %v", err)
-	}
+		if resourceNotFoundErr(err) {
+			tmpl := createTemplate(hw.GetMACAddress(), d.TinkServerAddress, d.ImageRepoAddress, cfg)
+			payload, err := yaml.Marshal(tmpl)
+			if err != nil {
+				return nil, fmt.Errorf("failed marshalling workflow template: %v", err)
+			}
 
-	workflowTemplate := &tinktmpl.WorkflowTemplate{
-		Name: tmpl.Name,
-		Data: string(payload),
-	}
+			workflowTemplate := &tinktmpl.WorkflowTemplate{
+				Name: tmpl.Name,
+				Id:   tmpl.ID,
+				Data: string(payload),
+			}
 
-	if err := d.templateClient.Create(ctx, workflowTemplate); err != nil {
-		return nil, fmt.Errorf("failed to create workflow template: %v", err)
+			if err := d.templateClient.Create(ctx, workflowTemplate); err != nil {
+				return nil, fmt.Errorf("failed to create workflow template: %v", err)
+			}
+		}
 	}
 
 	if _, err := d.workflowClient.Create(ctx, workflowTemplate.Id, hw.GetID()); err != nil {

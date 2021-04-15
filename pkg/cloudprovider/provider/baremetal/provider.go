@@ -30,6 +30,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell"
 	baremetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -162,7 +163,7 @@ func (p provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderD
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 
-		return nil, fmt.Errorf("failed to fetch server with the id %s: %v", server.GetID(), err)
+		return nil, fmt.Errorf("failed to fetch server with the id %s: %v", machine.Name, err)
 	}
 
 	return &bareMetalServer{
@@ -183,7 +184,24 @@ func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pro
 		}
 	}
 
-	server, err := c.driver.ProvisionServer(context.Background(), machine.UID, c.driverSpec)
+	ctx := context.Background()
+	if err := util.CreateMachineCloudInitSecret(ctx, userdata, machine.Name, data.Client); err != nil {
+		return nil, fmt.Errorf("failed to create cloud-init secret for machine %s: %v", machine.Name, err)
+	}
+
+	token, apiServer, err := util.ExtractTokenAndAPIServer(ctx, userdata, data.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extarct token and api server address: %v", err)
+	}
+
+	cfg := &plugins.CloudConfigSettings{
+		Token:       token,
+		Namespace:   util.CloudInitNamespace,
+		SecretName:  machine.Name,
+		ClusterHost: apiServer,
+	}
+
+	server, err := c.driver.ProvisionServer(ctx, machine.UID, cfg, c.driverSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provisioner server: %v", err)
 	}

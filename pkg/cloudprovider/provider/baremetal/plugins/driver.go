@@ -27,11 +27,18 @@ type Driver string
 
 const Tinkerbell Driver = "tinkerbell"
 
+type CloudConfigSettings struct {
+	Token       string
+	Namespace   string
+	SecretName  string
+	ClusterHost string
+}
+
 // PluginDriver manages the communications between the machine controller cloud provider and the bare metal env.
 type PluginDriver interface {
 	GetServer(context.Context, types.UID, runtime.RawExtension) (Server, error)
 	Validate(runtime.RawExtension) error
-	ProvisionServer(context.Context, types.UID, runtime.RawExtension) (Server, error)
+	ProvisionServer(context.Context, types.UID, *CloudConfigSettings, runtime.RawExtension) (Server, error)
 	DeprovisionServer(types.UID, runtime.RawExtension) (string, error)
 }
 
