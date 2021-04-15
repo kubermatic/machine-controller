@@ -56,6 +56,9 @@ import (
 const (
 	floatingIPReleaseFinalizer = "kubermatic.io/release-openstack-floating-ip"
 	floatingIPIDAnnotationKey  = "kubermatic.io/release-openstack-floating-ip"
+
+	defaultInstanceReadyCheckPeriodSec  = 5 * time.Second
+	defaultInstanceReadyCheckTimeoutSec = *120 * time.Second
 )
 
 // clientGetterFunc returns an OpenStack client.
@@ -163,11 +166,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckPeriod\" field (%s), error = %v", instanceReadyCheckPeriodStr, err)
 		}
 
-		if c.InstanceReadyCheckPeriod < 0 {
-			c.InstanceReadyCheckPeriod = 5 * time.Second
+		if c.InstanceReadyCheckPeriod <= 0 {
+			c.InstanceReadyCheckPeriod = defaultInstanceReadyCheckPeriodSec
 		}
 	} else {
-		c.InstanceReadyCheckPeriod = 5 * time.Second
+		c.InstanceReadyCheckPeriod = defaultInstanceReadyCheckPeriodSec
 	}
 
 	instanceReadyCheckTimeoutStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceReadyCheckTimeout)
@@ -181,11 +184,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckTimeout\" field (%s), error = %v", instanceReadyCheckTimeoutStr, err)
 		}
 
-		if c.InstanceReadyCheckTimeout < 0 {
-			c.InstanceReadyCheckTimeout = 10 * time.Second
+		if c.InstanceReadyCheckTimeout <= 0 {
+			c.InstanceReadyCheckTimeout = defaultInstanceReadyCheckTimeoutSec
 		}
 	} else {
-		c.InstanceReadyCheckTimeout = 100 * time.Second
+		c.InstanceReadyCheckTimeout = defaultInstanceReadyCheckTimeoutSec
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
