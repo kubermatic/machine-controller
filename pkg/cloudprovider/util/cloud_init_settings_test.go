@@ -31,7 +31,7 @@ var testData = []struct {
 	userdata          string
 	secret            *corev1.Secret
 	expectedToken     string
-	expectedCloudInit string
+	expectedAPIServer string
 }{
 	{
 		name:     "bootstrap_cloud_init_generating",
@@ -46,7 +46,7 @@ var testData = []struct {
 			},
 		},
 		expectedToken:     "eyTestToken",
-		expectedCloudInit: "./testdata/expected_userdata.yaml",
+		expectedAPIServer: "https://88.99.224.97:6443",
 	},
 }
 
@@ -55,32 +55,20 @@ func TestCloudInitGeneration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fakeClient := fake.NewFakeClient(test.secret)
 
-			token, err := ExtractCloudInitSettingsToken(context.Background(), fakeClient)
+			userdata, err := ioutil.ReadFile(test.userdata)
+			if err != nil {
+				t.Fatalf("failed to read userdata testing file: %v", err)
+			}
+
+			token, apiServer, err := ExtractTokenAndAPIServer(context.Background(), string(userdata), fakeClient)
 			if err != nil {
 				t.Fatalf("failed to extarct token: %v", err)
 			}
 			if token != test.expectedToken {
 				t.Fatalf("unexpected cloud-init token: wants %s got %s", test.expectedToken, token)
 			}
-
-			userdata, err := ioutil.ReadFile(test.userdata)
-			if err != nil {
-				t.Fatalf("failed to read userdata testing file: %v", err)
-			}
-
-			cloudInit, err := GenerateCloudInitGetterScript(token, test.secret.Name, string(userdata))
-			if err != nil {
-				t.Fatalf("failed to generate bootstrap cloud-init: %v", err)
-			}
-
-			expectedCloudInit, err := ioutil.ReadFile(test.expectedCloudInit)
-			if err != nil {
-				t.Fatalf("failed to read expected cloud-init testing file: %v", err)
-			}
-
-			if cloudInit == string(expectedCloudInit) {
-				t.Fatalf("unexpected cloud-init: wants %s got %s", test.expectedCloudInit, cloudInit)
-
+			if apiServer != test.expectedAPIServer {
+				t.Fatalf("unexpected cloud-init api-server: wants %s got %s", test.expectedAPIServer, apiServer)
 			}
 		})
 	}

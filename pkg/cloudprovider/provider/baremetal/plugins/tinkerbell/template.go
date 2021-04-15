@@ -16,12 +16,21 @@ limitations under the License.
 
 package tinkerbell
 
-import "github.com/tinkerbell/tink/workflow"
+import (
+	"github.com/tinkerbell/tink/workflow"
 
-func createTemplate(worker, tinkServerAddress, imageRepoAddress string) *workflow.Workflow {
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
+)
+
+const (
+	provisioningTemplate = "ubuntu_os_provisioning"
+)
+
+func createTemplate(worker, tinkServerAddress, imageRepoAddress string, cfg *plugins.CloudConfigSettings) *workflow.Workflow {
 	return &workflow.Workflow{
 		Version:       "0.1",
-		Name:          "ubuntu_provisioning",
+		Name:          provisioningTemplate,
+		ID:            "",
 		GlobalTimeout: 6000,
 		Tasks: []workflow.Task{
 			{
@@ -67,6 +76,18 @@ func createTemplate(worker, tinkServerAddress, imageRepoAddress string) *workflo
 						},
 						Volumes: []string{
 							"/statedir:/statedir",
+						},
+					},
+					{
+						Name:    "cloud-init",
+						Image:   "cloud-init:v1",
+						Timeout: 600,
+						Environment: map[string]string{
+							"MIRROR_HOST":                   imageRepoAddress,
+							"CLOUD_INIT_TOKEN":              cfg.Token,
+							"CLOUD_INIT_SETTINGS_NAMESPACE": cfg.Namespace,
+							"SECRET_NAME":                   cfg.SecretName,
+							"CLUSTER_HOST":                  cfg.ClusterHost,
 						},
 					},
 				},
