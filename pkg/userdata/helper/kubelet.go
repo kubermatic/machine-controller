@@ -168,8 +168,8 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		RotateCertificates:    true,
 		ServerTLSBootstrap:    true,
 		StaticPodPath:         "/etc/kubernetes/manifests",
-		KubeReserved:          map[string]string{"cpu": "200m", "memory": "200Mi", "ephemeral-storage": "1Gi"},
-		SystemReserved:        map[string]string{"cpu": "200m", "memory": "200Mi", "ephemeral-storage": "1Gi"},
+		KubeReserved:          map[string]string{"cpu": "200m", "memory": "300Mi", "ephemeral-storage": "1Gi"},
+		SystemReserved:        map[string]string{"cpu": "200m", "memory": "500Mi", "ephemeral-storage": "1Gi"},
 		VolumePluginDir:       "/var/lib/kubelet/volumeplugins",
 	}
 
