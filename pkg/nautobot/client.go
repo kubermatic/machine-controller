@@ -23,10 +23,20 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
-type deviceClient struct {
+const httpScheme = "http"
+
+type Client interface {
+	RequestActiveDevice() (*NetworkDevice, error)
+	GetActiveInterface(deviceID string) (*InterfaceInfo, error)
+	GetIP(params *GetIPParams) (*IPInfo, error)
+	GetPrefix(ipAddress, vrfID string, maskLength int) (*PrefixInfo, error)
+}
+
+type defaultClient struct {
 	token          string
 	dcTag          string
 	nautobotServer string
@@ -34,14 +44,14 @@ type deviceClient struct {
 	client         *http.Client
 }
 
-func NewDeviceClient(token, dcTag, nautobotServer string) (*deviceClient, error) {
+func NewDefaultClient(token, dcTag, nautobotServer string) (Client, error) {
 	if token == "" || dcTag == "" || nautobotServer == "" {
 		return nil, errors.New("nautobot token, server address or site name cannot be empty")
 	}
 
 	client := http.DefaultClient
 	client.Timeout = 30 * time.Second
-	return &deviceClient{
+	return &defaultClient{
 		client:         client,
 		dcTag:          dcTag,
 		token:          token,
@@ -49,19 +59,19 @@ func NewDeviceClient(token, dcTag, nautobotServer string) (*deviceClient, error)
 	}, nil
 }
 
-func (dc *deviceClient) RequestActiveDevice() (*NetworkDevice, error) {
+func (dc *defaultClient) RequestActiveDevice() (*NetworkDevice, error) {
 	var scheme = "https"
 	if dc.useHTTP {
-		scheme = "http"
+		scheme = httpScheme
 	}
 
-	deviceUrl := url.URL{
+	deviceURL := url.URL{
 		Host:     dc.nautobotServer,
 		Path:     "api/dcim/devices/",
 		RawQuery: fmt.Sprintf("tag=%s&status=%s&limit=1&offset=0", dc.dcTag, Active),
 		Scheme:   scheme,
 	}
-	deviceRequest, err := http.NewRequest(http.MethodGet, deviceUrl.String(), nil)
+	deviceRequest, err := http.NewRequest(http.MethodGet, deviceURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetch device request: %v", err)
 	}
@@ -87,19 +97,19 @@ func (dc *deviceClient) RequestActiveDevice() (*NetworkDevice, error) {
 	return device, nil
 }
 
-func (dc *deviceClient) GetActiveInterface(deviceId string) (*InterfaceInfo, error) {
+func (dc *defaultClient) GetActiveInterface(deviceID string) (*InterfaceInfo, error) {
 	var scheme = "https"
 	if dc.useHTTP {
-		scheme = "http"
+		scheme = httpScheme
 	}
 
-	deviceUrl := url.URL{
+	deviceURL := url.URL{
 		Host:     dc.nautobotServer,
 		Path:     "api/dcim/interfaces/",
-		RawQuery: fmt.Sprintf("mgmt_only=false&device_id=%s", deviceId),
+		RawQuery: fmt.Sprintf("mgmt_only=false&device_id=%s", deviceID),
 		Scheme:   scheme,
 	}
-	deviceRequest, err := http.NewRequest(http.MethodGet, deviceUrl.String(), nil)
+	deviceRequest, err := http.NewRequest(http.MethodGet, deviceURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetch interface request: %v", err)
 	}
@@ -131,16 +141,16 @@ func (dc *deviceClient) GetActiveInterface(deviceId string) (*InterfaceInfo, err
 	return nil, errors.New("no active reachable interfaces found")
 }
 
-func (dc *deviceClient) GetIP(interfaceID string) (*IPInfo, error) {
+func (dc *defaultClient) GetIP(params *GetIPParams) (*IPInfo, error) {
 	var scheme = "https"
 	if dc.useHTTP {
-		scheme = "http"
+		scheme = httpScheme
 	}
 
 	ipURL := url.URL{
 		Host:     dc.nautobotServer,
 		Path:     "api/ipam/ip-addresses/",
-		RawQuery: fmt.Sprintf("interface_id=%s", interfaceID),
+		RawQuery: params.ToRawQuery(),
 		Scheme:   scheme,
 	}
 	deviceRequest, err := http.NewRequest(http.MethodGet, ipURL.String(), nil)
@@ -159,10 +169,10 @@ func (dc *deviceClient) GetIP(interfaceID string) (*IPInfo, error) {
 	return extractIPFromBody(res.Body)
 }
 
-func (dc *deviceClient) GetPrefix(ipAddress, vrfID string, maskLength int) (*PrefixInfo, error) {
+func (dc *defaultClient) GetPrefix(ipAddress, vrfID string, maskLength int) (*PrefixInfo, error) {
 	var scheme = "https"
 	if dc.useHTTP {
-		scheme = "http"
+		scheme = httpScheme
 	}
 
 	ipURL := url.URL{
@@ -201,30 +211,25 @@ func (dc *deviceClient) GetPrefix(ipAddress, vrfID string, maskLength int) (*Pre
 	return nil, errors.New("no prefix found")
 }
 
-func (dc *deviceClient) GetGatewayIP(parent, tag string) (*IPInfo, error) {
-	var scheme = "https"
-	if dc.useHTTP {
-		scheme = "http"
+type GetIPParams struct {
+	InterfaceID string
+	Parent      string
+	Tag         string
+}
+
+func (p *GetIPParams) ToRawQuery() string {
+	var query strings.Builder
+	if p.Tag != "" {
+		query.WriteString("tag=" + p.Tag + "&")
 	}
 
-	ipURL := url.URL{
-		Host:     dc.nautobotServer,
-		Path:     "api/ipam/ip-addresses/",
-		RawQuery: "parent=" + parent + "%2F30&tag=" + tag,
-		Scheme:   scheme,
-	}
-	deviceRequest, err := http.NewRequest(http.MethodGet, ipURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create fetch gateway ip request: %v", err)
+	if p.InterfaceID != "" {
+		query.WriteString("interface_id=" + p.InterfaceID + "&")
 	}
 
-	deviceRequest.Header.Set("Authorization", fmt.Sprintf("Token %s", dc.token))
-	deviceRequest.Header.Set("Content-Type", "application/json")
-
-	res, err := dc.client.Do(deviceRequest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch gateway ip: %v", err)
+	if p.Parent != "" {
+		query.WriteString("parent=" + p.Parent + "&")
 	}
 
-	return extractIPFromBody(res.Body)
+	return query.String()
 }
