@@ -28,4 +28,5 @@ var ErrNotFound = errors.New("resource not found")
 const (
 	sqlErrorString    = "rpc error: code = Unknown desc = sql: no rows in result set"
 	sqlErrorStringAlt = "rpc error: code = Unknown desc = SELECT: sql: no rows in result set"
+	sqlErrorNotFound  = "rpc error: code = NotFound desc = not found"
 )

@@ -22,20 +22,16 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 )
 
-const (
-	provisioningTemplate = "ubuntu_os_provisioning"
-)
-
-func createTemplate(worker, tinkServerAddress, imageRepoAddress string, cfg *plugins.CloudConfigSettings) *workflow.Workflow {
+func createTemplate(tinkServerAddress, imageRepoAddress string, cfg *plugins.CloudConfigSettings) *workflow.Workflow {
 	return &workflow.Workflow{
 		Version:       "0.1",
-		Name:          provisioningTemplate,
+		Name:          cfg.SecretName,
 		ID:            "",
 		GlobalTimeout: 6000,
 		Tasks: []workflow.Task{
 			{
 				Name:       "os-installation",
-				WorkerAddr: worker,
+				WorkerAddr: "{{.device_1}}",
 				Volumes: []string{
 					"/dev:/dev",
 					"/dev/console:/dev/console",

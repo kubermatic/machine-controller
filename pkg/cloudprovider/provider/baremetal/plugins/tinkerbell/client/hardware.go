@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/tinkerbell/tink/protos/hardware"
@@ -97,7 +98,9 @@ func (t *Hardware) Get(ctx context.Context, id, ip, mac string) (*hardware.Hardw
 // Delete a Tinkerbell Hardware.
 func (t *Hardware) Delete(ctx context.Context, id string) error {
 	if _, err := t.client.Delete(ctx, &hardware.DeleteRequest{Id: id}); err != nil {
-		if err.Error() == sqlErrorString || err.Error() == sqlErrorStringAlt {
+		if err.Error() == sqlErrorString ||
+			err.Error() == sqlErrorStringAlt ||
+			strings.Contains(err.Error(), sqlErrorNotFound) {
 			return fmt.Errorf("hardware %w", ErrNotFound)
 		}
 
