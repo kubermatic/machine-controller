@@ -21,155 +21,159 @@ import "time"
 type DeviceStatus string
 
 const (
-	Active  DeviceStatus = "active"
-	Planned DeviceStatus = "planned"
-	Staged  DeviceStatus = "staged"
+	Active DeviceStatus = "active"
+	Staged DeviceStatus = "staged"
 )
 
 type NetworkDevice struct {
-	Count   int          `json:"count"`
-	Results []DeviceInfo `json:"results"`
+	Count   int           `json:"count,omitempty"`
+	Results []*DeviceInfo `json:"results,omitempty"`
 }
 
 type DeviceInfo struct {
-	ID               string         `json:"id"`
-	URL              string         `json:"url"`
-	Name             string         `json:"name"`
-	DisplayName      string         `json:"display_name"`
-	DeviceType       *DeviceType    `json:"device_type"`
-	DeviceRole       *DeviceRole    `json:"device_role"`
-	Tenant           *Tenant        `json:"tenant"`
-	Platform         *Platform      `json:"platform"`
-	Serial           string         `json:"serial"`
-	AssetTag         interface{}    `json:"asset_tag"`
-	Site             *Site          `json:"site"`
-	Rack             *Rack          `json:"rack"`
-	Position         int            `json:"position"`
-	Face             *Face          `json:"face"`
-	ParentDevice     interface{}    `json:"parent_device"`
-	Status           *Status        `json:"status"`
-	PrimaryIP        *PrimaryIP     `json:"primary_ip"`
-	PrimaryIP4       *PrimaryIP4    `json:"primary_ip4"`
-	PrimaryIP6       interface{}    `json:"primary_ip6"`
-	Cluster          interface{}    `json:"cluster"`
-	VirtualChassis   interface{}    `json:"virtual_chassis"`
-	VcPosition       interface{}    `json:"vc_position"`
-	VcPriority       interface{}    `json:"vc_priority"`
-	Comments         string         `json:"comments"`
-	LocalContextData interface{}    `json:"local_context_data"`
-	Tags             []Tags         `json:"tags"`
-	ConfigContext    *ConfigContext `json:"config_context"`
-	Created          string         `json:"created"`
-	LastUpdated      time.Time      `json:"last_updated"`
+	ID               string         `json:"id,omitempty"`
+	URL              string         `json:"url,omitempty"`
+	Name             string         `json:"name,omitempty"`
+	DisplayName      string         `json:"display_name,omitempty"`
+	DeviceType       *DeviceType    `json:"device_type,omitempty"`
+	DeviceRole       *DeviceRole    `json:"device_role,omitempty"`
+	Tenant           *Tenant        `json:"tenant,omitempty"`
+	Platform         *Platform      `json:"platform,omitempty"`
+	Serial           string         `json:"serial,omitempty"`
+	AssetTag         interface{}    `json:"asset_tag,omitempty"`
+	Site             *Site          `json:"site,omitempty"`
+	Rack             *Rack          `json:"rack,omitempty"`
+	Position         int            `json:"position,omitempty"`
+	Face             *Face          `json:"face,omitempty"`
+	ParentDevice     interface{}    `json:"parent_device,omitempty"`
+	Status           *Status        `json:"status,omitempty"`
+	PrimaryIP        *PrimaryIP     `json:"primary_ip,omitempty"`
+	PrimaryIP4       *PrimaryIP4    `json:"primary_ip4,omitempty"`
+	PrimaryIP6       interface{}    `json:"primary_ip6,omitempty"`
+	Cluster          interface{}    `json:"cluster,omitempty"`
+	VirtualChassis   interface{}    `json:"virtual_chassis,omitempty"`
+	VcPosition       interface{}    `json:"vc_position,omitempty"`
+	VcPriority       interface{}    `json:"vc_priority,omitempty"`
+	Comments         string         `json:"comments,omitempty"`
+	LocalContextData interface{}    `json:"local_context_data,omitempty"`
+	Tags             []Tags         `json:"tags,omitempty"`
+	ConfigContext    *ConfigContext `json:"config_context,omitempty"`
+	Created          string         `json:"created,omitempty"`
+	LastUpdated      time.Time      `json:"last_updated,omitempty"`
 }
 
 type Manufacturer struct {
-	ID   string `json:"id"`
-	URL  string `json:"url"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	ID   string `json:"id,omitempty"`
+	URL  string `json:"url,omitempty"`
+	Name string `json:"name,omitempty"`
+	Slug string `json:"slug,omitempty"`
 }
 
 type DeviceType struct {
-	ID           string        `json:"id"`
-	URL          string        `json:"url"`
-	Manufacturer *Manufacturer `json:"manufacturer"`
-	Model        string        `json:"model"`
-	Slug         string        `json:"slug"`
-	DisplayName  string        `json:"display_name"`
+	ID           string        `json:"id,omitempty"`
+	URL          string        `json:"url,omitempty"`
+	Manufacturer *Manufacturer `json:"manufacturer,omitempty"`
+	Model        string        `json:"model,omitempty"`
+	Slug         string        `json:"slug,omitempty"`
+	DisplayName  string        `json:"display_name,omitempty"`
 }
 
 type DeviceRole struct {
-	ID   string `json:"id"`
-	URL  string `json:"url"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	ID   string `json:"id,omitempty"`
+	URL  string `json:"url,omitempty"`
+	Name string `json:"name,omitempty"`
+	Slug string `json:"slug,omitempty"`
 }
 
 type Platform struct {
-	ID   string `json:"id"`
-	URL  string `json:"url"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	ID   string `json:"id,omitempty"`
+	URL  string `json:"url,omitempty"`
+	Name string `json:"name,omitempty"`
+	Slug string `json:"slug,omitempty"`
 }
 
 type Rack struct {
-	ID          string `json:"id"`
-	URL         string `json:"url"`
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
+	ID          string `json:"id,omitempty"`
+	URL         string `json:"url,omitempty"`
+	Name        string `json:"name,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
 }
 
 type Face struct {
-	Value string `json:"value"`
-	Label string `json:"label"`
+	Value string `json:"value,omitempty"`
+	Label string `json:"label,omitempty"`
 }
 
 type PrimaryIP struct {
-	ID      string `json:"id"`
-	URL     string `json:"url"`
-	Family  int    `json:"family"`
-	Address string `json:"address"`
+	ID      string `json:"id,omitempty"`
+	URL     string `json:"url,omitempty"`
+	Family  int    `json:"family,omitempty"`
+	Address string `json:"address,omitempty"`
 }
 
 type PrimaryIP4 struct {
-	ID      string `json:"id"`
-	URL     string `json:"url"`
-	Family  int    `json:"family"`
-	Address string `json:"address"`
+	ID      string `json:"id,omitempty"`
+	URL     string `json:"url,omitempty"`
+	Family  int    `json:"family,omitempty"`
+	Address string `json:"address,omitempty"`
 }
 
 type Ntp []struct {
-	IP     string `json:"ip"`
-	Prefer bool   `json:"prefer"`
+	IP     string `json:"ip,omitempty"`
+	Prefer bool   `json:"prefer,omitempty"`
 }
 
 type Host []struct {
-	IP        string `json:"ip"`
-	Version   string `json:"version"`
-	Community string `json:"community"`
+	IP        string `json:"ip,omitempty"`
+	Version   string `json:"version,omitempty"`
+	Community string `json:"community,omitempty"`
 }
 
 type Community []struct {
-	Name string `json:"name"`
-	Role string `json:"role"`
+	Name string `json:"name,omitempty"`
+	Role string `json:"role,omitempty"`
 }
 
 type Snmp struct {
-	Host      Host      `json:"host"`
-	Contact   string    `json:"contact"`
-	Location  string    `json:"location"`
-	Community Community `json:"community"`
+	Host      Host      `json:"host,omitempty"`
+	Contact   string    `json:"contact,omitempty"`
+	Location  string    `json:"location,omitempty"`
+	Community Community `json:"community,omitempty"`
 }
 
 type Named struct {
-	PermitRoutes []string `json:"PERMIT_ROUTES"`
+	PermitRoutes []string `json:"PERMIT_ROUTES,omitempty"`
 }
 
 type Definitions struct {
-	Named *Named `json:"named"`
+	Named *Named `json:"named,omitempty"`
 }
 
 type ACL struct {
-	Definitions *Definitions `json:"definitions"`
+	Definitions *Definitions `json:"definitions,omitempty"`
 }
 
 type PermitConnRoutes struct {
-	Seq        int      `json:"seq"`
-	Type       string   `json:"type"`
-	Statements []string `json:"statements"`
+	Seq        int      `json:"seq,omitempty"`
+	Type       string   `json:"type,omitempty"`
+	Statements []string `json:"statements,omitempty"`
 }
 
 type RouteMaps struct {
-	PermitConnRoutes *PermitConnRoutes `json:"PERMIT_CONN_ROUTES"`
+	PermitConnRoutes *PermitConnRoutes `json:"PERMIT_CONN_ROUTES,omitempty"`
 }
 
 type ConfigContext struct {
-	Cdp         bool      `json:"cdp"`
-	Ntp         Ntp       `json:"ntp"`
-	Lldp        bool      `json:"lldp"`
-	Snmp        *Snmp     `json:"snmp"`
-	AaaNewModel bool      `json:"aaa-new-model"`
-	ACL         *ACL      `json:"acl"`
-	RouteMaps   RouteMaps `json:"route-maps"`
+	Cdp         bool      `json:"cdp,omitempty"`
+	Ntp         Ntp       `json:"ntp,omitempty"`
+	Lldp        bool      `json:"lldp,omitempty"`
+	Snmp        *Snmp     `json:"snmp,omitempty"`
+	AaaNewModel bool      `json:"aaa-new-model,omitempty"`
+	ACL         *ACL      `json:"acl,omitempty"`
+	RouteMaps   RouteMaps `json:"route-maps,omitempty"`
+}
+
+type PatchedDeviceParams struct {
+	Status   DeviceStatus `json:"status"`
+	AssetTag string       `json:"asset_tag"`
 }

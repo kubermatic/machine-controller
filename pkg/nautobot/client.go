@@ -17,6 +17,7 @@ limitations under the License.
 package nautobot
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,10 +31,13 @@ import (
 const httpScheme = "http"
 
 type Client interface {
-	RequestActiveDevice() (*NetworkDevice, error)
-	GetActiveInterface(deviceID string) (*InterfaceInfo, error)
-	GetIP(params *GetIPParams) (*IPInfo, error)
-	GetPrefix(ipAddress, vrfID string, maskLength int) (*PrefixInfo, error)
+	RequestActiveDevice() (*DeviceInfo, error)
+	GetDeviceByAssetTag(string) (*DeviceInfo, error)
+	GetDeviceByID(string) (*DeviceInfo, error)
+	PatchDeviceStatus(string, *PatchedDeviceParams) error
+	GetActiveInterface(string) (*InterfaceInfo, error)
+	GetIP(*GetIPParams) (*IPInfo, error)
+	GetPrefix(string, string, int) (*PrefixInfo, error)
 }
 
 type defaultClient struct {
@@ -59,7 +63,7 @@ func NewDefaultClient(token, dcTag, nautobotServer string) (Client, error) {
 	}, nil
 }
 
-func (dc *defaultClient) RequestActiveDevice() (*NetworkDevice, error) {
+func (dc *defaultClient) RequestActiveDevice() (*DeviceInfo, error) {
 	var scheme = "https"
 	if dc.useHTTP {
 		scheme = httpScheme
@@ -94,7 +98,131 @@ func (dc *defaultClient) RequestActiveDevice() (*NetworkDevice, error) {
 		return nil, fmt.Errorf("failed to unmarshal device data: %v", err)
 	}
 
+	if len(device.Results) < 1 {
+		return nil, errors.New("no active device is found")
+	}
+
+	return device.Results[0], nil
+}
+
+func (dc *defaultClient) GetDeviceByAssetTag(assetTag string) (*DeviceInfo, error) {
+	var scheme = "https"
+	if dc.useHTTP {
+		scheme = httpScheme
+	}
+
+	deviceURL := url.URL{
+		Host:     dc.nautobotServer,
+		Path:     "api/dcim/devices/",
+		RawQuery: fmt.Sprintf("asset_tag=%s", assetTag),
+		Scheme:   scheme,
+	}
+	deviceRequest, err := http.NewRequest(http.MethodGet, deviceURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get device by asset tag request: %v", err)
+	}
+
+	deviceRequest.Header.Set("Authorization", fmt.Sprintf("Token %s", dc.token))
+	deviceRequest.Header.Set("Content-Type", "application/json")
+
+	res, err := dc.client.Do(deviceRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch device: %v", err)
+	}
+
+	device := &NetworkDevice{}
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read device response: %v", err)
+	}
+
+	if err := json.Unmarshal(data, device); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device data: %v", err)
+	}
+
+	if len(device.Results) < 1 {
+		return nil, errors.New("no active device is found")
+	}
+
+	return device.Results[0], nil
+}
+
+func (dc *defaultClient) GetDeviceByID(deviceID string) (*DeviceInfo, error) {
+	var scheme = "https"
+	if dc.useHTTP {
+		scheme = httpScheme
+	}
+
+	deviceURL := url.URL{
+		Host:   dc.nautobotServer,
+		Path:   fmt.Sprintf("api/dcim/devices/%s/", deviceID),
+		Scheme: scheme,
+	}
+	deviceRequest, err := http.NewRequest(http.MethodGet, deviceURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get device by id request: %v", err)
+	}
+
+	deviceRequest.Header.Set("Authorization", fmt.Sprintf("Token %s", dc.token))
+	deviceRequest.Header.Set("Content-Type", "application/json")
+
+	res, err := dc.client.Do(deviceRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch device: %v", err)
+	}
+
+	device := &DeviceInfo{}
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read device response: %v", err)
+	}
+
+	if err := json.Unmarshal(data, device); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device data: %v", err)
+	}
+
+	if device.ID == "" {
+		return nil, errors.New("no active device is found")
+	}
+
 	return device, nil
+}
+
+func (dc *defaultClient) PatchDeviceStatus(deviceID string, params *PatchedDeviceParams) error {
+	if deviceID == "" || params == nil {
+		return errors.New("the patch device id or patched device parameters cannot be empty")
+	}
+
+	var scheme = "https"
+	if dc.useHTTP {
+		scheme = httpScheme
+	}
+
+	deviceURL := url.URL{
+		Host:   dc.nautobotServer,
+		Path:   fmt.Sprintf("api/dcim/devices/%s/", deviceID),
+		Scheme: scheme,
+	}
+
+	data, err := json.Marshal(params)
+	if err != nil {
+		return fmt.Errorf("failed to marshal device: %v", err)
+	}
+
+	deviceRequest, err := http.NewRequest(http.MethodPatch, deviceURL.String(), bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("failed to create patch device request: %v", err)
+	}
+
+	deviceRequest.Header.Set("Authorization", fmt.Sprintf("Token %s", dc.token))
+	deviceRequest.Header.Set("Content-Type", "application/json")
+
+	_, err = dc.client.Do(deviceRequest)
+	if err != nil {
+		return fmt.Errorf("failed to patch device: %v", err)
+	}
+
+	return nil
 }
 
 func (dc *defaultClient) GetActiveInterface(deviceID string) (*InterfaceInfo, error) {

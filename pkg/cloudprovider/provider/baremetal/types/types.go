@@ -23,6 +23,7 @@ import (
 )
 
 type RawConfig struct {
-	Driver     providerconfigtypes.ConfigVarString `json:"driver"`
-	DriverSpec runtime.RawExtension                `json:"driverSpec"`
+	MetadataClientConfig runtime.RawExtension                `json:"metadataClient"`
+	Driver               providerconfigtypes.ConfigVarString `json:"driver"`
+	DriverSpec           runtime.RawExtension                `json:"driverSpec"`
 }

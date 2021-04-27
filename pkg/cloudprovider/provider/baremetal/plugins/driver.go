@@ -39,7 +39,7 @@ type PluginDriver interface {
 	GetServer(context.Context, types.UID, runtime.RawExtension) (Server, error)
 	Validate(runtime.RawExtension) error
 	ProvisionServer(context.Context, types.UID, *CloudConfigSettings, runtime.RawExtension) (Server, error)
-	DeprovisionServer(types.UID, runtime.RawExtension) (string, error)
+	DeprovisionServer(context.Context, types.UID) error
 }
 
 // Server represents the server/instance which exists in the bare metal env.

@@ -26,6 +26,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/metadata/nautobot"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell"
 	baremetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/types"
@@ -97,6 +98,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	c := Config{}
+	metdata := &nautobot.MetadataClientConfig{}
+	if err := json.Unmarshal(rawConfig.MetadataClientConfig.Raw, metdata); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal metadata: %v", err)
+	}
+
 	driverName, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.Driver)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get baremetal provider's driver name: %v", err)
@@ -116,7 +122,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %v", err)
 		}
 
-		c.driver, err = tinkerbell.NewTinkerbellDriver(driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
+		c.driver, err = tinkerbell.NewTinkerbellDriver(metdata, driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %v", err)
 		}
@@ -203,7 +209,7 @@ func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pro
 
 	server, err := c.driver.ProvisionServer(ctx, machine.UID, cfg, c.driverSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to provisioner server: %v", err)
+		return nil, fmt.Errorf("failed to provision server: %v", err)
 	}
 
 	return &bareMetalServer{
@@ -212,7 +218,7 @@ func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pro
 }
 
 func (p provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	_, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -220,7 +226,11 @@ func (p provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	return false, nil
+	if err := c.driver.DeprovisionServer(context.Background(), machine.UID); err != nil {
+		return false, fmt.Errorf("failed to de-provision server: %v", err)
+	}
+
+	return true, nil
 }
 
 func (p provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {

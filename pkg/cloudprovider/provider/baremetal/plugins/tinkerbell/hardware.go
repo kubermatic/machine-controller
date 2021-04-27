@@ -37,7 +37,8 @@ func (h *HardwareSpec) GetID() string {
 }
 
 func (h *HardwareSpec) GetIPAddress() string {
-	if len(h.Hardware.Network.Interfaces) > 0 {
+	interfaces := h.Hardware.Network.Interfaces
+	if len(interfaces) > 0 && interfaces[0].Dhcp.Ip != nil {
 		return h.Hardware.Network.Interfaces[0].Dhcp.Ip.Address
 	}
 
