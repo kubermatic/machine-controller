@@ -86,13 +86,6 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 		return "linode/ubuntu18.04", nil
 
 		/**
-		// StackScripts not available for CoreOS, and no
-		// other userdata work-around
-		case providerconfigtypes.OperatingSystemCoreos:
-			return "linode/containerlinux", nil
-		**/
-
-		/**
 		// StackScript for CloudInit is not centos7 ready
 		case providerconfigtypes.OperatingSystemCentOS:
 			return "linode/centos7", nil

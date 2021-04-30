@@ -23,7 +23,7 @@ TARGET_OS=""
 
 usage() {
   echo -e "usage:"
-  echo -e "\t$0 --target-os coreos|centos7|debian9|ubuntu-xenial|ubuntu-bionic [--release K8S-RELEASE]"
+  echo -e "\t$0 --target-os centos7|debian9|ubuntu-xenial|ubuntu-bionic [--release K8S-RELEASE]"
 }
 
 while [ $# -gt 0 ]; do
@@ -34,7 +34,7 @@ while [ $# -gt 0 ]; do
       ;;
     --target-os)
       if [[ -z "$2" ]]; then
-        echo "You must specify target OS. Currently 'coreos' and 'centos7' are supported."
+        echo "You must specify target OS. Currently 'centos7' is supported."
         exit 1
       fi
       TARGET_OS="$2"
@@ -79,27 +79,6 @@ TARGETFS="$TEMPDIR/targetfs"
 mkdir -p "$TARGETFS" "$SCRIPT_DIR/downloads"
 # on failure unmount target filesystem (if mounted) and delete the temporary directory
 trap "sudo mountpoint --quiet $TARGETFS && sudo umount --recursive $TARGETFS; rm -rf $TEMPDIR" EXIT SIGINT
-
-get_coreos_image() {
-  echo " * Downloading vanilla CoreOS image."
-  wget https://stable.release.core-os.net/amd64-usr/current/coreos_production_vmware_image.vmdk.bz2{,.DIGESTS.asc} -P "$TEMPDIR"
-
-  echo " * Verifying GPG signature"
-  gpg2 --quiet --import "$SCRIPT_DIR/coreos_signing_key.asc"
-  gpg2 "$TEMPDIR/coreos_production_vmware_image.vmdk.bz2.DIGESTS.asc"
-
-  echo " * Verifying SHA512 digest"
-  EXPECTED_SHA512="$(grep 'coreos_production_vmware_image.vmdk.bz2$' < "$TEMPDIR/coreos_production_vmware_image.vmdk.bz2.DIGESTS" | grep -P '([a-f0-9]){128}' | cut -f1 -d ' ')"
-  CALCULATED_SHA512="$(sha512sum "$TEMPDIR/coreos_production_vmware_image.vmdk.bz2" | cut -f1 -d ' ')"
-  if [[ "$CALCULATED_SHA512" != "$EXPECTED_SHA512" ]]; then
-    echo " * SHA512 digest verification failed. '$CALCULATED_SHA512' != '$EXPECTED_SHA512'"
-    exit 1
-  fi
-
-  echo " * Decompressing"
-  bunzip2 --keep "$TEMPDIR/coreos_production_vmware_image.vmdk.bz2"
-  mv "$TEMPDIR/coreos_production_vmware_image.vmdk" "$SCRIPT_DIR/downloads/coreos_production_vmware_image.original.vmdk"
-}
 
 get_centos7_image() {
   CENTOS7_BUILD="1802"
@@ -188,14 +167,6 @@ mount_rootfs() {
   local IMAGE="$1"
   local FOLDER="$2"
   case $TARGET_OS in
-    coreos)
-      echo "  * /"
-      sudo guestmount -a "$IMAGE" -m "/dev/sda9" "$TARGETFS"
-      echo "  * /usr"
-      sudo guestmount -a "$IMAGE" -m "/dev/sda3" --ro "$TARGETFS/usr"
-      echo "  * /usr/share/oem"
-      sudo guestmount -a "$IMAGE" -m "/dev/sda6" "$TARGETFS/usr/share/oem"
-      ;;
     debian9|centos7|ubuntu-*)
       echo "  * /"
       sudo guestmount -a "$IMAGE" -m "/dev/sda1" "$TARGETFS"
@@ -208,12 +179,6 @@ mount_rootfs() {
 }
 
 case $TARGET_OS in
-  coreos)
-    CLEAN_IMAGE="$SCRIPT_DIR/downloads/coreos_production_vmware_image.original.vmdk"
-    if [[ ! -f "$CLEAN_IMAGE" ]]; then
-      get_coreos_image
-    fi
-    ;;
   centos7)
   CLEAN_IMAGE="$SCRIPT_DIR/downloads/CentOS-7-x86_64-GenericCloud.qcow2"
     if [[ ! -f "$CLEAN_IMAGE" ]]; then

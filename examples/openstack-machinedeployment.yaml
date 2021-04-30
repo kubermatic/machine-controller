@@ -58,6 +58,18 @@ spec:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: identityEndpoint
+          # If empty, can be set via OS_APPLICATION_CREDENTIAL_ID env var
+            applicationCredentialID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: applicationCredentialID
+          # If empty, can be set via OS_APPLICATION_CREDENTIAL_SECRET env var
+            applicationCredentialSecret:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: applicationCredentialSecret
           # If empty, can be set via OS_USER_NAME env var
             username:
               secretKeyRef:
@@ -110,7 +122,7 @@ spec:
             # the list of metadata you would like to attach to the instance
             tags:
               tagKey: tagValue
-          # Can be 'ubuntu', 'coreos' or 'centos'
+          # Can be 'ubuntu' or 'centos'
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: true

@@ -19,16 +19,28 @@ limitations under the License.
 package provisioning
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -39,27 +51,29 @@ func init() {
 }
 
 const (
-	DOManifest                   = "./testdata/machinedeployment-digitalocean.yaml"
-	AWSManifest                  = "./testdata/machinedeployment-aws.yaml"
-	AWSManifestARM               = "./testdata/machinedeployment-aws-arm-machines.yaml"
-	AWSEBSEncryptedManifest      = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
-	AzureManifest                = "./testdata/machinedeployment-azure.yaml"
-	AzureRedhatSatelliteManifest = "./testdata/machinedeployment-azure.yaml"
-	GCEManifest                  = "./testdata/machinedeployment-gce.yaml"
-	HZManifest                   = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest               = "./testdata/machinedeployment-packet.yaml"
-	LinodeManifest               = "./testdata/machinedeployment-linode.yaml"
-	VSPhereManifest              = "./testdata/machinedeployment-vsphere.yaml"
-	VSPhereDSCManifest           = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
-	VSPhereResourcePoolManifest  = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
-	ScalewayManifest             = "./testdata/machinedeployment-scaleway.yaml"
-	OSManifest                   = "./testdata/machinedeployment-openstack.yaml"
-	OSUpgradeManifest            = "./testdata/machinedeployment-openstack-upgrade.yml"
-	invalidMachineManifest       = "./testdata/machine-invalid.yaml"
-	kubevirtManifest             = "./testdata/machinedeployment-kubevirt.yaml"
-	kubevirtManifestDNSConfig    = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
-	alibabaManifest              = "./testdata/machinedeployment-alibaba.yaml"
-	anexiaManifest               = "./testdata/machinedeployment-anexia.yaml"
+	DOManifest                        = "./testdata/machinedeployment-digitalocean.yaml"
+	AWSManifest                       = "./testdata/machinedeployment-aws.yaml"
+	AWSManifestARM                    = "./testdata/machinedeployment-aws-arm-machines.yaml"
+	AWSEBSEncryptedManifest           = "./testdata/machinedeployment-aws-ebs-encryption-enabled.yaml"
+	AzureManifest                     = "./testdata/machinedeployment-azure.yaml"
+	AzureRedhatSatelliteManifest      = "./testdata/machinedeployment-azure.yaml"
+	AzureCustomImageReferenceManifest = "./testdata/machinedeployment-azure-custom-image-reference.yaml"
+	GCEManifest                       = "./testdata/machinedeployment-gce.yaml"
+	HZManifest                        = "./testdata/machinedeployment-hetzner.yaml"
+	PacketManifest                    = "./testdata/machinedeployment-packet.yaml"
+	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
+	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
+	VSPhereResourcePoolManifest       = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
+	ScalewayManifest                  = "./testdata/machinedeployment-scaleway.yaml"
+	OSMachineManifest                 = "./testdata/machine-openstack.yaml"
+	OSManifest                        = "./testdata/machinedeployment-openstack.yaml"
+	OSUpgradeManifest                 = "./testdata/machinedeployment-openstack-upgrade.yml"
+	invalidMachineManifest            = "./testdata/machine-invalid.yaml"
+	kubevirtManifest                  = "./testdata/machinedeployment-kubevirt.yaml"
+	kubevirtManifestDNSConfig         = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
+	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
+	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -69,7 +83,7 @@ func TestInvalidObjectsGetRejected(t *testing.T) {
 
 	tests := []scenario{
 		{osName: "invalid", executor: verifyCreateMachineFails},
-		{osName: "coreos", executor: verifyCreateMachineFails},
+		{osName: "flatcar", executor: verifyCreateMachineFails},
 	}
 
 	for i, test := range tests {
@@ -82,6 +96,186 @@ func TestInvalidObjectsGetRejected(t *testing.T) {
 	}
 }
 
+// TestCustomCAsAreApplied ensures that the configured CA bundle is actually
+// being used by performing a negative test: It purposefully replaces the
+// valid CA bundle with a bundle that contains one random self-signed cert
+// and then expects openstack provisioning to _fail_.
+func TestCustomCAsAreApplied(t *testing.T) {
+	t.Parallel()
+
+	osAuthURL := os.Getenv("OS_AUTH_URL")
+	osDomain := os.Getenv("OS_DOMAIN")
+	osPassword := os.Getenv("OS_PASSWORD")
+	osRegion := os.Getenv("OS_REGION")
+	osUsername := os.Getenv("OS_USERNAME")
+	osTenant := os.Getenv("OS_TENANT_NAME")
+	osNetwork := os.Getenv("OS_NETWORK_NAME")
+
+	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthURL),
+		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
+		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
+		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
+		fmt.Sprintf("<< REGION >>=%s", osRegion),
+		fmt.Sprintf("<< TENANT_NAME >>=%s", osTenant),
+		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
+	}
+
+	testScenario(
+		t,
+		scenario{
+			name:              "ca-test",
+			containerRuntime:  "docker",
+			kubernetesVersion: versions[0].String(),
+			osName:            string(providerconfigtypes.OperatingSystemUbuntu),
+
+			executor: func(kubeConfig, manifestPath string, parameters []string, d time.Duration) error {
+				if err := updateMachineControllerForCustomCA(kubeConfig); err != nil {
+					return fmt.Errorf("failed to add CA: %v", err)
+				}
+
+				return verifyCreateMachineFails(kubeConfig, manifestPath, parameters, d)
+			},
+		},
+		"dummy-machine",
+		params,
+		OSMachineManifest,
+		false,
+	)
+}
+
+func updateMachineControllerForCustomCA(kubeconfig string) error {
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return fmt.Errorf("Error building kubeconfig: %v", err)
+	}
+
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
+	if err != nil {
+		return fmt.Errorf("failed to create Client: %v", err)
+	}
+
+	ctx := context.Background()
+	ns := metav1.NamespaceSystem
+
+	// create intentionally valid but useless CA bundle
+	caBundle := &corev1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: ns,
+			Name:      "ca-bundle",
+		},
+		Data: map[string]string{
+			// this certificate was created using `make examples/ca-cert.pem`
+			"ca-bundle.pem": strings.TrimSpace(`
+-----BEGIN CERTIFICATE-----
+MIIFezCCA2OgAwIBAgIUV9en2WQLDZ1VzPYgzblnuhrg1sQwDQYJKoZIhvcNAQEL
+BQAwTTELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMQ0wCwYDVQQKDARBY21lMSIw
+IAYDVQQDDBlrOHMtbWFjaGluZS1jb250cm9sbGVyLWNhMB4XDTIwMDgxOTEzNDEw
+MloXDTQ4MDEwNTEzNDEwMlowTTELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMQ0w
+CwYDVQQKDARBY21lMSIwIAYDVQQDDBlrOHMtbWFjaGluZS1jb250cm9sbGVyLWNh
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAtHUcIL+zTd7jmYazQCL0
+auCJxbICdthFzW3Hs8FwQ3zhXiqP7bsgMgLsG5lxmRA1iyRRUQklV/Cu6XTWQkPA
+Z8WqA06zhoNl7/f5tfhilJS6RP3ftlDJ9UMVb2DaG560VF+31QHZKL8Hr0KgPdz9
+WgUFTpD1LpOk0wHJdjc/WzKaTFrZm3UAZRcZIkR0+5LrUudmUPYfbHWtYSYLX2vB
+Y0+9oKqcpTtoFE2jGa993dtSPSE7grG3kfKb+IhwHUDXOW0xiT/uue7JAJYc6fDd
+RoRdf3vSIESl9+R7lxymcW5R9YrQ26YJ6HlVr14BpT0hNVgvrpJINstYBpj5PbQV
+kpIcHmrDOoZEgb+QTAtzga0mZctWWa7U1AJ8KoWejrJgNCAE4nrecFaPQ7aDjSe4
+ca0/Gx1TtLPhswMFqQhihK4bxuV1iTTsk++h8rK5ii6jO6ioS+AF9Nqye+1tYuE8
+JePXMMkO1pnwKeyiRGs8poJdQEXzu0xYbc/f2FZqP4b9X4TfsVC5WQIO/xhfhaOI
+l0cIKTaBn5mWW5gn/ag+AnaTHZ7aX3A4zAuE/riyTFC2GWNLO5PqlTgo6c/+5ynC
+x5Q6CUBIMFw4LP8DMC2bWhyJjRaCre9+3bXSXQ8XCWxAyfTjDTcIgBEv0+peGko0
+wb697GGWGgiqlRpW8GBZPeUCAwEAAaNTMFEwHQYDVR0OBBYEFO2EDvPI7jRqR6rK
+vKkqj8BxCCZvMB8GA1UdIwQYMBaAFO2EDvPI7jRqR6rKvKkqj8BxCCZvMA8GA1Ud
+EwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggIBAJMXHPxnorj4h+HePA1TaqBs
+LPfrARxPGi+/mFWGtT8JpLf8cP1YT3j74sdD9oiDCxDSL+Cg5JY3IKa5U+jnS6Go
+a26D4U9MOUl2hPOa/f4BEEN9+6jNvB/jg1Jd1YC1Q7hdWjBZKx1n+qMhq+bwNJZo
+du0t/zmgk6sJVa7E50ILv/WmEQDCo0NFpOBSku0M35iA+maMgxq5/7EBybl2Qo2F
+j6IPTxGBRbOE13I8virmYz9MdloiKX1GDUDCP3yRSSnPVveKlaGYa/lCNbSEhynb
+KZHbzcro71RRAgne1cNaFIqr5oCZMSSx+hlsc/mkenr7Dg1/o6FexFc1IYO85Fs4
+VC8Yb5V2oD8IDZlRVo7G74cZqEly8OYHO17zO0ib3S70aPGTUtFXEyMiirWCbVCb
+L3I2dvQcO19WTQ8CfujWGtbL2lhBZvJTfa9fzrz3uYQRIeBHIWZvi8sEIQ1pmeOi
+9PQkGHHJO+jfJkbOdR9cAmHUyuHH26WzZctg5CR2+f6xA8kO/8tUMEAJ9hUJa1iJ
+Br0c+gPd5UmjrHLikc40/CgjmfLkaSJcnmiYP0xxYM3Rqm8ptKJM7asHDDbeBK8m
+rh3NiRD903zsNpRiUXKkQs7N382SkRaBTB/rJTONM00pXEQYAivs5nIEfCQzen/Z
+C8QmzsMaZhk+mVFr1sGy
+-----END CERTIFICATE-----
+`),
+		},
+	}
+
+	if err := client.Create(ctx, caBundle); err != nil {
+		return fmt.Errorf("failed to create ca-bundle ConfigMap: %v", err)
+	}
+
+	// add CA to deployments
+	deployments := []string{"machine-controller", "machine-controller-webhook"}
+	for _, deployment := range deployments {
+		if err := addCAToDeployment(ctx, client, deployment, ns); err != nil {
+			return fmt.Errorf("failed to add CA to %s Deployment: %v", deployment, err)
+		}
+	}
+
+	// wait for deployments to roll out
+	for _, deployment := range deployments {
+		if err := wait.Poll(3*time.Second, 30*time.Second, func() (done bool, err error) {
+			d := &appsv1.Deployment{}
+			key := types.NamespacedName{Namespace: ns, Name: deployment}
+
+			if err := client.Get(ctx, key, d); err != nil {
+				return false, fmt.Errorf("failed to get Deployment: %v", err)
+			}
+
+			return d.Status.AvailableReplicas > 0, nil
+		}); err != nil {
+			return fmt.Errorf("%s Deployment never became ready: %v", deployment, err)
+		}
+	}
+
+	return nil
+}
+
+func addCAToDeployment(ctx context.Context, client ctrlruntimeclient.Client, name string, namespace string) error {
+	deployment := &appsv1.Deployment{}
+	key := types.NamespacedName{Namespace: namespace, Name: name}
+
+	if err := client.Get(ctx, key, deployment); err != nil {
+		return fmt.Errorf("failed to get Deployment: %v", err)
+	}
+
+	caVolume := corev1.Volume{
+		Name: "ca-bundle",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "ca-bundle",
+				},
+			},
+		},
+	}
+
+	caVolumeMount := corev1.VolumeMount{
+		Name:      "ca-bundle",
+		ReadOnly:  true,
+		MountPath: "/etc/machine-controller",
+	}
+
+	oldDeployment := deployment.DeepCopy()
+
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, caVolume)
+
+	container := deployment.Spec.Template.Spec.Containers[0]
+	container.VolumeMounts = append(container.VolumeMounts, caVolumeMount)
+	container.Command = append(container.Command, "-ca-bundle=/etc/machine-controller/ca-bundle.pem")
+
+	deployment.Spec.Template.Spec.Containers[0] = container
+
+	return client.Patch(ctx, deployment, ctrlruntimeclient.MergeFrom(oldDeployment))
+}
+
 func TestKubevirtProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
@@ -91,7 +285,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := Not(OsSelector("sles", "flatcar", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "flatcar", "rhel"))
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
 	}
@@ -148,7 +342,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "rhel"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -165,7 +359,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
 	runScenarios(t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
@@ -182,7 +376,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := Not(OsSelector("coreos", "sles"))
+	selector := Not(OsSelector("sles"))
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -318,7 +512,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("coreos", "sles"))
+	selector := Not(OsSelector("sles"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -327,6 +521,31 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
 	}
 	runScenarios(t, selector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+}
+
+// TestAzureCustomImageReferenceProvisioningE2E - a test suite that exercises Azure provider
+// by requesting nodes with different combination of container runtime type, container runtime version and custom Image reference.
+func TestAzureCustomImageReferenceProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	azureTenantID := os.Getenv("AZURE_E2E_TESTS_TENANT_ID")
+	azureSubscriptionID := os.Getenv("AZURE_E2E_TESTS_SUBSCRIPTION_ID")
+	azureClientID := os.Getenv("AZURE_E2E_TESTS_CLIENT_ID")
+	azureClientSecret := os.Getenv("AZURE_E2E_TESTS_CLIENT_SECRET")
+	if len(azureTenantID) == 0 || len(azureSubscriptionID) == 0 || len(azureClientID) == 0 || len(azureClientSecret) == 0 {
+		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
+	}
+
+	selector := OsSelector("ubuntu")
+	// act
+	params := []string{
+		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
+		fmt.Sprintf("<< AZURE_SUBSCRIPTION_ID >>=%s", azureSubscriptionID),
+		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
+		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
+	}
+	runScenarios(t, selector, params, AzureCustomImageReferenceManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
 // TestAzureRedhatSatelliteProvisioningE2E - a test suite that exercises Azure provider
@@ -394,8 +613,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
-	// Hetzner does not support coreos
-	selector := Not(OsSelector("coreos", "sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
@@ -418,8 +636,7 @@ func TestPacketProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
 	}
 
-	// coreos is not supported by packet anymore.
-	selector := Not(OsSelector("sles", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "rhel"))
 
 	// act
 	params := []string{
@@ -443,7 +660,7 @@ func TestAlibabaProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, ALIBABA_ACCESS_KEY_SECRET environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("coreos", "sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 
 	// act
 	params := []string{
@@ -466,8 +683,7 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, LINODE_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	// we're shimming userdata through Linode stackscripts, and Linode's coreos does not support stackscripts
-	// and the stackscript hasn't been verified for use with centos
+	// we're shimming userdata through Linode stackscripts and the stackscript hasn't been verified for use with centos
 	selector := OsSelector("ubuntu")
 
 	// act
@@ -501,7 +717,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "rhel", "coreos"))
+	selector := Not(OsSelector("sles", "rhel"))
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -527,7 +743,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 	// We do not need to test all combinations.
 	scenario := scenario{
 		name:              "vSphere resource pool provisioning",
-		osName:            "coreos",
+		osName:            "flatcar",
 		containerRuntime:  "docker",
 		kubernetesVersion: "1.17.0",
 		executor:          verifyCreateAndDelete,
@@ -562,7 +778,7 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar", "coreos"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< SCW_ACCESS_KEY >>=%s", scwAccessKey),

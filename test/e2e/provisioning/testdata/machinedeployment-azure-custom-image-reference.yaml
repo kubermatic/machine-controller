@@ -22,23 +22,31 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "gce"
+          cloudProvider: "azure"
           cloudProviderSpec:
-            # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var
-            serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
-            # See https://cloud.google.com/compute/docs/regions-zones/
-            zone: "europe-west3-a"
-            # See https://cloud.google.com/compute/docs/machine-types
-            machineType: "n1-standard-2"
-            # In GB
-            diskSize: 25
-            # Can be 'pd-standard' or 'pd-ssd'
-            diskType: "pd-standard"
-            labels:
-                "kubernetes_cluster": "gce-test-cluster"
-            assignPublicIPAddress: true
-            customImage: "<< CUSTOM-IMAGE >>"
-          # Can be 'ubuntu' or 'rhel'
+            tenantID: "<< AZURE_TENANT_ID >>"
+            clientID: "<< AZURE_CLIENT_ID >>"
+            clientSecret: "<< AZURE_CLIENT_SECRET >>"
+            subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
+            location: "westeurope"
+            resourceGroup: "machine-controller-e2e"
+            vnetResourceGroup: ""
+            vmSize: "Standard_F2"
+            # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
+            osDiskSize: << OS_DISK_SIZE >>
+            dataDiskSize: << DATA_DISK_SIZE >>
+            vnetName: "machine-controller-e2e"
+            subnetName: "machine-controller-e2e"
+            routeTableName: "machine-controller-e2e"
+            imageID: "<< IMAGE_ID >>"
+            imageReference:
+              publisher: "Canonical"
+              offer: "0001-com-ubuntu-server-focal"
+              sku: "20_04-lts"
+              version: "latest"
+            assignPublicIP: false
+            zones:
+              - "1"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false

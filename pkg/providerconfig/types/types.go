@@ -33,7 +33,6 @@ import (
 type OperatingSystem string
 
 const (
-	OperatingSystemCoreos  OperatingSystem = "coreos"
 	OperatingSystemUbuntu  OperatingSystem = "ubuntu"
 	OperatingSystemCentOS  OperatingSystem = "centos"
 	OperatingSystemSLES    OperatingSystem = "sles"
@@ -65,7 +64,6 @@ var (
 
 	// AllOperatingSystems is a slice containing all supported operating system identifiers.
 	AllOperatingSystems = []OperatingSystem{
-		OperatingSystemCoreos,
 		OperatingSystemUbuntu,
 		OperatingSystemCentOS,
 		OperatingSystemSLES,

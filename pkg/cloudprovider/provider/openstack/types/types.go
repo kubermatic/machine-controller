@@ -22,16 +22,18 @@ import (
 
 type RawConfig struct {
 	// Auth details
-	IdentityEndpoint          providerconfigtypes.ConfigVarString `json:"identityEndpoint,omitempty"`
-	Username                  providerconfigtypes.ConfigVarString `json:"username,omitempty"`
-	Password                  providerconfigtypes.ConfigVarString `json:"password,omitempty"`
-	DomainName                providerconfigtypes.ConfigVarString `json:"domainName,omitempty"`
-	TenantName                providerconfigtypes.ConfigVarString `json:"tenantName,omitempty"`
-	TenantID                  providerconfigtypes.ConfigVarString `json:"tenantID,omitempty"`
-	TokenID                   providerconfigtypes.ConfigVarString `json:"tokenId,omitempty"`
-	Region                    providerconfigtypes.ConfigVarString `json:"region,omitempty"`
-	InstanceReadyCheckPeriod  providerconfigtypes.ConfigVarString `json:"instanceReadyCheckPeriod,omitempty"`
-	InstanceReadyCheckTimeout providerconfigtypes.ConfigVarString `json:"instanceReadyCheckTimeout,omitempty"`
+	IdentityEndpoint            providerconfigtypes.ConfigVarString `json:"identityEndpoint,omitempty"`
+	Username                    providerconfigtypes.ConfigVarString `json:"username,omitempty"`
+	Password                    providerconfigtypes.ConfigVarString `json:"password,omitempty"`
+	ApplicationCredentialID     providerconfigtypes.ConfigVarString `json:"applicationCredentialID,omitempty"`
+	ApplicationCredentialSecret providerconfigtypes.ConfigVarString `json:"applicationCredentialSecret,omitempty"`
+	DomainName                  providerconfigtypes.ConfigVarString `json:"domainName,omitempty"`
+	TenantName                  providerconfigtypes.ConfigVarString `json:"tenantName,omitempty"`
+	TenantID                    providerconfigtypes.ConfigVarString `json:"tenantID,omitempty"`
+	TokenID                     providerconfigtypes.ConfigVarString `json:"tokenId,omitempty"`
+	Region                      providerconfigtypes.ConfigVarString `json:"region,omitempty"`
+	InstanceReadyCheckPeriod    providerconfigtypes.ConfigVarString `json:"instanceReadyCheckPeriod,omitempty"`
+	InstanceReadyCheckTimeout   providerconfigtypes.ConfigVarString `json:"instanceReadyCheckTimeout,omitempty"`
 
 	// Machine details
 	Image                 providerconfigtypes.ConfigVarString   `json:"image"`

@@ -14,7 +14,8 @@
 
 SHELL = /bin/bash -eu -o pipefail
 
-GO_VERSION = 1.15.1
+GO_VERSION ?= 1.16.1
+
 GOOS ?= $(shell go env GOOS)
 
 export CGO_ENABLED := 0
@@ -34,7 +35,7 @@ IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 
-OS = centos coreos ubuntu sles rhel flatcar
+OS = centos ubuntu sles rhel flatcar
 USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
 
 .PHONY: all
@@ -175,3 +176,7 @@ check-dependencies:
 .PHONY: download-gocache
 download-gocache:
 	@./hack/ci-download-gocache.sh
+
+.PHONY: shfmt
+shfmt:
+	shfmt -w -sr -i 2 hack

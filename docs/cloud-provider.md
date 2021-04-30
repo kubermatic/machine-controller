@@ -103,7 +103,7 @@ password: ""
 domainName: "default"
 # tenant name
 tenantName: ""
-# image to use (currently only ubuntu & coreos are supported)
+# image to use (currently only ubuntu is supported)
 image: "Ubuntu 18.04 amd64"
 # instance flavor
 flavor: ""

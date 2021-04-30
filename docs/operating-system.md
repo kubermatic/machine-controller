@@ -19,7 +19,6 @@
 The operating system to use can be set via `machine.spec.providerConfig.operatingSystem`.
 Allowed values:
 - `centos`
-- `coreos`
 - `rhel`
 - `sles`
 - `ubuntu`
@@ -34,7 +33,6 @@ Machine controller may work with other OS versions that are not listed in the ta
 |   | Versions |
 |---|---|
 | CentOS | 7.4.x, 7.6.x, 7.7.x |
-| CoreOS | 1855.4.0, 2079.x.x, 2135.x.x, 2191.x.x, 2247.x.x, 2345.x.x |
 | RHEL | 8.0, 8.1 |
 | SLES |  SLES 15 SP1 |
 | Ubuntu | 18.04 LTS |
@@ -101,7 +99,7 @@ spec:
       providerConfig:
         value:
           ...
-          operatingSystem: "coreos"
+          operatingSystem: "flatcar"
           operatingSystemSpec:
             # disable auto update
             disableAutoUpdate: true

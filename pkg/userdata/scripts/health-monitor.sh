@@ -30,10 +30,9 @@ set -o pipefail
 
 # We simply kill the process when there is a failure. Another systemd service will
 # automatically restart the process.
-function container_runtime_monitoring {
+function container_runtime_monitoring() {
   local -r max_attempts=5
   local attempt=1
-  local -r crictl="${KUBE_HOME}/bin/crictl"
   local -r container_runtime_name="${CONTAINER_RUNTIME_NAME:-docker}"
   # We still need to use 'docker ps' when container runtime is "docker". This is because
   # dockershim is still part of kubelet today. When kubelet is down, crictl pods
@@ -41,26 +40,26 @@ function container_runtime_monitoring {
   # docker live restore is disabled.
   local healthcheck_command="docker ps"
   if [[ "${CONTAINER_RUNTIME:-docker}" != "docker" ]]; then
-    healthcheck_command="${crictl} pods"
+    healthcheck_command="crictl pods"
   fi
   # Container runtime startup takes time. Make initial attempts before starting
   # killing the container runtime.
   until timeout 60 ${healthcheck_command} > /dev/null; do
-    if (( attempt == max_attempts )); then
+    if ((attempt == max_attempts)); then
       echo "Max attempt ${max_attempts} reached! Proceeding to monitor container runtime healthiness."
       break
     fi
     echo "$attempt initial attempt \"${healthcheck_command}\"! Trying again in $attempt seconds..."
-    sleep "$(( 2 ** attempt++ ))"
+    sleep "$((2 ** attempt++))"
   done
   while true; do
     if ! timeout 60 ${healthcheck_command} > /dev/null; then
       echo "Container runtime ${container_runtime_name} failed!"
       if [[ "$container_runtime_name" == "docker" ]]; then
-          # Dump stack of docker daemon for investigation.
-          # Log file name looks like goroutine-stacks-TIMESTAMP and will be saved to
-          # the exec root directory, which is /var/run/docker/ on Ubuntu and COS.
-          pkill -SIGUSR1 dockerd
+        # Dump stack of docker daemon for investigation.
+        # Log file name looks like goroutine-stacks-TIMESTAMP and will be saved to
+        # the exec root directory, which is /var/run/docker/ on Ubuntu and COS.
+        pkill -SIGUSR1 dockerd
       fi
       systemctl kill --kill-who=main "${container_runtime_name}"
       # Wait for a while, as we don't want to kill it again before it is really up.
@@ -71,15 +70,16 @@ function container_runtime_monitoring {
   done
 }
 
-function kubelet_monitoring {
+function kubelet_monitoring() {
   echo "Wait for 2 minutes for kubelet to be functional"
   # TODO(andyzheng0831): replace it with a more reliable method if possible.
   sleep 120
   local -r max_seconds=10
   local output=""
-  local failed="false"
-  while [ 1 ]; do
-    if journalctl -u kubelet -n 10 | grep -q "use of closed network connection"; then
+  while true; do
+    local failed=false
+
+    if journalctl -u kubelet -n 1 | grep -q "use of closed network connection"; then
       failed=true
       echo "Kubelet stopped posting node status. Restarting"
     elif ! output=$(curl -m "${max_seconds}" -f -s -S http://127.0.0.1:10248/healthz 2>&1); then
@@ -88,7 +88,7 @@ function kubelet_monitoring {
       echo "$output"
     fi
 
-    if [ $failed == "true" ]; then
+    if [[ "$failed" == "true" ]]; then
       echo "Kubelet is unhealthy!"
       systemctl kill kubelet
       # Wait for a while, as we don't want to kill it again before it is really up.
@@ -99,14 +99,11 @@ function kubelet_monitoring {
   done
 }
 
-
 ############## Main Function ################
 if [[ "$#" -ne 1 ]]; then
   echo "Usage: health-monitor.sh <container-runtime/kubelet>"
   exit 1
 fi
-
-KUBE_HOME="/home/kubernetes"
 
 SLEEP_SECONDS=10
 component=$1
@@ -116,5 +113,5 @@ if [[ "${component}" == "container-runtime" ]]; then
 elif [[ "${component}" == "kubelet" ]]; then
   kubelet_monitoring
 else
-  echo "Health monitoring for component "${component}" is not supported!"
+  echo "Health monitoring for component ${component} is not supported!"
 fi

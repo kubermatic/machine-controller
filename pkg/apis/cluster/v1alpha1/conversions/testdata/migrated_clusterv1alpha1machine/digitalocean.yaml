@@ -19,7 +19,7 @@ spec:
         tags:
         - machine-controller
         token: token
-      operatingSystem: coreos
+      operatingSystem: ubuntu
       operatingSystemSpec:
         disableAutoUpdate: true
       sshPublicKeys:

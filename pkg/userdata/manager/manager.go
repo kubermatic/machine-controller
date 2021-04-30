@@ -45,7 +45,6 @@ var (
 	// controller supports.
 	supportedOS = []providerconfigtypes.OperatingSystem{
 		providerconfigtypes.OperatingSystemCentOS,
-		providerconfigtypes.OperatingSystemCoreos,
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
