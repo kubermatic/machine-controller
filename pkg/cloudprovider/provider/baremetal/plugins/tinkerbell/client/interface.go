@@ -14,16 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package types
+package client
 
 import (
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"context"
 
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/tinkerbell/tink/protos/hardware"
+	"github.com/tinkerbell/tink/protos/template"
 )
 
-type RawConfig struct {
-	MetadataClient runtime.RawExtension                `json:"metadataClient"`
-	Driver         providerconfigtypes.ConfigVarString `json:"driver"`
-	DriverSpec     runtime.RawExtension                `json:"driverSpec"`
+type HardwareClient interface {
+	Get(context.Context, string, string, string) (*hardware.Hardware, error)
+	Delete(context.Context, string) error
+	Create(context.Context, *hardware.Hardware) error
+}
+
+type TemplateClient interface {
+	Get(context.Context, string, string) (*template.WorkflowTemplate, error)
+	Create(context.Context, *template.WorkflowTemplate) error
+}
+
+type WorkflowClient interface {
+	Create(context.Context, string, string) (string, error)
 }

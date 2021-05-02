@@ -26,9 +26,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/metadata/nautobot"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/metadata"
 	baremetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
@@ -98,8 +98,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	c := Config{}
-	metdata := &nautobot.MetadataClientConfig{}
-	if err := json.Unmarshal(rawConfig.MetadataClientConfig.Raw, metdata); err != nil {
+	mdClient := &struct {
+		Config *metadata.Config `json:"config"`
+	}{}
+	if err := json.Unmarshal(rawConfig.MetadataClient.Raw, mdClient); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal metadata: %v", err)
 	}
 
@@ -122,7 +124,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %v", err)
 		}
 
-		c.driver, err = tinkerbell.NewTinkerbellDriver(metdata, driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
+		c.driver, err = tinkerbell.NewTinkerbellDriver(mdClient.Config, nil, driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %v", err)
 		}

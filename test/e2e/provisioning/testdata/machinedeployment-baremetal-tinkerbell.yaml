@@ -25,6 +25,14 @@ spec:
           cloudProvider: "baremetal"
           cloudProviderSpec:
             driver: "tinkerbell"
+            metadataClient:
+              config:
+                endpoint: ""
+                authConfig:
+                  authMethod: ""
+                  username: ""
+                  password: ""
+                  token: ""
             driverSpec:
               provisionerIPAddress: << PROVISIONER_IP_ADDRESS >>
               mirrorHost: << MIRROR_HOST >>
@@ -77,11 +85,6 @@ spec:
                   interfaces:
                     - dhcp:
                         arch: x86_64
-                        ip:
-                          address: << IP >>
-                          gateway: << GATEWAY >>
-                          netmask: << NET_MASK>>
-                        mac: << MAC >>
                         uefi: false
                       netboot:
                         allowpxe: false
