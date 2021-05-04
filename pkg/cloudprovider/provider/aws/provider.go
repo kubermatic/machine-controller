@@ -122,7 +122,7 @@ var (
 		},
 		providerconfigtypes.OperatingSystemFlatcar: {
 			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Flatcar Container Linux stable 2345.3.1 (HVM)",
+			description: "Flatcar Container Linux stable *",
 			// The AWS marketplace ID from AWS
 			owner: "075585003325",
 		},
