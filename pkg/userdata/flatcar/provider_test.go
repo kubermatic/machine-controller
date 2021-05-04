@@ -377,6 +377,29 @@ func TestUserDataGeneration(t *testing.T) {
 			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
+		{
+			name:             "containerd",
+			containerruntime: "containerd",
+			providerSpec: &providerconfigtypes.Config{
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.20.1",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{},
+			DNSIPs:     []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: CloudInit,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
 	}
 
 	for _, test := range tests {
