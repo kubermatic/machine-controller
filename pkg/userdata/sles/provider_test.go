@@ -27,8 +27,6 @@ import (
 	"net"
 	"testing"
 
-	"k8s.io/utils/pointer"
-
 	"github.com/Masterminds/semver"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -42,6 +40,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/utils/pointer"
 )
 
 var (

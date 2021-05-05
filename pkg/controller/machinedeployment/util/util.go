@@ -76,8 +76,10 @@ const (
 // MachineSetsByCreationTimestamp sorts a list of MachineSet by creation timestamp, using their names as a tie breaker.
 type MachineSetsByCreationTimestamp []*v1alpha1.MachineSet
 
-func (o MachineSetsByCreationTimestamp) Len() int      { return len(o) }
+func (o MachineSetsByCreationTimestamp) Len() int { return len(o) }
+
 func (o MachineSetsByCreationTimestamp) Swap(i, j int) { o[i], o[j] = o[j], o[i] }
+
 func (o MachineSetsByCreationTimestamp) Less(i, j int) bool {
 	if o[i].CreationTimestamp.Equal(&o[j].CreationTimestamp) {
 		return o[i].Name < o[j].Name
@@ -89,8 +91,10 @@ func (o MachineSetsByCreationTimestamp) Less(i, j int) bool {
 // By using the creation timestamp, this sorts from old to new machine sets.
 type MachineSetsBySizeOlder []*v1alpha1.MachineSet
 
-func (o MachineSetsBySizeOlder) Len() int      { return len(o) }
+func (o MachineSetsBySizeOlder) Len() int { return len(o) }
+
 func (o MachineSetsBySizeOlder) Swap(i, j int) { o[i], o[j] = o[j], o[i] }
+
 func (o MachineSetsBySizeOlder) Less(i, j int) bool {
 	if *(o[i].Spec.Replicas) == *(o[j].Spec.Replicas) {
 		return o[i].CreationTimestamp.Before(&o[j].CreationTimestamp)
@@ -102,8 +106,10 @@ func (o MachineSetsBySizeOlder) Less(i, j int) bool {
 // By using the creation timestamp, this sorts from new to old machine sets.
 type MachineSetsBySizeNewer []*v1alpha1.MachineSet
 
-func (o MachineSetsBySizeNewer) Len() int      { return len(o) }
+func (o MachineSetsBySizeNewer) Len() int { return len(o) }
+
 func (o MachineSetsBySizeNewer) Swap(i, j int) { o[i], o[j] = o[j], o[i] }
+
 func (o MachineSetsBySizeNewer) Less(i, j int) bool {
 	if *(o[i].Spec.Replicas) == *(o[j].Spec.Replicas) {
 		return o[j].CreationTimestamp.Before(&o[i].CreationTimestamp)

@@ -19,7 +19,6 @@ package fake
 import (
 	"encoding/json"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -27,6 +26,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 )
@@ -42,12 +42,15 @@ type CloudProviderInstance struct{}
 func (f CloudProviderInstance) Name() string {
 	return ""
 }
+
 func (f CloudProviderInstance) ID() string {
 	return ""
 }
+
 func (f CloudProviderInstance) Addresses() map[string]v1.NodeAddressType {
 	return nil
 }
+
 func (f CloudProviderInstance) Status() instance.Status {
 	return instance.StatusUnknown
 }

@@ -22,9 +22,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	testhelper "github.com/kubermatic/machine-controller/pkg/test"
-
 	"github.com/ghodss/yaml"
+
+	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 )
 
 func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T) {

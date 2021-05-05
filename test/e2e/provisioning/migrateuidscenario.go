@@ -32,10 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
-
-	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"k8s.io/klog"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {

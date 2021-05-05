@@ -444,6 +444,7 @@ func getClient(apiKey string) *packngo.Client {
 func generateTag(ID string) string {
 	return fmt.Sprintf("%s:%s", machineUIDTag, ID)
 }
+
 func getTagUID(tag string) (string, error) {
 	parts := strings.Split(tag, ":")
 	if len(parts) < 2 || parts[0] != machineUIDTag {

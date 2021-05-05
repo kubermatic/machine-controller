@@ -24,9 +24,10 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/vmware/govmomi/simulator"
+
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	"github.com/vmware/govmomi/simulator"
 
 	"k8s.io/utils/pointer"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"

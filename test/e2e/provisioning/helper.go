@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-
 	"github.com/Masterminds/semver"
+
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 var (

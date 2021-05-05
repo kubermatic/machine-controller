@@ -98,8 +98,10 @@ type sortableMachines struct {
 	priority deletePriorityFunc
 }
 
-func (m sortableMachines) Len() int      { return len(m.machines) }
+func (m sortableMachines) Len() int { return len(m.machines) }
+
 func (m sortableMachines) Swap(i, j int) { m.machines[i], m.machines[j] = m.machines[j], m.machines[i] }
+
 func (m sortableMachines) Less(i, j int) bool {
 	return m.priority(m.machines[j]) < m.priority(m.machines[i]) // high to low
 }

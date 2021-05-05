@@ -22,17 +22,17 @@ import (
 	"errors"
 	"fmt"
 
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	metadataclient "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/metadata/nautobot"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
-	tinkerbellclient "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client"
-	"github.com/kubermatic/machine-controller/pkg/nautobot"
-
 	tinkclient "github.com/tinkerbell/tink/client"
 	tinkpkg "github.com/tinkerbell/tink/pkg"
 	"github.com/tinkerbell/tink/protos/hardware"
 	tinktmpl "github.com/tinkerbell/tink/protos/template"
 	"gopkg.in/yaml.v3"
+
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	metadataclient "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/metadata/nautobot"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
+	tinkerbellclient "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/client"
+	"github.com/kubermatic/machine-controller/pkg/nautobot"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -74,6 +74,7 @@ func NewTinkerbellDriver(mdConfig *metadataclient.MetadataClientConfig, tinkServ
 
 	return d, nil
 }
+
 func (d *driver) GetServer(ctx context.Context, uid types.UID, hwSpec runtime.RawExtension) (plugins.Server, error) {
 	hw := HardwareSpec{}
 	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
