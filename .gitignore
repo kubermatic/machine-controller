@@ -1,4 +1,5 @@
 .idea
+.run
 /machine-controller*
 .terraform
 terraform.tfstate
