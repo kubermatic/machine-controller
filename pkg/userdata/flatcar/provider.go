@@ -97,6 +97,8 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	}
 	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
 
+	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec       *providerconfigtypes.Config
@@ -118,6 +120,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletImage:       kubeletImage,
 		KubeletVersion:     kubeletVersion.String(),
 		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
+		ExtraKubeletFlags:  crEngine.KubeletFlags(),
 		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
 	}

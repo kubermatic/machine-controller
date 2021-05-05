@@ -4,25 +4,10 @@ users:
 - name: core
   ssh_authorized_keys:
   - ssh-rsa AAABBB
-  - ssh-rsa CCCDDD
 
 
 coreos:
   units:
-  - name: static-nic.network
-    content: |
-      [Match]
-      # Because of difficulty predicting specific NIC names on different cloud providers,
-      # we only support static addressing on VSphere. There should be a single NIC attached
-      # that we will match by name prefix 'en' which denotes ethernet devices.
-      Name=en*
-
-      [Network]
-      DHCP=no
-      Address=192.168.81.4/24
-      Gateway=192.168.81.1
-      DNS=8.8.8.8
-
   - name: update-engine.service
     mask: true
   - name: locksmithd.service
@@ -154,14 +139,12 @@ coreos:
           --config=/etc/kubernetes/kubelet.conf \
           --network-plugin=cni \
           --cert-dir=/etc/kubernetes/pki \
-          --cloud-provider=anexia \
-          --cloud-config=/etc/kubernetes/cloud-config \
           --hostname-override=node1 \
           --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
-          --container-runtime=docker \
-          --container-runtime-endpoint=unix:///var/run/dockershim.sock \
+          --container-runtime=remote \
+          --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
           --node-ip ${KUBELET_NODE_IP}
       ExecStop=-/usr/bin/docker stop %n
       Restart=always
@@ -334,7 +317,7 @@ write_files:
 - path: /etc/kubernetes/cloud-config
   permissions: "0400"
   content: |
-    {anexia-config:true}
+
 
 - path: /etc/kubernetes/pki/ca.crt
   permissions: "0644"
