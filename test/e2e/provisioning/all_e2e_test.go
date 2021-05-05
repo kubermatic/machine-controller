@@ -448,6 +448,32 @@ func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
+func TestAWSFlatcarContainerdProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
+		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
+	}
+
+	scenario := scenario{
+		name:              "flatcar with containerd in AWS",
+		osName:            "flatcar",
+		containerRuntime:  "containerd",
+		kubernetesVersion: "1.19.9",
+		executor:          verifyCreateAndDelete,
+	}
+	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
+}
+
 func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
