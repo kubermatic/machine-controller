@@ -160,6 +160,8 @@ coreos:
           --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
           --exit-on-lock-contention \
           --lock-file=/tmp/kubelet.lock \
+          --container-runtime=docker \
+          --container-runtime-endpoint=unix:///var/run/dockershim.sock \
           --node-ip ${KUBELET_NODE_IP}
       ExecStop=-/usr/bin/docker stop %n
       Restart=always
