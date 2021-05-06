@@ -33,11 +33,12 @@ import (
 type OperatingSystem string
 
 const (
-	OperatingSystemUbuntu  OperatingSystem = "ubuntu"
-	OperatingSystemCentOS  OperatingSystem = "centos"
-	OperatingSystemSLES    OperatingSystem = "sles"
-	OperatingSystemRHEL    OperatingSystem = "rhel"
-	OperatingSystemFlatcar OperatingSystem = "flatcar"
+	OperatingSystemUbuntu       OperatingSystem = "ubuntu"
+	OperatingSystemCentOS       OperatingSystem = "centos"
+	OperatingSystemAmazonLinux2 OperatingSystem = "amzn2"
+	OperatingSystemSLES         OperatingSystem = "sles"
+	OperatingSystemRHEL         OperatingSystem = "rhel"
+	OperatingSystemFlatcar      OperatingSystem = "flatcar"
 )
 
 type CloudProvider string
