@@ -102,6 +102,11 @@ var (
 			owner:       "679593333241",
 			productCode: "aw0evgkw8e5c1q413zgy5pjce",
 		},
+		providerconfigtypes.OperatingSystemAmazonLinux2: {
+			description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
+			// The AWS marketplace ID from Amazon
+			owner: "137112412989",
+		},
 		providerconfigtypes.OperatingSystemUbuntu: {
 			// Be as precise as possible - otherwise we might get a nightly dev build
 			description: "Canonical, Ubuntu, 18.04 LTS, amd64 bionic image build on ????-??-??",
