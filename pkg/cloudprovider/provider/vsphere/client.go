@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"net/url"
 
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 type Session struct {

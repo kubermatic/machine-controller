@@ -27,6 +27,7 @@ import (
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

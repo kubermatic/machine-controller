@@ -22,10 +22,11 @@ import (
 	"time"
 
 	"gopkg.in/gcfg.v1"
-	"k8s.io/utils/pointer"
 
 	"github.com/kubermatic/machine-controller/pkg/ini"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
+
+	"k8s.io/utils/pointer"
 )
 
 var update = flag.Bool("update", false, "update testdata files")

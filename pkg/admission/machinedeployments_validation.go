@@ -101,6 +101,7 @@ func validatePositiveIntOrPercent(s *intstr.IntOrString, fldPath *field.Path) fi
 	}
 	return allErrs
 }
+
 func getIntOrPercent(s *intstr.IntOrString, roundUp bool) (int, error) {
 	return intstr.GetValueFromIntOrPercent(s, 100, roundUp)
 }
