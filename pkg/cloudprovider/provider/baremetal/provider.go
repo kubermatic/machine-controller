@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -36,6 +35,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -252,8 +252,22 @@ func (p provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if err := c.driver.DeprovisionServer(context.Background(), machine.UID); err != nil {
+	ctx := context.Background()
+	if err := c.driver.DeprovisionServer(ctx, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to de-provision server: %v", err)
+	}
+
+	secret := &corev1.Secret{}
+	if err := data.Client.Get(ctx, types.NamespacedName{Namespace: util.CloudInitNamespace, Name: machine.Name}, secret); err != nil {
+		if !kerrors.IsNotFound(err) {
+			return false, fmt.Errorf("failed to fetching secret for userdata: %v", err)
+		}
+
+		return true, nil
+	}
+
+	if err := data.Client.Delete(ctx, secret); err != nil {
+		return false, fmt.Errorf("failed to cleanup secret for userdata: %v", err)
 	}
 
 	return true, nil
