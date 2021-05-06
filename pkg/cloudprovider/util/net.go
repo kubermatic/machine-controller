@@ -14,18 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package nautobot
+package util
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net"
 )
 
-func CidrToIPAndNetMask(ipv4 string) (string, string, int, error) {
+func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 	ip, ipNet, err := net.ParseCIDR(ipv4)
 	if err != nil {
 		return "", "", 0, fmt.Errorf("failed to parse CIDR prefix: %v", err)
@@ -38,22 +35,4 @@ func CidrToIPAndNetMask(ipv4 string) (string, string, int, error) {
 
 	netmask := fmt.Sprintf("%d.%d.%d.%d", ipNet.Mask[0], ipNet.Mask[1], ipNet.Mask[2], ipNet.Mask[3])
 	return ip.String(), netmask, size, nil
-}
-
-func extractIPFromBody(resBody io.Reader) (*IPInfo, error) {
-	ip := &IP{}
-	data, err := ioutil.ReadAll(resBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read ip response: %v", err)
-	}
-
-	if err := json.Unmarshal(data, ip); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ip data: %v", err)
-	}
-
-	for _, i := range ip.Results {
-		return &i, nil
-	}
-
-	return nil, errors.New("no ip address is found")
 }

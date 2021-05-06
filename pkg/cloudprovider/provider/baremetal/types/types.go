@@ -23,7 +23,15 @@ import (
 )
 
 type RawConfig struct {
-	MetadataClientConfig runtime.RawExtension                `json:"metadataClient"`
-	Driver               providerconfigtypes.ConfigVarString `json:"driver"`
-	DriverSpec           runtime.RawExtension                `json:"driverSpec"`
+	MetadataClient *MetadataClientConfig               `json:"metadataClientConfig"`
+	Driver         providerconfigtypes.ConfigVarString `json:"driver"`
+	DriverSpec     runtime.RawExtension                `json:"driverSpec"`
+}
+
+type MetadataClientConfig struct {
+	Endpoint   providerconfigtypes.ConfigVarString `json:"endpoint,omitempty"`
+	AuthMethod providerconfigtypes.ConfigVarString `json:"authMethod,omitempty"`
+	Username   providerconfigtypes.ConfigVarString `json:"username,omitempty"`
+	Password   providerconfigtypes.ConfigVarString `json:"password,omitempty"`
+	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
 }
