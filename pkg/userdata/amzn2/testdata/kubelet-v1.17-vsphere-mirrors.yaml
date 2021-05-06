@@ -103,8 +103,8 @@ write_files:
     EOF
 
     yum install -y \
-        docker-19.03* \
         containerd-1.4* \
+        docker-19.03* \
         yum-plugin-versionlock
     yum versionlock add docker containerd
 

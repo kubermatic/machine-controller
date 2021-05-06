@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	DefaultDockerVersion = "19.03.13"
-	LegacyDockerVersion  = "18.09.9"
+	DefaultDockerVersion = "19.03"
+	LegacyDockerVersion  = "18.09"
 )
 
 type Docker struct {
@@ -100,10 +100,10 @@ EnvironmentFile=-/etc/environment
 EOF
 
 yum install -y \
-    docker-{{ .DockerVersion }}* \
 {{- if .ContainerdVersion }}
     containerd-{{ .ContainerdVersion }}* \
 {{- end }}
+    docker-{{ .DockerVersion }}* \
     yum-plugin-versionlock
 yum versionlock add docker containerd
 
@@ -125,11 +125,13 @@ EnvironmentFile=-/etc/environment
 EOF
 
 yum install -y \
-    docker-ce-{{ .DockerVersion }} \
-    docker-ce-cli-{{ .DockerVersion }} \
-    containerd.io-{{ .ContainerdVersion }} \
+{{- if .ContainerdVersion }}
+    docker-ce-cli-{{ .DockerVersion }}* \
+    containerd.io-{{ .ContainerdVersion }}* \
+{{- end }}
+    docker-ce-{{ .DockerVersion }}* \
     yum-plugin-versionlock
-yum versionlock add docker-ce-* containerd.io
+yum versionlock add docker-ce* containerd.io
 
 systemctl daemon-reload
 systemctl enable --now docker
@@ -150,9 +152,11 @@ EnvironmentFile=-/etc/environment
 EOF
 
 apt-get install -y \
+{{- if .ContainerdVersion }}
     containerd.io={{ .ContainerdVersion }}* \
-    docker-ce=5:{{ .DockerVersion }}* \
     docker-ce-cli=5:{{ .DockerVersion }}*
+{{- end }}
+    docker-ce=5:{{ .DockerVersion }}*
 apt-mark hold docker-ce docker-ce-cli containerd.io
 
 systemctl daemon-reload

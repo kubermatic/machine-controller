@@ -99,11 +99,11 @@ write_files:
     EOF
 
     yum install -y \
-        docker-ce-19.03.13 \
-        docker-ce-cli-19.03.13 \
-        containerd.io-1.4.3 \
+        docker-ce-cli-19.03* \
+        containerd.io-1.4* \
+        docker-ce-19.03* \
         yum-plugin-versionlock
-    yum versionlock add docker-ce-* containerd.io
+    yum versionlock add docker-ce* containerd.io
 
     systemctl daemon-reload
     systemctl enable --now docker
