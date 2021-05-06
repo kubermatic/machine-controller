@@ -154,10 +154,10 @@ EOF
 apt-get install -y \
 {{- if .ContainerdVersion }}
     containerd.io={{ .ContainerdVersion }}* \
-    docker-ce-cli=5:{{ .DockerVersion }}*
+    docker-ce-cli=5:{{ .DockerVersion }}* \
 {{- end }}
     docker-ce=5:{{ .DockerVersion }}*
-apt-mark hold docker-ce docker-ce-cli containerd.io
+apt-mark hold docker-ce* containerd.io
 
 systemctl daemon-reload
 systemctl enable --now docker
