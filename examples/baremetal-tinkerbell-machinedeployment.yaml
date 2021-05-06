@@ -26,11 +26,31 @@ spec:
           cloudProviderSpec:
             driver: "tinkerbell"
             metadataClientConfig:
-              endpoint: << METADATA_SERVER_ENDPOINT >>
-              authMethod: << METADATA_SERVER_AUTH_METHOD >>
-              username: << METADATA_SERVER_USERNAME >>
-              password: << METADATA_SERVER_PASSWORD >>
-              token: << METADATA_SERVER_TOKEN >>
+              endpoint:
+                secretKeyRef:
+                  namespace: kube-system
+                  name: machine-controller-baremetal-tb
+                  key: endpoint
+              authMethod:
+                secretKeyRef:
+                  namespace: kube-system
+                  name: machine-controller-baremetal-tb
+                  key: authMethod
+              username:
+                secretKeyRef:
+                  namespace: kube-system
+                  name: machine-controller-baremetal-tb
+                  key: username
+              password:
+                secretKeyRef:
+                  namespace: kube-system
+                  name: machine-controller-baremetal-tb
+                  key: password
+              token:
+                secretKeyRef:
+                  namespace: kube-system
+                  name: machine-controller-baremetal-tb
+                  key: token
             driverSpec:
               provisionerIPAddress: << PROVISIONER_IP_ADDRESS >>
               mirrorHost: << MIRROR_HOST >>

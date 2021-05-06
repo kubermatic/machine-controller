@@ -98,11 +98,35 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
 	c := Config{}
-	mdClient := &struct {
-		Config *metadata.Config `json:"config"`
-	}{}
-	if err := json.Unmarshal(rawConfig.MetadataClient.Raw, mdClient); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal metadata: %v", err)
+	endpoint, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Endpoint, "METADATA_SERVER_ENDPOINT")
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of \"endpoint\" field: %v`, err)
+	}
+	authMethod, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.AuthMethod, "METADATA_SERVER_AUTH_METHOD")
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of \"authMethod\" field: %v`, err)
+	}
+	username, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Username, "METADATA_SERVER_USERNAME")
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of \"username\" field: %v`, err)
+	}
+	password, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Password, "METADATA_SERVER_PASSWORD")
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of \"password\" field: %v`, err)
+	}
+	token, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Token, "METADATA_SERVER_TOKEN")
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of \"token\" field: %v`, err)
+	}
+
+	mdCfg := &metadata.Config{
+		Endpoint: endpoint,
+		AuthConfig: &metadata.AuthConfig{
+			AuthMethod: metadata.AuthMethod(authMethod),
+			Username:   username,
+			Password:   password,
+			Token:      token,
+		},
 	}
 
 	driverName, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.Driver)
@@ -124,7 +148,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %v", err)
 		}
 
-		c.driver, err = tinkerbell.NewTinkerbellDriver(mdClient.Config, nil, driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
+		c.driver, err = tinkerbell.NewTinkerbellDriver(mdCfg, nil, driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %v", err)
 		}
