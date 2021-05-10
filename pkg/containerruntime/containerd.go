@@ -97,7 +97,7 @@ yum install -y \
 yum versionlock add containerd
 
 systemctl daemon-reload
-systemctl enable --now docker
+systemctl enable --now containerd
 `))
 
 	containerdYumTemplate = template.Must(template.New("containerd-yum").Parse(`

@@ -99,7 +99,7 @@ write_files:
     yum versionlock add containerd
 
     systemctl daemon-reload
-    systemctl enable --now docker
+    systemctl enable --now containerd
 
 
     opt_bin=/opt/bin
