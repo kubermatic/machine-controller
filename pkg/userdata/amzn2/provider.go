@@ -58,7 +58,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	}
 
 	if pconfig.Network != nil {
-		return "", errors.New("static IP config is not supported with CentOS")
+		return "", errors.New("static IP config is not supported with Amazon Linux 2")
 	}
 
 	amznConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
