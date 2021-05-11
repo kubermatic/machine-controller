@@ -23,10 +23,10 @@ package main
 import (
 	"flag"
 
-	"k8s.io/klog"
-
 	"github.com/kubermatic/machine-controller/pkg/userdata/amzn2"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
+
+	"k8s.io/klog"
 )
 
 func main() {
