@@ -4,20 +4,21 @@
 
 ### Cloud provider
 
-|   | Ubuntu | Container Linux | CentOS | Flatcar | RHEL | SLES |
-|---|---|---|---|---|---|---|
-| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Azure | ✓ | ✓ | ✓ | ✓ | ✓ | x |
-| Digitalocean  | ✓ | ✓ | ✓ | x | x | x |
-| Google Cloud Platform | ✓ | ✓ | x | x | ✓ | x |
-| Hetzner | ✓ | x | ✓ | x | x | x |
-| Packet | ✓ | ✓ | ✓ | x | x | x |
-| Openstack | ✓ | ✓ | ✓ | x | ✓ | x |
+|   | Ubuntu | Container Linux | CentOS | Flatcar | RHEL | SLES | Amazon Linux 2 |
+|---|---|---|---|---|---|---|---|
+| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Azure | ✓ | ✓ | ✓ | ✓ | ✓ | x | x |
+| Digitalocean  | ✓ | ✓ | ✓ | x | x | x | x |
+| Google Cloud Platform | ✓ | ✓ | x | x | ✓ | x | x |
+| Hetzner | ✓ | x | ✓ | x | x | x | x |
+| Packet | ✓ | ✓ | ✓ | x | x | x | x |
+| Openstack | ✓ | ✓ | ✓ | x | ✓ | x | x |
 
 ## Configuring a operating system
 
 The operating system to use can be set via `machine.spec.providerConfig.operatingSystem`.
 Allowed values:
+- `amzn2`
 - `centos`
 - `rhel`
 - `sles`
@@ -32,6 +33,7 @@ Machine controller may work with other OS versions that are not listed in the ta
 
 |   | Versions |
 |---|---|
+| AmazonLinux2 | 2.x |
 | CentOS | 7.4.x, 7.6.x, 7.7.x |
 | RHEL | 8.0, 8.1 |
 | SLES |  SLES 15 SP1 |
