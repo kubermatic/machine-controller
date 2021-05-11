@@ -27,7 +27,7 @@ type Config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
 
-// LoadConfig retrieves the CentOS configuration from raw data.
+// LoadConfig retrieves the Amazon Linux 2 configuration from raw data.
 func LoadConfig(r runtime.RawExtension) (*Config, error) {
 	cfg := Config{}
 	if len(r.Raw) == 0 {
