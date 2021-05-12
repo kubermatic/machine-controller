@@ -17,14 +17,10 @@ limitations under the License.
 package openstack
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-	"sync"
-	"time"
-	"crypto/tls"
-	"net/http"
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
@@ -33,6 +29,10 @@ import (
 	osfloatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/pagination"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -86,7 +86,7 @@ type Config struct {
 	ApplicationCredentialSecret string
 	Username                    string
 	Password                    string
-	Insecure					bool
+	Insecure                    bool
 	DomainName                  string
 	TenantName                  string
 	TenantID                    string
@@ -314,7 +314,6 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		ApplicationCredentialSecret: c.ApplicationCredentialSecret,
 	}
 
-	
 	pc, err := goopenstack.AuthenticatedClient(opts)
 	if pc != nil {
 		// use the util's HTTP client to benefit, among other things, from its CA bundle
@@ -325,8 +324,8 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		pc.HTTPClient.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
-				}, 
-			}
+			},
+		}
 	}
 
 	return pc, err

@@ -25,7 +25,7 @@ type RawConfig struct {
 	IdentityEndpoint            providerconfigtypes.ConfigVarString `json:"identityEndpoint,omitempty"`
 	Username                    providerconfigtypes.ConfigVarString `json:"username,omitempty"`
 	Password                    providerconfigtypes.ConfigVarString `json:"password,omitempty"`
-	Insecure					providerconfigtypes.ConfigVarBool   `json:"insecure,omitempty"`
+	Insecure                    providerconfigtypes.ConfigVarBool   `json:"insecure,omitempty"`
 	ApplicationCredentialID     providerconfigtypes.ConfigVarString `json:"applicationCredentialID,omitempty"`
 	ApplicationCredentialSecret providerconfigtypes.ConfigVarString `json:"applicationCredentialSecret,omitempty"`
 	DomainName                  providerconfigtypes.ConfigVarString `json:"domainName,omitempty"`
