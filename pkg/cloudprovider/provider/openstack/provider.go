@@ -805,6 +805,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			AuthURL:    c.IdentityEndpoint,
 			Username:   c.Username,
 			Password:   c.Password,
+			Insecure:   c.Insecure,
 			DomainName: c.DomainName,
 			TenantName: c.TenantName,
 			TenantID:   c.TenantID,

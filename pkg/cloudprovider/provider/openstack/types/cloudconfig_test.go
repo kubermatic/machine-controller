@@ -60,6 +60,30 @@ func TestCloudConfigToString(t *testing.T) {
 			},
 		},
 		{
+			name: "simple-insecure-config",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					AuthURL:    "https://127.0.0.1:8443",
+					Username:   "admin",
+					Password:   "password",
+					Insecure:   true,
+					DomainName: "Default",
+					TenantName: "Test",
+					Region:     "eu-central1",
+				},
+				BlockStorage: BlockStorageOpts{
+					BSVersion:             "v2",
+					IgnoreVolumeAZ:        true,
+					TrustDevicePath:       true,
+					NodeVolumeAttachLimit: 25,
+				},
+				LoadBalancer: LoadBalancerOpts{
+					ManageSecurityGroups: true,
+				},
+				Version: "1.10.0",
+			},
+		},
+		{
 			name: "use-octavia-explicitly-enabled",
 			config: &CloudConfig{
 				Global: GlobalOpts{

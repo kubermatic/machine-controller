@@ -39,6 +39,9 @@ application-credential-secret = {{ .Global.ApplicationCredentialSecret | iniEsca
 {{- else }}
 username    = {{ .Global.Username | iniEscape }}
 password    = {{ .Global.Password | iniEscape }}
+{{- if .Global.Insecure }}
+insecure    = {{ .Global.Insecure  | boolPtr }}
+{{- end }}
 tenant-name = {{ .Global.TenantName | iniEscape }}
 tenant-id   = {{ .Global.TenantID | iniEscape }}
 {{- end }}
@@ -102,6 +105,7 @@ type GlobalOpts struct {
 	AuthURL                     string `gcfg:"auth-url"`
 	Username                    string
 	Password                    string
+	Insecure                    bool   `gcfg:"insecure"`
 	ApplicationCredentialID     string `gcfg:"application-credential-id"`
 	ApplicationCredentialSecret string `gcfg:"application-credential-secret"`
 	TenantName                  string `gcfg:"tenant-name"`
