@@ -102,6 +102,11 @@ var (
 			owner:       "679593333241",
 			productCode: "aw0evgkw8e5c1q413zgy5pjce",
 		},
+		providerconfigtypes.OperatingSystemAmazonLinux2: {
+			description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
+			// The AWS marketplace ID from Amazon
+			owner: "137112412989",
+		},
 		providerconfigtypes.OperatingSystemUbuntu: {
 			// Be as precise as possible - otherwise we might get a nightly dev build
 			description: "Canonical, Ubuntu, 18.04 LTS, amd64 bionic image build on ????-??-??",
@@ -237,20 +242,23 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
 	const (
-		rootDevicePathUbuntuCentOSRHEL = "/dev/sda1"
-		rootDevicePathSLES             = "/dev/xvda"
+		rootDevicePathSDA  = "/dev/sda1"
+		rootDevicePathXVDA = "/dev/xvda"
 	)
+
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return rootDevicePathUbuntuCentOSRHEL, nil
+		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemCentOS:
-		return rootDevicePathUbuntuCentOSRHEL, nil
+		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemSLES:
-		return rootDevicePathSLES, nil
+		return rootDevicePathXVDA, nil
 	case providerconfigtypes.OperatingSystemRHEL:
-		return rootDevicePathUbuntuCentOSRHEL, nil
+		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return rootDevicePathSLES, nil
+		return rootDevicePathXVDA, nil
+	case providerconfigtypes.OperatingSystemAmazonLinux2:
+		return rootDevicePathXVDA, nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)

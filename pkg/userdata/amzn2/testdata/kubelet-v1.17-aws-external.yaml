@@ -1,13 +1,7 @@
 #cloud-config
 
-hostname: node1
-
-package_upgrade: true
-package_reboot_if_required: true
 
 ssh_pwauth: no
-ssh_authorized_keys:
-- "ssh-rsa AAABBB"
 
 write_files:
 
@@ -46,70 +40,63 @@ write_files:
     fs.inotify.max_user_watches = 1048576
 
 
-- path: "/etc/default/grub.d/60-swap-accounting.cfg"
+- path: /etc/selinux/config
   content: |
-    # Added by kubermatic machine-controller
-    # Enable cgroups memory and swap accounting
-    GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
+    # This file controls the state of SELinux on the system.
+    # SELINUX= can take one of these three values:
+    #     enforcing - SELinux security policy is enforced.
+    #     permissive - SELinux prints warnings instead of enforcing.
+    #     disabled - No SELinux policy is loaded.
+    SELINUX=permissive
+    # SELINUXTYPE= can take one of three two values:
+    #     targeted - Targeted processes are protected,
+    #     minimum - Modification of targeted policy. Only selected processes are protected.
+    #     mls - Multi Level Security protection.
+    SELINUXTYPE=targeted
 
 - path: "/opt/bin/setup"
   permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
-    if systemctl is-active ufw; then systemctl stop ufw; fi
-    systemctl mask ufw
+
+    setenforce 0 || true
     systemctl restart systemd-modules-load.service
     sysctl --system
     sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
 
-    apt-get update
 
-    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
-      curl \
-      ca-certificates \
-      ceph-common \
-      cifs-utils \
-      conntrack \
-      e2fsprogs \
+    yum install -y \
+      device-mapper-persistent-data \
+      lvm2 \
       ebtables \
       ethtool \
-      glusterfs-client \
-      iptables \
-      jq \
-      kmod \
-      openssh-client \
-      nfs-common \
+      nfs-utils \
+      bash-completion \
+      sudo \
       socat \
-      util-linux \
+      wget \
+      curl \
       ipvsadm
 
-    # Update grub to include kernel command options to enable swap accounting.
-    # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
 
+    mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
 
-    apt-get update
-    apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-    add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-    cat <<EOF | tee /etc/crictl.yaml
-    runtime-endpoint: unix:///run/containerd/containerd.sock
-    EOF
-
-    mkdir -p /etc/systemd/system/containerd.service.d
-    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
+    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
     [Service]
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
 
-    apt-get install -y containerd.io=1.4*
-    apt-mark hold containerd.io
+    yum install -y \
+        containerd-1.4* \
+        docker-19.03* \
+        yum-plugin-versionlock
+    yum versionlock add docker containerd
 
     systemctl daemon-reload
-    systemctl enable --now containerd
+    systemctl enable --now docker
 
 
     opt_bin=/opt/bin
@@ -141,7 +128,7 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.20.1}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.17.16}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -166,6 +153,7 @@ write_files:
     fi
 
     # set kubelet nodeip environment variable
+    mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
     systemctl enable --now kubelet
@@ -183,8 +171,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
-    After=containerd.service
-    Requires=containerd.service
+    After=docker.service
+    Requires=docker.service
 
     Description=kubelet: The Kubernetes Node Agent
     Documentation=https://kubernetes.io/docs/home/
@@ -207,26 +195,21 @@ write_files:
       --config=/etc/kubernetes/kubelet.conf \
       --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
-      --hostname-override=node1 \
+      --cloud-provider=external \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --container-runtime=remote \
-      --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+      --container-runtime=docker \
+      --container-runtime-endpoint=unix:///var/run/dockershim.sock \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]
     WantedBy=multi-user.target
 
-- path: "/etc/systemd/system/kubelet.service.d/extras.conf"
-  content: |
-    [Service]
-    Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
-
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-
+    {aws-config:true}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"
@@ -276,6 +259,54 @@ write_files:
     - name: ""
       user:
         token: my-token
+
+
+- path: "/etc/kubernetes/kubelet.conf"
+  content: |
+    apiVersion: kubelet.config.k8s.io/v1beta1
+    authentication:
+      anonymous:
+        enabled: false
+      webhook:
+        cacheTTL: 0s
+        enabled: true
+      x509:
+        clientCAFile: /etc/kubernetes/pki/ca.crt
+    authorization:
+      mode: Webhook
+      webhook:
+        cacheAuthorizedTTL: 0s
+        cacheUnauthorizedTTL: 0s
+    cgroupDriver: systemd
+    clusterDomain: cluster.local
+    cpuManagerReconcilePeriod: 0s
+    evictionPressureTransitionPeriod: 0s
+    featureGates:
+      RotateKubeletServerCertificate: true
+    fileCheckFrequency: 0s
+    httpCheckFrequency: 0s
+    imageMinimumGCAge: 0s
+    kind: KubeletConfiguration
+    kubeReserved:
+      cpu: 200m
+      ephemeral-storage: 1Gi
+      memory: 200Mi
+    logging: {}
+    nodeStatusReportFrequency: 0s
+    nodeStatusUpdateFrequency: 0s
+    protectKernelDefaults: true
+    rotateCertificates: true
+    runtimeRequestTimeout: 0s
+    serverTLSBootstrap: true
+    staticPodPath: /etc/kubernetes/manifests
+    streamingConnectionIdleTimeout: 0s
+    syncFrequency: 0s
+    systemReserved:
+      cpu: 200m
+      ephemeral-storage: 1Gi
+      memory: 200Mi
+    volumePluginDir: /var/lib/kubelet/volumeplugins
+    volumeStatsAggPeriod: 0s
 
 
 - path: "/etc/kubernetes/pki/ca.crt"
@@ -328,77 +359,10 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/containerd/config.toml
+- path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    version = 2
-
-    [metrics]
-    address = "127.0.0.1:1338"
-
-    [plugins]
-    [plugins."io.containerd.grpc.v1.cri"]
-    [plugins."io.containerd.grpc.v1.cri".containerd]
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-    runtime_type = "io.containerd.runc.v2"
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-    SystemdCgroup = true
-    [plugins."io.containerd.grpc.v1.cri".registry]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-    endpoint = ["https://registry-1.docker.io"]
-
-
-- path: "/etc/kubernetes/kubelet.conf"
-  content: |
-    apiVersion: kubelet.config.k8s.io/v1beta1
-    authentication:
-      anonymous:
-        enabled: false
-      webhook:
-        cacheTTL: 0s
-        enabled: true
-      x509:
-        clientCAFile: /etc/kubernetes/pki/ca.crt
-    authorization:
-      mode: Webhook
-      webhook:
-        cacheAuthorizedTTL: 0s
-        cacheUnauthorizedTTL: 0s
-    cgroupDriver: systemd
-    clusterDNS:
-    - 10.10.10.10
-    clusterDomain: cluster.local
-    cpuManagerReconcilePeriod: 0s
-    evictionPressureTransitionPeriod: 0s
-    featureGates:
-      RotateKubeletServerCertificate: true
-    fileCheckFrequency: 0s
-    httpCheckFrequency: 0s
-    imageMinimumGCAge: 0s
-    kind: KubeletConfiguration
-    kubeReserved:
-      cpu: 200m
-      ephemeral-storage: 1Gi
-      memory: 200Mi
-    logging: {}
-    nodeStatusReportFrequency: 0s
-    nodeStatusUpdateFrequency: 0s
-    protectKernelDefaults: true
-    rotateCertificates: true
-    runtimeRequestTimeout: 0s
-    serverTLSBootstrap: true
-    staticPodPath: /etc/kubernetes/manifests
-    streamingConnectionIdleTimeout: 0s
-    syncFrequency: 0s
-    systemReserved:
-      cpu: 200m
-      ephemeral-storage: 1Gi
-      memory: 200Mi
-    volumePluginDir: /var/lib/kubelet/volumeplugins
-    volumeStatsAggPeriod: 0s
-
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-size":"100m"}}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

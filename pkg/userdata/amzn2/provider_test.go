@@ -15,10 +15,10 @@ limitations under the License.
 */
 
 //
-// UserData plugin for RHEL.
+// UserData plugin for Amazon Linux 2.
 //
 
-package rhel
+package amzn2
 
 import (
 	"flag"
@@ -100,6 +100,15 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
+			name: "kubelet-v1.16-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.16.16",
+				},
+			},
+		},
+		{
 			name: "kubelet-v1.17-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -109,14 +118,52 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "kubelet-containerd-v1.20-aws",
+			name: "kubelet-v1.17-aws-external",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.1",
+					Kubelet: "1.17.16",
 				},
 			},
-			containerruntime: "containerd",
+			externalCloudProvider: true,
+		},
+		{
+			name: "kubelet-v1.17-vsphere",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.17.16",
+				},
+			},
+			cloudProviderName: stringPtr("vsphere"),
+		},
+		{
+			name: "kubelet-v1.17-vsphere-proxy",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.17.16",
+				},
+			},
+			cloudProviderName:  stringPtr("vsphere"),
+			httpProxy:          "http://192.168.100.100:3128",
+			noProxy:            "192.168.1.0",
+			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
+		},
+		{
+			name: "kubelet-v1.17-vsphere-mirrors",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.17.16",
+				},
+			},
+			cloudProviderName: stringPtr("vsphere"),
+			httpProxy:         "http://192.168.100.100:3128",
+			noProxy:           "192.168.1.0",
+			registryMirrors:   []string{"https://registry.docker-cn.com"},
+			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
 			name: "kubelet-v1.18-aws",
@@ -146,52 +193,14 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "kubelet-v1.20-aws-external",
+			name: "containerd-kubelet-v1.20-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.20.1",
 				},
 			},
-			externalCloudProvider: true,
-		},
-		{
-			name: "kubelet-v1.20-vsphere",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.1",
-				},
-			},
-			cloudProviderName: stringPtr("vsphere"),
-		},
-		{
-			name: "kubelet-v1.20-vsphere-proxy",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.1",
-				},
-			},
-			cloudProviderName:  stringPtr("vsphere"),
-			httpProxy:          "http://192.168.100.100:3128",
-			noProxy:            "192.168.1.0",
-			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
-			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
-		},
-		{
-			name: "kubelet-v1.20-vsphere-mirrors",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.1",
-				},
-			},
-			cloudProviderName: stringPtr("vsphere"),
-			httpProxy:         "http://192.168.100.100:3128",
-			noProxy:           "192.168.1.0",
-			registryMirrors:   []string{"https://registry.docker-cn.com"},
-			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
+			containerruntime: "containerd",
 		},
 	}
 
@@ -257,6 +266,7 @@ func TestUserDataGeneration(t *testing.T) {
 					containerruntime.WithRegistryMirrors(test.registryMirrors),
 				),
 			}
+
 			s, err := provider.UserData(req)
 			if err != nil {
 				t.Errorf("error getting userdata: '%v'", err)

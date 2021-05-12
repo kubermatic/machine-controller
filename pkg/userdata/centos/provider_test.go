@@ -183,6 +183,16 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "kubelet-containerd-v1.20-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.20.1",
+				},
+			},
+			containerruntime: "containerd",
+		},
 	}
 
 	defaultCloudProvider := &fakeCloudConfigProvider{
