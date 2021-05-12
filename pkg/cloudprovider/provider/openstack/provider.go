@@ -23,7 +23,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-
+	"crypto/tls"
+	"net/http"
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
@@ -85,6 +86,7 @@ type Config struct {
 	ApplicationCredentialSecret string
 	Username                    string
 	Password                    string
+	Insecure					bool
 	DomainName                  string
 	TenantName                  string
 	TenantID                    string
@@ -138,6 +140,10 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
 	if err != nil {
 		return fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
+	}
+	c.Insecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.Insecure, "OS_INSECURE")
+	if err != nil {
+		return fmt.Errorf("failed to get the value of \"insecure\" field, error = %v", err)
 	}
 	c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
 	if err != nil {
@@ -308,10 +314,19 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		ApplicationCredentialSecret: c.ApplicationCredentialSecret,
 	}
 
+	
 	pc, err := goopenstack.AuthenticatedClient(opts)
 	if pc != nil {
 		// use the util's HTTP client to benefit, among other things, from its CA bundle
 		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
+	}
+
+	if c.Insecure {
+		pc.HTTPClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+				}, 
+			}
 	}
 
 	return pc, err
