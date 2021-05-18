@@ -38,7 +38,6 @@ spec:
             vnetName: "machine-controller-e2e"
             subnetName: "machine-controller-e2e"
             routeTableName: "machine-controller-e2e"
-            imageID: "<< IMAGE_ID >>"
             imageReference:
               publisher: "Canonical"
               offer: "0001-com-ubuntu-server-focal"
