@@ -137,9 +137,9 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	},
 	providerconfigtypes.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
-		Offer:     to.StringPtr("RHEL"),
-		Sku:       to.StringPtr("7-RAW-CI"),
-		Version:   to.StringPtr("7.7.2019081601"),
+		Offer:     to.StringPtr("rhel-byos"),
+		Sku:       to.StringPtr("rhel-lvm83"),
+		Version:   to.StringPtr("8.3.20201109"),
 	},
 	providerconfigtypes.OperatingSystemFlatcar: {
 		Publisher: to.StringPtr("kinvolk"),
@@ -154,6 +154,11 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 		Name:      pointer.StringPtr("stable"),
 		Publisher: pointer.StringPtr("kinvolk"),
 		Product:   pointer.StringPtr("flatcar-container-linux"),
+	},
+	providerconfigtypes.OperatingSystemRHEL: {
+		Name:      pointer.StringPtr("rhel-lvm83"),
+		Publisher: pointer.StringPtr("redhat"),
+		Product:   pointer.StringPtr("rhel-byos"),
 	},
 }
 
@@ -263,7 +268,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
 
-	if rawCfg.ImagePlan != nil {
+	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
 		c.ImagePlan = &compute.Plan{
 			Name:      pointer.StringPtr(rawCfg.ImagePlan.Name),
 			Publisher: pointer.StringPtr(rawCfg.ImagePlan.Publisher),

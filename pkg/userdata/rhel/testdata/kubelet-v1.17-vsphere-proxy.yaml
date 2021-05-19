@@ -85,8 +85,11 @@ write_files:
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
     DOCKER_VERSION='19.03*'
-    yum install -y docker-ce-${DOCKER_VERSION} \
-      docker-ce-cli-${DOCKER_VERSION} \
+    yum install -y docker-ce-${DOCKER_VERSION} docker-ce-cli-${DOCKER_VERSION}
+
+    yum install -y \
+      device-mapper-persistent-data \
+      lvm2 \
       ebtables \
       ethtool \
       nfs-utils \
