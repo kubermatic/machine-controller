@@ -39,10 +39,6 @@ spec:
             assignPublicIP: true
             zones:
               - "1"
-            imagePlan:
-              name: ""
-              publisher: ""
-              product: ""
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
