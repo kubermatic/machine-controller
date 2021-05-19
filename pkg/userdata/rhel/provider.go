@@ -203,7 +203,9 @@ write_files:
 {{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
-
+    {{ if eq .CloudProviderName "azure" }}
+    yum update -y --disablerepo='*' --enablerepo='*microsoft*'
+    {{ end }}
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
