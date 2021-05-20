@@ -18,7 +18,6 @@ package vsphere
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/url"
 
@@ -50,9 +49,7 @@ func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	// creating the govmoni Client in roundabout way because we need to set the proper CA bundle: reference https://github.com/vmware/govmomi/issues/1200
 	soapClient := soap.NewClient(clientURL, config.AllowInsecure)
 	// set our CA bundle
-	soapClient.DefaultTransport().TLSClientConfig = &tls.Config{
-		RootCAs: util.CABundle,
-	}
+	soapClient.DefaultTransport().TLSClientConfig.RootCAs = util.CABundle
 
 	vim25Client, err := vim25.NewClient(ctx, soapClient)
 	if err != nil {
