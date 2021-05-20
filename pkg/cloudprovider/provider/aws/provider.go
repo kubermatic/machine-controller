@@ -389,6 +389,12 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	if rawConfig.AssignPublicIP == nil {
 		rawConfig.AssignPublicIP = aws.Bool(true)
 	}
+	if rawConfig.IsSpotInstance != nil && *rawConfig.IsSpotInstance {
+		if spec.Labels == nil {
+			spec.Labels = map[string]string{}
+		}
+		spec.Labels["k8c.io/aws-spot"] = "aws-node-termination-handler"
+	}
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
 	return spec, err
 }
