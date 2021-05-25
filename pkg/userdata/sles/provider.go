@@ -84,27 +84,27 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec        *providerconfigtypes.Config
-		OSConfig            *Config
-		ServerAddr          string
-		KubeletVersion      string
-		Kubeconfig          string
-		KubernetesCACert    string
-		NodeIPScript        string
-		ExtraKubeletFlags   []string
-		InsecureRegistries  []string
-		RegistryMirrors     []string
+		ProviderSpec       *providerconfigtypes.Config
+		OSConfig           *Config
+		ServerAddr         string
+		KubeletVersion     string
+		Kubeconfig         string
+		KubernetesCACert   string
+		NodeIPScript       string
+		ExtraKubeletFlags  []string
+		InsecureRegistries []string
+		RegistryMirrors    []string
 	}{
-		UserDataRequest:     req,
-		ProviderSpec:        pconfig,
-		OSConfig:            slesConfig,
-		ServerAddr:          serverAddr,
-		KubeletVersion:      kubeletVersion.String(),
-		Kubeconfig:          kubeconfigString,
-		KubernetesCACert:    kubernetesCACert,
-		NodeIPScript:        userdatahelper.SetupNodeIPEnvScript(),
-		InsecureRegistries:  req.ContainerRuntime.InsecureRegistries,
-		RegistryMirrors:     req.ContainerRuntime.RegistryMirrors,
+		UserDataRequest:    req,
+		ProviderSpec:       pconfig,
+		OSConfig:           slesConfig,
+		ServerAddr:         serverAddr,
+		KubeletVersion:     kubeletVersion.String(),
+		Kubeconfig:         kubeconfigString,
+		KubernetesCACert:   kubernetesCACert,
+		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
+		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
+		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)

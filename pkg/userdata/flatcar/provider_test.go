@@ -128,7 +128,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -160,7 +160,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -192,7 +192,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -225,7 +225,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -258,7 +258,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -291,7 +291,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -324,7 +324,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -357,7 +357,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 				Network: &providerconfigtypes.NetworkConfig{
 					CIDR:    "192.168.81.4/24",
 					Gateway: "192.168.81.1",
@@ -390,7 +390,7 @@ func TestUserDataGeneration(t *testing.T) {
 			containerruntime: "containerd",
 			providerSpec: &providerconfigtypes.Config{
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
-				CAPublicKey: "ssh-rsa AAABBB",
+				CAPublicKey:   "ssh-rsa AAABBB",
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{

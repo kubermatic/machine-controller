@@ -101,28 +101,28 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec        *providerconfigtypes.Config
-		FlatcarConfig       *Config
-		Kubeconfig          string
-		KubernetesCACert    string
-		KubeletImage        string
-		KubeletVersion      string
-		NodeIPScript        string
-		ExtraKubeletFlags   []string
-		InsecureRegistries  []string
-		RegistryMirrors     []string
+		ProviderSpec       *providerconfigtypes.Config
+		FlatcarConfig      *Config
+		Kubeconfig         string
+		KubernetesCACert   string
+		KubeletImage       string
+		KubeletVersion     string
+		NodeIPScript       string
+		ExtraKubeletFlags  []string
+		InsecureRegistries []string
+		RegistryMirrors    []string
 	}{
-		UserDataRequest:     req,
-		ProviderSpec:        pconfig,
-		FlatcarConfig:       flatcarConfig,
-		Kubeconfig:          kubeconfigString,
-		KubernetesCACert:    kubernetesCACert,
-		KubeletImage:        kubeletImage,
-		KubeletVersion:      kubeletVersion.String(),
-		NodeIPScript:        userdatahelper.SetupNodeIPEnvScript(),
-		ExtraKubeletFlags:   crEngine.KubeletFlags(),
-		InsecureRegistries:  req.ContainerRuntime.InsecureRegistries,
-		RegistryMirrors:     req.ContainerRuntime.RegistryMirrors,
+		UserDataRequest:    req,
+		ProviderSpec:       pconfig,
+		FlatcarConfig:      flatcarConfig,
+		Kubeconfig:         kubeconfigString,
+		KubernetesCACert:   kubernetesCACert,
+		KubeletImage:       kubeletImage,
+		KubeletVersion:     kubeletVersion.String(),
+		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
+		ExtraKubeletFlags:  crEngine.KubeletFlags(),
+		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
+		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
