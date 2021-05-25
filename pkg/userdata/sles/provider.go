@@ -84,27 +84,27 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec       *providerconfigtypes.Config
-		OSConfig           *Config
-		ServerAddr         string
-		KubeletVersion     string
-		Kubeconfig         string
-		KubernetesCACert   string
-		NodeIPScript       string
-		ExtraKubeletFlags  []string
-		InsecureRegistries []string
-		RegistryMirrors    []string
+		ProviderSpec        *providerconfigtypes.Config
+		OSConfig            *Config
+		ServerAddr          string
+		KubeletVersion      string
+		Kubeconfig          string
+		KubernetesCACert    string
+		NodeIPScript        string
+		ExtraKubeletFlags   []string
+		InsecureRegistries  []string
+		RegistryMirrors     []string
 	}{
-		UserDataRequest:    req,
-		ProviderSpec:       pconfig,
-		OSConfig:           slesConfig,
-		ServerAddr:         serverAddr,
-		KubeletVersion:     kubeletVersion.String(),
-		Kubeconfig:         kubeconfigString,
-		KubernetesCACert:   kubernetesCACert,
-		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
-		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
-		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		UserDataRequest:     req,
+		ProviderSpec:        pconfig,
+		OSConfig:            slesConfig,
+		ServerAddr:          serverAddr,
+		KubeletVersion:      kubeletVersion.String(),
+		Kubeconfig:          kubeconfigString,
+		KubernetesCACert:    kubernetesCACert,
+		NodeIPScript:        userdatahelper.SetupNodeIPEnvScript(),
+		InsecureRegistries:  req.ContainerRuntime.InsecureRegistries,
+		RegistryMirrors:     req.ContainerRuntime.RegistryMirrors,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -115,7 +115,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 }
 
 // UserData template.
-const userDataTemplate = `#cloud-config
+var userDataTemplate = fmt.Sprintf(`#cloud-config
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
@@ -224,20 +224,6 @@ write_files:
   content: |
 {{ .Kubeconfig | indent 4 }}
 
-{{- if .ProviderSpec.CAPublicKey }}
-- path: "/etc/ssh/sshd_config"
-  content: |
-	TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
-	CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa
-  append: true
-{{- end }}
-
-{{- if .ProviderSpec.CAPublicKey }}
-- path: "/etc/ssh/trusted-user-ca-keys.pem"
-  content: |
-{{ .ProviderSpec.CAPublicKey | indent 4 }}
-{{- end }}
-
 - path: "/etc/kubernetes/pki/ca.crt"
   content: |
 {{ .KubernetesCACert | indent 4 }}
@@ -288,6 +274,7 @@ write_files:
     [Service]
     EnvironmentFile=-/etc/environment
 
+%[1]s
 runcmd:
 - systemctl start setup.service
-`
+`, userdatahelper.SetupTrustedCATemplate())

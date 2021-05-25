@@ -129,7 +129,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 }
 
 // UserData template.
-const userDataTemplate = `#cloud-config
+var userDataTemplate = fmt.Sprintf(`#cloud-config
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
@@ -147,20 +147,6 @@ ssh_authorized_keys:
 {{- range .ProviderSpec.SSHPublicKeys }}
   - "{{ . }}"
 {{- end }}
-{{- end }}
-
-{{- if .ProviderSpec.CAPublicKey }}
-- path: "/etc/ssh/sshd_config"
-  content: |
-	TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
-	CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa
-  append: true
-{{- end }}
-
-{{- if .ProviderSpec.CAPublicKey }}
-- path: "/etc/ssh/trusted-user-ca-keys.pem"
-  content: |
-{{ .ProviderSpec.CAPublicKey | indent 4 }}
 {{- end }}
 
 write_files:
@@ -314,6 +300,7 @@ write_files:
   content: |
 {{ kubeletHealthCheckSystemdUnit | indent 4 }}
 
+%[1]s
 runcmd:
 - systemctl start setup.service
-`
+`, userdatahelper.SetupTrustedCATemplate())

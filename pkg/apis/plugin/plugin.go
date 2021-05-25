@@ -54,7 +54,6 @@ type UserDataRequest struct {
 	KubeletRepository     string
 	KubeletFeatureGates   map[string]bool
 	ContainerRuntime      containerruntime.Config
-	UseTrustedCA          bool
 }
 
 // UserDataResponse contains the responded user data.
