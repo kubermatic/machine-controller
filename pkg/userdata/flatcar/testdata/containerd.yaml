@@ -441,3 +441,14 @@ write_files:
     set -xeuo pipefail
     sysctl --system
     systemctl disable apply-sysctl-settings.service
+
+- path: "/etc/ssh/trusted-user-ca-keys.pem"
+  content: |
+    ssh-rsa AAABBB
+
+- path: "/etc/ssh/sshd_config"
+  content: |
+    TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
+    CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa
+  append: true
+

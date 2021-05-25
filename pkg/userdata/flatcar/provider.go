@@ -749,6 +749,5 @@ write_files:
     set -xeuo pipefail
     sysctl --system
     systemctl disable apply-sysctl-settings.service
-
 %[1]s
 `, userdatahelper.SetupTrustedCATemplate())
