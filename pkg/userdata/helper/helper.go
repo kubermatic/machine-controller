@@ -262,22 +262,6 @@ fi
 	`
 }
 
-func SetupTrustedCATemplate() string {
-	return `
-{{- with .ProviderSpec.CAPublicKey }}
-
-- path: "/etc/ssh/trusted-user-ca-keys.pem"
-  content: |
-{{ . | indent 4 }}
-
-- path: "/etc/ssh/sshd_config"
-  content: |
-{{ sshConfigAddendum | indent 4 }}
-  append: true
-{{- end }}
-`
-}
-
 func SSHConfigAddendum() string {
 	return `TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
 CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa`

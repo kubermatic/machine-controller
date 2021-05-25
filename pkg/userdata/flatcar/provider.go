@@ -466,7 +466,7 @@ storage:
 `
 
 // Coreos cloud-config template
-var userDataCloudInitTemplate = fmt.Sprintf(`#cloud-config
+const userDataCloudInitTemplate = `#cloud-config
 
 users:
 {{- if ne (len .ProviderSpec.SSHPublicKeys) 0 }}
@@ -589,7 +589,7 @@ coreos:
       ExecStartPre=/bin/mkdir -p /opt/cni/bin
       ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
       ExecStartPre=/bin/sh -c '/usr/bin/env > /tmp/environment'
-      ExecStart=/usr/bin/docker run --name %%n \
+      ExecStart=/usr/bin/docker run --name %n \
         --rm --tty --restart no \
         --network host \
         --pid host \
@@ -616,7 +616,7 @@ coreos:
         -v /var/log/pods:/var/log/pods \
         {{ .KubeletImage }} \
 {{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 10 }}
-      ExecStop=-/usr/bin/docker stop %%n
+      ExecStop=-/usr/bin/docker stop %n
       Restart=always
       RestartSec=10
       [Install]
@@ -749,4 +749,16 @@ write_files:
     set -xeuo pipefail
     sysctl --system
     systemctl disable apply-sysctl-settings.service
-%[1]s`, userdatahelper.SetupTrustedCATemplate())
+
+{{- with .ProviderSpec.CAPublicKey }}
+
+- path: "/etc/ssh/trusted-user-ca-keys.pem"
+  content: |
+{{ . | indent 4 }}
+
+- path: "/etc/ssh/sshd_config"
+  content: |
+{{ sshConfigAddendum | indent 4 }}
+  append: true
+{{- end }}
+`

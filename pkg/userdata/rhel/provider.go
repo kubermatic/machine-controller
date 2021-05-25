@@ -129,7 +129,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 }
 
 // UserData template.
-var userDataTemplate = fmt.Sprintf(`#cloud-config
+const userDataTemplate = `#cloud-config
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 fqdn: {{ .MachineSpec.Name }}
@@ -303,7 +303,18 @@ write_files:
   content: |
 {{ kubeletHealthCheckSystemdUnit | indent 4 }}
 
-%[1]s
+{{- with .ProviderSpec.CAPublicKey }}
+
+- path: "/etc/ssh/trusted-user-ca-keys.pem"
+  content: |
+{{ . | indent 4 }}
+
+- path: "/etc/ssh/sshd_config"
+  content: |
+{{ sshConfigAddendum | indent 4 }}
+  append: true
+{{- end }}
+
 rh_subscription:
 {{- if .OSConfig.RHELUseSatelliteServer }}
     org: "{{.OSConfig.RHELOrganizationName}}"
@@ -318,4 +329,4 @@ rh_subscription:
 
 runcmd:
 - systemctl start setup.service
-`, userdatahelper.SetupTrustedCATemplate())
+`
