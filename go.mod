@@ -31,7 +31,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/gophercloud/gophercloud v0.14.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
-	github.com/hetznercloud/hcloud-go v1.23.1
+	github.com/hetznercloud/hcloud-go v1.25.0
 	github.com/linode/linodego v0.24.0
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888

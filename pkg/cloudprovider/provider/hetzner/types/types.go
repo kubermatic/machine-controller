@@ -27,5 +27,6 @@ type RawConfig struct {
 	Image      providerconfigtypes.ConfigVarString   `json:"image"`
 	Location   providerconfigtypes.ConfigVarString   `json:"location"`
 	Networks   []providerconfigtypes.ConfigVarString `json:"networks"`
+	Firewalls  []providerconfigtypes.ConfigVarString `json:"firewalls"`
 	Labels     map[string]string                     `json:"labels,omitempty"`
 }

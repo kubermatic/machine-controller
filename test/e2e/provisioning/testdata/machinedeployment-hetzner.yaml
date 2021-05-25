@@ -30,6 +30,8 @@ spec:
             location: "nbg1"
             networks:
               - "machine-controller-e2e"
+            firewall:
+              - "machine-controller-e2e"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false

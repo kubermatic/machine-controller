@@ -61,6 +61,7 @@ type Config struct {
 	Image      string
 	Location   string
 	Networks   []string
+	Firewalls  []string
 	Labels     map[string]string
 }
 
@@ -131,6 +132,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		c.Networks = append(c.Networks, networkValue)
 	}
 
+	for _, firewall := range rawConfig.Firewalls {
+		firewallValue, err := p.configVarResolver.GetConfigVarStringValue(firewall)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.Firewalls = append(c.Firewalls, firewallValue)
+	}
+
 	c.Labels = rawConfig.Labels
 	return &c, &pconfig, err
 }
@@ -179,6 +188,14 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		for _, network := range c.Networks {
 			if _, _, err = client.Network.Get(ctx, network); err != nil {
 				return fmt.Errorf("failed to get network %q: %v", network, err)
+			}
+		}
+	}
+
+	if len(c.Firewalls) != 0 {
+		for _, firewall := range c.Firewalls {
+			if _, _, err = client.Firewall.Get(ctx, firewall); err != nil {
+				return fmt.Errorf("failed to get firewall %q: %v", firewall, err)
 			}
 		}
 	}
@@ -257,6 +274,20 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 				return nil, fmt.Errorf("network %q does not exist", network)
 			}
 			serverCreateOpts.Networks = append(serverCreateOpts.Networks, n)
+		}
+	}
+
+	if len(c.Firewalls) != 0 {
+		serverCreateOpts.Firewalls = []*hcloud.ServerCreateFirewall{}
+		for _, firewall := range c.Firewalls {
+			n, _, err := client.Firewall.Get(ctx, firewall)
+			if err != nil {
+				return nil, hzErrorToTerminalError(err, "failed to get firewall")
+			}
+			if n == nil {
+				return nil, fmt.Errorf("firewall %q does not exist", firewall)
+			}
+			serverCreateOpts.Firewalls = append(serverCreateOpts.Firewalls, &hcloud.ServerCreateFirewall{*n})
 		}
 	}
 
