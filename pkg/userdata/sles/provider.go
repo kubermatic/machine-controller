@@ -224,6 +224,20 @@ write_files:
   content: |
 {{ .Kubeconfig | indent 4 }}
 
+{{- if .ProviderSpec.CAPublicKey }}
+- path: "/etc/ssh/sshd_config"
+  content: |
+	TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
+	CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa
+  append: true
+{{- end }}
+
+{{- if .ProviderSpec.CAPublicKey }}
+- path: "/etc/ssh/trusted-user-ca-keys.pem"
+  content: |
+{{ .ProviderSpec.CAPublicKey | indent 4 }}
+{{- end }}
+
 - path: "/etc/kubernetes/pki/ca.crt"
   content: |
 {{ .KubernetesCACert | indent 4 }}

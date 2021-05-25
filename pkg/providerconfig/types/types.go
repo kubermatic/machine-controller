@@ -107,6 +107,7 @@ type NetworkConfig struct {
 
 type Config struct {
 	SSHPublicKeys []string `json:"sshPublicKeys"`
+	CAPublicKey   string   `json:"caPublicKey"`
 
 	CloudProvider     CloudProvider        `json:"cloudProvider"`
 	CloudProviderSpec runtime.RawExtension `json:"cloudProviderSpec"`
