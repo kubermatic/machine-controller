@@ -51,6 +51,9 @@ spec:
             # Optional: network IDs or names
             networks:
               - "<< YOUR_NETWORK >>"
+            # Optional: firewall IDs or names
+            firewalls:
+              - "<< YOUR_FIREWALL >>"
             # Optional
             labels:
               my: label
