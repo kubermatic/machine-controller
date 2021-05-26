@@ -30,7 +30,7 @@ spec:
             location: "nbg1"
             networks:
               - "machine-controller-e2e"
-            firewall:
+            firewalls:
               - "machine-controller-e2e"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
