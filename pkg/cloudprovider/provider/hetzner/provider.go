@@ -194,7 +194,8 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 	if len(c.Firewalls) != 0 {
 		for _, firewall := range c.Firewalls {
-			if f, _, err := client.Firewall.Get(ctx, firewall); err != nil {
+			f, _, err := client.Firewall.Get(ctx, firewall)
+			if err != nil {
 				return fmt.Errorf("failed to get firewall %q: %v", firewall, err)
 			}
 			if f == nil {
