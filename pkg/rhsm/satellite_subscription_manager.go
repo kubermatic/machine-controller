@@ -104,10 +104,21 @@ func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(machineName, 
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
+	if !validStatusCode(response.StatusCode) {
 		return fmt.Errorf("error while executing request with status code: %v", response.StatusCode)
 	}
 
 	klog.Infof("host %v has been deleted successfully", machineName)
 	return nil
+}
+
+func validStatusCode(status int) bool {
+	switch status {
+	case http.StatusOK:
+		return true
+	case http.StatusNotFound:
+		return true
+	}
+
+	return false
 }
