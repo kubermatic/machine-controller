@@ -36,6 +36,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
+	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -582,9 +583,16 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 		}
 
 		if rhelConfig.RHELUseSatelliteServer {
-			if err := r.satelliteSubscriptionManager.DeleteSatelliteHost(machineName, rhelConfig.RHELSubscriptionManagerUser,
-				rhelConfig.RHELSubscriptionManagerPassword, rhelConfig.RHELSatelliteServer); err != nil {
-				return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %v", machine.Name, err)
+			if kuberneteshelper.HasFinalizer(machine, rhsm.RedhatSubscriptionFinalizer) {
+				err = r.satelliteSubscriptionManager.DeleteSatelliteHost(
+					machineName,
+					rhelConfig.RHELSubscriptionManagerUser,
+					rhelConfig.RHELSubscriptionManagerPassword,
+					rhelConfig.RHELSatelliteServer)
+				if err != nil {
+					return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %v", machine.Name, err)
+				}
+
 			}
 		}
 
