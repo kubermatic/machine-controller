@@ -208,7 +208,10 @@ func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) 
 		ExecOpts:           []string{"native.cgroupdriver=systemd"},
 		StorageDriver:      "overlay2",
 		LogDriver:          "json-file",
-		LogOpts:            map[string]string{"max-size": "100m"},
+		LogOpts:            map[string]string{
+			"max-size": "10m",
+			"max-file": "5",
+		},
 		InsecureRegistries: insecureRegistries,
 		RegistryMirrors:    registryMirrors,
 	}
