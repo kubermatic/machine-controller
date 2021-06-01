@@ -205,10 +205,10 @@ type dockerConfig struct {
 // DockerConfig returns the docker daemon.json.
 func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) {
 	cfg := dockerConfig{
-		ExecOpts:           []string{"native.cgroupdriver=systemd"},
-		StorageDriver:      "overlay2",
-		LogDriver:          "json-file",
-		LogOpts:            map[string]string{
+		ExecOpts:      []string{"native.cgroupdriver=systemd"},
+		StorageDriver: "overlay2",
+		LogDriver:     "json-file",
+		LogOpts: map[string]string{
 			"max-size": "10m",
 			"max-file": "5",
 		},
