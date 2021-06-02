@@ -137,7 +137,7 @@ write_files:
     mv /etc/fstab.noswap /etc/fstab
     swapoff -a
 
-    DOCKER_VERSION='5:18.09.9~3-0~ubuntu-bionic'
+    DOCKER_VERSION='5:18.09*'
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
       curl \
       ca-certificates \

@@ -72,7 +72,7 @@ write_files:
     sed -i 's/\$releasever/7/g' /etc/yum.repos.d/docker-ce.repo
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
-    DOCKER_VERSION='18.09.9-3.el7'
+    DOCKER_VERSION='18.09*'
     yum install -y docker-ce-${DOCKER_VERSION} \
       docker-ce-cli-${DOCKER_VERSION} \
       ebtables \
