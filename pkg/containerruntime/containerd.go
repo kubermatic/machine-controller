@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	DefaultContainerdVersion = "1.4.3"
+	DefaultContainerdVersion = "1.4"
 )
 
 type Containerd struct {
@@ -95,7 +95,7 @@ Restart=always
 EnvironmentFile=-/etc/environment
 EOF
 
-yum install -y containerd.io-{{ .ContainerdVersion }} yum-plugin-versionlock
+yum install -y containerd.io-{{ .ContainerdVersion }}* yum-plugin-versionlock
 yum versionlock add containerd.io
 
 systemctl daemon-reload
