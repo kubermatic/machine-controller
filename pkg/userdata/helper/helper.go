@@ -143,11 +143,11 @@ func DockerVersionApt(kubernetesVersion *semver.Version) (string, error) {
 	lessThen117, _ := semver.NewConstraint("< 1.17")
 
 	if lessThen117.Check(kubernetesVersion) {
-		return "5:18.09.9~3-0~ubuntu-bionic", nil
+		return "5:18.09*", nil
 	}
 
 	// return default
-	return "5:19.03.12~3-0~ubuntu-bionic", nil
+	return "5:19.03*", nil
 }
 
 // DockerVersionYum returns Docker version to be installed on instances using yum (CentOS/RHEL).
@@ -159,11 +159,11 @@ func DockerVersionYum(kubernetesVersion *semver.Version) (string, error) {
 	lessThen117, _ := semver.NewConstraint("< 1.17")
 
 	if lessThen117.Check(kubernetesVersion) {
-		return "18.09.9-3.el7", nil
+		return "18.09*", nil
 	}
 
 	// return default
-	return "19.03.12-3.el7", nil
+	return "19.03*", nil
 }
 
 func ProxyEnvironment(proxy, noProxy string) string {
