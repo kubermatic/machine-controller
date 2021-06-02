@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	DefaultDockerVersion = "19.03.13"
+	DefaultDockerVersion = "19.03"
 	LegacyDockerVersion  = "18.09.9"
 )
 
@@ -100,9 +100,9 @@ EnvironmentFile=-/etc/environment
 EOF
 
 yum install -y \
-    docker-ce-{{ .DockerVersion }} \
-    docker-ce-cli-{{ .DockerVersion }} \
-    containerd.io-{{ .ContainerdVersion }} \
+    docker-ce-{{ .DockerVersion }}* \
+    docker-ce-cli-{{ .DockerVersion }}* \
+    containerd.io-{{ .ContainerdVersion }}* \
     yum-plugin-versionlock
 yum versionlock add docker-ce-* containerd.io
 
