@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	DefaultContainerdVersion = "1.4.3"
+	DefaultContainerdVersion = "1.4"
 )
 
 type Containerd struct {
@@ -83,7 +83,7 @@ yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce
     More info at: https://bugzilla.redhat.com/show_bug.cgi?id=1756473
 */}}
 yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
-yum install -y containerd.io-{{ .ContainerdVersion }} yum-plugin-versionlock
+yum install -y containerd.io-{{ .ContainerdVersion }}* yum-plugin-versionlock
 yum versionlock add containerd.io
 
 cat <<EOF | tee /etc/crictl.yaml
