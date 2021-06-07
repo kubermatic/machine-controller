@@ -33,7 +33,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -149,7 +149,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	)
 
 	err := wait.Poll(cachePopulatingInterval, cachePopulatingTimeout, func() (done bool, err error) {
-		err = client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1beta1.CustomResourceDefinition{})
+		err = client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1.CustomResourceDefinition{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				noMigrationNeed = true
@@ -176,7 +176,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		return nil
 	}
 
-	err = client.Get(ctx, types.NamespacedName{Name: "machines.cluster.k8s.io"}, &apiextensionsv1beta1.CustomResourceDefinition{})
+	err = client.Get(ctx, types.NamespacedName{Name: "machines.cluster.k8s.io"}, &apiextensionsv1.CustomResourceDefinition{})
 	if err != nil {
 		return fmt.Errorf("error when checking for existence of 'machines.cluster.k8s.io' crd: %v", err)
 	}
@@ -185,7 +185,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		return fmt.Errorf("failed to migrate machines: %v", err)
 	}
 	klog.Infof("Attempting to delete CRD %s", machines.CRDName)
-	if err := client.Delete(ctx, &apiextensionsv1beta1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{Name: machines.CRDName}}); err != nil {
+	if err := client.Delete(ctx, &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{Name: machines.CRDName}}); err != nil {
 		return fmt.Errorf("failed to delete machinesv1alpha1.machine crd: %v", err)
 	}
 	klog.Infof("Successfully deleted CRD %s", machines.CRDName)
