@@ -24,7 +24,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
-	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
+	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -173,23 +173,23 @@ ELloyxg3KHxPJi8TYkTPkB+Pc9XiUGmhkzE=
 func TestValidateCSRObject(t *testing.T) {
 	testCases := []struct {
 		name     string
-		csr      *certificatesv1beta1.CertificateSigningRequest
+		csr      *certificatesv1.CertificateSigningRequest
 		nodeName string
 		err      error
 	}{
 		{
 			name: "test validating a valid csr",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testValidCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -203,17 +203,17 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "test validating a valid csr with more than 2 groups",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testValidCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -228,12 +228,12 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "test validating an invalid csr (missing prefix)",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Username: "node:ip-172-31-114-48.eu-west-3.compute.internal",
 				},
 			},
@@ -242,12 +242,12 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "validate with missing node name in username",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Username: "system:node:",
 				},
 			},
@@ -256,12 +256,12 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "validate csr with with missing system:nodes group",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
 						"system:authenticated",
@@ -273,12 +273,12 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "validate csr with two invalid groups",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
 						"group-1",
@@ -291,16 +291,16 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "validate csr with less than 3 usages",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testValidCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -314,18 +314,18 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "validate csr with more than 3 usages",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testValidCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
-						certificatesv1beta1.UsageClientAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
+						certificatesv1.UsageClientAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -339,17 +339,17 @@ func TestValidateCSRObject(t *testing.T) {
 		},
 		{
 			name: "validate csr with usages not matching expected usages",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testValidCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageClientAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageClientAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -406,23 +406,23 @@ func TestValidateX509CSR(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		csr     *certificatesv1beta1.CertificateSigningRequest
+		csr     *certificatesv1.CertificateSigningRequest
 		machine v1alpha1.Machine
 		err     error
 	}{
 		{
 			name: "validate valid csr",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testValidCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -436,17 +436,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with no dns name in machine object",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testNoDNSNameCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -479,17 +479,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with different common name than username",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testInvalidCommonNameCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -503,17 +503,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with different username than common name",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testValidCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "test-username",
 					Groups: []string{
@@ -527,17 +527,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with multiple organizations",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testMultipleOrganizationsCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -551,17 +551,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with no organization",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testNoOrganizationCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -575,17 +575,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with organization not matching system:nodes",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testInvalidOrganizationCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -599,17 +599,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with invalid dns name",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testInvalidDNSNameCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -623,17 +623,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with invalid ip address",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testInvalidIPAddressCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -647,17 +647,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with dns name not defined in the machine object",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testAdditionalDNSNameCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{
@@ -671,17 +671,17 @@ func TestValidateX509CSR(t *testing.T) {
 		},
 		{
 			name: "validate csr with ip address not defined in the machine object",
-			csr: &certificatesv1beta1.CertificateSigningRequest{
+			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "csr",
 					Namespace: metav1.NamespaceSystem,
 				},
-				Spec: certificatesv1beta1.CertificateSigningRequestSpec{
+				Spec: certificatesv1.CertificateSigningRequestSpec{
 					Request: []byte(testAdditionalIPAddressCSR),
-					Usages: []certificatesv1beta1.KeyUsage{
-						certificatesv1beta1.UsageDigitalSignature,
-						certificatesv1beta1.UsageKeyEncipherment,
-						certificatesv1beta1.UsageServerAuth,
+					Usages: []certificatesv1.KeyUsage{
+						certificatesv1.UsageDigitalSignature,
+						certificatesv1.UsageKeyEncipherment,
+						certificatesv1.UsageServerAuth,
 					},
 					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
 					Groups: []string{

@@ -25,11 +25,11 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
-	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
+	certificatesv1 "k8s.io/api/certificates/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	certificatesv1beta1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
+	certificatesv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -54,11 +54,11 @@ type reconciler struct {
 	client.Client
 	// Have to use the typed client because csr approval is a subresource
 	// the dynamic client does not approve
-	certClient certificatesv1beta1client.CertificateSigningRequestInterface
+	certClient certificatesv1client.CertificateSigningRequestInterface
 }
 
 func Add(mgr manager.Manager) error {
-	certClient, err := certificatesv1beta1client.NewForConfig(mgr.GetConfig())
+	certClient, err := certificatesv1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to create certificate client: %v", err)
 	}
@@ -68,7 +68,7 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return fmt.Errorf("failed to construct controller: %v", err)
 	}
-	return c.Watch(&source.Kind{Type: &certificatesv1beta1.CertificateSigningRequest{}}, &handler.EnqueueRequestForObject{})
+	return c.Watch(&source.Kind{Type: &certificatesv1.CertificateSigningRequest{}}, &handler.EnqueueRequestForObject{})
 }
 
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -79,13 +79,13 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	return reconcile.Result{}, err
 }
 
-var allowedUsages = []certificatesv1beta1.KeyUsage{certificatesv1beta1.UsageDigitalSignature,
-	certificatesv1beta1.UsageKeyEncipherment,
-	certificatesv1beta1.UsageServerAuth}
+var allowedUsages = []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature,
+	certificatesv1.UsageKeyEncipherment,
+	certificatesv1.UsageServerAuth}
 
 func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) error {
 	// Get the CSR object
-	csr := &certificatesv1beta1.CertificateSigningRequest{}
+	csr := &certificatesv1.CertificateSigningRequest{}
 	if err := r.Get(ctx, request.NamespacedName, csr); err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil
@@ -96,7 +96,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 
 	// If CSR is approved, skip it
 	for _, condition := range csr.Status.Conditions {
-		if condition.Type == certificatesv1beta1.CertificateApproved {
+		if condition.Type == certificatesv1.CertificateApproved {
 			klog.V(4).Infof("CSR %s already approved, skipping reconciling", csr.ObjectMeta.Name)
 			return nil
 		}
@@ -138,13 +138,13 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 
 	// Approve CSR
 	klog.V(4).Infof("Approving CSR %s", csr.ObjectMeta.Name)
-	approvalCondition := certificatesv1beta1.CertificateSigningRequestCondition{
-		Type:   certificatesv1beta1.CertificateApproved,
+	approvalCondition := certificatesv1.CertificateSigningRequestCondition{
+		Type:   certificatesv1.CertificateApproved,
 		Reason: "machine-controller NodeCSRApprover controller approved node serving cert",
 	}
 	csr.Status.Conditions = append(csr.Status.Conditions, approvalCondition)
 
-	if _, err := r.certClient.UpdateApproval(ctx, csr, v1.UpdateOptions{}); err != nil {
+	if _, err := r.certClient.UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("failed to approve CSR %q: %v", csr.Name, err)
 	}
 
@@ -153,7 +153,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 }
 
 // validateCSRObject valides the CSR object and returns name of the node that requested the certificate
-func (r *reconciler) validateCSRObject(csr *certificatesv1beta1.CertificateSigningRequest) (string, error) {
+func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningRequest) (string, error) {
 	// Get and validate the node name
 	if !strings.HasPrefix(csr.Spec.Username, nodeUserPrefix) {
 		return "", fmt.Errorf("username must have the '%s' prefix", nodeUserPrefix)
@@ -186,7 +186,7 @@ func (r *reconciler) validateCSRObject(csr *certificatesv1beta1.CertificateSigni
 
 // validateX509CSR validates the certificate request by comparing CN with username,
 // and organization with groups.
-func (r *reconciler) validateX509CSR(csr *certificatesv1beta1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine v1alpha1.Machine) error {
+func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine v1alpha1.Machine) error {
 	// Validate Subject CommonName
 	if certReq.Subject.CommonName != csr.Spec.Username {
 		return fmt.Errorf("commonName '%s' is different then CSR username '%s'", certReq.Subject.CommonName, csr.Spec.Username)
@@ -245,7 +245,7 @@ func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1
 	return v1alpha1.Machine{}, false, fmt.Errorf("failed to get machine for given node name '%s'", nodeName)
 }
 
-func isUsageInUsageList(usage certificatesv1beta1.KeyUsage, usageList []certificatesv1beta1.KeyUsage) bool {
+func isUsageInUsageList(usage certificatesv1.KeyUsage, usageList []certificatesv1.KeyUsage) bool {
 	for _, usageListItem := range usageList {
 		if usage == usageListItem {
 			return true
