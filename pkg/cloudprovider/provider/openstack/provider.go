@@ -308,12 +308,16 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		ApplicationCredentialSecret: c.ApplicationCredentialSecret,
 	}
 
-	pc, err := goopenstack.AuthenticatedClient(opts)
+	pc, err := goopenstack.NewClient(c.IdentityEndpoint)
+	if err != nil {
+		return nil, err
+	}
 	if pc != nil {
 		// use the util's HTTP client to benefit, among other things, from its CA bundle
 		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
 	}
 
+	err = goopenstack.Authenticate(pc, opts)
 	return pc, err
 }
 
