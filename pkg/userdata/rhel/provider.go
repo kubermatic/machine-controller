@@ -191,6 +191,10 @@ write_files:
     hostnamectl set-hostname {{ .MachineSpec.Name }}
     {{ end }}
 
+    {{- if eq .CloudProviderName "azure" }}
+    yum update -y --disablerepo='*' --enablerepo='*microsoft*'
+    {{- end }}
+
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 {{- /*	Due to DNF modules we have to do this on docker-ce repo
@@ -200,10 +204,6 @@ write_files:
 
     DOCKER_VERSION='{{ .DockerVersion }}'
     yum install -y docker-ce-${DOCKER_VERSION} docker-ce-cli-${DOCKER_VERSION}
-
-    {{- if eq .CloudProviderName "azure" }}
-    yum update -y --disablerepo='*' --enablerepo='*microsoft*'
-    {{- end }}
 
     yum install -y \
       device-mapper-persistent-data \
