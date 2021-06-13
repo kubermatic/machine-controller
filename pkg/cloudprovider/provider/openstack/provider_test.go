@@ -105,6 +105,7 @@ const expectedBlockDeviceBootRequest = `{
 type openstackProviderSpecConf struct {
 	IdentityEndpointURL         string
 	RootDiskSizeGB              *int32
+	RootDiskVolumeType          string
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
 }
@@ -126,6 +127,9 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"instanceReadyCheckTimeout": "2m",
 		{{- if .RootDiskSizeGB }}
 		"rootDiskSizeGB": {{ .RootDiskSizeGB }},
+		{{- end }}
+		{{- if .RootDiskVolumeType }}
+		"rootDiskVolumeType": {{ .RootDiskVolumeType }}
 		{{- end }}
 		"securityGroups": [
 			"kubernetes-xyz"
@@ -184,6 +188,12 @@ func TestCreateServer(t *testing.T) {
 		{
 			name:          "Custom disk size",
 			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10)},
+			userdata:      "fake-userdata",
+			wantServerReq: expectedBlockDeviceBootRequest,
+		},
+		{
+			name:          "Custom disk type",
+			specConf:      openstackProviderSpecConf{RootDiskVolumeType: "ssd"},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootRequest,
 		},

@@ -101,6 +101,7 @@ type Config struct {
 	AvailabilityZone      string
 	TrustDevicePath       bool
 	RootDiskSizeGB        *int
+	RootDiskVolumeType    string
 	NodeVolumeAttachLimit *uint
 
 	InstanceReadyCheckPeriod  time.Duration
@@ -264,6 +265,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 	c.RootDiskSizeGB = rawConfig.RootDiskSizeGB
+	c.RootDiskVolumeType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RootDiskVolumeType)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	c.NodeVolumeAttachLimit = rawConfig.NodeVolumeAttachLimit
 	c.Tags = rawConfig.Tags
 	if c.Tags == nil {
@@ -567,6 +572,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 				SourceType:          bootfromvolume.SourceImage,
 				UUID:                image.ID,
 				VolumeSize:          *c.RootDiskSizeGB,
+				VolumeType:          c.RootDiskVolumeType,
 			},
 		}
 		createOpts := bootfromvolume.CreateOptsExt{
