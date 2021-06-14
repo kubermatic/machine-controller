@@ -125,6 +125,8 @@ network: ""
 trustDevicePath: false
 # set root disk size
 rootDiskSizeGB: 50
+# set root disk volume type
+rootDiskVolumeType: ""
 # set node-volume-attach-limit flag for cloud-config
 nodeVolumeAttachLimit: 20
 # the list of tags you would like to attach to the instance
