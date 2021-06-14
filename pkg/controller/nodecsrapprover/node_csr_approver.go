@@ -26,6 +26,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -141,6 +142,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	approvalCondition := certificatesv1.CertificateSigningRequestCondition{
 		Type:   certificatesv1.CertificateApproved,
 		Reason: "machine-controller NodeCSRApprover controller approved node serving cert",
+		Status: corev1.ConditionTrue,
 	}
 	csr.Status.Conditions = append(csr.Status.Conditions, approvalCondition)
 
