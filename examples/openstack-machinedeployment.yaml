@@ -119,7 +119,7 @@ spec:
             # Optional, if set, the rootDisk will be a volume. If not, the rootDisk
             # will be on ephemeral storage and its size will be derived from the flavor
             rootDiskSizeGB: 20
-            # Optional, only applied if rootDiskSizeGB is set. 
+            # Optional, only applied if rootDiskSizeGB is set.
             # Sets the volume type of the root disk.
             rootDiskVolumeType: ""
             # the list of metadata you would like to attach to the instance

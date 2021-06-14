@@ -102,6 +102,43 @@ const expectedBlockDeviceBootRequest = `{
   }
 }`
 
+const expectedBlockDeviceBootVolumeTypeRequest = `{
+	"server": {
+	  "availability_zone": "eu-de-01",
+	  "block_device_mapping_v2": [
+		{
+		  "boot_index": 0,
+		  "delete_on_termination": true,
+		  "destination_type": "volume",
+		  "source_type": "image",
+		  "uuid": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
+		  "volume_size": 10,
+		  "volume_type": "ssd"
+		}
+	  ],
+	  "flavorRef": "1",
+	  "imageRef": "",
+	  "metadata": {
+		"kubernetes-cluster": "xyz",
+		"machine-uid": "",
+		"system-cluster": "zyx",
+		"system-project": "xxx"
+	  },
+	  "name": "test",
+	  "networks": [
+		{
+		  "uuid": "d32019d3-bc6e-4319-9c1d-6722fc136a22"
+		}
+	  ],
+	  "security_groups": [
+		{
+		  "name": "kubernetes-xyz"
+		}
+	  ],
+	  "user_data": "ZmFrZS11c2VyZGF0YQ=="
+	}
+  }`
+
 type openstackProviderSpecConf struct {
 	IdentityEndpointURL         string
 	RootDiskSizeGB              *int32
@@ -193,9 +230,9 @@ func TestCreateServer(t *testing.T) {
 		},
 		{
 			name:          "Custom disk type",
-			specConf:      openstackProviderSpecConf{RootDiskVolumeType: "ssd"},
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10), RootDiskVolumeType: "ssd"},
 			userdata:      "fake-userdata",
-			wantServerReq: expectedBlockDeviceBootRequest,
+			wantServerReq: expectedBlockDeviceBootVolumeTypeRequest,
 		},
 		{
 			name:          "Application Credentials",
