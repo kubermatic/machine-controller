@@ -166,7 +166,7 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"rootDiskSizeGB": {{ .RootDiskSizeGB }},
 		{{- end }}
 		{{- if .RootDiskVolumeType }}
-		"rootDiskVolumeType": {{ .RootDiskVolumeType }}
+		"rootDiskVolumeType": "{{ .RootDiskVolumeType }}",
 		{{- end }}
 		"securityGroups": [
 			"kubernetes-xyz"
