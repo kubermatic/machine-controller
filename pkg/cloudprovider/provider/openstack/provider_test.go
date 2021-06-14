@@ -113,7 +113,7 @@ const expectedBlockDeviceBootVolumeTypeRequest = `{
 		  "source_type": "image",
 		  "uuid": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
 		  "volume_size": 10,
-		  "volume_type": "ssd"
+		  "volume_type": "ssd",
 		}
 	  ],
 	  "flavorRef": "1",
