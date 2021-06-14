@@ -23,6 +23,7 @@ package gce
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"golang.org/x/oauth2/google"
@@ -42,13 +43,11 @@ const (
 
 // imageProjects maps the OS to the Google Cloud image projects
 var imageProjects = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemCoreos: "coreos-cloud",
 	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-os-cloud",
 }
 
 // imageFamilies maps the OS to the Google Cloud image projects
 var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemCoreos: "coreos-stable",
 	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-1804-lts",
 }
 
@@ -76,6 +75,10 @@ func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*gcetypes.CloudProviderSp
 	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
+	}
+
+	if providerConfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 	// Retrieve cloud provider specification from cloud provider specification.
 	cpSpec := &gcetypes.CloudProviderSpec{}

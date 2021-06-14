@@ -93,7 +93,6 @@ write_files:
     apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
     add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    apt-get install -y containerd.io=1.4.3-1*
 
     cat <<EOF | tee /etc/crictl.yaml
     runtime-endpoint: unix:///run/containerd/containerd.sock
@@ -105,6 +104,9 @@ write_files:
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
+
+    apt-get install -y containerd.io=1.4*
+    apt-mark hold containerd.io
 
     systemctl daemon-reload
     systemctl enable --now containerd
@@ -159,7 +161,7 @@ write_files:
     done
 
     if [[ ! -x /opt/bin/health-monitor.sh ]]; then
-        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
 
@@ -244,6 +246,7 @@ write_files:
     fi
 
     # write the nodeip_env file
+    # we need the line below because flatcar has the same string "coreos" in that file
     if grep -q coreos /etc/os-release
     then
       echo "KUBELET_NODE_IP=${DEFAULT_IFC_IP}" > /etc/kubernetes/nodeip.conf

@@ -88,6 +88,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, err
 	}
 
+	if pconfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
+	}
+
 	rawConfig := hetznertypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, err
@@ -221,17 +225,25 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	}
 
 	if c.Datacenter != "" {
-		serverCreateOpts.Datacenter, _, err = client.Datacenter.Get(ctx, c.Datacenter)
+		dc, _, err := client.Datacenter.Get(ctx, c.Datacenter)
 		if err != nil {
 			return nil, hzErrorToTerminalError(err, "failed to get datacenter")
 		}
+		if dc == nil {
+			return nil, fmt.Errorf("datacenter %q does not exist", c.Datacenter)
+		}
+		serverCreateOpts.Datacenter = dc
 	}
 
 	if c.Location != "" {
-		serverCreateOpts.Location, _, err = client.Location.Get(ctx, c.Location)
+		location, _, err := client.Location.Get(ctx, c.Location)
 		if err != nil {
 			return nil, hzErrorToTerminalError(err, "failed to get location")
 		}
+		if location == nil {
+			return nil, fmt.Errorf("location %q does not exist", c.Location)
+		}
+		serverCreateOpts.Location = location
 	}
 
 	if len(c.Networks) != 0 {
@@ -241,19 +253,30 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			if err != nil {
 				return nil, hzErrorToTerminalError(err, "failed to get network")
 			}
+			if n == nil {
+				return nil, fmt.Errorf("network %q does not exist", network)
+			}
 			serverCreateOpts.Networks = append(serverCreateOpts.Networks, n)
 		}
 	}
 
-	serverCreateOpts.Image, _, err = client.Image.Get(ctx, c.Image)
+	image, _, err := client.Image.Get(ctx, c.Image)
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to get image")
 	}
+	if image == nil {
+		return nil, fmt.Errorf("image %q does not exist", c.Image)
+	}
+	serverCreateOpts.Image = image
 
-	serverCreateOpts.ServerType, _, err = client.ServerType.Get(ctx, c.ServerType)
+	serverType, _, err := client.ServerType.Get(ctx, c.ServerType)
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to get server type")
 	}
+	if serverType == nil {
+		return nil, fmt.Errorf("server type %q does not exist", c.ServerType)
+	}
+	serverCreateOpts.ServerType = serverType
 
 	// We generate a temporary SSH key here, because otherwise Hetzner creates
 	// a password and sends it via E-Mail to the account owner, which can be quite

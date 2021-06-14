@@ -70,15 +70,15 @@ Procedure:
           "Value": ""
         },
         {
-          "Key": "guestinfo.coreos.config.data",
+          "Key": "guestinfo.flatcar.config.data",
           "Value": ""
         },
         {
-          "Key": "guestinfo.coreos.config.url",
+          "Key": "guestinfo.flatcar.config.url",
           "Value": ""
         },
         {
-          "Key": "guestinfo.coreos.config.data.encoding",
+          "Key": "guestinfo.flatcar.config.data.encoding",
           "Value": ""
         },
         {
@@ -194,12 +194,6 @@ Information about supported OS versions can be found [here](./operating-system.m
 #### Ubuntu
 
 Ubuntu OVA template can be foud at <https://cloud-images.ubuntu.com/releases/18.04/release/ubuntu-18.04-server-cloudimg-amd64.ova>.
-
-Follow [OVA](#create-template-vm-from-ova) template VM creation guide.
-
-#### CoreOS
-
-CoreOS OVA template can be foud at <https://stable.release.core-os.net/amd64-usr/current/coreos_production_vmware_ova.ova>.
 
 Follow [OVA](#create-template-vm-from-ova) template VM creation guide.
 

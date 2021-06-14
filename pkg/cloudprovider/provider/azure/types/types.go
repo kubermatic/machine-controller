@@ -37,7 +37,8 @@ type RawConfig struct {
 	AvailabilitySet   providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	SecurityGroupName providerconfigtypes.ConfigVarString `json:"securityGroupName"`
 	Zones             []string                            `json:"zones"`
-	ImagePlan         *ImagePlan                          `json:"imagePlan"`
+	ImagePlan         *ImagePlan                          `json:"imagePlan,omitempty"`
+	ImageReference    *ImageReference                     `json:"imageReference,omitempty"`
 
 	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`
@@ -51,4 +52,12 @@ type ImagePlan struct {
 	Name      string `json:"name,omitempty"`
 	Publisher string `json:"publisher,omitempty"`
 	Product   string `json:"product,omitempty"`
+}
+
+// ImageReference specifies information about the image to use.
+type ImageReference struct {
+	Publisher string `json:"publisher,omitempty"`
+	Offer     string `json:"offer,omitempty"`
+	Sku       string `json:"sku,omitempty"`
+	Version   string `json:"version,omitempty"`
 }

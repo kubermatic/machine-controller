@@ -30,13 +30,20 @@ spec:
             subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
             location: "westeurope"
             resourceGroup: "machine-controller-e2e"
+            vnetResourceGroup: ""
             vmSize: "Standard_F2"
             # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
+            osDiskSize: << OS_DISK_SIZE >>
+            dataDiskSize: << DATA_DISK_SIZE >>
             vnetName: "machine-controller-e2e"
-            vnetResourceGroup: ""
             subnetName: "machine-controller-e2e"
-            imageID: "<< IMAGE_ID >>"
-            assignPublicIP: true
+            routeTableName: "machine-controller-e2e"
+            imageReference:
+              publisher: "Canonical"
+              offer: "0001-com-ubuntu-server-focal"
+              sku: "20_04-lts"
+              version: "latest"
+            assignPublicIP: false
             zones:
               - "1"
           operatingSystem: "<< OS_NAME >>"
@@ -48,9 +55,5 @@ spec:
             # 'rhelSubscriptionManagerPassword' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_PASSWORD`
             rhelSubscriptionManagerPassword: "<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>"
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
-            rhelSatelliteServer: ""
-            rhelUseSatelliteServer: false
-            rhelOrganizationName: ""
-            rhelActivationKey: ""
       versions:
-        kubelet: "1.17.0"
+        kubelet: "<< KUBERNETES_VERSION >>"

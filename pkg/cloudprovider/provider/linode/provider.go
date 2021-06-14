@@ -86,13 +86,6 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 		return "linode/ubuntu18.04", nil
 
 		/**
-		// StackScripts not available for CoreOS, and no
-		// other userdata work-around
-		case providerconfigtypes.OperatingSystemCoreos:
-			return "linode/containerlinux", nil
-		**/
-
-		/**
 		// StackScript for CloudInit is not centos7 ready
 		case providerconfigtypes.OperatingSystemCentOS:
 			return "linode/centos7", nil
@@ -123,6 +116,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if pconfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
+	}
+
 	rawConfig := linodetypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {

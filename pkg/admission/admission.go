@@ -35,6 +35,8 @@ import (
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
+	"github.com/kubermatic/machine-controller/pkg/node"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 )
 
@@ -42,24 +44,35 @@ type admissionData struct {
 	ctx             context.Context
 	client          ctrlruntimeclient.Client
 	userDataManager *userdatamanager.Manager
+	nodeSettings    machinecontroller.NodeSettings
 }
 
 var jsonPatch = admissionv1.PatchTypeJSONPatch
 
-func New(listenAddress string, client ctrlruntimeclient.Client, um *userdatamanager.Manager) *http.Server {
-	m := http.NewServeMux()
+func New(
+	listenAddress string,
+	client ctrlruntimeclient.Client,
+	um *userdatamanager.Manager,
+	nodeFlags *node.Flags,
+) (*http.Server, error) {
+	mux := http.NewServeMux()
 	ad := &admissionData{
 		client:          client,
 		userDataManager: um,
 	}
-	m.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))
-	m.HandleFunc("/machines", handleFuncFactory(ad.mutateMachines))
-	m.HandleFunc("/healthz", healthZHandler)
+
+	if err := nodeFlags.UpdateNodeSettings(&ad.nodeSettings); err != nil {
+		return nil, fmt.Errorf("error updating nodeSettings, %w", err)
+	}
+
+	mux.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))
+	mux.HandleFunc("/machines", handleFuncFactory(ad.mutateMachines))
+	mux.HandleFunc("/healthz", healthZHandler)
 
 	return &http.Server{
 		Addr:    listenAddress,
-		Handler: http.TimeoutHandler(m, 25*time.Second, "timeout"),
-	}
+		Handler: http.TimeoutHandler(mux, 25*time.Second, "timeout"),
+	}, nil
 }
 
 func healthZHandler(w http.ResponseWriter, r *http.Request) {

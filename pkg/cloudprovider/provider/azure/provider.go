@@ -84,6 +84,7 @@ type config struct {
 	ImageID           string
 	Zones             []string
 	ImagePlan         *compute.Plan
+	ImageReference    *compute.ImageReference
 
 	OSDiskSize   int32
 	DataDiskSize int32
@@ -119,12 +120,6 @@ func (vm *azureVM) Status() instance.Status {
 }
 
 var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageReference{
-	providerconfigtypes.OperatingSystemCoreos: {
-		Publisher: to.StringPtr("CoreOS"),
-		Offer:     to.StringPtr("CoreOS"),
-		Sku:       to.StringPtr("Stable"),
-		Version:   to.StringPtr("latest"),
-	},
 	providerconfigtypes.OperatingSystemCentOS: {
 		Publisher: to.StringPtr("OpenLogic"),
 		Offer:     to.StringPtr("CentOS"),
@@ -142,9 +137,9 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	},
 	providerconfigtypes.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
-		Offer:     to.StringPtr("RHEL"),
-		Sku:       to.StringPtr("7-RAW-CI"),
-		Version:   to.StringPtr("7.7.2019081601"),
+		Offer:     to.StringPtr("rhel-byos"),
+		Sku:       to.StringPtr("rhel-lvm83"),
+		Version:   to.StringPtr("8.3.20201109"),
 	},
 	providerconfigtypes.OperatingSystemFlatcar: {
 		Publisher: to.StringPtr("kinvolk"),
@@ -160,12 +155,26 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 		Publisher: pointer.StringPtr("kinvolk"),
 		Product:   pointer.StringPtr("flatcar-container-linux"),
 	},
+	providerconfigtypes.OperatingSystemRHEL: {
+		Name:      pointer.StringPtr("rhel-lvm83"),
+		Publisher: pointer.StringPtr("redhat"),
+		Product:   pointer.StringPtr("rhel-byos"),
+	},
 }
 
-func getOSImageReference(imageID string, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
-	if imageID != "" {
+func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
+	if c.ImageID != "" {
 		return &compute.ImageReference{
-			ID: to.StringPtr(imageID),
+			ID: to.StringPtr(c.ImageID),
+		}, nil
+	}
+
+	if c.ImageReference != nil {
+		return &compute.ImageReference{
+			Version:   c.ImageReference.Version,
+			Sku:       c.ImageReference.Sku,
+			Offer:     c.ImageReference.Offer,
+			Publisher: c.ImageReference.Publisher,
 		}, nil
 	}
 
@@ -191,6 +200,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if pconfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
+	}
+
 	rawCfg := azuretypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawCfg)
 	if err != nil {
@@ -277,11 +291,20 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
 
-	if rawCfg.ImagePlan != nil {
+	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
 		c.ImagePlan = &compute.Plan{
 			Name:      pointer.StringPtr(rawCfg.ImagePlan.Name),
 			Publisher: pointer.StringPtr(rawCfg.ImagePlan.Publisher),
 			Product:   pointer.StringPtr(rawCfg.ImagePlan.Product),
+		}
+	}
+
+	if rawCfg.ImageReference != nil {
+		c.ImageReference = &compute.ImageReference{
+			Publisher: pointer.StringPtr(rawCfg.ImageReference.Publisher),
+			Offer:     pointer.StringPtr(rawCfg.ImageReference.Offer),
+			Sku:       pointer.StringPtr(rawCfg.ImageReference.Sku),
+			Version:   pointer.StringPtr(rawCfg.ImageReference.Version),
 		}
 	}
 
@@ -429,7 +452,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
-	osRef, err := getOSImageReference(config.ImageID, providerCfg.OperatingSystem)
+	osRef, err := getOSImageReference(config, providerCfg.OperatingSystem)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OSImageReference: %v", err)
 	}
@@ -872,7 +895,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	_, err = getOSImageReference(c.ImageID, providerCfg.OperatingSystem)
+	_, err = getOSImageReference(c, providerCfg.OperatingSystem)
 	return err
 }
 
@@ -972,8 +995,6 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 func getOSUsername(os providerconfigtypes.OperatingSystem) string {
 	switch os {
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return "core"
-	case providerconfigtypes.OperatingSystemCoreos:
 		return "core"
 	default:
 		return string(os)

@@ -19,6 +19,7 @@ package kubevirt
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -55,7 +56,6 @@ func init() {
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
 	providerconfigtypes.OperatingSystemCentOS: nil,
-	providerconfigtypes.OperatingSystemCoreos: nil,
 	providerconfigtypes.OperatingSystemUbuntu: nil,
 	providerconfigtypes.OperatingSystemRHEL:   nil,
 }
@@ -124,6 +124,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if pconfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
 	rawConfig := kubevirttypes.RawConfig{}
@@ -322,8 +326,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		annotations map[string]string
 	)
 
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemCoreos ||
-		pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
 		annotations = map[string]string{
 			"kubevirt.io/ignitiondata": userdata,
 		}

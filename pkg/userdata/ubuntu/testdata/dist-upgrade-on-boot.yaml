@@ -103,9 +103,9 @@ write_files:
     EOF
 
     apt-get install -y \
-        containerd.io=1.4.3-1* \
-        docker-ce=5:19.03.13* \
-        docker-ce-cli=5:19.03.13*
+        containerd.io=1.4* \
+        docker-ce=5:19.03* \
+        docker-ce-cli=5:19.03*
     apt-mark hold docker-ce docker-ce-cli containerd.io
 
     systemctl daemon-reload
@@ -161,7 +161,7 @@ write_files:
     done
 
     if [[ ! -x /opt/bin/health-monitor.sh ]]; then
-        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
 
@@ -246,6 +246,7 @@ write_files:
     fi
 
     # write the nodeip_env file
+    # we need the line below because flatcar has the same string "coreos" in that file
     if grep -q coreos /etc/os-release
     then
       echo "KUBELET_NODE_IP=${DEFAULT_IFC_IP}" > /etc/kubernetes/nodeip.conf

@@ -119,17 +119,17 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	if containerLinuxUserdata != "" {
 		userdataBase64 := base64.StdEncoding.EncodeToString([]byte(containerLinuxUserdata))
 
-		// The properties describing userdata will already exist in the CoreOS VM template.
+		// The properties describing userdata will already exist in the Flatcar VM template.
 		// In order to overwrite them, we need to specify their numeric Key values,
 		// which we'll extract from that template.
 		var mvm mo.VirtualMachine
 		if err := virtualMachine.Properties(ctx, virtualMachine.Reference(), []string{"config", "config.vAppConfig", "config.vAppConfig.property"}, &mvm); err != nil {
-			return nil, fmt.Errorf("failed to extract vapp properties for coreos: %v", err)
+			return nil, fmt.Errorf("failed to extract vapp properties for flatcar: %v", err)
 		}
 
 		var propertySpecs []types.VAppPropertySpec
 		if mvm.Config.VAppConfig.GetVmConfigInfo() == nil {
-			return nil, fmt.Errorf("no vm config found in template '%s'. Make sure you import the correct OVA with the appropriate coreos settings", config.TemplateVMName)
+			return nil, fmt.Errorf("no vm config found in template '%s'. Make sure you import the correct OVA with the appropriate flatcar settings", config.TemplateVMName)
 		}
 
 		var (
@@ -137,14 +137,8 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 			guestInfoUserDataEncoding string
 		)
 
-		switch os {
-		case providerconfigtypes.OperatingSystemCoreos:
-			guestInfoUserData = "guestinfo.coreos.config.data"
-			guestInfoUserDataEncoding = "guestinfo.coreos.config.data.encoding"
-		case providerconfigtypes.OperatingSystemFlatcar:
-			guestInfoUserData = "guestinfo.ignition.config.data"
-			guestInfoUserDataEncoding = "guestinfo.ignition.config.data.encoding"
-		}
+		guestInfoUserData = "guestinfo.ignition.config.data"
+		guestInfoUserDataEncoding = "guestinfo.ignition.config.data.encoding"
 
 		for _, item := range mvm.Config.VAppConfig.GetVmConfigInfo().Property {
 			switch item.Id {

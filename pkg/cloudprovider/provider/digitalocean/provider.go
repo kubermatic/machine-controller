@@ -86,8 +86,6 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return "ubuntu-18-04-x64", nil
-	case providerconfigtypes.OperatingSystemCoreos:
-		return "coreos-stable", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7-x64", nil
 	}
@@ -111,6 +109,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	err := json.Unmarshal(s.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if pconfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 	rawConfig := digitaloceantypes.RawConfig{}
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)

@@ -92,6 +92,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *packettypes.Raw
 		return nil, nil, nil, err
 	}
 
+	if pconfig.OperatingSystemSpec.Raw == nil {
+		return nil, nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
+	}
+
 	c := Config{}
 	c.APIKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.APIKey, "PACKET_API_KEY")
 	if err != nil {
@@ -431,8 +435,6 @@ func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 		return "ubuntu_18_04", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos_7", nil
-	case providerconfigtypes.OperatingSystemCoreos:
-		return "coreos_stable", nil
 	case providerconfigtypes.OperatingSystemFlatcar:
 		return "flatcar_stable", nil
 	}
