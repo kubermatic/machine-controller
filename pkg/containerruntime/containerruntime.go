@@ -47,6 +47,12 @@ func WithRegistryMirrors(mirrors []string) Opt {
 	}
 }
 
+func WithNodeMaxLogSize(nodeMaxLogSize string) Opt {
+	return func(cfg *Config) {
+
+	}
+}
+
 func Get(containerRuntimeName string, opts ...Opt) Config {
 	cfg := Config{}
 
@@ -74,6 +80,7 @@ type Config struct {
 	Containerd         *Containerd `json:",omitempty"`
 	InsecureRegistries []string    `json:",omitempty"`
 	RegistryMirrors    []string    `json:",omitempty"`
+	NodeMaxLogSize     string      `json:",omitempty"`
 }
 
 func (cfg Config) String() string {
@@ -93,6 +100,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 			insecureRegistries: cfg.InsecureRegistries,
 			registryMirrors:    cfg.RegistryMirrors,
 			kubeletVersion:     kubeletVersion,
+			nodeMaxLogSize:     cfg.NodeMaxLogSize,
 		}
 		containerd = &Containerd{
 			insecureRegistries: cfg.InsecureRegistries,

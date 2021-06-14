@@ -109,6 +109,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ExtraKubeletFlags  []string
 		InsecureRegistries []string
 		RegistryMirrors    []string
+		MaxLogSize         string
 	}{
 		UserDataRequest:    req,
 		ProviderSpec:       pconfig,
@@ -120,6 +121,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
 		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		MaxLogSize:         req.ContainerRuntime.NodeMaxLogSize,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -314,15 +316,6 @@ systemd:
 
 storage:
   files:
-{{- if .HTTPProxy }}
-    - path: /etc/environment
-      filesystem: root
-      mode: 0644
-      contents:
-        inline: |
-{{ proxyEnvironment .HTTPProxy .NoProxy | indent 10 }}
-{{- end }}
-
     - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
       filesystem: root
       mode: 0644
@@ -449,7 +442,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 10 }}
+{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 10 }}
 
     - path: /opt/bin/download.sh
       filesystem: root
@@ -728,7 +721,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
+{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 4 }}
 
 - path: /opt/bin/download.sh
   permissions: "0755"

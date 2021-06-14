@@ -36,10 +36,11 @@ type Docker struct {
 	kubeletVersion     *semver.Version
 	insecureRegistries []string
 	registryMirrors    []string
+	nodeMaxLogSize     string
 }
 
 func (eng *Docker) Config() (string, error) {
-	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors)
+	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors, eng.nodeMaxLogSize)
 }
 
 func (eng *Docker) ConfigFileName() string {

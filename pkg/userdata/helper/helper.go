@@ -203,7 +203,7 @@ type dockerConfig struct {
 }
 
 // DockerConfig returns the docker daemon.json.
-func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) {
+func DockerConfig(insecureRegistries, registryMirrors []string, MaxLogSize string) (string, error) {
 	cfg := dockerConfig{
 		ExecOpts:           []string{"native.cgroupdriver=systemd"},
 		StorageDriver:      "overlay2",
@@ -217,6 +217,9 @@ func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) 
 	}
 	if registryMirrors == nil {
 		cfg.RegistryMirrors = []string{}
+	}
+	if MaxLogSize != "" {
+		cfg.LogOpts["max-size"] = MaxLogSize
 	}
 
 	b, err := json.Marshal(cfg)

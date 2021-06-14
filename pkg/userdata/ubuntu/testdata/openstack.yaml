@@ -366,7 +366,7 @@ write_files:
     kubeReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 300Mi
     logging: {}
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s
@@ -380,7 +380,7 @@ write_files:
     systemReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 500Mi
     volumePluginDir: /var/lib/kubelet/volumeplugins
     volumeStatsAggPeriod: 0s
 

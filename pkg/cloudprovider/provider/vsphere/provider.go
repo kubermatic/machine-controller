@@ -94,6 +94,10 @@ func (vsphereServer Server) ID() string {
 	return vsphereServer.id
 }
 
+func (vsphereServer Server) HostID() string {
+	return ""
+}
+
 func (vsphereServer Server) Addresses() map[string]corev1.NodeAddressType {
 	return vsphereServer.addresses
 }

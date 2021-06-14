@@ -76,9 +76,8 @@ function kubelet_monitoring() {
   sleep 120
   local -r max_seconds=10
   local output=""
+  local failed=false
   while true; do
-    local failed=false
-
     if journalctl -u kubelet -n 1 | grep -q "use of closed network connection"; then
       failed=true
       echo "Kubelet stopped posting node status. Restarting"

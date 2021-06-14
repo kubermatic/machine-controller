@@ -76,6 +76,7 @@ var (
 	nodeNoProxy            string
 	nodeInsecureRegistries string
 	nodeRegistryMirrors    string
+	nodeMaxLogSize         string
 	nodePauseImage         string
 	nodeHyperkubeImage     string
 	nodeKubeletRepository  string
@@ -149,6 +150,7 @@ func main() {
 	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1", "If set, it configures the 'NO_PROXY' environment variable on the nodes.")
 	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
+	flag.StringVar(&nodeMaxLogSize, "node-max-log-size", "", "Maximum size for docker logfile")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag. Only has effect on Flatcar Linux, and for kubernetes < 1.18.")
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
@@ -267,6 +269,7 @@ func main() {
 				nodeContainerRuntime,
 				containerruntime.WithInsecureRegistries(insecureRegistries),
 				containerruntime.WithRegistryMirrors(registryMirrors),
+				containerruntime.WithNodeMaxLogSize(nodeMaxLogSize),
 			),
 		},
 	}

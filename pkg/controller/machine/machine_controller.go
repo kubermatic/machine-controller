@@ -84,8 +84,12 @@ const (
 
 	deletionRetryWaitPeriod = 10 * time.Second
 
-	controllerNameLabelKey = "machine.k8s.io/controller"
-	NodeOwnerLabelName     = "machine-controller/owned-by"
+	controllerNameLabelKey  = "machine.k8s.io/controller"
+	NodeOwnerLabelName      = "machine-controller/owned-by"
+	PhysicalHostIDLabelName = "machine-controller/physical-host-id"
+	// HostIDLabelName label key to specify physical host id the node is running on.
+	// Deprecated: Key was replaced, use PhysicalHostIDLabelName.
+	HostIDLabelName = "machine-controller/host-id"
 
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
 	// cluster-api provider to match Nodes to Machines
@@ -123,6 +127,8 @@ type NodeSettings struct {
 	InsecureRegistries []string
 	// If set, these mirrors will be take for pulling all required images on the node.
 	RegistryMirrors []string
+	// If set, Docker will be configured to rotate logs at this size.
+	MaxLogSize string
 	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it.
 	PauseImage string
 	// The hyperkube image to use. Currently only Container Linux and Flatcar Linux uses it.
@@ -825,9 +831,32 @@ func ownerReferencesHasMachineSetKind(ownerReferences []metav1.OwnerReference) b
 }
 
 func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(ctx context.Context, node *corev1.Node, machine *clusterv1alpha1.Machine) error {
+	providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return fmt.Errorf("failed to get provider config: %v", err)
+	}
+	skg := providerconfig.NewConfigVarResolver(ctx, r.client)
+	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
+	}
+
+	providerInstance, err := prov.Get(machine, r.providerData)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud provider instance %q: %v", providerConfig.CloudProvider, err)
+	}
+
 	var modifiers []func(*corev1.Node)
 
-	for k, v := range machine.Spec.Labels {
+	nodeLabels := machine.Spec.Labels
+	if nodeLabels == nil {
+		nodeLabels = map[string]string{}
+	}
+	if providerInstance.HostID() != "" {
+		nodeLabels[HostIDLabelName] = providerInstance.HostID()
+		nodeLabels[PhysicalHostIDLabelName] = providerInstance.HostID()
+	}
+	for k, v := range nodeLabels {
 		if _, exists := node.Labels[k]; !exists {
 			f := func(k, v string) func(*corev1.Node) {
 				return func(n *corev1.Node) {

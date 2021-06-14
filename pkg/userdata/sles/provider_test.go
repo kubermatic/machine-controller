@@ -121,6 +121,7 @@ type userDataTestCase struct {
 	noProxy               string
 	insecureRegistries    []string
 	registryMirrors       []string
+	nodeMaxLogSize        string
 	pauseImage            string
 	containerruntime      string
 }
@@ -453,6 +454,7 @@ func TestUserDataGeneration(t *testing.T) {
 					test.containerruntime,
 					containerruntime.WithInsecureRegistries(test.insecureRegistries),
 					containerruntime.WithRegistryMirrors(test.registryMirrors),
+					containerruntime.WithNodeMaxLogSize(test.nodeMaxLogSize),
 				),
 			}
 			s, err := provider.UserData(req)

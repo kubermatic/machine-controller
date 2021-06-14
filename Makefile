@@ -90,7 +90,25 @@ test-unit-docker:
 		-e GOCACHE=/cache \
 		-w /go/src/github.com/kubermatic/machine-controller \
 		golang:$(GO_VERSION) \
-			make test-unit GOFLAGS=$(GOFLAGS)
+			make test-unit GOFLAGS='$(GOFLAGS)'
+
+machine-controller-docker:
+	@docker run --rm \
+		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD/.buildcache:/cache \
+		-e GOCACHE=/cache \
+		-w /go/src/github.com/kubermatic/machine-controller \
+		golang:$(GO_VERSION) \
+			make machine-controller
+
+webhook-docker:
+	@docker run --rm \
+		-v $$PWD:/go/src/github.com/kubermatic/machine-controller \
+		-v $$PWD/.buildcache:/cache \
+		-e GOCACHE=/cache \
+		-w /go/src/github.com/kubermatic/machine-controller \
+		golang:$(GO_VERSION) \
+			make webhook
 
 .PHONY: test-unit
 test-unit:

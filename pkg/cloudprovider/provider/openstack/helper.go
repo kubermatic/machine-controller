@@ -25,6 +25,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osavailabilityzones "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
+	osservergroups "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/servergroups"
 	osflavors "github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	osimages "github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	osregions "github.com/gophercloud/gophercloud/openstack/identity/v3/regions"
@@ -88,6 +89,14 @@ func getAvailabilityZones(client *gophercloud.ProviderClient, region string) ([]
 		return nil, err
 	}
 	return osavailabilityzones.ExtractAvailabilityZones(allPages)
+}
+
+func getServerGroup(client *gophercloud.ProviderClient, id, region string) (*osservergroups.ServerGroup, error) {
+	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: region})
+	if err != nil {
+		return nil, err
+	}
+	return osservergroups.Get(computeClient, id).Extract()
 }
 
 func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string) (*osavailabilityzones.AvailabilityZone, error) {

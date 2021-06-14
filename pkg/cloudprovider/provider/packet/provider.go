@@ -361,6 +361,10 @@ func (s *packetDevice) ID() string {
 	return s.device.ID
 }
 
+func (s *packetDevice) HostID() string {
+	return ""
+}
+
 func (s *packetDevice) Addresses() map[string]v1.NodeAddressType {
 	// returns addresses in CIDR format
 	addresses := map[string]v1.NodeAddressType{}

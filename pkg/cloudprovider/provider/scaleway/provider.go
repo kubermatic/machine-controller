@@ -374,6 +374,10 @@ type scwServer struct {
 	server *instance.Server
 }
 
+func (s *scwServer) HostID() string {
+	return ""
+}
+
 func (s *scwServer) Name() string {
 	return s.server.Name
 }

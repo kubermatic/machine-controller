@@ -28,6 +28,7 @@ import (
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
+	osschedulerhints "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	osfloatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
@@ -55,6 +56,9 @@ import (
 const (
 	floatingIPReleaseFinalizer = "kubermatic.io/release-openstack-floating-ip"
 	floatingIPIDAnnotationKey  = "kubermatic.io/release-openstack-floating-ip"
+
+	defaultInstanceReadyCheckPeriodSec  = 5 * time.Second
+	defaultInstanceReadyCheckTimeoutSec = 120 * time.Second
 )
 
 // clientGetterFunc returns an OpenStack client.
@@ -102,6 +106,8 @@ type Config struct {
 	TrustDevicePath       bool
 	RootDiskSizeGB        *int
 	NodeVolumeAttachLimit *uint
+
+	ServerGroupID string
 
 	InstanceReadyCheckPeriod  time.Duration
 	InstanceReadyCheckTimeout time.Duration
@@ -197,11 +203,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckPeriod\" field (%s), error = %v", instanceReadyCheckPeriodStr, err)
 		}
 
-		if c.InstanceReadyCheckPeriod < 0 {
-			c.InstanceReadyCheckPeriod = 5 * time.Second
+		if c.InstanceReadyCheckPeriod <= 0 {
+			c.InstanceReadyCheckPeriod = defaultInstanceReadyCheckPeriodSec
 		}
 	} else {
-		c.InstanceReadyCheckPeriod = 5 * time.Second
+		c.InstanceReadyCheckPeriod = defaultInstanceReadyCheckPeriodSec
 	}
 
 	instanceReadyCheckTimeoutStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceReadyCheckTimeout)
@@ -215,11 +221,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckTimeout\" field (%s), error = %v", instanceReadyCheckTimeoutStr, err)
 		}
 
-		if c.InstanceReadyCheckTimeout < 0 {
-			c.InstanceReadyCheckTimeout = 10 * time.Second
+		if c.InstanceReadyCheckTimeout <= 0 {
+			c.InstanceReadyCheckTimeout = defaultInstanceReadyCheckTimeoutSec
 		}
 	} else {
-		c.InstanceReadyCheckTimeout = 10 * time.Second
+		c.InstanceReadyCheckTimeout = defaultInstanceReadyCheckTimeoutSec
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
@@ -265,6 +271,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 	c.RootDiskSizeGB = rawConfig.RootDiskSizeGB
 	c.NodeVolumeAttachLimit = rawConfig.NodeVolumeAttachLimit
+	c.ServerGroupID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerGroupID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	c.Tags = rawConfig.Tags
 	if c.Tags == nil {
 		c.Tags = map[string]string{}
@@ -491,6 +501,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
+	if c.ServerGroupID != "" {
+		_, err = getServerGroup(client, c.ServerGroupID, c.Region)
+		if err != nil {
+			return fmt.Errorf("failed to get server group with id '%s': %v", c.ServerGroupID, err)
+		}
+	}
+
 	// validate reserved tags
 	if _, ok := c.Tags[machineUIDMetaKey]; ok {
 		return fmt.Errorf("the tag with the given name =%s is reserved, choose a different one", machineUIDMetaKey)
@@ -547,14 +564,27 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	allTags := c.Tags
 	allTags[machineUIDMetaKey] = string(machine.UID)
 
-	serverOpts := osservers.CreateOpts{
+	// Declare as interface so we can safely extend request via request extensions
+	var createOpts osservers.CreateOptsBuilder
+
+	createOpts = &osservers.CreateOpts{
 		Name:             machine.Spec.Name,
 		FlavorRef:        flavor.ID,
+		ImageRef:         image.ID,
 		UserData:         []byte(userdata),
 		SecurityGroups:   securityGroups,
 		AvailabilityZone: c.AvailabilityZone,
 		Networks:         []osservers.Network{{UUID: network.ID}},
 		Metadata:         allTags,
+	}
+
+	if c.ServerGroupID != "" {
+		createOpts = &osschedulerhints.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
+			SchedulerHints: osschedulerhints.SchedulerHints{
+				Group: c.ServerGroupID,
+			},
+		}
 	}
 
 	var server serverWithExt
@@ -569,19 +599,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 				VolumeSize:          *c.RootDiskSizeGB,
 			},
 		}
-		createOpts := bootfromvolume.CreateOptsExt{
-			CreateOptsBuilder: serverOpts,
+		createOpts = bootfromvolume.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
 			BlockDevice:       blockDevices,
 		}
 		if err := bootfromvolume.Create(computeClient, createOpts).ExtractInto(&server); err != nil {
 			return nil, osErrorToTerminalError(err, "failed to create server with volume")
 		}
 	} else {
-		// Image ID should only be set in server options when block device
-		// mapping is not used. Otherwish an error may occur with some
-		// OpenStack providers/versions .e.g. OpenTelekom Cloud
-		serverOpts.ImageRef = image.ID
-		if err := osservers.Create(computeClient, serverOpts).ExtractInto(&server); err != nil {
+		if err := osservers.Create(computeClient, createOpts).ExtractInto(&server); err != nil {
 			return nil, osErrorToTerminalError(err, "failed to create server")
 		}
 	}
@@ -849,6 +875,10 @@ func (d *osInstance) Name() string {
 
 func (d *osInstance) ID() string {
 	return d.server.ID
+}
+
+func (d *osInstance) HostID() string {
+	return d.server.HostID
 }
 
 func (d *osInstance) Addresses() map[string]v1.NodeAddressType {

@@ -94,6 +94,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ExtraKubeletFlags  []string
 		InsecureRegistries []string
 		RegistryMirrors    []string
+		MaxLogSize         string
 	}{
 		UserDataRequest:    req,
 		ProviderSpec:       pconfig,
@@ -105,6 +106,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
 		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		MaxLogSize:         req.ContainerRuntime.NodeMaxLogSize,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -256,7 +258,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
+{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

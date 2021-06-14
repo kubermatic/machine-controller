@@ -150,6 +150,18 @@ ssh_authorized_keys:
 {{- end }}
 
 write_files:
+{{- /* SysEleven block start */}}
+- path: "/opt/restart-kubelet.sh"
+  permissions: "0755"
+  content: |
+{{ kubeletRestartOnNotReadyScript | indent 4 }}
+
+- path: "/etc/systemd/system/kubelet-restart.service"
+  permissions: "0644"
+  content: |
+{{ kubeletRestartOnNotReadySystemdUnit | indent 4 }}
+{{- /* SysEleven block end */}}
+
 {{- if .HTTPProxy }}
 - path: "/etc/environment"
   content: |

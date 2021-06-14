@@ -58,12 +58,14 @@ type Manager struct {
 	plugins map[providerconfigtypes.OperatingSystem]*Plugin
 }
 
+var pluginDebug = flag.Bool("plugin-debug", false, "Switch for enabling the plugin debugging")
+
 // New returns an initialised plugin manager.
 func New() (*Manager, error) {
 	m := &Manager{
 		plugins: make(map[providerconfigtypes.OperatingSystem]*Plugin),
 	}
-	flag.BoolVar(&m.debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
+	m.debug = *pluginDebug
 	m.locatePlugins()
 	if len(m.plugins) < len(supportedOS) {
 		return nil, ErrLocatingPlugins

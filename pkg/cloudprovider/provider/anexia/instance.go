@@ -29,6 +29,10 @@ type anexiaInstance struct {
 	info *info.Info
 }
 
+func (ai *anexiaInstance) HostID() string {
+	return ""
+}
+
 func (ai *anexiaInstance) Name() string {
 	if ai.info == nil {
 		return ""

@@ -6,6 +6,37 @@ hostname: node1
 ssh_pwauth: no
 
 write_files:
+- path: "/opt/restart-kubelet.sh"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+
+    while true; do
+    	output=$(journalctl -u kubelet -n 1 | grep "use of closed network connection")
+    	if [[ $? != 0 ]]; then
+    	  echo "Error not found in logs"
+    	elif [[ $output ]]; then
+    	  echo "Restart kubelet"
+    	  systemctl restart kubelet
+    	fi
+
+    	# Runs every 10 minutes
+    	sleep 600
+    done
+
+- path: "/etc/systemd/system/kubelet-restart.service"
+  permissions: "0644"
+  content: |
+    [Unit]
+    Description=Restarts kubelet on use of closed network connection error
+    Requires=kubelet.service
+    After=kubelet.service
+
+    [Service]
+    ExecStart=/opt/kubelet-restart.sh
+
+    [Install]
+    WantedBy=multi-user.target
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -304,7 +335,7 @@ write_files:
     kubeReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 300Mi
     logging: {}
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s
@@ -318,7 +349,7 @@ write_files:
     systemReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 500Mi
     volumePluginDir: /var/lib/kubelet/volumeplugins
     volumeStatsAggPeriod: 0s
 
