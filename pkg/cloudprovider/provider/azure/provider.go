@@ -78,6 +78,7 @@ type config struct {
 	VMSize            string
 	VNetName          string
 	SubnetName        string
+	LoadBalancerSku   string
 	RouteTableName    string
 	AvailabilitySet   string
 	SecurityGroupName string
@@ -260,6 +261,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.SubnetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.SubnetName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"subnetName\" field, error = %v", err)
+	}
+
+	c.LoadBalancerSku, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.LoadBalancerSku)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get the value of \"loadBalancerSku\" field, error = %v", err)
 	}
 
 	c.RouteTableName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.RouteTableName)
@@ -821,6 +827,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		Location:                   c.Location,
 		VNetName:                   c.VNetName,
 		SubnetName:                 c.SubnetName,
+		LoadBalancerSku:            c.LoadBalancerSku,
 		RouteTableName:             c.RouteTableName,
 		PrimaryAvailabilitySetName: c.AvailabilitySet,
 		SecurityGroupName:          c.SecurityGroupName,
