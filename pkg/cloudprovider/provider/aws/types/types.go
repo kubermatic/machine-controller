@@ -30,7 +30,6 @@ type RawConfig struct {
 	SubnetID           providerconfigtypes.ConfigVarString   `json:"subnetId"`
 	SecurityGroupIDs   []providerconfigtypes.ConfigVarString `json:"securityGroupIDs,omitempty"`
 	InstanceProfile    providerconfigtypes.ConfigVarString   `json:"instanceProfile,omitempty"`
-	IsSpotInstance     *bool                                 `json:"isSpotInstance,omitempty"`
 	InstanceType       providerconfigtypes.ConfigVarString   `json:"instanceType,omitempty"`
 	AMI                providerconfigtypes.ConfigVarString   `json:"ami,omitempty"`
 	DiskSize           int64                                 `json:"diskSize"`
@@ -39,4 +38,13 @@ type RawConfig struct {
 	EBSVolumeEncrypted providerconfigtypes.ConfigVarBool     `json:"ebsVolumeEncrypted"`
 	Tags               map[string]string                     `json:"tags,omitempty"`
 	AssignPublicIP     *bool                                 `json:"assignPublicIP,omitempty"`
+
+	IsSpotInstance     *bool               `json:"isSpotInstance,omitempty"`
+	SpotInstanceConfig *SpotInstanceConfig `json:"spotInstanceConfig,omitempty"`
+}
+
+type SpotInstanceConfig struct {
+	MaxPrice             providerconfigtypes.ConfigVarString `json:"maxPrice,omitempty"`
+	PersistentRequest    providerconfigtypes.ConfigVarBool   `json:"persistentRequest,omitempty"`
+	InterruptionBehavior providerconfigtypes.ConfigVarString `json:"interruptionBehavior,omitempty"`
 }
