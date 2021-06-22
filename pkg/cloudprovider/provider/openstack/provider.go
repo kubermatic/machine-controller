@@ -792,13 +792,15 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 
 	cc := &openstacktypes.CloudConfig{
 		Global: openstacktypes.GlobalOpts{
-			AuthURL:    c.IdentityEndpoint,
-			Username:   c.Username,
-			Password:   c.Password,
-			DomainName: c.DomainName,
-			TenantName: c.TenantName,
-			TenantID:   c.TenantID,
-			Region:     c.Region,
+			AuthURL:                     c.IdentityEndpoint,
+			Username:                    c.Username,
+			Password:                    c.Password,
+			DomainName:                  c.DomainName,
+			TenantName:                  c.TenantName,
+			TenantID:                    c.TenantID,
+			Region:                      c.Region,
+			ApplicationCredentialSecret: c.ApplicationCredentialSecret,
+			ApplicationCredentialID:     c.ApplicationCredentialID,
 		},
 		LoadBalancer: openstacktypes.LoadBalancerOpts{
 			ManageSecurityGroups: true,
