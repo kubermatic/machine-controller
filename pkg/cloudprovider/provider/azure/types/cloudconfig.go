@@ -37,6 +37,7 @@ type CloudConfig struct {
 	PrimaryAvailabilitySetName string `json:"primaryAvailabilitySetName"`
 	VnetResourceGroup          string `json:"vnetResourceGroup"`
 	UseInstanceMetadata        bool   `json:"useInstanceMetadata"`
+	LoadBalancerSku            string `json:"loadBalancerSku"`
 }
 
 func CloudConfigToString(c *CloudConfig) (string, error) {
