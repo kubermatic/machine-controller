@@ -354,7 +354,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.Tags = rawConfig.Tags
 	c.AssignPublicIP = rawConfig.AssignPublicIP
 	c.IsSpotInstance = rawConfig.IsSpotInstance
-	if c.IsSpotInstance != nil && *c.IsSpotInstance {
+	if rawConfig.SpotInstanceConfig != nil && c.IsSpotInstance != nil && *c.IsSpotInstance {
 		maxPrice, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.SpotInstanceConfig.MaxPrice)
 		if err != nil {
 			return nil, nil, nil, err
