@@ -23,113 +23,35 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-
-	certificatesv1 "k8s.io/api/certificates/v1"
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/discovery"
-	certificatesv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
 	certificatesv1beta1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 )
 
-const (
-	// ControllerName is name of the NodeCSRApprover controller
-	ControllerName = "node_csr_autoapprover"
-
-	nodeUser       = "system:node"
-	nodeUserPrefix = nodeUser + ":"
-
-	nodeGroup          = "system:nodes"
-	authenticatedGroup = "system:authenticated"
+var (
+	allowedUsagesV1beta1 = []certificatesv1beta1.KeyUsage{
+		certificatesv1beta1.UsageDigitalSignature,
+		certificatesv1beta1.UsageKeyEncipherment,
+		certificatesv1beta1.UsageServerAuth,
+	}
 )
 
-type reconciler struct {
+type reconcilerv1beta1 struct {
 	client.Client
 	// Have to use the typed client because csr approval is a subresource
 	// the dynamic client does not approve
-	certClient certificatesv1client.CertificateSigningRequestInterface
+	certClient certificatesv1beta1client.CertificateSigningRequestInterface
 }
 
-func Add(mgr manager.Manager) error {
-	// TODO: delete whole file node_csr_approver_v1beta1.go and dynamic API groups discovery
-	// after we drop kubernetes 1.18 support
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
-	if err != nil {
-		return fmt.Errorf("failed to init discovery client: %w", err)
-	}
-
-	srvGroups, err := discoveryClient.ServerGroups()
-	if err != nil {
-		return fmt.Errorf("failed to get server API groups: %w", err)
-	}
-
-	certificatesVersionFound := ""
-	for _, group := range srvGroups.Groups {
-		if group.Name != "certificates.k8s.io" {
-			continue
-		}
-
-		for _, groupVersion := range group.Versions {
-			if groupVersion.Version == "v1" {
-				certificatesVersionFound = "v1"
-			}
-
-			if certificatesVersionFound == "" {
-				certificatesVersionFound = "v1beta1"
-			}
-		}
-	}
-
-	var (
-		rec       reconcile.Reconciler
-		watchType client.Object
-	)
-
-	switch certificatesVersionFound {
-	case "v1":
-		certClient, err := certificatesv1client.NewForConfig(mgr.GetConfig())
-		if err != nil {
-			return fmt.Errorf("failed to create certificate client: %v", err)
-		}
-		rec = &reconciler{Client: mgr.GetClient(), certClient: certClient.CertificateSigningRequests()}
-		watchType = &certificatesv1.CertificateSigningRequest{}
-	case "v1beta1":
-		certClient, err := certificatesv1beta1client.NewForConfig(mgr.GetConfig())
-		if err != nil {
-			return fmt.Errorf("failed to create certificate client: %v", err)
-		}
-		rec = &reconcilerv1beta1{Client: mgr.GetClient(), certClient: certClient.CertificateSigningRequests()}
-		watchType = &certificatesv1beta1.CertificateSigningRequest{}
-	}
-
-	cntrl, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: rec})
-	if err != nil {
-		return fmt.Errorf("failed to construct controller: %v", err)
-	}
-
-	return cntrl.Watch(&source.Kind{Type: watchType}, &handler.EnqueueRequestForObject{})
-}
-
-var (
-	allowedUsages = []certificatesv1.KeyUsage{
-		certificatesv1.UsageDigitalSignature,
-		certificatesv1.UsageKeyEncipherment,
-		certificatesv1.UsageServerAuth,
-	}
-)
-
-func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *reconcilerv1beta1) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	err := r.reconcile(ctx, request)
 	if err != nil {
 		klog.Errorf("Reconciliation of request %s failed: %v", request.NamespacedName.String(), err)
@@ -137,9 +59,9 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	return reconcile.Result{}, err
 }
 
-func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) error {
+func (r *reconcilerv1beta1) reconcile(ctx context.Context, request reconcile.Request) error {
 	// Get the CSR object
-	csr := &certificatesv1.CertificateSigningRequest{}
+	csr := &certificatesv1beta1.CertificateSigningRequest{}
 	if err := r.Get(ctx, request.NamespacedName, csr); err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil
@@ -150,7 +72,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 
 	// If CSR is approved, skip it
 	for _, condition := range csr.Status.Conditions {
-		if condition.Type == certificatesv1.CertificateApproved {
+		if condition.Type == certificatesv1beta1.CertificateApproved {
 			klog.V(4).Infof("CSR %s already approved, skipping reconciling", csr.ObjectMeta.Name)
 			return nil
 		}
@@ -192,14 +114,14 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 
 	// Approve CSR
 	klog.V(4).Infof("Approving CSR %s", csr.ObjectMeta.Name)
-	approvalCondition := certificatesv1.CertificateSigningRequestCondition{
-		Type:   certificatesv1.CertificateApproved,
+	approvalCondition := certificatesv1beta1.CertificateSigningRequestCondition{
+		Type:   certificatesv1beta1.CertificateApproved,
 		Reason: "machine-controller NodeCSRApprover controller approved node serving cert",
 		Status: corev1.ConditionTrue,
 	}
 	csr.Status.Conditions = append(csr.Status.Conditions, approvalCondition)
 
-	if _, err := r.certClient.UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{}); err != nil {
+	if _, err := r.certClient.UpdateApproval(ctx, csr, metav1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("failed to approve CSR %q: %v", csr.Name, err)
 	}
 
@@ -208,7 +130,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 }
 
 // validateCSRObject valides the CSR object and returns name of the node that requested the certificate
-func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningRequest) (string, error) {
+func (r *reconcilerv1beta1) validateCSRObject(csr *certificatesv1beta1.CertificateSigningRequest) (string, error) {
 	// Get and validate the node name
 	if !strings.HasPrefix(csr.Spec.Username, nodeUserPrefix) {
 		return "", fmt.Errorf("username must have the '%s' prefix", nodeUserPrefix)
@@ -230,8 +152,9 @@ func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningReq
 	if len(csr.Spec.Usages) != 3 {
 		return "", fmt.Errorf("there are no exactly three usages defined")
 	}
-	for _, usage := range csr.Spec.Usages {
-		if !isUsageInUsageList(usage, allowedUsages) {
+	for _, usage := range csr.
+		Spec.Usages {
+		if !isUsageInUsageListV1beta1(usage, allowedUsagesV1beta1) {
 			return "", fmt.Errorf("usage %v is not in the list of allowed usages (%v)", usage, allowedUsages)
 		}
 	}
@@ -241,7 +164,7 @@ func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningReq
 
 // validateX509CSR validates the certificate request by comparing CN with username,
 // and organization with groups.
-func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine v1alpha1.Machine) error {
+func (r *reconcilerv1beta1) validateX509CSR(csr *certificatesv1beta1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine v1alpha1.Machine) error {
 	// Validate Subject CommonName
 	if certReq.Subject.CommonName != csr.Spec.Username {
 		return fmt.Errorf("commonName '%s' is different then CSR username '%s'", certReq.Subject.CommonName, csr.Spec.Username)
@@ -283,7 +206,7 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningReque
 	return nil
 }
 
-func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1alpha1.Machine, bool, error) {
+func (r *reconcilerv1beta1) getMachineForNode(ctx context.Context, nodeName string) (v1alpha1.Machine, bool, error) {
 	// List all Machines in all namespaces
 	machines := &v1alpha1.MachineList{}
 	if err := r.Client.List(ctx, machines); err != nil {
@@ -299,7 +222,7 @@ func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1
 	return v1alpha1.Machine{}, false, fmt.Errorf("failed to get machine for given node name '%s'", nodeName)
 }
 
-func isUsageInUsageList(usage certificatesv1.KeyUsage, usageList []certificatesv1.KeyUsage) bool {
+func isUsageInUsageListV1beta1(usage certificatesv1beta1.KeyUsage, usageList []certificatesv1beta1.KeyUsage) bool {
 	for _, usageListItem := range usageList {
 		if usage == usageListItem {
 			return true

@@ -44,7 +44,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/node"
 	"github.com/kubermatic/machine-controller/pkg/signals"
 
-	certificatesv1 "k8s.io/api/certificates/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -180,9 +179,6 @@ func main() {
 	}
 	if err := apiextensionsv1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add apiextensionsv1 api to scheme: %v", err)
-	}
-	if err := certificatesv1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add certificatesv1 api to scheme: %v", err)
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
