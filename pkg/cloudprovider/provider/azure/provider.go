@@ -72,20 +72,21 @@ type config struct {
 	ClientID       string
 	ClientSecret   string
 
-	Location          string
-	ResourceGroup     string
-	VNetResourceGroup string
-	VMSize            string
-	VNetName          string
-	SubnetName        string
-	LoadBalancerSku   string
-	RouteTableName    string
-	AvailabilitySet   string
-	SecurityGroupName string
-	ImageID           string
-	Zones             []string
-	ImagePlan         *compute.Plan
-	ImageReference    *compute.ImageReference
+	Location              string
+	ResourceGroup         string
+	VNetResourceGroup     string
+	VMSize                string
+	VNetName              string
+	SubnetName            string
+	LoadBalancerSku       string
+	RouteTableName        string
+	AvailabilitySet       string
+	AssignAvailabilitySet *bool
+	SecurityGroupName     string
+	ImageID               string
+	Zones                 []string
+	ImagePlan             *compute.Plan
+	ImageReference        *compute.ImageReference
 
 	OSDiskSize   int32
 	DataDiskSize int32
@@ -277,6 +278,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %v", err)
 	}
+
+	c.AssignAvailabilitySet = rawCfg.AssignAvailabilitySet
 
 	c.AvailabilitySet, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.AvailabilitySet)
 	if err != nil {
@@ -582,7 +585,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		Zones: &config.Zones,
 	}
 
-	if config.AvailabilitySet != "" {
+	if config.AssignAvailabilitySet == nil && config.AvailabilitySet != "" ||
+		config.AssignAvailabilitySet != nil && *config.AssignAvailabilitySet && config.AvailabilitySet != "" {
 		// Azure expects the full path to the resource
 		asURI := fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s", config.SubscriptionID, config.ResourceGroup, config.AvailabilitySet)
 		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
@@ -816,6 +820,12 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
+	var avSet string
+	if c.AssignAvailabilitySet == nil && c.AvailabilitySet != "" ||
+		c.AssignAvailabilitySet != nil && *c.AssignAvailabilitySet && c.AvailabilitySet != "" {
+		avSet = c.AvailabilitySet
+	}
+
 	cc := &azuretypes.CloudConfig{
 		Cloud:                      "AZUREPUBLICCLOUD",
 		TenantID:                   c.TenantID,
@@ -829,7 +839,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		SubnetName:                 c.SubnetName,
 		LoadBalancerSku:            c.LoadBalancerSku,
 		RouteTableName:             c.RouteTableName,
-		PrimaryAvailabilitySetName: c.AvailabilitySet,
+		PrimaryAvailabilitySetName: avSet,
 		SecurityGroupName:          c.SecurityGroupName,
 		UseInstanceMetadata:        true,
 	}
