@@ -54,6 +54,9 @@ lb-provider = {{ .LoadBalancer.LBProvider | iniEscape }}
 {{- if .LoadBalancer.UseOctavia }}
 use-octavia = {{ .LoadBalancer.UseOctavia | boolPtr }}
 {{- end }}
+{{- if .LoadBalancer.EnableIngressHostname }}
+enable-ingress-hostname = {{ .LoadBalancer.EnableIngressHostname }}
+{{- end }}
 
 {{- if .LoadBalancer.CreateMonitor }}
 create-monitor = {{ .LoadBalancer.CreateMonitor }}
@@ -78,17 +81,18 @@ node-volume-attach-limit = {{ .BlockStorage.NodeVolumeAttachLimit }}
 )
 
 type LoadBalancerOpts struct {
-	LBVersion            string       `gcfg:"lb-version"`
-	SubnetID             string       `gcfg:"subnet-id"`
-	FloatingNetworkID    string       `gcfg:"floating-network-id"`
-	LBMethod             string       `gcfg:"lb-method"`
-	LBProvider           string       `gcfg:"lb-provider"`
-	CreateMonitor        bool         `gcfg:"create-monitor"`
-	MonitorDelay         ini.Duration `gcfg:"monitor-delay"`
-	MonitorTimeout       ini.Duration `gcfg:"monitor-timeout"`
-	MonitorMaxRetries    uint         `gcfg:"monitor-max-retries"`
-	ManageSecurityGroups bool         `gcfg:"manage-security-groups"`
-	UseOctavia           *bool        `gcfg:"use-octavia"`
+	LBVersion             string       `gcfg:"lb-version"`
+	SubnetID              string       `gcfg:"subnet-id"`
+	FloatingNetworkID     string       `gcfg:"floating-network-id"`
+	LBMethod              string       `gcfg:"lb-method"`
+	LBProvider            string       `gcfg:"lb-provider"`
+	CreateMonitor         bool         `gcfg:"create-monitor"`
+	MonitorDelay          ini.Duration `gcfg:"monitor-delay"`
+	MonitorTimeout        ini.Duration `gcfg:"monitor-timeout"`
+	MonitorMaxRetries     uint         `gcfg:"monitor-max-retries"`
+	ManageSecurityGroups  bool         `gcfg:"manage-security-groups"`
+	UseOctavia            *bool        `gcfg:"use-octavia"`
+	EnableIngressHostname bool         `gcfg:"enable-ingress-hostname"`
 }
 
 type BlockStorageOpts struct {
