@@ -144,7 +144,6 @@ type Config struct {
 	SubnetID           string
 	SecurityGroupIDs   []string
 	InstanceProfile    string
-	IsSpotInstance     *bool
 	InstanceType       string
 	AMI                string
 	DiskSize           int64
@@ -153,6 +152,11 @@ type Config struct {
 	EBSVolumeEncrypted bool
 	Tags               map[string]string
 	AssignPublicIP     *bool
+
+	IsSpotInstance           *bool
+	SpotMaxPrice             *string
+	SpotPersistentRequest    *bool
+	SpotInterruptionBehavior *string
 }
 
 type amiFilter struct {
@@ -340,8 +344,27 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %v", err)
 	}
 	c.Tags = rawConfig.Tags
-	c.IsSpotInstance = rawConfig.IsSpotInstance
 	c.AssignPublicIP = rawConfig.AssignPublicIP
+	c.IsSpotInstance = rawConfig.IsSpotInstance
+	if rawConfig.SpotInstanceConfig != nil && c.IsSpotInstance != nil && *c.IsSpotInstance {
+		maxPrice, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.SpotInstanceConfig.MaxPrice)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		c.SpotMaxPrice = pointer.StringPtr(maxPrice)
+
+		persistentRequest, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.SpotInstanceConfig.PersistentRequest)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		c.SpotPersistentRequest = pointer.BoolPtr(persistentRequest)
+
+		interruptionBehavior, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.SpotInstanceConfig.InterruptionBehavior)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		c.SpotInterruptionBehavior = pointer.StringPtr(interruptionBehavior)
+	}
 
 	return &c, &pconfig, &rawConfig, err
 }
@@ -536,7 +559,27 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	var instanceMarketOptions *ec2.InstanceMarketOptionsRequest
 	if config.IsSpotInstance != nil && *config.IsSpotInstance {
-		instanceMarketOptions = &ec2.InstanceMarketOptionsRequest{MarketType: aws.String(ec2.MarketTypeSpot)}
+		spotOpts := &ec2.SpotMarketOptions{
+			SpotInstanceType: pointer.StringPtr(ec2.SpotInstanceTypeOneTime),
+		}
+
+		if config.SpotMaxPrice != nil && *config.SpotMaxPrice != "" {
+			spotOpts.MaxPrice = config.SpotMaxPrice
+		}
+
+		if config.SpotPersistentRequest != nil && *config.SpotPersistentRequest {
+			spotOpts.SpotInstanceType = pointer.StringPtr(ec2.SpotInstanceTypePersistent)
+			spotOpts.InstanceInterruptionBehavior = pointer.StringPtr(ec2.InstanceInterruptionBehaviorStop)
+
+			if config.SpotInterruptionBehavior != nil && *config.SpotInterruptionBehavior != "" {
+				spotOpts.InstanceInterruptionBehavior = config.SpotInterruptionBehavior
+			}
+		}
+
+		instanceMarketOptions = &ec2.InstanceMarketOptionsRequest{
+			MarketType:  aws.String(ec2.MarketTypeSpot),
+			SpotOptions: spotOpts,
+		}
 	}
 
 	// By default we assign a public IP - We introduced this field later, so we made it a pointer & default to true.
