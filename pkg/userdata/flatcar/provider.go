@@ -120,7 +120,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletImage:       kubeletImage,
 		KubeletVersion:     kubeletVersion.String(),
 		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
-		ExtraKubeletFlags:  crEngine.KubeletFlags(),
+		ExtraKubeletFlags:  crEngine.KubeletFlags(providerconfigtypes.OperatingSystemFlatcar),
 		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
 	}

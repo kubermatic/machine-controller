@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	DefaultContainerdVersion = "1.4"
+	DefaultContainerdVersion        = "1.4"
+	DefaultContainerdVersionWindows = "1.5.2"
 )
 
 type Containerd struct {
@@ -84,6 +85,11 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 	case types.OperatingSystemSLES:
 		return "", nil
 	case types.OperatingSystemWindows:
+		args = struct {
+			ContainerdVersion string
+		}{
+			ContainerdVersion: DefaultContainerdVersionWindows,
+		}
 		err := containerdWindowsTemplate.Execute(&buf, args)
 		return buf.String(), err
 	}
@@ -167,15 +173,22 @@ systemctl enable --now containerd
 
 	// grpc: address = "\\\\.\\pipe\\containerd-containerd"
 	// bin_dir = "C:\\Program Files\\containerd\\cni\\bin"
-    // conf_dir = "C:\\Program Files\\containerd\\cni\\conf"
+	// conf_dir = "C:\\Program Files\\containerd\\cni\\conf"
 	containerdWindowsTemplate = template.Must(template.New("containerd-windows").Parse(`
 Set-Location -Path "$env:tmp"
 [string]$arch = $env:PROCESSOR_ARCHITECTURE.ToLower()
-Start-Process -FilePath "curl.exe" -ArgumentList @("-OL", "https://github.com/containerd/containerd/releases/download/v{{ .ContainerdVersion }}/containerd-{{ .ContainerdVersion }}-windows-$arch.tar.gz") -Wait
-Start-Process -FilePath "tar.exe" -ArgumentList @("xvf", ".\containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait
+$pscurl = Start-Process -FilePath "curl.exe" -ArgumentList @("-OfL", "https://github.com/containerd/containerd/releases/download/v{{ .ContainerdVersion }}/containerd-{{ .ContainerdVersion }}-windows-$arch.tar.gz") -Wait -PassThru
+if ([bool]$pscurl.ExitCode) {
+	Write-Error 'containerd download failed' -ErrorAction Stop
+}
+$pstar = Start-Process -FilePath "tar.exe" -ArgumentList @("xvf", ".\containerd-{{ .ContainerdVersion }}-windows-amd64.tar.gz") -Wait -PassThru
+if ([bool]$pstar.ExitCode) {
+    Write-Error 'containerd download failed' -ErrorAction Stop
+}
 
 Stop-Service -Name "containerd" -Force -ErrorAction SilentlyContinue
 
+New-Item -ItemType Directory -Path "$env:ProgramFiles\containerd" -Force
 Copy-Item -Path ".\bin\*" -Destination "$env:ProgramFiles\containerd" -Recurse -Force
 Set-Location -Path "$env:ProgramFiles\containerd\"
 .\containerd.exe config default | Out-File -PSPath "config.toml" -Encoding ascii
@@ -183,34 +196,38 @@ Set-Location -Path "$env:ProgramFiles\containerd\"
 # Network cni setup based upon: https://github.com/kubernetes-sigs/sig-windows-tools/releases/download/v0.1.5/Install-Containerd.ps1
 $config = Get-Content "config.toml"
 $config = $config -replace "bin_dir = (.)*$", 'bin_dir = "c:/opt/cni/bin"'
-$config = $config -replace "conf_dir = (.)*$", '"conf_dir = "c:/etc/cni/net.d"'
+$config = $config -replace "conf_dir = (.)*$", 'conf_dir = "c:/etc/cni/net.d"'
 $config | Out-File -PSPath "config.toml" -Encoding ascii -Force
 New-Item -ItemType Directory -Path "C:\opt\cni\bin" -Force
 New-Item -ItemType Directory -Path "C:\opt\cni\net.d" -Force
+New-Item -ItemType Directory -Path "C:\etc\cni\net.d" -Force
 $IPv4DefaultRoute = Get-NetRoute "0.0.0.0/0"
 $IPv4Address = Get-NetIPAddress -ifIndex $IPv4DefaultRoute.ifIndex -AddressFamily IPv4
 @"
-{{
+{{ "{{" }}
     "cniVersion": "0.2.0",
     "name": "nat",
     "type": "nat",
     "master": "Ethernet",
-    "ipam": {{
+    "ipam": {{ "{{" }}
         "subnet": "{0}/{1}",
         "routes": [
-            {{
+            {{ "{{" }}
                 "GW": "{2}"
-            }}
+            {{ "}}" }}
         ]
-    }},
-    "capabilities": {{
+    {{ "}}" }},
+    "capabilities": {{ "{{" }}
         "portMappings": true,
         "dns": true
-    }}
-}}
+    {{ "}}" }}
+{{ "}}" }}
 "@ -f $IPv4Address.IPAddress, $IPv4Address.PrefixLength, $IPv4DefaultRoute.NextHop | Set-Content "c:\etc\cni\net.d\0-containerd-nat.json" -Force
 
-Start-Process -FilePath "$env:ProgramFiles\containerd\containerd.exe" -ArgumentList @("--register-service") -Wait
+$psContainerd = Start-Process -FilePath "$env:ProgramFiles\containerd\containerd.exe" -ArgumentList @("--register-service") -Wait -PassThru
+if ([bool]$psContainerd.ExitCode) {
+    Write-Error 'containerd download failed' -ErrorAction Stop
+}
 Start-Service -Name "containerd"
 `))
 )
