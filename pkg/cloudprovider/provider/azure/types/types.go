@@ -33,6 +33,7 @@ type RawConfig struct {
 	VMSize            providerconfigtypes.ConfigVarString `json:"vmSize"`
 	VNetName          providerconfigtypes.ConfigVarString `json:"vnetName"`
 	SubnetName        providerconfigtypes.ConfigVarString `json:"subnetName"`
+	LoadBalancerSku   providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
 	RouteTableName    providerconfigtypes.ConfigVarString `json:"routeTableName"`
 	AvailabilitySet   providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	SecurityGroupName providerconfigtypes.ConfigVarString `json:"securityGroupName"`
