@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -32,6 +33,37 @@ import (
 type ConfigVarResolver struct {
 	ctx    context.Context
 	client ctrlruntimeclient.Client
+}
+
+func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar providerconfigtypes.ConfigVarString) (time.Duration, error) {
+	durStr, err := cvr.GetConfigVarStringValue(configVar)
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durStr)
+}
+
+func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar providerconfigtypes.ConfigVarString, defaultDuration time.Duration) (time.Duration, error) {
+	durStr, err := cvr.GetConfigVarStringValue(configVar)
+	if err != nil {
+		return 0, err
+	}
+
+	if durStr == "" {
+		return defaultDuration, nil
+	}
+
+	duration, err := time.ParseDuration(durStr)
+	if err != nil {
+		return 0, err
+	}
+
+	if duration <= 0 {
+		return defaultDuration, nil
+	}
+
+	return duration, nil
 }
 
 func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigtypes.ConfigVarString) (string, error) {
