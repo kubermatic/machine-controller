@@ -180,6 +180,7 @@ write_files:
   content: |
     # Updated by kubermatic machine-controller
     # Disables systemd-resolved listener.
+    [Resolve]
     DNSStubListener=no
 
 - path: "/opt/bin/setup"
