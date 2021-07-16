@@ -176,6 +176,12 @@ write_files:
     # Enable cgroups memory and swap accounting
     GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
 
+- path: "/etc/systemd/resolved.conf"
+  content: |
+    # Updated by kubermatic machine-controller
+    # Disables systemd-resolved listener.
+    DNSStubListener=no
+
 - path: "/opt/bin/setup"
   permissions: "0755"
   content: |
