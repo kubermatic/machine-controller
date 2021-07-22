@@ -186,41 +186,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		klog.V(6).Infof("Region from configuration or environment variable not found")
 	}
 
-	// Load timeout
-	instanceReadyCheckPeriodStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceReadyCheckPeriod)
+	c.InstanceReadyCheckPeriod, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckPeriod, 5*time.Second)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"InstanceReadyCheckPeriod\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckPeriod" field, error = %v`, err)
 	}
 
-	if instanceReadyCheckPeriodStr != "" {
-		c.InstanceReadyCheckPeriod, err = time.ParseDuration(instanceReadyCheckPeriodStr)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckPeriod\" field (%s), error = %v", instanceReadyCheckPeriodStr, err)
-		}
-
-		if c.InstanceReadyCheckPeriod < 0 {
-			c.InstanceReadyCheckPeriod = 5 * time.Second
-		}
-	} else {
-		c.InstanceReadyCheckPeriod = 5 * time.Second
-	}
-
-	instanceReadyCheckTimeoutStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceReadyCheckTimeout)
+	c.InstanceReadyCheckTimeout, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckTimeout, 10*time.Second)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"InstanceReadyCheckTimeout\" field, error = %v", err)
-	}
-
-	if instanceReadyCheckTimeoutStr != "" {
-		c.InstanceReadyCheckTimeout, err = time.ParseDuration(instanceReadyCheckTimeoutStr)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to parse the value of \"InstanceReadyCheckTimeout\" field (%s), error = %v", instanceReadyCheckTimeoutStr, err)
-		}
-
-		if c.InstanceReadyCheckTimeout < 0 {
-			c.InstanceReadyCheckTimeout = 10 * time.Second
-		}
-	} else {
-		c.InstanceReadyCheckTimeout = 10 * time.Second
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckTimeout" field, error = %v`, err)
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
