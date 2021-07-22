@@ -259,7 +259,7 @@ func TestCreateServer(t *testing.T) {
 					return pc.ProviderClient, nil
 				},
 				// mock server readiness checker
-				serverReadinessWaiter: func(computeClient *gophercloud.ServiceClient, serverID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error {
+				portReadinessWaiter: func(*gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
 					return nil
 				},
 			}

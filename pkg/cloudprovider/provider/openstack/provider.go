@@ -60,22 +60,21 @@ const (
 // clientGetterFunc returns an OpenStack client.
 type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 
-// serverReadinessWaiterFunc waits for the server with the given ID to be
-// ACTIVE.
-type serverReadinessWaiterFunc func(computeClient *gophercloud.ServiceClient, serverID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
+// portReadinessWaiterFunc waits for the port with the given ID to be available.
+type portReadinessWaiterFunc func(netClient *gophercloud.ServiceClient, serverID string, networkID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
 
 type provider struct {
-	configVarResolver     *providerconfig.ConfigVarResolver
-	clientGetter          clientGetterFunc
-	serverReadinessWaiter serverReadinessWaiterFunc
+	configVarResolver   *providerconfig.ConfigVarResolver
+	clientGetter        clientGetterFunc
+	portReadinessWaiter portReadinessWaiterFunc
 }
 
 // New returns a openstack provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{
-		configVarResolver:     configVarResolver,
-		clientGetter:          getClient,
-		serverReadinessWaiter: waitUntilInstanceIsActive,
+		configVarResolver:   configVarResolver,
+		clientGetter:        getClient,
+		portReadinessWaiter: waitForPort,
 	}
 }
 
@@ -339,9 +338,14 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	if err != nil {
+		return spec, err
+	}
+
 	if c.Network == "" {
 		klog.V(3).Infof("Trying to default network for machine '%s'...", spec.Name)
-		net, err := getDefaultNetwork(client, c.Region)
+		net, err := getDefaultNetwork(netClient, c.Region)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to default network")
 		}
@@ -358,11 +362,11 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 			networkID = rawConfig.Network.Value
 		}
 
-		net, err := getNetwork(client, c.Region, networkID)
+		net, err := getNetwork(netClient, networkID)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, fmt.Sprintf("failed to get network for subnet defaulting '%s", networkID))
 		}
-		subnet, err := getDefaultSubnet(client, net, c.Region)
+		subnet, err := getDefaultSubnet(netClient, net, c.Region)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "error defaulting subnet")
 		}
@@ -440,16 +444,21 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get flavor %q: %v", c.Flavor, err)
 	}
 
-	if _, err := getNetwork(client, c.Region, c.Network); err != nil {
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	if err != nil {
+		return err
+	}
+
+	if _, err := getNetwork(netClient, c.Network); err != nil {
 		return fmt.Errorf("failed to get network %q: %v", c.Network, err)
 	}
 
-	if _, err := getSubnet(client, c.Region, c.Subnet); err != nil {
+	if _, err := getSubnet(netClient, c.Subnet); err != nil {
 		return fmt.Errorf("failed to get subnet %q: %v", c.Subnet, err)
 	}
 
 	if c.FloatingIPPool != "" {
-		if _, err := getNetwork(client, c.Region, c.FloatingIPPool); err != nil {
+		if _, err := getNetwork(netClient, c.FloatingIPPool); err != nil {
 			return fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
 		}
 	}
@@ -501,7 +510,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get image %s", c.Image))
 	}
 
-	network, err := getNetwork(client, c.Region, c.Network)
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	if err != nil {
+		return nil, err
+	}
+
+	network, err := getNetwork(netClient, c.Network)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get network %s", c.Network))
 	}
@@ -565,53 +579,50 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if err := p.serverReadinessWaiter(computeClient, server.ID, c.InstanceReadyCheckPeriod, c.InstanceReadyCheckTimeout); err != nil {
-		defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
-		return nil, fmt.Errorf("instance %s became not active: %v", server.ID, err)
-	}
-
-	// Find a free FloatingIP or allocate a new one
 	if c.FloatingIPPool != "" {
-		if err := assignFloatingIPToInstance(data.Update, machine, client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
+		if err := p.portReadinessWaiter(netClient, server.ID, network.ID, c.InstanceReadyCheckPeriod, c.InstanceReadyCheckTimeout); err != nil {
+			klog.V(2).Infof("port for instance %q did not became active due to: %v", server.ID, err)
+		}
+
+		// Find a free FloatingIP or allocate a new one
+		if err := assignFloatingIPToInstance(data.Update, machine, netClient, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
 			defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
-			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %v", server.ID, err)
+			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %w", server.ID, err)
 		}
 	}
 
 	return &osInstance{server: &server}, nil
 }
 
-func waitUntilInstanceIsActive(computeClient *gophercloud.ServiceClient, serverID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error {
+func waitForPort(netClient *gophercloud.ServiceClient, serverID string, networkID string, checkPeriod time.Duration, checkTimeout time.Duration) error {
 	started := time.Now()
-	klog.V(2).Infof("Waiting for the instance %s to become active...", serverID)
+	klog.V(2).Infof("Waiting for the port of instance %s to become active...", serverID)
 
-	instanceIsReady := func() (bool, error) {
-		currentServer, err := osservers.Get(computeClient, serverID).Extract()
+	portIsReady := func() (bool, error) {
+		port, err := getInstancePort(netClient, serverID, networkID)
 		if err != nil {
-			tErr := osErrorToTerminalError(err, fmt.Sprintf("failed to get current instance %s", serverID))
+			tErr := osErrorToTerminalError(err, fmt.Sprintf("failed to get current instance port %s", serverID))
 			if isTerminalErr, _, _ := cloudprovidererrors.IsTerminalError(tErr); isTerminalErr {
 				return true, tErr
 			}
 			// Only log the error but don't exit. in case of a network failure we want to retry
-			klog.V(2).Infof("failed to get current instance %s: %v", serverID, err)
+			klog.V(2).Infof("failed to get current instance port %s: %v", serverID, err)
 			return false, nil
 		}
-		if currentServer.Status == "ACTIVE" {
-			return true, nil
-		}
-		return false, nil
+
+		return port.Status == "ACTIVE", nil
 	}
 
-	if err := wait.Poll(instanceReadyCheckPeriod, instanceReadyCheckTimeout, instanceIsReady); err != nil {
+	if err := wait.Poll(checkPeriod, checkTimeout, portIsReady); err != nil {
 		if err == wait.ErrWaitTimeout {
 			// In case we have a timeout, include the timeout details
-			return fmt.Errorf("instance became not active after %f seconds", instanceReadyCheckTimeout.Seconds())
+			return fmt.Errorf("instance port became not active after %f seconds", checkTimeout.Seconds())
 		}
 		// Some terminal error happened
-		return fmt.Errorf("failed to wait for instance to become active: %v", err)
+		return fmt.Errorf("failed to wait for instance port to become active: %v", err)
 	}
 
-	klog.V(2).Infof("Instance %s became active after %f seconds", serverID, time.Since(started).Seconds())
+	klog.V(2).Infof("Instance %q port became active after %f seconds", serverID, time.Since(started).Seconds())
 	return nil
 }
 
@@ -940,18 +951,13 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 	return nil
 }
 
-func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater, machine *v1alpha1.Machine, client *gophercloud.ProviderClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
-	port, err := getInstancePort(client, region, instanceID, network.ID)
+func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater, machine *v1alpha1.Machine, netClient *gophercloud.ServiceClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
+	port, err := getInstancePort(netClient, instanceID, network.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get instance port for network %s in region %s: %v", network.ID, region, err)
 	}
 
-	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: region})
-	if err != nil {
-		return fmt.Errorf("failed to create the networkv2 client for region %s: %v", region, err)
-	}
-
-	floatingIPPool, err := getNetwork(client, region, floatingIPPoolName)
+	floatingIPPool, err := getNetwork(netClient, floatingIPPoolName)
 	if err != nil {
 		return osErrorToTerminalError(err, fmt.Sprintf("failed to get floating ip pool %q", floatingIPPoolName))
 	}
@@ -963,14 +969,14 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 	floatingIPAssignLock.Lock()
 	defer floatingIPAssignLock.Unlock()
 
-	freeFloatingIps, err := getFreeFloatingIPs(client, region, floatingIPPool)
+	freeFloatingIps, err := getFreeFloatingIPs(netClient, region, floatingIPPool)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get free floating ips")
 	}
 
 	var ip *osfloatingips.FloatingIP
 	if len(freeFloatingIps) < 1 {
-		if ip, err = createFloatingIP(client, region, port.ID, floatingIPPool); err != nil {
+		if ip, err = createFloatingIP(netClient, region, port.ID, floatingIPPool); err != nil {
 			return osErrorToTerminalError(err, "failed to allocate a floating ip")
 		}
 		if err := machineUpdater(machine, func(m *v1alpha1.Machine) {
