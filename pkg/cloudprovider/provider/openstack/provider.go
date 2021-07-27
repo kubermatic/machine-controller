@@ -345,7 +345,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 	if c.Network == "" {
 		klog.V(3).Infof("Trying to default network for machine '%s'...", spec.Name)
-		net, err := getDefaultNetwork(netClient, c.Region)
+		net, err := getDefaultNetwork(netClient)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to default network")
 		}
@@ -366,7 +366,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		if err != nil {
 			return spec, osErrorToTerminalError(err, fmt.Sprintf("failed to get network for subnet defaulting '%s", networkID))
 		}
-		subnet, err := getDefaultSubnet(netClient, net, c.Region)
+		subnet, err := getDefaultSubnet(netClient, net)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "error defaulting subnet")
 		}
@@ -969,14 +969,14 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 	floatingIPAssignLock.Lock()
 	defer floatingIPAssignLock.Unlock()
 
-	freeFloatingIps, err := getFreeFloatingIPs(netClient, region, floatingIPPool)
+	freeFloatingIps, err := getFreeFloatingIPs(netClient, floatingIPPool)
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get free floating ips")
 	}
 
 	var ip *osfloatingips.FloatingIP
 	if len(freeFloatingIps) < 1 {
-		if ip, err = createFloatingIP(netClient, region, port.ID, floatingIPPool); err != nil {
+		if ip, err = createFloatingIP(netClient, port.ID, floatingIPPool); err != nil {
 			return osErrorToTerminalError(err, "failed to allocate a floating ip")
 		}
 		if err := machineUpdater(machine, func(m *v1alpha1.Machine) {
