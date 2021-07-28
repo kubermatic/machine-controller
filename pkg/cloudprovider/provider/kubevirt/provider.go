@@ -55,9 +55,10 @@ func init() {
 }
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
-	providerconfigtypes.OperatingSystemCentOS: nil,
-	providerconfigtypes.OperatingSystemUbuntu: nil,
-	providerconfigtypes.OperatingSystemRHEL:   nil,
+	providerconfigtypes.OperatingSystemCentOS:  nil,
+	providerconfigtypes.OperatingSystemUbuntu:  nil,
+	providerconfigtypes.OperatingSystemRHEL:    nil,
+	providerconfigtypes.OperatingSystemFlatcar: nil,
 }
 
 type provider struct {
