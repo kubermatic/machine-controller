@@ -923,6 +923,8 @@ func setProviderSpec(rawConfig awstypes.RawConfig, s v1alpha1.ProviderSpec) (*ru
 }
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+	metricInstancesForMachines.Reset()
+
 	if len(machines.Items) < 1 {
 		return nil
 	}
@@ -948,7 +950,6 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 			secretAccessKey: config.SecretAccessKey,
 			region:          config.Region,
 		}
-
 	}
 
 	allReservations := []*ec2.Reservation{}
