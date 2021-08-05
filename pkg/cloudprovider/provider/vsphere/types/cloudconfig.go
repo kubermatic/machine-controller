@@ -36,7 +36,6 @@ working-dir       = {{ .Global.WorkingDir | iniEscape }}
 datacenter        = {{ .Global.Datacenter | iniEscape }}
 datastore         = {{ .Global.DefaultDatastore | iniEscape }}
 server            = {{ .Global.VCenterIP | iniEscape }}
-cluster-id        = {{ .Global.ClusterID | iniEscape }}
 
 [Disk]
 scsicontrollertype = {{ .Disk.SCSIControllerType | iniEscape }}

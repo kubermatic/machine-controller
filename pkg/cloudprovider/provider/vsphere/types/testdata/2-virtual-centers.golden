@@ -7,6 +7,7 @@ working-dir       = ""
 datacenter        = ""
 datastore         = ""
 server            = ""
+cluster-id        = ""
 
 [Disk]
 scsicontrollertype = "pvscsi"
