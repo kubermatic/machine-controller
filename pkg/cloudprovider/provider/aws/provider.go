@@ -655,7 +655,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.get(machine)
+	ec2instance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
@@ -663,7 +663,9 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return false, err
 	}
 
+	//(*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error)
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -676,15 +678,31 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return false, err
 	}
 
+	if config.IsSpotInstance != nil && *config.IsSpotInstance &&
+		config.SpotPersistentRequest != nil && *config.SpotPersistentRequest {
+
+		cOut, err := ec2Client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: aws.StringSlice([]string{*ec2instance.instance.SpotInstanceRequestId}),
+		})
+
+		if err != nil {
+			return false, awsErrorToTerminalError(err, "failed to cancel spot instance request")
+		}
+
+		if *cOut.CancelledSpotInstanceRequests[0].State == ec2.CancelSpotInstanceRequestStateCancelled {
+			klog.V(3).Infof("successfully canceled spot instance request %s at aws", *ec2instance.instance.SpotInstanceRequestId)
+		}
+	}
+
 	tOut, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
-		InstanceIds: aws.StringSlice([]string{instance.ID()}),
+		InstanceIds: aws.StringSlice([]string{ec2instance.ID()}),
 	})
 	if err != nil {
 		return false, awsErrorToTerminalError(err, "failed to terminate instance")
 	}
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
-		klog.V(3).Infof("successfully triggered termination of instance %s at aws", instance.ID())
+		klog.V(3).Infof("successfully triggered termination of instance %s at aws", ec2instance.ID())
 	}
 
 	return false, nil
