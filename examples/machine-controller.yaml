@@ -23,6 +23,9 @@ spec:
             spec:
               type: object
               x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
       subresources:
         # status enables the status subresource.
         status: {}
@@ -63,6 +66,9 @@ spec:
           type: object
           properties:
             spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            status:
               type: object
               x-kubernetes-preserve-unknown-fields: true
       subresources:
@@ -107,6 +113,9 @@ spec:
             spec:
               type: object
               x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
       subresources:
         # status enables the status subresource.
         status: {}
@@ -147,6 +156,9 @@ spec:
           type: object
           properties:
             spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            status:
               type: object
               x-kubernetes-preserve-unknown-fields: true
       subresources:
