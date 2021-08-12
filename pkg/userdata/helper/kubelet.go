@@ -22,6 +22,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Masterminds/semver/v3"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeletv1b1 "k8s.io/kubelet/config/v1beta1"
@@ -41,7 +43,6 @@ const (
 {{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
 {{- end }}
---dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
 --exit-on-lock-contention \
 --lock-file=/tmp/kubelet.lock \
 {{- if .PauseImage }}
@@ -189,6 +190,25 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		initialTaintsArgs = append(initialTaintsArgs, fmt.Sprintf("%s=%s:%s", taint.Key, taint.Value, taint.Effect))
 	}
 
+	kubeletFlags := make([]string, len(extraKubeletFlags))
+	copy(kubeletFlags, extraKubeletFlags)
+
+	ver, err := semver.NewVersion(version)
+	if err != nil {
+		return "", err
+	}
+	con, err := semver.NewConstraint("< 1.23")
+	if err != nil {
+		return "", err
+	}
+
+	if con.Check(ver) {
+		kubeletFlags = append(kubeletFlags,
+			"--dynamic-config-dir=/etc/kubernetes/dynamic-config-dir",
+			"--feature-gates=DynamicKubeletConfig=true",
+		)
+	}
+
 	data := struct {
 		CloudProvider     string
 		Hostname          string
@@ -206,7 +226,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		IsExternal:        external,
 		PauseImage:        pauseImage,
 		InitialTaints:     strings.Join(initialTaintsArgs, ","),
-		ExtraKubeletFlags: extraKubeletFlags,
+		ExtraKubeletFlags: kubeletFlags,
 	}
 
 	var buf strings.Builder

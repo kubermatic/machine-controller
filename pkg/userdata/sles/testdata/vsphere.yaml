@@ -165,9 +165,10 @@ write_files:
       --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
-      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
+      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
+      --feature-gates=DynamicKubeletConfig=true \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]

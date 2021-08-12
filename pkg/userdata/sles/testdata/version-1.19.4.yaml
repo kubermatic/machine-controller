@@ -162,9 +162,10 @@ write_files:
       --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
       --hostname-override=node1 \
-      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
+      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
+      --feature-gates=DynamicKubeletConfig=true \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]
