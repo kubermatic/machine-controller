@@ -113,6 +113,7 @@ write_files:
 
 
     opt_bin=/opt/bin
+    usr_local_bin=/usr/local/bin
     cni_bin_dir=/opt/cni/bin
     mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
     arch=${HOST_ARCH-}
@@ -140,6 +141,17 @@ write_files:
     sha256sum -c <<<"$cni_sum"
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
+    cd -
+    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.22.0}"
+    cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
+    cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
+    curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
+    cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+    cd "$opt_bin"
+    sha256sum -c <<<"$cri_tools_sum"
+    tar xvf "$cri_tools_filename"
+    rm -f "$cri_tools_filename"
+    ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl
     cd -
     KUBE_VERSION="${KUBE_VERSION:-v1.20.1}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
