@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright YEAR The Machine Controller Authors.
+# Copyright 2021 The Machine Controller Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,22 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit
-set -o nounset
-set -o pipefail
+set -euo pipefail
 
-REPO_ROOT=$(dirname "${BASH_SOURCE}")/..
+cd $(dirname $0)/..
 
-boilerDir="${REPO_ROOT}/hack/boilerplate"
-boiler="${boilerDir}/boilerplate.py"
-
-files_need_boilerplate=($(${boiler} "$@"))
-
-# Run boilerplate check
-if [[ ${#files_need_boilerplate[@]} -gt 0 ]]; then
-  for file in "${files_need_boilerplate[@]}"; do
-    echo "Boilerplate header is wrong for: ${file}" >&2
-  done
-
-  exit 1
-fi
+boilerplate \
+  -boilerplates hack/boilerplate \
+  -exclude pkg/machines/v1alpha1 \
+  -exclude pkg/signals \
+  -exclude pkg/userdata/scripts

@@ -327,7 +327,7 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	if err != nil {
 		return "", err
 	}
-	content := fmt.Sprintf("%s", contentRaw)
+	content := string(contentRaw)
 
 	for _, keyValuePair := range keyValuePairs {
 		// stopping on the first encountered match allows to read base64 encoded values
