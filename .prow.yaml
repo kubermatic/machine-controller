@@ -104,9 +104,13 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: python:2.7
+        - image: quay.io/kubermatic-labs/boilerplate:v0.2.0
           command:
             - "./hack/verify-boilerplate.sh"
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 100m
 
   - name: pull-machine-controller-license-validation
     run_if_changed: "^go.(mod|sum)$"
