@@ -8,12 +8,11 @@ run:
 
 linters:
   enable:
-    - golint
+    - revive
     - govet
     - gofmt
     - structcheck
     - varcheck
-    - interfacer
     - unconvert
     - ineffassign
     - goconst
