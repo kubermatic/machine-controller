@@ -35,6 +35,13 @@ GOCACHE_DIR="$(mktemp -d)"
 export GOCACHE="${GOCACHE_DIR}"
 export GIT_HEAD_HASH="$(git rev-parse HEAD | tr -d '\n')"
 
+# PULL_BASE_REF is the name of the current branch in case of a post-submit
+# or the name of the base branch in case of a PR.
+GIT_BRANCH="${PULL_BASE_REF:-master}"
+
+# normalize branch name to prevent accidental directories being created
+GIT_BRANCH="$(echo "$GIT_BRANCH" | sed 's#/#-#g')"
+
 echo "Creating cache for revision ${GIT_HEAD_HASH} / Go ${GO_VERSION} ..."
 
 echo "Building binaries"
@@ -53,6 +60,6 @@ curl \
   --fail \
   --upload-file "${ARCHIVE_FILE}" \
   --header "Content-Type: application/octet-stream" \
-  "${GOCACHE_MINIO_ADDRESS}/machine-controller/${GIT_HEAD_HASH}-${GO_VERSION}.tar"
+  "${GOCACHE_MINIO_ADDRESS}/machine-controller/${GIT_BRANCH}/${GIT_HEAD_HASH}-${GO_VERSION}.tar"
 
 echo "Upload complete."

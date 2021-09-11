@@ -42,11 +42,15 @@ GOCACHE="$(go env GOCACHE)"
 # Make sure it actually exists
 mkdir -p "${GOCACHE}"
 
-export CACHE_VERSION="${PULL_BASE_SHA:-}"
+# PULL_BASE_REF is the name of the current branch in case of a post-submit
+# or the name of the base branch in case of a PR.
+GIT_BRANCH="${PULL_BASE_REF:-}"
+CACHE_VERSION="${PULL_BASE_SHA:-}"
 
 # Periodics just use their head ref
 if [[ -z "${CACHE_VERSION}" ]]; then
   CACHE_VERSION="$(git rev-parse HEAD)"
+  GIT_BRANCH="master"
 fi
 
 if [ -z "${PULL_NUMBER:-}" ]; then
@@ -55,8 +59,11 @@ if [ -z "${PULL_NUMBER:-}" ]; then
   CACHE_VERSION="$(git rev-parse ${CACHE_VERSION}~1)"
 fi
 
+# normalize branch name to prevent accidental directories being created
+GIT_BRANCH="$(echo "$GIT_BRANCH" | sed 's#/#-#g')"
+
 ARCHIVE_NAME="${CACHE_VERSION}-${GO_VERSION}.tar"
-URL="${GOCACHE_MINIO_ADDRESS}/machine-controller/${ARCHIVE_NAME}"
+URL="${GOCACHE_MINIO_ADDRESS}/machine-controller/${GIT_BRANCH}/${ARCHIVE_NAME}"
 
 # Do not go through the retry loop when there is nothing
 if ! curl --head --silent --fail "${URL}" > /dev/null; then
