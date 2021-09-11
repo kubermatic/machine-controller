@@ -53,6 +53,6 @@ curl \
   --fail \
   --upload-file "${ARCHIVE_FILE}" \
   --header "Content-Type: application/octet-stream" \
-  "${GOCACHE_MINIO_ADDRESS}/machine-controller-${GIT_HEAD_HASH}-${GO_VERSION}.tar"
+  "${GOCACHE_MINIO_ADDRESS}/machine-controller/${GIT_HEAD_HASH}-${GO_VERSION}.tar"
 
 echo "Upload complete."

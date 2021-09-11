@@ -55,8 +55,8 @@ if [ -z "${PULL_NUMBER:-}" ]; then
   CACHE_VERSION="$(git rev-parse ${CACHE_VERSION}~1)"
 fi
 
-ARCHIVE_NAME="machine-controller-${CACHE_VERSION}-${GO_VERSION}.tar"
-URL="${GOCACHE_MINIO_ADDRESS}/${ARCHIVE_NAME}"
+ARCHIVE_NAME="${CACHE_VERSION}-${GO_VERSION}.tar"
+URL="${GOCACHE_MINIO_ADDRESS}/machine-controller/${ARCHIVE_NAME}"
 
 # Do not go through the retry loop when there is nothing
 if ! curl --head --silent --fail "${URL}" > /dev/null; then
