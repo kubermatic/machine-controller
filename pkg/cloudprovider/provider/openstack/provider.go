@@ -620,6 +620,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	// Find a free FloatingIP or allocate a new one
 	if c.FloatingIPPool != "" {
 		if err := assignFloatingIPToInstance(data.Update, machine, client, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
+			klog.V(2).Infof("failed assigning floating ip for %s(%s): %v", server.ID, machine.Name, err)
 			defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %v", server.ID, err)
 		}
@@ -665,6 +666,7 @@ func waitUntilInstanceIsActive(computeClient *gophercloud.ServiceClient, serverI
 func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, serverID string) {
 	klog.V(0).Infof("Deleting instance %s due to fatal error during machine creation...", serverID)
 	if err := osservers.Delete(computeClient, serverID).ExtractErr(); err != nil {
+		klog.V(2).Infof("failed to delete the instance %s. Please take care of manually deleting the instance: %v", serverID, err)
 		utilruntime.HandleError(fmt.Errorf("failed to delete the instance %s. Please take care of manually deleting the instance: %v", serverID, err))
 		return
 	}
