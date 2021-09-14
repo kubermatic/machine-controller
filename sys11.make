@@ -1,5 +1,5 @@
 REGISTRY_NAMESPACE=syseleven
-TAG=$(if $(TRAVIS_TAG),$(TRAVIS_TAG),latest)
+TAG=$(if $(GITHUB_REF),$(GITHUB_REF),latest)
 
 .PHONY: test
 test:
