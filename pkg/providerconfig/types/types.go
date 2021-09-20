@@ -69,6 +69,7 @@ var (
 	AllOperatingSystems = []OperatingSystem{
 		OperatingSystemUbuntu,
 		OperatingSystemCentOS,
+		OperatingSystemAmazonLinux2,
 		OperatingSystemSLES,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
