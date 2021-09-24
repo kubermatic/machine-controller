@@ -44,7 +44,8 @@ type RawConfig struct {
 }
 
 type ProviderStatus struct {
-	InstanceID     string `json:"instanceID"`
-	ProvisioningID string `json:"provisioningID"`
+	InstanceID       string `json:"instanceID"`
+	ProvisioningID   string `json:"provisioningID"`
+	DeprovisioningID string `json:"deprovisioningID"`
 	// TODO: add conditions to track progress on the provider side
 }

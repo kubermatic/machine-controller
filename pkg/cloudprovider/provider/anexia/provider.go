@@ -22,12 +22,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-
 	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
 	anxaddr "github.com/anexia-it/go-anxcloud/pkg/ipam/address"
 	anxvsphere "github.com/anexia-it/go-anxcloud/pkg/vsphere"
+	"github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/progress"
 	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
+	"net/http"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -249,7 +249,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 		}
 		vm.SSH = sshKey.PublicKey
 
-		provisionResponse, err := vsphere.Provisioning().VM().Provision(ctx, vm)
+		provisionResponse, err := vsphere.Provisioning().VM().Provision(ctx, vm, true)
 		if err != nil {
 			return nil, newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 		}
@@ -273,7 +273,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 	return p.Get(machine, providerData)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -293,16 +293,25 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.DeleteRequestTimeout)
 	defer cancel()
 
-	err = vsphere.Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
-	if err != nil {
-		var respErr *anxclient.ResponseError
-		// Only error if the error was not "not found"
-		if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
-			return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
+	// first check whether there is an provisioning ongoing
+	if status.DeprovisioningID == "" {
+		response, err := vsphere.Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
+		if err != nil {
+			var respErr *anxclient.ResponseError
+			// Only error if the error was not "not found"
+			if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
+				return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
+			}
+		}
+		status.DeprovisioningID = response.Identifier
+
+		err = updateStatus(machine, status, data.Update)
+		if err != nil {
+			return false, err
 		}
 	}
 
-	return true, nil
+	return isTaskDone(ctx, cli, status.DeprovisioningID)
 }
 
 func (p *provider) MigrateUID(_ *v1alpha1.Machine, _ k8stypes.UID) error {
@@ -355,4 +364,22 @@ func updateStatus(machine *v1alpha1.Machine, status *anxtypes.ProviderStatus, up
 	}
 
 	return nil
+}
+
+func isTaskDone(ctx context.Context, cli anxclient.Client, identifier string) (bool, error) {
+	response, err := progress.NewAPI(cli).Get(ctx, identifier)
+	if err != nil {
+		return false, err
+	}
+
+	if len(response.Errors) != 0 {
+		taskErrors, _ := json.Marshal(response.Errors)
+		return true, fmt.Errorf("task failed with: %s", taskErrors)
+	}
+
+	if response.Progress == 100 {
+		return true, nil
+	}
+
+	return false, nil
 }
