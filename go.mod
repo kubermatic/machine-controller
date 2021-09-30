@@ -66,15 +66,8 @@ replace (
 	github.com/openshift/library-go => github.com/mhenriks/library-go v0.0.0-20210511195009-51ba86622560
 	github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a
 
-	k8s.io/api => k8s.io/api v0.22.2
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.22.2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.22.2
 	k8s.io/client-go => k8s.io/client-go v0.22.2
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.2
 	k8s.io/code-generator => k8s.io/code-generator v0.22.2
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.22.2
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
-	k8s.io/kubectl => k8s.io/kubectl v0.22.2
-	k8s.io/kubelet => k8s.io/kubelet v0.22.2
-	k8s.io/metrics => k8s.io/metrics v0.22.2
 )
