@@ -60,6 +60,7 @@ require (
 )
 
 replace (
+	// the following replacements are only here to make kubevirt.io/containerized-data-importer work
 	github.com/packethost/packngo => github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20210428205234-a8389931bee7
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20210112165513-ebc401615f47
@@ -68,6 +69,5 @@ replace (
 
 	k8s.io/client-go => k8s.io/client-go v0.22.2
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.2
-	k8s.io/code-generator => k8s.io/code-generator v0.22.2
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 )
