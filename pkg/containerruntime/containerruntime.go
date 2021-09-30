@@ -17,7 +17,7 @@ limitations under the License.
 package containerruntime
 
 import (
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )

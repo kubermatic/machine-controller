@@ -19,7 +19,7 @@ package helper
 import (
 	"flag"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 )
 
 var update = flag.Bool("update", false, "update testdata files")
