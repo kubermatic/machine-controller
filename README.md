@@ -23,14 +23,15 @@
 - Using Ubuntu, Flatcar or CentOS 7 distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
 ## Supported Kubernetes versions
-machine-controller tries to follow as close as possible the Kubernetes version
-[support policy](https://kubernetes.io/docs/setup/release/version-skew-policy/).
+machine-controller tries to follow the Kubernetes version
+[support policy](https://kubernetes.io/docs/setup/release/version-skew-policy/) as close as possible.
 
 Currently supported K8S versions are:
+
+- 1.22
+- 1.21
 - 1.20
 - 1.19
-- 1.18
-- 1.17
 
 ## What does not work
 - Master creation (Not planned at the moment)
