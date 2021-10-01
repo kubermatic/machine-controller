@@ -64,12 +64,6 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 		ContainerdVersion: DefaultContainerdVersion,
 	}
 
-	lessThen117, _ := semver.NewConstraint("< 1.17")
-	if lessThen117.Check(eng.kubeletVersion) {
-		args.DockerVersion = LegacyDockerVersion
-		args.ContainerdVersion = ""
-	}
-
 	switch os {
 	case types.OperatingSystemAmazonLinux2:
 		err := dockerAmazonTemplate.Execute(&buf, args)

@@ -491,7 +491,7 @@ func TestAWSFlatcarContainerdProvisioningE2E(t *testing.T) {
 		name:              "flatcar with containerd in AWS",
 		osName:            "flatcar",
 		containerRuntime:  "containerd",
-		kubernetesVersion: "1.19.9",
+		kubernetesVersion: "1.19.15",
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
@@ -541,7 +541,7 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 		name:              "AWS with ebs encryption enabled",
 		osName:            "ubuntu",
 		containerRuntime:  "containerd",
-		kubernetesVersion: "v1.20.1",
+		kubernetesVersion: "v1.21.5",
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
@@ -624,7 +624,7 @@ func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 		name:              "Azure redhat satellite server subscription",
 		osName:            "rhel",
 		containerRuntime:  "docker",
-		kubernetesVersion: "v1.17.0",
+		kubernetesVersion: "1.21.5",
 		executor:          verifyCreateAndDelete,
 	}
 
@@ -893,7 +893,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		name:              "MachineDeployment upgrade",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.19.1",
+		kubernetesVersion: "1.21.5",
 		executor:          verifyCreateUpdateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)
