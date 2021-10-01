@@ -126,12 +126,9 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	},
 	providerconfigtypes.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
-		Offer:     to.StringPtr("UbuntuServer"),
-		// FIXME We'd like to use Ubuntu 18.04 eventually, but the docker's release
-		// deb repo for `bionic` is empty, and we use `$RELEASE` in userdata.
-		// Either Docker needs to fix their repo, or we need to hardcode `xenial`.
-		Sku:     to.StringPtr("18.04-LTS"),
-		Version: to.StringPtr("latest"),
+		Offer:     to.StringPtr("0001-com-ubuntu-server-focal"),
+		Sku:       to.StringPtr("20_04-lts"),
+		Version:   to.StringPtr("latest"),
 	},
 	providerconfigtypes.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
