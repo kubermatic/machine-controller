@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -89,6 +90,7 @@ type Config struct {
 	TenantID                    string
 	TokenID                     string
 	Region                      string
+	ComputeAPIVersion           string
 
 	// Machine details
 	Image                 string
@@ -236,6 +238,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	c.ComputeAPIVersion, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ComputeAPIVersion)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	c.RootDiskSizeGB = rawConfig.RootDiskSizeGB
 	c.RootDiskVolumeType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RootDiskVolumeType)
 	if err != nil {
@@ -328,7 +334,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 
 	if c.AvailabilityZone == "" {
 		klog.V(3).Infof("Trying to default availability zone for machine '%s'...", spec.Name)
-		availabilityZones, err := getAvailabilityZones(client, c.Region)
+		availabilityZones, err := getAvailabilityZones(client, c)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to get availability zones")
 		}
@@ -419,6 +425,15 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return errors.New("flavor must be configured")
 	}
 
+	if c.ComputeAPIVersion != "" {
+		// See https://docs.openstack.org/nova/latest/reference/api-microversion-history.html#id61
+		// Empty value defaults to microversion 2.0=2.1
+		version, err := strconv.ParseFloat(c.ComputeAPIVersion, 32)
+		if err != nil || version < 2.0 {
+			return fmt.Errorf("invalid computeAPIVersion: %v", err)
+		}
+	}
+
 	client, err := p.clientGetter(c)
 	if err != nil {
 		return fmt.Errorf("failed to get a openstack client: %v", err)
@@ -429,7 +444,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get region %q: %v", c.Region, err)
 	}
 
-	image, err := getImageByName(client, c.Region, c.Image)
+	image, err := getImageByName(client, c)
 	if err != nil {
 		return fmt.Errorf("failed to get image %q: %v", c.Image, err)
 	}
@@ -440,7 +455,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
-	if _, err := getFlavor(client, c.Region, c.Flavor); err != nil {
+	if _, err := getFlavor(client, c); err != nil {
 		return fmt.Errorf("failed to get flavor %q: %v", c.Flavor, err)
 	}
 
@@ -463,7 +478,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
-	if _, err := getAvailabilityZone(client, c.Region, c.AvailabilityZone); err != nil {
+	if _, err := getAvailabilityZone(client, c); err != nil {
 		return fmt.Errorf("failed to get availability zone %q: %v", c.AvailabilityZone, err)
 	}
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
@@ -500,12 +515,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
-	flavor, err := getFlavor(client, c.Region, c.Flavor)
+	flavor, err := getFlavor(client, c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get flavor %s", c.Flavor))
 	}
 
-	image, err := getImageByName(client, c.Region, c.Image)
+	image, err := getImageByName(client, c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get image %s", c.Image))
 	}
@@ -533,6 +548,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get compute client")
+	}
+	if c.ComputeAPIVersion != "" {
+		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
+		computeClient.Microversion = c.ComputeAPIVersion
 	}
 
 	// we check against reserved tags in Validation method
@@ -671,6 +690,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if err != nil {
 		return false, osErrorToTerminalError(err, "failed to get compute client")
 	}
+	if c.ComputeAPIVersion != "" {
+		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
+		computeClient.Microversion = c.ComputeAPIVersion
+	}
 
 	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && err.Error() != "Resource not found" {
 		return false, osErrorToTerminalError(err, "failed to delete instance")
@@ -700,6 +723,10 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get compute client")
+	}
+	if c.ComputeAPIVersion != "" {
+		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
+		computeClient.Microversion = c.ComputeAPIVersion
 	}
 
 	var allServers []serverWithExt
@@ -743,6 +770,10 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
 	if err != nil {
 		return osErrorToTerminalError(err, "failed to get compute client")
+	}
+	if c.ComputeAPIVersion != "" {
+		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
+		computeClient.Microversion = c.ComputeAPIVersion
 	}
 
 	var allServers []serverWithExt

@@ -100,6 +100,7 @@ spec:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: region
+            computeAPIVersion: "2.67"
             image: "Ubuntu 18.04 amd64"
             flavor: "m1.small"
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"

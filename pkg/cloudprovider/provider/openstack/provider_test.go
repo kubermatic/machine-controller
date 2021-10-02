@@ -145,6 +145,7 @@ type openstackProviderSpecConf struct {
 	RootDiskVolumeType          string
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
+	ComputeAPIVersion           string
 }
 
 func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -162,6 +163,9 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"region": "eu-de",
 		"instanceReadyCheckPeriod": "2m",
 		"instanceReadyCheckTimeout": "2m",
+		{{- if .ComputeAPIVersion }}
+		"computeAPIVersion": {{ .ComputeAPIVersion }},
+		{{- end }}
 		{{- if .RootDiskSizeGB }}
 		"rootDiskSizeGB": {{ .RootDiskSizeGB }},
 		{{- end }}
@@ -237,6 +241,12 @@ func TestCreateServer(t *testing.T) {
 		{
 			name:          "Application Credentials",
 			specConf:      openstackProviderSpecConf{ApplicationCredentialID: "app-cred-id", ApplicationCredentialSecret: "app-cred-secret"},
+			userdata:      "fake-userdata",
+			wantServerReq: expectedServerRequest,
+		},
+		{
+			name:          "Compute API Version",
+			specConf:      openstackProviderSpecConf{ComputeAPIVersion: "2.67"},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedServerRequest,
 		},
