@@ -540,8 +540,8 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "AWS with ebs encryption enabled",
 		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "v1.15.6",
+		containerRuntime:  "containerd",
+		kubernetesVersion: "v1.20.1",
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
@@ -685,7 +685,7 @@ func TestPacketProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel"))
+	selector := Not(OsSelector("sles", "rhel", "amzn2"))
 
 	// act
 	params := []string{
@@ -892,7 +892,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "MachineDeployment upgrade",
 		osName:            "ubuntu",
-		containerRuntime:  "docker",
+		containerRuntime:  "containerd",
 		kubernetesVersion: "1.16.2",
 		executor:          verifyCreateUpdateAndDelete,
 	}
