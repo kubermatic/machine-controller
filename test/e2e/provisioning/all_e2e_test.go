@@ -520,9 +520,9 @@ func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
-// TestAWSProvisioningE2EWithEbsEncryptionEnabled - a test suite that exercises AWS provider with ebs encryption enabled
+// TestAWSEbsEncryptionEnabledProvisioningE2E - a test suite that exercises AWS provider with ebs encryption enabled
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-func TestAWSProvisioningE2EWithEbsEncryptionEnabled(t *testing.T) {
+func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// test data
