@@ -649,7 +649,7 @@ presubmits:
           command:
             - "./hack/ci-e2e-test.sh"
           args:
-            - "TestAWSProvisioningE2EWithEbsEncryptionEnabled"
+            - "TestAWSEbsEncryptionEnabledProvisioningE2E"
           resources:
             requests:
               memory: 1Gi

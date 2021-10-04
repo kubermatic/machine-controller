@@ -68,7 +68,7 @@ type Config struct {
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return "ubuntu-18.04", nil
+		return "ubuntu-20.04", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7", nil
 	}
