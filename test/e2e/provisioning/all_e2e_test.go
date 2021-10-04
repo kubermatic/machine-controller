@@ -892,8 +892,8 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "MachineDeployment upgrade",
 		osName:            "ubuntu",
-		containerRuntime:  "containerd",
-		kubernetesVersion: "1.16.2",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.19.1",
 		executor:          verifyCreateUpdateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)
