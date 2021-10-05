@@ -89,7 +89,7 @@ sha256sum -c <<<"$cri_tools_sum"
 {{- /* unpack cri-tools and symlink to path so it's available to all users */}}
 tar xvf "$cri_tools_filename"
 rm -f "$cri_tools_filename"
-ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl
+ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
 cd -
 
 {{- /* kubelet */}}
