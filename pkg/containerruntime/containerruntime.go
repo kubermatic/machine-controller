@@ -102,10 +102,10 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		}
 	)
 
-	moreThen122, _ := semver.NewConstraint(">= 1.22")
+	moreThan122, _ := semver.NewConstraint(">= 1.22")
 
 	switch {
-	case moreThen122.Check(kubeletVersion):
+	case moreThan122.Check(kubeletVersion):
 		return containerd
 	case cfg.Docker != nil:
 		return docker
