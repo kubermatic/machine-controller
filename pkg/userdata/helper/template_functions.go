@@ -27,7 +27,6 @@ import (
 func TxtFuncMap() template.FuncMap {
 	funcMap := sprig.TxtFuncMap()
 
-	funcMap["downloadBinariesScript"] = DownloadBinariesScript
 	funcMap["safeDownloadBinariesScript"] = SafeDownloadBinariesScript
 	funcMap["kubeletSystemdUnit"] = KubeletSystemdUnit
 	funcMap["kubeletConfiguration"] = kubeletConfiguration

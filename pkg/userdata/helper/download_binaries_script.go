@@ -52,7 +52,7 @@ fi
 
 {{- /* # CNI variables */}}
 CNI_VERSION="${CNI_VERSION:-{{ .CNIVersion }}}"
-cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
+cni_base_url="{{ .CNIBaseURL }}$CNI_VERSION"
 cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
 
 {{- /* download CNI */}}
@@ -72,7 +72,7 @@ cd -
 
 {{- /* # cri-tools variables */}}
 CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-{{ .CRIToolsVersion }}}"
-cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
+cri_tools_base_url="{{ .CRIToolsBaseURL }}${CRI_TOOLS_RELEASE}"
 cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
 
 {{- /* download cri-tools */}}
@@ -95,7 +95,7 @@ cd -
 {{- /* kubelet */}}
 KUBE_VERSION="${KUBE_VERSION:-{{ .KubeVersion }}}"
 kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
-kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
+kube_base_url="{{ .KubeBaseURL }}$KUBE_VERSION/bin/linux/$arch"
 kube_sum_file="$kube_dir/sha256"
 
 {{- /* create versioned kube dir */}}
@@ -123,33 +123,7 @@ for bin in kubelet kubeadm kubectl; do
 done
 
 if [[ ! -x /opt/bin/health-monitor.sh ]]; then
-    curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh
-    chmod +x /opt/bin/health-monitor.sh
-fi
-`
-
-	downloadBinariesTpl = `{{- /*setup some common directories */ -}}
-mkdir -p /opt/bin/
-mkdir -p /var/lib/calico
-mkdir -p /etc/kubernetes/manifests
-mkdir -p /etc/cni/net.d
-mkdir -p /opt/cni/bin
-
-{{- /* # cni */}}
-if [ ! -f /opt/cni/bin/loopback ]; then
-    curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.7/cni-plugins-linux-amd64-v0.8.7.tgz | tar -xvzC /opt/cni/bin -f -
-fi
-
-{{- if .DownloadKubelet }}
-{{- /* kubelet */}}
-if [ ! -f /opt/bin/kubelet ]; then
-    curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubeletVersion }}/bin/linux/amd64/kubelet
-    chmod +x /opt/bin/kubelet
-fi
-{{- end }}
-
-if [[ ! -x /opt/bin/health-monitor.sh ]]; then
-    curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/8b5b66e4910a6228dfaecccaa0a3b05ec4902f8e/pkg/userdata/scripts/health-monitor.sh
+    curl -Lfo /opt/bin/health-monitor.sh {{ .HealthMonitorURL }}
     chmod +x /opt/bin/health-monitor.sh
 fi
 `
@@ -157,7 +131,7 @@ fi
 
 // SafeDownloadBinariesScript returns the script which is responsible to
 // download and check checksums of all required binaries.
-func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
+func SafeDownloadBinariesScript(kubeVersion string, cniBaseURL, criToolsBaseURL, kubeBaseURL, healthMonitorURL string) (string, error) {
 	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(safeDownloadBinariesTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
@@ -174,39 +148,23 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	}
 
 	data := struct {
-		KubeVersion     string
-		CNIVersion      string
-		CRIToolsVersion string
+		KubeVersion      string
+		CNIVersion       string
+		CNIBaseURL       string
+		CRIToolsVersion  string
+		CRIToolsBaseURL  string
+		KubeBaseURL      string
+		HealthMonitorURL string
 	}{
-		KubeVersion:     kubeVersion,
-		CNIVersion:      CNIVersion,
-		CRIToolsVersion: CRIToolsVersion,
+		KubeVersion:      kubeVersion,
+		CNIVersion:       CNIVersion,
+		CRIToolsVersion:  CRIToolsVersion,
+		CNIBaseURL:       cniBaseURL,
+		CRIToolsBaseURL:  criToolsBaseURL,
+		KubeBaseURL:      kubeBaseURL,
+		HealthMonitorURL: healthMonitorURL,
 	}
 
-	b := &bytes.Buffer{}
-	err = tmpl.Execute(b, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to execute download-binaries template: %v", err)
-	}
-
-	return b.String(), nil
-}
-
-// DownloadBinariesScript returns the script which is responsible to download
-// all required binaries.
-func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string, error) {
-	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(downloadBinariesTpl)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
-	}
-
-	data := struct {
-		KubeletVersion  string
-		DownloadKubelet bool
-	}{
-		KubeletVersion:  kubeletVersion,
-		DownloadKubelet: downloadKubelet,
-	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {

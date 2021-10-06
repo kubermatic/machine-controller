@@ -137,6 +137,12 @@ type NodeSettings struct {
 	ExternalCloudProvider bool
 	// container runtime to install
 	ContainerRuntime containerruntime.Config
+
+	// default urls for download dependencies
+	CNIBaseURL       string
+	CRIToolsBaseURL  string
+	KubeBaseURL      string
+	HealthMonitorURL string
 }
 
 type KubeconfigProvider interface {
@@ -723,6 +729,10 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
+				CNIBaseURL:            r.nodeSettings.CNIBaseURL,
+				CRIToolsBaseURL:       r.nodeSettings.CRIToolsBaseURL,
+				KubeBaseURL:           r.nodeSettings.KubeBaseURL,
+				HealthMonitorURL:      r.nodeSettings.HealthMonitorURL,
 			}
 
 			userdata, err := userdataPlugin.UserData(req)
