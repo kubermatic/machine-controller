@@ -49,6 +49,12 @@ func WithRegistryMirrors(mirrors []string) Opt {
 	}
 }
 
+func WithSandboxImage(image string) Opt {
+	return func(cfg *Config) {
+		cfg.SandboxImage = image
+	}
+}
+
 func Get(containerRuntimeName string, opts ...Opt) Config {
 	cfg := Config{}
 
@@ -76,6 +82,7 @@ type Config struct {
 	Containerd         *Containerd `json:",omitempty"`
 	InsecureRegistries []string    `json:",omitempty"`
 	RegistryMirrors    []string    `json:",omitempty"`
+	SandboxImage       string      `json:",omitempty"`
 }
 
 func (cfg Config) String() string {
@@ -99,6 +106,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		containerd = &Containerd{
 			insecureRegistries: cfg.InsecureRegistries,
 			registryMirrors:    cfg.RegistryMirrors,
+			sandboxImage:       cfg.SandboxImage,
 		}
 	)
 
