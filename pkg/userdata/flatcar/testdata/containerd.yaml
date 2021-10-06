@@ -12,9 +12,16 @@ coreos:
     mask: true
   - name: locksmithd.service
     mask: true
-  - name: docker.service
-    enable: true
-    command: start
+  - name: containerd.service
+    drop-ins:
+    - name: 10-custom.conf
+      content: |
+        [Service]
+        Restart=always
+        EnvironmentFile=-/etc/environment
+        Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
+        ExecStart=
+        ExecStart=/usr/bin/env PATH=${TORCX_BINDIR}:${PATH} ${TORCX_BINDIR}/containerd --config ${CONTAINERD_CONFIG}
   - name: download-script.service
     enable: true
     command: start
@@ -29,31 +36,11 @@ coreos:
       [Install]
       WantedBy=multi-user.target
 
-  - name: docker-healthcheck.service
-    enable: true
-    command: start
-    drop-ins:
-    - name: 40-docker.conf
-      content: |
-        [Unit]
-        Requires=download-script.service
-        After=download-script.service
-    content: |
-      [Unit]
-      Requires=containerd.service
-      After=containerd.service
-
-      [Service]
-      ExecStart=/opt/bin/health-monitor.sh container-runtime
-
-      [Install]
-      WantedBy=multi-user.target
-
   - name: kubelet-healthcheck.service
     enable: true
     command: start
     drop-ins:
-    - name: 40-docker.conf
+    - name: 40-download.conf
       content: |
         [Unit]
         Requires=download-script.service
@@ -89,78 +76,53 @@ coreos:
   - name: kubelet.service
     enable: true
     command: start
-    content: |
-      [Unit]
-      Description=Kubernetes Kubelet
-      Requires=docker.service
-      After=docker.service
-      [Service]
-      TimeoutStartSec=5min
-      CPUAccounting=true
-      MemoryAccounting=true
-      EnvironmentFile=-/etc/environment
-      EnvironmentFile=/etc/kubernetes/nodeip.conf
-      Environment=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/bin
-      ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
-      ExecStartPre=/bin/mkdir -p /var/lib/calico
-      ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
-      ExecStartPre=/bin/mkdir -p /etc/cni/net.d
-      ExecStartPre=/bin/mkdir -p /opt/cni/bin
-      ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-      ExecStartPre=/bin/sh -c '/usr/bin/env > /tmp/environment'
-      ExecStart=/usr/bin/docker run --name %n \
-        --rm --tty --restart no \
-        --network host \
-        --pid host \
-        --env-file /tmp/environment \
-        --privileged \
-        --cgroup-parent system.slice \
-        --entrypoint kubelet \
-        -v /dev:/dev \
-        -v /etc/cni/net.d:/etc/cni/net.d \
-        -v /etc/kubernetes:/etc/kubernetes \
-        -v /etc/machine-id:/etc/machine-id:ro \
-        -v /etc/os-release:/etc/os-release:ro \
-        -v /etc/resolv.conf:/etc/resolv.conf:ro \
-        -v /lib/modules:/lib/modules \
-        -v /mnt:/mnt:rshared \
-        -v /opt/cni/bin:/opt/cni/bin:ro \
-        -v /run:/run \
-        -v /sys:/sys \
-        -v /usr/sbin/iscsiadm:/usr/sbin/iscsiadm \
-        -v /var/lib/calico:/var/lib/calico:ro \
-        -v /var/lib/cni:/var/lib/cni \
-        -v /var/lib/docker:/var/lib/docker \
-        -v /var/lib/kubelet:/var/lib/kubelet:rshared \
-        -v /var/log/pods:/var/log/pods \
-        for-kubernetes-more-then-1.19/kubeletImage:v1.20.11 \
-          --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
-          --kubeconfig=/var/lib/kubelet/kubeconfig \
-          --config=/etc/kubernetes/kubelet.conf \
-          --network-plugin=cni \
-          --cert-dir=/etc/kubernetes/pki \
-          --hostname-override=node1 \
-          --exit-on-lock-contention \
-          --lock-file=/tmp/kubelet.lock \
-          --container-runtime=remote \
-          --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
-          --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-          --feature-gates=DynamicKubeletConfig=true \
-          --node-ip ${KUBELET_NODE_IP}
-      ExecStop=-/usr/bin/docker stop %n
-      Restart=always
-      RestartSec=10
-      [Install]
-      WantedBy=multi-user.target
-
-  - name: docker.service
-    enable: true
-    command: start
     drop-ins:
-    - name: 10-environment.conf
+    - name: 10-nodeip.conf
       content: |
         [Service]
-        EnvironmentFile=-/etc/environment
+        EnvironmentFile=/etc/kubernetes/nodeip.conf
+    - name: 40-download.conf
+      content: |
+        [Unit]
+        Requires=download-script.service
+        After=download-script.service
+    content: |
+      [Unit]
+      After=containerd.service
+      Requires=containerd.service
+
+      Description=kubelet: The Kubernetes Node Agent
+      Documentation=https://kubernetes.io/docs/home/
+
+      [Service]
+      Restart=always
+      StartLimitInterval=0
+      RestartSec=10
+      CPUAccounting=true
+      MemoryAccounting=true
+
+      Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+      EnvironmentFile=-/etc/environment
+
+      ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+      ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
+      ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
+        --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+        --kubeconfig=/var/lib/kubelet/kubeconfig \
+        --config=/etc/kubernetes/kubelet.conf \
+        --network-plugin=cni \
+        --cert-dir=/etc/kubernetes/pki \
+        --hostname-override=node1 \
+        --exit-on-lock-contention \
+        --lock-file=/tmp/kubelet.lock \
+        --container-runtime=remote \
+        --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+        --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
+        --feature-gates=DynamicKubeletConfig=true \
+        --node-ip ${KUBELET_NODE_IP}
+
+      [Install]
+      WantedBy=multi-user.target
 
   - name: apply-sysctl-settings.service
     enable: true
@@ -385,11 +347,6 @@ write_files:
     PasswordAuthentication no
     ChallengeResponseAuthentication no
 
-- path: /etc/docker/daemon.json
-  permissions: "0644"
-  content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"}}
-
 - path: /opt/bin/download.sh
   permissions: "0755"
   content: |
@@ -480,3 +437,32 @@ write_files:
     TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
     CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa
   append: true
+
+- path: /etc/containerd/config.toml
+  permissions: "0644"
+  user: root
+  content: |
+    version = 2
+
+    [metrics]
+    address = "127.0.0.1:1338"
+
+    [plugins]
+    [plugins."io.containerd.grpc.v1.cri"]
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    runtime_type = "io.containerd.runc.v2"
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+    SystemdCgroup = true
+    [plugins."io.containerd.grpc.v1.cri".registry]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["https://registry-1.docker.io"]
+
+
+- path: /etc/crictl.yaml
+  permissions: "0644"
+  user: root
+  content: |
+    runtime-endpoint: unix:///run/containerd/containerd.sock

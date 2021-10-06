@@ -32,10 +32,11 @@ const (
 type Containerd struct {
 	insecureRegistries []string
 	registryMirrors    []string
+	sandboxImage       string
 }
 
 func (eng *Containerd) Config() (string, error) {
-	return helper.ContainerdConfig(eng.insecureRegistries, eng.registryMirrors)
+	return helper.ContainerdConfig(eng.insecureRegistries, eng.registryMirrors, eng.sandboxImage)
 }
 
 func (eng *Containerd) ConfigFileName() string {

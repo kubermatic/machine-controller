@@ -98,31 +98,35 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
 
 	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crConfig, err := crEngine.Config()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
+	}
 
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec       *providerconfigtypes.Config
-		FlatcarConfig      *Config
-		Kubeconfig         string
-		KubernetesCACert   string
-		KubeletImage       string
-		KubeletVersion     string
-		NodeIPScript       string
-		ExtraKubeletFlags  []string
-		InsecureRegistries []string
-		RegistryMirrors    []string
+		ProviderSpec                   *providerconfigtypes.Config
+		FlatcarConfig                  *Config
+		Kubeconfig                     string
+		KubernetesCACert               string
+		KubeletImage                   string
+		KubeletVersion                 string
+		NodeIPScript                   string
+		ExtraKubeletFlags              []string
+		ContainerRuntimeConfigFileName string
+		ContainerRuntimeConfig         string
 	}{
-		UserDataRequest:    req,
-		ProviderSpec:       pconfig,
-		FlatcarConfig:      flatcarConfig,
-		Kubeconfig:         kubeconfigString,
-		KubernetesCACert:   kubernetesCACert,
-		KubeletImage:       kubeletImage,
-		KubeletVersion:     kubeletVersion.String(),
-		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
-		ExtraKubeletFlags:  crEngine.KubeletFlags(),
-		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
-		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		UserDataRequest:                req,
+		ProviderSpec:                   pconfig,
+		FlatcarConfig:                  flatcarConfig,
+		Kubeconfig:                     kubeconfigString,
+		KubernetesCACert:               kubernetesCACert,
+		KubeletImage:                   kubeletImage,
+		KubeletVersion:                 kubeletVersion.String(),
+		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
+		ExtraKubeletFlags:              crEngine.KubeletFlags(),
+		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
+		ContainerRuntimeConfig:         crConfig,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -191,8 +195,6 @@ systemd:
     - name: locksmithd.service
       mask: true
 {{- end }}
-    - name: docker.service
-      enabled: true
 
 {{- if .HTTPProxy }}
     - name: update-engine.service
@@ -202,6 +204,17 @@ systemd:
             [Service]
             Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
+
+    - name: containerd.service
+      dropins:
+        - name: 10-custom.conf
+          contents: |
+            [Service]
+            Restart=always
+            EnvironmentFile=-/etc/environment
+            Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
+            ExecStart=
+            ExecStart=/usr/bin/env PATH=${TORCX_BINDIR}:${PATH} ${TORCX_BINDIR}/containerd --config ${CONTAINERD_CONFIG}
 
     - name: download-script.service
       enabled: true
@@ -216,21 +229,10 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    - name: docker-healthcheck.service
-      enabled: true
-      dropins:
-      - name: 40-docker.conf
-        contents: |
-          [Unit]
-          Requires=download-script.service
-          After=download-script.service
-      contents: |
-{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 10 }}
-
     - name: kubelet-healthcheck.service
       enabled: true
       dropins:
-      - name: 40-docker.conf
+      - name: 40-download.conf
         contents: |
           [Unit]
           Requires=download-script.service
@@ -255,65 +257,18 @@ systemd:
 
     - name: kubelet.service
       enabled: true
-      contents: |
-        [Unit]
-        Description=Kubernetes Kubelet
-        Requires=docker.service
-        After=docker.service
-        [Service]
-        TimeoutStartSec=5min
-        CPUAccounting=true
-        MemoryAccounting=true
-        EnvironmentFile=-/etc/environment
-        EnvironmentFile=/etc/kubernetes/nodeip.conf
-        Environment=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/bin
-        ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
-        ExecStartPre=/bin/mkdir -p /var/lib/calico
-        ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
-        ExecStartPre=/bin/mkdir -p /etc/cni/net.d
-        ExecStartPre=/bin/mkdir -p /opt/cni/bin
-        ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-        ExecStartPre=/bin/sh -c '/usr/bin/env > /tmp/environment'
-        ExecStart=/usr/bin/docker run --name %n \
-          --rm --tty --restart no \
-          --network host \
-          --pid host \
-          --env-file /tmp/environment \
-          --privileged \
-          --cgroup-parent system.slice \
-          --entrypoint kubelet \
-          -v /dev:/dev \
-          -v /etc/cni/net.d:/etc/cni/net.d \
-          -v /etc/kubernetes:/etc/kubernetes \
-          -v /etc/machine-id:/etc/machine-id:ro \
-          -v /etc/os-release:/etc/os-release:ro \
-          -v /etc/resolv.conf:/etc/resolv.conf:ro \
-          -v /lib/modules:/lib/modules \
-          -v /mnt:/mnt:rshared \
-          -v /opt/cni/bin:/opt/cni/bin:ro \
-          -v /run:/run \
-          -v /sys:/sys \
-          -v /usr/sbin/iscsiadm:/usr/sbin/iscsiadm \
-          -v /var/lib/calico:/var/lib/calico:ro \
-          -v /var/lib/cni:/var/lib/cni \
-          -v /var/lib/docker:/var/lib/docker \
-          -v /var/lib/kubelet:/var/lib/kubelet:rshared \
-          -v /var/log/pods:/var/log/pods \
-          {{ .KubeletImage }} \
-{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 10 }}
-        ExecStop=-/usr/bin/docker stop %n
-        Restart=always
-        RestartSec=10
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: docker.service
-      enabled: true
       dropins:
-      - name: 10-environment.conf
+      - name: 10-nodeip.conf
         contents: |
           [Service]
-          EnvironmentFile=-/etc/environment
+          EnvironmentFile=/etc/kubernetes/nodeip.conf
+      - name: 40-download.conf
+        contents: |
+          [Unit]
+          Requires=download-script.service
+          After=download-script.service
+      contents: |
+{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 8 }}
 
 storage:
   files:
@@ -447,13 +402,6 @@ storage:
           });
 {{- end }}
 
-    - path: /etc/docker/daemon.json
-      filesystem: root
-      mode: 0644
-      contents:
-        inline: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 10 }}
-
     - path: /opt/bin/download.sh
       filesystem: root
       mode: 0755
@@ -461,8 +409,23 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
+
 {{ safeDownloadBinariesScript .KubeletVersion | indent 10 }}
           systemctl disable download-script.service
+
+    - path: {{ .ContainerRuntimeConfigFileName }}
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+{{ .ContainerRuntimeConfig | indent 10 }}
+
+    - path: /etc/crictl.yaml
+      filesystem: root
+      mode: 0644
+      contents:
+        inline: |
+          runtime-endpoint: unix:///run/containerd/containerd.sock
 `
 
 // Coreos cloud-config template
@@ -502,9 +465,6 @@ coreos:
   - name: locksmithd.service
     mask: true
 {{- end }}
-  - name: docker.service
-    enable: true
-    command: start
 {{- if .HTTPProxy }}
   - name: update-engine.service
     drop-ins:
@@ -513,6 +473,16 @@ coreos:
         [Service]
         Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
+  - name: containerd.service
+    drop-ins:
+    - name: 10-custom.conf
+      content: |
+        [Service]
+        Restart=always
+        EnvironmentFile=-/etc/environment
+        Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
+        ExecStart=
+        ExecStart=/usr/bin/env PATH=${TORCX_BINDIR}:${PATH} ${TORCX_BINDIR}/containerd --config ${CONTAINERD_CONFIG}
   - name: download-script.service
     enable: true
     command: start
@@ -527,23 +497,11 @@ coreos:
       [Install]
       WantedBy=multi-user.target
 
-  - name: docker-healthcheck.service
-    enable: true
-    command: start
-    drop-ins:
-    - name: 40-docker.conf
-      content: |
-        [Unit]
-        Requires=download-script.service
-        After=download-script.service
-    content: |
-{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 6 }}
-
   - name: kubelet-healthcheck.service
     enable: true
     command: start
     drop-ins:
-    - name: 40-docker.conf
+    - name: 40-download.conf
       content: |
         [Unit]
         Requires=download-script.service
@@ -570,66 +528,18 @@ coreos:
   - name: kubelet.service
     enable: true
     command: start
-    content: |
-      [Unit]
-      Description=Kubernetes Kubelet
-      Requires=docker.service
-      After=docker.service
-      [Service]
-      TimeoutStartSec=5min
-      CPUAccounting=true
-      MemoryAccounting=true
-      EnvironmentFile=-/etc/environment
-      EnvironmentFile=/etc/kubernetes/nodeip.conf
-      Environment=PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/bin
-      ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
-      ExecStartPre=/bin/mkdir -p /var/lib/calico
-      ExecStartPre=/bin/mkdir -p /etc/kubernetes/manifests
-      ExecStartPre=/bin/mkdir -p /etc/cni/net.d
-      ExecStartPre=/bin/mkdir -p /opt/cni/bin
-      ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
-      ExecStartPre=/bin/sh -c '/usr/bin/env > /tmp/environment'
-      ExecStart=/usr/bin/docker run --name %n \
-        --rm --tty --restart no \
-        --network host \
-        --pid host \
-        --env-file /tmp/environment \
-        --privileged \
-        --cgroup-parent system.slice \
-        --entrypoint kubelet \
-        -v /dev:/dev \
-        -v /etc/cni/net.d:/etc/cni/net.d \
-        -v /etc/kubernetes:/etc/kubernetes \
-        -v /etc/machine-id:/etc/machine-id:ro \
-        -v /etc/os-release:/etc/os-release:ro \
-        -v /etc/resolv.conf:/etc/resolv.conf:ro \
-        -v /lib/modules:/lib/modules \
-        -v /mnt:/mnt:rshared \
-        -v /opt/cni/bin:/opt/cni/bin:ro \
-        -v /run:/run \
-        -v /sys:/sys \
-        -v /usr/sbin/iscsiadm:/usr/sbin/iscsiadm \
-        -v /var/lib/calico:/var/lib/calico:ro \
-        -v /var/lib/cni:/var/lib/cni \
-        -v /var/lib/docker:/var/lib/docker \
-        -v /var/lib/kubelet:/var/lib/kubelet:rshared \
-        -v /var/log/pods:/var/log/pods \
-        {{ .KubeletImage }} \
-{{ kubeletFlags .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 10 }}
-      ExecStop=-/usr/bin/docker stop %n
-      Restart=always
-      RestartSec=10
-      [Install]
-      WantedBy=multi-user.target
-
-  - name: docker.service
-    enable: true
-    command: start
     drop-ins:
-    - name: 10-environment.conf
+    - name: 10-nodeip.conf
       content: |
         [Service]
-        EnvironmentFile=-/etc/environment
+        EnvironmentFile=/etc/kubernetes/nodeip.conf
+    - name: 40-download.conf
+      content: |
+        [Unit]
+        Requires=download-script.service
+        After=download-script.service
+    content: |
+{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 6 }}
 
   - name: apply-sysctl-settings.service
     enable: true
@@ -728,11 +638,6 @@ write_files:
     });
 {{- end }}
 
-- path: /etc/docker/daemon.json
-  permissions: "0644"
-  content: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors | indent 4 }}
-
 - path: /opt/bin/download.sh
   permissions: "0755"
   content: |
@@ -761,4 +666,16 @@ write_files:
 {{ sshConfigAddendum | indent 4 }}
   append: true
 {{- end }}
+
+- path: {{ .ContainerRuntimeConfigFileName }}
+  permissions: "0644"
+  user: root
+  content: |
+{{ .ContainerRuntimeConfig | indent 4 }}
+
+- path: /etc/crictl.yaml
+  permissions: "0644"
+  user: root
+  content: |
+    runtime-endpoint: unix:///run/containerd/containerd.sock
 `
