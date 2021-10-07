@@ -99,6 +99,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
 
+	hooks := userdatahelper.NewHooks(pconfig, req.MachineSpec)
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec       *providerconfigtypes.Config
@@ -111,6 +112,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ExtraKubeletFlags  []string
 		InsecureRegistries []string
 		RegistryMirrors    []string
+		Hooks              *userdatahelper.Hooks
 	}{
 		UserDataRequest:    req,
 		ProviderSpec:       pconfig,
@@ -123,6 +125,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ExtraKubeletFlags:  crEngine.KubeletFlags(),
 		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		Hooks:              hooks,
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -461,6 +464,7 @@ storage:
         inline: |
           #!/bin/bash
           set -xeuo pipefail
+{{ .Hooks.PreHookDownloadBinariesScript | indent 10 }}
 {{ safeDownloadBinariesScript .KubeletVersion | indent 10 }}
           systemctl disable download-script.service
 `
@@ -738,6 +742,7 @@ write_files:
   content: |
     #!/bin/bash
     set -xeuo pipefail
+{{ .Hooks.PreHookDownloadBinariesScript | indent 4 }}
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
     systemctl disable download-script.service
 

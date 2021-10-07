@@ -52,7 +52,8 @@ fi
 
 {{- /* # CNI variables */}}
 CNI_VERSION="${CNI_VERSION:-{{ .CNIVersion }}}"
-cni_base_url="{{ .CNIBaseURL }}$CNI_VERSION"
+CNI_BASE_URL_PREFIX="${CNI_BASE_URL_PREFIX:-https://github.com/containernetworking/plugins/releases/download/}"
+cni_base_url="${CNI_BASE_URL_PREFIX}${CNI_VERSION}"
 cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
 
 {{- /* download CNI */}}
@@ -72,7 +73,8 @@ cd -
 
 {{- /* # cri-tools variables */}}
 CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-{{ .CRIToolsVersion }}}"
-cri_tools_base_url="{{ .CRIToolsBaseURL }}${CRI_TOOLS_RELEASE}"
+CRI_TOOLS_BASE_URL_PREFIX="${CRI_TOOLS_BASE_URL_PREFIX:-https://github.com/kubernetes-sigs/cri-tools/releases/download/}"
+cri_tools_base_url="${CRI_TOOLS_BASE_URL_PREFIX}${CRI_TOOLS_RELEASE}"
 cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
 
 {{- /* download cri-tools */}}
@@ -94,8 +96,9 @@ cd -
 
 {{- /* kubelet */}}
 KUBE_VERSION="${KUBE_VERSION:-{{ .KubeVersion }}}"
+KUBE_BASE_URL_PREFIX="${KUBE_BASE_URL_PREFIX:-https://storage.googleapis.com/kubernetes-release/release/}"
 kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
-kube_base_url="{{ .KubeBaseURL }}$KUBE_VERSION/bin/linux/$arch"
+kube_base_url="${KUBE_BASE_URL_PREFIX}${KUBE_VERSION}/bin/linux/$arch"
 kube_sum_file="$kube_dir/sha256"
 
 {{- /* create versioned kube dir */}}
@@ -123,7 +126,8 @@ for bin in kubelet kubeadm kubectl; do
 done
 
 if [[ ! -x /opt/bin/health-monitor.sh ]]; then
-    curl -Lfo /opt/bin/health-monitor.sh {{ .HealthMonitorURL }}
+    HEALTH_MONITOR_URL=${HEALTH_MONITOR_URL:-https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh}
+    curl -Lfo /opt/bin/health-monitor.sh ${HEALTH_MONITOR_URL}
     chmod +x /opt/bin/health-monitor.sh
 fi
 `
@@ -131,7 +135,7 @@ fi
 
 // SafeDownloadBinariesScript returns the script which is responsible to
 // download and check checksums of all required binaries.
-func SafeDownloadBinariesScript(kubeVersion string, cniBaseURL, criToolsBaseURL, kubeBaseURL, healthMonitorURL string) (string, error) {
+func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(safeDownloadBinariesTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
@@ -148,21 +152,13 @@ func SafeDownloadBinariesScript(kubeVersion string, cniBaseURL, criToolsBaseURL,
 	}
 
 	data := struct {
-		KubeVersion      string
-		CNIVersion       string
-		CNIBaseURL       string
-		CRIToolsVersion  string
-		CRIToolsBaseURL  string
-		KubeBaseURL      string
-		HealthMonitorURL string
+		KubeVersion     string
+		CNIVersion      string
+		CRIToolsVersion string
 	}{
-		KubeVersion:      kubeVersion,
-		CNIVersion:       CNIVersion,
-		CRIToolsVersion:  CRIToolsVersion,
-		CNIBaseURL:       cniBaseURL,
-		CRIToolsBaseURL:  criToolsBaseURL,
-		KubeBaseURL:      kubeBaseURL,
-		HealthMonitorURL: healthMonitorURL,
+		KubeVersion:     kubeVersion,
+		CNIVersion:      CNIVersion,
+		CRIToolsVersion: CRIToolsVersion,
 	}
 
 	b := &bytes.Buffer{}

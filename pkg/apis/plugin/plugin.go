@@ -54,10 +54,6 @@ type UserDataRequest struct {
 	KubeletRepository     string
 	KubeletFeatureGates   map[string]bool
 	ContainerRuntime      containerruntime.Config
-	CNIBaseURL            string
-	CRIToolsBaseURL       string
-	KubeBaseURL           string
-	HealthMonitorURL      string
 }
 
 // UserDataResponse contains the responded user data.

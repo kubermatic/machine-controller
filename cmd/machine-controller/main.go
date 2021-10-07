@@ -79,10 +79,6 @@ var (
 	nodeHyperkubeImage     string
 	nodeKubeletRepository  string
 	nodeContainerRuntime   string
-	nodeCNIBaseURL         string
-	nodeCRIToolsBaseURL    string
-	nodeKubeBaseURL        string
-	nodeHealthMonitorURL   string
 )
 
 const (
@@ -156,10 +152,6 @@ func main() {
 	flag.StringVar(&nodeHyperkubeImage, "node-hyperkube-image", "k8s.gcr.io/hyperkube-amd64", "Image for the hyperkube container excluding tag. Only has effect on Flatcar Linux, and for kubernetes < 1.18.")
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
-	flag.StringVar(&nodeCNIBaseURL, "node-cni-base-url", "https://github.com/containernetworking/plugins/releases/download/", "container-runtime to deploy")
-	flag.StringVar(&nodeCRIToolsBaseURL, "node-cri-tools-base-url", "https://github.com/kubernetes-sigs/cri-tools/releases/download/", "container-runtime to deploy")
-	flag.StringVar(&nodeKubeBaseURL, "node-kube-base-url", "https://storage.googleapis.com/kubernetes-release/release/", "container-runtime to deploy")
-	flag.StringVar(&nodeHealthMonitorURL, "node-health-monitor-url", "https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh", "container-runtime to deploy")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
 
@@ -275,10 +267,6 @@ func main() {
 				containerruntime.WithInsecureRegistries(insecureRegistries),
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
-			CNIBaseURL: nodeCNIBaseURL,
-			CRIToolsBaseURL: nodeCRIToolsBaseURL,
-			KubeBaseURL: nodeKubeBaseURL,
-			HealthMonitorURL: nodeHealthMonitorURL,
 		},
 	}
 
