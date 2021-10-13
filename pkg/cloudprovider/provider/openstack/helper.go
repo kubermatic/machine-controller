@@ -19,6 +19,7 @@ package openstack
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -82,7 +83,14 @@ func getNewComputeV2(client *gophercloud.ProviderClient, c *Config) (*gopherclou
 	if err != nil {
 		return nil, err
 	}
+
 	if c.ComputeAPIVersion != "" {
+		// Validation - empty value default to microversion 2.0=2.1
+		version, err := strconv.ParseFloat(c.ComputeAPIVersion, 32)
+		if err != nil || version < 2.0 {
+			return nil, fmt.Errorf("invalid computeAPIVersion: %v", err)
+		}
+
 		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
 		computeClient.Microversion = c.ComputeAPIVersion
 	}

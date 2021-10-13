@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -430,15 +429,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return errors.New("flavor must be configured")
 	}
 
-	if c.ComputeAPIVersion != "" {
-		// See https://docs.openstack.org/nova/latest/reference/api-microversion-history.html#id61
-		// Empty value defaults to microversion 2.0=2.1
-		version, err := strconv.ParseFloat(c.ComputeAPIVersion, 32)
-		if err != nil || version < 2.0 {
-			return fmt.Errorf("invalid computeAPIVersion: %v", err)
-		}
-	}
-
 	client, err := p.clientGetter(c)
 	if err != nil {
 		return fmt.Errorf("failed to get a openstack client: %v", err)
@@ -559,11 +549,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			return nil, fmt.Errorf("Error occurred creating security groups: %v", err)
 		}
 		securityGroups = append(securityGroups, securityGroupName)
-	}
-
-	computeClient, err := getNewComputeV2(client, c)
-	if err != nil {
-		return nil, err
 	}
 
 	// we check against reserved tags in Validation method
