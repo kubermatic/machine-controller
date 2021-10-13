@@ -19,6 +19,7 @@ package openstack
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -77,12 +78,26 @@ func getRegions(client *gophercloud.ProviderClient) ([]osregions.Region, error) 
 	return regions, nil
 }
 
-func getAvailabilityZones(client *gophercloud.ProviderClient, region string) ([]osavailabilityzones.AvailabilityZone, error) {
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: region})
+func getNewComputeV2(client *gophercloud.ProviderClient, c *Config) (*gophercloud.ServiceClient, error) {
+	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: c.Region})
 	if err != nil {
 		return nil, err
 	}
 
+	if c.ComputeAPIVersion != "" {
+		// Validation - empty value default to microversion 2.0=2.1
+		version, err := strconv.ParseFloat(c.ComputeAPIVersion, 32)
+		if err != nil || version < 2.0 {
+			return nil, fmt.Errorf("invalid computeAPIVersion: %v", err)
+		}
+
+		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
+		computeClient.Microversion = c.ComputeAPIVersion
+	}
+	return computeClient, nil
+}
+
+func getAvailabilityZones(computeClient *gophercloud.ServiceClient, c *Config) ([]osavailabilityzones.AvailabilityZone, error) {
 	allPages, err := osavailabilityzones.List(computeClient).AllPages()
 	if err != nil {
 		return nil, err
@@ -90,14 +105,14 @@ func getAvailabilityZones(client *gophercloud.ProviderClient, region string) ([]
 	return osavailabilityzones.ExtractAvailabilityZones(allPages)
 }
 
-func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string) (*osavailabilityzones.AvailabilityZone, error) {
-	zones, err := getAvailabilityZones(client, region)
+func getAvailabilityZone(computeClient *gophercloud.ServiceClient, c *Config) (*osavailabilityzones.AvailabilityZone, error) {
+	zones, err := getAvailabilityZones(computeClient, c)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, z := range zones {
-		if z.ZoneName == name {
+		if z.ZoneName == c.AvailabilityZone {
 			return &z, nil
 		}
 	}
@@ -105,15 +120,10 @@ func getAvailabilityZone(client *gophercloud.ProviderClient, region, name string
 	return nil, errNotFound
 }
 
-func getImageByName(client *gophercloud.ProviderClient, region, name string) (*osimages.Image, error) {
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: region})
-	if err != nil {
-		return nil, err
-	}
-
+func getImageByName(computeClient *gophercloud.ServiceClient, c *Config) (*osimages.Image, error) {
 	var allImages []osimages.Image
-	pager := osimages.ListDetail(computeClient, osimages.ListOpts{Name: name})
-	err = pager.EachPage(func(page pagination.Page) (bool, error) {
+	pager := osimages.ListDetail(computeClient, osimages.ListOpts{Name: c.Image})
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
 		images, err := osimages.ExtractImages(page)
 		if err != nil {
 			return false, err
@@ -131,16 +141,11 @@ func getImageByName(client *gophercloud.ProviderClient, region, name string) (*o
 	return &allImages[0], nil
 }
 
-func getFlavor(client *gophercloud.ProviderClient, region, name string) (*osflavors.Flavor, error) {
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: region})
-	if err != nil {
-		return nil, err
-	}
-
+func getFlavor(computeClient *gophercloud.ServiceClient, c *Config) (*osflavors.Flavor, error) {
 	var allFlavors []osflavors.Flavor
 
 	pager := osflavors.ListDetail(computeClient, osflavors.ListOpts{})
-	err = pager.EachPage(func(page pagination.Page) (bool, error) {
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
 		flavors, err := osflavors.ExtractFlavors(page)
 		if err != nil {
 			return false, err
@@ -153,7 +158,7 @@ func getFlavor(client *gophercloud.ProviderClient, region, name string) (*osflav
 	}
 
 	for _, f := range allFlavors {
-		if f.Name == name {
+		if f.Name == c.Flavor {
 			return &f, nil
 		}
 	}

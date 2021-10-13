@@ -34,6 +34,7 @@ type RawConfig struct {
 	Region                      providerconfigtypes.ConfigVarString `json:"region,omitempty"`
 	InstanceReadyCheckPeriod    providerconfigtypes.ConfigVarString `json:"instanceReadyCheckPeriod,omitempty"`
 	InstanceReadyCheckTimeout   providerconfigtypes.ConfigVarString `json:"instanceReadyCheckTimeout,omitempty"`
+	ComputeAPIVersion           providerconfigtypes.ConfigVarString `json:"computeAPIVersion,omitempty"`
 
 	// Machine details
 	Image                 providerconfigtypes.ConfigVarString   `json:"image"`
