@@ -332,9 +332,14 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 		}
 	}
 
+	computeClient, err := getNewComputeV2(client, c)
+	if err != nil {
+		return spec, osErrorToTerminalError(err, "failed to get computeClient")
+	}
+
 	if c.AvailabilityZone == "" {
 		klog.V(3).Infof("Trying to default availability zone for machine '%s'...", spec.Name)
-		availabilityZones, err := getAvailabilityZones(client, c)
+		availabilityZones, err := getAvailabilityZones(computeClient, c)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to get availability zones")
 		}
@@ -444,7 +449,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get region %q: %v", c.Region, err)
 	}
 
-	image, err := getImageByName(client, c)
+	// Get OS Compute Client
+	computeClient, err := getNewComputeV2(client, c)
+	if err != nil {
+		return err
+	}
+
+	image, err := getImageByName(computeClient, c)
 	if err != nil {
 		return fmt.Errorf("failed to get image %q: %v", c.Image, err)
 	}
@@ -455,7 +466,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
-	if _, err := getFlavor(client, c); err != nil {
+	if _, err := getFlavor(computeClient, c); err != nil {
 		return fmt.Errorf("failed to get flavor %q: %v", c.Flavor, err)
 	}
 
@@ -478,7 +489,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
-	if _, err := getAvailabilityZone(client, c); err != nil {
+	if _, err := getAvailabilityZone(computeClient, c); err != nil {
 		return fmt.Errorf("failed to get availability zone %q: %v", c.AvailabilityZone, err)
 	}
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
@@ -515,12 +526,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
-	flavor, err := getFlavor(client, c)
+	computeClient, err := getNewComputeV2(client, c)
+	if err != nil {
+		return nil, err
+	}
+
+	flavor, err := getFlavor(computeClient, c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get flavor %s", c.Flavor))
 	}
 
-	image, err := getImageByName(client, c)
+	image, err := getImageByName(computeClient, c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get image %s", c.Image))
 	}

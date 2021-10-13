@@ -89,12 +89,7 @@ func getNewComputeV2(client *gophercloud.ProviderClient, c *Config) (*gopherclou
 	return computeClient, nil
 }
 
-func getAvailabilityZones(client *gophercloud.ProviderClient, c *Config) ([]osavailabilityzones.AvailabilityZone, error) {
-	computeClient, err := getNewComputeV2(client, c)
-	if err != nil {
-		return nil, err
-	}
-
+func getAvailabilityZones(computeClient *gophercloud.ServiceClient, c *Config) ([]osavailabilityzones.AvailabilityZone, error) {
 	allPages, err := osavailabilityzones.List(computeClient).AllPages()
 	if err != nil {
 		return nil, err
@@ -102,8 +97,8 @@ func getAvailabilityZones(client *gophercloud.ProviderClient, c *Config) ([]osav
 	return osavailabilityzones.ExtractAvailabilityZones(allPages)
 }
 
-func getAvailabilityZone(client *gophercloud.ProviderClient, c *Config) (*osavailabilityzones.AvailabilityZone, error) {
-	zones, err := getAvailabilityZones(client, c)
+func getAvailabilityZone(computeClient *gophercloud.ServiceClient, c *Config) (*osavailabilityzones.AvailabilityZone, error) {
+	zones, err := getAvailabilityZones(computeClient, c)
 	if err != nil {
 		return nil, err
 	}
@@ -117,15 +112,10 @@ func getAvailabilityZone(client *gophercloud.ProviderClient, c *Config) (*osavai
 	return nil, errNotFound
 }
 
-func getImageByName(client *gophercloud.ProviderClient, c *Config) (*osimages.Image, error) {
-	computeClient, err := getNewComputeV2(client, c)
-	if err != nil {
-		return nil, err
-	}
-
+func getImageByName(computeClient *gophercloud.ServiceClient, c *Config) (*osimages.Image, error) {
 	var allImages []osimages.Image
 	pager := osimages.ListDetail(computeClient, osimages.ListOpts{Name: c.Image})
-	err = pager.EachPage(func(page pagination.Page) (bool, error) {
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
 		images, err := osimages.ExtractImages(page)
 		if err != nil {
 			return false, err
@@ -143,16 +133,11 @@ func getImageByName(client *gophercloud.ProviderClient, c *Config) (*osimages.Im
 	return &allImages[0], nil
 }
 
-func getFlavor(client *gophercloud.ProviderClient, c *Config) (*osflavors.Flavor, error) {
-	computeClient, err := getNewComputeV2(client, c)
-	if err != nil {
-		return nil, err
-	}
-
+func getFlavor(computeClient *gophercloud.ServiceClient, c *Config) (*osflavors.Flavor, error) {
 	var allFlavors []osflavors.Flavor
 
 	pager := osflavors.ListDetail(computeClient, osflavors.ListOpts{})
-	err = pager.EachPage(func(page pagination.Page) (bool, error) {
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
 		flavors, err := osflavors.ExtractFlavors(page)
 		if err != nil {
 			return false, err
