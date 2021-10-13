@@ -77,7 +77,7 @@ func getRegions(client *gophercloud.ProviderClient) ([]osregions.Region, error) 
 	return regions, nil
 }
 
-func getAvailabilityZones(client *gophercloud.ProviderClient, c *Config) ([]osavailabilityzones.AvailabilityZone, error) {
+func getNewComputeV2(client *gophercloud.ProviderClient, c *Config) (*gophercloud.ServiceClient, error) {
 	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: c.Region})
 	if err != nil {
 		return nil, err
@@ -85,6 +85,14 @@ func getAvailabilityZones(client *gophercloud.ProviderClient, c *Config) ([]osav
 	if c.ComputeAPIVersion != "" {
 		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
 		computeClient.Microversion = c.ComputeAPIVersion
+	}
+	return computeClient, nil
+}
+
+func getAvailabilityZones(client *gophercloud.ProviderClient, c *Config) ([]osavailabilityzones.AvailabilityZone, error) {
+	computeClient, err := getNewComputeV2(client, c)
+	if err != nil {
+		return nil, err
 	}
 
 	allPages, err := osavailabilityzones.List(computeClient).AllPages()
@@ -110,13 +118,9 @@ func getAvailabilityZone(client *gophercloud.ProviderClient, c *Config) (*osavai
 }
 
 func getImageByName(client *gophercloud.ProviderClient, c *Config) (*osimages.Image, error) {
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
 		return nil, err
-	}
-	if c.ComputeAPIVersion != "" {
-		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
-		computeClient.Microversion = c.ComputeAPIVersion
 	}
 
 	var allImages []osimages.Image
@@ -140,13 +144,9 @@ func getImageByName(client *gophercloud.ProviderClient, c *Config) (*osimages.Im
 }
 
 func getFlavor(client *gophercloud.ProviderClient, c *Config) (*osflavors.Flavor, error) {
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
 		return nil, err
-	}
-	if c.ComputeAPIVersion != "" {
-		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
-		computeClient.Microversion = c.ComputeAPIVersion
 	}
 
 	var allFlavors []osflavors.Flavor

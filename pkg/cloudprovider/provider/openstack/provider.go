@@ -545,13 +545,9 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		securityGroups = append(securityGroups, securityGroupName)
 	}
 
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
+	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return nil, osErrorToTerminalError(err, "failed to get compute client")
-	}
-	if c.ComputeAPIVersion != "" {
-		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
-		computeClient.Microversion = c.ComputeAPIVersion
+		return nil, err
 	}
 
 	// we check against reserved tags in Validation method
@@ -686,13 +682,9 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
+	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return false, osErrorToTerminalError(err, "failed to get compute client")
-	}
-	if c.ComputeAPIVersion != "" {
-		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
-		computeClient.Microversion = c.ComputeAPIVersion
+		return false, err
 	}
 
 	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && err.Error() != "Resource not found" {
@@ -720,13 +712,9 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
+	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return nil, osErrorToTerminalError(err, "failed to get compute client")
-	}
-	if c.ComputeAPIVersion != "" {
-		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
-		computeClient.Microversion = c.ComputeAPIVersion
+		return nil, err
 	}
 
 	var allServers []serverWithExt
@@ -767,13 +755,9 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		return osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
-	computeClient, err := goopenstack.NewComputeV2(client, gophercloud.EndpointOpts{Availability: gophercloud.AvailabilityPublic, Region: c.Region})
+	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return osErrorToTerminalError(err, "failed to get compute client")
-	}
-	if c.ComputeAPIVersion != "" {
-		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
-		computeClient.Microversion = c.ComputeAPIVersion
+		return err
 	}
 
 	var allServers []serverWithExt
