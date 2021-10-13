@@ -95,41 +95,53 @@ var (
 		ec2.VolumeTypeSt1,
 	)
 
-	amiFilters = map[providerconfigtypes.OperatingSystem]amiFilter{
+	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
 		providerconfigtypes.OperatingSystemCentOS: {
-			description: "CentOS Linux 7 x86_64 HVM EBS*",
-			// The AWS marketplace ID from AWS
-			owner:       "679593333241",
-			productCode: "aw0evgkw8e5c1q413zgy5pjce",
+			awstypes.CPUArchitectureX86_64: {
+				description: "CentOS Linux 7 x86_64 HVM EBS*",
+				// The AWS marketplace ID from AWS
+				owner:       "679593333241",
+				productCode: "aw0evgkw8e5c1q413zgy5pjce",
+			},
 		},
 		providerconfigtypes.OperatingSystemAmazonLinux2: {
-			description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
-			// The AWS marketplace ID from Amazon
-			owner: "137112412989",
+			awstypes.CPUArchitectureX86_64: {
+				description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
+				// The AWS marketplace ID from Amazon
+				owner: "137112412989",
+			},
 		},
 		providerconfigtypes.OperatingSystemUbuntu: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on ????-??-??",
-			// The AWS marketplace ID from Canonical
-			owner: "099720109477",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on ????-??-??",
+				// The AWS marketplace ID from Canonical
+				owner: "099720109477",
+			},
 		},
 		providerconfigtypes.OperatingSystemSLES: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
-			// The AWS marketplace ID from SLES
-			owner: "013907871322",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				// The AWS marketplace ID from SLES
+				owner: "013907871322",
+			},
 		},
 		providerconfigtypes.OperatingSystemRHEL: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Provided by Red Hat, Inc.",
-			// The AWS marketplace ID from RedHat
-			owner: "309956199498",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Provided by Red Hat, Inc.",
+				// The AWS marketplace ID from RedHat
+				owner: "309956199498",
+			},
 		},
 		providerconfigtypes.OperatingSystemFlatcar: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Flatcar Container Linux stable *",
-			// The AWS marketplace ID from AWS
-			owner: "075585003325",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Flatcar Container Linux stable *",
+				// The AWS marketplace ID from AWS
+				owner: "075585003325",
+			},
 		},
 	}
 
@@ -170,78 +182,119 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string) (string, error) {
+func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string, cpuArchitectures []awstypes.CPUArchitecture) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
-	filter, osSupported := amiFilters[os]
+	osFilter, osSupported := amiFilters[os]
 	if !osSupported {
 		return "", fmt.Errorf("operating system %q not supported", os)
 	}
 
-	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
-	amiID, found := cache.Get(cacheKey)
-	if found {
-		klog.V(3).Info("found AMI-ID in cache!")
-		return amiID.(string), nil
-	}
+	for _, arch := range cpuArchitectures {
+		filter, archSupported := osFilter[arch]
+		if !archSupported {
+			continue
+		}
 
-	describeImagesInput := &ec2.DescribeImagesInput{
-		Owners: aws.StringSlice([]string{filter.owner}),
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("description"),
-				Values: aws.StringSlice([]string{filter.description}),
+		cacheKey := fmt.Sprintf("ami-id-%s-%s-%s", region, os, arch)
+		amiID, found := cache.Get(cacheKey)
+		if found {
+			klog.V(3).Info("found AMI-ID in cache!")
+			return amiID.(string), nil
+		}
+
+		describeImagesInput := &ec2.DescribeImagesInput{
+			Owners: aws.StringSlice([]string{filter.owner}),
+			Filters: []*ec2.Filter{
+				{
+					Name:   aws.String("description"),
+					Values: aws.StringSlice([]string{filter.description}),
+				},
+				{
+					Name:   aws.String("virtualization-type"),
+					Values: aws.StringSlice([]string{"hvm"}),
+				},
+				{
+					Name:   aws.String("root-device-type"),
+					Values: aws.StringSlice([]string{"ebs"}),
+				},
+				{
+					Name:   aws.String("architecture"),
+					Values: aws.StringSlice([]string{string(arch)}),
+				},
 			},
-			{
-				Name:   aws.String("virtualization-type"),
-				Values: aws.StringSlice([]string{"hvm"}),
-			},
-			{
-				Name:   aws.String("root-device-type"),
-				Values: aws.StringSlice([]string{"ebs"}),
-			},
-			{
-				Name:   aws.String("architecture"),
-				Values: aws.StringSlice([]string{"x86_64"}),
-			},
-		},
-	}
+		}
 
-	if filter.productCode != "" {
-		describeImagesInput.Filters = append(describeImagesInput.Filters, &ec2.Filter{
-			Name:   aws.String("product-code"),
-			Values: aws.StringSlice([]string{filter.productCode}),
-		})
-	}
+		if filter.productCode != "" {
+			describeImagesInput.Filters = append(describeImagesInput.Filters, &ec2.Filter{
+				Name:   aws.String("product-code"),
+				Values: aws.StringSlice([]string{filter.productCode}),
+			})
+		}
 
-	imagesOut, err := client.DescribeImages(describeImagesInput)
-	if err != nil {
-		return "", err
-	}
-
-	if len(imagesOut.Images) == 0 {
-		return "", fmt.Errorf("could not find Image for '%s'", os)
-	}
-
-	if os == providerconfigtypes.OperatingSystemRHEL {
-		imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
+		imagesOut, err := client.DescribeImages(describeImagesInput)
 		if err != nil {
 			return "", err
 		}
-	}
 
-	image := imagesOut.Images[0]
-	for _, v := range imagesOut.Images {
-		itime, _ := time.Parse(time.RFC3339, *image.CreationDate)
-		vtime, _ := time.Parse(time.RFC3339, *v.CreationDate)
-		if vtime.After(itime) {
-			image = v
+		if len(imagesOut.Images) == 0 {
+			klog.V(3).Infof("could not find image for '%s' with CPU architecture '%s'", os, arch)
+			continue
 		}
+
+		if os == providerconfigtypes.OperatingSystemRHEL {
+			imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
+			if err != nil {
+				return "", err
+			}
+		}
+
+		image := imagesOut.Images[0]
+		for _, v := range imagesOut.Images {
+			itime, _ := time.Parse(time.RFC3339, *image.CreationDate)
+			vtime, _ := time.Parse(time.RFC3339, *v.CreationDate)
+			if vtime.After(itime) {
+				image = v
+			}
+		}
+
+		cache.SetDefault(cacheKey, *image.ImageId)
+		return *image.ImageId, nil
 	}
 
-	cache.SetDefault(cacheKey, *image.ImageId)
-	return *image.ImageId, nil
+	return "", fmt.Errorf("could not find suitable image for '%s' with any supported CPU architecture", os)
+}
+
+func getCPUArchitectures(client *ec2.EC2, instanceType string) ([]awstypes.CPUArchitecture, error) {
+	// read the instance type to know which cpu architecture is needed in the AMI
+	instanceTypes, err := client.DescribeInstanceTypes(&ec2.DescribeInstanceTypesInput{
+		InstanceTypes: []*string{aws.String(instanceType)},
+	})
+
+	if err != nil {
+		return []awstypes.CPUArchitecture{}, err
+	}
+
+	if len(instanceTypes.InstanceTypes) != 1 {
+		return []awstypes.CPUArchitecture{}, fmt.Errorf("unexpected length of instance type list: %d", len(instanceTypes.InstanceTypes))
+	}
+
+	if instanceTypes.InstanceTypes[0].ProcessorInfo != nil &&
+		len(instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures) > 0 {
+		supportedArchitectures := []awstypes.CPUArchitecture{}
+		for _, v := range instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures {
+			arch := awstypes.CPUArchitecture(*v)
+
+			// never support i386, even if the AWS instance type does
+			if arch != awstypes.CPUArchitectureI386 {
+				supportedArchitectures = append(supportedArchitectures, arch)
+			}
+		}
+		return supportedArchitectures, nil
+	}
+
+	return []awstypes.CPUArchitecture{}, errors.New("returned instance type data did not include supported architectures")
 }
 
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
@@ -537,7 +590,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	amiID := config.AMI
 	if amiID == "" {
-		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region); err != nil {
+		// read the instance type to know which cpu architecture is needed in the AMI
+		supportedCPUArchitectures, err := getCPUArchitectures(ec2Client, config.InstanceType)
+
+		if err != nil {
+			return nil, cloudprovidererrors.TerminalError{
+				Reason:  common.InvalidConfigurationMachineError,
+				Message: fmt.Sprintf("Failed to find instance type %s in region %s: %v", config.InstanceType, config.Region, err),
+			}
+		}
+
+		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region, supportedCPUArchitectures); err != nil {
 			return nil, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
 				Message: fmt.Sprintf("Failed to get AMI-ID for operating system %s in region %s: %v", pc.OperatingSystem, config.Region, err),
