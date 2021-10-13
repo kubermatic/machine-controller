@@ -685,7 +685,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return false, err
+		return false, osErrorToTerminalError(err, "failed to get compute client")
 	}
 
 	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && err.Error() != "Resource not found" {
@@ -715,7 +715,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 
 	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return nil, err
+		return nil, osErrorToTerminalError(err, "failed to get compute client")
 	}
 
 	var allServers []serverWithExt
@@ -758,7 +758,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 
 	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return err
+		return osErrorToTerminalError(err, "failed to get compute client")
 	}
 
 	var allServers []serverWithExt
