@@ -442,7 +442,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	// Get OS Compute Client
 	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get compute client: %v", err)
 	}
 
 	image, err := getImageByName(computeClient, c)
@@ -518,7 +518,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return nil, err
+		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
 	flavor, err := getFlavor(computeClient, c)
