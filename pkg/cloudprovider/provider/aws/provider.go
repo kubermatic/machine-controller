@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -199,6 +200,9 @@ type Config struct {
 	SpotMaxPrice             *string
 	SpotPersistentRequest    *bool
 	SpotInterruptionBehavior *string
+
+	AssumeRoleARN        string
+	AssumeRoleExternalID string
 }
 
 type amiFilter struct {
@@ -443,28 +447,76 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		}
 		c.SpotInterruptionBehavior = pointer.StringPtr(interruptionBehavior)
 	}
+	assumeRoleARN, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleARN, "AWS_ASSUME_ROLE_ARN")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	c.AssumeRoleARN = assumeRoleARN
+	assumeRoleExternalID, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleExternalID, "AWS_ASSUME_ROLE_EXTERNAL_ID")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	c.AssumeRoleExternalID = assumeRoleExternalID
 
 	return &c, &pconfig, &rawConfig, err
 }
 
-func getSession(id, secret, token, region string) (*session.Session, error) {
+func getSession(id, secret, token, region, assumeRoleARN, assumeRoleExternalID string) (*session.Session, error) {
 	config := aws.NewConfig()
 	config = config.WithRegion(region)
 	config = config.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
 	config = config.WithMaxRetries(maxRetries)
-	return session.NewSession(config)
+	awsSession, err := session.NewSession(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %v", err)
+	}
+
+	// Assume IAM role of e.g. external AWS account if configured
+	if assumeRoleARN != "" {
+		awsSession, err = getAssumeRoleSession(awsSession, assumeRoleARN, assumeRoleExternalID, region)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temporary AWS session for assumed role: %v", err)
+		}
+	}
+
+	return awsSession, err
 }
 
-func getIAMclient(id, secret, region string) (*iam.IAM, error) {
-	sess, err := getSession(id, secret, "", region)
+func getAssumeRoleSession(awsSession *session.Session, assumeRoleARN, assumeRoleExternalID, region string) (*session.Session, error) {
+	assumeRoleOutput, err := getAssumeRoleCredentials(awsSession, assumeRoleARN, assumeRoleExternalID)
+	if err != nil {
+		return nil, awsErrorToTerminalError(err, "unable to initialize aws external id session")
+	}
+
+	assumedRoleConfig := aws.NewConfig()
+	assumedRoleConfig = assumedRoleConfig.WithRegion(region)
+	assumedRoleConfig = assumedRoleConfig.WithCredentials(credentials.NewStaticCredentials(*assumeRoleOutput.Credentials.AccessKeyId,
+		*assumeRoleOutput.Credentials.SecretAccessKey,
+		*assumeRoleOutput.Credentials.SessionToken))
+	assumedRoleConfig = assumedRoleConfig.WithMaxRetries(maxRetries)
+	return session.NewSession(assumedRoleConfig)
+}
+
+func getAssumeRoleCredentials(session *session.Session, assumeRoleARN, assumeRoleExternalID string) (*sts.AssumeRoleOutput, error) {
+	stsSession := sts.New(session)
+	sessionName := "kubermatic-machine-controller"
+	return stsSession.AssumeRole(&sts.AssumeRoleInput{
+		ExternalId:      &assumeRoleExternalID,
+		RoleArn:         &assumeRoleARN,
+		RoleSessionName: &sessionName,
+	})
+}
+
+func getIAMclient(id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*iam.IAM, error) {
+	sess, err := getSession(id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
 	return iam.New(sess), nil
 }
 
-func getEC2client(id, secret, region string) (*ec2.EC2, error) {
-	sess, err := getSession(id, secret, "", region)
+func getEC2client(id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*ec2.EC2, error) {
+	sess, err := getSession(id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
@@ -516,7 +568,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("diskSize must be specified and > 0")
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to create ec2 client: %v", err)
 	}
@@ -553,7 +605,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to validate security group id's: %v", err)
 	}
 
-	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to create iam client: %v", err)
 	}
@@ -595,7 +647,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return nil, err
 	}
@@ -753,7 +805,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return false, err
 	}
@@ -801,7 +853,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*awsInstance, error) {
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return nil, err
 	}
@@ -877,7 +929,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	instance, err := p.get(machine)
+	machineInstance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil
@@ -893,13 +945,13 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to get EC2 client: %v", err)
 	}
 
 	_, err = ec2Client.CreateTags(&ec2.CreateTagsInput{
-		Resources: aws.StringSlice([]string{instance.ID()}),
+		Resources: aws.StringSlice([]string{machineInstance.ID()}),
 		Tags:      []*ec2.Tag{{Key: aws.String(machineUIDTag), Value: aws.String(string(new))}}})
 	if err != nil {
 		return fmt.Errorf("failed to update instance with new machineUIDTag: %v", err)
@@ -1028,38 +1080,42 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	}
 
 	type ec2Credentials struct {
-		acccessKeyID    string
-		secretAccessKey string
-		region          string
+		acccessKeyID         string
+		secretAccessKey      string
+		region               string
+		assumeRoleARN        string
+		assumeRoleExternalID string
 	}
 
-	var errors []error
-	credentials := map[string]ec2Credentials{}
+	var machineErrors []error
+	machineEc2Credentials := map[string]ec2Credentials{}
 	for _, machine := range machines.Items {
 		config, _, _, err := p.getConfig(machines.Items[0].Spec.ProviderSpec)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to parse MachineSpec of machine %s/%s, due to %v", machine.Namespace, machine.Name, err))
+			machineErrors = append(machineErrors, fmt.Errorf("failed to parse MachineSpec of machine %s/%s, due to %v", machine.Namespace, machine.Name, err))
 			continue
 		}
 
 		// Very simple and very stupid
-		credentials[fmt.Sprintf("%s/%s/%s", config.AccessKeyID, config.SecretAccessKey, config.Region)] = ec2Credentials{
-			acccessKeyID:    config.AccessKeyID,
-			secretAccessKey: config.SecretAccessKey,
-			region:          config.Region,
+		machineEc2Credentials[fmt.Sprintf("%s/%s/%s/%s/%s", config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)] = ec2Credentials{
+			acccessKeyID:         config.AccessKeyID,
+			secretAccessKey:      config.SecretAccessKey,
+			region:               config.Region,
+			assumeRoleARN:        config.AssumeRoleARN,
+			assumeRoleExternalID: config.AssumeRoleExternalID,
 		}
 	}
 
 	allReservations := []*ec2.Reservation{}
-	for _, cred := range credentials {
-		ec2Client, err := getEC2client(cred.acccessKeyID, cred.secretAccessKey, cred.region)
+	for _, cred := range machineEc2Credentials {
+		ec2Client, err := getEC2client(cred.acccessKeyID, cred.secretAccessKey, cred.region, cred.assumeRoleARN, cred.assumeRoleExternalID)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to get EC2 client: %v", err))
+			machineErrors = append(machineErrors, fmt.Errorf("failed to get EC2 client: %v", err))
 			continue
 		}
 		inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to get EC2 instances: %v", err))
+			machineErrors = append(machineErrors, fmt.Errorf("failed to get EC2 instances: %v", err))
 			continue
 		}
 		allReservations = append(allReservations, inOut.Reservations...)
@@ -1070,8 +1126,8 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 			getIntanceCountForMachine(machine, allReservations))
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("errors: %v", errors)
+	if len(machineErrors) > 0 {
+		return fmt.Errorf("errors: %v", machineErrors)
 	}
 
 	return nil
