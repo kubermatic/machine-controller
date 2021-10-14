@@ -103,10 +103,16 @@ var (
 				owner:       "679593333241",
 				productCode: "aw0evgkw8e5c1q413zgy5pjce",
 			},
+			// 2021-10-14 - No CentOS 7 ARM64 image available under legacy product code
 		},
 		providerconfigtypes.OperatingSystemAmazonLinux2: {
 			awstypes.CPUArchitectureX86_64: {
 				description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
+				// The AWS marketplace ID from Amazon
+				owner: "137112412989",
+			},
+			awstypes.CPUArchitectureARM64: {
+				description: "Amazon Linux 2 LTS Arm64 AMI * arm64 HVM gp2",
 				// The AWS marketplace ID from Amazon
 				owner: "137112412989",
 			},
@@ -118,9 +124,21 @@ var (
 				// The AWS marketplace ID from Canonical
 				owner: "099720109477",
 			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Canonical, Ubuntu, 20.04 LTS, arm64 focal image build on ????-??-??",
+				// The AWS marketplace ID from Canonical
+				owner: "099720109477",
+			},
 		},
 		providerconfigtypes.OperatingSystemSLES: {
 			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				// The AWS marketplace ID from SLES
+				owner: "013907871322",
+			},
+			awstypes.CPUArchitectureARM64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
 				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
 				// The AWS marketplace ID from SLES
@@ -134,6 +152,12 @@ var (
 				// The AWS marketplace ID from RedHat
 				owner: "309956199498",
 			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Provided by Red Hat, Inc.",
+				// The AWS marketplace ID from RedHat
+				owner: "309956199498",
+			},
 		},
 		providerconfigtypes.OperatingSystemFlatcar: {
 			awstypes.CPUArchitectureX86_64: {
@@ -142,6 +166,7 @@ var (
 				// The AWS marketplace ID from AWS
 				owner: "075585003325",
 			},
+			// 2021-10-14 - Flatcar stable does not support ARM yet (only alpha channels supports it)
 		},
 	}
 
