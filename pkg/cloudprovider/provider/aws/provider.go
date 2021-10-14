@@ -207,7 +207,7 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string, cpuArchitectures []awstypes.CPUArchitecture) (string, error) {
+func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
@@ -216,110 +216,102 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 		return "", fmt.Errorf("operating system %q not supported", os)
 	}
 
-	for _, arch := range cpuArchitectures {
-		filter, archSupported := osFilter[arch]
-		if !archSupported {
-			continue
-		}
+	filter, archSupported := osFilter[cpuArchitecture]
+	if !archSupported {
+		return "", fmt.Errorf("CPU architecture '%s' not supported for operating system '%s'", cpuArchitecture, os)
+	}
 
-		cacheKey := fmt.Sprintf("ami-id-%s-%s-%s", region, os, arch)
-		amiID, found := cache.Get(cacheKey)
-		if found {
-			klog.V(3).Info("found AMI-ID in cache!")
-			return amiID.(string), nil
-		}
+	cacheKey := fmt.Sprintf("ami-id-%s-%s-%s", region, os, cpuArchitecture)
+	amiID, found := cache.Get(cacheKey)
+	if found {
+		klog.V(3).Info("found AMI-ID in cache!")
+		return amiID.(string), nil
+	}
 
-		describeImagesInput := &ec2.DescribeImagesInput{
-			Owners: aws.StringSlice([]string{filter.owner}),
-			Filters: []*ec2.Filter{
-				{
-					Name:   aws.String("description"),
-					Values: aws.StringSlice([]string{filter.description}),
-				},
-				{
-					Name:   aws.String("virtualization-type"),
-					Values: aws.StringSlice([]string{"hvm"}),
-				},
-				{
-					Name:   aws.String("root-device-type"),
-					Values: aws.StringSlice([]string{"ebs"}),
-				},
-				{
-					Name:   aws.String("architecture"),
-					Values: aws.StringSlice([]string{string(arch)}),
-				},
+	describeImagesInput := &ec2.DescribeImagesInput{
+		Owners: aws.StringSlice([]string{filter.owner}),
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("description"),
+				Values: aws.StringSlice([]string{filter.description}),
 			},
-		}
+			{
+				Name:   aws.String("virtualization-type"),
+				Values: aws.StringSlice([]string{"hvm"}),
+			},
+			{
+				Name:   aws.String("root-device-type"),
+				Values: aws.StringSlice([]string{"ebs"}),
+			},
+			{
+				Name:   aws.String("architecture"),
+				Values: aws.StringSlice([]string{string(cpuArchitecture)}),
+			},
+		},
+	}
 
-		if filter.productCode != "" {
-			describeImagesInput.Filters = append(describeImagesInput.Filters, &ec2.Filter{
-				Name:   aws.String("product-code"),
-				Values: aws.StringSlice([]string{filter.productCode}),
-			})
-		}
+	if filter.productCode != "" {
+		describeImagesInput.Filters = append(describeImagesInput.Filters, &ec2.Filter{
+			Name:   aws.String("product-code"),
+			Values: aws.StringSlice([]string{filter.productCode}),
+		})
+	}
 
-		imagesOut, err := client.DescribeImages(describeImagesInput)
+	imagesOut, err := client.DescribeImages(describeImagesInput)
+	if err != nil {
+		return "", err
+	}
+
+	if len(imagesOut.Images) == 0 {
+		return "", fmt.Errorf("could not find Image for '%s' with arch '%s'", os, cpuArchitecture)
+	}
+
+	if os == providerconfigtypes.OperatingSystemRHEL {
+		imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
 		if err != nil {
 			return "", err
 		}
-
-		if len(imagesOut.Images) == 0 {
-			klog.V(3).Infof("could not find image for '%s' with CPU architecture '%s'", os, arch)
-			continue
-		}
-
-		if os == providerconfigtypes.OperatingSystemRHEL {
-			imagesOut.Images, err = filterSupportedRHELImages(imagesOut.Images)
-			if err != nil {
-				return "", err
-			}
-		}
-
-		image := imagesOut.Images[0]
-		for _, v := range imagesOut.Images {
-			itime, _ := time.Parse(time.RFC3339, *image.CreationDate)
-			vtime, _ := time.Parse(time.RFC3339, *v.CreationDate)
-			if vtime.After(itime) {
-				image = v
-			}
-		}
-
-		cache.SetDefault(cacheKey, *image.ImageId)
-		return *image.ImageId, nil
 	}
 
-	return "", fmt.Errorf("could not find suitable image for '%s' with any supported CPU architecture", os)
+	image := imagesOut.Images[0]
+	for _, v := range imagesOut.Images {
+		itime, _ := time.Parse(time.RFC3339, *image.CreationDate)
+		vtime, _ := time.Parse(time.RFC3339, *v.CreationDate)
+		if vtime.After(itime) {
+			image = v
+		}
+	}
+
+	cache.SetDefault(cacheKey, *image.ImageId)
+	return *image.ImageId, nil
 }
 
-func getCPUArchitectures(client *ec2.EC2, instanceType string) ([]awstypes.CPUArchitecture, error) {
+func getCPUArchitecture(client *ec2.EC2, instanceType string) (awstypes.CPUArchitecture, error) {
 	// read the instance type to know which cpu architecture is needed in the AMI
 	instanceTypes, err := client.DescribeInstanceTypes(&ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []*string{aws.String(instanceType)},
 	})
 
 	if err != nil {
-		return []awstypes.CPUArchitecture{}, err
+		return "", err
 	}
 
 	if len(instanceTypes.InstanceTypes) != 1 {
-		return []awstypes.CPUArchitecture{}, fmt.Errorf("unexpected length of instance type list: %d", len(instanceTypes.InstanceTypes))
+		return "", fmt.Errorf("unexpected length of instance type list: %d", len(instanceTypes.InstanceTypes))
 	}
 
 	if instanceTypes.InstanceTypes[0].ProcessorInfo != nil &&
 		len(instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures) > 0 {
-		supportedArchitectures := []awstypes.CPUArchitecture{}
 		for _, v := range instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures {
-			arch := awstypes.CPUArchitecture(*v)
-
-			// never support i386, even if the AWS instance type does
-			if arch != awstypes.CPUArchitectureI386 {
-				supportedArchitectures = append(supportedArchitectures, arch)
+			// machine-controller currently supports x86_64 and ARM64, so only CPU architectures
+			// that are supported will be returned if found in the AWS API response
+			if arch := awstypes.CPUArchitecture(*v); arch == awstypes.CPUArchitectureX86_64 || arch == awstypes.CPUArchitectureARM64 {
+				return arch, nil
 			}
 		}
-		return supportedArchitectures, nil
 	}
 
-	return []awstypes.CPUArchitecture{}, errors.New("returned instance type data did not include supported architectures")
+	return "", errors.New("returned instance type data did not include supported architectures")
 }
 
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
@@ -616,7 +608,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	amiID := config.AMI
 	if amiID == "" {
 		// read the instance type to know which cpu architecture is needed in the AMI
-		supportedCPUArchitectures, err := getCPUArchitectures(ec2Client, config.InstanceType)
+		cpuArchitecture, err := getCPUArchitecture(ec2Client, config.InstanceType)
 
 		if err != nil {
 			return nil, cloudprovidererrors.TerminalError{
@@ -625,7 +617,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 			}
 		}
 
-		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region, supportedCPUArchitectures); err != nil {
+		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region, cpuArchitecture); err != nil {
 			return nil, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
 				Message: fmt.Sprintf("Failed to get AMI-ID for operating system %s in region %s: %v", pc.OperatingSystem, config.Region, err),
