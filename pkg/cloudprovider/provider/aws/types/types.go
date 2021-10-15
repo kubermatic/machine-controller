@@ -48,3 +48,12 @@ type SpotInstanceConfig struct {
 	PersistentRequest    providerconfigtypes.ConfigVarBool   `json:"persistentRequest,omitempty"`
 	InterruptionBehavior providerconfigtypes.ConfigVarString `json:"interruptionBehavior,omitempty"`
 }
+
+// CPUArchitecture defines processor architectures returned by the AWS API
+type CPUArchitecture string
+
+const (
+	CPUArchitectureARM64  CPUArchitecture = "arm64"
+	CPUArchitectureX86_64 CPUArchitecture = "x86_64"
+	CPUArchitectureI386   CPUArchitecture = "i386"
+)

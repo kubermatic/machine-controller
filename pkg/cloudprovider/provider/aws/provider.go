@@ -95,41 +95,78 @@ var (
 		ec2.VolumeTypeSt1,
 	)
 
-	amiFilters = map[providerconfigtypes.OperatingSystem]amiFilter{
+	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
 		providerconfigtypes.OperatingSystemCentOS: {
-			description: "CentOS Linux 7 x86_64 HVM EBS*",
-			// The AWS marketplace ID from AWS
-			owner:       "679593333241",
-			productCode: "aw0evgkw8e5c1q413zgy5pjce",
+			awstypes.CPUArchitectureX86_64: {
+				description: "CentOS Linux 7 x86_64 HVM EBS*",
+				// The AWS marketplace ID from AWS
+				owner:       "679593333241",
+				productCode: "aw0evgkw8e5c1q413zgy5pjce",
+			},
+			// 2021-10-14 - No CentOS 7 ARM64 image available under legacy product code
 		},
 		providerconfigtypes.OperatingSystemAmazonLinux2: {
-			description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
-			// The AWS marketplace ID from Amazon
-			owner: "137112412989",
+			awstypes.CPUArchitectureX86_64: {
+				description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
+				// The AWS marketplace ID from Amazon
+				owner: "137112412989",
+			},
+			awstypes.CPUArchitectureARM64: {
+				description: "Amazon Linux 2 LTS Arm64 AMI * arm64 HVM gp2",
+				// The AWS marketplace ID from Amazon
+				owner: "137112412989",
+			},
 		},
 		providerconfigtypes.OperatingSystemUbuntu: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on ????-??-??",
-			// The AWS marketplace ID from Canonical
-			owner: "099720109477",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on ????-??-??",
+				// The AWS marketplace ID from Canonical
+				owner: "099720109477",
+			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Canonical, Ubuntu, 20.04 LTS, arm64 focal image build on ????-??-??",
+				// The AWS marketplace ID from Canonical
+				owner: "099720109477",
+			},
 		},
 		providerconfigtypes.OperatingSystemSLES: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
-			// The AWS marketplace ID from SLES
-			owner: "013907871322",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				// The AWS marketplace ID from SLES
+				owner: "013907871322",
+			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				// The AWS marketplace ID from SLES
+				owner: "013907871322",
+			},
 		},
 		providerconfigtypes.OperatingSystemRHEL: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Provided by Red Hat, Inc.",
-			// The AWS marketplace ID from RedHat
-			owner: "309956199498",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Provided by Red Hat, Inc.",
+				// The AWS marketplace ID from RedHat
+				owner: "309956199498",
+			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Provided by Red Hat, Inc.",
+				// The AWS marketplace ID from RedHat
+				owner: "309956199498",
+			},
 		},
 		providerconfigtypes.OperatingSystemFlatcar: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Flatcar Container Linux stable *",
-			// The AWS marketplace ID from AWS
-			owner: "075585003325",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Flatcar Container Linux stable *",
+				// The AWS marketplace ID from AWS
+				owner: "075585003325",
+			},
+			// 2021-10-14 - Flatcar stable does not support ARM yet (only alpha channels supports it)
 		},
 	}
 
@@ -170,16 +207,21 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string) (string, error) {
+func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
-	filter, osSupported := amiFilters[os]
+	osFilter, osSupported := amiFilters[os]
 	if !osSupported {
 		return "", fmt.Errorf("operating system %q not supported", os)
 	}
 
-	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
+	filter, archSupported := osFilter[cpuArchitecture]
+	if !archSupported {
+		return "", fmt.Errorf("CPU architecture '%s' not supported for operating system '%s'", cpuArchitecture, os)
+	}
+
+	cacheKey := fmt.Sprintf("ami-id-%s-%s-%s", region, os, cpuArchitecture)
 	amiID, found := cache.Get(cacheKey)
 	if found {
 		klog.V(3).Info("found AMI-ID in cache!")
@@ -203,7 +245,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 			},
 			{
 				Name:   aws.String("architecture"),
-				Values: aws.StringSlice([]string{"x86_64"}),
+				Values: aws.StringSlice([]string{string(cpuArchitecture)}),
 			},
 		},
 	}
@@ -221,7 +263,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 	}
 
 	if len(imagesOut.Images) == 0 {
-		return "", fmt.Errorf("could not find Image for '%s'", os)
+		return "", fmt.Errorf("could not find Image for '%s' with arch '%s'", os, cpuArchitecture)
 	}
 
 	if os == providerconfigtypes.OperatingSystemRHEL {
@@ -242,6 +284,34 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 
 	cache.SetDefault(cacheKey, *image.ImageId)
 	return *image.ImageId, nil
+}
+
+func getCPUArchitecture(client *ec2.EC2, instanceType string) (awstypes.CPUArchitecture, error) {
+	// read the instance type to know which cpu architecture is needed in the AMI
+	instanceTypes, err := client.DescribeInstanceTypes(&ec2.DescribeInstanceTypesInput{
+		InstanceTypes: []*string{aws.String(instanceType)},
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(instanceTypes.InstanceTypes) != 1 {
+		return "", fmt.Errorf("unexpected length of instance type list: %d", len(instanceTypes.InstanceTypes))
+	}
+
+	if instanceTypes.InstanceTypes[0].ProcessorInfo != nil &&
+		len(instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures) > 0 {
+		for _, v := range instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures {
+			// machine-controller currently supports x86_64 and ARM64, so only CPU architectures
+			// that are supported will be returned if found in the AWS API response
+			if arch := awstypes.CPUArchitecture(*v); arch == awstypes.CPUArchitectureX86_64 || arch == awstypes.CPUArchitectureARM64 {
+				return arch, nil
+			}
+		}
+	}
+
+	return "", errors.New("returned instance type data did not include supported architectures")
 }
 
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
@@ -537,7 +607,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	amiID := config.AMI
 	if amiID == "" {
-		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region); err != nil {
+		// read the instance type to know which cpu architecture is needed in the AMI
+		cpuArchitecture, err := getCPUArchitecture(ec2Client, config.InstanceType)
+
+		if err != nil {
+			return nil, cloudprovidererrors.TerminalError{
+				Reason:  common.InvalidConfigurationMachineError,
+				Message: fmt.Sprintf("Failed to find instance type %s in region %s: %v", config.InstanceType, config.Region, err),
+			}
+		}
+
+		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region, cpuArchitecture); err != nil {
 			return nil, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
 				Message: fmt.Sprintf("Failed to get AMI-ID for operating system %s in region %s: %v", pc.OperatingSystem, config.Region, err),
