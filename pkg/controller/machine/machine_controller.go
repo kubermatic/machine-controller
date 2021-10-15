@@ -94,6 +94,8 @@ const (
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
 	// cluster-api provider to match Nodes to Machines
 	AnnotationAutoscalerIdentifier = "cluster.k8s.io/machine"
+
+	provisioningSuffix = "osc-provisioning"
 )
 
 // Reconciler is the controller implementation for machine resources
@@ -724,6 +726,23 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				externalCloudProvider, _ = strconv.ParseBool(val)
 			}
 
+			referencedMachineDeployment, err := r.getMachineDeploymentNameForMachine(ctx, machine)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
+			}
+
+			cloudInitConfigSecretName := fmt.Sprintf("%s-%s",
+				referencedMachineDeployment,
+				provisioningSuffix)
+
+			// It is important to check if the secret which holds the cloud init configurations
+			if err := r.client.Get(ctx,
+				types.NamespacedName{Name: cloudInitConfigSecretName, Namespace: "kube-system"},
+				&corev1.Secret{}); err != nil {
+				klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
+				return nil, err
+			}
+
 			req := plugin.UserDataRequest{
 				MachineSpec:           machine.Spec,
 				Kubeconfig:            kubeconfig,
@@ -745,7 +764,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			var userdata string
 
 			if useOSM {
-				userdata, err = getOSMBootstrapUserdata(req, r.kubeconfigProvider.GetBearerToken())
+				userdata, err = getOSMBootstrapUserdata(req, r.kubeconfigProvider.GetBearerToken(), cloudInitConfigSecretName)
 				if err != nil {
 					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
 				}
@@ -1061,28 +1080,53 @@ func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifier
 	})
 }
 
-func getOSMBootstrapUserdata(req plugin.UserDataRequest, BearerToken string) (string, error) {
+func (r *Reconciler) getMachineDeploymentNameForMachine(ctx context.Context, machine *clusterv1alpha1.Machine) (string, error) {
+	var (
+		machineSetName        string
+		machineDeploymentName string
+	)
+	for _, ownerRef := range machine.OwnerReferences {
+		if ownerRef.Kind == "MachineSet" {
+			machineSetName = ownerRef.Name
+		}
+	}
+
+	if machineSetName != "" {
+		machineSet := &clusterv1alpha1.MachineSet{}
+		if err := r.client.Get(ctx, types.NamespacedName{Name: machineSetName, Namespace: "kube-system"}, machineSet); err != nil {
+			return "", err
+		}
+
+		for _, ownerRef := range machineSet.OwnerReferences {
+			if ownerRef.Kind == "MachineDeployment" {
+				machineDeploymentName = ownerRef.Name
+			}
+		}
+
+		if machineDeploymentName != "" {
+			return machineDeploymentName, nil
+		}
+	}
+
+	return "", errors.New(fmt.Sprintf("failed to find machine deployment reference for the machine %s", machine.Name))
+}
+
+func getOSMBootstrapUserdata(req plugin.UserDataRequest, BearerToken string, secretName string) (string, error) {
 
 	var clusterName string
 	for key := range req.Kubeconfig.Clusters {
 		clusterName = key
 	}
-	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
-	if err != nil {
-		return "", fmt.Errorf("failed to get providerSpec: %v", err)
-	}
 	data := struct {
-		Token        string
-		SecretName   string
-		ServerURL    string
-		MachineName  string
-		ProviderSpec *providerconfigtypes.Config
+		Token       string
+		SecretName  string
+		ServerURL   string
+		MachineName string
 	}{
-		Token:        BearerToken, // No NO NO
-		SecretName:   fmt.Sprintf("%s-osc-provisioning", strings.Join(strings.SplitN(req.MachineSpec.Name, "-", 5)[:4], "-")),
-		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
-		MachineName:  req.MachineSpec.Name,
-		ProviderSpec: pconfig,
+		Token:       BearerToken, // No NO NO
+		SecretName:  secretName,
+		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
+		MachineName: req.MachineSpec.Name,
 	}
 	bsScript, err := template.New("bootstrap-cloud-init").Parse(bootstrapBinContentTemplate)
 	if err != nil {
@@ -1097,18 +1141,22 @@ func getOSMBootstrapUserdata(req plugin.UserDataRequest, BearerToken string) (st
 	if err != nil {
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
+	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
+	if err != nil {
+		return "", fmt.Errorf("failed to get providerSpec: %v", err)
+	}
 
 	cloudInit := &bytes.Buffer{}
 	err = bsCloudInit.Execute(cloudInit, struct {
-		Script       string
-		Service      string
-		ProviderSpec *providerconfigtypes.Config
+		Script  string
+		Service string
 		plugin.UserDataRequest
+		ProviderSpec *providerconfigtypes.Config
 	}{
 		Script:          base64.StdEncoding.EncodeToString(script.Bytes()),
 		Service:         base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
-		ProviderSpec:    pconfig,
 		UserDataRequest: req,
+		ProviderSpec:    pconfig,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %v", err)
@@ -1147,6 +1195,13 @@ hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
 {{ end }}
 ssh_pwauth: no
+
+{{- if .ProviderSpec.SSHPublicKeys }}
+ssh_authorized_keys:
+{{- range .ProviderSpec.SSHPublicKeys }}
+- "{{ . }}"
+{{- end }}
+{{- end }}
 
 write_files:
 - path: /opt/bin/bootstrap
