@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"html/template"
 	"net"
 	"strconv"
@@ -764,7 +765,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			var userdata string
 
 			if useOSM {
-				userdata, err = getOSMBootstrapUserdata(req, r.kubeconfigProvider.GetBearerToken(), cloudInitConfigSecretName)
+				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudInitConfigSecretName)
 				if err != nil {
 					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
 				}
@@ -1111,19 +1112,25 @@ func (r *Reconciler) getMachineDeploymentNameForMachine(ctx context.Context, mac
 	return "", errors.New(fmt.Sprintf("failed to find machine deployment reference for the machine %s", machine.Name))
 }
 
-func getOSMBootstrapUserdata(req plugin.UserDataRequest, BearerToken string, secretName string) (string, error) {
+func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Client, req plugin.UserDataRequest, secretName string) (string, error) {
 
 	var clusterName string
 	for key := range req.Kubeconfig.Clusters {
 		clusterName = key
 	}
+
+	token, err := util.ExtractAPIServerToken(ctx, client)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch api-server token: %v", err)
+	}
+
 	data := struct {
 		Token       string
 		SecretName  string
 		ServerURL   string
 		MachineName string
 	}{
-		Token:       BearerToken, // No NO NO
+		Token:       token,
 		SecretName:  secretName,
 		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
 		MachineName: req.MachineSpec.Name,
