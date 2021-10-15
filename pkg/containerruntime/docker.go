@@ -151,7 +151,7 @@ Restart=always
 EnvironmentFile=-/etc/environment
 EOF
 
-apt-get install -y \
+apt-get install --allow-downgrades -y \
 {{- if .ContainerdVersion }}
     containerd.io={{ .ContainerdVersion }}* \
     docker-ce-cli=5:{{ .DockerVersion }}* \
