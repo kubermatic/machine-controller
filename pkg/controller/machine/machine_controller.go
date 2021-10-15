@@ -22,11 +22,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-	"html/template"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/heptiolabs/healthcheck"
@@ -39,6 +39,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
@@ -769,6 +770,10 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				if err != nil {
 					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
 				}
+				userdata, err = cleanupTemplateOutput(userdata)
+				if err != nil {
+					return nil, fmt.Errorf("failed to cleanup user-data template: %v", err)
+				}
 			} else {
 				userdata, err = userdataPlugin.UserData(req)
 				if err != nil {
@@ -1171,11 +1176,21 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 	return cloudInit.String(), nil
 }
 
+// cleanupTemplateOutput postprocesses the output of the template processing. Those
+// may exist due to the working of template functions like those of the sprig package
+// or template condition.
+func cleanupTemplateOutput(output string) (string, error) {
+	// Valid YAML files are not allowed to have empty lines containing spaces or tabs.
+	// So far only cleanup.
+	woBlankLines := regexp.MustCompile(`(?m)^[ \t]+$`).ReplaceAllString(output, "")
+	return woBlankLines, nil
+}
+
 const (
 	bootstrapBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
 apt update && apt install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/kube-system/secrets/{{ .SecretName }} | jq '.data["cloud-init"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-init"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
