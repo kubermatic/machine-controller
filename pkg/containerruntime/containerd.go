@@ -144,7 +144,7 @@ Restart=always
 EnvironmentFile=-/etc/environment
 EOF
 
-apt-get install -y containerd.io={{ .ContainerdVersion }}*
+apt-get install -y --allow-downgrades containerd.io={{ .ContainerdVersion }}*
 apt-mark hold containerd.io
 
 systemctl daemon-reload
