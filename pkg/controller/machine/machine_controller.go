@@ -1114,7 +1114,7 @@ func (r *Reconciler) getMachineDeploymentNameForMachine(ctx context.Context, mac
 		}
 	}
 
-	return "", errors.New(fmt.Sprintf("failed to find machine deployment reference for the machine %s", machine.Name))
+	return "", fmt.Errorf("failed to find machine deployment reference for the machine %s", machine.Name)
 }
 
 func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Client, req plugin.UserDataRequest, secretName string) (string, error) {
