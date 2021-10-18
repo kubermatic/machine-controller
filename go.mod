@@ -43,7 +43,7 @@ require (
 	google.golang.org/grpc v1.33.2
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
-	k8c.io/operating-system-manager v0.0.0-00010101000000-000000000000
+	k8c.io/operating-system-manager v0.1.0
 	k8s.io/api v0.20.2
 	k8s.io/apiextensions-apiserver v0.19.4
 	k8s.io/apimachinery v0.20.2
@@ -59,6 +59,5 @@ require (
 
 replace (
 	github.com/packethost/packngo => github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
-	k8c.io/operating-system-manager => ../operating-system-manager
 	k8s.io/client-go => k8s.io/client-go v0.20.2
 )
