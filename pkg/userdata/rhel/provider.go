@@ -132,7 +132,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 const userDataTemplate = `#cloud-config
 bootcmd:
 - modprobe ip_tables
-
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 fqdn: {{ .MachineSpec.Name }}
