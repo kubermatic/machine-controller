@@ -79,6 +79,8 @@ var (
 	nodeHyperkubeImage     string
 	nodeKubeletRepository  string
 	nodeContainerRuntime   string
+	podCidr                string
+	nodePortRange          string
 )
 
 const (
@@ -120,6 +122,12 @@ type controllerRunOptions struct {
 	nodeCSRApprover bool
 
 	node machinecontroller.NodeSettings
+
+	// Assigns the POD networks that will be allocated.
+	podCidr string
+
+	// A port range to reserve for services with NodePort visibility
+	nodePortRange string
 }
 
 func main() {
@@ -153,7 +161,9 @@ func main() {
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
-	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
+	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
+	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
+	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -268,6 +278,8 @@ func main() {
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
 		},
+		podCidr:       podCidr,
+		nodePortRange: nodePortRange,
 	}
 
 	if err := nodeFlags.UpdateNodeSettings(&runOptions.node); err != nil {
@@ -401,6 +413,8 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
+		bs.opt.podCidr,
+		bs.opt.nodePortRange,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)
 	}

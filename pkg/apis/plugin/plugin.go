@@ -54,6 +54,8 @@ type UserDataRequest struct {
 	KubeletRepository     string
 	KubeletFeatureGates   map[string]bool
 	ContainerRuntime      containerruntime.Config
+	PodCIDR               string
+	NodePortRange         string
 }
 
 // UserDataResponse contains the responded user data.
