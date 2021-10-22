@@ -222,9 +222,7 @@ write_files:
       open-vm-tools \
       {{- end }}
       ipvsadm
-
 {{ .ContainerRuntimeScript | indent 4 }}
-
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/
@@ -237,11 +235,11 @@ write_files:
     firewall-cmd --permanent --add-port={{ .NodePortRange }}/udp
     firewall-cmd --reload
     systemctl restart firewalld
-    {{ end }}
-
+    {{ end -}}
     {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
+
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
 

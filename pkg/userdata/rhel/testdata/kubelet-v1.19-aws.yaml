@@ -80,7 +80,6 @@ write_files:
       curl \
       ipvsadm
 
-
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
@@ -102,7 +101,6 @@ write_files:
 
     systemctl daemon-reload
     systemctl enable --now docker
-
 
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
