@@ -111,6 +111,8 @@ type Reconciler struct {
 	nodeSettings                     NodeSettings
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
+	podCIDR                          string
+	nodePortRange                    string
 }
 
 type NodeSettings struct {
@@ -167,6 +169,8 @@ func Add(
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
+	podCIDR string,
+	nodePortRange string,
 ) error {
 	reconciler := &Reconciler{
 		kubeClient:                       kubeClient,
@@ -182,6 +186,8 @@ func Add(
 		nodeSettings:                     nodeSettings,
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
+		podCIDR:                          podCIDR,
+		nodePortRange:                    nodePortRange,
 	}
 	m, err := userdatamanager.New()
 	if err != nil {
@@ -723,6 +729,8 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
+				PodCIDR:               r.podCIDR,
+				NodePortRange:         r.nodePortRange,
 			}
 
 			userdata, err := userdataPlugin.UserData(req)
