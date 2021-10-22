@@ -728,23 +728,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				externalCloudProvider, _ = strconv.ParseBool(val)
 			}
 
-			referencedMachineDeployment, err := r.getMachineDeploymentNameForMachine(ctx, machine)
-			if err != nil {
-				return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
-			}
-
-			cloudInitConfigSecretName := fmt.Sprintf("%s-%s",
-				referencedMachineDeployment,
-				provisioningSuffix)
-
-			// It is important to check if the secret which holds the cloud init configurations
-			if err := r.client.Get(ctx,
-				types.NamespacedName{Name: cloudInitConfigSecretName, Namespace: "kube-system"},
-				&corev1.Secret{}); err != nil {
-				klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
-				return nil, err
-			}
-
 			req := plugin.UserDataRequest{
 				MachineSpec:           machine.Spec,
 				Kubeconfig:            kubeconfig,
@@ -766,10 +749,28 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			var userdata string
 
 			if useOSM {
+				referencedMachineDeployment, err := r.getMachineDeploymentNameForMachine(ctx, machine)
+				if err != nil {
+					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
+				}
+
+				cloudInitConfigSecretName := fmt.Sprintf("%s-%s",
+					referencedMachineDeployment,
+					provisioningSuffix)
+
+				// It is important to check if the secret which holds the cloud init configurations
+				if err := r.client.Get(ctx,
+					types.NamespacedName{Name: cloudInitConfigSecretName, Namespace: "kube-system"},
+					&corev1.Secret{}); err != nil {
+					klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
+					return nil, err
+				}
+
 				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudInitConfigSecretName)
 				if err != nil {
 					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
 				}
+
 				userdata, err = cleanupTemplateOutput(userdata)
 				if err != nil {
 					return nil, fmt.Errorf("failed to cleanup user-data template: %v", err)
