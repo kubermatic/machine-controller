@@ -748,7 +748,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			// Here we do stuff!
 			var userdata string
 
-			if useOSM {
+			if r.useOSM {
 				referencedMachineDeployment, err := r.getMachineDeploymentNameForMachine(ctx, machine)
 				if err != nil {
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
