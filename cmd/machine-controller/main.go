@@ -290,7 +290,7 @@ func main() {
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
 		},
-		useOSM: useOSM,
+		useOSM:        useOSM,
 		podCidr:       podCidr,
 		nodePortRange: nodePortRange,
 	}
