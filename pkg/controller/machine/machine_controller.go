@@ -119,9 +119,9 @@ type Reconciler struct {
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
-	useOSM bool
-	podCIDR                          string
-	nodePortRange                    string
+	useOSM        bool
+	podCIDR       string
+	nodePortRange string
 }
 
 type NodeSettings struct {
@@ -198,9 +198,9 @@ func Add(
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
-		useOSM: useOSM,
-		podCIDR:                          podCIDR,
-		nodePortRange:                    nodePortRange,
+		useOSM:        useOSM,
+		podCIDR:       podCIDR,
+		nodePortRange: nodePortRange,
 	}
 	m, err := userdatamanager.New()
 	if err != nil {
