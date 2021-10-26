@@ -17,7 +17,7 @@
 set -euo pipefail
 set -x
 
-K8S_VERSION=1.20.1
+K8S_VERSION=1.22.2
 echo "$LC_E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 
 # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
@@ -28,12 +28,49 @@ if ! which make; then
   apt update
   apt install make
 fi
-if ! which docker; then
+if ! which containerd; then
   apt update
-  apt install -y docker.io
-  systemctl enable docker.service
-  systemctl start docker
-  systemctl status docker
+  apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+  cat <<EOF | tee /etc/crictl.yaml
+  runtime-endpoint: unix:///run/containerd/containerd.sock
+  EOF
+
+  mkdir -p /etc/containerd/ && touch /etc/containerd/config.toml
+  cat <<EOF | tee /etc/containerd/config.toml
+  version = 2
+
+  [metrics]
+  address = "127.0.0.1:1338"
+
+  [plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+  [plugins."io.containerd.grpc.v1.cri".containerd]
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+  [plugins."io.containerd.grpc.v1.cri".registry]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+  endpoint = ["https://registry-1.docker.io"]
+  EOF
+
+  mkdir -p /etc/systemd/system/containerd.service.d
+  cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
+  [Service]
+  Restart=always
+  EnvironmentFile=-/etc/environment
+  EOF
+
+  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io={{ .ContainerdVersion }}*
+  apt-mark hold containerd.io
+
+  systemctl daemon-reload
+  systemctl enable --now containerd
 fi
 if ! which kubelet; then
   apt-get update && apt-get install -y apt-transport-https
