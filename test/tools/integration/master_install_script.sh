@@ -38,6 +38,15 @@ if ! which containerd; then
   runtime-endpoint: unix:///run/containerd/containerd.sock
 EOF
 
+  mkdir -p /etc/systemd/system/containerd.service.d
+  cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
+  [Service]
+  Restart=always
+  EnvironmentFile=-/etc/environment
+EOF
+  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.4*
+  apt-mark hold containerd.io
+
   mkdir -p /etc/containerd/ && touch /etc/containerd/config.toml
   cat <<EOF | tee /etc/containerd/config.toml
   version = 2
@@ -59,18 +68,9 @@ EOF
   endpoint = ["https://registry-1.docker.io"]
 EOF
 
-  mkdir -p /etc/systemd/system/containerd.service.d
-  cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
-  [Service]
-  Restart=always
-  EnvironmentFile=-/etc/environment
-EOF
-
-  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.4*
-  apt-mark hold containerd.io
-
   systemctl daemon-reload
   systemctl enable --now containerd
+  systemctl restart containerd.service
 fi
 if ! which kubelet; then
   apt-get update && apt-get install -y apt-transport-https
