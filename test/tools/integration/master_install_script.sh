@@ -44,6 +44,7 @@ EOF
   Restart=always
   EnvironmentFile=-/etc/environment
 EOF
+
   DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.4*
   apt-mark hold containerd.io
 
@@ -71,6 +72,21 @@ EOF
   systemctl daemon-reload
   systemctl enable --now containerd
   systemctl restart containerd.service
+
+  cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+  overlay
+  br_netfilter
+EOF
+  modprobe overlay
+  modprobe br_netfilter
+
+  cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+  net.bridge.bridge-nf-call-iptables  = 1
+  net.ipv4.ip_forward                 = 1
+  net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+
+  sysctl --system
 fi
 if ! which kubelet; then
   apt-get update && apt-get install -y apt-transport-https
