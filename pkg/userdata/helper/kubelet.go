@@ -57,8 +57,8 @@ const (
 --node-ip ${KUBELET_NODE_IP}`
 
 	kubeletSystemdUnitTpl = `[Unit]
-After={{ .ContainerRuntime }}.service
-Requires={{ .ContainerRuntime }}.service
+After=containerd.service
+Requires=containerd.service
 
 Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
@@ -254,8 +254,8 @@ WantedBy=multi-user.target
 // ContainerRuntimeHealthCheckSystemdUnit container-runtime health checking systemd unit
 func ContainerRuntimeHealthCheckSystemdUnit() string {
 	return `[Unit]
-Requires=docker.service
-After=docker.service
+Requires=containerd.service
+After=containerd.service
 
 [Service]
 ExecStart=/opt/bin/health-monitor.sh container-runtime

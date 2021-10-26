@@ -23,6 +23,8 @@ package ubuntu
 import (
 	"errors"
 	"fmt"
+	"github.com/kubermatic/machine-controller/pkg/containerruntime"
+	"io/ioutil"
 	"strings"
 	"text/template"
 
@@ -87,6 +89,12 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)
 	}
 
+	var cri string
+	if _, ok := crEngine.(*containerruntime.Containerd); ok {
+		cri = "containerd"
+	} else {
+		cri = "docker"
+	}
 	crConfig, err := crEngine.Config()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
@@ -104,6 +112,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ContainerRuntimeScript         string
 		ContainerRuntimeConfigFileName string
 		ContainerRuntimeConfig         string
+		CRI                            string
 	}{
 		UserDataRequest:                req,
 		ProviderSpec:                   pconfig,
@@ -117,11 +126,16 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ContainerRuntimeScript:         crScript,
 		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
 		ContainerRuntimeConfig:         crConfig,
+		CRI:                            cri,
 	}
 
 	var buf strings.Builder
 	if err = tmpl.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("failed to execute user-data template: %w", err)
+	}
+
+	if err := ioutil.WriteFile("/tmp/user-data", []byte(buf.String()), 0644); err != nil {
+		return "", err
 	}
 
 	return userdatahelper.CleanupTemplateOutput(buf.String())
@@ -245,7 +259,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
+{{ kubeletSystemdUnit .CRI .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
