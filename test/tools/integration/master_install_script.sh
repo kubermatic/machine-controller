@@ -36,7 +36,7 @@ if ! which containerd; then
 
   cat <<EOF | tee /etc/crictl.yaml
   runtime-endpoint: unix:///run/containerd/containerd.sock
-  EOF
+EOF
 
   mkdir -p /etc/containerd/ && touch /etc/containerd/config.toml
   cat <<EOF | tee /etc/containerd/config.toml
@@ -57,16 +57,16 @@ if ! which containerd; then
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
   endpoint = ["https://registry-1.docker.io"]
-  EOF
+EOF
 
   mkdir -p /etc/systemd/system/containerd.service.d
   cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
   [Service]
   Restart=always
   EnvironmentFile=-/etc/environment
-  EOF
+EOF
 
-  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io={{ .ContainerdVersion }}*
+  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.4*
   apt-mark hold containerd.io
 
   systemctl daemon-reload
