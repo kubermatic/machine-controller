@@ -17,24 +17,46 @@
 set -euo pipefail
 set -x
 
-K8S_VERSION=1.20.1
+K8S_VERSION=1.22.2
 echo "$LC_E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 
 # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
 systemctl mask swap.target
 swapoff -a
 
+# Configure pre-requisites for installing containerd as CRI runtime
+# Configure persistent loading of modules
+sudo tee /etc/modules-load.d/containerd.conf <<EOF
+overlay
+br_netfilter
+EOF
+
+# Load modules at runtime
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# Ensure sysctl params are set
+sudo tee /etc/sysctl.d/kubernetes.conf<<EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+# Reload configs
+sudo sysctl --system
+
 if ! which make; then
   apt update
   apt install make
 fi
-if ! which docker; then
+if ! which containerd; then
   apt update
-  apt install -y docker.io
-  systemctl enable docker.service
-  systemctl start docker
-  systemctl status docker
+  apt install -y containerd
+  systemctl enable containerd.service
+  systemctl start containerd
+  systemctl status containerd
 fi
+
 if ! which kubelet; then
   apt-get update && apt-get install -y apt-transport-https
   curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
@@ -47,7 +69,7 @@ EOF
       kubeadm=${K8S_VERSION}-00 \
       kubectl=${K8S_VERSION}-00
   kubeadm init --kubernetes-version=${K8S_VERSION} \
-    --apiserver-advertise-address=${LC_ADDR} --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
+    --apiserver-advertise-address=${LC_ADDR} --cri-socket /run/containerd/containerd.sock --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
 fi
 if ! ls $HOME/.kube/config; then
   mkdir -p $HOME/.kube
@@ -55,7 +77,7 @@ if ! ls $HOME/.kube/config; then
   kubectl taint nodes --all node-role.kubernetes.io/master-
 fi
 if ! ls kube-flannel.yml; then
-  kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.13.0/Documentation/kube-flannel.yml
+  kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.15.1/Documentation/kube-flannel.yml
 fi
 
 if ! grep -q kubectl /root/.bashrc; then

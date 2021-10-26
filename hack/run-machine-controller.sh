@@ -29,4 +29,5 @@ $(dirname $0)/../machine-controller \
   -cluster-dns=172.16.0.10 \
   -enable-profiling \
   -metrics-address=0.0.0.0:8080 \
-  -health-probe-address=0.0.0.0:8085
+  -health-probe-address=0.0.0.0:8085 \
+  -node-container-runtime=containerd
