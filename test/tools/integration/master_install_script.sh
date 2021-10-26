@@ -24,6 +24,13 @@ echo "$LC_E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 systemctl mask swap.target
 swapoff -a
 
+if ! which buildah; then
+  sh -c "echo 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_20.04/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list"
+  wget -nv https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/xUbuntu_20.04/Release.key -O Release.key
+  apt-key add - < Release.key
+  apt-get update
+  apt-get -y install buildah
+fi
 if ! which make; then
   apt update
   apt install make
@@ -108,7 +115,7 @@ if ! ls $HOME/.kube/config; then
   kubectl taint nodes --all node-role.kubernetes.io/master-
 fi
 if ! ls kube-flannel.yml; then
-  kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.13.0/Documentation/kube-flannel.yml
+  kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.15.0/Documentation/kube-flannel.yml
 fi
 
 if ! grep -q kubectl /root/.bashrc; then
@@ -126,7 +133,7 @@ if [[ "${LC_DEPLOY_MACHINE:-}"  == "do-not-deploy-machine-controller" ]]; then
   exit 0
 fi
 if ! ls machine-controller-deployed; then
-  docker build -t kubermatic/machine-controller:latest .
+  buildah bud -t kubermatic/machine-controller:latest .
   # The 10 minute window given by default for the node to appear is too short
   # when we upgrade the instance during the upgrade test
   if [[ ${LC_JOB_NAME:-} = "pull-machine-controller-e2e-ubuntu-upgrade" ]]; then
