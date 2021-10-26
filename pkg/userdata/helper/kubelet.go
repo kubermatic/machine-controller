@@ -80,6 +80,16 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
 
 [Install]
 WantedBy=multi-user.target`
+
+	containerRuntimeHealthCheckSystemdUnitTpl = `[Unit]
+Requires={{ .ContainerRuntime }}.service
+After={{ .ContainerRuntime }}.service
+
+[Service]
+ExecStart=/opt/bin/health-monitor.sh container-runtime
+
+[Install]
+WantedBy=multi-user.target`
 )
 
 const cpFlags = `--cloud-provider=%s \
@@ -268,14 +278,21 @@ WantedBy=multi-user.target
 }
 
 // ContainerRuntimeHealthCheckSystemdUnit container-runtime health checking systemd unit
-func ContainerRuntimeHealthCheckSystemdUnit() string {
-	return `[Unit]
-Requires=docker.service
-After=docker.service
+func ContainerRuntimeHealthCheckSystemdUnit(containerRuntime string)  (string, error) { 
+	tmpl, err := template.New("container-runtime-healthcheck-systemd-unit").Funcs(TxtFuncMap()).Parse(containerRuntimeHealthCheckSystemdUnitTpl)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse container-runtime-healthcheck-systemd-unit template: %v", err)
+	}
 
-[Service]
-ExecStart=/opt/bin/health-monitor.sh container-runtime
+	data := struct {
+		ContainerRuntime  string
+	}{
+		ContainerRuntime:  containerRuntime,
+	}
 
-[Install]
-WantedBy=multi-user.target`
+	var buf strings.Builder
+	if err = tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute container-runtime-healthcheck-systemd-unit template: %w", err)
+	}
+	return buf.String(), nil
 }

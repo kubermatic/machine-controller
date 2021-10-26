@@ -266,7 +266,7 @@ write_files:
 - path: /etc/systemd/system/docker-healthcheck.service
   permissions: "0644"
   content: |
-{{ containerRuntimeHealthCheckSystemdUnit | indent 4 }}
+{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 4 }}
 
 - path: /etc/systemd/system/docker.service.d/environment.conf
   permissions: "0644"
