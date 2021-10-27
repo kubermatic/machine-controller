@@ -1,6 +1,6 @@
 [Unit]
-After=docker.service
-Requires=docker.service
+After=containerd.service
+Requires=containerd.service
 
 Description=kubelet: The Kubernetes Node Agent
 Documentation=https://kubernetes.io/docs/home/
