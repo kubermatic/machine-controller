@@ -133,7 +133,11 @@ if [[ "${LC_DEPLOY_MACHINE:-}"  == "do-not-deploy-machine-controller" ]]; then
   exit 0
 fi
 if ! ls machine-controller-deployed; then
-  buildah bud -t kubermatic/machine-controller:latest .
+  buildah build-using-dockerfile --format docker --file Dockerfile --tag kubermatic/machine-controller:latest
+  mkdir "images"
+  buildah push localhost/kubermatic/machine-controller oci-archive:./images/machine-controller.tar:localhost/kubermatic/machine-controller:latest
+  ctr --debug --namespace=k8s.io images import --all-platforms --no-unpack images/machine-controller.tar
+  sed -i "s_- image: kubermatic/machine-controller:latest_- image: localhost/kubermatic/machine-controller:latest_g" examples/machine-controller.yaml
   # The 10 minute window given by default for the node to appear is too short
   # when we upgrade the instance during the upgrade test
   if [[ ${LC_JOB_NAME:-} = "pull-machine-controller-e2e-ubuntu-upgrade" ]]; then
