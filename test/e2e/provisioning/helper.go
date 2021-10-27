@@ -208,7 +208,7 @@ func buildScenarios() []scenario {
 		for _, operatingSystem := range operatingSystems {
 			s := scenario{
 				name:              fmt.Sprintf("%s-%s", operatingSystem, version),
-				containerRuntime:  "containerd",
+				containerRuntime:  "docker",
 				kubernetesVersion: version.String(),
 				osName:            string(operatingSystem),
 				executor:          verifyCreateAndDelete,
@@ -219,7 +219,7 @@ func buildScenarios() []scenario {
 
 	all = append(all, scenario{
 		name:             "migrateUID",
-		containerRuntime: "containerd",
+		containerRuntime: "docker",
 		osName:           "ubuntu",
 		executor:         verifyMigrateUID,
 	})
