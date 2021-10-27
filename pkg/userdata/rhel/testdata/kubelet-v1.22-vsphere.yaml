@@ -6,7 +6,7 @@ hostname: node1
 fqdn: node1
 
 
-ssh_pwauth: no
+ssh_pwauth: false
 
 write_files:
 

@@ -52,43 +52,43 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "openstack"
           cloudProviderSpec:
-          # If empty, can be set via OS_AUTH_URL env var
+            # If empty, can be set via OS_AUTH_URL env var
             identityEndpoint:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: identityEndpoint
-          # If empty, can be set via OS_APPLICATION_CREDENTIAL_ID env var
+            # If empty, can be set via OS_APPLICATION_CREDENTIAL_ID env var
             applicationCredentialID:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: applicationCredentialID
-          # If empty, can be set via OS_APPLICATION_CREDENTIAL_SECRET env var
+            # If empty, can be set via OS_APPLICATION_CREDENTIAL_SECRET env var
             applicationCredentialSecret:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: applicationCredentialSecret
-          # If empty, can be set via OS_USER_NAME env var
+            # If empty, can be set via OS_USER_NAME env var
             username:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: username
-          # If empty, can be set via OS_PASSWORD env var
+            # If empty, can be set via OS_PASSWORD env var
             password:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: password
-          # If empty, can be set via OS_DOMAIN_NAME env var
+            # If empty, can be set via OS_DOMAIN_NAME env var
             domainName:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: domainName
-          # If empty, can be set via OS_TENANT_NAME env var
+            # If empty, can be set via OS_TENANT_NAME env var
             tenantName:
               secretKeyRef:
                 namespace: kube-system

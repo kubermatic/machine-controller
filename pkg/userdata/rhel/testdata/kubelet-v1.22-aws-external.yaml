@@ -3,7 +3,7 @@ bootcmd:
 - modprobe ip_tables
 
 
-ssh_pwauth: no
+ssh_pwauth: false
 
 write_files:
 

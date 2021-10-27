@@ -37,8 +37,8 @@ spec:
             securityGroupIDs:
             - "sg-a2c195ca"
             tags:
-            # you have to set this flag to real clusterID when running against our dev or prod
-            # otherwise you might have issues with your nodes not joining the cluster
+              # you have to set this flag to real clusterID when running against our dev or prod
+              # otherwise you might have issues with your nodes not joining the cluster
               "KubernetesCluster": "randomString"
             # Disabling the public IP assignment requires a private subnet with internet access.
             assignPublicIP: true
