@@ -24,39 +24,77 @@ echo "$LC_E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 systemctl mask swap.target
 swapoff -a
 
-# Configure pre-requisites for installing containerd as CRI runtime
-# Configure persistent loading of modules
-sudo tee /etc/modules-load.d/containerd.conf <<EOF
-overlay
-br_netfilter
-EOF
-
-# Load modules at runtime
-sudo modprobe overlay
-sudo modprobe br_netfilter
-
-# Ensure sysctl params are set
-sudo tee /etc/sysctl.d/kubernetes.conf<<EOF
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
-net.ipv4.ip_forward = 1
-EOF
-
-# Reload configs
-sudo sysctl --system
-
+if ! which buildah; then
+  sh -c "echo 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_20.04/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list"
+  wget -nv https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/xUbuntu_20.04/Release.key -O Release.key
+  apt-key add - < Release.key
+  apt-get update
+  apt-get -y install buildah
+fi
 if ! which make; then
   apt update
   apt install make
 fi
 if ! which containerd; then
   apt update
-  apt install -y containerd
-  systemctl enable containerd.service
-  systemctl start containerd
-  systemctl status containerd
-fi
+  apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
+  cat <<EOF | tee /etc/crictl.yaml
+  runtime-endpoint: unix:///run/containerd/containerd.sock
+EOF
+
+  mkdir -p /etc/systemd/system/containerd.service.d
+  cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
+  [Service]
+  Restart=always
+  EnvironmentFile=-/etc/environment
+EOF
+
+  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.4*
+  apt-mark hold containerd.io
+
+  mkdir -p /etc/containerd/ && touch /etc/containerd/config.toml
+  cat <<EOF | tee /etc/containerd/config.toml
+  version = 2
+
+  [metrics]
+  address = "127.0.0.1:1338"
+
+  [plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+  [plugins."io.containerd.grpc.v1.cri".containerd]
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+  [plugins."io.containerd.grpc.v1.cri".registry]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+  endpoint = ["https://registry-1.docker.io"]
+EOF
+
+  systemctl daemon-reload
+  systemctl enable --now containerd
+  systemctl restart containerd.service
+
+  cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+  overlay
+  br_netfilter
+EOF
+  modprobe overlay
+  modprobe br_netfilter
+
+  cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+  net.bridge.bridge-nf-call-iptables  = 1
+  net.ipv4.ip_forward                 = 1
+  net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+
+  sysctl --system
+fi
 if ! which kubelet; then
   apt-get update && apt-get install -y apt-transport-https
   curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
@@ -69,7 +107,7 @@ EOF
       kubeadm=${K8S_VERSION}-00 \
       kubectl=${K8S_VERSION}-00
   kubeadm init --kubernetes-version=${K8S_VERSION} \
-    --apiserver-advertise-address=${LC_ADDR} --cri-socket /run/containerd/containerd.sock --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
+    --apiserver-advertise-address=${LC_ADDR} --pod-network-cidr=10.244.0.0/16 --service-cidr=172.16.0.0/12
 fi
 if ! ls $HOME/.kube/config; then
   mkdir -p $HOME/.kube
@@ -77,7 +115,7 @@ if ! ls $HOME/.kube/config; then
   kubectl taint nodes --all node-role.kubernetes.io/master-
 fi
 if ! ls kube-flannel.yml; then
-  kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.15.1/Documentation/kube-flannel.yml
+  kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.15.0/Documentation/kube-flannel.yml
 fi
 
 if ! grep -q kubectl /root/.bashrc; then
@@ -95,7 +133,7 @@ if [[ "${LC_DEPLOY_MACHINE:-}"  == "do-not-deploy-machine-controller" ]]; then
   exit 0
 fi
 if ! ls machine-controller-deployed; then
-  docker build -t kubermatic/machine-controller:latest .
+  buildah bud -t kubermatic/machine-controller:latest .
   # The 10 minute window given by default for the node to appear is too short
   # when we upgrade the instance during the upgrade test
   if [[ ${LC_JOB_NAME:-} = "pull-machine-controller-e2e-ubuntu-upgrade" ]]; then
