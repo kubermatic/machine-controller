@@ -278,16 +278,16 @@ WantedBy=multi-user.target
 }
 
 // ContainerRuntimeHealthCheckSystemdUnit container-runtime health checking systemd unit
-func ContainerRuntimeHealthCheckSystemdUnit(containerRuntime string)  (string, error) { 
+func ContainerRuntimeHealthCheckSystemdUnit(containerRuntime string) (string, error) {
 	tmpl, err := template.New("container-runtime-healthcheck-systemd-unit").Funcs(TxtFuncMap()).Parse(containerRuntimeHealthCheckSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse container-runtime-healthcheck-systemd-unit template: %v", err)
 	}
 
 	data := struct {
-		ContainerRuntime  string
+		ContainerRuntime string
 	}{
-		ContainerRuntime:  containerRuntime,
+		ContainerRuntime: containerRuntime,
 	}
 
 	var buf strings.Builder
