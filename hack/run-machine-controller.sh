@@ -31,4 +31,4 @@ $(dirname $0)/../machine-controller \
   -metrics-address=0.0.0.0:8080 \
   -health-probe-address=0.0.0.0:8085 \
   -node-container-runtime=containerd \
-  -use-osm \
+  -use-osm 
