@@ -151,8 +151,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
-    After=containerd.service
-    Requires=containerd.service
+    After=docker.service
+    Requires=docker.service
 
     Description=kubelet: The Kubernetes Node Agent
     Documentation=https://kubernetes.io/docs/home/
@@ -368,8 +368,8 @@ write_files:
   permissions: "0644"
   content: |
     [Unit]
-    Requires=containerd.service
-    After=containerd.service
+    Requires=docker.service
+    After=docker.service
 
     [Service]
     ExecStart=/opt/bin/health-monitor.sh container-runtime

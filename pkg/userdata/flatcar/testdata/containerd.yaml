@@ -40,8 +40,8 @@ coreos:
         After=download-script.service
     content: |
       [Unit]
-      Requires=containerd.service
-      After=containerd.service
+      Requires=docker.service
+      After=docker.service
 
       [Service]
       ExecStart=/opt/bin/health-monitor.sh container-runtime
