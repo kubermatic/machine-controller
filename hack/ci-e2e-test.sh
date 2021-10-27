@@ -28,7 +28,7 @@ function cleanup {
   for try in {1..20}; do
     # Clean up master
     echo "Cleaning up controller, attempt ${try}"
-    terraform destroy -force
+    terraform apply -destroy -auto-approve
     if [[ $? == 0 ]]; then break; fi
     echo "Sleeping for $try seconds"
     sleep ${try}s
