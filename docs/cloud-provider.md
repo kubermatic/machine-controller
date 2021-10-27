@@ -121,6 +121,8 @@ availabilityZone: ""
 region: ""
 # the name of the network to use
 network: ""
+# compute microversion
+computeAPIVersion: ""
 # set trust-device-path flag for kubelet
 trustDevicePath: false
 # set root disk size

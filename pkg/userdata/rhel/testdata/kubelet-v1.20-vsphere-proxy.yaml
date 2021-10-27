@@ -1,4 +1,6 @@
 #cloud-config
+bootcmd:
+- modprobe ip_tables
 
 hostname: node1
 fqdn: node1
@@ -94,7 +96,6 @@ write_files:
       open-vm-tools \
       ipvsadm
 
-
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
@@ -116,7 +117,6 @@ write_files:
 
     systemctl daemon-reload
     systemctl enable --now docker
-
 
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
@@ -425,6 +425,34 @@ write_files:
     WantedBy=multi-user.target
 
 
+- path: "/opt/bin/disable-nm-cloud-setup"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    if systemctl status 'nm-cloud-setup.timer' 2> /dev/null | grep -Fq "Active:"; then
+            systemctl stop nm-cloud-setup.timer
+            systemctl disable nm-cloud-setup.service
+            systemctl disable nm-cloud-setup.timer
+            reboot
+    fi
+
+- path: "/etc/systemd/system/disable-nm-cloud-setup.service"
+  permissions: "0644"
+  content: |
+    [Install]
+    WantedBy=multi-user.target
+
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
+    ExecStart=/opt/bin/supervise.sh /opt/bin/disable-nm-cloud-setup
+
 rh_subscription:
     username: ""
     password: ""
@@ -432,3 +460,4 @@ rh_subscription:
 
 runcmd:
 - systemctl start setup.service
+- systemctl start disable-nm-cloud-setup.service

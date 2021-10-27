@@ -130,6 +130,8 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 // UserData template.
 const userDataTemplate = `#cloud-config
+bootcmd:
+- modprobe ip_tables
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 fqdn: {{ .MachineSpec.Name }}
@@ -222,17 +224,24 @@ write_files:
       open-vm-tools \
       {{- end }}
       ipvsadm
-
 {{ .ContainerRuntimeScript | indent 4 }}
-
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
+    {{ if eq .CloudProviderName "azure" }}
+    firewall-cmd --permanent --zone=trusted --add-source={{ .PodCIDR }}
+    firewall-cmd --permanent --add-port=8472/udp
+    firewall-cmd --permanent --add-port={{ .NodePortRange }}/tcp
+    firewall-cmd --permanent --add-port={{ .NodePortRange }}/udp
+    firewall-cmd --reload
+    systemctl restart firewalld
+    {{ end -}}
     {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
+
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
 
@@ -315,6 +324,34 @@ write_files:
   append: true
 {{- end }}
 
+- path: "/opt/bin/disable-nm-cloud-setup"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    if systemctl status 'nm-cloud-setup.timer' 2> /dev/null | grep -Fq "Active:"; then
+            systemctl stop nm-cloud-setup.timer
+            systemctl disable nm-cloud-setup.service
+            systemctl disable nm-cloud-setup.timer
+            reboot
+    fi
+
+- path: "/etc/systemd/system/disable-nm-cloud-setup.service"
+  permissions: "0644"
+  content: |
+    [Install]
+    WantedBy=multi-user.target
+
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
+    ExecStart=/opt/bin/supervise.sh /opt/bin/disable-nm-cloud-setup
+
 rh_subscription:
 {{- if .OSConfig.RHELUseSatelliteServer }}
     org: "{{.OSConfig.RHELOrganizationName}}"
@@ -329,4 +366,5 @@ rh_subscription:
 
 runcmd:
 - systemctl start setup.service
+- systemctl start disable-nm-cloud-setup.service
 `

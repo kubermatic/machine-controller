@@ -43,6 +43,7 @@ import (
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	"github.com/kubermatic/machine-controller/pkg/signals"
+	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -71,6 +72,8 @@ var (
 	nodeCSRApprover                  bool
 	caBundleFile                     string
 
+	useOSM bool
+
 	nodeHTTPProxy          string
 	nodeNoProxy            string
 	nodeInsecureRegistries string
@@ -79,6 +82,8 @@ var (
 	nodeHyperkubeImage     string
 	nodeKubeletRepository  string
 	nodeContainerRuntime   string
+	podCidr                string
+	nodePortRange          string
 )
 
 const (
@@ -120,6 +125,14 @@ type controllerRunOptions struct {
 	nodeCSRApprover bool
 
 	node machinecontroller.NodeSettings
+
+	useOSM bool
+
+	// Assigns the POD networks that will be allocated.
+	podCidr string
+
+	// A port range to reserve for services with NodePort visibility
+	nodePortRange string
 }
 
 func main() {
@@ -153,7 +166,11 @@ func main() {
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux, and for kubernetes >= 1.18.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
-	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests.")
+	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
+	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
+	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
+
+	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -182,6 +199,11 @@ func main() {
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+	}
+
+	// needed for OSM
+	if err := osmv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
 	}
 
 	// Check if the hyperkube image has a tag set
@@ -268,6 +290,9 @@ func main() {
 				containerruntime.WithRegistryMirrors(registryMirrors),
 			),
 		},
+		useOSM:        useOSM,
+		podCidr:       podCidr,
+		nodePortRange: nodePortRange,
 	}
 
 	if err := nodeFlags.UpdateNodeSettings(&runOptions.node); err != nil {
@@ -401,6 +426,9 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
+		bs.opt.useOSM,
+		bs.opt.podCidr,
+		bs.opt.nodePortRange,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)
 	}
