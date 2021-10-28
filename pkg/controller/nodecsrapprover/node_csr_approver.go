@@ -73,7 +73,7 @@ func Add(mgr manager.Manager) error {
 	if err != nil {
 		return fmt.Errorf("failed to get server API groups: %w", err)
 	}
-
+	asd
 	certificatesVersionFound := ""
 	for _, group := range srvGroups.Groups {
 		if group.Name != "certificates.k8s.io" {
