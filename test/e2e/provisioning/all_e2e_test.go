@@ -312,7 +312,7 @@ func TestKubevirtDNSConfigProvisioningE2E(t *testing.T) {
 		name:              "Kubevirt with dns config",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "v1.17.0",
+		kubernetesVersion: "v1.22.2",
 		executor:          verifyCreateAndDelete,
 	}
 
