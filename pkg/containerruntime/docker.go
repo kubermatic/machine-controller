@@ -163,3 +163,7 @@ systemctl daemon-reload
 systemctl enable --now docker
 `))
 )
+
+func (eng *Docker) String() string {
+	return "docker"
+}

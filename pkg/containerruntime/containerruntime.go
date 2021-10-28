@@ -31,6 +31,7 @@ type Engine interface {
 	ScriptFor(os types.OperatingSystem) (string, error)
 	ConfigFileName() string
 	Config() (string, error)
+	String() string
 }
 
 type Opt func(*Config)
