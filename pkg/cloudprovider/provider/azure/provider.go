@@ -140,7 +140,7 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 		Publisher: to.StringPtr("kinvolk"),
 		Offer:     to.StringPtr("flatcar-container-linux"),
 		Sku:       to.StringPtr("stable"),
-		Version:   to.StringPtr("2345.3.0"),
+		Version:   to.StringPtr("2905.2.5"),
 	},
 }
 
