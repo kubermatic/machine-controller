@@ -165,5 +165,5 @@ systemctl enable --now docker
 )
 
 func (eng *Docker) String() string {
-	return "docker"
+	return dockerName
 }

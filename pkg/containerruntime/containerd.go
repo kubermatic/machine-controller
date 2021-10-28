@@ -153,5 +153,5 @@ systemctl enable --now containerd
 )
 
 func (eng *Containerd) String() string {
-	return "containerd"
+	return containerdName
 }
