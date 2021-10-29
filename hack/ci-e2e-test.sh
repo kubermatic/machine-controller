@@ -40,7 +40,7 @@ trap cleanup EXIT
 echo "Installing dependencies..."
 apt update && apt install -y jq rsync unzip genisoimage
 curl --retry 5 --location --remote-name \
-  https://storage.googleapis.com/kubernetes-release/release/v1.12.4/bin/linux/amd64/kubectl &&
+  https://storage.googleapis.com/kubernetes-release/release/v1.22.2/bin/linux/amd64/kubectl &&
   chmod +x kubectl &&
   mv kubectl /usr/local/bin
 
