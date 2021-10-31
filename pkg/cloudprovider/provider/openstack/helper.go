@@ -27,8 +27,8 @@ import (
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	osavailabilityzones "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
 	osflavors "github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
-	osimages "github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	osregions "github.com/gophercloud/gophercloud/openstack/identity/v3/regions"
+	osimagesv2 "github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
 	osfloatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	ossecuritygroups "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	osecruritygrouprules "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
@@ -120,11 +120,11 @@ func getAvailabilityZone(computeClient *gophercloud.ServiceClient, c *Config) (*
 	return nil, errNotFound
 }
 
-func getImageByName(computeClient *gophercloud.ServiceClient, c *Config) (*osimages.Image, error) {
-	var allImages []osimages.Image
-	pager := osimages.ListDetail(computeClient, osimages.ListOpts{Name: c.Image})
+func getImageByName(imageClient *gophercloud.ServiceClient, c *Config) (*osimagesv2.Image, error) {
+	var allImages []osimagesv2.Image
+	pager := osimagesv2.List(imageClient, osimagesv2.ListOpts{Name: c.Image})
 	err := pager.EachPage(func(page pagination.Page) (bool, error) {
-		images, err := osimages.ExtractImages(page)
+		images, err := osimagesv2.ExtractImages(page)
 		if err != nil {
 			return false, err
 		}

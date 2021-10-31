@@ -43,7 +43,7 @@ const expectedServerRequest = `{
   "server": {
 	  "availability_zone": "eu-de-01",
 	  "flavorRef": "1",
-	  "imageRef": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
+	  "imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
 	  "metadata": {
 		"kubernetes-cluster": "xyz",
 		"machine-uid": "",
@@ -75,7 +75,7 @@ const expectedBlockDeviceBootRequest = `{
 		"delete_on_termination": true,
 		"destination_type": "volume",
 		"source_type": "image",
-		"uuid": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
+		"uuid": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
 		"volume_size": 10
 	  }
 	],
@@ -111,7 +111,7 @@ const expectedBlockDeviceBootVolumeTypeRequest = `{
 		  "delete_on_termination": true,
 		  "destination_type": "volume",
 		  "source_type": "image",
-		  "uuid": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
+		  "uuid": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
 		  "volume_size": 10,
 		  "volume_type": "ssd"
 		}
@@ -309,7 +309,7 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 	if err != nil {
 		t.Fatalf("Error occurred while unmarshaling the expected server manifest.")
 	}
-	res.Server.ID = "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7"
+	res.Server.ID = "1bea47ed-f6a9-463b-b423-14b9cca9ad27"
 	srvRes, err := json.Marshal(res)
 	if err != nil {
 		t.Fatalf("Error occurred while marshaling the server response manifest.")
@@ -335,41 +335,69 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 		fmt.Fprintf(w, string(srvRes))
 	})
 
-	// Handle listing images.
-	th.Mux.HandleFunc("/images/detail", func(w http.ResponseWriter, r *http.Request) {
+	// Handle listing images v2.
+	th.Mux.HandleFunc("/v2/images", func(w http.ResponseWriter, r *http.Request) {
 		th.TestMethod(t, r, "GET")
 		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
 
 		w.Header().Add("Content-Type", "application/json")
+		// Example ref: https://docs.openstack.org/api-ref/image/v2/index.html?expanded=list-images-detail#list-images
 		fmt.Fprintf(w, `
 			{
 				"images": [
 					{
-						"status": "ACTIVE",
-						"updated": "2014-09-23T12:54:56Z",
-						"id": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
-						"OS-EXT-IMG-SIZE:size": 476704768,
-						"name": "F17-x86_64-cfntools",
-						"created": "2014-09-23T12:54:52Z",
-						"minDisk": 0,
-						"progress": 100,
-						"minRam": 0
+						"status": "active",
+						"name": "cirros-0.3.2-x86_64-disk",
+						"tags": [],
+						"container_format": "bare",
+						"created_at": "2014-11-07T17:07:06Z",
+						"disk_format": "qcow2",
+						"updated_at": "2014-11-07T17:19:09Z",
+						"visibility": "public",
+						"self": "/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+						"min_disk": 0,
+						"protected": false,
+						"id": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+						"file": "/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27/file",
+						"checksum": "64d7c1cd2b6f60c92c14662941cb7913",
+						"os_hash_algo": "sha512",
+						"os_hash_value": "073b4523583784fbe01daff81eba092a262ec37ba6d04dd3f52e4cd5c93eb8258af44881345ecda0e49f3d8cc6d2df6b050ff3e72681d723234aff9d17d0cf09",
+						"os_hidden": false,
+						"owner": "5ef70662f8b34079a6eddb8da9d75fe8",
+						"size": 13167616,
+						"min_ram": 0,
+						"schema": "/v2/schemas/image",
+						"virtual_size": null
 					},
 					{
-						"status": "ACTIVE",
-						"updated": "2014-09-23T12:51:43Z",
-						"id": "f90f6034-2570-4974-8351-6b49732ef2eb",
-						"OS-EXT-IMG-SIZE:size": 13167616,
-						"name": "cirros-0.3.2-x86_64-disk",
-						"created": "2014-09-23T12:51:42Z",
-						"minDisk": 0,
-						"progress": 100,
-						"minRam": 0
+						"status": "active",
+						"name": "F17-x86_64-cfntools",
+						"tags": [],
+						"container_format": "bare",
+						"created_at": "2014-10-30T08:23:39Z",
+						"disk_format": "qcow2",
+						"updated_at": "2014-11-03T16:40:10Z",
+						"visibility": "public",
+						"self": "/v2/images/781b3762-9469-4cec-b58d-3349e5de4e9c",
+						"min_disk": 0,
+						"protected": false,
+						"id": "781b3762-9469-4cec-b58d-3349e5de4e9c",
+						"file": "/v2/images/781b3762-9469-4cec-b58d-3349e5de4e9c/file",
+						"checksum": "afab0f79bac770d61d24b4d0560b5f70",
+						"os_hash_algo": "sha512",
+						"os_hash_value": "ea3e20140df1cc65f53d4c5b9ee3b38d0d6868f61bbe2230417b0f98cef0e0c7c37f0ebc5c6456fa47f013de48b452617d56c15fdba25e100379bd0e81ee15ec",
+						"os_hidden": false,
+						"owner": "5ef70662f8b34079a6eddb8da9d75fe8",
+						"size": 476704768,
+						"min_ram": 0,
+						"schema": "/v2/schemas/image",
+						"virtual_size": null
 					}
 				]
 			}
 		`)
 	})
+
 	// Handle listing flavours.
 	th.Mux.HandleFunc("/flavors/detail", func(w http.ResponseWriter, r *http.Request) {
 		th.TestMethod(t, r, "GET")
