@@ -225,7 +225,7 @@ systemd:
           Requires=download-script.service
           After=download-script.service
       contents: |
-{{ containerRuntimeHealthCheckSystemdUnit | indent 10 }}
+{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 10 }}
 
     - name: kubelet-healthcheck.service
       enabled: true
@@ -537,7 +537,7 @@ coreos:
         Requires=download-script.service
         After=download-script.service
     content: |
-{{ containerRuntimeHealthCheckSystemdUnit | indent 6 }}
+{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 6 }}
 
   - name: kubelet-healthcheck.service
     enable: true

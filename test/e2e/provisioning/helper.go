@@ -219,7 +219,7 @@ func buildScenarios() []scenario {
 
 	all = append(all, scenario{
 		name:             "migrateUID",
-		containerRuntime: "docker",
+		containerRuntime: "containerd",
 		osName:           "ubuntu",
 		executor:         verifyMigrateUID,
 	})

@@ -30,4 +30,5 @@ $(dirname $0)/../machine-controller \
   -enable-profiling \
   -metrics-address=0.0.0.0:8080 \
   -use-osm \
-  -health-probe-address=0.0.0.0:8085
+  -health-probe-address=0.0.0.0:8085 \
+  -node-container-runtime=containerd
