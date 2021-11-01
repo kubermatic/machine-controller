@@ -42,6 +42,8 @@ const (
 {{- end }}
 {{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
+{{- else if and (eq .CloudProvider "aws") (.IsExternal) }}
+--hostname-override=${KUBELET_HOSTNAME} \
 {{- end }}
 --exit-on-lock-contention \
 --lock-file=/tmp/kubelet.lock \
