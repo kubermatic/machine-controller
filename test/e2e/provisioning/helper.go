@@ -33,6 +33,7 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
+		semver.MustParse("v1.19.15"),
 		semver.MustParse("v1.20.11"),
 		semver.MustParse("v1.21.5"),
 		semver.MustParse("v1.22.2"),
@@ -51,7 +52,7 @@ var (
 		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu-20-04",
 		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
 		string(providerconfigtypes.OperatingSystemRHEL):    "machine-controller-e2e-rhel",
-		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar",
+		string(providerconfigtypes.OperatingSystemFlatcar): "Flatcar Stable (2021-10-27)",
 	}
 )
 
@@ -206,8 +207,7 @@ func buildScenarios() []scenario {
 	for _, version := range versions {
 		for _, operatingSystem := range operatingSystems {
 			s := scenario{
-				name: fmt.Sprintf("%s-%s", operatingSystem, version),
-				// We only support docker
+				name:              fmt.Sprintf("%s-%s", operatingSystem, version),
 				containerRuntime:  "docker",
 				kubernetesVersion: version.String(),
 				osName:            string(operatingSystem),

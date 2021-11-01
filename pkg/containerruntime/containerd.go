@@ -151,3 +151,7 @@ systemctl daemon-reload
 systemctl enable --now containerd
 `))
 )
+
+func (eng *Containerd) String() string {
+	return containerdName
+}
