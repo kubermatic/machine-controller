@@ -84,10 +84,10 @@ type Config struct {
 	ApplicationCredentialSecret string
 	Username                    string
 	Password                    string
-	DomainName                  string
-	TenantName                  string
-	TenantID                    string
-	TokenID                     string
+	DomainName  string
+	ProjectName string
+	ProjectID   string
+	TokenID     string
 	Region                      string
 	ComputeAPIVersion           string
 
@@ -140,11 +140,11 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
 	}
-	c.TenantName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
+	c.ProjectName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
 	if err != nil {
 		return fmt.Errorf("failed to get the value of \"tenantName\" field, error = %v", err)
 	}
-	c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
+	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
 	if err != nil {
 		return fmt.Errorf("failed to get the value of \"tenantID\" field, error = %v", err)
 	}
@@ -283,8 +283,8 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		Username:                    c.Username,
 		Password:                    c.Password,
 		DomainName:                  c.DomainName,
-		TenantName:                  c.TenantName,
-		TenantID:                    c.TenantID,
+		TenantName:                  c.ProjectName,
+		TenantID:                    c.ProjectID,
 		TokenID:                     c.TokenID,
 		ApplicationCredentialID:     c.ApplicationCredentialID,
 		ApplicationCredentialSecret: c.ApplicationCredentialSecret,
@@ -408,7 +408,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 			return errors.New("password must be configured")
 		}
 
-		if c.TenantID == "" && c.TenantName == "" {
+		if c.ProjectID == "" && c.ProjectName == "" {
 			return errors.New("either tenantID or tenantName must be configured")
 		}
 	} else {
@@ -814,8 +814,8 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			Username:                    c.Username,
 			Password:                    c.Password,
 			DomainName:                  c.DomainName,
-			TenantName:                  c.TenantName,
-			TenantID:                    c.TenantID,
+			ProjectName:                 c.ProjectName,
+			ProjectID:                   c.ProjectID,
 			Region:                      c.Region,
 			ApplicationCredentialSecret: c.ApplicationCredentialSecret,
 			ApplicationCredentialID:     c.ApplicationCredentialID,
