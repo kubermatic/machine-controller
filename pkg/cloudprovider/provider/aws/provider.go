@@ -96,14 +96,18 @@ var (
 	)
 
 	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
+		// Source: https://wiki.centos.org/Cloud/AWS
 		providerconfigtypes.OperatingSystemCentOS: {
 			awstypes.CPUArchitectureX86_64: {
-				description: "CentOS Linux 7 x86_64 HVM EBS*",
-				// The AWS marketplace ID from AWS
-				owner:       "679593333241",
-				productCode: "aw0evgkw8e5c1q413zgy5pjce",
+				description: "CentOS 7* x86_64",
+				// The AWS marketplace ID from CentOS Community Platform Engineering (CPE)
+				owner: "125523088429",
 			},
-			// 2021-10-14 - No CentOS 7 ARM64 image available under legacy product code
+			awstypes.CPUArchitectureARM64: {
+				description: "CentOS 7* aarch64",
+				// The AWS marketplace ID from CentOS Community Platform Engineering (CPE)
+				owner: "125523088429",
+			},
 		},
 		providerconfigtypes.OperatingSystemAmazonLinux2: {
 			awstypes.CPUArchitectureX86_64: {
