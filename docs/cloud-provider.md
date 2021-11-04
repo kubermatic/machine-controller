@@ -101,8 +101,14 @@ username: ""
 password: ""
 # the openstack domain
 domainName: "default"
-# tenant name
-tenantName: ""
+# project name
+projectName: ""
+# project id
+projectID: ""
+# tenant name (deprecated, should use projectName)
+tenantName: "" 
+# tenant Id (deprecated, should use projectID)
+tenantID: ""
 # image to use (currently only ubuntu is supported)
 image: "Ubuntu 18.04 amd64"
 # instance flavor
