@@ -19,9 +19,9 @@ package providerconfig
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/runtime"
-
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestDefaultOperatingSystemSpec(t *testing.T) {
