@@ -445,14 +445,20 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get compute client: %v", err)
 	}
 
-	image, err := getImageByName(computeClient, c)
+	// Get OS Image Client
+	imageClient, err := goopenstack.NewImageServiceV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	if err != nil {
+		return fmt.Errorf("failed to get image client: %v", err)
+	}
+
+	image, err := getImageByName(imageClient, c)
 	if err != nil {
 		return fmt.Errorf("failed to get image %q: %v", c.Image, err)
 	}
 	if c.RootDiskSizeGB != nil {
-		if *c.RootDiskSizeGB < image.MinDisk {
+		if *c.RootDiskSizeGB < image.MinDiskGigabytes {
 			return fmt.Errorf("rootDiskSize %d is smaller than minimum disk size for image %q(%d)",
-				*c.RootDiskSizeGB, image.Name, image.MinDisk)
+				*c.RootDiskSizeGB, image.Name, image.MinDiskGigabytes)
 		}
 	}
 
@@ -526,7 +532,13 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get flavor %s", c.Flavor))
 	}
 
-	image, err := getImageByName(computeClient, c)
+	// Get OS Image Client
+	imageClient, err := goopenstack.NewImageServiceV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	if err != nil {
+		return nil, osErrorToTerminalError(err, "failed to get a image client")
+	}
+
+	image, err := getImageByName(imageClient, c)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get image %s", c.Image))
 	}
