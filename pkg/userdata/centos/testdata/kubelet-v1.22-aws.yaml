@@ -85,23 +85,22 @@ write_files:
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
-    mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
+    cat <<EOF | tee /etc/crictl.yaml
+    runtime-endpoint: unix:///run/containerd/containerd.sock
+    EOF
 
-    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
+    mkdir -p /etc/systemd/system/containerd.service.d
+    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
     [Service]
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
 
-    yum install -y \
-        docker-ce-cli-19.03* \
-        containerd.io-1.4* \
-        docker-ce-19.03* \
-        yum-plugin-versionlock
-    yum versionlock add docker-ce* containerd.io
+    yum install -y containerd.io-1.4* yum-plugin-versionlock
+    yum versionlock add containerd.io
 
     systemctl daemon-reload
-    systemctl enable --now docker
+    systemctl enable --now containerd
 
 
     opt_bin=/opt/bin
@@ -188,8 +187,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
-    After=docker.service
-    Requires=docker.service
+    After=containerd.service
+    Requires=containerd.service
 
     Description=kubelet: The Kubernetes Node Agent
     Documentation=https://kubernetes.io/docs/home/
@@ -216,8 +215,8 @@ write_files:
       --cloud-config=/etc/kubernetes/cloud-config \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --container-runtime=docker \
-      --container-runtime-endpoint=unix:///var/run/dockershim.sock \
+      --container-runtime=remote \
+      --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --feature-gates=DynamicKubeletConfig=true \
       --node-ip ${KUBELET_NODE_IP}
@@ -394,10 +393,27 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/docker/daemon.json
+- path: /etc/containerd/config.toml
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"}}
+    version = 2
+
+    [metrics]
+    address = "127.0.0.1:1338"
+
+    [plugins]
+    [plugins."io.containerd.grpc.v1.cri"]
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    runtime_type = "io.containerd.runc.v2"
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+    SystemdCgroup = true
+    [plugins."io.containerd.grpc.v1.cri".registry]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["https://registry-1.docker.io"]
+
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
