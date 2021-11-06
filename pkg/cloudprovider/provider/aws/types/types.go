@@ -24,6 +24,9 @@ type RawConfig struct {
 	AccessKeyID     providerconfigtypes.ConfigVarString `json:"accessKeyId,omitempty"`
 	SecretAccessKey providerconfigtypes.ConfigVarString `json:"secretAccessKey,omitempty"`
 
+	AssumeRoleARN        providerconfigtypes.ConfigVarString `json:"assumeRoleARN,omitempty"`
+	AssumeRoleExternalID providerconfigtypes.ConfigVarString `json:"assumeRoleExternalID,omitempty"`
+
 	Region             providerconfigtypes.ConfigVarString   `json:"region"`
 	AvailabilityZone   providerconfigtypes.ConfigVarString   `json:"availabilityZone,omitempty"`
 	VpcID              providerconfigtypes.ConfigVarString   `json:"vpcId"`

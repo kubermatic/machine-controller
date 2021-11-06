@@ -388,6 +388,36 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
+// TestAWSAssumeRoleProvisioning - a test suite that exercises AWS provider
+// by requesting nodes using an assumed role.
+func TestAWSAssumeRoleProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
+	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
+	awsAssumeRoleARN := os.Getenv("AWS_ASSUME_ROLE_ARN")
+	awsAssumeRoleExternalID := os.Getenv("AWS_ASSUME_ROLE_EXTERNAL_ID")
+	if len(awsKeyID) == 0 || len(awsSecret) == 0 || len(awsAssumeRoleARN) == 0 || len(awsAssumeRoleExternalID) == 0 {
+		t.Fatal("unable to run the test suite, environment variables AWS_E2E_TESTS_KEY_ID, AWS_E2E_TESTS_SECRET, AWS_E2E_ASSUME_ROLE_ARN and AWS_E2E_ASSUME_ROLE_EXTERNAL_ID cannot be empty")
+	}
+
+	// act
+	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
+		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.CloudInit),
+	}
+
+	scenario := scenario{
+		name:              "AWS with AssumeRole",
+		osName:            "ubuntu",
+		containerRuntime:  "docker",
+		kubernetesVersion: "1.19.9",
+		executor:          verifyCreateAndDelete,
+	}
+	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
+}
+
 // TestAWSSpotInstanceProvisioning - a test suite that exercises AWS provider
 // by requesting spot nodes with different combination of container runtime type, container runtime version and the OS flavour.
 func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
