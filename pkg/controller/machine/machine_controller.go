@@ -754,19 +754,19 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
 				}
 
-				cloudInitConfigSecretName := fmt.Sprintf("%s-%s",
+				cloudConfigSecretName := fmt.Sprintf("%s-%s",
 					referencedMachineDeployment,
 					provisioningSuffix)
 
-				// It is important to check if the secret which holds the cloud init configurations
+				// It is important to check if the secret holding cloud-config exists
 				if err := r.client.Get(ctx,
-					types.NamespacedName{Name: cloudInitConfigSecretName, Namespace: "kube-system"},
+					types.NamespacedName{Name: cloudConfigSecretName, Namespace: "kube-system"},
 					&corev1.Secret{}); err != nil {
 					klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
 					return nil, err
 				}
 
-				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudInitConfigSecretName)
+				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudConfigSecretName)
 				if err != nil {
 					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
 				}
@@ -1130,6 +1130,27 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 		return "", fmt.Errorf("failed to fetch api-server token: %v", err)
 	}
 
+	// Retrieve provider config from machine
+	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
+	if err != nil {
+		return "", fmt.Errorf("failed to get providerSpec: %v", err)
+	}
+
+	// Ignition configuration is used for flatcar
+	// TODO: @Waleed better logic here
+	if pconfig.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+		return getOSMBootstrapUserDataForIgnition(ctx, req, pconfig, token, secretName, clusterName)
+	}
+	return getOSMBootstrapUserDataForCloudInit(ctx, req, pconfig, token, secretName, clusterName)
+}
+
+func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, secretName, token, clusterName string) (string, error) {
+	// TODO: @Waleed implement this
+	return ignitionRemoteConfigTemplate, nil
+}
+
+// getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
+func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, secretName, token, clusterName string) (string, error) {
 	data := struct {
 		Token       string
 		SecretName  string
@@ -1153,10 +1174,6 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 	bsCloudInit, err := template.New("bootstrap-cloud-init").Parse(cloudInitTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
-	}
-	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
-	if err != nil {
-		return "", fmt.Errorf("failed to get providerSpec: %v", err)
 	}
 
 	cloudInit := &bytes.Buffer{}
@@ -1241,4 +1258,16 @@ runcmd:
 - systemctl restart bootstrap.service
 - systemctl daemon-reload
 `
+
+	ignitionRemoteConfigTemplate = `{
+		"ignition": {
+		  "version": "2.3.0",
+		  "config": {
+			"replace": {
+			  "source": "{{ .IgnitionRemoteConfig }}",
+			  "verification": {}
+			}
+		  }
+		}
+	  }`
 )
