@@ -88,12 +88,12 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 
 	ignitionConfig := &bytes.Buffer{}
 	err = bsIgnitionConfig.Execute(ignitionConfig, struct {
-		Script  string
-		Service string
+		Script        string
+		Service       string
 		SSHPublicKeys []string
 	}{
-		Script:  script.String(),
-		Service: bootstrapServiceContentTemplate,
+		Script:        script.String(),
+		Service:       bootstrapServiceContentTemplate,
 		SSHPublicKeys: sshPublicKeys,
 	})
 	if err != nil {
