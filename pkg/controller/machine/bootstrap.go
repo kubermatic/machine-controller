@@ -24,6 +24,8 @@ import (
 	"regexp"
 	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -53,14 +55,14 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 
 	// Ignition configuration is used for flatcar
 	if useIgnition(pconfig) {
-		return getOSMBootstrapUserDataForIgnition(ctx, req, pconfig, token, secretName, clusterName)
+		return getOSMBootstrapUserDataForIgnition(ctx, req, pconfig.SSHPublicKeys, token, secretName, clusterName)
 	}
 	// cloud-init is used for all other operating systems
 	return getOSMBootstrapUserDataForCloudInit(ctx, req, pconfig, token, secretName, clusterName)
 }
 
 // getOSMBootstrapUserDataForIgnition returns the userdata for the ignition bootstrap config
-func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, secretName, token, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName string) (string, error) {
 	data := struct {
 		Token      string
 		SecretName string
@@ -79,7 +81,7 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 	if err != nil {
 		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template for igntion: %v", err)
 	}
-	bsIgnitionConfig, err := template.New("bootstrap-ignition-config").Parse(ignitionTemplate)
+	bsIgnitionConfig, err := template.New("bootstrap-ignition-config").Funcs(sprig.TxtFuncMap()).Parse(ignitionTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse bootstrap-ignition-config template: %v", err)
 	}
@@ -88,9 +90,11 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 	err = bsIgnitionConfig.Execute(ignitionConfig, struct {
 		Script  string
 		Service string
+		SSHPublicKeys []string
 	}{
 		Script:  script.String(),
 		Service: bootstrapServiceContentTemplate,
+		SSHPublicKeys: sshPublicKeys,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute ignitionTemplate template: %v", err)
@@ -224,23 +228,31 @@ runcmd:
 set -xeuo pipefail
 apt update && apt install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /usr/share/oem/config.ign
-touch /boot/flatcar/first_boot 
+touch /boot/flatcar/first_boot
 reboot
 `
 
-	ignitionTemplate = `storage:
+	ignitionTemplate = `passwd:
+{{- if ne (len .SSHPublicKeys) 0 }}
+  users:
+    - name: core
+      ssh_authorized_keys:
+        {{range .SSHPublicKeys }}- {{.}}
+        {{end}}
+{{- end }}
+storage:
   files:
   - path: /opt/bin/bootstrap
-    mode: 0644
+    mode: 0755
     filesystem: root
     contents:
       inline: |
-        {{ .Script }}
+{{ .Script | indent 10}}
 systemd:
   units:
   - name: bootstrap.service
     enabled: true
     contents: |
-	  {{ .Service }}
+{{ .Service | indent 10 }}
 `
 )
