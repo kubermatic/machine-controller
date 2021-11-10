@@ -17,16 +17,12 @@ limitations under the License.
 package controller
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
-	"regexp"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/heptiolabs/healthcheck"
@@ -39,7 +35,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
@@ -1117,157 +1112,3 @@ func (r *Reconciler) getMachineDeploymentNameForMachine(ctx context.Context, mac
 
 	return "", fmt.Errorf("failed to find machine deployment reference for the machine %s", machine.Name)
 }
-
-func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Client, req plugin.UserDataRequest, secretName string) (string, error) {
-
-	var clusterName string
-	for key := range req.Kubeconfig.Clusters {
-		clusterName = key
-	}
-
-	token, err := util.ExtractAPIServerToken(ctx, client)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch api-server token: %v", err)
-	}
-
-	// Retrieve provider config from machine
-	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
-	if err != nil {
-		return "", fmt.Errorf("failed to get providerSpec: %v", err)
-	}
-
-	// Ignition configuration is used for flatcar
-	// TODO: @Waleed better logic here
-	if pconfig.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
-		return getOSMBootstrapUserDataForIgnition(ctx, req, pconfig, token, secretName, clusterName)
-	}
-	return getOSMBootstrapUserDataForCloudInit(ctx, req, pconfig, token, secretName, clusterName)
-}
-
-func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, secretName, token, clusterName string) (string, error) {
-	// TODO: @Waleed implement this
-	return ignitionRemoteConfigTemplate, nil
-}
-
-// getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
-func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, secretName, token, clusterName string) (string, error) {
-	data := struct {
-		Token       string
-		SecretName  string
-		ServerURL   string
-		MachineName string
-	}{
-		Token:       token,
-		SecretName:  secretName,
-		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
-		MachineName: req.MachineSpec.Name,
-	}
-	bsScript, err := template.New("bootstrap-cloud-init").Parse(bootstrapBinContentTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse bootstrapBinContentTemplate template: %v", err)
-	}
-	script := &bytes.Buffer{}
-	err = bsScript.Execute(script, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template: %v", err)
-	}
-	bsCloudInit, err := template.New("bootstrap-cloud-init").Parse(cloudInitTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
-	}
-
-	cloudInit := &bytes.Buffer{}
-	err = bsCloudInit.Execute(cloudInit, struct {
-		Script  string
-		Service string
-		plugin.UserDataRequest
-		ProviderSpec *providerconfigtypes.Config
-	}{
-		Script:          base64.StdEncoding.EncodeToString(script.Bytes()),
-		Service:         base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
-		UserDataRequest: req,
-		ProviderSpec:    pconfig,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %v", err)
-	}
-	return cloudInit.String(), nil
-}
-
-// cleanupTemplateOutput postprocesses the output of the template processing. Those
-// may exist due to the working of template functions like those of the sprig package
-// or template condition.
-func cleanupTemplateOutput(output string) (string, error) {
-	// Valid YAML files are not allowed to have empty lines containing spaces or tabs.
-	// So far only cleanup.
-	woBlankLines := regexp.MustCompile(`(?m)^[ \t]+$`).ReplaceAllString(output, "")
-	return woBlankLines, nil
-}
-
-const (
-	bootstrapBinContentTemplate = `#!/bin/bash
-set -xeuo pipefail
-apt update && apt install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-init"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
-cloud-init clean
-cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
-systemctl daemon-reload
-systemctl restart setup.service
-systemctl restart kubelet.service
-systemctl restart kubelet-healthcheck.service
-	`
-
-	bootstrapServiceContentTemplate = `[Install]
-WantedBy=multi-user.target
-
-[Unit]
-Requires=network-online.target
-After=network-online.target
-[Service]
-Type=oneshot
-RemainAfterExit=true
-ExecStart=/opt/bin/bootstrap
-	`
-
-	cloudInitTemplate = `#cloud-config
-{{ if ne .CloudProviderName "aws" }}
-hostname: {{ .MachineSpec.Name }}
-{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
-{{ end }}
-ssh_pwauth: no
-
-{{- if .ProviderSpec.SSHPublicKeys }}
-ssh_authorized_keys:
-{{- range .ProviderSpec.SSHPublicKeys }}
-- "{{ . }}"
-{{- end }}
-{{- end }}
-
-write_files:
-- path: /opt/bin/bootstrap
-  permissions: '0755'
-  encoding: b64
-  content: |
-    {{ .Script }}
-- path: /etc/systemd/system/bootstrap.service
-  permissions: '0644'
-  encoding: b64
-  content: |
-    {{ .Service }}
-runcmd:
-- systemctl restart bootstrap.service
-- systemctl daemon-reload
-`
-
-	ignitionRemoteConfigTemplate = `{
-		"ignition": {
-		  "version": "2.3.0",
-		  "config": {
-			"replace": {
-			  "source": "{{ .IgnitionRemoteConfig }}",
-			  "verification": {}
-			}
-		  }
-		}
-	  }`
-)
