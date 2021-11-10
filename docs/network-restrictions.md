@@ -31,17 +31,14 @@ If that image won't be accessible from the node, a custom image can be specified
 ## Kubelet images
 
 ### Flatcar Linux
-For Flatcar Linux nodes, the [hyperkube][1] or [kubelet][3] image must be accessible as well. This is due to the fact
-that kubelet is running as a docker container. For kubelet version `< 1.18` hyperkube will be used, otherwise `kubelet`
-image.
+For Flatcar Linux nodes, [kubelet][3] image must be accessible as well. This is due to the fact
+that kubelet is running as a docker container.
 
 By default the image `quay.io/kubermatic/kubelet` will be used. If that image won't be accessible from the node, a custom
 image can be specified on the machine-controller:
+
 ```bash
 # Do not set a tag. The tag depends on the used Kubernetes version of a machine.
-# Example:
-# A Node using v1.14.2 would use 192.168.1.1:5000/kubernetes/hyperkube-amd64:v1.14.2
--node-hyperkube-image="192.168.1.1:5000/kubernetes/hyperkube-amd64"
 -node-kubelet-image="192.168.1.1:5000/my-custom/kubelet-amd64"
 ```
 
@@ -49,7 +46,7 @@ image can be specified on the machine-controller:
 
 If nodes require access to insecure registries, all registries must be specified via a flag:
 ```bash
---node-insecure-registries="192.168.1.1:5000,10.0.0.1:5000"
+-node-insecure-registries="192.168.1.1:5000,10.0.0.1:5000"
 ```
 
 [1]: https://console.cloud.google.com/gcr/images/google-containers/GLOBAL/hyperkube

@@ -37,7 +37,7 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "hetzner"
           cloudProviderSpec:
-          # If empty, can be set via HZ_TOKEN env var
+            # If empty, can be set via HZ_TOKEN env var
             token:
               secretKeyRef:
                 namespace: kube-system
