@@ -79,7 +79,7 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 	script := &bytes.Buffer{}
 	err = bsScript.Execute(script, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template for igntion: %v", err)
+		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template for ignition: %v", err)
 	}
 	bsIgnitionConfig, err := template.New("bootstrap-ignition-config").Funcs(sprig.TxtFuncMap()).Parse(ignitionTemplate)
 	if err != nil {
@@ -104,7 +104,7 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 }
 
 // getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
-func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, secretName, token, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
 	data := struct {
 		Token       string
 		SecretName  string
