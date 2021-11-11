@@ -229,6 +229,7 @@ set -xeuo pipefail
 apt update && apt install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /usr/share/oem/config.ign
 touch /boot/flatcar/first_boot
+systemctl disable bootstrap.service
 reboot
 `
 
