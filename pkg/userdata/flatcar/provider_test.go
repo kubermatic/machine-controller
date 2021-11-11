@@ -124,7 +124,7 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "ignition_v1.17.16",
+			name: "ignition_v1.19.15",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -140,71 +140,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.17.16",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
-				err:    nil,
-			},
-			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &Config{
-				DisableAutoUpdate: true,
-			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
-		},
-		{
-			name: "ignition_v1.18.14",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey:   "ssh-rsa AAABBB",
-				Network: &providerconfigtypes.NetworkConfig{
-					CIDR:    "192.168.81.4/24",
-					Gateway: "192.168.81.1",
-					DNS: providerconfigtypes.DNSConfig{
-						Servers: []string{"8.8.8.8"},
-					},
-				},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.18.14",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
-				err:    nil,
-			},
-			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
-			osConfig: &Config{
-				DisableAutoUpdate: true,
-			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
-		},
-		{
-			name: "ignition_v1.19.4",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
-				CAPublicKey:   "ssh-rsa AAABBB",
-				Network: &providerconfigtypes.NetworkConfig{
-					CIDR:    "192.168.81.4/24",
-					Gateway: "192.168.81.1",
-					DNS: providerconfigtypes.DNSConfig{
-						Servers: []string{"8.8.8.8"},
-					},
-				},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.19.4",
+					Kubelet: "v1.19.15",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -221,7 +157,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "ignition_v1.20.1",
+			name: "ignition_v1.20.11",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -237,7 +173,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.20.1",
+					Kubelet: "v1.20.11",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -254,7 +190,73 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "cloud-init_v1.17.16",
+			name: "ignition_v1.21.5",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				CAPublicKey:   "ssh-rsa AAABBB",
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.21.5",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: Ignition,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
+		{
+			name: "ignition_v1.22.2",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "vsphere",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
+				CAPublicKey:   "ssh-rsa AAABBB",
+				Network: &providerconfigtypes.NetworkConfig{
+					CIDR:    "192.168.81.4/24",
+					Gateway: "192.168.81.1",
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{"8.8.8.8"},
+					},
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "v1.22.2",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "vsphere",
+				config: "{vsphere-config:true}",
+				err:    nil,
+			},
+			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
+			osConfig: &Config{
+				DisableAutoUpdate:   true,
+				ProvisioningUtility: Ignition,
+			},
+			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
+			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
+		},
+		{
+			name: "cloud-init_v1.19.15",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -270,7 +272,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.17.16",
+					Kubelet: "v1.19.15",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -287,7 +289,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "cloud-init_v1.18.14",
+			name: "cloud-init_v1.20.11",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -303,7 +305,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.18.14",
+					Kubelet: "v1.20.11",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -320,7 +322,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "cloud-init_v1.19.4",
+			name: "cloud-init_v1.21.5",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -336,7 +338,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.19.4",
+					Kubelet: "v1.21.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -353,7 +355,7 @@ func TestUserDataGeneration(t *testing.T) {
 			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
-			name: "cloud-init_v1.20.1",
+			name: "cloud-init_v1.22.2",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -369,7 +371,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.20.1",
+					Kubelet: "v1.22.2",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -397,7 +399,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.20.1",
+					Kubelet: "v1.20.11",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{},

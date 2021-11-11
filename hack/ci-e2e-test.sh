@@ -17,6 +17,9 @@
 set -euo pipefail
 set -o monitor
 
+export TF_IN_AUTOMATION=true
+export TF_CLI_ARGS="-no-color"
+
 function cleanup {
   set +e
 

@@ -100,49 +100,68 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "kubelet-v1.16-aws",
+			name: "kubelet-v1.19-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.16.16",
+					Kubelet: "1.19.15",
 				},
 			},
 		},
 		{
-			name: "kubelet-v1.17-aws",
+			name: "kubelet-v1.20-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.16",
+					Kubelet: "1.20.11",
 				},
 			},
 		},
 		{
-			name: "kubelet-v1.17-aws-external",
+			name: "containerd-kubelet-v1.20-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.16",
+					Kubelet: "1.20.11",
+				},
+			},
+			containerruntime: "containerd",
+		},
+		{
+			name: "kubelet-v1.21-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.21.5",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.21-aws-external",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.21.5",
 				},
 			},
 			externalCloudProvider: true,
 		},
 		{
-			name: "kubelet-v1.17-vsphere",
+			name: "kubelet-v1.21-vsphere",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.16",
+					Kubelet: "1.21.5",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
 		},
 		{
-			name: "kubelet-v1.17-vsphere-proxy",
+			name: "kubelet-v1.21-vsphere-proxy",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.16",
+					Kubelet: "1.21.5",
 				},
 			},
 			cloudProviderName:  stringPtr("vsphere"),
@@ -152,11 +171,11 @@ func TestUserDataGeneration(t *testing.T) {
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
-			name: "kubelet-v1.17-vsphere-mirrors",
+			name: "kubelet-v1.21-vsphere-mirrors",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.17.16",
+					Kubelet: "1.21.5",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
@@ -166,41 +185,13 @@ func TestUserDataGeneration(t *testing.T) {
 			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
-			name: "kubelet-v1.18-aws",
+			name: "kubelet-v1.22-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.18.14",
+					Kubelet: "1.22.2",
 				},
 			},
-		},
-		{
-			name: "kubelet-v1.19-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.19.4",
-				},
-			},
-		},
-		{
-			name: "kubelet-v1.20-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.1",
-				},
-			},
-		},
-		{
-			name: "containerd-kubelet-v1.20-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.1",
-				},
-			},
-			containerruntime: "containerd",
 		},
 	}
 

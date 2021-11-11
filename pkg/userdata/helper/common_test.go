@@ -19,16 +19,16 @@ package helper
 import (
 	"flag"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 )
 
 var update = flag.Bool("update", false, "update testdata files")
 
 var (
 	versions = []*semver.Version{
-		semver.MustParse("v1.17.16"),
-		semver.MustParse("v1.18.14"),
-		semver.MustParse("v1.19.4"),
-		semver.MustParse("v1.20.1"),
+		semver.MustParse("v1.19.15"),
+		semver.MustParse("v1.20.11"),
+		semver.MustParse("v1.21.5"),
+		semver.MustParse("v1.22.2"),
 	}
 )

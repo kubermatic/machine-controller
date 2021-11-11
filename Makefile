@@ -100,6 +100,7 @@ test-unit:
 .PHONY: build-tests
 build-tests:
 	go test -run nope ./...
+	go test -tags e2e -run nope ./...
 
 .PHONY: e2e-cluster
 e2e-cluster: machine-controller webhook

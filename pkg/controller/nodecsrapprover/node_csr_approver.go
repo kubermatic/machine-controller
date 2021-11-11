@@ -26,14 +26,11 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
-	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/discovery"
 	certificatesv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
-	certificatesv1beta1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -54,6 +51,14 @@ const (
 	authenticatedGroup = "system:authenticated"
 )
 
+var (
+	allowedUsages = []certificatesv1.KeyUsage{
+		certificatesv1.UsageDigitalSignature,
+		certificatesv1.UsageKeyEncipherment,
+		certificatesv1.UsageServerAuth,
+	}
+)
+
 type reconciler struct {
 	client.Client
 	// Have to use the typed client because csr approval is a subresource
@@ -62,56 +67,13 @@ type reconciler struct {
 }
 
 func Add(mgr manager.Manager) error {
-	// TODO: delete whole file node_csr_approver_v1beta1.go and dynamic API groups discovery
-	// after we drop kubernetes 1.18 support
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	certClient, err := certificatesv1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
-		return fmt.Errorf("failed to init discovery client: %w", err)
+		return fmt.Errorf("failed to create certificate client: %v", err)
 	}
 
-	srvGroups, err := discoveryClient.ServerGroups()
-	if err != nil {
-		return fmt.Errorf("failed to get server API groups: %w", err)
-	}
-
-	certificatesVersionFound := ""
-	for _, group := range srvGroups.Groups {
-		if group.Name != "certificates.k8s.io" {
-			continue
-		}
-
-		for _, groupVersion := range group.Versions {
-			if groupVersion.Version == "v1" {
-				certificatesVersionFound = "v1"
-			}
-
-			if certificatesVersionFound == "" {
-				certificatesVersionFound = "v1beta1"
-			}
-		}
-	}
-
-	var (
-		rec       reconcile.Reconciler
-		watchType client.Object
-	)
-
-	switch certificatesVersionFound {
-	case "v1":
-		certClient, err := certificatesv1client.NewForConfig(mgr.GetConfig())
-		if err != nil {
-			return fmt.Errorf("failed to create certificate client: %v", err)
-		}
-		rec = &reconciler{Client: mgr.GetClient(), certClient: certClient.CertificateSigningRequests()}
-		watchType = &certificatesv1.CertificateSigningRequest{}
-	case "v1beta1":
-		certClient, err := certificatesv1beta1client.NewForConfig(mgr.GetConfig())
-		if err != nil {
-			return fmt.Errorf("failed to create certificate client: %v", err)
-		}
-		rec = &reconcilerv1beta1{Client: mgr.GetClient(), certClient: certClient.CertificateSigningRequests()}
-		watchType = &certificatesv1beta1.CertificateSigningRequest{}
-	}
+	rec := &reconciler{Client: mgr.GetClient(), certClient: certClient.CertificateSigningRequests()}
+	watchType := &certificatesv1.CertificateSigningRequest{}
 
 	cntrl, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: rec})
 	if err != nil {
@@ -120,14 +82,6 @@ func Add(mgr manager.Manager) error {
 
 	return cntrl.Watch(&source.Kind{Type: watchType}, &handler.EnqueueRequestForObject{})
 }
-
-var (
-	allowedUsages = []certificatesv1.KeyUsage{
-		certificatesv1.UsageDigitalSignature,
-		certificatesv1.UsageKeyEncipherment,
-		certificatesv1.UsageServerAuth,
-	}
-)
 
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	err := r.reconcile(ctx, request)

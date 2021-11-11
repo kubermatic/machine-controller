@@ -21,7 +21,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
@@ -62,12 +62,6 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 	}{
 		DockerVersion:     DefaultDockerVersion,
 		ContainerdVersion: DefaultContainerdVersion,
-	}
-
-	lessThen117, _ := semver.NewConstraint("< 1.17")
-	if lessThen117.Check(eng.kubeletVersion) {
-		args.DockerVersion = LegacyDockerVersion
-		args.ContainerdVersion = ""
 	}
 
 	switch os {

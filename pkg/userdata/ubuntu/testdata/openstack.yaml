@@ -3,7 +3,7 @@
 hostname: node1
 
 
-ssh_pwauth: no
+ssh_pwauth: false
 ssh_authorized_keys:
 - "ssh-rsa AAABBB"
 
@@ -151,7 +151,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.20.1}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.21.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -384,12 +384,15 @@ write_files:
       ephemeral-storage: 1Gi
       memory: 200Mi
     logging: {}
+    memorySwap: {}
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s
     protectKernelDefaults: true
     rotateCertificates: true
     runtimeRequestTimeout: 0s
     serverTLSBootstrap: true
+    shutdownGracePeriod: 0s
+    shutdownGracePeriodCriticalPods: 0s
     staticPodPath: /etc/kubernetes/manifests
     streamingConnectionIdleTimeout: 0s
     syncFrequency: 0s
