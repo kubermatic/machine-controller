@@ -12,6 +12,9 @@ stringData:
   password: << OS_PASSWORD >>
   domainName: << OS_DOMAIN_NAME >>
   tenantName: << OS_TENANT_NAME >>
+  tenantID: << OS_TENANT_ID >>
+  projectName: << OS_PROJECT_NAME >>
+  projectID: << OS_PROJECT_ID >>
   region: << OS_REGION_NAME >>
   instanceReadyCheckPeriod: << INSTANCE_READY_CHECK_PERIOD >>
   instanceReadyCheckTimeout: << INSTANCE_READY_TIMEOUT >>
@@ -88,12 +91,34 @@ spec:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: domainName
+
+            # --- WARN: You should define either projectName or tenantName. if both are defined, tenantName is ignored ---
+            # If empty, can be set via OS_PROJECT_NAME env var
+            projectName:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: projectName
             # If empty, can be set via OS_TENANT_NAME env var
             tenantName:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: tenantName
+            # --- WARN: You should define either projectID or tenantID. if both are defined, tenantID is ignored ---
+            # If empty, can be set via OS_PROJECT_ID env var
+            projectID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: projectID
+            # If empty, can be set via OS_TENANT_ID env var
+            tenantID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: tenantID
+
             # Only required if there is more than one region to choose from
             region:
               secretKeyRef:

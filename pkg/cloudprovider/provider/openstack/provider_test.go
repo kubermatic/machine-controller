@@ -31,10 +31,12 @@ import (
 	th "github.com/gophercloud/gophercloud/testhelper"
 	"github.com/gophercloud/gophercloud/testhelper/client"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -145,6 +147,10 @@ type openstackProviderSpecConf struct {
 	RootDiskVolumeType          string
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
+	ProjectName                 string
+	ProjectID                   string
+	TenantID                    string
+	TenantName                  string
 	ComputeAPIVersion           string
 }
 
@@ -185,8 +191,14 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"applicationCredentialID": "{{ .ApplicationCredentialID }}",
 		"applicationCredentialSecret": "{{ .ApplicationCredentialSecret }}",
 		{{- else }}
-		"tenantID": "",
-		"tenantName": "eu-de",
+		{{ if .ProjectID }}
+		"projectID": "{{ .ProjectID }}",
+		"projectName": "{{ .ProjectName }}",
+        {{- end }}
+        {{- if .TenantID }}
+		"tenantID": "{{ .TenantID }}",
+		"tenantName": "{{ .TenantName }}",
+        {{- end }}
 		"username": "dummy",
 		"password": "this_is_a_password",
 		{{- end }}
@@ -287,6 +299,54 @@ func TestCreateServer(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("provider.Create() or = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+		})
+	}
+}
+
+func TestProjectAuthVarsAreCorrectlyLoaded(t *testing.T) {
+	tests := []struct {
+		name         string
+		expectedName string
+		expectedID   string
+		specConf     openstackProviderSpecConf
+	}{
+		{
+			name:         "Project auth vars should be when tenant vars are not defined",
+			expectedID:   "the_project_id",
+			expectedName: "the_project_name",
+			specConf:     openstackProviderSpecConf{ProjectID: "the_project_id", ProjectName: "the_project_name"},
+		},
+		{
+			name:         "Project auth vars should be used even if tenant vars are defined",
+			expectedID:   "the_project_id",
+			expectedName: "the_project_name",
+			specConf:     openstackProviderSpecConf{ProjectID: "the_project_id", ProjectName: "the_project_name", TenantID: "the_tenant_id", TenantName: "the_tenant_name"},
+		},
+		{
+			name:         "Tenant auth vars should be used when project vars are not defined",
+			expectedID:   "the_tenant_id",
+			expectedName: "the_tenant_name",
+			specConf:     openstackProviderSpecConf{TenantID: "the_tenant_id", TenantName: "the_tenant_name"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &provider{
+				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
+				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+			}
+			conf, _, _, _ := p.getConfig(v1alpha1.ProviderSpec{
+				Value: &runtime.RawExtension{
+					Raw: tt.specConf.rawProviderSpec(t),
+				},
+			})
+
+			if conf.ProjectID != tt.expectedID {
+				t.Errorf("ProjectID = %v, wanted %v", conf.ProjectID, tt.expectedID)
+			}
+			if conf.ProjectName != tt.expectedName {
+				t.Errorf("ProjectName = %v, wanted %v", conf.ProjectName, tt.expectedName)
 			}
 		})
 	}

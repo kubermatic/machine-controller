@@ -69,6 +69,7 @@ const (
 	ScalewayManifest                  = "./testdata/machinedeployment-scaleway.yaml"
 	OSMachineManifest                 = "./testdata/machine-openstack.yaml"
 	OSManifest                        = "./testdata/machinedeployment-openstack.yaml"
+	OSManifestProjectAuth             = "./testdata/machinedeployment-openstack-project-auth.yaml"
 	OSUpgradeManifest                 = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest            = "./testdata/machine-invalid.yaml"
 	kubevirtManifest                  = "./testdata/machinedeployment-kubevirt.yaml"
@@ -346,6 +347,37 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 
 	selector := Not(OsSelector("sles", "rhel", "amzn2"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
+}
+
+func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	osAuthURL := os.Getenv("OS_AUTH_URL")
+	osDomain := os.Getenv("OS_DOMAIN")
+	osPassword := os.Getenv("OS_PASSWORD")
+	osRegion := os.Getenv("OS_REGION")
+	osUsername := os.Getenv("OS_USERNAME")
+
+	// not a mistake: openstack has deprecated OS_TENANT_NAME in favor of OS_PROJECT_NAME, but it contains same value.
+	osProject := os.Getenv("OS_TENANT_NAME")
+	osNetwork := os.Getenv("OS_NETWORK_NAME")
+
+	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osProject == "" {
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+	}
+
+	params := []string{
+		fmt.Sprintf("<< IDENTITY_ENDPOINT >>=%s", osAuthURL),
+		fmt.Sprintf("<< USERNAME >>=%s", osUsername),
+		fmt.Sprintf("<< PASSWORD >>=%s", osPassword),
+		fmt.Sprintf("<< DOMAIN_NAME >>=%s", osDomain),
+		fmt.Sprintf("<< REGION >>=%s", osRegion),
+		fmt.Sprintf("<< PROJECT_NAME >>=%s", osProject),
+		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
+	}
+
+	selector := OsSelector("ubuntu")
+	runScenarios(t, selector, params, OSManifestProjectAuth, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider

@@ -28,6 +28,8 @@ type RawConfig struct {
 	ApplicationCredentialID     providerconfigtypes.ConfigVarString `json:"applicationCredentialID,omitempty"`
 	ApplicationCredentialSecret providerconfigtypes.ConfigVarString `json:"applicationCredentialSecret,omitempty"`
 	DomainName                  providerconfigtypes.ConfigVarString `json:"domainName,omitempty"`
+	ProjectName                 providerconfigtypes.ConfigVarString `json:"projectName,omitempty"`
+	ProjectID                   providerconfigtypes.ConfigVarString `json:"projectID,omitempty"`
 	TenantName                  providerconfigtypes.ConfigVarString `json:"tenantName,omitempty"`
 	TenantID                    providerconfigtypes.ConfigVarString `json:"tenantID,omitempty"`
 	TokenID                     providerconfigtypes.ConfigVarString `json:"tokenId,omitempty"`
