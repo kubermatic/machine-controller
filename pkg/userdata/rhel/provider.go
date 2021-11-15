@@ -363,7 +363,7 @@ rh_subscription:
 {{- else }}
     username: "{{.OSConfig.RHELSubscriptionManagerUser}}"
     password: "{{.OSConfig.RHELSubscriptionManagerPassword}}"
-    auto-attach: true
+    auto-attach: {{.OSConfig.AttachSubscription}}
 {{- end }}
 
 runcmd:

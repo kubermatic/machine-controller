@@ -28,6 +28,7 @@ type Config struct {
 	RHELSubscriptionManagerUser     string `json:"rhelSubscriptionManagerUser,omitempty"`
 	RHELSubscriptionManagerPassword string `json:"rhelSubscriptionManagerPassword,omitempty"`
 	RHSMOfflineToken                string `json:"rhsmOfflineToken,omitempty"`
+	AttachSubscription              bool   `json:"attachSubscription"`
 	RHELUseSatelliteServer          bool   `json:"rhelUseSatelliteServer"`
 	RHELSatelliteServer             string `json:"rhelSatelliteServer"`
 	RHELOrganizationName            string `json:"rhelOrganizationName"`
