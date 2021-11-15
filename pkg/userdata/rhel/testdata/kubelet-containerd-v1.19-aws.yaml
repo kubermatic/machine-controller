@@ -460,7 +460,7 @@ write_files:
 rh_subscription:
     username: ""
     password: ""
-    auto-attach: "false"
+    auto-attach: false
 
 runcmd:
 - systemctl start setup.service
