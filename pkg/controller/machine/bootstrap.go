@@ -177,7 +177,7 @@ const (
 	bootstrapBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
 apt update && apt install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/{{ .OSMNamespace }}/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/{{ .OSMNamespace }}/secrets/{{ .SecretName }} | jq '.data["cloud-init"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload

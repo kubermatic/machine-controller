@@ -186,7 +186,7 @@ func main() {
 	}
 
 	if useOSM && len(osmNamespace) == 0 {
-		klog.Fatalf("-osm-namespace flag is mandatory when -use-osm is set: %v", err)
+		klog.Fatalf("-osm-namespace flag is mandatory when -use-osm is set")
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
