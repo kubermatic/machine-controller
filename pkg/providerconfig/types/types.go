@@ -33,11 +33,12 @@ import (
 type OperatingSystem string
 
 const (
-	OperatingSystemUbuntu  OperatingSystem = "ubuntu"
-	OperatingSystemCentOS  OperatingSystem = "centos"
-	OperatingSystemSLES    OperatingSystem = "sles"
-	OperatingSystemRHEL    OperatingSystem = "rhel"
-	OperatingSystemFlatcar OperatingSystem = "flatcar"
+	OperatingSystemUbuntu       OperatingSystem = "ubuntu"
+	OperatingSystemCentOS       OperatingSystem = "centos"
+	OperatingSystemAmazonLinux2 OperatingSystem = "amzn2"
+	OperatingSystemSLES         OperatingSystem = "sles"
+	OperatingSystemRHEL         OperatingSystem = "rhel"
+	OperatingSystemFlatcar      OperatingSystem = "flatcar"
 )
 
 type CloudProvider string
@@ -57,6 +58,8 @@ const (
 	CloudProviderAlibaba      CloudProvider = "alibaba"
 	CloudProviderAnexia       CloudProvider = "anexia"
 	CloudProviderScaleway     CloudProvider = "scaleway"
+	CloudProviderBaremetal    CloudProvider = "baremetal"
+	CloudProviderExternal     CloudProvider = "external"
 )
 
 var (
@@ -66,6 +69,7 @@ var (
 	AllOperatingSystems = []OperatingSystem{
 		OperatingSystemUbuntu,
 		OperatingSystemCentOS,
+		OperatingSystemAmazonLinux2,
 		OperatingSystemSLES,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
@@ -87,6 +91,7 @@ var (
 		CloudProviderAlibaba,
 		CloudProviderAnexia,
 		CloudProviderScaleway,
+		CloudProviderBaremetal,
 	}
 )
 
@@ -104,6 +109,7 @@ type NetworkConfig struct {
 
 type Config struct {
 	SSHPublicKeys []string `json:"sshPublicKeys"`
+	CAPublicKey   string   `json:"caPublicKey"`
 
 	CloudProvider     CloudProvider        `json:"cloudProvider"`
 	CloudProviderSpec runtime.RawExtension `json:"cloudProviderSpec"`

@@ -28,16 +28,16 @@ import (
 
 	"gomodules.xyz/jsonpatch/v2"
 
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
+	"github.com/kubermatic/machine-controller/pkg/node"
+	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
+
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
-	"github.com/kubermatic/machine-controller/pkg/node"
-	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 )
 
 type admissionData struct {

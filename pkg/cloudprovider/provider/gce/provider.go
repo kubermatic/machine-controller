@@ -29,7 +29,6 @@ import (
 	monitoring "cloud.google.com/go/monitoring/apiv3"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -38,6 +37,8 @@ import (
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // Terminal error messages.

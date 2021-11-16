@@ -260,7 +260,6 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	}
 
 	client := getClient(c.APIKey)
-
 	res, err := client.Devices.Delete(instance.(*packetDevice).device.ID)
 	if err != nil {
 		return false, packetErrorToTerminalError(err, res, "failed to delete the server")
@@ -432,7 +431,7 @@ func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Dev
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return "ubuntu_18_04", nil
+		return "ubuntu_20_04", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos_7", nil
 	case providerconfigtypes.OperatingSystemFlatcar:
@@ -448,6 +447,7 @@ func getClient(apiKey string) *packngo.Client {
 func generateTag(ID string) string {
 	return fmt.Sprintf("%s:%s", machineUIDTag, ID)
 }
+
 func getTagUID(tag string) (string, error) {
 	parts := strings.Split(tag, ":")
 	if len(parts) < 2 || parts[0] != machineUIDTag {

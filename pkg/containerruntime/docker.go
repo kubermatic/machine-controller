@@ -21,7 +21,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
@@ -29,7 +29,7 @@ import (
 
 const (
 	DefaultDockerVersion = "19.03"
-	LegacyDockerVersion  = "18.09.9"
+	LegacyDockerVersion  = "18.09"
 )
 
 type Docker struct {
@@ -65,12 +65,10 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 		ContainerdVersion: DefaultContainerdVersion,
 	}
 
-	lessThen117, _ := semver.NewConstraint("< 1.17")
-	if lessThen117.Check(eng.kubeletVersion) {
-		args.DockerVersion = LegacyDockerVersion
-	}
-
 	switch os {
+	case types.OperatingSystemAmazonLinux2:
+		err := dockerAmazonTemplate.Execute(&buf, args)
+		return buf.String(), err
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL:
 		err := dockerYumTemplate.Execute(&buf, args)
 		return buf.String(), err
@@ -87,6 +85,27 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 }
 
 var (
+	dockerAmazonTemplate = template.Must(template.New("docker-yum-amzn2").Parse(`
+mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
+
+cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
+[Service]
+Restart=always
+EnvironmentFile=-/etc/environment
+EOF
+
+yum install -y \
+{{- if .ContainerdVersion }}
+    containerd-{{ .ContainerdVersion }}* \
+{{- end }}
+    docker-{{ .DockerVersion }}* \
+    yum-plugin-versionlock
+yum versionlock add docker containerd
+
+systemctl daemon-reload
+systemctl enable --now docker
+`))
+
 	dockerYumTemplate = template.Must(template.New("docker-yum").Parse(`
 yum install -y yum-utils
 yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
@@ -101,11 +120,13 @@ EnvironmentFile=-/etc/environment
 EOF
 
 yum install -y \
-    docker-ce-{{ .DockerVersion }}* \
+{{- if .ContainerdVersion }}
     docker-ce-cli-{{ .DockerVersion }}* \
     containerd.io-{{ .ContainerdVersion }}* \
+{{- end }}
+    docker-ce-{{ .DockerVersion }}* \
     yum-plugin-versionlock
-yum versionlock add docker-ce-* containerd.io
+yum versionlock add docker-ce* containerd.io
 
 systemctl daemon-reload
 systemctl enable --now docker
@@ -125,13 +146,19 @@ Restart=always
 EnvironmentFile=-/etc/environment
 EOF
 
-apt-get install -y \
+apt-get install --allow-downgrades -y \
+{{- if .ContainerdVersion }}
     containerd.io={{ .ContainerdVersion }}* \
-    docker-ce=5:{{ .DockerVersion }}* \
-    docker-ce-cli=5:{{ .DockerVersion }}*
-apt-mark hold docker-ce docker-ce-cli containerd.io
+    docker-ce-cli=5:{{ .DockerVersion }}* \
+{{- end }}
+    docker-ce=5:{{ .DockerVersion }}*
+apt-mark hold docker-ce* containerd.io
 
 systemctl daemon-reload
 systemctl enable --now docker
 `))
 )
+
+func (eng *Docker) String() string {
+	return dockerName
+}

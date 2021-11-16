@@ -12,6 +12,9 @@ stringData:
   password: << OS_PASSWORD >>
   domainName: << OS_DOMAIN_NAME >>
   tenantName: << OS_TENANT_NAME >>
+  tenantID: << OS_TENANT_ID >>
+  projectName: << OS_PROJECT_NAME >>
+  projectID: << OS_PROJECT_ID >>
   region: << OS_REGION_NAME >>
   instanceReadyCheckPeriod: << INSTANCE_READY_CHECK_PERIOD >>
   instanceReadyCheckTimeout: << INSTANCE_READY_TIMEOUT >>
@@ -52,54 +55,77 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "openstack"
           cloudProviderSpec:
-          # If empty, can be set via OS_AUTH_URL env var
+            # If empty, can be set via OS_AUTH_URL env var
             identityEndpoint:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: identityEndpoint
-          # If empty, can be set via OS_APPLICATION_CREDENTIAL_ID env var
+            # If empty, can be set via OS_APPLICATION_CREDENTIAL_ID env var
             applicationCredentialID:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: applicationCredentialID
-          # If empty, can be set via OS_APPLICATION_CREDENTIAL_SECRET env var
+            # If empty, can be set via OS_APPLICATION_CREDENTIAL_SECRET env var
             applicationCredentialSecret:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: applicationCredentialSecret
-          # If empty, can be set via OS_USER_NAME env var
+            # If empty, can be set via OS_USER_NAME env var
             username:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: username
-          # If empty, can be set via OS_PASSWORD env var
+            # If empty, can be set via OS_PASSWORD env var
             password:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: password
-          # If empty, can be set via OS_DOMAIN_NAME env var
+            # If empty, can be set via OS_DOMAIN_NAME env var
             domainName:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: domainName
-          # If empty, can be set via OS_TENANT_NAME env var
+
+            # --- WARN: You should define either projectName or tenantName. if both are defined, tenantName is ignored ---
+            # If empty, can be set via OS_PROJECT_NAME env var
+            projectName:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: projectName
+            # If empty, can be set via OS_TENANT_NAME env var
             tenantName:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: tenantName
+            # --- WARN: You should define either projectID or tenantID. if both are defined, tenantID is ignored ---
+            # If empty, can be set via OS_PROJECT_ID env var
+            projectID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: projectID
+            # If empty, can be set via OS_TENANT_ID env var
+            tenantID:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-openstack
+                key: tenantID
+
             # Only required if there is more than one region to choose from
             region:
               secretKeyRef:
                 namespace: kube-system
                 name: machine-controller-openstack
                 key: region
+            computeAPIVersion: "2.67"
             image: "Ubuntu 18.04 amd64"
             flavor: "m1.small"
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
@@ -119,6 +145,9 @@ spec:
             # Optional, if set, the rootDisk will be a volume. If not, the rootDisk
             # will be on ephemeral storage and its size will be derived from the flavor
             rootDiskSizeGB: 20
+            # Optional, only applied if rootDiskSizeGB is set.
+            # Sets the volume type of the root disk.
+            rootDiskVolumeType: ""
             # the list of metadata you would like to attach to the instance
             tags:
               tagKey: tagValue

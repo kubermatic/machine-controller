@@ -55,9 +55,10 @@ func init() {
 }
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
-	providerconfigtypes.OperatingSystemCentOS: nil,
-	providerconfigtypes.OperatingSystemUbuntu: nil,
-	providerconfigtypes.OperatingSystemRHEL:   nil,
+	providerconfigtypes.OperatingSystemCentOS:  nil,
+	providerconfigtypes.OperatingSystemUbuntu:  nil,
+	providerconfigtypes.OperatingSystemRHEL:    nil,
+	providerconfigtypes.OperatingSystemFlatcar: nil,
 }
 
 type provider struct {
@@ -70,7 +71,8 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	Kubeconfig       rest.Config
+	Kubeconfig       string
+	RestConfig       *rest.Config
 	DNSConfig        *corev1.PodDNSConfig
 	DNSPolicy        corev1.DNSPolicy
 	CPUs             string
@@ -135,9 +137,9 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, err
 	}
 	config := Config{}
-	configString, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Kubeconfig, "KUBEVIRT_KUBECONFIG")
+	config.Kubeconfig, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Kubeconfig, "KUBEVIRT_KUBECONFIG")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "config" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %v`, err)
 	}
 	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.CPUs)
 	if err != nil {
@@ -166,11 +168,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %v`, err)
 	}
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(configString))
+	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %v", err)
 	}
-	config.Kubeconfig = *restConfig
 
 	dnsPolicyString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.DNSPolicy)
 	if err != nil {
@@ -197,7 +198,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	sigClient, err := client.New(&c.Kubeconfig, client.Options{})
+	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
@@ -258,7 +259,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if _, err := parseResources(c.CPUs, c.Memory); err != nil {
 		return err
 	}
-	sigClient, err := client.New(&c.Kubeconfig, client.Options{})
+	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
@@ -284,7 +285,16 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-	return "", "", nil
+	c, _, err := p.getConfig(spec.ProviderSpec)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse config: %v", err)
+	}
+	cc := kubevirttypes.CloudConfig{
+		Kubeconfig: c.Kubeconfig,
+	}
+	ccs, err := cc.String()
+
+	return ccs, string(providerconfigtypes.CloudProviderExternal), err
 }
 
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
@@ -428,7 +438,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		},
 	}
 
-	sigClient, err := client.New(&c.Kubeconfig, client.Options{})
+	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}
@@ -461,7 +471,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	sigClient, err := client.New(&c.Kubeconfig, client.Options{})
+	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
 		return false, fmt.Errorf("failed to get kubevirt client: %v", err)
 	}

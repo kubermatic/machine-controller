@@ -121,7 +121,7 @@ Procedure:
       "NetworkMapping": [
         {
           "Name": "VM Network",
-          "Network": "Loodse Default"
+          "Network": "Kubermatic Default"
         }
       ],
       "MarkAsTemplate": false,

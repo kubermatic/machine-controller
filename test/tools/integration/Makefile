@@ -22,14 +22,12 @@ export PATH := $(shell pwd):$(PATH)
 
 ifeq ($(MAKECMDGOALS),apply)
 	EXTRA_ARG = -auto-approve
-else ifeq ($(MAKECMDGOALS),destroy)
-	EXTRA_ARG = -force
 endif
 
 .PHONY: terraform
 terraform:
 	@if ! which terraform; then \
-		curl https://releases.hashicorp.com/terraform/0.13.5/terraform_0.13.5_linux_amd64.zip \
+		curl https://releases.hashicorp.com/terraform/1.0.9/terraform_1.0.9_linux_amd64.zip \
 			--retry 5 \
 			-o	/tmp/terraform.zip && \
 		unzip -n /tmp/terraform.zip terraform && \

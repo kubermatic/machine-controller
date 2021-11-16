@@ -205,10 +205,13 @@ type dockerConfig struct {
 // DockerConfig returns the docker daemon.json.
 func DockerConfig(insecureRegistries, registryMirrors []string, MaxLogSize string) (string, error) {
 	cfg := dockerConfig{
-		ExecOpts:           []string{"native.cgroupdriver=systemd"},
-		StorageDriver:      "overlay2",
-		LogDriver:          "json-file",
-		LogOpts:            map[string]string{"max-size": "100m"},
+		ExecOpts:      []string{"native.cgroupdriver=systemd"},
+		StorageDriver: "overlay2",
+		LogDriver:     "json-file",
+		LogOpts: map[string]string{
+			"max-size": "10m",
+			"max-file": "5",
+		},
 		InsecureRegistries: insecureRegistries,
 		RegistryMirrors:    registryMirrors,
 	}
@@ -244,6 +247,9 @@ echodate() {
 # get the default interface IP address
 DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
 
+# get the full hostname
+FULL_HOSTNAME=$(hostname -f)
+
 if [ -z "${DEFAULT_IFC_IP}" ]
 then
 	echodate "Failed to get IP address for the default route interface"
@@ -254,13 +260,18 @@ fi
 # we need the line below because flatcar has the same string "coreos" in that file
 if grep -q coreos /etc/os-release
 then
-  echo "KUBELET_NODE_IP=${DEFAULT_IFC_IP}" > /etc/kubernetes/nodeip.conf
+  echo -e "KUBELET_NODE_IP=${DEFAULT_IFC_IP}\nKUBELET_HOSTNAME=${FULL_HOSTNAME}" > /etc/kubernetes/nodeip.conf
 elif [ ! -d /etc/systemd/system/kubelet.service.d ]
 then
 	echodate "Can't find kubelet service extras directory"
 	exit 1
 else
-  echo -e "[Service]\nEnvironment=\"KUBELET_NODE_IP=${DEFAULT_IFC_IP}\"" > /etc/systemd/system/kubelet.service.d/nodeip.conf
+  echo -e "[Service]\nEnvironment=\"KUBELET_NODE_IP=${DEFAULT_IFC_IP}\"\nEnvironment=\"KUBELET_HOSTNAME=${FULL_HOSTNAME}\"" > /etc/systemd/system/kubelet.service.d/nodeip.conf
 fi
 	`
+}
+
+func SSHConfigAddendum() string {
+	return `TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
+CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa`
 }

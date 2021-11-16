@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -128,7 +128,7 @@ package_upgrade: true
 package_reboot_if_required: true
 {{- end }}
 
-ssh_pwauth: no
+ssh_pwauth: false
 
 {{- if .ProviderSpec.SSHPublicKeys }}
 ssh_authorized_keys:
@@ -268,13 +268,25 @@ write_files:
 - path: /etc/systemd/system/docker-healthcheck.service
   permissions: "0644"
   content: |
-{{ containerRuntimeHealthCheckSystemdUnit | indent 4 }}
+{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 4 }}
 
 - path: /etc/systemd/system/docker.service.d/environment.conf
   permissions: "0644"
   content: |
     [Service]
     EnvironmentFile=-/etc/environment
+
+{{- with .ProviderSpec.CAPublicKey }}
+
+- path: "/etc/ssh/trusted-user-ca-keys.pem"
+  content: |
+{{ . | indent 4 }}
+
+- path: "/etc/ssh/sshd_config"
+  content: |
+{{ sshConfigAddendum | indent 4 }}
+  append: true
+{{- end }}
 
 runcmd:
 - systemctl start setup.service

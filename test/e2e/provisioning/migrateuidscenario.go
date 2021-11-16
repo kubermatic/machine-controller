@@ -32,10 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
-
-	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"k8s.io/klog"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
@@ -62,13 +60,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	machine.Name = machineDeployment.Name
 	machine.Namespace = metav1.NamespaceSystem
 	machine.Spec.Name = machine.Name
-	fakeClient := fakectrlruntimeclient.NewFakeClient(
-		&v1alpha1.Machine{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      machineDeployment.Name,
-				Namespace: metav1.NamespaceSystem,
-			},
-		})
+	fakeClient := fakectrlruntimeclient.NewFakeClient(machine)
 
 	providerData := &cloudprovidertypes.ProviderData{
 		Update: cloudprovidertypes.GetMachineUpdater(context.Background(), fakeClient),

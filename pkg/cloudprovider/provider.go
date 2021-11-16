@@ -24,6 +24,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/fake"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce"
@@ -87,6 +88,10 @@ var (
 		},
 		providerconfigtypes.CloudProviderAnexia: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return anexia.New(cvr)
+		},
+		providerconfigtypes.CloudProviderBaremetal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			// TODO(MQ): add a baremetal driver.
+			return baremetal.New(cvr)
 		},
 	}
 )

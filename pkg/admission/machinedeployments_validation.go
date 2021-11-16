@@ -38,7 +38,7 @@ func validateMachineDeploymentSpec(spec *v1alpha1.MachineDeploymentSpec, fldPath
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, metav1validation.ValidateLabelSelector(&spec.Selector, fldPath.Child("selector"))...)
 	if len(spec.Selector.MatchLabels)+len(spec.Selector.MatchExpressions) == 0 {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("selector"), spec.Selector, "empty selector is not valid for MachineSet."))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("selector"), spec.Selector, "empty selector is not valid for MachineDeployment."))
 	}
 	selector, err := metav1.LabelSelectorAsSelector(&spec.Selector)
 	if err != nil {
@@ -101,6 +101,7 @@ func validatePositiveIntOrPercent(s *intstr.IntOrString, fldPath *field.Path) fi
 	}
 	return allErrs
 }
+
 func getIntOrPercent(s *intstr.IntOrString, roundUp bool) (int, error) {
 	return intstr.GetValueFromIntOrPercent(s, 100, roundUp)
 }

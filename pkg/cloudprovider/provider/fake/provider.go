@@ -43,6 +43,7 @@ type CloudProviderInstance struct{}
 func (f CloudProviderInstance) Name() string {
 	return ""
 }
+
 func (f CloudProviderInstance) ID() string {
 	return ""
 }
@@ -53,6 +54,7 @@ func (f CloudProviderInstance) HostID() string {
 func (f CloudProviderInstance) Addresses() map[string]v1.NodeAddressType {
 	return nil
 }
+
 func (f CloudProviderInstance) Status() instance.Status {
 	return instance.StatusUnknown
 }

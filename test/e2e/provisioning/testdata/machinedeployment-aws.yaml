@@ -26,6 +26,8 @@ spec:
           cloudProviderSpec:
             accessKeyId: << AWS_ACCESS_KEY_ID >>
             secretAccessKey: << AWS_SECRET_ACCESS_KEY >>
+            assumeRoleARN: "<< AWS_ASSUME_ROLE_ARN >>"
+            assumeRoleExternalID: "<< AWS_ASSUME_ROLE_EXTERNAL_ID >>"
             region: "eu-central-1"
             availabilityZone: "eu-central-1a"
             vpcId: "vpc-819f62e9"
@@ -38,8 +40,8 @@ spec:
             securityGroupIDs:
             - "sg-a2c195ca"
             tags:
-            # you have to set this flag to real clusterID when running against our dev or prod
-            # otherwise you might have issues with your nodes not joining the cluster
+              # you have to set this flag to real clusterID when running against our dev or prod
+              # otherwise you might have issues with your nodes not joining the cluster
               "KubernetesCluster": "randomString"
             # Disabling the public IP assignment requires a private subnet with internet access.
             assignPublicIP: true

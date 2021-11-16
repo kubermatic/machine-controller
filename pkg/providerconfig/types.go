@@ -18,13 +18,22 @@ package providerconfig
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"github.com/kubermatic/machine-controller/pkg/userdata/amzn2"
+	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
+	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
+	"github.com/kubermatic/machine-controller/pkg/userdata/sles"
+	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,6 +41,37 @@ import (
 type ConfigVarResolver struct {
 	ctx    context.Context
 	client ctrlruntimeclient.Client
+}
+
+func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar providerconfigtypes.ConfigVarString) (time.Duration, error) {
+	durStr, err := cvr.GetConfigVarStringValue(configVar)
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durStr)
+}
+
+func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar providerconfigtypes.ConfigVarString, defaultDuration time.Duration) (time.Duration, error) {
+	durStr, err := cvr.GetConfigVarStringValue(configVar)
+	if err != nil {
+		return 0, err
+	}
+
+	if durStr == "" {
+		return defaultDuration, nil
+	}
+
+	duration, err := time.ParseDuration(durStr)
+	if err != nil {
+		return 0, err
+	}
+
+	if duration <= 0 {
+		return defaultDuration, nil
+	}
+
+	return duration, nil
 }
 
 func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigtypes.ConfigVarString) (string, error) {
@@ -114,4 +154,23 @@ func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) 
 		ctx:    ctx,
 		client: client,
 	}
+}
+
+func DefaultOperatingSystemSpec(osys providerconfigtypes.OperatingSystem, operatingSystemSpec runtime.RawExtension) (runtime.RawExtension, error) {
+	switch osys {
+	case providerconfigtypes.OperatingSystemAmazonLinux2:
+		return amzn2.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemCentOS:
+		return centos.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemFlatcar:
+		return flatcar.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemRHEL:
+		return rhel.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemSLES:
+		return sles.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemUbuntu:
+		return ubuntu.DefaultConfig(operatingSystemSpec), nil
+	}
+
+	return operatingSystemSpec, errors.New("unknown OperatingSystem")
 }

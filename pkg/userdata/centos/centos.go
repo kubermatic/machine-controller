@@ -27,12 +27,19 @@ type Config struct {
 	DistUpgradeOnBoot bool `json:"distUpgradeOnBoot"`
 }
 
+func DefaultConfig(operatingSystemSpec runtime.RawExtension) runtime.RawExtension {
+	if operatingSystemSpec.Raw == nil {
+		operatingSystemSpec.Raw, _ = json.Marshal(Config{})
+	}
+
+	return operatingSystemSpec
+}
+
 // LoadConfig retrieves the CentOS configuration from raw data.
 func LoadConfig(r runtime.RawExtension) (*Config, error) {
+	r = DefaultConfig(r)
 	cfg := Config{}
-	if len(r.Raw) == 0 {
-		return &cfg, nil
-	}
+
 	if err := json.Unmarshal(r.Raw, &cfg); err != nil {
 		return nil, err
 	}

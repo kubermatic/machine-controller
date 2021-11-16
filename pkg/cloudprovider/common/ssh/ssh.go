@@ -21,9 +21,8 @@ import (
 	"crypto/rsa"
 	"fmt"
 
-	"golang.org/x/crypto/ssh"
-
 	"github.com/pborman/uuid"
+	"golang.org/x/crypto/ssh"
 )
 
 const privateRSAKeyBitSize = 4096

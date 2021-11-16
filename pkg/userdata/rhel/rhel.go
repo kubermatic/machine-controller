@@ -28,22 +28,31 @@ type Config struct {
 	RHELSubscriptionManagerUser     string `json:"rhelSubscriptionManagerUser,omitempty"`
 	RHELSubscriptionManagerPassword string `json:"rhelSubscriptionManagerPassword,omitempty"`
 	RHSMOfflineToken                string `json:"rhsmOfflineToken,omitempty"`
+	AttachSubscription              bool   `json:"attachSubscription"`
 	RHELUseSatelliteServer          bool   `json:"rhelUseSatelliteServer"`
 	RHELSatelliteServer             string `json:"rhelSatelliteServer"`
 	RHELOrganizationName            string `json:"rhelOrganizationName"`
 	RHELActivationKey               string `json:"rhelActivationKey"`
 }
 
+func DefaultConfig(operatingSystemSpec runtime.RawExtension) runtime.RawExtension {
+	if operatingSystemSpec.Raw == nil {
+		operatingSystemSpec.Raw, _ = json.Marshal(Config{})
+	}
+
+	return operatingSystemSpec
+}
+
 // LoadConfig retrieves the RHEL configuration from raw data.
 func LoadConfig(r runtime.RawExtension) (*Config, error) {
-	cfg := &Config{}
-	if len(r.Raw) == 0 {
-		return cfg, nil
-	}
-	if err := json.Unmarshal(r.Raw, cfg); err != nil {
+	r = DefaultConfig(r)
+	cfg := Config{}
+
+	if err := json.Unmarshal(r.Raw, &cfg); err != nil {
 		return nil, err
 	}
-	return cfg, nil
+
+	return &cfg, nil
 }
 
 // Spec return the configuration as raw data.

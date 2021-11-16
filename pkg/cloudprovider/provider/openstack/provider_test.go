@@ -26,24 +26,26 @@ import (
 	"text/template"
 	"time"
 
-	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
-	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-
-	"k8s.io/utils/pointer"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	th "github.com/gophercloud/gophercloud/testhelper"
 	"github.com/gophercloud/gophercloud/testhelper/client"
+
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const expectedServerRequest = `{
   "server": {
 	  "availability_zone": "eu-de-01",
 	  "flavorRef": "1",
-	  "imageRef": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
+	  "imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
 	  "metadata": {
 		"kubernetes-cluster": "xyz",
 		"machine-uid": "",
@@ -75,12 +77,12 @@ const expectedBlockDeviceBootRequest = `{
 		"delete_on_termination": true,
 		"destination_type": "volume",
 		"source_type": "image",
-		"uuid": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
+		"uuid": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
 		"volume_size": 10
 	  }
 	],
 	"flavorRef": "1",
-	"imageRef": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
+	"imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
 	"metadata": {
 	  "kubernetes-cluster": "xyz",
 	  "machine-uid": "",
@@ -102,11 +104,54 @@ const expectedBlockDeviceBootRequest = `{
   }
 }`
 
+const expectedBlockDeviceBootVolumeTypeRequest = `{
+	"server": {
+	  "availability_zone": "eu-de-01",
+	  "block_device_mapping_v2": [
+		{
+		  "boot_index": 0,
+		  "delete_on_termination": true,
+		  "destination_type": "volume",
+		  "source_type": "image",
+		  "uuid": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+		  "volume_size": 10,
+		  "volume_type": "ssd"
+		}
+	  ],
+	  "flavorRef": "1",
+	  "imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+	  "metadata": {
+		"kubernetes-cluster": "xyz",
+		"machine-uid": "",
+		"system-cluster": "zyx",
+		"system-project": "xxx"
+	  },
+	  "name": "test",
+	  "networks": [
+		{
+		  "uuid": "d32019d3-bc6e-4319-9c1d-6722fc136a22"
+		}
+	  ],
+	  "security_groups": [
+		{
+		  "name": "kubernetes-xyz"
+		}
+	  ],
+	  "user_data": "ZmFrZS11c2VyZGF0YQ=="
+	}
+  }`
+
 type openstackProviderSpecConf struct {
 	IdentityEndpointURL         string
 	RootDiskSizeGB              *int32
+	RootDiskVolumeType          string
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
+	ProjectName                 string
+	ProjectID                   string
+	TenantID                    string
+	TenantName                  string
+	ComputeAPIVersion           string
 }
 
 func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -124,8 +169,14 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"region": "eu-de",
 		"instanceReadyCheckPeriod": "2m",
 		"instanceReadyCheckTimeout": "2m",
+		{{- if .ComputeAPIVersion }}
+		"computeAPIVersion": {{ .ComputeAPIVersion }},
+		{{- end }}
 		{{- if .RootDiskSizeGB }}
 		"rootDiskSizeGB": {{ .RootDiskSizeGB }},
+		{{- end }}
+		{{- if .RootDiskVolumeType }}
+		"rootDiskVolumeType": "{{ .RootDiskVolumeType }}",
 		{{- end }}
 		"securityGroups": [
 			"kubernetes-xyz"
@@ -140,8 +191,14 @@ func (o openstackProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"applicationCredentialID": "{{ .ApplicationCredentialID }}",
 		"applicationCredentialSecret": "{{ .ApplicationCredentialSecret }}",
 		{{- else }}
-		"tenantID": "",
-		"tenantName": "eu-de",
+		{{ if .ProjectID }}
+		"projectID": "{{ .ProjectID }}",
+		"projectName": "{{ .ProjectName }}",
+        {{- end }}
+        {{- if .TenantID }}
+		"tenantID": "{{ .TenantID }}",
+		"tenantName": "{{ .TenantName }}",
+        {{- end }}
 		"username": "dummy",
 		"password": "this_is_a_password",
 		{{- end }}
@@ -188,8 +245,20 @@ func TestCreateServer(t *testing.T) {
 			wantServerReq: expectedBlockDeviceBootRequest,
 		},
 		{
+			name:          "Custom disk type",
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10), RootDiskVolumeType: "ssd"},
+			userdata:      "fake-userdata",
+			wantServerReq: expectedBlockDeviceBootVolumeTypeRequest,
+		},
+		{
 			name:          "Application Credentials",
 			specConf:      openstackProviderSpecConf{ApplicationCredentialID: "app-cred-id", ApplicationCredentialSecret: "app-cred-secret"},
+			userdata:      "fake-userdata",
+			wantServerReq: expectedServerRequest,
+		},
+		{
+			name:          "Compute API Version",
+			specConf:      openstackProviderSpecConf{ComputeAPIVersion: "2.67"},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedServerRequest,
 		},
@@ -212,7 +281,7 @@ func TestCreateServer(t *testing.T) {
 					return pc.ProviderClient, nil
 				},
 				// mock server readiness checker
-				serverReadinessWaiter: func(computeClient *gophercloud.ServiceClient, serverID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error {
+				portReadinessWaiter: func(*gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
 					return nil
 				},
 			}
@@ -235,6 +304,54 @@ func TestCreateServer(t *testing.T) {
 	}
 }
 
+func TestProjectAuthVarsAreCorrectlyLoaded(t *testing.T) {
+	tests := []struct {
+		name         string
+		expectedName string
+		expectedID   string
+		specConf     openstackProviderSpecConf
+	}{
+		{
+			name:         "Project auth vars should be when tenant vars are not defined",
+			expectedID:   "the_project_id",
+			expectedName: "the_project_name",
+			specConf:     openstackProviderSpecConf{ProjectID: "the_project_id", ProjectName: "the_project_name"},
+		},
+		{
+			name:         "Project auth vars should be used even if tenant vars are defined",
+			expectedID:   "the_project_id",
+			expectedName: "the_project_name",
+			specConf:     openstackProviderSpecConf{ProjectID: "the_project_id", ProjectName: "the_project_name", TenantID: "the_tenant_id", TenantName: "the_tenant_name"},
+		},
+		{
+			name:         "Tenant auth vars should be used when project vars are not defined",
+			expectedID:   "the_tenant_id",
+			expectedName: "the_tenant_name",
+			specConf:     openstackProviderSpecConf{TenantID: "the_tenant_id", TenantName: "the_tenant_name"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &provider{
+				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
+				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+			}
+			conf, _, _, _ := p.getConfig(v1alpha1.ProviderSpec{
+				Value: &runtime.RawExtension{
+					Raw: tt.specConf.rawProviderSpec(t),
+				},
+			})
+
+			if conf.ProjectID != tt.expectedID {
+				t.Errorf("ProjectID = %v, wanted %v", conf.ProjectID, tt.expectedID)
+			}
+			if conf.ProjectName != tt.expectedName {
+				t.Errorf("ProjectName = %v, wanted %v", conf.ProjectName, tt.expectedName)
+			}
+		})
+	}
+}
+
 type ServerResponse struct {
 	Server servers.Server `json:"server"`
 }
@@ -252,7 +369,7 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 	if err != nil {
 		t.Fatalf("Error occurred while unmarshaling the expected server manifest.")
 	}
-	res.Server.ID = "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7"
+	res.Server.ID = "1bea47ed-f6a9-463b-b423-14b9cca9ad27"
 	srvRes, err := json.Marshal(res)
 	if err != nil {
 		t.Fatalf("Error occurred while marshaling the server response manifest.")
@@ -278,41 +395,69 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 		fmt.Fprintf(w, string(srvRes))
 	})
 
-	// Handle listing images.
-	th.Mux.HandleFunc("/images/detail", func(w http.ResponseWriter, r *http.Request) {
+	// Handle listing images v2.
+	th.Mux.HandleFunc("/v2/images", func(w http.ResponseWriter, r *http.Request) {
 		th.TestMethod(t, r, "GET")
 		th.TestHeader(t, r, "X-Auth-Token", client.TokenID)
 
 		w.Header().Add("Content-Type", "application/json")
+		// Example ref: https://docs.openstack.org/api-ref/image/v2/index.html?expanded=list-images-detail#list-images
 		fmt.Fprintf(w, `
 			{
 				"images": [
 					{
-						"status": "ACTIVE",
-						"updated": "2014-09-23T12:54:56Z",
-						"id": "f3e4a95d-1f4f-4989-97ce-f3a1fb8c04d7",
-						"OS-EXT-IMG-SIZE:size": 476704768,
-						"name": "F17-x86_64-cfntools",
-						"created": "2014-09-23T12:54:52Z",
-						"minDisk": 0,
-						"progress": 100,
-						"minRam": 0
+						"status": "active",
+						"name": "cirros-0.3.2-x86_64-disk",
+						"tags": [],
+						"container_format": "bare",
+						"created_at": "2014-11-07T17:07:06Z",
+						"disk_format": "qcow2",
+						"updated_at": "2014-11-07T17:19:09Z",
+						"visibility": "public",
+						"self": "/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+						"min_disk": 0,
+						"protected": false,
+						"id": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+						"file": "/v2/images/1bea47ed-f6a9-463b-b423-14b9cca9ad27/file",
+						"checksum": "64d7c1cd2b6f60c92c14662941cb7913",
+						"os_hash_algo": "sha512",
+						"os_hash_value": "073b4523583784fbe01daff81eba092a262ec37ba6d04dd3f52e4cd5c93eb8258af44881345ecda0e49f3d8cc6d2df6b050ff3e72681d723234aff9d17d0cf09",
+						"os_hidden": false,
+						"owner": "5ef70662f8b34079a6eddb8da9d75fe8",
+						"size": 13167616,
+						"min_ram": 0,
+						"schema": "/v2/schemas/image",
+						"virtual_size": null
 					},
 					{
-						"status": "ACTIVE",
-						"updated": "2014-09-23T12:51:43Z",
-						"id": "f90f6034-2570-4974-8351-6b49732ef2eb",
-						"OS-EXT-IMG-SIZE:size": 13167616,
-						"name": "cirros-0.3.2-x86_64-disk",
-						"created": "2014-09-23T12:51:42Z",
-						"minDisk": 0,
-						"progress": 100,
-						"minRam": 0
+						"status": "active",
+						"name": "F17-x86_64-cfntools",
+						"tags": [],
+						"container_format": "bare",
+						"created_at": "2014-10-30T08:23:39Z",
+						"disk_format": "qcow2",
+						"updated_at": "2014-11-03T16:40:10Z",
+						"visibility": "public",
+						"self": "/v2/images/781b3762-9469-4cec-b58d-3349e5de4e9c",
+						"min_disk": 0,
+						"protected": false,
+						"id": "781b3762-9469-4cec-b58d-3349e5de4e9c",
+						"file": "/v2/images/781b3762-9469-4cec-b58d-3349e5de4e9c/file",
+						"checksum": "afab0f79bac770d61d24b4d0560b5f70",
+						"os_hash_algo": "sha512",
+						"os_hash_value": "ea3e20140df1cc65f53d4c5b9ee3b38d0d6868f61bbe2230417b0f98cef0e0c7c37f0ebc5c6456fa47f013de48b452617d56c15fdba25e100379bd0e81ee15ec",
+						"os_hidden": false,
+						"owner": "5ef70662f8b34079a6eddb8da9d75fe8",
+						"size": 476704768,
+						"min_ram": 0,
+						"schema": "/v2/schemas/image",
+						"virtual_size": null
 					}
 				]
 			}
 		`)
 	})
+
 	// Handle listing flavours.
 	th.Mux.HandleFunc("/flavors/detail", func(w http.ResponseWriter, r *http.Request) {
 		th.TestMethod(t, r, "GET")

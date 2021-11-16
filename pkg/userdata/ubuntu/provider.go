@@ -26,7 +26,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -91,7 +91,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
 	}
-
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec                   *providerconfigtypes.Config
@@ -105,6 +104,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ContainerRuntimeScript         string
 		ContainerRuntimeConfigFileName string
 		ContainerRuntimeConfig         string
+		ContainerRuntimeName           string
 	}{
 		UserDataRequest:                req,
 		ProviderSpec:                   pconfig,
@@ -118,6 +118,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ContainerRuntimeScript:         crScript,
 		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
 		ContainerRuntimeConfig:         crConfig,
+		ContainerRuntimeName:           crEngine.String(),
 	}
 
 	var buf strings.Builder
@@ -140,7 +141,7 @@ package_upgrade: true
 package_reboot_if_required: true
 {{- end }}
 
-ssh_pwauth: no
+ssh_pwauth: false
 
 {{- if .ProviderSpec.SSHPublicKeys }}
 ssh_authorized_keys:
@@ -246,7 +247,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
@@ -306,6 +307,18 @@ write_files:
   permissions: "0644"
   content: |
 {{ kubeletHealthCheckSystemdUnit | indent 4 }}
+
+{{- with .ProviderSpec.CAPublicKey }}
+
+- path: "/etc/ssh/trusted-user-ca-keys.pem"
+  content: |
+{{ . | indent 4 }}
+
+- path: "/etc/ssh/sshd_config"
+  content: |
+{{ sshConfigAddendum | indent 4 }}
+  append: true
+{{- end }}
 
 runcmd:
 - systemctl start setup.service
