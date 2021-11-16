@@ -115,6 +115,7 @@ type Reconciler struct {
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
 	useOSM        bool
+	osmNamespace  string
 	podCIDR       string
 	nodePortRange string
 }
@@ -175,6 +176,7 @@ func Add(
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
 	useOSM bool,
+	osmNamespace string,
 	podCIDR string,
 	nodePortRange string,
 ) error {
@@ -194,6 +196,7 @@ func Add(
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
 		useOSM:        useOSM,
+		osmNamespace:  osmNamespace,
 		podCIDR:       podCIDR,
 		nodePortRange: nodePortRange,
 	}
@@ -746,22 +749,22 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			if r.useOSM {
 				referencedMachineDeployment, err := r.getMachineDeploymentNameForMachine(ctx, machine)
 				if err != nil {
-					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
+					return nil, fmt.Errorf("failed to find machine's MachineDeployment: %v", err)
 				}
 
 				cloudConfigSecretName := fmt.Sprintf("%s-%s",
 					referencedMachineDeployment,
 					provisioningSuffix)
 
-				// It is important to check if the secret holding cloud-config exists
+				// It is important to check if the secret which holds the cloud init configurations already exists
 				if err := r.client.Get(ctx,
-					types.NamespacedName{Name: cloudConfigSecretName, Namespace: "kube-system"},
+					types.NamespacedName{Name: cloudConfigSecretName, Namespace: r.osmNamespace},
 					&corev1.Secret{}); err != nil {
 					klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
 					return nil, err
 				}
 
-				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudConfigSecretName)
+				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudConfigSecretName, r.osmNamespace)
 				if err != nil {
 					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
 				}

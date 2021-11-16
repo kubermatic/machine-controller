@@ -35,7 +35,7 @@ import (
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Client, req plugin.UserDataRequest, secretName string) (string, error) {
+func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Client, req plugin.UserDataRequest, secretName, osmNamespace string) (string, error) {
 
 	var clusterName string
 	for key := range req.Kubeconfig.Clusters {
@@ -55,22 +55,24 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 
 	// Ignition configuration is used for flatcar
 	if useIgnition(pconfig) {
-		return getOSMBootstrapUserDataForIgnition(ctx, req, pconfig.SSHPublicKeys, token, secretName, clusterName)
+		return getOSMBootstrapUserDataForIgnition(ctx, req, pconfig.SSHPublicKeys, token, secretName, clusterName, osmNamespace)
 	}
 	// cloud-init is used for all other operating systems
-	return getOSMBootstrapUserDataForCloudInit(ctx, req, pconfig, token, secretName, clusterName)
+	return getOSMBootstrapUserDataForCloudInit(ctx, req, pconfig, token, secretName, clusterName, osmNamespace)
 }
 
 // getOSMBootstrapUserDataForIgnition returns the userdata for the ignition bootstrap config
-func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName, osmNamespace string) (string, error) {
 	data := struct {
-		Token      string
-		SecretName string
-		ServerURL  string
+		Token        string
+		SecretName   string
+		ServerURL    string
+		osmNamespace string
 	}{
-		Token:      token,
-		SecretName: secretName,
-		ServerURL:  req.Kubeconfig.Clusters[clusterName].Server,
+		Token:        token,
+		SecretName:   secretName,
+		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
+		osmNamespace: osmNamespace,
 	}
 	bsScript, err := template.New("bootstrap-script").Parse(ignitionBootstrapBinContentTemplate)
 	if err != nil {
@@ -104,17 +106,19 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 }
 
 // getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
-func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName, osmNamespace string) (string, error) {
 	data := struct {
-		Token       string
-		SecretName  string
-		ServerURL   string
-		MachineName string
+		Token        string
+		SecretName   string
+		ServerURL    string
+		MachineName  string
+		osmNamespace string
 	}{
-		Token:       token,
-		SecretName:  secretName,
-		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
-		MachineName: req.MachineSpec.Name,
+		Token:        token,
+		SecretName:   secretName,
+		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
+		MachineName:  req.MachineSpec.Name,
+		osmNamespace: osmNamespace,
 	}
 	bsScript, err := template.New("bootstrap-cloud-init").Parse(bootstrapBinContentTemplate)
 	if err != nil {
@@ -173,7 +177,7 @@ const (
 	bootstrapBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
 apt update && apt install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/{{ .OSMNamespace }}/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
@@ -227,7 +231,7 @@ runcmd:
 	ignitionBootstrapBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
 apt update && apt install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /usr/share/oem/config.ign
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/{{ .OSMNamespace }}/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /usr/share/oem/config.ign
 touch /boot/flatcar/first_boot
 systemctl disable bootstrap.service
 rm /etc/systemd/system/bootstrap.service

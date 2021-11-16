@@ -72,7 +72,8 @@ var (
 	nodeCSRApprover                  bool
 	caBundleFile                     string
 
-	useOSM bool
+	useOSM       bool
+	osmNamespace string
 
 	nodeHTTPProxy          string
 	nodeNoProxy            string
@@ -125,7 +126,11 @@ type controllerRunOptions struct {
 
 	node machinecontroller.NodeSettings
 
+	// useOSM tells whether the MC is used jointly with the Operating System Manager
 	useOSM bool
+
+	// The namespace from which to get OSM resources
+	osmNamespace string
 
 	// Assigns the POD networks that will be allocated.
 	podCidr string
@@ -169,6 +174,7 @@ func main() {
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
+	flag.StringVar(&osmNamespace, "osm-namespace", "", "the namespace from which to get OSM resources")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -177,6 +183,10 @@ func main() {
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
 		klog.Fatalf("invalid cluster dns specified: %v", err)
+	}
+
+	if useOSM && len(osmNamespace) == 0 {
+		klog.Fatalf("-osm-namespace flag is mandatory when -use-osm is set: %v", err)
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
@@ -279,6 +289,7 @@ func main() {
 			),
 		},
 		useOSM:        useOSM,
+		osmNamespace:  osmNamespace,
 		podCidr:       podCidr,
 		nodePortRange: nodePortRange,
 	}
@@ -415,6 +426,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
 		bs.opt.useOSM,
+		bs.opt.osmNamespace,
 		bs.opt.podCidr,
 		bs.opt.nodePortRange,
 	); err != nil {
