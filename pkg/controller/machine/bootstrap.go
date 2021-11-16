@@ -67,12 +67,12 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 		Token        string
 		SecretName   string
 		ServerURL    string
-		osmNamespace string
+		OSMNamespace string
 	}{
 		Token:        token,
 		SecretName:   secretName,
 		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
-		osmNamespace: osmNamespace,
+		OSMNamespace: osmNamespace,
 	}
 	bsScript, err := template.New("bootstrap-script").Parse(ignitionBootstrapBinContentTemplate)
 	if err != nil {
@@ -112,13 +112,13 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 		SecretName   string
 		ServerURL    string
 		MachineName  string
-		osmNamespace string
+		OSMNamespace string
 	}{
 		Token:        token,
 		SecretName:   secretName,
 		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
 		MachineName:  req.MachineSpec.Name,
-		osmNamespace: osmNamespace,
+		OSMNamespace: osmNamespace,
 	}
 	bsScript, err := template.New("bootstrap-cloud-init").Parse(bootstrapBinContentTemplate)
 	if err != nil {
