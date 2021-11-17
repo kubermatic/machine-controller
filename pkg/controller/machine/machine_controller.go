@@ -85,7 +85,8 @@ const (
 
 	deletionRetryWaitPeriod = 10 * time.Second
 
-	controllerNameLabelKey  = "machine.k8s.io/controller"
+	controllerNameLabelKey = "machine.k8s.io/controller"
+
 	NodeOwnerLabelName      = "machine-controller/owned-by"
 	PhysicalHostIDLabelName = "machine-controller/physical-host-id"
 	// HostIDLabelName label key to specify physical host id the node is running on.

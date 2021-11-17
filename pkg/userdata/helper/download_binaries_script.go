@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-
-	"github.com/Masterminds/semver"
 )
 
 const (
@@ -145,7 +143,7 @@ fi
 {{- if .DownloadKubelet }}
 {{- /* kubelet */}}
 if [ ! -f /opt/bin/kubelet ]; then
-    curl -Lfo /opt/bin/kubelet {{ .KubeletURL }}
+    curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubeletVersion }}/bin/linux/amd64/kubelet
     chmod +x /opt/bin/kubelet
 fi
 {{- end }}
@@ -202,44 +200,11 @@ func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
 
-	// Use patched kubelet where necessary
-	var kubeletDownloadURL string
-	{
-		upstreamURL := "https://storage.googleapis.com/kubernetes-release/release/v" + kubeletVersion + "/bin/linux/amd64/kubelet"
-		sys11Url := "https://s3.dbl.cloud.syseleven.net/sys11-metakube-kubelet/v" + kubeletVersion + "-sys11-2/kubelet"
-
-		kubeletDownloadURL = upstreamURL
-
-		kubeletSemVersion, err := semver.NewVersion(kubeletVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse kubelet version: %v", err)
-		}
-
-		switch kubeletSemVersion.Minor() {
-		case 15:
-			if kubeletSemVersion.Patch() < 8 {
-				kubeletDownloadURL = sys11Url
-			}
-
-		case 16:
-			if kubeletSemVersion.Patch() < 5 {
-				kubeletDownloadURL = sys11Url
-			}
-
-		case 17:
-			if kubeletSemVersion.Patch() < 1 {
-				kubeletDownloadURL = sys11Url
-			}
-		}
-	}
-
 	data := struct {
 		KubeletVersion  string
-		KubeletURL      string
 		DownloadKubelet bool
 	}{
 		KubeletVersion:  kubeletVersion,
-		KubeletURL:      kubeletDownloadURL,
 		DownloadKubelet: downloadKubelet,
 	}
 	b := &bytes.Buffer{}
