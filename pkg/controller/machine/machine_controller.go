@@ -35,6 +35,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
@@ -755,7 +756,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 				// It is important to check if the secret holding cloud-config exists
 				if err := r.client.Get(ctx,
-					types.NamespacedName{Name: cloudConfigSecretName, Namespace: "kube-system"},
+					types.NamespacedName{Name: cloudConfigSecretName, Namespace: util.CloudInitNamespace},
 					&corev1.Secret{}); err != nil {
 					klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
 					return nil, err

@@ -116,14 +116,29 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
 		MachineName: req.MachineSpec.Name,
 	}
-	bsScript, err := template.New("bootstrap-cloud-init").Parse(bootstrapBinContentTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse bootstrapBinContentTemplate template: %v", err)
+
+	var (
+		bsScript *template.Template
+		err      error
+	)
+
+	switch pconfig.OperatingSystem {
+	case providerconfigtypes.OperatingSystemUbuntu:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapAptBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapAptBinContentTemplate template: %v", err)
+		}
+	case providerconfigtypes.OperatingSystemCentOS:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+		}
 	}
+
 	script := &bytes.Buffer{}
 	err = bsScript.Execute(script, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template: %v", err)
+		return "", fmt.Errorf("failed to execute bootstrap script template: %v", err)
 	}
 	bsCloudInit, err := template.New("bootstrap-cloud-init").Parse(cloudInitTemplate)
 	if err != nil {
@@ -170,9 +185,22 @@ func useIgnition(p *providerconfigtypes.Config) bool {
 }
 
 const (
-	bootstrapBinContentTemplate = `#!/bin/bash
+	bootstrapAptBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
 apt update && apt install -y curl jq
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+cloud-init clean
+cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
+systemctl daemon-reload
+systemctl restart setup.service
+systemctl restart kubelet.service
+systemctl restart kubelet-healthcheck.service
+	`
+
+	bootstrapYumBinContentTemplate = `#!/bin/bash
+set -xeuo pipefail
+yum install epel-release -y
+yum install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
