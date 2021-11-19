@@ -93,9 +93,9 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 		SSHPublicKeys []string
 		plugin.UserDataRequest
 	}{
-		Script:        script.String(),
-		Service:       bootstrapServiceContentTemplate,
-		SSHPublicKeys: sshPublicKeys,
+		Script:          script.String(),
+		Service:         bootstrapServiceContentTemplate,
+		SSHPublicKeys:   sshPublicKeys,
 		UserDataRequest: req,
 	})
 	if err != nil {
