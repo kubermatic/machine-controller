@@ -282,12 +282,12 @@ storage:
       inline: |
 {{ .Script | indent 10}}
 {{ if ne .CloudProviderName "aws" }}
+{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
   - path: /etc/hostname
     mode: 0600
     filesystem: root
     contents:
       inline: '{{ .MachineSpec.Name }}'
-{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
 {{ end }}
 systemd:
   units:
