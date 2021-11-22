@@ -106,10 +106,11 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 // getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
 func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
 	data := struct {
-		Token       string
-		SecretName  string
-		ServerURL   string
-		MachineName string
+		Token           string
+		SecretName      string
+		ServerURL       string
+		MachineName     string
+		EnterpriseLinux bool
 	}{
 		Token:       token,
 		SecretName:  secretName,
@@ -129,6 +130,12 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 			return "", fmt.Errorf("failed to parse bootstrapAptBinContentTemplate template: %v", err)
 		}
 	case providerconfigtypes.OperatingSystemCentOS:
+		data.EnterpriseLinux = true
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+		}
+	case providerconfigtypes.OperatingSystemAmazonLinux2:
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
@@ -199,7 +206,9 @@ systemctl restart kubelet-healthcheck.service
 
 	bootstrapYumBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
+{{- if .EnterpriseLinux }}
 yum install epel-release -y
+{{- end }}
 yum install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
