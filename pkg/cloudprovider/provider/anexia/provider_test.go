@@ -179,6 +179,24 @@ func TestAnexiaProvider(t *testing.T) {
 		testhelper.AssertEquals(t, false, isAlreadyProvisioning(ctx))
 		testhelper.AssertEquals(t, condition.Reason, "ReInitialising")
 	})
+
+	t.Run("Test getIPAddress", func(t *testing.T) {
+		t.Parallel()
+		providerStatus := &anxtypes.ProviderStatus{
+			ReservedIP: "",
+			IPState: "",
+		}
+		ctx := utils.CreateReconcileContext(utils.ReconcileContext{Status: providerStatus})
+
+		t.Run("with unbound reserved IP", func(t *testing.T) {
+			expectedIP := "8.8.8.8"
+			providerStatus.ReservedIP = expectedIP
+			providerStatus.IPState = anxtypes.IPStateUnbound
+			reservedIP, err := getIPAddress(ctx, client)
+			testhelper.AssertNoErr(t, err)
+			testhelper.AssertEquals(t, expectedIP, reservedIP)
+		})
+	})
 }
 
 func TestValidate(t *testing.T) {

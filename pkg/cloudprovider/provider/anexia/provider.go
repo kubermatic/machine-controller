@@ -57,7 +57,8 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
+func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData,
+	userdata string) (instance instance.Instance, retErr error) {
 	status := getProviderStatus(machine)
 
 	// ensure conditions are present on machine
@@ -132,30 +133,21 @@ func waitForVM(ctx context.Context, client anxclient.Client) error {
 
 func provisionVM(ctx context.Context, client anxclient.Client) error {
 	reconcileContext := utils.GetReconcileContext(ctx)
-	addrAPI := anxaddr.NewAPI(client)
 	vmAPI := vsphere.NewAPI(client)
 
-	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.CreateRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, anxtypes.CreateRequestTimeout)
 	defer cancel()
 
 	status := reconcileContext.Status
 	if status.ProvisioningID == "" {
 		config := reconcileContext.Config
-		res, err := addrAPI.ReserveRandom(ctx, anxaddr.ReserveRandom{
-			LocationID: config.LocationID,
-			VlanID:     config.VlanID,
-			Count:      1,
-		})
+		reservedIP, err := getIPAddress(ctx, client)
 		if err != nil {
-			return newError(common.InvalidConfigurationMachineError, "failed to reserve an ip address: %v", err)
+			return newError(common.CreateMachineError, "failed to reserve IP: %v", err)
 		}
-		if len(res.Data) < 1 {
-			return newError(common.InsufficientResourcesMachineError, "no ip address is available for this machine")
-		}
-
 		networkInterfaces := []anxvm.Network{{
 			NICType: anxtypes.VmxNet3NIC,
-			IPs:     []string{res.Data[0].Address},
+			IPs:     []string{reservedIP},
 			VLAN:    config.VlanID,
 		}}
 
@@ -188,11 +180,16 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 		if err != nil {
 			return newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 		}
+
+		// we successfully sent a VM provisioning request to the API, we consider the IP as 'Bound' now
+		status.IPState = anxtypes.IPStateBound
+
 		status.ProvisioningID = provisionResponse.Identifier
 	}
 
 	instanceID, err := vmAPI.Provisioning().Progress().AwaitCompletion(ctx, status.ProvisioningID)
 	if err != nil {
+		// something went wrong remove provisioning ID, so we can start from scratch
 		status.ProvisioningID = ""
 		return newError(common.CreateMachineError, "instance provisioning failed: %v", err)
 	}
@@ -206,6 +203,37 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 	})
 
 	return nil
+}
+
+func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) {
+	reconcileContext := utils.GetReconcileContext(ctx)
+	status := reconcileContext.Status
+
+	// only use IP if it is still unbound
+	if status.ReservedIP != "" && status.IPState == anxtypes.IPStateUnbound {
+		klog.Info("resuing already provisioned ip", "IP", status.ReservedIP)
+		return status.ReservedIP, nil
+	}
+
+	addrAPI := anxaddr.NewAPI(client)
+	config := reconcileContext.Config
+	res, err := addrAPI.ReserveRandom(ctx, anxaddr.ReserveRandom{
+		LocationID: config.LocationID,
+		VlanID:     config.VlanID,
+		Count:      1,
+	})
+	if err != nil {
+		return "", newError(common.InvalidConfigurationMachineError, "failed to reserve an ip address: %v", err)
+	}
+	if len(res.Data) < 1 {
+		return "", newError(common.InsufficientResourcesMachineError, "no ip address is available for this machine")
+	}
+
+	ip := res.Data[0].Address
+	status.ReservedIP = ip
+	status.IPState = anxtypes.IPStateUnbound
+
+	return ip, nil
 }
 
 func isAlreadyProvisioning(ctx context.Context) bool {
