@@ -98,6 +98,11 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
 
 	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemFlatcar)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)
+	}
+
 	crConfig, err := crEngine.Config()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
@@ -113,8 +118,10 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion                 string
 		NodeIPScript                   string
 		ExtraKubeletFlags              []string
+		ContainerRuntimeScript         string
 		ContainerRuntimeConfigFileName string
 		ContainerRuntimeConfig         string
+		ContainerRuntimeName           string
 	}{
 		UserDataRequest:                req,
 		ProviderSpec:                   pconfig,
@@ -125,14 +132,18 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion:                 kubeletVersion.String(),
 		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
 		ExtraKubeletFlags:              crEngine.KubeletFlags(),
+		ContainerRuntimeScript:         crScript,
 		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
 		ContainerRuntimeConfig:         crConfig,
+		ContainerRuntimeName:           crEngine.String(),
 	}
+
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute user-data template: %v", err)
 	}
+
 	out, err := userdatahelper.CleanupTemplateOutput(b.String())
 	if err != nil {
 		return "", fmt.Errorf("failed to cleanup user-data template: %v", err)
@@ -141,6 +152,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	if flatcarConfig.ProvisioningUtility == CloudInit {
 		return out, nil
 	}
+
 	return convert.ToIgnition(out)
 }
 
@@ -205,17 +217,6 @@ systemd:
             Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
 
-    - name: containerd.service
-      dropins:
-        - name: 10-custom.conf
-          contents: |
-            [Service]
-            Restart=always
-            EnvironmentFile=-/etc/environment
-            Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
-            ExecStart=
-            ExecStart=/usr/bin/env PATH=${TORCX_BINDIR}:${PATH} ${TORCX_BINDIR}/containerd --config ${CONTAINERD_CONFIG}
-
     - name: download-script.service
       enabled: true
       contents: |
@@ -268,7 +269,7 @@ systemd:
           Requires=download-script.service
           After=download-script.service
       contents: |
-{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 8 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 8 }}
 
 storage:
   files:
@@ -411,6 +412,13 @@ storage:
           set -xeuo pipefail
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 10 }}
+          mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
+          cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
+          [Service]
+          Restart=always
+          EnvironmentFile=-/etc/environment
+          EOF
+{{ .ContainerRuntimeScript | indent 10 }}
           systemctl disable download-script.service
 
     - path: {{ .ContainerRuntimeConfigFileName }}
@@ -473,16 +481,6 @@ coreos:
         [Service]
         Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
-  - name: containerd.service
-    drop-ins:
-    - name: 10-custom.conf
-      content: |
-        [Service]
-        Restart=always
-        EnvironmentFile=-/etc/environment
-        Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
-        ExecStart=
-        ExecStart=/usr/bin/env PATH=${TORCX_BINDIR}:${PATH} ${TORCX_BINDIR}/containerd --config ${CONTAINERD_CONFIG}
   - name: download-script.service
     enable: true
     command: start
@@ -539,7 +537,7 @@ coreos:
         Requires=download-script.service
         After=download-script.service
     content: |
-{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 6 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 6 }}
 
   - name: apply-sysctl-settings.service
     enable: true
@@ -644,6 +642,7 @@ write_files:
     #!/bin/bash
     set -xeuo pipefail
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+{{ .ContainerRuntimeScript | indent 4 }}
     systemctl disable download-script.service
 
 - path: /opt/bin/apply_sysctl_settings.sh
