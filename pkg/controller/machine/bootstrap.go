@@ -91,10 +91,12 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 		Script        string
 		Service       string
 		SSHPublicKeys []string
+		plugin.UserDataRequest
 	}{
-		Script:        script.String(),
-		Service:       bootstrapServiceContentTemplate,
-		SSHPublicKeys: sshPublicKeys,
+		Script:          script.String(),
+		Service:         bootstrapServiceContentTemplate,
+		SSHPublicKeys:   sshPublicKeys,
+		UserDataRequest: req,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute ignitionTemplate template: %v", err)
@@ -288,6 +290,14 @@ storage:
     contents:
       inline: |
 {{ .Script | indent 10}}
+{{ if ne .CloudProviderName "aws" }}
+{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
+  - path: /etc/hostname
+    mode: 0600
+    filesystem: root
+    contents:
+      inline: '{{ .MachineSpec.Name }}'
+{{ end }}
 systemd:
   units:
   - name: bootstrap.service
