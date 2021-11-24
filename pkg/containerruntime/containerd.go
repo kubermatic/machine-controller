@@ -81,12 +81,14 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 
 var (
 	containedFlatcarTemplate = template.Must(template.New("containerd-flatcar").Parse(`
-cat <<EOF | sudo tee /etc/systemd/system/containerd.service.d/10-machine-controller.conf
+mkdir -p /etc/systemd/system/containerd.service.d
+
+cat <<EOF | tee /etc/systemd/system/containerd.service.d/10-machine-controller.conf
 [Service]
 Restart=always
 Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
 ExecStart=
-ExecStart=/usr/bin/env PATH=${TORCX_BINDIR}:${PATH} ${TORCX_BINDIR}/containerd --config ${CONTAINERD_CONFIG}
+ExecStart=/usr/bin/env PATH=\${TORCX_BINDIR}:\${PATH} \${TORCX_BINDIR}/containerd --config \${CONTAINERD_CONFIG}
 EOF
 
 systemctl daemon-reload
