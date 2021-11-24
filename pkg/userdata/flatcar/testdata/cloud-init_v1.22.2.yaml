@@ -27,16 +27,6 @@ coreos:
     mask: true
   - name: locksmithd.service
     mask: true
-  - name: containerd.service
-    drop-ins:
-    - name: 10-custom.conf
-      content: |
-        [Service]
-        Restart=always
-        EnvironmentFile=-/etc/environment
-        Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
-        ExecStart=
-        ExecStart=/usr/bin/env PATH=${TORCX_BINDIR}:${PATH} ${TORCX_BINDIR}/containerd --config ${CONTAINERD_CONFIG}
   - name: download-script.service
     enable: true
     command: start
@@ -103,8 +93,8 @@ coreos:
         After=download-script.service
     content: |
       [Unit]
-      After=docker.service
-      Requires=docker.service
+      After=containerd.service
+      Requires=containerd.service
 
       Description=kubelet: The Kubernetes Node Agent
       Documentation=https://kubernetes.io/docs/home/
@@ -433,6 +423,20 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
+
+
+    mkdir -p /etc/systemd/system/containerd.service.d
+
+    cat <<EOF | tee /etc/systemd/system/containerd.service.d/10-machine-controller.conf
+    [Service]
+    Restart=always
+    Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
+    ExecStart=
+    ExecStart=/usr/bin/env PATH=\${TORCX_BINDIR}:\${PATH} \${TORCX_BINDIR}/containerd --config \${CONTAINERD_CONFIG}
+    EOF
+
+    systemctl daemon-reload
+    systemctl enable --now containerd
 
     systemctl disable download-script.service
 
