@@ -253,6 +253,7 @@ After=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=true
+ExecStart=/opt/bin/bootstrap
 	`
 
 	cloudInitTemplate = `#cloud-config
