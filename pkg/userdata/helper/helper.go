@@ -114,8 +114,9 @@ type containerdMetrics struct {
 }
 
 type containerdCRIPlugin struct {
-	Containerd *containerdCRISettings `toml:"containerd"`
-	Registry   *containerdCRIRegistry `toml:"registry"`
+	Containerd   *containerdCRISettings `toml:"containerd"`
+	Registry     *containerdCRIRegistry `toml:"registry"`
+	SandboxImage string                 `toml:"sandbox_image,omitempty"`
 }
 
 type containerdCRISettings struct {
@@ -139,8 +140,9 @@ type containerdMirror struct {
 	Endpoint []string `toml:"endpoint"`
 }
 
-func ContainerdConfig(insecureRegistries, registryMirrors []string) (string, error) {
+func ContainerdConfig(insecureRegistries, registryMirrors []string, sandboxImage string) (string, error) {
 	criPlugin := containerdCRIPlugin{
+		SandboxImage: sandboxImage,
 		Containerd: &containerdCRISettings{
 			Runtimes: map[string]containerdCRIRuntime{
 				"runc": {
