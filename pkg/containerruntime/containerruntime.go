@@ -49,6 +49,12 @@ func WithRegistryMirrors(mirrors []string) Opt {
 	}
 }
 
+func WithSandboxImage(image string) Opt {
+	return func(cfg *Config) {
+		cfg.SandboxImage = image
+	}
+}
+
 func WithNodeMaxLogSize(nodeMaxLogSize string) Opt {
 	return func(cfg *Config) {
 
@@ -83,6 +89,7 @@ type Config struct {
 	InsecureRegistries []string    `json:",omitempty"`
 	RegistryMirrors    []string    `json:",omitempty"`
 	NodeMaxLogSize     string      `json:",omitempty"`
+	SandboxImage       string      `json:",omitempty"`
 }
 
 func (cfg Config) String() string {
@@ -107,6 +114,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		containerd = &Containerd{
 			insecureRegistries: cfg.InsecureRegistries,
 			registryMirrors:    cfg.RegistryMirrors,
+			sandboxImage:       cfg.SandboxImage,
 		}
 	)
 
