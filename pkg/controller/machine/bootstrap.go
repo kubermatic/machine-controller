@@ -145,6 +145,11 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 	case providerconfigtypes.OperatingSystemSLES:
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapZypperBinContentTemplate)
 		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapZypperBinContentTemplate template: %v", err)
+		}
+	case providerconfigtypes.OperatingSystemRHEL:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
+		if err != nil {
 			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
 		}
 	}
