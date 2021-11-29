@@ -204,7 +204,7 @@ set -xeuo pipefail
 apt update && apt install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
-cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
+cloud-init --debug --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
 systemctl restart setup.service
 systemctl restart kubelet.service
@@ -219,7 +219,7 @@ yum install epel-release -y
 yum install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
-cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
+cloud-init --debug --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
 systemctl restart setup.service
 systemctl restart kubelet.service
@@ -263,6 +263,12 @@ write_files:
   encoding: b64
   content: |
     {{ .Service }}
+{{- if and .CloudProviderName "digitalocean" }}
+- path: /etc/cloud/cloud.cfg.d/99-custom-networking.cfg
+  permissions: '0644'
+  content: |
+    network: {config: disabled}
+{{- end }}
 runcmd:
 - systemctl restart bootstrap.service
 - systemctl daemon-reload
