@@ -124,7 +124,11 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("Invalid public keys specified: %v", err)
 	}
 
-	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(providerConfig.OperatingSystem, providerConfig.OperatingSystemSpec)
+	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(
+		providerConfig.OperatingSystem,
+		providerConfig.CloudProvider,
+		providerConfig.OperatingSystemSpec,
+	)
 	if err != nil {
 		return err
 	}

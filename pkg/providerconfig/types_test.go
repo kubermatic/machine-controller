@@ -30,7 +30,7 @@ func TestDefaultOperatingSystemSpec(t *testing.T) {
 	for _, osys := range providerconfigtypes.AllOperatingSystems {
 		osys := osys
 		t.Run(string(osys), func(t *testing.T) {
-			operatingSystemSpec, err := DefaultOperatingSystemSpec(osys, runtime.RawExtension{})
+			operatingSystemSpec, err := DefaultOperatingSystemSpec(osys, "", runtime.RawExtension{})
 
 			if err != nil {
 				t.Error("no error expected")

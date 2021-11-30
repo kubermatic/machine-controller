@@ -19,6 +19,8 @@ package flatcar
 import (
 	"encoding/json"
 
+	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -42,8 +44,17 @@ type Config struct {
 }
 
 func DefaultConfig(operatingSystemSpec runtime.RawExtension) runtime.RawExtension {
+	return DefaultConfigForCloud(operatingSystemSpec, "")
+}
+
+func DefaultConfigForCloud(operatingSystemSpec runtime.RawExtension, cloudProvider types.CloudProvider) runtime.RawExtension {
+	osSpec := Config{}
+	if cloudProvider == types.CloudProviderAWS {
+		osSpec.ProvisioningUtility = CloudInit
+	}
+
 	if operatingSystemSpec.Raw == nil {
-		operatingSystemSpec.Raw, _ = json.Marshal(Config{})
+		operatingSystemSpec.Raw, _ = json.Marshal(osSpec)
 	}
 
 	return operatingSystemSpec
