@@ -113,11 +113,13 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 		ServerURL       string
 		MachineName     string
 		EnterpriseLinux bool
+		ProviderSpec    *providerconfigtypes.Config
 	}{
-		Token:       token,
-		SecretName:  secretName,
-		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
-		MachineName: req.MachineSpec.Name,
+		Token:        token,
+		SecretName:   secretName,
+		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
+		MachineName:  req.MachineSpec.Name,
+		ProviderSpec: pconfig,
 	}
 
 	var (
@@ -206,6 +208,14 @@ curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
+
+{{- /* The default cloud-init configurations files have some bug on Digital Ocean which causes the machine to be in-accessible on 2nd cloud-init. We have to manually run the module */}}
+{{- if and (eq .ProviderSpec.CloudProvider "digitalocean") (eq .ProviderSpec.OperatingSystem "ubuntu") }}
+rm /etc/netplan/50-cloud-init.yaml
+netplan generate
+netplan apply
+{{- end }}
+
 systemctl restart setup.service
 systemctl restart kubelet.service
 systemctl restart kubelet-healthcheck.service
@@ -263,6 +273,13 @@ write_files:
   encoding: b64
   content: |
     {{ .Service }}
+{{- /* The default cloud-init configurations files have some bug on Digital Ocean which causes the machine to be in-accessible on 2nd cloud-init. Hence we disable network configuration */}}
+{{- if and (eq .ProviderSpec.CloudProvider "digitalocean") (eq .ProviderSpec.OperatingSystem "ubuntu") }}
+- path: /etc/cloud/cloud.cfg.d/99-custom-networking.cfg
+  permissions: '0644'
+  content: |
+    network: {config: disabled}
+{{- end }}
 runcmd:
 - systemctl restart bootstrap.service
 - systemctl daemon-reload
