@@ -156,14 +156,19 @@ func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) 
 	}
 }
 
-func DefaultOperatingSystemSpec(osys providerconfigtypes.OperatingSystem, operatingSystemSpec runtime.RawExtension) (runtime.RawExtension, error) {
+func DefaultOperatingSystemSpec(
+	osys providerconfigtypes.OperatingSystem,
+	cloudProvider providerconfigtypes.CloudProvider,
+	operatingSystemSpec runtime.RawExtension,
+) (runtime.RawExtension, error) {
+
 	switch osys {
 	case providerconfigtypes.OperatingSystemAmazonLinux2:
 		return amzn2.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return centos.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return flatcar.DefaultConfig(operatingSystemSpec), nil
+		return flatcar.DefaultConfigForCloud(operatingSystemSpec, cloudProvider), nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rhel.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemSLES:
