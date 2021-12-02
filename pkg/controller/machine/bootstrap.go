@@ -144,6 +144,11 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 		if err != nil {
 			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
 		}
+	case providerconfigtypes.OperatingSystemSLES:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapZypperBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapZypperBinContentTemplate template: %v", err)
+		}
 	case providerconfigtypes.OperatingSystemRHEL:
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
 		if err != nil {
@@ -227,7 +232,27 @@ set -xeuo pipefail
 yum install epel-release -y
 {{- end }}
 yum install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+cloud-init clean
+cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
+systemctl daemon-reload
+systemctl restart setup.service
+systemctl restart kubelet.service
+systemctl restart kubelet-healthcheck.service
+  `
+
+	bootstrapZypperBinContentTemplate = `#!/bin/bash
+set -xeuo pipefail
+
+# Install JQ
+zypper -n --quiet addrepo -C https://download.opensuse.org/repositories/utilities/openSUSE_Leap_15.3/utilities.repo
+zypper -n --no-gpg-checks refresh
+zypper -n install jq
+
+# Install CURL
+zypper -n install curl
+
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
