@@ -92,6 +92,7 @@ var (
 		ec2.VolumeTypeStandard,
 		ec2.VolumeTypeIo1,
 		ec2.VolumeTypeGp2,
+		ec2.VolumeTypeGp3,
 		ec2.VolumeTypeSc1,
 		ec2.VolumeTypeSt1,
 	)
@@ -419,8 +420,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		}
 		iops := *rawConfig.DiskIops
 
-		if iops < 100 || iops > 64000 {
-			return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 100, max: 64000)")
+		if c.DiskType == ec2.VolumeTypeIo1 {
+			if iops < 100 || iops > 64000 {
+				return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 100, max: 64000)")
+			}
+		} else if c.DiskType == ec2.VolumeTypeGp3 {
+			if iops < 3000 || iops > 64000 {
+				return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 100, max: 64000)")
+			}
 		}
 
 		c.DiskIops = rawConfig.DiskIops
