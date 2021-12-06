@@ -23,13 +23,51 @@ import (
 )
 
 type RawConfig struct {
-	Kubeconfig       providerconfigtypes.ConfigVarString `json:"kubeconfig,omitempty"`
-	CPUs             providerconfigtypes.ConfigVarString `json:"cpus,omitempty"`
-	Memory           providerconfigtypes.ConfigVarString `json:"memory,omitempty"`
-	Namespace        providerconfigtypes.ConfigVarString `json:"namespace,omitempty"`
-	SourceURL        providerconfigtypes.ConfigVarString `json:"sourceURL,omitempty"`
-	PVCSize          providerconfigtypes.ConfigVarString `json:"pvcSize,omitempty"`
+	Auth           Auth                                `json:"auth,omitempty"`
+	VirtualMachine VirtualMachine                      `json:"virtual_machine,omitempty"`
+	DNSPolicy      providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
+	DNSConfig      *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
+}
+
+// Auth
+type Auth struct {
+	Kubeconfig providerconfigtypes.ConfigVarString `json:"kubeconfig,omitempty"`
+}
+
+// VirtualMachine
+type VirtualMachine struct {
+	Name     providerconfigtypes.ConfigVarString `json:"name,omitempty"`
+	Flavor   Flavor                              `json:"flavor,omitempty"`
+	Template Template                            `json:"template,omitempty"`
+}
+
+// Flavor
+type Flavor struct {
+	Name    providerconfigtypes.ConfigVarString `json:"name,omitempty"`
+	Profile providerconfigtypes.ConfigVarString `json:"profile,omitempty"`
+}
+
+// Template
+type Template struct {
+	CPU            providerconfigtypes.ConfigVarString `json:"cpu,omitempty"`
+	Memory         providerconfigtypes.ConfigVarString `json:"memory,omitempty"`
+	PrimaryDisk    PrimaryDisk                         `json:"primary_disk,omitempty"`
+	SecondaryDisks []SecondaryDisks                    `json:"secondary_disks,omitempty"`
+}
+
+// PrimaryDisk
+type PrimaryDisk struct {
+	Disk
+	OsImageURL providerconfigtypes.ConfigVarString `json:"os_image_url,omitempty"`
+}
+
+// SecondaryDisks
+type SecondaryDisks struct {
+	Disk
+}
+
+// Disk
+type Disk struct {
+	Size             providerconfigtypes.ConfigVarString `json:"size,omitempty"`
 	StorageClassName providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
-	DNSPolicy        providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
-	DNSConfig        *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
 }

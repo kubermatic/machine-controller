@@ -49,6 +49,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const NamespaceDefault = "default"
+
 func init() {
 	// Workaround until we have https://github.com/kubevirt/kubevirt/pull/2841
 	metav1.AddToGroupVersion(scheme.Scheme, kubevirtv1.GroupVersion)
@@ -133,34 +135,34 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, err
 	}
 	config := Config{}
-	config.Kubeconfig, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Kubeconfig, "KUBEVIRT_KUBECONFIG")
+	config.Kubeconfig, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Auth.Kubeconfig, "KUBEVIRT_KUBECONFIG")
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %v`, err)
 	}
-	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.CPUs)
+	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.CPU)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %v`, err)
 	}
-	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Memory)
+	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.Memory)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
 	}
-	config.Namespace, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Namespace)
+	config.Namespace, err = p.configVarResolver.GetConfigVarStringValue(getNamespace())
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "namespace" field: %v`, err)
 	}
-	config.SourceURL, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SourceURL)
+	config.SourceURL, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImageURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
 	}
-	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.PVCSize)
+	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "pvcSize" field: %v`, err)
 	}
 	if config.PVCSize, err = resource.ParseQuantity(pvcSize); err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse value of "pvcSize" field: %v`, err)
 	}
-	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.StorageClassName)
+	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %v`, err)
 	}
@@ -517,4 +519,10 @@ func dnsPolicy(policy string) (corev1.DNSPolicy, error) {
 	}
 
 	return "", fmt.Errorf("unknown dns policy: %s", policy)
+}
+
+func getNamespace() providerconfigtypes.ConfigVarString {
+	return providerconfigtypes.ConfigVarString{
+		Value: NamespaceDefault,
+	}
 }
