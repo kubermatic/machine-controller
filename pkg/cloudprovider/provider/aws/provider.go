@@ -426,7 +426,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 			}
 		} else if c.DiskType == ec2.VolumeTypeGp3 {
 			if iops < 3000 || iops > 64000 {
-				return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 100, max: 64000)")
+				return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 3000, max: 64000)")
 			}
 		}
 
