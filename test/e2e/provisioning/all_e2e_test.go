@@ -746,7 +746,7 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 
 	// test data
 	token := os.Getenv("METAL_AUTH_TOKEN")
-	if len(apiKey) == 0 {
+	if len(token) == 0 {
 		t.Fatal("unable to run the test suite, METAL_AUTH_TOKEN environment variable cannot be empty")
 	}
 
@@ -759,7 +759,7 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{
-		fmt.Sprintf("<< METAL_AUTH_TOKEN >>=%s", apiKey),
+		fmt.Sprintf("<< METAL_AUTH_TOKEN >>=%s", token),
 		fmt.Sprintf("<< METAL_PROJECT_ID >>=%s", projectID),
 	}
 	runScenarios(t, selector, params, EquinixMetalManifest, fmt.Sprintf("equinixmetal-%s", *testRunIdentifier))
