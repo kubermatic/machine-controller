@@ -106,7 +106,7 @@ projectName: ""
 # project id
 projectID: ""
 # tenant name (deprecated, should use projectName)
-tenantName: "" 
+tenantName: ""
 # tenant Id (deprecated, should use projectID)
 tenantID: ""
 # image to use (currently only ubuntu is supported)
@@ -247,7 +247,7 @@ subscriptionID: "<< AZURE_SUBSCRIPTION_ID >>"
 location: "westeurope"
 # Azure resource group
 resourceGroup: "<< YOUR_RESOURCE_GROUP >>"
-# Azure resource group of the vnet	
+# Azure resource group of the vnet
 vnetResourceGroup: "<< YOUR_VNET_RESOURCE_GROUP >>"
 # Azure availability set
 availabilitySet: "<< YOUR AVAILABILITY SET >>"
@@ -266,6 +266,26 @@ routeTableName: "<< ROUTE_TABLE_NAME >>"
 assignPublicIP: true
 # security group
 securityGroupName: my-security-group
+# node tags
+tags:
+  "kubernetesCluster": "my-cluster"
+```
+
+## Equinix Metal
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+# If empty, can be set via METAL_AUTH_TOKEN env var
+token: "<< METAL_AUTH_TOKEN >>"
+# instance type
+instanceType: "t1.small.x86"
+# Equinix Metal project ID
+projectID: "<< PROJECT_ID >>"
+# Equinix Metal facilities
+facilities:
+  - "ewr1"
+# Equinix Metal billingCycle
+billingCycle: ""
 # node tags
 tags:
   "kubernetesCluster": "my-cluster"

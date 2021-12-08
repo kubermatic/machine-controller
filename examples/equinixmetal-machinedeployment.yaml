@@ -1,18 +1,19 @@
+# TODO(waleed)
 apiVersion: v1
 kind: Secret
 metadata:
   # If you change the namespace/name, you must also
   # adjust the rbac rules
-  name: machine-controller-packet
+  name: machine-controller-equinixmetal
   namespace: kube-system
 type: Opaque
 stringData:
-  apiKey: << PACKET_API_KEY >>
+  token: << METAL_AUTH_TOKEN >>
 ---
 apiVersion: "cluster.k8s.io/v1alpha1"
 kind: MachineDeployment
 metadata:
-  name: packet-machinedeployment
+  name: equinixmetal-machinedeployment
   namespace: kube-system
 spec:
   paused: false
@@ -35,18 +36,18 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "packet"
+          cloudProvider: "equinixmetal"
           cloudProviderSpec:
             # If empty, can be set via PACKET_API_KEY env var
-            apiKey:
+            token:
               secretKeyRef:
                 namespace: kube-system
-                name: machine-controller-packet
-                key: apiKey
+                name: machine-controller-equinixmetal
+                key: token
             instanceType: "t1.small.x86"
             projectID: "<< PROJECT_ID >>"
             facilities:
-            - "ewr1"
+              - "ewr1"
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false

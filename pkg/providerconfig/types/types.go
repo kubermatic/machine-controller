@@ -48,6 +48,7 @@ const (
 	CloudProviderAzure        CloudProvider = "azure"
 	CloudProviderDigitalocean CloudProvider = "digitalocean"
 	CloudProviderGoogle       CloudProvider = "gce"
+	CloudProviderEquinixMetal CloudProvider = "equinixmetal"
 	CloudProviderHetzner      CloudProvider = "hetzner"
 	CloudProviderKubeVirt     CloudProvider = "kubevirt"
 	CloudProviderLinode       CloudProvider = "linode"
@@ -80,6 +81,7 @@ var (
 		CloudProviderAWS,
 		CloudProviderAzure,
 		CloudProviderDigitalocean,
+		CloudProviderEquinixMetal,
 		CloudProviderGoogle,
 		CloudProviderHetzner,
 		CloudProviderKubeVirt,
