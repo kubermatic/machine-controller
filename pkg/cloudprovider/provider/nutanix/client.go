@@ -102,7 +102,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		return nil, fmt.Errorf("failed to get image: %v", err)
 	}
 
-	vmRequest := &nutanixv3.VMIntentInput{
+	request := &nutanixv3.VMIntentInput{
 		Metadata: &nutanixv3.Metadata{
 			Kind: pointer.String(vmKind),
 			Name: pointer.String(name),
@@ -112,16 +112,15 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 			},
 			Categories: conf.Categories,
 		},
-	}
-
-	vmSpec := &nutanixv3.VM{
-		ClusterReference: &nutanixv3.Reference{
-			Kind: pointer.String(clusterKind),
-			UUID: cluster.Metadata.UUID,
+		Spec: &nutanixv3.VM{
+			ClusterReference: &nutanixv3.Reference{
+				Kind: pointer.String(clusterKind),
+				UUID: cluster.Metadata.UUID,
+			},
 		},
 	}
 
-	vmRes := &nutanixv3.VMResources{
+	resources := &nutanixv3.VMResources{
 		NumSockets:    pointer.Int64(conf.CPUs),
 		MemorySizeMib: pointer.Int64(conf.MemoryMB),
 		NicList: []*nutanixv3.VMNic{
@@ -148,17 +147,16 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}
 
 	if conf.CPUCores != nil {
-		vmRes.NumVcpusPerSocket = conf.CPUCores
+		resources.NumVcpusPerSocket = conf.CPUCores
 	}
 
 	if conf.DiskSizeGB != nil {
-		vmRes.DiskList[0].DiskSizeMib = pointer.Int64(*conf.DiskSizeGB * 1024)
+		resources.DiskList[0].DiskSizeMib = pointer.Int64(*conf.DiskSizeGB * 1024)
 	}
 
-	vmSpec.Resources = vmRes
-	vmRequest.Spec = vmSpec
+	request.Spec.Resources = resources
 
-	resp, err := client.Prism.V3.CreateVM(vmRequest)
+	resp, err := client.Prism.V3.CreateVM(request)
 	if err != nil {
 		return nil, err
 	}
