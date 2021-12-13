@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -173,22 +175,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get config: %v", err)
 	}
 
-	if config == nil {
-		return fmt.Errorf("no configuration returned")
-	}
-
-	if config.Username == "" {
-		return fmt.Errorf("no username specified")
-	}
-
-	if config.Password == "" {
-		return fmt.Errorf("no password specificed")
-	}
-
-	if config.Endpoint == "" {
-		return fmt.Errorf("no endpoint specified")
-	}
-
 	client, err := GetClientSet(config)
 	if err != nil {
 		return fmt.Errorf("failed to construct client: %v", err)
@@ -244,7 +230,43 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	return false, nil
+	return p.cleanup(machine, data)
+}
+
+func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	client, err := GetClientSet(config)
+	if err != nil {
+		return false, fmt.Errorf("failed to construct client: %v", err)
+	}
+
+	project, err := getProjectByName(client, config.ProjectName)
+	if err != nil {
+		return false, fmt.Errorf("failed to get project: %v", err)
+	}
+
+	vm, err := getVMByName(client, machine.Name, *project.Metadata.UUID)
+	if err != nil {
+		if strings.Contains(err.Error(), entityNotFoundError) {
+			// VM is gone already
+			return true, nil
+		}
+
+		return false, fmt.Errorf("failed to get vm: %v", err)
+	}
+
+	resp, err := client.Prism.V3.DeleteVM(*vm.Metadata.UUID)
+	taskID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	if err := waitForCompletion(client, taskID, time.Second*5, time.Minute*10); err != nil {
+		return false, fmt.Errorf("failed to wait for completion: %v", err)
+	}
+
+	return true, nil
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
@@ -304,13 +326,23 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
 	return nil
 }
 
+// GetCloudConfig returns an empty cloud configuration for Nutanix as no CCM exists
 func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
-
-	return "", "", err
+	return "", "", nil
 }
 
 func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
-	return nil, nil
+	labels := make(map[string]string)
+
+	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return labels, fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	labels["size"] = fmt.Sprintf("%d-cpus-%d-mb", config.CPUs, config.MemoryMB)
+	labels["cluster"] = config.ClusterName
+
+	return labels, nil
 }
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {

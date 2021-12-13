@@ -52,6 +52,18 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 		return nil, errors.New("no configuration passed")
 	}
 
+	if config.Username == "" {
+		return nil, errors.New("no username specified")
+	}
+
+	if config.Password == "" {
+		return nil, errors.New("no password specificed")
+	}
+
+	if config.Endpoint == "" {
+		return nil, errors.New("no endpoint specified")
+	}
+
 	credentials := nutanixclient.Credentials{
 		URL:      config.Endpoint,
 		Username: config.Username,
