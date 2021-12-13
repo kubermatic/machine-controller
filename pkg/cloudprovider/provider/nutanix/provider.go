@@ -115,22 +115,22 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 
 	c := Config{}
 
-	c.Endpoint, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Endpoint)
+	c.Endpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Endpoint, "NUTANIX_ENDPOINT")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Username, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Username)
+	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "NUTANIX_USERNAME")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.Password, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Password)
+	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "NUTANIX_PASSWORD")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.AllowInsecure)
+	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.AllowInsecure, "NUTANIX_ALLOW_INSECURE")
 	if err != nil {
 		return nil, nil, nil, err
 	}
