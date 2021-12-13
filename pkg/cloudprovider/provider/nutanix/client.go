@@ -17,12 +17,16 @@ limitations under the License.
 package nutanix
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
 
 	nutanixclient "github.com/terraform-providers/terraform-provider-nutanix/client"
 	nutanixv3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -132,6 +136,11 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 				},
 			},
 		},
+		GuestCustomization: &nutanixv3.GuestCustomization{
+			CloudInit: &nutanixv3.GuestCustomizationCloudInit{
+				UserData: pointer.String(base64.StdEncoding.EncodeToString([]byte(userdata))),
+			},
+		},
 	}
 
 	if conf.CPUCores != nil {
@@ -145,12 +154,42 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	vmSpec.Resources = vmRes
 	vmRequest.Spec = vmSpec
 
-	_, err = client.Prism.V3.CreateVM(vmRequest)
+	resp, err := client.Prism.V3.CreateVM(vmRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
+
+	if err := waitForCompletion(client, taskUUID, time.Second*10, time.Minute*30); err != nil {
+		return nil, fmt.Errorf("failed to wait for task: %v", err)
+	}
+
+	if resp.Metadata.UUID == nil {
+		return nil, errors.New("did not get response with UUID")
+	}
+
+	if err := waitForPowerState(client, *resp.Metadata.UUID, time.Second*10, time.Minute*30); err != nil {
+		return nil, fmt.Errorf("failed to wait for power state: %v", err)
+	}
+
+	vm, err := client.Prism.V3.GetVM(*resp.Metadata.UUID)
+
+	if vm.Metadata.Name == nil {
+		return nil, fmt.Errorf("request for VM UUID '%s' did not return name", *resp.Metadata.UUID)
+	}
+
+	addresses, err := getIPs(client, *vm.Metadata.UUID, time.Second*5, time.Minute*10)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get addresses: %v", err)
+	}
+
+	return Server{
+		name:      *vm.Metadata.Name,
+		id:        *resp.Metadata.UUID,
+		status:    instance.StatusRunning,
+		addresses: addresses,
+	}, nil
 }
 
 func getSubnetByName(client *ClientSet, name, clusterUUID string) (*nutanixv3.SubnetIntentResponse, error) {
@@ -219,4 +258,28 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 	}
 
 	return nil, errors.New(entityNotFoundError)
+}
+
+func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]v1.NodeAddressType, error) {
+	addresses := make(map[string]v1.NodeAddressType)
+
+	if err := wait.Poll(interval, timeout, func() (bool, error) {
+		vm, err := client.Prism.V3.GetVM(vmID)
+		if err != nil {
+			return false, err
+		}
+
+		if len(vm.Status.Resources.NicList) == 0 || len(vm.Status.Resources.NicList[0].IPEndpointList) == 0 {
+			return false, nil
+		}
+
+		ip := *vm.Status.Resources.NicList[0].IPEndpointList[0].IP
+		addresses[ip] = v1.NodeInternalIP
+
+		return true, nil
+	}); err != nil {
+		return map[string]v1.NodeAddressType{}, err
+	}
+
+	return addresses, nil
 }
