@@ -168,9 +168,50 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
-	_, _, _, err := p.getConfig(spec.ProviderSpec)
+	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %v", err)
+	}
+
+	if config == nil {
+		return fmt.Errorf("no configuration returned")
+	}
+
+	if config.Username == "" {
+		return fmt.Errorf("no username specified")
+	}
+
+	if config.Password == "" {
+		return fmt.Errorf("no password specificed")
+	}
+
+	if config.Endpoint == "" {
+		return fmt.Errorf("no endpoint specified")
+	}
+
+	client, err := GetClientSet(config)
+	if err != nil {
+		return fmt.Errorf("failed to construct client: %v", err)
+	}
+
+	cluster, err := getClusterByName(client, config.ClusterName)
+	if err != nil {
+		return fmt.Errorf("failed to get cluster: %v", err)
+	}
+
+	_, err = getProjectByName(client, config.ProjectName)
+	if err != nil {
+		return fmt.Errorf("failed to get project: %v", err)
+	}
+
+	_, err = getSubnetByName(client, config.SubnetName, *cluster.Metadata.UUID)
+	if err != nil {
+		return fmt.Errorf("failed to get subnet: %v", err)
+	}
+
+	_, err = getImageByName(client, config.ImageName)
+	if err != nil {
+		return fmt.Errorf("failed to get image: %v", err)
 	}
 
 	return nil
@@ -195,6 +236,9 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 	}
 
 	client, err := GetClientSet(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct client: %v", err)
+	}
 
 	return createVM(client, machine.Spec.Name, *config, pc.OperatingSystem, userdata)
 }
@@ -204,7 +248,56 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return nil, nil
+	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	client, err := GetClientSet(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct client: %v", err)
+	}
+
+	project, err := getProjectByName(client, config.ProjectName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project: %v", err)
+	}
+
+	vm, err := getVMByName(client, machine.Name, *project.Metadata.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vm: %v", err)
+	}
+
+	if vm.Status == nil || vm.Status.Resources == nil || vm.Status.Resources.PowerState == nil {
+		return nil, errors.New("could not read vm power state")
+	}
+
+	var status instance.Status
+
+	switch *vm.Status.Resources.PowerState {
+	case "ON":
+		status = instance.StatusRunning
+	case "OFF":
+		status = instance.StatusCreating
+	default:
+		status = instance.StatusUnknown
+	}
+
+	addresses := make(map[string]corev1.NodeAddressType)
+
+	if len(vm.Status.Resources.NicList) > 0 && len(vm.Status.Resources.NicList[0].IPEndpointList) > 0 {
+		ip := *vm.Status.Resources.NicList[0].IPEndpointList[0].IP
+		addresses[ip] = corev1.NodeInternalIP
+	} else {
+		return nil, errors.New("could not find any IP addresses on VM")
+	}
+
+	return Server{
+		name:      *vm.Metadata.Name,
+		id:        *vm.Metadata.UUID,
+		status:    status,
+		addresses: addresses,
+	}, nil
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {

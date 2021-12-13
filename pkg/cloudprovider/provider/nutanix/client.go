@@ -25,7 +25,7 @@ import (
 	nutanixclient "github.com/terraform-providers/terraform-provider-nutanix/client"
 	nutanixv3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
 
@@ -50,14 +50,6 @@ type ClientSet struct {
 func GetClientSet(config *Config) (*ClientSet, error) {
 	if config == nil {
 		return nil, errors.New("no configuration passed")
-	}
-
-	if config.Username == "" || config.Password == "" {
-		return nil, errors.New("no valid credentials")
-	}
-
-	if config.Endpoint == "" {
-		return nil, errors.New("no endpoint provided")
 	}
 
 	credentials := nutanixclient.Credentials{
@@ -260,8 +252,25 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 	return nil, errors.New(entityNotFoundError)
 }
 
-func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]v1.NodeAddressType, error) {
-	addresses := make(map[string]v1.NodeAddressType)
+func getVMByName(client *ClientSet, name, projectID string) (*nutanixv3.VMIntentResource, error) {
+	filter := fmt.Sprintf("name==%s", name)
+	vms, err := client.Prism.V3.ListAllVM(filter)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, vm := range vms.Entities {
+		if *vm.Metadata.Name == name && *vm.Metadata.ProjectReference.UUID == projectID {
+			return vm, nil
+		}
+	}
+
+	return nil, errors.New(entityNotFoundError)
+}
+
+func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]corev1.NodeAddressType, error) {
+	addresses := make(map[string]corev1.NodeAddressType)
 
 	if err := wait.Poll(interval, timeout, func() (bool, error) {
 		vm, err := client.Prism.V3.GetVM(vmID)
@@ -274,11 +283,11 @@ func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time
 		}
 
 		ip := *vm.Status.Resources.NicList[0].IPEndpointList[0].IP
-		addresses[ip] = v1.NodeInternalIP
+		addresses[ip] = corev1.NodeInternalIP
 
 		return true, nil
 	}); err != nil {
-		return map[string]v1.NodeAddressType{}, err
+		return map[string]corev1.NodeAddressType{}, err
 	}
 
 	return addresses, nil
