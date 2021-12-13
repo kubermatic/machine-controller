@@ -33,6 +33,7 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.7
 	github.com/sethvargo/go-password v0.2.0
+	github.com/terraform-providers/terraform-provider-nutanix v1.1.0
 	github.com/tinkerbell/tink v0.0.0-20210315140655-1b178daeaeda
 	github.com/vmware/govmomi v0.23.1
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
@@ -58,6 +59,8 @@ require (
 
 replace (
 	github.com/packethost/packngo => github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
+	// required for currently used Go client for Nutanix
+	github.com/terraform-providers/terraform-provider-nutanix => github.com/nutanix/terraform-provider-nutanix v1.2.2
 
 	k8s.io/client-go => k8s.io/client-go v0.22.2
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.2
