@@ -104,7 +104,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubernetesCACert:   kubernetesCACert,
 		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
 		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
-		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
+		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors["docker.io"],
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)

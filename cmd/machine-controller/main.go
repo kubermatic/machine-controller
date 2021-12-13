@@ -23,6 +23,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -83,11 +85,50 @@ var (
 	nodeContainerRuntime   string
 	podCidr                string
 	nodePortRange          string
+
+	nodeContainerdRegistryMirrors = registryMirrorsFlags{}
 )
 
 const (
 	defaultLeaderElectionNamespace = "kube-system"
 )
+
+type registryMirrorsFlags map[string][]string
+
+func (fl registryMirrorsFlags) Set(val string) error {
+	split := strings.SplitN(val, "=", 2)
+	if len(split) != 2 {
+		return fmt.Errorf("should have exactly 1 =")
+	}
+
+	key, value := split[0], split[1]
+	slice := fl[key]
+	slice = append(slice, value)
+	fl[key] = slice
+
+	return nil
+}
+
+func (fl registryMirrorsFlags) String() string {
+	var (
+		registryNames []string
+		result        []string
+	)
+
+	for registryName := range fl {
+		registryNames = append(registryNames, registryName)
+	}
+
+	sort.Strings(registryNames)
+
+	for _, registryName := range registryNames {
+		for _, mirror := range fl[registryName] {
+			result = append(result, fmt.Sprintf("%s=%s", registryName, mirror))
+		}
+	}
+
+	return fmt.Sprintf("%v", result)
+}
 
 // controllerRunOptions holds data that are required to create and run machine controller
 type controllerRunOptions struct {
@@ -163,6 +204,7 @@ func main() {
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
+	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
 	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
@@ -252,9 +294,21 @@ func main() {
 
 	var registryMirrors []string
 	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
-		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
-			registryMirrors = append(registryMirrors, trimmedMirror)
+		mirror := mirror
+		if !strings.HasPrefix(mirror, "http") {
+			mirror = "https://" + mirror
 		}
+
+		_, err := url.Parse(mirror)
+		if err != nil {
+			klog.Fatalf("incorrect mirror provided: %v", err)
+		}
+
+		registryMirrors = append(registryMirrors, mirror)
+	}
+
+	if len(registryMirrors) > 0 {
+		nodeContainerdRegistryMirrors["docker.io"] = registryMirrors
 	}
 
 	runOptions := controllerRunOptions{
@@ -275,7 +329,7 @@ func main() {
 			ContainerRuntime: containerruntime.Get(
 				nodeContainerRuntime,
 				containerruntime.WithInsecureRegistries(insecureRegistries),
-				containerruntime.WithRegistryMirrors(registryMirrors),
+				containerruntime.WithRegistryMirrors(nodeContainerdRegistryMirrors),
 				containerruntime.WithSandboxImage(nodePauseImage),
 			),
 		},

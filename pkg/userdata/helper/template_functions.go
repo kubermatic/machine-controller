@@ -39,7 +39,6 @@ func TxtFuncMap() template.FuncMap {
 	funcMap["kubeletHealthCheckSystemdUnit"] = KubeletHealthCheckSystemdUnit
 	funcMap["containerRuntimeHealthCheckSystemdUnit"] = ContainerRuntimeHealthCheckSystemdUnit
 	funcMap["dockerConfig"] = DockerConfig
-	funcMap["containerdConfig"] = ContainerdConfig
 	funcMap["proxyEnvironment"] = ProxyEnvironment
 	funcMap["sshConfigAddendum"] = SSHConfigAddendum
 

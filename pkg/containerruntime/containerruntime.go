@@ -43,7 +43,7 @@ func WithInsecureRegistries(registries []string) Opt {
 	}
 }
 
-func WithRegistryMirrors(mirrors []string) Opt {
+func WithRegistryMirrors(mirrors map[string][]string) Opt {
 	return func(cfg *Config) {
 		cfg.RegistryMirrors = mirrors
 	}
@@ -78,11 +78,11 @@ func Get(containerRuntimeName string, opts ...Opt) Config {
 }
 
 type Config struct {
-	Docker             *Docker     `json:",omitempty"`
-	Containerd         *Containerd `json:",omitempty"`
-	InsecureRegistries []string    `json:",omitempty"`
-	RegistryMirrors    []string    `json:",omitempty"`
-	SandboxImage       string      `json:",omitempty"`
+	Docker             *Docker             `json:",omitempty"`
+	Containerd         *Containerd         `json:",omitempty"`
+	InsecureRegistries []string            `json:",omitempty"`
+	RegistryMirrors    map[string][]string `json:",omitempty"`
+	SandboxImage       string              `json:",omitempty"`
 }
 
 func (cfg Config) String() string {
@@ -97,18 +97,16 @@ func (cfg Config) String() string {
 }
 
 func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
-	var (
-		docker = &Docker{
-			insecureRegistries: cfg.InsecureRegistries,
-			registryMirrors:    cfg.RegistryMirrors,
-			kubeletVersion:     kubeletVersion,
-		}
-		containerd = &Containerd{
-			insecureRegistries: cfg.InsecureRegistries,
-			registryMirrors:    cfg.RegistryMirrors,
-			sandboxImage:       cfg.SandboxImage,
-		}
-	)
+	docker := &Docker{
+		insecureRegistries: cfg.InsecureRegistries,
+		registryMirrors:    cfg.RegistryMirrors["docker.io"],
+	}
+
+	containerd := &Containerd{
+		insecureRegistries: cfg.InsecureRegistries,
+		registryMirrors:    cfg.RegistryMirrors,
+		sandboxImage:       cfg.SandboxImage,
+	}
 
 	moreThan122, _ := semver.NewConstraint(">= 1.22")
 
