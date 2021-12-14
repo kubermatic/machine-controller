@@ -58,6 +58,7 @@ spec:
             projectName: project1
             # Sets the subnet that the VM is connected to. Must exist in the given Nutanix cluster
             subnetName: subnet1
+            # Provides the image used to create the VM
             imageName: ubuntu-20.04
             # Sets the vCPU count for this VM
             cpus: 2
@@ -67,7 +68,8 @@ spec:
             memoryMB: 1024
             # Optional: Enable Nutanix' CPU passthrough feature
             cpuPassthrough: true
-            # Optional: Set up system disk size in GB. If not set, will be based on image size
+            # Optional: Set up system disk size in GB. If not set, will be based on image size.
+            # Cannot be smaller than the image size.
             diskSize: 20
           operatingSystem: "ubuntu"
           operatingSystemSpec:
