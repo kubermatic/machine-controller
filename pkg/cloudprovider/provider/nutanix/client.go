@@ -34,11 +34,12 @@ import (
 )
 
 const (
-	vmKind      = "vm"
-	projectKind = "project"
-	clusterKind = "cluster"
-	subnetKind  = "subnet"
-	diskKind    = "disk"
+	vmKind               = "vm"
+	projectKind          = "project"
+	clusterKind          = "cluster"
+	subnetKind           = "subnet"
+	diskKind             = "disk"
+	storageContainerKind = "storage_container"
 
 	entityNotFoundError = "ENTITY_NOT_FOUND"
 )
@@ -148,6 +149,15 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	if conf.CPUCores != nil {
 		resources.NumVcpusPerSocket = conf.CPUCores
+	}
+
+	if conf.StorageContainerID != "" {
+		resources.DiskList[0].StorageConfig = &nutanixv3.VMStorageConfig{
+			StorageContainerReference: &nutanixv3.StorageContainerReference{
+				Kind: storageContainerKind,
+				UUID: conf.StorageContainerID,
+			},
+		}
 	}
 
 	if conf.DiskSizeGB != nil {

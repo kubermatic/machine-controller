@@ -40,10 +40,11 @@ type Config struct {
 	Password      string
 	AllowInsecure bool
 
-	ClusterName string
-	ProjectName string
-	SubnetName  string
-	ImageName   string
+	ClusterName        string
+	ProjectName        string
+	SubnetName         string
+	ImageName          string
+	StorageContainerID string
 
 	Categories map[string]string
 
@@ -155,6 +156,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
+	c.StorageContainerID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.StorageContainerID)
+
 	c.Categories = rawConfig.Categories
 
 	c.CPUs = rawConfig.CPUs
@@ -258,6 +261,8 @@ func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 		return false, fmt.Errorf("failed to get vm: %v", err)
 	}
+
+	// TODO: figure out if VM is already in deleting state
 
 	resp, err := client.Prism.V3.DeleteVM(*vm.Metadata.UUID)
 	taskID := resp.Status.ExecutionContext.TaskUUID.(string)

@@ -26,10 +26,11 @@ type RawConfig struct {
 	Password      providerconfigtypes.ConfigVarString `json:"password"`
 	AllowInsecure providerconfigtypes.ConfigVarBool   `json:"allowInsecure"`
 
-	ClusterName providerconfigtypes.ConfigVarString `json:"clusterName"`
-	ProjectName providerconfigtypes.ConfigVarString `json:"projectName"`
-	SubnetName  providerconfigtypes.ConfigVarString `json:"subnetName"`
-	ImageName   providerconfigtypes.ConfigVarString `json:"imageName"`
+	ClusterName        providerconfigtypes.ConfigVarString `json:"clusterName"`
+	ProjectName        providerconfigtypes.ConfigVarString `json:"projectName"`
+	SubnetName         providerconfigtypes.ConfigVarString `json:"subnetName"`
+	ImageName          providerconfigtypes.ConfigVarString `json:"imageName"`
+	StorageContainerID providerconfigtypes.ConfigVarString `json:"storageContainerID,omitempty"`
 
 	// VM sizing configuration
 	CPUs     int64  `json:"cpus"`
