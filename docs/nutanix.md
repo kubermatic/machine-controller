@@ -1,6 +1,6 @@
 # Nutanix Prism Central
 
-This provider implementation is currently in **alpha** stage.
+This provider implementation is currently in **alpha** stage. Currently, the only supported API version is [Prism v3](https://www.nutanix.dev/reference/prism_central/v3/).
 
 ## Prerequisites
 
