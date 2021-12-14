@@ -65,8 +65,16 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 		return nil, errors.New("no endpoint specified")
 	}
 
+	// set up 9440 as default port if none is passed via config
+	port := 9440
+	if config.Port != nil {
+		port = *config.Port
+	}
+
 	credentials := nutanixclient.Credentials{
-		URL:      config.Endpoint,
+		URL:      fmt.Sprintf("%s:%d", config.Endpoint, port),
+		Endpoint: config.Endpoint,
+		Port:     fmt.Sprint(port),
 		Username: config.Username,
 		Password: config.Password,
 		Insecure: config.AllowInsecure,

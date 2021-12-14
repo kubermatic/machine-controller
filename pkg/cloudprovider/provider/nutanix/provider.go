@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,10 +33,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 )
 
 type Config struct {
 	Endpoint      string
+	Port          *int
 	Username      string
 	Password      string
 	AllowInsecure bool
@@ -120,6 +123,20 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.Endpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Endpoint, "NUTANIX_ENDPOINT")
 	if err != nil {
 		return nil, nil, nil, err
+	}
+
+	port, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Port, "NUTANIX_PORT")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if port != "" {
+		// we parse the port into an int to make sure we're being passed a somewhat value port value
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		c.Port = pointer.Int(portInt)
 	}
 
 	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "NUTANIX_USERNAME")

@@ -22,6 +22,7 @@ import (
 
 type RawConfig struct {
 	Endpoint      providerconfigtypes.ConfigVarString `json:"endpoint"`
+	Port          providerconfigtypes.ConfigVarString `json:"port"`
 	Username      providerconfigtypes.ConfigVarString `json:"username"`
 	Password      providerconfigtypes.ConfigVarString `json:"password"`
 	AllowInsecure providerconfigtypes.ConfigVarBool   `json:"allowInsecure"`
