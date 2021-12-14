@@ -24,12 +24,12 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"net/url"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/prometheus/client_golang/prometheus"
+
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -92,43 +92,6 @@ var (
 const (
 	defaultLeaderElectionNamespace = "kube-system"
 )
-
-type registryMirrorsFlags map[string][]string
-
-func (fl registryMirrorsFlags) Set(val string) error {
-	split := strings.SplitN(val, "=", 2)
-	if len(split) != 2 {
-		return fmt.Errorf("should have exactly 1 =")
-	}
-
-	key, value := split[0], split[1]
-	slice := fl[key]
-	slice = append(slice, value)
-	fl[key] = slice
-
-	return nil
-}
-
-func (fl registryMirrorsFlags) String() string {
-	var (
-		registryNames []string
-		result        []string
-	)
-
-	for registryName := range fl {
-		registryNames = append(registryNames, registryName)
-	}
-
-	sort.Strings(registryNames)
-
-	for _, registryName := range registryNames {
-		for _, mirror := range fl[registryName] {
-			result = append(result, fmt.Sprintf("%s=%s", registryName, mirror))
-		}
-	}
-
-	return fmt.Sprintf("%v", result)
-}
 
 // controllerRunOptions holds data that are required to create and run machine controller
 type controllerRunOptions struct {
