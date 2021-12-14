@@ -30,7 +30,7 @@ type RawConfig struct {
 	ProjectName        providerconfigtypes.ConfigVarString `json:"projectName"`
 	SubnetName         providerconfigtypes.ConfigVarString `json:"subnetName"`
 	ImageName          providerconfigtypes.ConfigVarString `json:"imageName"`
-	StorageContainerID providerconfigtypes.ConfigVarString `json:"storageContainerID,omitempty"`
+	StorageContainerID providerconfigtypes.ConfigVarString `json:"storageContainerID"`
 
 	// VM sizing configuration
 	CPUs     int64  `json:"cpus"`
