@@ -294,17 +294,18 @@ func main() {
 
 	var registryMirrors []string
 	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
-		mirror := mirror
-		if !strings.HasPrefix(mirror, "http") {
-			mirror = "https://" + mirror
-		}
+		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
+			if !strings.HasPrefix(mirror, "http") {
+				trimmedMirror = "https://" + mirror
+			}
 
-		_, err := url.Parse(mirror)
-		if err != nil {
-			klog.Fatalf("incorrect mirror provided: %v", err)
-		}
+			_, err := url.Parse(trimmedMirror)
+			if err != nil {
+				klog.Fatalf("incorrect mirror provided: %v", err)
+			}
 
-		registryMirrors = append(registryMirrors, mirror)
+			registryMirrors = append(registryMirrors, trimmedMirror)
+		}
 	}
 
 	if len(registryMirrors) > 0 {
