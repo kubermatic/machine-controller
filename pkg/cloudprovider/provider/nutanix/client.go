@@ -151,6 +151,10 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		resources.NumVcpusPerSocket = conf.CPUCores
 	}
 
+	if conf.CPUPassthrough != nil {
+		resources.EnableCPUPassthrough = conf.CPUPassthrough
+	}
+
 	if conf.StorageContainerID != "" {
 		resources.DiskList[0].StorageConfig = &nutanixv3.VMStorageConfig{
 			StorageContainerReference: &nutanixv3.StorageContainerReference{

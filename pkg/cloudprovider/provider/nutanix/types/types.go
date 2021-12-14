@@ -33,10 +33,11 @@ type RawConfig struct {
 	StorageContainerID providerconfigtypes.ConfigVarString `json:"storageContainerID"`
 
 	// VM sizing configuration
-	CPUs     int64  `json:"cpus"`
-	CPUCores *int64 `json:"cpuCores,omitempty"`
-	MemoryMB int64  `json:"memoryMB"`
-	DiskSize *int64 `json:"diskSize,omitempty"`
+	CPUs           int64  `json:"cpus"`
+	CPUCores       *int64 `json:"cpuCores,omitempty"`
+	CPUPassthrough *bool  `json:"cpuPassthrough,omitempty"`
+	MemoryMB       int64  `json:"memoryMB"`
+	DiskSize       *int64 `json:"diskSize,omitempty"`
 
 	// Metadata related configuration
 	Categories map[string]string `json:"categories,omitempty"`

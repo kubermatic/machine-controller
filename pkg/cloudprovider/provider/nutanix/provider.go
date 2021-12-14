@@ -48,10 +48,11 @@ type Config struct {
 
 	Categories map[string]string
 
-	CPUs       int64
-	CPUCores   *int64
-	MemoryMB   int64
-	DiskSizeGB *int64
+	CPUs           int64
+	CPUCores       *int64
+	CPUPassthrough *bool
+	MemoryMB       int64
+	DiskSizeGB     *int64
 }
 
 type provider struct {
@@ -162,6 +163,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 
 	c.CPUs = rawConfig.CPUs
 	c.CPUCores = rawConfig.CPUCores
+	c.CPUPassthrough = rawConfig.CPUPassthrough
 	c.MemoryMB = rawConfig.MemoryMB
 	c.DiskSizeGB = rawConfig.DiskSize
 
