@@ -122,6 +122,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 			Categories: conf.Categories,
 		},
 		Spec: &nutanixv3.VM{
+			Name: pointer.String(name),
 			ClusterReference: &nutanixv3.Reference{
 				Kind: pointer.String(clusterKind),
 				UUID: cluster.Metadata.UUID,
@@ -142,6 +143,13 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		},
 		DiskList: []*nutanixv3.VMDisk{
 			{
+				DeviceProperties: &nutanixv3.VMDiskDeviceProperties{
+					DeviceType: pointer.String("DISK"),
+					DiskAddress: &nutanixv3.DiskAddress{
+						DeviceIndex: pointer.Int64(0),
+						AdapterType: pointer.String("SCSI"),
+					},
+				},
 				DataSourceReference: &nutanixv3.Reference{
 					Kind: pointer.String(diskKind),
 					UUID: image.Metadata.UUID,
