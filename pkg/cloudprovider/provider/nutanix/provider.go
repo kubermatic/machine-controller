@@ -222,7 +222,15 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get image: %v", err)
 	}
 
-	if config.DiskSizeGB != nil && *config.DiskSizeGB*1024*1024 < *image.Status.Resources.SizeBytes {
+	var imageSizeBytes int64
+
+	if image.Status != nil && image.Status.Resources.SizeBytes != nil {
+		imageSizeBytes = *image.Status.Resources.SizeBytes
+	} else {
+		return fmt.Errorf("failed to query image size")
+	}
+
+	if config.DiskSizeGB != nil && *config.DiskSizeGB*1024*1024 < imageSizeBytes {
 		return fmt.Errorf("requested disk size (%d bytes) is smaller than image size (%d bytes)", *config.DiskSizeGB*1024*1024, *image.Status.Resources.SizeBytes)
 	}
 
