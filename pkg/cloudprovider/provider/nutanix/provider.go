@@ -131,7 +131,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 
 	if port != "" {
-		// we parse the port into an int to make sure we're being passed a somewhat value port value
+		// we parse the port into an int to make sure we're being passed a somewhat valid port value
 		portInt, err := strconv.Atoi(port)
 		if err != nil {
 			return nil, nil, nil, err
@@ -154,7 +154,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
-	c.ClusterName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ClusterName)
+	c.ClusterName, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ClusterName, "NUTANIX_CLUSTER_NAME")
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -217,9 +217,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	_, err = getImageByName(client, config.ImageName)
+	image, err := getImageByName(client, config.ImageName)
 	if err != nil {
 		return fmt.Errorf("failed to get image: %v", err)
+	}
+
+	if config.DiskSizeGB != nil && *config.DiskSizeGB*1024*1024 < *image.Status.Resources.SizeBytes {
+		return fmt.Errorf("requested disk size (%d bytes) is smaller than image size (%d bytes)", *config.DiskSizeGB*1024*1024, *image.Status.Resources.SizeBytes)
 	}
 
 	return nil
