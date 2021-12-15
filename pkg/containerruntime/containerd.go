@@ -31,7 +31,7 @@ const (
 
 type Containerd struct {
 	insecureRegistries []string
-	registryMirrors    []string
+	registryMirrors    map[string][]string
 	sandboxImage       string
 }
 

@@ -429,12 +429,15 @@ write_files:
     SystemdCgroup = true
     [plugins."io.containerd.grpc.v1.cri".registry]
     [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."10.0.0.1:5000"]
-    endpoint = ["http://10.0.0.1:5000"]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."192.168.100.100:5000"]
-    endpoint = ["http://192.168.100.100:5000"]
     [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
     endpoint = ["https://registry-1.docker.io"]
+    [plugins."io.containerd.grpc.v1.cri".registry.configs]
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."10.0.0.1:5000"]
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."10.0.0.1:5000".tls]
+    insecure_skip_verify = true
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."192.168.100.100:5000"]
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."192.168.100.100:5000".tls]
+    insecure_skip_verify = true
 
 
 - path: /etc/systemd/system/kubelet-healthcheck.service

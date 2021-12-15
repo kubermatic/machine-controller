@@ -23,11 +23,13 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/prometheus/client_golang/prometheus"
+
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -83,6 +85,8 @@ var (
 	nodeContainerRuntime   string
 	podCidr                string
 	nodePortRange          string
+
+	nodeContainerdRegistryMirrors = registryMirrorsFlags{}
 )
 
 const (
@@ -163,6 +167,7 @@ func main() {
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
+	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
 	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
@@ -253,8 +258,21 @@ func main() {
 	var registryMirrors []string
 	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
 		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
+			if !strings.HasPrefix(mirror, "http") {
+				trimmedMirror = "https://" + mirror
+			}
+
+			_, err := url.Parse(trimmedMirror)
+			if err != nil {
+				klog.Fatalf("incorrect mirror provided: %v", err)
+			}
+
 			registryMirrors = append(registryMirrors, trimmedMirror)
 		}
+	}
+
+	if len(registryMirrors) > 0 {
+		nodeContainerdRegistryMirrors["docker.io"] = registryMirrors
 	}
 
 	runOptions := controllerRunOptions{
@@ -275,7 +293,7 @@ func main() {
 			ContainerRuntime: containerruntime.Get(
 				nodeContainerRuntime,
 				containerruntime.WithInsecureRegistries(insecureRegistries),
-				containerruntime.WithRegistryMirrors(registryMirrors),
+				containerruntime.WithRegistryMirrors(nodeContainerdRegistryMirrors),
 				containerruntime.WithSandboxImage(nodePauseImage),
 			),
 		},

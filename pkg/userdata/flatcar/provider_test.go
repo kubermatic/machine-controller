@@ -110,7 +110,7 @@ type userDataTestCase struct {
 	httpProxy             string
 	noProxy               string
 	insecureRegistries    []string
-	registryMirrors       []string
+	registryMirrors       map[string][]string
 	pauseImage            string
 	hyperkubeImage        string
 	kubeletImage          string
