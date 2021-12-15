@@ -27,9 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/prometheus/client_golang/prometheus"
-
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -81,7 +79,6 @@ var (
 	nodeInsecureRegistries string
 	nodeRegistryMirrors    string
 	nodePauseImage         string
-	nodeKubeletRepository  string
 	nodeContainerRuntime   string
 	podCidr                string
 	nodePortRange          string
@@ -165,7 +162,7 @@ func main() {
 	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
-	flag.StringVar(&nodeKubeletRepository, "node-kubelet-repository", "quay.io/kubermatic/kubelet", "Repository for the kubelet container. Only has effect on Flatcar Linux.")
+	flag.String("node-kubelet-repository", "quay.io/kubermatic/kubelet", "[NO-OP] Repository for the kubelet container. Has no effects.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
 	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
@@ -207,15 +204,6 @@ func main() {
 	// needed for OSM
 	if err := osmv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
-	}
-
-	// Check if the kubelet image has a tag set
-	kubeletRepoRef, err := reference.Parse(nodeKubeletRepository)
-	if err != nil {
-		klog.Fatalf("failed to parse -node-kubelet-repository %s: %v", nodeKubeletRepository, err)
-	}
-	if _, ok := kubeletRepoRef.(reference.NamedTagged); ok {
-		klog.Fatalf("-node-kubelet-repository must not contain a tag. The tag will be dynamically set for each Machine.")
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -285,11 +273,10 @@ func main() {
 		skipEvictionAfter:    skipEvictionAfter,
 		nodeCSRApprover:      nodeCSRApprover,
 		node: machinecontroller.NodeSettings{
-			ClusterDNSIPs:     clusterDNSIPs,
-			HTTPProxy:         nodeHTTPProxy,
-			KubeletRepository: nodeKubeletRepository,
-			NoProxy:           nodeNoProxy,
-			PauseImage:        nodePauseImage,
+			ClusterDNSIPs: clusterDNSIPs,
+			HTTPProxy:     nodeHTTPProxy,
+			NoProxy:       nodeNoProxy,
+			PauseImage:    nodePauseImage,
 			ContainerRuntime: containerruntime.Get(
 				nodeContainerRuntime,
 				containerruntime.WithInsecureRegistries(insecureRegistries),
