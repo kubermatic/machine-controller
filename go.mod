@@ -18,7 +18,6 @@ require (
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.54.0
-	github.com/docker/distribution v2.7.1+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/google/uuid v1.1.2
