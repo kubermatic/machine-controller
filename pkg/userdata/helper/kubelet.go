@@ -23,6 +23,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -162,7 +163,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 }
 
 // kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration
-func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool) (string, error) {
+func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string) (string, error) {
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
 		clusterDNSstr = append(clusterDNSstr, ip.String())
@@ -198,8 +199,39 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		StaticPodPath:         "/etc/kubernetes/manifests",
 		KubeReserved:          map[string]string{"cpu": "200m", "memory": "200Mi", "ephemeral-storage": "1Gi"},
 		SystemReserved:        map[string]string{"cpu": "200m", "memory": "200Mi", "ephemeral-storage": "1Gi"},
+		EvictionHard:          map[string]string{"memory.available": "100Mi", "nodefs.available": "10%", "nodefs.inodesFree": "5%", "imagefs.available": "15%"},
 		VolumePluginDir:       "/var/lib/kubelet/volumeplugins",
 		TLSCipherSuites:       kubeletTLSCipherSuites,
+	}
+
+	if kubeReserved, ok := kubeletConfigs[common.KubeReservedKubeletConfig]; ok {
+		for _, krPair := range strings.Split(kubeReserved, ",") {
+			krKV := strings.SplitN(krPair, "=", 2)
+			if len(krKV) != 2 {
+				continue
+			}
+			cfg.KubeReserved[krKV[0]] = krKV[1]
+		}
+	}
+
+	if systemReserved, ok := kubeletConfigs[common.SystemReservedKubeletConfig]; ok {
+		for _, srPair := range strings.Split(systemReserved, ",") {
+			srKV := strings.SplitN(srPair, "=", 2)
+			if len(srKV) != 2 {
+				continue
+			}
+			cfg.SystemReserved[srKV[0]] = srKV[1]
+		}
+	}
+
+	if evictionHard, ok := kubeletConfigs[common.EvictionHardKubeletConfig]; ok {
+		for _, ehPair := range strings.Split(evictionHard, ",") {
+			ehKV := strings.SplitN(ehPair, "=", 2)
+			if len(ehKV) != 2 {
+				continue
+			}
+			cfg.EvictionHard[ehKV[0]] = ehKV[1]
+		}
 	}
 
 	buf, err := kyaml.Marshal(cfg)

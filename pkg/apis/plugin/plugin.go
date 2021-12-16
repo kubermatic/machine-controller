@@ -51,6 +51,7 @@ type UserDataRequest struct {
 	NoProxy               string
 	PauseImage            string
 	KubeletFeatureGates   map[string]bool
+	KubeletConfigs        map[string]string
 	ContainerRuntime      containerruntime.Config
 	PodCIDR               string
 	NodePortRange         string

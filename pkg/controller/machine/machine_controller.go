@@ -705,14 +705,15 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			}
 
 			// grab kubelet featureGates from the annotations
-			kubeletFeatureGates := common.GetKubeletFeatureGates(machine)
+			kubeletFeatureGates := common.GetKubeletFeatureGates(machine.GetAnnotations())
 			if len(kubeletFeatureGates) == 0 {
 				// fallback to command-line input
 				kubeletFeatureGates = r.nodeSettings.KubeletFeatureGates
 			}
 
 			// grab kubelet general options from the annotations
-			kubeletFlags := common.GetKubeletFlags(machine)
+			kubeletFlags := common.GetKubeletFlags(machine.GetAnnotations())
+			KubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
 
 			// look up for ExternalCloudProvider feature, with fallback to command-line input
 			externalCloudProvider := r.nodeSettings.ExternalCloudProvider
@@ -729,6 +730,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
 				PauseImage:            r.nodeSettings.PauseImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				KubeletConfigs:        KubeletConfigs,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
