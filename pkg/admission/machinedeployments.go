@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	osmadmission "k8c.io/operating-system-manager/pkg/admission"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -36,6 +37,13 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionReques
 	machineDeploymentDefaultingFunction(&machineDeployment)
 	if errs := validateMachineDeployment(machineDeployment); len(errs) > 0 {
 		return nil, fmt.Errorf("validation failed: %v", errs)
+	}
+
+	// If OSM is enabled then validate machine deployment against selected OSP
+	if ad.useOSM {
+		if errs := osmadmission.ValidateMachineDeployment(machineDeployment, ad.client, ad.ospNamespace); len(errs) > 0 {
+			return nil, fmt.Errorf("validation failed: %v", errs)
+		}
 	}
 
 	// Do not validate the spec if it hasn't changed
