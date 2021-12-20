@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	nutanixclient "github.com/terraform-providers/terraform-provider-nutanix/client"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
 
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
@@ -188,7 +190,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	resp, err := client.Prism.V3.CreateVM(request)
 	if err != nil {
-		return nil, err
+		return nil, wrapNutanixError(err)
 	}
 
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
@@ -229,11 +231,11 @@ func getSubnetByName(client *ClientSet, name, clusterUUID string) (*nutanixv3.Su
 	subnets, err := client.Prism.V3.ListAllSubnet(filter)
 
 	if err != nil {
-		return nil, err
+		return nil, wrapNutanixError(err)
 	}
 
 	for _, subnet := range subnets.Entities {
-		if *subnet.Metadata.Name == name && *subnet.Status.ClusterReference.UUID == clusterUUID {
+		if *subnet.Status.Name == name && *subnet.Status.ClusterReference.UUID == clusterUUID {
 			return subnet, nil
 		}
 	}
@@ -246,11 +248,23 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 	projects, err := client.Prism.V3.ListAllProject(filter)
 
 	if err != nil {
-		return nil, err
+		return nil, wrapNutanixError(err)
+	}
+
+	if projects == nil || projects.Entities == nil {
+		return nil, fmt.Errorf("project search returned no results for '%s'", name)
 	}
 
 	for _, project := range projects.Entities {
-		if *project.Metadata.Name == name {
+		if project == nil {
+			return nil, errors.New("project is nil")
+		}
+
+		if project.Status == nil {
+			return nil, errors.New("project status is nil")
+		}
+
+		if project.Status.Name == name {
 			return project, nil
 		}
 	}
@@ -263,11 +277,11 @@ func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentR
 	clusters, err := client.Prism.V3.ListAllCluster(filter)
 
 	if err != nil {
-		return nil, err
+		return nil, wrapNutanixError(err)
 	}
 
 	for _, cluster := range clusters.Entities {
-		if *cluster.Metadata.Name == name {
+		if *cluster.Status.Name == name {
 			return cluster, nil
 		}
 	}
@@ -280,11 +294,11 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 	images, err := client.Prism.V3.ListAllImage(filter)
 
 	if err != nil {
-		return nil, err
+		return nil, wrapNutanixError(err)
 	}
 
 	for _, image := range images.Entities {
-		if *image.Metadata.Name == name {
+		if *image.Status.Name == name {
 			return image, nil
 		}
 	}
@@ -293,20 +307,20 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 }
 
 func getVMByName(client *ClientSet, name, projectID string) (*nutanixv3.VMIntentResource, error) {
-	filter := fmt.Sprintf("name==%s", name)
+	filter := fmt.Sprintf("vm_name==%s", name)
 	vms, err := client.Prism.V3.ListAllVM(filter)
 
 	if err != nil {
-		return nil, err
+		return nil, wrapNutanixError(err)
 	}
 
 	for _, vm := range vms.Entities {
-		if *vm.Metadata.Name == name && *vm.Metadata.ProjectReference.UUID == projectID {
+		if *vm.Status.Name == name && *vm.Metadata.ProjectReference.UUID == projectID {
 			return vm, nil
 		}
 	}
 
-	return nil, errors.New(entityNotFoundError)
+	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
 func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]corev1.NodeAddressType, error) {
@@ -378,4 +392,8 @@ func waitForPowerState(client *ClientSet, vmID string, interval time.Duration, t
 			return false, fmt.Errorf("unexpected power state: %s", *vm.Status.Resources.PowerState)
 		}
 	})
+}
+
+func wrapNutanixError(err error) error {
+	return fmt.Errorf("api error: %s", strings.ReplaceAll(err.Error(), "\n", ""))
 }

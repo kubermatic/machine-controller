@@ -21,10 +21,10 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	nutanixtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -285,12 +285,12 @@ func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	vm, err := getVMByName(client, machine.Name, *project.Metadata.UUID)
 	if err != nil {
-		if strings.Contains(err.Error(), entityNotFoundError) {
+		if err == cloudprovidererrors.ErrInstanceNotFound {
 			// VM is gone already
 			return true, nil
 		}
 
-		return false, fmt.Errorf("failed to get vm: %v", err)
+		return false, err
 	}
 
 	// TODO: figure out if VM is already in deleting state
@@ -323,7 +323,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 
 	vm, err := getVMByName(client, machine.Name, *project.Metadata.UUID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vm: %v", err)
+		return nil, err
 	}
 
 	if vm.Status == nil || vm.Status.Resources == nil || vm.Status.Resources.PowerState == nil {
