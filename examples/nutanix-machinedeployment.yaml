@@ -45,6 +45,8 @@ spec:
             # Can also be set via the env var 'NUTANIX_PORT' on the machine-controller
             # if not set, defaults to 9440 (default Nutanix port)
             port: '<< NUTANIX_PORT >>'
+            # Optional: Allow insecure connections to endpoint if no valid TLS certificate is presented
+            allowInsecure: true
             # Can also be set via the env var 'NUTANIX_PASSWORD' on the machine-controller
             password:
               secretKeyRef:
@@ -67,7 +69,7 @@ spec:
             # Memory configuration in MiB
             memoryMB: 1024
             # Optional: Enable Nutanix' CPU passthrough feature
-            cpuPassthrough: true
+            #cpuPassthrough: true
             # Optional: Set up system disk size in GB. If not set, will be based on image size.
             # Cannot be smaller than the image size.
             diskSize: 20
