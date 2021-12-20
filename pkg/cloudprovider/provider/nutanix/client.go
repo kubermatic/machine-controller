@@ -41,6 +41,7 @@ const (
 	clusterKind          = "cluster"
 	subnetKind           = "subnet"
 	diskKind             = "disk"
+	imageKind            = "image"
 	storageContainerKind = "storage_container"
 
 	entityNotFoundError = "ENTITY_NOT_FOUND"
@@ -116,7 +117,6 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	request := &nutanixv3.VMIntentInput{
 		Metadata: &nutanixv3.Metadata{
 			Kind: pointer.String(vmKind),
-			Name: pointer.String(name),
 			ProjectReference: &nutanixv3.Reference{
 				Kind: pointer.String(projectKind),
 				UUID: project.Metadata.UUID,
@@ -133,6 +133,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}
 
 	resources := &nutanixv3.VMResources{
+		PowerState:    pointer.String("ON"),
 		NumSockets:    pointer.Int64(conf.CPUs),
 		MemorySizeMib: pointer.Int64(conf.MemoryMB),
 		NicList: []*nutanixv3.VMNic{
@@ -153,7 +154,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 					},
 				},
 				DataSourceReference: &nutanixv3.Reference{
-					Kind: pointer.String(diskKind),
+					Kind: pointer.String(imageKind),
 					UUID: image.Metadata.UUID,
 				},
 			},
@@ -209,7 +210,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	vm, err := client.Prism.V3.GetVM(*resp.Metadata.UUID)
 
-	if vm.Metadata.Name == nil {
+	if vm.Status.Name == nil {
 		return nil, fmt.Errorf("request for VM UUID '%s' did not return name", *resp.Metadata.UUID)
 	}
 
@@ -219,7 +220,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}
 
 	return Server{
-		name:      *vm.Metadata.Name,
+		name:      *vm.Status.Name,
 		id:        *resp.Metadata.UUID,
 		status:    instance.StatusRunning,
 		addresses: addresses,

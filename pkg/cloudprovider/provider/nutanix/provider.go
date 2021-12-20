@@ -351,7 +351,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	}
 
 	return Server{
-		name:      *vm.Metadata.Name,
+		name:      *vm.Status.Name,
 		id:        *vm.Metadata.UUID,
 		status:    status,
 		addresses: addresses,
