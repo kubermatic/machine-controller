@@ -44,7 +44,7 @@ type Config struct {
 	AllowInsecure bool
 
 	ClusterName        string
-	ProjectName        string
+	ProjectName        string // TODO: Make optional
 	SubnetName         string
 	ImageName          string
 	StorageContainerID string

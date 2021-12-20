@@ -67,7 +67,7 @@ spec:
             # Sets the CPU cores per vCPUs
             cpuCores: 1
             # Memory configuration in MiB
-            memoryMB: 1024
+            memoryMB: 2048
             # Optional: Enable Nutanix' CPU passthrough feature
             #cpuPassthrough: true
             # Optional: Set up system disk size in GB. If not set, will be based on image size.
