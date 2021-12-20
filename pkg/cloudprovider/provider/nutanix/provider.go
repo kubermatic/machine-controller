@@ -260,7 +260,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 		return nil, fmt.Errorf("failed to construct client: %v", err)
 	}
 
-	return createVM(client, machine.Spec.Name, *config, pc.OperatingSystem, userdata)
+	return createVM(client, machine.Name, *config, pc.OperatingSystem, userdata)
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
