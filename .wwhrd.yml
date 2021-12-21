@@ -27,4 +27,9 @@ allowlist:
 exceptions:
   - github.com/hashicorp/golang-lru # MPL-2.0
   - github.com/hashicorp/golang-lru/simplelru # MPL-2.0
+  - github.com/hashicorp/terraform-plugin-sdk/helper/logging # MPL-2.0
+  - github.com/hashicorp/logutils # MPL-2.0
+  - github.com/terraform-providers/terraform-provider-nutanix/utils # MPL-2.0
+  - github.com/terraform-providers/terraform-provider-nutanix/client # MPL-2.0
+  - github.com/terraform-providers/terraform-provider-nutanix/client/v3 # MPL-2.0
   - github.com/ajeddeloh/go-json # Since it's a fork, https://github.com/golang/go/blob/master/LICENSE

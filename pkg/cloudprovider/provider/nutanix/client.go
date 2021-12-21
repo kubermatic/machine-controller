@@ -39,8 +39,7 @@ import (
 )
 
 const (
-	entityNotFoundError = "ENTITY_NOT_FOUND"
-	invalidCredentials  = "invalid Nutanix Credentials"
+	invalidCredentials = "invalid Nutanix Credentials"
 )
 
 type ClientSet struct {
