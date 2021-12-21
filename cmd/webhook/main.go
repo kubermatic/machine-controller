@@ -23,7 +23,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
+	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,6 +38,8 @@ var (
 	admissionTLSCertPath   string
 	admissionTLSKeyPath    string
 	caBundleFile           string
+	useOSM                 bool
+	namespace              string
 )
 
 func main() {
@@ -52,6 +56,11 @@ func main() {
 	flag.StringVar(&admissionTLSCertPath, "tls-cert-path", "/tmp/cert/cert.pem", "The path of the TLS cert for the MutatingWebhook")
 	flag.StringVar(&admissionTLSKeyPath, "tls-key-path", "/tmp/cert/key.pem", "The path of the TLS key for the MutatingWebhook")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
+	flag.StringVar(&namespace, "namespace", "kubermatic", "The namespace where the webhooks will run")
+
+	// OSM specific flags
+	flag.BoolVar(&useOSM, "use-osm", false, "osm controller is enabled for node bootstrap")
+
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
@@ -67,7 +76,14 @@ func main() {
 		klog.Fatalf("error building kubeconfig: %v", err)
 	}
 
-	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
+	scheme := runtime.NewScheme()
+	if err := osmv1alpha1.AddToScheme(scheme); err != nil {
+		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
+	}
+
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{
+		Scheme: scheme,
+	})
 	if err != nil {
 		klog.Fatalf("failed to build client: %v", err)
 	}
@@ -77,7 +93,7 @@ func main() {
 		klog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
-	srv, err := admission.New(admissionListenAddress, client, um, nodeFlags)
+	srv, err := admission.New(admissionListenAddress, client, um, nodeFlags, useOSM, namespace)
 	if err != nil {
 		klog.Fatalf("failed to create admission hook: %v", err)
 	}
