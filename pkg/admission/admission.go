@@ -46,7 +46,7 @@ type admissionData struct {
 	userDataManager *userdatamanager.Manager
 	nodeSettings    machinecontroller.NodeSettings
 	useOSM          bool
-	ospNamespace    string
+	namespace       string
 }
 
 var jsonPatch = admissionv1.PatchTypeJSONPatch
@@ -57,14 +57,14 @@ func New(
 	um *userdatamanager.Manager,
 	nodeFlags *node.Flags,
 	useOSM bool,
-	ospNamespace string,
+	namespace string,
 ) (*http.Server, error) {
 	mux := http.NewServeMux()
 	ad := &admissionData{
 		client:          client,
 		userDataManager: um,
 		useOSM:          useOSM,
-		ospNamespace:    ospNamespace,
+		namespace:       namespace,
 	}
 
 	if err := nodeFlags.UpdateNodeSettings(&ad.nodeSettings); err != nil {

@@ -39,7 +39,7 @@ var (
 	admissionTLSKeyPath    string
 	caBundleFile           string
 	useOSM                 bool
-	ospNamespace           string
+	namespace              string
 )
 
 func main() {
@@ -56,10 +56,10 @@ func main() {
 	flag.StringVar(&admissionTLSCertPath, "tls-cert-path", "/tmp/cert/cert.pem", "The path of the TLS cert for the MutatingWebhook")
 	flag.StringVar(&admissionTLSKeyPath, "tls-key-path", "/tmp/cert/key.pem", "The path of the TLS key for the MutatingWebhook")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
+	flag.StringVar(&namespace, "namespace", "kubermatic", "The namespace where the webhooks will run")
 
 	// OSM specific flags
 	flag.BoolVar(&useOSM, "use-osm", false, "osm controller is enabled for node bootstrap")
-	flag.StringVar(&ospNamespace, "osp-namespace", "kubermatic", "The namespace where the OSPs will exist")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -93,7 +93,7 @@ func main() {
 		klog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
-	srv, err := admission.New(admissionListenAddress, client, um, nodeFlags, useOSM, ospNamespace)
+	srv, err := admission.New(admissionListenAddress, client, um, nodeFlags, useOSM, namespace)
 	if err != nil {
 		klog.Fatalf("failed to create admission hook: %v", err)
 	}
