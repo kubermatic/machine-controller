@@ -226,7 +226,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 
 	if evictionHard, ok := kubeletConfigs[common.EvictionHardKubeletConfig]; ok {
 		for _, ehPair := range strings.Split(evictionHard, ",") {
-			ehKV := strings.SplitN(ehPair, "=", 2)
+			ehKV := strings.SplitN(ehPair, "<", 2)
 			if len(ehKV) != 2 {
 				continue
 			}
