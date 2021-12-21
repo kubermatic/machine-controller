@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -193,7 +194,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to get config: %v", err)
+		return fmt.Errorf("failed to parse machineSpec: %v", err)
 	}
 
 	client, err := GetClientSet(config)
@@ -251,12 +252,18 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("failed to parse machineSpec: %v", err),
+		}
 	}
 
 	client, err := GetClientSet(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct client: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("failed to construct client: %v", err),
+		}
 	}
 
 	return createVM(client, machine.Name, *config, pc.OperatingSystem, userdata)
@@ -269,12 +276,18 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse config: %v", err)
+		return false, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("failed to parse machineSpec: %v", err),
+		}
 	}
 
 	client, err := GetClientSet(config)
 	if err != nil {
-		return false, fmt.Errorf("failed to construct client: %v", err)
+		return false, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("failed to construct client: %v", err),
+		}
 	}
 
 	var projectID *string
@@ -282,7 +295,7 @@ func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if config.ProjectName != "" {
 		project, err := getProjectByName(client, config.ProjectName)
 		if err != nil {
-			return false, fmt.Errorf("failed to get project: %v", err)
+			return false, err
 		}
 
 		projectID = project.Metadata.UUID
@@ -301,7 +314,14 @@ func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	// TODO: figure out if VM is already in deleting state
 
 	resp, err := client.Prism.V3.DeleteVM(*vm.Metadata.UUID)
-	taskID := resp.Status.ExecutionContext.TaskUUID.(string)
+	if err != nil {
+		return false, err
+	}
+
+	taskID, ok := resp.Status.ExecutionContext.TaskUUID.(string)
+	if !ok {
+		return false, errors.New("failed to parse deletion task UUID")
+	}
 
 	if err := waitForCompletion(client, taskID, time.Second*5, time.Minute*10); err != nil {
 		return false, fmt.Errorf("failed to wait for completion: %v", err)
@@ -313,12 +333,18 @@ func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("failed to parse machineSpec: %v", err),
+		}
 	}
 
 	client, err := GetClientSet(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct client: %v", err)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("failed to construct client: %v", err),
+		}
 	}
 
 	var projectID *string
@@ -326,8 +352,9 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	if config.ProjectName != "" {
 		project, err := getProjectByName(client, config.ProjectName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get project: %v", err)
+			return nil, err
 		}
+
 		projectID = project.Metadata.UUID
 	}
 

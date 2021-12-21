@@ -51,3 +51,16 @@ type RawConfig struct {
 	// Metadata related configuration
 	Categories map[string]string `json:"categories,omitempty"`
 }
+
+type ErrorResponse struct {
+	APIVersion  string             `json:"api_version"`
+	Kind        string             `json:"kind"`
+	State       string             `json:"state"`
+	MessageList []ErrorResponseMsg `json:"message_list"`
+	Code        int32              `json:"code"`
+}
+
+type ErrorResponseMsg struct {
+	Message string `json:"message"`
+	Reason  string `json:"reason"`
+}

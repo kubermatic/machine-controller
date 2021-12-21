@@ -18,6 +18,7 @@ package nutanix
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	nutanixclient "github.com/terraform-providers/terraform-provider-nutanix/client"
 	nutanixv3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	nutanixtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix/types"
@@ -38,6 +40,7 @@ import (
 
 const (
 	entityNotFoundError = "ENTITY_NOT_FOUND"
+	invalidCredentials  = "invalid Nutanix Credentials"
 )
 
 type ClientSet struct {
@@ -89,17 +92,17 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 func createVM(client *ClientSet, name string, conf Config, os providerconfigtypes.OperatingSystem, userdata string) (instance.Instance, error) {
 	cluster, err := getClusterByName(client, conf.ClusterName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cluster: %v", err)
+		return nil, err
 	}
 
 	subnet, err := getSubnetByName(client, conf.SubnetName, *cluster.Metadata.UUID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get subnet: %v", err)
+		return nil, err
 	}
 
 	image, err := getImageByName(client, conf.ImageName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get image: %v", err)
+		return nil, err
 	}
 
 	request := &nutanixv3.VMIntentInput{
@@ -196,6 +199,9 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}
 
 	vm, err := client.Prism.V3.GetVM(*resp.Metadata.UUID)
+	if err != nil {
+		return nil, wrapNutanixError(err)
+	}
 
 	if vm.Status.Name == nil {
 		return nil, fmt.Errorf("request for VM UUID '%s' did not return name", *resp.Metadata.UUID)
@@ -228,7 +234,10 @@ func getSubnetByName(client *ClientSet, name, clusterID string) (*nutanixv3.Subn
 		}
 	}
 
-	return nil, errors.New(entityNotFoundError)
+	return nil, cloudprovidererrors.TerminalError{
+		Reason:  common.InvalidConfigurationMachineError,
+		Message: fmt.Sprintf("no subnet found for name==%s", name),
+	}
 }
 
 func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error) {
@@ -240,7 +249,11 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 	}
 
 	if projects == nil || projects.Entities == nil {
-		return nil, fmt.Errorf("project search returned no results for '%s'", name)
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("no project found for name==%s", name),
+		}
+
 	}
 
 	for _, project := range projects.Entities {
@@ -257,7 +270,10 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 		}
 	}
 
-	return nil, errors.New(entityNotFoundError)
+	return nil, cloudprovidererrors.TerminalError{
+		Reason:  common.InvalidConfigurationMachineError,
+		Message: fmt.Sprintf("no project found for name==%s", name),
+	}
 }
 
 func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentResponse, error) {
@@ -268,13 +284,23 @@ func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentR
 		return nil, wrapNutanixError(err)
 	}
 
+	if clusters == nil || clusters.Entities == nil {
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("no cluster found for name==%s", name),
+		}
+	}
+
 	for _, cluster := range clusters.Entities {
 		if *cluster.Status.Name == name {
 			return cluster, nil
 		}
 	}
 
-	return nil, errors.New(entityNotFoundError)
+	return nil, cloudprovidererrors.TerminalError{
+		Reason:  common.InvalidConfigurationMachineError,
+		Message: fmt.Sprintf("no cluster found for name==%s", name),
+	}
 }
 
 func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentResponse, error) {
@@ -285,13 +311,23 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 		return nil, wrapNutanixError(err)
 	}
 
+	if images == nil || images.Entities == nil {
+		return nil, cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: fmt.Sprintf("no image found for name==%s", name),
+		}
+	}
+
 	for _, image := range images.Entities {
 		if *image.Status.Name == name {
 			return image, nil
 		}
 	}
 
-	return nil, errors.New(entityNotFoundError)
+	return nil, cloudprovidererrors.TerminalError{
+		Reason:  common.InvalidConfigurationMachineError,
+		Message: fmt.Sprintf("no image found for name==%s", name),
+	}
 }
 
 func getVMByName(client *ClientSet, name string, projectID *string) (*nutanixv3.VMIntentResource, error) {
@@ -320,7 +356,7 @@ func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time
 	if err := wait.Poll(interval, timeout, func() (bool, error) {
 		vm, err := client.Prism.V3.GetVM(vmID)
 		if err != nil {
-			return false, err
+			return false, wrapNutanixError(err)
 		}
 
 		if len(vm.Status.Resources.NicList) == 0 || len(vm.Status.Resources.NicList[0].IPEndpointList) == 0 {
@@ -342,7 +378,7 @@ func waitForCompletion(client *ClientSet, taskID string, interval time.Duration,
 	return wait.Poll(interval, timeout, func() (bool, error) {
 		task, err := client.Prism.V3.GetTask(taskID)
 		if err != nil {
-			return false, err
+			return false, wrapNutanixError(err)
 		}
 
 		if task.Status == nil {
@@ -367,7 +403,7 @@ func waitForPowerState(client *ClientSet, vmID string, interval time.Duration, t
 	return wait.Poll(interval, timeout, func() (bool, error) {
 		vm, err := client.Prism.V3.GetVM(vmID)
 		if err != nil {
-			return false, err
+			return false, wrapNutanixError(err)
 		}
 
 		if vm.Status == nil || vm.Status.Resources == nil || vm.Status.Resources.PowerState == nil {
@@ -385,6 +421,37 @@ func waitForPowerState(client *ClientSet, vmID string, interval time.Duration, t
 	})
 }
 
-func wrapNutanixError(err error) error {
-	return fmt.Errorf("api error: %s", strings.ReplaceAll(err.Error(), "\n", ""))
+func wrapNutanixError(initialErr error) error {
+	if initialErr == nil {
+		return nil
+	}
+
+	var resp nutanixtypes.ErrorResponse
+
+	if err := json.Unmarshal([]byte(initialErr.Error()), &resp); err != nil {
+		// invalid credentials are returned with a simple string
+		if strings.Contains(initialErr.Error(), invalidCredentials) {
+			return cloudprovidererrors.TerminalError{
+				Reason:  common.InvalidConfigurationMachineError,
+				Message: initialErr.Error(),
+			}
+		}
+
+		// failed to parse error, let's make sure it doesnt't have new lines at least
+		return fmt.Errorf("api error: %s", strings.ReplaceAll(initialErr.Error(), "\n", ""))
+	}
+
+	// TODO: handle different states by potentially returning a TerminalError
+	// this needs experience with errors coming from Nutanix because the state
+	// values are not defined anywhere. So if you hit an error that qualifies,
+	// why not add something handling it!
+	switch resp.State {
+	default:
+		var msgs []string
+		for _, msg := range resp.MessageList {
+			msgs = append(msgs, fmt.Sprintf("%s: %s", msg.Message, msg.Reason))
+		}
+
+		return fmt.Errorf("api error (%s, code %d): %s", resp.State, resp.Code, strings.Join(msgs, ", "))
+	}
 }
