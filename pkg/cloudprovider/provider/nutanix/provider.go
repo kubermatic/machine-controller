@@ -43,11 +43,10 @@ type Config struct {
 	Password      string
 	AllowInsecure bool
 
-	ClusterName        string
-	ProjectName        string // TODO: Make optional
-	SubnetName         string
-	ImageName          string
-	StorageContainerID string
+	ClusterName string
+	ProjectName string
+	SubnetName  string
+	ImageName   string
 
 	Categories map[string]string
 
@@ -159,9 +158,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
-	c.ProjectName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ProjectName)
-	if err != nil {
-		return nil, nil, nil, err
+	if rawConfig.ProjectName != nil {
+		c.ProjectName, err = p.configVarResolver.GetConfigVarStringValue(*rawConfig.ProjectName)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 	}
 
 	c.SubnetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.SubnetName)
@@ -173,8 +174,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	c.StorageContainerID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.StorageContainerID)
 
 	c.Categories = rawConfig.Categories
 
@@ -207,13 +206,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get cluster: %v", err)
 	}
 
-	_, err = getProjectByName(client, config.ProjectName)
-	if err != nil {
-		return fmt.Errorf("failed to get project: %v", err)
+	if config.ProjectName != "" {
+		if _, err := getProjectByName(client, config.ProjectName); err != nil {
+			return fmt.Errorf("failed to get project: %v", err)
+		}
 	}
 
-	_, err = getSubnetByName(client, config.SubnetName, *cluster.Metadata.UUID)
-	if err != nil {
+	if _, err := getSubnetByName(client, config.SubnetName, *cluster.Metadata.UUID); err != nil {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
@@ -227,7 +226,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	if image.Status != nil && image.Status.Resources.SizeBytes != nil {
 		imageSizeBytes = *image.Status.Resources.SizeBytes
 	} else {
-		return fmt.Errorf("failed to query image size")
+		return fmt.Errorf("failed to read image size for '%s'", config.ImageName)
 	}
 
 	if config.DiskSizeGB != nil && *config.DiskSizeGB*1024*1024 < imageSizeBytes {
@@ -278,12 +277,18 @@ func (p *provider) cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to construct client: %v", err)
 	}
 
-	project, err := getProjectByName(client, config.ProjectName)
-	if err != nil {
-		return false, fmt.Errorf("failed to get project: %v", err)
+	var projectID *string
+
+	if config.ProjectName != "" {
+		project, err := getProjectByName(client, config.ProjectName)
+		if err != nil {
+			return false, fmt.Errorf("failed to get project: %v", err)
+		}
+
+		projectID = project.Metadata.UUID
 	}
 
-	vm, err := getVMByName(client, machine.Name, *project.Metadata.UUID)
+	vm, err := getVMByName(client, machine.Name, projectID)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			// VM is gone already
@@ -316,18 +321,23 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		return nil, fmt.Errorf("failed to construct client: %v", err)
 	}
 
-	project, err := getProjectByName(client, config.ProjectName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get project: %v", err)
+	var projectID *string
+
+	if config.ProjectName != "" {
+		project, err := getProjectByName(client, config.ProjectName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get project: %v", err)
+		}
+		projectID = project.Metadata.UUID
 	}
 
-	vm, err := getVMByName(client, machine.Name, *project.Metadata.UUID)
+	vm, err := getVMByName(client, machine.Name, projectID)
 	if err != nil {
 		return nil, err
 	}
 
 	if vm.Status == nil || vm.Status.Resources == nil || vm.Status.Resources.PowerState == nil {
-		return nil, errors.New("could not read vm power state")
+		return nil, fmt.Errorf("could not read power state for VM '%s'", machine.Name)
 	}
 
 	var status instance.Status
@@ -347,7 +357,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 		ip := *vm.Status.Resources.NicList[0].IPEndpointList[0].IP
 		addresses[ip] = corev1.NodeInternalIP
 	} else {
-		return nil, errors.New("could not find any IP addresses on VM")
+		return nil, fmt.Errorf("could not find any IP addresses for VM '%s'", machine.Name)
 	}
 
 	return Server{

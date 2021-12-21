@@ -26,24 +26,17 @@ import (
 	nutanixclient "github.com/terraform-providers/terraform-provider-nutanix/client"
 	nutanixv3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
 
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
+	nutanixtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix/types"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
-
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 const (
-	vmKind               = "vm"
-	projectKind          = "project"
-	clusterKind          = "cluster"
-	subnetKind           = "subnet"
-	diskKind             = "disk"
-	imageKind            = "image"
-	storageContainerKind = "storage_container"
-
 	entityNotFoundError = "ENTITY_NOT_FOUND"
 )
 
@@ -99,11 +92,6 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		return nil, fmt.Errorf("failed to get cluster: %v", err)
 	}
 
-	project, err := getProjectByName(client, conf.ProjectName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get project: %v", err)
-	}
-
 	subnet, err := getSubnetByName(client, conf.SubnetName, *cluster.Metadata.UUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subnet: %v", err)
@@ -116,17 +104,13 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	request := &nutanixv3.VMIntentInput{
 		Metadata: &nutanixv3.Metadata{
-			Kind: pointer.String(vmKind),
-			ProjectReference: &nutanixv3.Reference{
-				Kind: pointer.String(projectKind),
-				UUID: project.Metadata.UUID,
-			},
+			Kind:       pointer.String(nutanixtypes.VMKind),
 			Categories: conf.Categories,
 		},
 		Spec: &nutanixv3.VM{
 			Name: pointer.String(name),
 			ClusterReference: &nutanixv3.Reference{
-				Kind: pointer.String(clusterKind),
+				Kind: pointer.String(nutanixtypes.ClusterKind),
 				UUID: cluster.Metadata.UUID,
 			},
 		},
@@ -139,7 +123,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		NicList: []*nutanixv3.VMNic{
 			{
 				SubnetReference: &nutanixv3.Reference{
-					Kind: pointer.String(subnetKind),
+					Kind: pointer.String(nutanixtypes.SubnetKind),
 					UUID: subnet.Metadata.UUID,
 				},
 			},
@@ -154,7 +138,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 					},
 				},
 				DataSourceReference: &nutanixv3.Reference{
-					Kind: pointer.String(imageKind),
+					Kind: pointer.String(nutanixtypes.ImageKind),
 					UUID: image.Metadata.UUID,
 				},
 			},
@@ -166,21 +150,24 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		},
 	}
 
+	if conf.ProjectName != "" {
+		project, err := getProjectByName(client, conf.ProjectName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get project: %v", err)
+		}
+
+		request.Metadata.ProjectReference = &nutanixv3.Reference{
+			Kind: pointer.String(nutanixtypes.ProjectKind),
+			UUID: project.Metadata.UUID,
+		}
+	}
+
 	if conf.CPUCores != nil {
 		resources.NumVcpusPerSocket = conf.CPUCores
 	}
 
 	if conf.CPUPassthrough != nil {
 		resources.EnableCPUPassthrough = conf.CPUPassthrough
-	}
-
-	if conf.StorageContainerID != "" {
-		resources.DiskList[0].StorageConfig = &nutanixv3.VMStorageConfig{
-			StorageContainerReference: &nutanixv3.StorageContainerReference{
-				Kind: storageContainerKind,
-				UUID: conf.StorageContainerID,
-			},
-		}
 	}
 
 	if conf.DiskSizeGB != nil {
@@ -196,7 +183,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
 
-	if err := waitForCompletion(client, taskUUID, time.Second*10, time.Minute*30); err != nil {
+	if err := waitForCompletion(client, taskUUID, time.Second*10, time.Minute*15); err != nil {
 		return nil, fmt.Errorf("failed to wait for task: %v", err)
 	}
 
@@ -204,7 +191,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		return nil, errors.New("did not get response with UUID")
 	}
 
-	if err := waitForPowerState(client, *resp.Metadata.UUID, time.Second*10, time.Minute*30); err != nil {
+	if err := waitForPowerState(client, *resp.Metadata.UUID, time.Second*10, time.Minute*10); err != nil {
 		return nil, fmt.Errorf("failed to wait for power state: %v", err)
 	}
 
@@ -227,7 +214,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}, nil
 }
 
-func getSubnetByName(client *ClientSet, name, clusterUUID string) (*nutanixv3.SubnetIntentResponse, error) {
+func getSubnetByName(client *ClientSet, name, clusterID string) (*nutanixv3.SubnetIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
 	subnets, err := client.Prism.V3.ListAllSubnet(filter)
 
@@ -236,7 +223,7 @@ func getSubnetByName(client *ClientSet, name, clusterUUID string) (*nutanixv3.Su
 	}
 
 	for _, subnet := range subnets.Entities {
-		if *subnet.Status.Name == name && *subnet.Status.ClusterReference.UUID == clusterUUID {
+		if *subnet.Status.Name == name && *subnet.Status.ClusterReference.UUID == clusterID {
 			return subnet, nil
 		}
 	}
@@ -307,7 +294,7 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 	return nil, errors.New(entityNotFoundError)
 }
 
-func getVMByName(client *ClientSet, name, projectID string) (*nutanixv3.VMIntentResource, error) {
+func getVMByName(client *ClientSet, name string, projectID *string) (*nutanixv3.VMIntentResource, error) {
 	filter := fmt.Sprintf("vm_name==%s", name)
 	vms, err := client.Prism.V3.ListAllVM(filter)
 
@@ -316,7 +303,10 @@ func getVMByName(client *ClientSet, name, projectID string) (*nutanixv3.VMIntent
 	}
 
 	for _, vm := range vms.Entities {
-		if *vm.Status.Name == name && *vm.Metadata.ProjectReference.UUID == projectID {
+		if *vm.Status.Name == name {
+			if projectID != nil && *vm.Metadata.ProjectReference.UUID != *projectID {
+				continue
+			}
 			return vm, nil
 		}
 	}

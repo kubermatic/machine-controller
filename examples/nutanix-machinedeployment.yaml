@@ -56,7 +56,7 @@ spec:
             # Can also be set via the env var 'NUTANIX_CLUSTER_NAME' on the machine-controller
             # this refers to a Nutanix cluster, not a Kubernetes cluster
             clusterName: nutanix-cluster
-            # Sets the project that the VM is deployed into
+            # Optional: Sets the project that the VM is deployed into. If none is provided, the VM will be created without a project
             projectName: project1
             # Sets the subnet that the VM is connected to. Must exist in the given Nutanix cluster
             subnetName: subnet1
@@ -78,4 +78,4 @@ spec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: 1.22.4
+        kubelet: 1.22.5

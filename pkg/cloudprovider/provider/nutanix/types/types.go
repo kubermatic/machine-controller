@@ -20,6 +20,15 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
+const (
+	VMKind      = "vm"
+	ProjectKind = "project"
+	ClusterKind = "cluster"
+	SubnetKind  = "subnet"
+	DiskKind    = "disk"
+	ImageKind   = "image"
+)
+
 type RawConfig struct {
 	Endpoint      providerconfigtypes.ConfigVarString `json:"endpoint"`
 	Port          providerconfigtypes.ConfigVarString `json:"port"`
@@ -27,11 +36,10 @@ type RawConfig struct {
 	Password      providerconfigtypes.ConfigVarString `json:"password"`
 	AllowInsecure providerconfigtypes.ConfigVarBool   `json:"allowInsecure"`
 
-	ClusterName        providerconfigtypes.ConfigVarString `json:"clusterName"`
-	ProjectName        providerconfigtypes.ConfigVarString `json:"projectName"`
-	SubnetName         providerconfigtypes.ConfigVarString `json:"subnetName"`
-	ImageName          providerconfigtypes.ConfigVarString `json:"imageName"`
-	StorageContainerID providerconfigtypes.ConfigVarString `json:"storageContainerID"`
+	ClusterName providerconfigtypes.ConfigVarString  `json:"clusterName"`
+	ProjectName *providerconfigtypes.ConfigVarString `json:"projectName,omitempty"`
+	SubnetName  providerconfigtypes.ConfigVarString  `json:"subnetName"`
+	ImageName   providerconfigtypes.ConfigVarString  `json:"imageName"`
 
 	// VM sizing configuration
 	CPUs           int64  `json:"cpus"`
