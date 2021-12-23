@@ -1,4 +1,3 @@
-# TODO(waleed)
 apiVersion: v1
 kind: Secret
 metadata:
@@ -38,7 +37,7 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "equinixmetal"
           cloudProviderSpec:
-            # If empty, can be set via PACKET_API_KEY env var
+            # If empty, can be set via METAL_TOKEN env var
             token:
               secretKeyRef:
                 namespace: kube-system

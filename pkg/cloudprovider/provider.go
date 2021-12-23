@@ -33,7 +33,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/packet"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -71,9 +70,6 @@ var (
 		},
 		providerconfigtypes.CloudProviderAzure: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return azure.New(cvr)
-		},
-		providerconfigtypes.CloudProviderPacket: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return packet.New(cvr)
 		},
 		providerconfigtypes.CloudProviderEquinixMetal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return equinixmetal.New(cvr)

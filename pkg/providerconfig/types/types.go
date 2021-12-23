@@ -53,7 +53,6 @@ const (
 	CloudProviderKubeVirt     CloudProvider = "kubevirt"
 	CloudProviderLinode       CloudProvider = "linode"
 	CloudProviderOpenstack    CloudProvider = "openstack"
-	CloudProviderPacket       CloudProvider = "packet"
 	CloudProviderVsphere      CloudProvider = "vsphere"
 	CloudProviderFake         CloudProvider = "fake"
 	CloudProviderAlibaba      CloudProvider = "alibaba"
@@ -87,7 +86,6 @@ var (
 		CloudProviderKubeVirt,
 		CloudProviderLinode,
 		CloudProviderOpenstack,
-		CloudProviderPacket,
 		CloudProviderVsphere,
 		CloudProviderFake,
 		CloudProviderAlibaba,

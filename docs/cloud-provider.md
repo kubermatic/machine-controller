@@ -310,26 +310,6 @@ cpus: "1"
 memory: "2048M"
 ```
 
-## Packet
-
-### machine.spec.providerConfig.cloudProviderSpec
-```yaml
-# If empty, can be set via PACKET_API_KEY env var
-apiKey: "<< PACKET_API_KEY >>"
-# instance type
-instanceType: "t1.small.x86"
-# packet project ID
-projectID: "<< PROJECT_ID >>"
-# packet facilities
-facilities:
-  - "ewr1"
-# packet billingCycle
-billingCycle: ""
-# node tags
-tags:
-  "kubernetesCluster": "my-cluster"
-```
-
 ## vSphere
 
 Refer to the [VSphere](./vsphere.md#provider-configuration) specific documentation.
