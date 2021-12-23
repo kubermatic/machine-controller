@@ -21,8 +21,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver/v3"
-
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
@@ -33,7 +31,6 @@ const (
 )
 
 type Docker struct {
-	kubeletVersion     *semver.Version
 	insecureRegistries []string
 	registryMirrors    []string
 }

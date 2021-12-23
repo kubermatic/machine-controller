@@ -133,14 +133,23 @@ type containerdCRIRuncOptions struct {
 }
 
 type containerdCRIRegistry struct {
-	Mirrors map[string]containerdMirror `toml:"mirrors"`
+	Mirrors map[string]containerdRegistryMirror `toml:"mirrors"`
+	Configs map[string]containerdRegistryConfig `toml:"configs"`
 }
 
-type containerdMirror struct {
+type containerdRegistryMirror struct {
 	Endpoint []string `toml:"endpoint"`
 }
 
-func ContainerdConfig(insecureRegistries, registryMirrors []string, sandboxImage string) (string, error) {
+type containerdRegistryConfig struct {
+	TLS *containerdRegistryTLSConfig `toml:"tls"`
+}
+
+type containerdRegistryTLSConfig struct {
+	InsecureSkipVerify bool `toml:"insecure_skip_verify"`
+}
+
+func ContainerdConfig(insecureRegistries []string, registryMirrors map[string][]string, sandboxImage string) (string, error) {
 	criPlugin := containerdCRIPlugin{
 		SandboxImage: sandboxImage,
 		Containerd: &containerdCRISettings{
@@ -154,7 +163,7 @@ func ContainerdConfig(insecureRegistries, registryMirrors []string, sandboxImage
 			},
 		},
 		Registry: &containerdCRIRegistry{
-			Mirrors: map[string]containerdMirror{
+			Mirrors: map[string]containerdRegistryMirror{
 				"docker.io": {
 					Endpoint: []string{"https://registry-1.docker.io"},
 				},
@@ -162,15 +171,21 @@ func ContainerdConfig(insecureRegistries, registryMirrors []string, sandboxImage
 		},
 	}
 
-	for _, insecureRegistry := range insecureRegistries {
-		criPlugin.Registry.Mirrors[insecureRegistry] = containerdMirror{
-			Endpoint: []string{fmt.Sprintf("http://%s", insecureRegistry)},
-		}
+	for registryName := range registryMirrors {
+		registry := criPlugin.Registry.Mirrors[registryName]
+		registry.Endpoint = registryMirrors[registryName]
+		criPlugin.Registry.Mirrors[registryName] = registry
 	}
 
-	if len(registryMirrors) > 0 {
-		criPlugin.Registry.Mirrors["docker.io"] = containerdMirror{
-			Endpoint: registryMirrors,
+	if len(insecureRegistries) > 0 {
+		criPlugin.Registry.Configs = map[string]containerdRegistryConfig{}
+	}
+
+	for _, registry := range insecureRegistries {
+		criPlugin.Registry.Configs[registry] = containerdRegistryConfig{
+			TLS: &containerdRegistryTLSConfig{
+				InsecureSkipVerify: true,
+			},
 		}
 	}
 
@@ -216,12 +231,6 @@ func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) 
 		},
 		InsecureRegistries: insecureRegistries,
 		RegistryMirrors:    registryMirrors,
-	}
-	if insecureRegistries == nil {
-		cfg.InsecureRegistries = []string{}
-	}
-	if registryMirrors == nil {
-		cfg.RegistryMirrors = []string{}
 	}
 
 	b, err := json.Marshal(cfg)

@@ -135,9 +135,16 @@ const (
 )
 
 const (
+	SystemReservedKubeletConfig = "SystemReserved"
+	KubeReservedKubeletConfig   = "KubeReserved"
+	EvictionHardKubeletConfig   = "EvictionHard"
+)
+
+const (
 	// Annotation prefixes, used on Machine objects to indicate the parameters that been used to create those Machines
 	KubeletFeatureGatesAnnotationPrefixV1 = "v1.kubelet-featuregates.machine-controller.kubermatic.io"
 	KubeletFlagsGroupAnnotationPrefixV1   = "v1.kubelet-flags.machine-controller.kubermatic.io"
+	KubeletConfigAnnotationPrefixV1       = "v1.kubelet-config.machine-controller.kubermatic.io"
 )
 
 // SetKubeletFeatureGates marshal and save featureGates into metaobject annotations with
@@ -165,11 +172,25 @@ func SetKubeletFlags(metaobj metav1.Object, flags map[KubeletFlags]string) {
 	metaobj.SetAnnotations(annts)
 }
 
-func GetKubeletFeatureGates(metaobj metav1.Object) map[string]bool {
+func GetKubeletConfigs(annotations map[string]string) map[string]string {
+	configs := map[string]string{}
+	for name, value := range annotations {
+		if strings.HasPrefix(name, KubeletConfigAnnotationPrefixV1) {
+			nameConfigValue := strings.SplitN(name, "/", 2)
+			if len(nameConfigValue) != 2 {
+				continue
+			}
+			configs[nameConfigValue[1]] = value
+		}
+	}
+	return configs
+}
+
+func GetKubeletFeatureGates(annotations map[string]string) map[string]bool {
 	result := map[string]bool{}
-	for name, value := range metaobj.GetAnnotations() {
+	for name, value := range annotations {
 		if strings.HasPrefix(name, KubeletFeatureGatesAnnotationPrefixV1) {
-			nameGateValue := strings.Split(name, "/")
+			nameGateValue := strings.SplitN(name, "/", 2)
 			if len(nameGateValue) != 2 {
 				continue
 			}
@@ -180,11 +201,11 @@ func GetKubeletFeatureGates(metaobj metav1.Object) map[string]bool {
 	return result
 }
 
-func GetKubeletFlags(metaobj metav1.Object) map[KubeletFlags]string {
+func GetKubeletFlags(annotations map[string]string) map[KubeletFlags]string {
 	result := map[KubeletFlags]string{}
-	for name, value := range metaobj.GetAnnotations() {
+	for name, value := range annotations {
 		if strings.HasPrefix(name, KubeletFlagsGroupAnnotationPrefixV1) {
-			nameFlagValue := strings.Split(name, "/")
+			nameFlagValue := strings.SplitN(name, "/", 2)
 			if len(nameFlagValue) != 2 {
 				continue
 			}

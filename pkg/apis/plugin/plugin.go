@@ -50,9 +50,8 @@ type UserDataRequest struct {
 	HTTPProxy             string
 	NoProxy               string
 	PauseImage            string
-	HyperkubeImage        string
-	KubeletRepository     string
 	KubeletFeatureGates   map[string]bool
+	KubeletConfigs        map[string]string
 	ContainerRuntime      containerruntime.Config
 	PodCIDR               string
 	NodePortRange         string

@@ -133,10 +133,6 @@ type NodeSettings struct {
 	RegistryMirrors []string
 	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it.
 	PauseImage string
-	// The hyperkube image to use. Currently only Container Linux and Flatcar Linux uses it.
-	HyperkubeImage string
-	// The kubelet repository to use. Currently only Flatcar Linux uses it.
-	KubeletRepository string
 	// Translates to feature gates on the kubelet.
 	// Default: RotateKubeletServerCertificate=true
 	KubeletFeatureGates map[string]bool
@@ -709,14 +705,15 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			}
 
 			// grab kubelet featureGates from the annotations
-			kubeletFeatureGates := common.GetKubeletFeatureGates(machine)
+			kubeletFeatureGates := common.GetKubeletFeatureGates(machine.GetAnnotations())
 			if len(kubeletFeatureGates) == 0 {
 				// fallback to command-line input
 				kubeletFeatureGates = r.nodeSettings.KubeletFeatureGates
 			}
 
 			// grab kubelet general options from the annotations
-			kubeletFlags := common.GetKubeletFlags(machine)
+			kubeletFlags := common.GetKubeletFlags(machine.GetAnnotations())
+			KubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
 
 			// look up for ExternalCloudProvider feature, with fallback to command-line input
 			externalCloudProvider := r.nodeSettings.ExternalCloudProvider
@@ -732,9 +729,8 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				ExternalCloudProvider: externalCloudProvider,
 				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
 				PauseImage:            r.nodeSettings.PauseImage,
-				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
-				KubeletRepository:     r.nodeSettings.KubeletRepository,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				KubeletConfigs:        KubeletConfigs,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 				ContainerRuntime:      r.nodeSettings.ContainerRuntime,

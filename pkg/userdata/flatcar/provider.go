@@ -33,10 +33,6 @@ import (
 	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
 
-const (
-	lessThen119Check = "< 1.19"
-)
-
 // Provider is a pkg/userdata/plugin.Provider implementation.
 type Provider struct{}
 
@@ -86,17 +82,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		flatcarConfig.DisableUpdateEngine = true
 	}
 
-	kubeletImage := req.KubeletRepository
-	lessThen119, err := semver.NewConstraint(lessThen119Check)
-	if err != nil {
-		return "", err
-	}
-
-	if lessThen119.Check(kubeletVersion) {
-		kubeletImage = req.HyperkubeImage
-	}
-	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
-
 	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
 	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemFlatcar)
 	if err != nil {
@@ -114,7 +99,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		FlatcarConfig                  *Config
 		Kubeconfig                     string
 		KubernetesCACert               string
-		KubeletImage                   string
 		KubeletVersion                 string
 		NodeIPScript                   string
 		ExtraKubeletFlags              []string
@@ -128,7 +112,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		FlatcarConfig:                  flatcarConfig,
 		Kubeconfig:                     kubeconfigString,
 		KubernetesCACert:               kubernetesCACert,
-		KubeletImage:                   kubeletImage,
 		KubeletVersion:                 kubeletVersion.String(),
 		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
 		ExtraKubeletFlags:              crEngine.KubeletFlags(),
@@ -294,7 +277,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root
@@ -568,7 +551,7 @@ write_files:
 - path: "/etc/kubernetes/kubelet.conf"
   permissions: "0644"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
 
 - path: /opt/load-kernel-modules.sh
   permissions: "0755"
