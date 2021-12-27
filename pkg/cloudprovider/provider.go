@@ -74,6 +74,13 @@ var (
 		providerconfigtypes.CloudProviderEquinixMetal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return equinixmetal.New(cvr)
 		},
+		// NB: This is explicitly left to allow old Packet machines to be deleted.
+		// We can handle those machines in the same way as Equinix Metal machines
+		// because there are no API changes.
+		// TODO: Remove this after deprecation period.
+		providerconfigtypes.CloudProviderPacket: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return equinixmetal.New(cvr)
+		},
 		providerconfigtypes.CloudProviderFake: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return fake.New(cvr)
 		},

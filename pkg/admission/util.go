@@ -34,8 +34,13 @@ func migrateToEquinixMetal(providerConfig *providerconfigtypes.Config) (err erro
 	if err := json.Unmarshal(providerConfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return fmt.Errorf("failed to unmarshal providerConfig.CloudProviderSpec.Raw: %v", err)
 	}
-	rawConfig["token"] = rawConfig["apiKey"]
-	delete(rawConfig, "apiKey")
+	// NB: We have to set the token only if apiKey existed, otherwise, migrated
+	// machines will not create at all (authentication errors).
+	apiKey, ok := rawConfig["apiKey"]
+	if ok {
+		rawConfig["token"] = apiKey
+		delete(rawConfig, "apiKey")
+	}
 
 	// Update original object
 	providerConfig.CloudProviderSpec.Raw, err = json.Marshal(rawConfig)

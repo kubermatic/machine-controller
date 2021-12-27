@@ -98,7 +98,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *equinixmetaltyp
 
 	c := Config{}
 	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "METAL_AUTH_TOKEN")
-	if err != nil {
+	if err != nil || len(c.Token) == 0 {
 		// This retry is temporary and is only required to facilitate migration from Packet to Equinix Metal
 		// We look for env variable PACKET_API_KEY associated with Packet to ensure that nothing breaks during automated migration for the Machines
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
@@ -108,11 +108,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *equinixmetaltyp
 		}
 	}
 	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "METAL_PROJECT_ID")
-	if err != nil {
+	if err != nil || len(c.ProjectID) == 0 {
 		// This retry is temporary and is only required to facilitate migration from Packet to Equinix Metal
 		// We look for env variable PACKET_PROJECT_ID associated with Packet to ensure that nothing breaks during automated migration for the Machines
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
-		c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "PACKET_PROJECT_ID")
+		c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
 		}
