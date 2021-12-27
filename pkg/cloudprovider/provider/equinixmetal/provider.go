@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package packet
+package equinixmetal
 
 import (
 	"encoding/json"
@@ -29,7 +29,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-	packettypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/packet/types"
+	equinixmetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/equinixmetal/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -45,13 +45,13 @@ const (
 	defaultBillingCycle = "hourly"
 )
 
-// New returns a Packet provider
+// New returns a Equinix Metal provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
 type Config struct {
-	APIKey       string
+	Token        string
 	ProjectID    string
 	BillingCycle string
 	InstanceType string
@@ -67,7 +67,7 @@ func (c *Config) populateDefaults() {
 	}
 }
 
-func populateDefaults(c *packettypes.RawConfig) {
+func populateDefaults(c *equinixmetaltypes.RawConfig) {
 	if c.BillingCycle.Value == "" {
 		c.BillingCycle.Value = defaultBillingCycle
 	}
@@ -77,7 +77,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *packettypes.RawConfig, *providerconfigtypes.Config, error) {
+func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *equinixmetaltypes.RawConfig, *providerconfigtypes.Config, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
@@ -87,7 +87,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *packettypes.Raw
 		return nil, nil, nil, err
 	}
 
-	rawConfig := packettypes.RawConfig{}
+	rawConfig := equinixmetaltypes.RawConfig{}
 	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
 		return nil, nil, nil, err
 	}
@@ -97,13 +97,25 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *packettypes.Raw
 	}
 
 	c := Config{}
-	c.APIKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.APIKey, "PACKET_API_KEY")
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
+	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "METAL_AUTH_TOKEN")
+	if err != nil || len(c.Token) == 0 {
+		// This retry is temporary and is only required to facilitate migration from Packet to Equinix Metal
+		// We look for env variable PACKET_API_KEY associated with Packet to ensure that nothing breaks during automated migration for the Machines
+		// TODO(@ahmedwaleedmalik) Remove this after a release period
+		c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "PACKET_API_KEY")
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
+		}
 	}
-	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"projectID\" field, error = %v", err)
+	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "METAL_PROJECT_ID")
+	if err != nil || len(c.ProjectID) == 0 {
+		// This retry is temporary and is only required to facilitate migration from Packet to Equinix Metal
+		// We look for env variable PACKET_PROJECT_ID associated with Packet to ensure that nothing breaks during automated migration for the Machines
+		// TODO(@ahmedwaleedmalik) Remove this after a release period
+		c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
+		}
 	}
 	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
@@ -134,7 +146,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *packettypes.Raw
 	return &c, &rawConfig, &pconfig, err
 }
 
-func (p *provider) getPacketDevice(machine *v1alpha1.Machine) (*packngo.Device, *packngo.Client, error) {
+func (p *provider) getMetalDevice(machine *v1alpha1.Machine) (*packngo.Device, *packngo.Client, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, nil, cloudprovidererrors.TerminalError{
@@ -143,7 +155,7 @@ func (p *provider) getPacketDevice(machine *v1alpha1.Machine) (*packngo.Device, 
 		}
 	}
 
-	client := getClient(c.APIKey)
+	client := getClient(c.Token)
 	device, err := getDeviceByTag(client, c.ProjectID, generateTag(string(machine.UID)))
 	if err != nil {
 		return nil, nil, err
@@ -157,7 +169,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
-	if c.APIKey == "" {
+	if c.Token == "" {
 		return errors.New("apiKey is missing")
 	}
 	if c.InstanceType == "" {
@@ -172,7 +184,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
 	}
 
-	client := getClient(c.APIKey)
+	client := getClient(c.Token)
 
 	if len(c.Facilities) == 0 || c.Facilities[0] == "" {
 		return fmt.Errorf("must have at least one non-blank facility")
@@ -211,7 +223,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		}
 	}
 
-	client := getClient(c.APIKey)
+	client := getClient(c.Token)
 
 	imageName, err := getNameForOS(pc.OperatingSystem)
 	if err != nil {
@@ -236,10 +248,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 
 	device, res, err := client.Devices.Create(serverCreateOpts)
 	if err != nil {
-		return nil, packetErrorToTerminalError(err, res, "failed to create server")
+		return nil, metalErrorToTerminalError(err, res, "failed to create server")
 	}
 
-	return &packetDevice{device: device}, nil
+	return &metalDevice{device: device}, nil
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
@@ -259,10 +271,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		}
 	}
 
-	client := getClient(c.APIKey)
-	res, err := client.Devices.Delete(instance.(*packetDevice).device.ID)
+	client := getClient(c.Token)
+	res, err := client.Devices.Delete(instance.(*metalDevice).device.ID)
 	if err != nil {
-		return false, packetErrorToTerminalError(err, res, "failed to delete the server")
+		return false, metalErrorToTerminalError(err, res, "failed to delete the server")
 	}
 
 	return false, nil
@@ -282,19 +294,19 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	device, _, err := p.getPacketDevice(machine)
+	device, _, err := p.getMetalDevice(machine)
 	if err != nil {
 		return nil, err
 	}
 	if device != nil {
-		return &packetDevice{device: device}, nil
+		return &metalDevice{device: device}, nil
 	}
 
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, newID types.UID) error {
-	device, client, err := p.getPacketDevice(machine)
+	device, client, err := p.getMetalDevice(machine)
 	if err != nil {
 		return err
 	}
@@ -321,7 +333,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, newID types.UID) error 
 	}
 	_, response, err := client.Devices.Update(device.ID, dur)
 	if err != nil {
-		return packetErrorToTerminalError(err, response, "failed to update UID label")
+		return metalErrorToTerminalError(err, response, "failed to update UID label")
 	}
 	klog.Infof("Successfully set UID label for machine %s", machine.Name)
 
@@ -348,19 +360,19 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }
 
-type packetDevice struct {
+type metalDevice struct {
 	device *packngo.Device
 }
 
-func (s *packetDevice) Name() string {
+func (s *metalDevice) Name() string {
 	return s.device.Hostname
 }
 
-func (s *packetDevice) ID() string {
+func (s *metalDevice) ID() string {
 	return s.device.ID
 }
 
-func (s *packetDevice) Addresses() map[string]v1.NodeAddressType {
+func (s *metalDevice) Addresses() map[string]v1.NodeAddressType {
 	// returns addresses in CIDR format
 	addresses := map[string]v1.NodeAddressType{}
 	for _, ip := range s.device.Network {
@@ -374,7 +386,7 @@ func (s *packetDevice) Addresses() map[string]v1.NodeAddressType {
 	return addresses
 }
 
-func (s *packetDevice) Status() instance.Status {
+func (s *metalDevice) Status() instance.Status {
 	switch s.device.State {
 	case "provisioning":
 		return instance.StatusCreating
@@ -388,7 +400,7 @@ func (s *packetDevice) Status() instance.Status {
 /******
 CONVENIENCE INTERNAL FUNCTIONS
 ******/
-func setProviderSpec(rawConfig packettypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
@@ -412,7 +424,7 @@ func setProviderSpec(rawConfig packettypes.RawConfig, s v1alpha1.ProviderSpec) (
 func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Device, error) {
 	devices, response, err := client.Devices.List(projectID, nil)
 	if err != nil {
-		return nil, packetErrorToTerminalError(err, response, "failed to list devices")
+		return nil, metalErrorToTerminalError(err, response, "failed to list devices")
 	}
 
 	for _, device := range devices {
@@ -423,7 +435,7 @@ func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Dev
 	return nil, nil
 }
 
-// given a defined Kubermatic constant for an operating system, return the canonical slug for Packet
+// given a defined Kubermatic constant for an operating system, return the canonical slug for Equinix Metal
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
@@ -452,11 +464,11 @@ func getTagUID(tag string) (string, error) {
 	return parts[1], nil
 }
 
-// packetErrorToTerminalError judges if the given error
+// metalErrorToTerminalError judges if the given error
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 //
 // if the given error doesn't qualify the error passed as an argument will be returned
-func packetErrorToTerminalError(err error, response *packngo.Response, msg string) error {
+func metalErrorToTerminalError(err error, response *packngo.Response, msg string) error {
 	prepareAndReturnError := func() error {
 		return fmt.Errorf("%s, due to %s", msg, err)
 	}

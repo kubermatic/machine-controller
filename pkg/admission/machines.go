@@ -103,6 +103,15 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 	if err != nil {
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
 	}
+
+	// Packet has been renamed to Equinix Metal
+	if providerConfig.CloudProvider == cloudProviderPacket {
+		err = migrateToEquinixMetal(providerConfig)
+		if err != nil {
+			return fmt.Errorf("failed to migrate packet to equinix metal: %v", err)
+		}
+	}
+
 	skg := providerconfig.NewConfigVarResolver(ad.ctx, ad.client)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {

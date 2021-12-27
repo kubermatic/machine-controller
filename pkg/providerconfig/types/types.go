@@ -48,11 +48,12 @@ const (
 	CloudProviderAzure        CloudProvider = "azure"
 	CloudProviderDigitalocean CloudProvider = "digitalocean"
 	CloudProviderGoogle       CloudProvider = "gce"
+	CloudProviderEquinixMetal CloudProvider = "equinixmetal"
+	CloudProviderPacket       CloudProvider = "packet"
 	CloudProviderHetzner      CloudProvider = "hetzner"
 	CloudProviderKubeVirt     CloudProvider = "kubevirt"
 	CloudProviderLinode       CloudProvider = "linode"
 	CloudProviderOpenstack    CloudProvider = "openstack"
-	CloudProviderPacket       CloudProvider = "packet"
 	CloudProviderVsphere      CloudProvider = "vsphere"
 	CloudProviderFake         CloudProvider = "fake"
 	CloudProviderAlibaba      CloudProvider = "alibaba"
@@ -80,12 +81,13 @@ var (
 		CloudProviderAWS,
 		CloudProviderAzure,
 		CloudProviderDigitalocean,
+		CloudProviderEquinixMetal,
+		CloudProviderPacket,
 		CloudProviderGoogle,
 		CloudProviderHetzner,
 		CloudProviderKubeVirt,
 		CloudProviderLinode,
 		CloudProviderOpenstack,
-		CloudProviderPacket,
 		CloudProviderVsphere,
 		CloudProviderFake,
 		CloudProviderAlibaba,

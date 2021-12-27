@@ -17,8 +17,12 @@ limitations under the License.
 package admission
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -108,4 +112,27 @@ func getIntOrPercent(s *intstr.IntOrString, roundUp bool) (int, error) {
 
 func machineDeploymentDefaultingFunction(md *v1alpha1.MachineDeployment) {
 	v1alpha1.PopulateDefaultsMachineDeployment(md)
+}
+
+func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment) error {
+	providerConfig, err := providerconfigtypes.GetConfig(md.Spec.Template.Spec.ProviderSpec)
+	if err != nil {
+		return fmt.Errorf("failed to read MachineDeployment.Spec.Template.Spec.ProviderSpec: %v", err)
+	}
+
+	// Packet has been renamed to Equinix Metal
+	if providerConfig.CloudProvider == cloudProviderPacket {
+		err = migrateToEquinixMetal(providerConfig)
+		if err != nil {
+			return fmt.Errorf("failed to migrate packet to equinix metal: %v", err)
+		}
+	}
+
+	// Update value in original object
+	md.Spec.Template.Spec.ProviderSpec.Value.Raw, err = json.Marshal(providerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %v", err)
+	}
+
+	return nil
 }
