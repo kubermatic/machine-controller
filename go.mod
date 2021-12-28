@@ -50,18 +50,13 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubelet v0.22.2
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
-	kubevirt.io/client-go v0.30.0
-	kubevirt.io/containerized-data-importer v1.40.0
+	kubevirt.io/api v0.48.1
+	kubevirt.io/containerized-data-importer-api v1.41.0
 	sigs.k8s.io/controller-runtime v0.10.2
 	sigs.k8s.io/yaml v1.2.0
 )
 
 replace (
-	github.com/openshift/api => github.com/openshift/api v0.0.0-20210428205234-a8389931bee7
-	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20210112165513-ebc401615f47
-	github.com/openshift/library-go => github.com/mhenriks/library-go v0.0.0-20210511195009-51ba86622560
-	github.com/operator-framework/operator-lifecycle-manager => github.com/operator-framework/operator-lifecycle-manager v0.0.0-20190128024246-5eb7ae5bdb7a
-	// the following replacements are only here to make kubevirt.io/containerized-data-importer work
 	github.com/packethost/packngo => github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
 
 	k8s.io/client-go => k8s.io/client-go v0.22.2
