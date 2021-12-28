@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	kubevirtv1 "kubevirt.io/client-go/api/v1"
-	cdi "kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
+	kubevirtv1 "kubevirt.io/api/core/v1"
+	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -45,13 +45,15 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
 	utilpointer "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
-	// Workaround until we have https://github.com/kubevirt/kubevirt/pull/2841
-	metav1.AddToGroupVersion(scheme.Scheme, kubevirtv1.GroupVersion)
+	if err := kubevirtv1.AddToScheme(scheme.Scheme); err != nil {
+		klog.Fatalf("failed to add kubevirtv1 to scheme: %v", err)
+	}
 }
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
@@ -408,12 +410,12 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 					DNSConfig: c.DNSConfig,
 				},
 			},
-			DataVolumeTemplates: []cdi.DataVolume{
+			DataVolumeTemplates: []kubevirtv1.DataVolumeTemplateSpec{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: dataVolumeName,
 					},
-					Spec: cdi.DataVolumeSpec{
+					Spec: cdiv1beta1.DataVolumeSpec{
 						PVC: &corev1.PersistentVolumeClaimSpec{
 							StorageClassName: utilpointer.StringPtr(c.StorageClassName),
 							AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -423,8 +425,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 								Requests: pvcRequest,
 							},
 						},
-						Source: cdi.DataVolumeSource{
-							HTTP: &cdi.DataVolumeSourceHTTP{
+						Source: &cdiv1beta1.DataVolumeSource{
+							HTTP: &cdiv1beta1.DataVolumeSourceHTTP{
 								URL: c.SourceURL,
 							},
 						},
