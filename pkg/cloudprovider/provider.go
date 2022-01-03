@@ -32,6 +32,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
@@ -99,6 +100,9 @@ var (
 		providerconfigtypes.CloudProviderBaremetal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			// TODO(MQ): add a baremetal driver.
 			return baremetal.New(cvr)
+		},
+		providerconfigtypes.CloudProviderNutanix: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return nutanix.New(cvr)
 		},
 	}
 )
