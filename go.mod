@@ -18,6 +18,7 @@ require (
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.54.0
+	github.com/embik/nutanix-client-go v0.0.0-20220103122158-dbb64d7901ab
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/google/uuid v1.1.2
@@ -33,7 +34,6 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.7
 	github.com/sethvargo/go-password v0.2.0
-	github.com/terraform-providers/terraform-provider-nutanix v1.1.0
 	github.com/tinkerbell/tink v0.0.0-20210315140655-1b178daeaeda
 	github.com/vmware/govmomi v0.23.1
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
@@ -59,8 +59,6 @@ require (
 
 replace (
 	github.com/packethost/packngo => github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
-	// required for currently used Go client for Nutanix
-	github.com/terraform-providers/terraform-provider-nutanix => github.com/nutanix/terraform-provider-nutanix v1.2.2
 
 	k8s.io/client-go => k8s.io/client-go v0.22.2
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.2

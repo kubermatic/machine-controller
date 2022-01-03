@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	nutanixclient "github.com/terraform-providers/terraform-provider-nutanix/client"
-	nutanixv3 "github.com/terraform-providers/terraform-provider-nutanix/client/v3"
+	nutanixclient "github.com/embik/nutanix-client-go/pkg/client"
+	nutanixv3 "github.com/embik/nutanix-client-go/pkg/client/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
