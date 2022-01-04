@@ -75,6 +75,7 @@ const (
 	kubevirtManifest                  = "./testdata/machinedeployment-kubevirt.yaml"
 	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
 	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
+	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -878,6 +879,40 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< SCW_DEFAULT_PROJECT_ID >>=%s", scwProjectID),
 	}
 	runScenarios(t, selector, params, ScalewayManifest, fmt.Sprintf("scw-%s", *testRunIdentifier))
+}
+
+func getNutanixTestParams(t *testing.T) []string {
+	// test data
+	password := os.Getenv("NUTANIX_E2E_PASSWORD")
+	username := os.Getenv("NUTANIX_E2E_USERNAME")
+	cluster := os.Getenv("NUTANIX_E2E_CLUSTER")
+	project := os.Getenv("NUTANIX_E2E_PROJECT")
+	subnet := os.Getenv("NUTANIX_E2E_SUBNET")
+	endpoint := os.Getenv("NUTANIX_E2E_ENDPOINT")
+
+	if password == "" || username == "" || endpoint == "" || cluster == "" || project == "" || subnet == "" {
+		t.Fatal("unable to run the test suite, NUTANIX_E2E_PASSWORD, NUTANIX_E2E_USERNAME, NUTANIX_E2E_CLUSTER, " +
+			"NUTANIX_E2E_ENDPOINT, NUTANIX_E2E_PROJECT or NUTANIX_E2E_SUBNET environment variables cannot be empty")
+	}
+
+	// set up parameters
+	params := []string{fmt.Sprintf("<< NUTANIX_PASSWORD >>=%s", password),
+		fmt.Sprintf("<< NUTANIX_USERNAME >>=%s", username),
+		fmt.Sprintf("<< NUTANIX_ENDPOINT >>=%s", endpoint),
+		fmt.Sprintf("<< NUTANIX_CLUSTER >>=%s", cluster),
+		fmt.Sprintf("<< NUTANIX_PROJECT >>=%s", project),
+		fmt.Sprintf("<< NUTANIX_SUBNET >>=%s", subnet),
+	}
+	return params
+}
+
+// TestNutanixProvisioningE2E tests provisioning on Nutanix as cloud provider
+func TestNutanixProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	selector := Not(OsSelector("sles", "rhel", "amzn2"))
+	params := getNutanixTestParams(t)
+	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
