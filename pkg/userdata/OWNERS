@@ -7,7 +7,7 @@ reviewers:
   - sig-osm
 
 labels:
-  - sig/cluster-management
+  - sig/osm
 
 options:
   no_parent_owners: true
