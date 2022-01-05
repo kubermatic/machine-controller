@@ -161,6 +161,7 @@ func ensureOSPAnnotation(md *v1alpha1.MachineDeployment, providerConfig provider
 			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, providerConfig.OperatingSystem)
 			return nil
 		case providerconfigtypes.OperatingSystemAmazonLinux2:
+			// This is a special case where the OS name suffix in OSP is different then the actual OS name
 			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, "amazon-linux")
 			return nil
 		default:
