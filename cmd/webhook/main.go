@@ -25,8 +25,7 @@ import (
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -77,19 +76,11 @@ func main() {
 		klog.Fatalf("error building kubeconfig: %v", err)
 	}
 
-	scheme := runtime.NewScheme()
-
-	if err := corev1.AddToScheme(scheme); err != nil {
-		klog.Fatalf("failed to add corev1 api to scheme: %v", err)
-	}
-
-	if err := osmv1alpha1.AddToScheme(scheme); err != nil {
+	if err := osmv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
 	}
 
-	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{
-		Scheme: scheme,
-	})
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
 		klog.Fatalf("failed to build client: %v", err)
 	}
