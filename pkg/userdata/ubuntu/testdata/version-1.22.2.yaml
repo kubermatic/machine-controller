@@ -92,22 +92,22 @@ write_files:
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
     add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
-    cat <<EOF | tee /etc/crictl.yaml
-    runtime-endpoint: unix:///run/containerd/containerd.sock
-    EOF
+    mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
 
-    mkdir -p /etc/systemd/system/containerd.service.d
-    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
+    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
     [Service]
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
 
-    apt-get install -y --allow-downgrades containerd.io=1.4*
-    apt-mark hold containerd.io
+    apt-get install --allow-downgrades -y \
+        containerd.io=1.4* \
+        docker-ce-cli=5:19.03* \
+        docker-ce=5:19.03*
+    apt-mark hold docker-ce* containerd.io
 
     systemctl daemon-reload
-    systemctl enable --now containerd
+    systemctl enable --now docker
 
 
     opt_bin=/opt/bin
@@ -193,8 +193,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
-    After=containerd.service
-    Requires=containerd.service
+    After=docker.service
+    Requires=docker.service
 
     Description=kubelet: The Kubernetes Node Agent
     Documentation=https://kubernetes.io/docs/home/
@@ -220,8 +220,8 @@ write_files:
       --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --container-runtime=remote \
-      --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+      --container-runtime=docker \
+      --container-runtime-endpoint=unix:///var/run/dockershim.sock \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --feature-gates=DynamicKubeletConfig=true \
       --node-ip ${KUBELET_NODE_IP}
@@ -343,27 +343,10 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/containerd/config.toml
+- path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    version = 2
-
-    [metrics]
-    address = "127.0.0.1:1338"
-
-    [plugins]
-    [plugins."io.containerd.grpc.v1.cri"]
-    [plugins."io.containerd.grpc.v1.cri".containerd]
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-    runtime_type = "io.containerd.runc.v2"
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-    SystemdCgroup = true
-    [plugins."io.containerd.grpc.v1.cri".registry]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-    endpoint = ["https://registry-1.docker.io"]
-
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"}}
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
