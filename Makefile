@@ -38,6 +38,9 @@ IMAGE_NAME ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 OS = amzn2 centos ubuntu sles rhel flatcar
 USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
 
+BASE64_ENC = \
+		$(shell if base64 -w0 <(echo "") &> /dev/null; then echo "base64 -w0"; else echo "base64 -b0"; fi)
+
 .PHONY: all
 all: build-machine-controller webhook
 
@@ -147,9 +150,9 @@ clean-certs:
 .PHONY: deploy
 deploy: examples/admission-cert.pem
 	@cat examples/machine-controller.yaml \
-		|sed "s/__admission_ca_cert__/$(shell cat examples/ca-cert.pem|base64 -w0)/g" \
-		|sed "s/__admission_cert__/$(shell cat examples/admission-cert.pem|base64 -w0)/g" \
-		|sed "s/__admission_key__/$(shell cat examples/admission-key.pem|base64 -w0)/g" \
+		|sed "s/__admission_ca_cert__/$(shell cat examples/ca-cert.pem|$(BASE64_ENC))/g" \
+		|sed "s/__admission_cert__/$(shell cat examples/admission-cert.pem|$(BASE64_ENC))/g" \
+		|sed "s/__admission_key__/$(shell cat examples/admission-key.pem|$(BASE64_ENC))/g" \
 		|kubectl apply -f -
 
 .PHONY: check-dependencies
