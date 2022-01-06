@@ -23,6 +23,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver/v3"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 
 	corev1 "k8s.io/api/core/v1"

@@ -49,6 +49,12 @@ func WithRegistryMirrors(mirrors map[string][]string) Opt {
 	}
 }
 
+func WithRegistryCredentials(auth map[string]AuthConfig) Opt {
+	return func(cfg *Config) {
+		cfg.RegistryCredentials = auth
+	}
+}
+
 func WithSandboxImage(image string) Opt {
 	return func(cfg *Config) {
 		cfg.SandboxImage = image
@@ -78,11 +84,12 @@ func Get(containerRuntimeName string, opts ...Opt) Config {
 }
 
 type Config struct {
-	Docker             *Docker             `json:",omitempty"`
-	Containerd         *Containerd         `json:",omitempty"`
-	InsecureRegistries []string            `json:",omitempty"`
-	RegistryMirrors    map[string][]string `json:",omitempty"`
-	SandboxImage       string              `json:",omitempty"`
+	Docker              *Docker               `json:",omitempty"`
+	Containerd          *Containerd           `json:",omitempty"`
+	InsecureRegistries  []string              `json:",omitempty"`
+	RegistryMirrors     map[string][]string   `json:",omitempty"`
+	RegistryCredentials map[string]AuthConfig `json:",omitempty"`
+	SandboxImage        string                `json:",omitempty"`
 }
 
 func (cfg Config) String() string {
@@ -103,9 +110,10 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 	}
 
 	containerd := &Containerd{
-		insecureRegistries: cfg.InsecureRegistries,
-		registryMirrors:    cfg.RegistryMirrors,
-		sandboxImage:       cfg.SandboxImage,
+		insecureRegistries:  cfg.InsecureRegistries,
+		registryMirrors:     cfg.RegistryMirrors,
+		sandboxImage:        cfg.SandboxImage,
+		registryCredentials: cfg.RegistryCredentials,
 	}
 
 	moreThan124, _ := semver.NewConstraint(">= 1.24")

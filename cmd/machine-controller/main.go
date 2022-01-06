@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
@@ -44,6 +43,7 @@ import (
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	"github.com/kubermatic/machine-controller/pkg/signals"
+	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,20 +69,20 @@ var (
 	workerCount                      int
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
-	nodeCSRApprover                  bool
 	caBundleFile                     string
 
 	useOSM bool
 
-	nodeHTTPProxy          string
-	nodeNoProxy            string
-	nodeInsecureRegistries string
-	nodeRegistryMirrors    string
-	nodePauseImage         string
-	nodeContainerRuntime   string
-	podCidr                string
-	nodePortRange          string
-
+	nodeCSRApprover               bool
+	nodeHTTPProxy                 string
+	nodeNoProxy                   string
+	nodeInsecureRegistries        string
+	nodeRegistryMirrors           string
+	nodePauseImage                string
+	nodeContainerRuntime          string
+	podCidr                       string
+	nodePortRange                 string
+	nodeRegistryCredentialsSecret string
 	nodeContainerdRegistryMirrors = registryMirrorsFlags{}
 )
 
@@ -169,7 +169,7 @@ func main() {
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
 	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
-
+	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. Secret format: map[string]github.com/containerd/containerd/pkg/cri/config.AuthConfig")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
 
 	flag.Parse()
@@ -273,10 +273,11 @@ func main() {
 		skipEvictionAfter:    skipEvictionAfter,
 		nodeCSRApprover:      nodeCSRApprover,
 		node: machinecontroller.NodeSettings{
-			ClusterDNSIPs: clusterDNSIPs,
-			HTTPProxy:     nodeHTTPProxy,
-			NoProxy:       nodeNoProxy,
-			PauseImage:    nodePauseImage,
+			ClusterDNSIPs:                clusterDNSIPs,
+			HTTPProxy:                    nodeHTTPProxy,
+			NoProxy:                      nodeNoProxy,
+			PauseImage:                   nodePauseImage,
+			RegistryCredentialsSecretRef: nodeRegistryCredentialsSecret,
 			ContainerRuntime: containerruntime.Get(
 				nodeContainerRuntime,
 				containerruntime.WithInsecureRegistries(insecureRegistries),
