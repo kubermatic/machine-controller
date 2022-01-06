@@ -17,6 +17,7 @@ limitations under the License.
 package admission
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -27,7 +28,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 )
 
-func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
+func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 	machineDeployment := clusterv1alpha1.MachineDeployment{}
 	if err := json.Unmarshal(ar.Object.Raw, &machineDeployment); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
@@ -64,7 +65,7 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionReques
 	}
 
 	if machineSpecNeedsValidation {
-		if err := ad.defaultAndValidateMachineSpec(&machineDeployment.Spec.Template.Spec); err != nil {
+		if err := ad.defaultAndValidateMachineSpec(ctx, &machineDeployment.Spec.Template.Spec); err != nil {
 			return nil, err
 		}
 	}

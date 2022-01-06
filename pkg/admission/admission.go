@@ -41,7 +41,6 @@ import (
 )
 
 type admissionData struct {
-	ctx             context.Context
 	client          ctrlruntimeclient.Client
 	userDataManager *userdatamanager.Manager
 	nodeSettings    machinecontroller.NodeSettings
@@ -125,7 +124,7 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.Adm
 	return response, nil
 }
 
-type mutator func(admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error)
+type mutator func(context.Context, admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error)
 
 func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +142,7 @@ func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) 
 		}
 
 		// run the mutation logic
-		response, err := mutate(*review.Request)
+		response, err := mutate(r.Context(), *review.Request)
 		if err != nil {
 			response = &admissionv1.AdmissionResponse{}
 			response.Result = &metav1.Status{Message: err.Error()}
