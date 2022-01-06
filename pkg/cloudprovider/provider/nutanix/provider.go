@@ -230,8 +230,8 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to read image size for '%s'", config.ImageName)
 	}
 
-	if config.DiskSizeGB != nil && *config.DiskSizeGB*1024*1024 < imageSizeBytes {
-		return fmt.Errorf("requested disk size (%d bytes) is smaller than image size (%d bytes)", *config.DiskSizeGB*1024*1024, *image.Status.Resources.SizeBytes)
+	if config.DiskSizeGB != nil && *config.DiskSizeGB*1024*1024*1024 < imageSizeBytes {
+		return fmt.Errorf("requested disk size (%d bytes) is smaller than image size (%d bytes)", *config.DiskSizeGB*1024*1024*1024, *image.Status.Resources.SizeBytes)
 	}
 
 	return nil
