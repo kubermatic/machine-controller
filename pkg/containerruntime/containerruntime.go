@@ -108,10 +108,10 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		sandboxImage:       cfg.SandboxImage,
 	}
 
-	moreThan122, _ := semver.NewConstraint(">= 1.22")
+	moreThan124, _ := semver.NewConstraint(">= 1.24")
 
 	switch {
-	case moreThan122.Check(kubeletVersion):
+	case moreThan124.Check(kubeletVersion):
 		return containerd
 	case cfg.Docker != nil:
 		return docker
