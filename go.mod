@@ -18,7 +18,7 @@ require (
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.54.0
-	github.com/embik/nutanix-client-go v0.0.0-20220103122158-dbb64d7901ab
+	github.com/embik/nutanix-client-go v0.0.0-20220106131900-50b8f27e5f60
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/google/uuid v1.1.2

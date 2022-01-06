@@ -35,6 +35,7 @@ type RawConfig struct {
 	Username      providerconfigtypes.ConfigVarString `json:"username"`
 	Password      providerconfigtypes.ConfigVarString `json:"password"`
 	AllowInsecure providerconfigtypes.ConfigVarBool   `json:"allowInsecure"`
+	ProxyURL      providerconfigtypes.ConfigVarString `json:"proxyURL,omitempty"`
 
 	ClusterName providerconfigtypes.ConfigVarString  `json:"clusterName"`
 	ProjectName *providerconfigtypes.ConfigVarString `json:"projectName,omitempty"`
