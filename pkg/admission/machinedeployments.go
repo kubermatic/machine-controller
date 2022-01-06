@@ -37,7 +37,7 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 
 	machineDeploymentDefaultingFunction(&machineDeployment)
 
-	if err := mutationsForMachineDeployment(&machineDeployment); err != nil {
+	if err := mutationsForMachineDeployment(&machineDeployment, ad.useOSM); err != nil {
 		return nil, fmt.Errorf("mutation failed: %v", err)
 	}
 
