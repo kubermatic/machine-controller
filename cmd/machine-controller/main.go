@@ -43,6 +43,7 @@ import (
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	"github.com/kubermatic/machine-controller/pkg/signals"
+
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -169,7 +170,7 @@ func main() {
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
 	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
-	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. Secret format: map[string]github.com/containerd/containerd/pkg/cri/config.AuthConfig")
+	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
 
 	flag.Parse()
@@ -261,6 +262,12 @@ func main() {
 
 	if len(registryMirrors) > 0 {
 		nodeContainerdRegistryMirrors["docker.io"] = registryMirrors
+	}
+
+	if nodeRegistryCredentialsSecret != "" {
+		if secRef := strings.Split(nodeRegistryCredentialsSecret, "/"); len(secRef) != 2 {
+			klog.Fatalf("-node-registry-credentials-secret is in incorrect format %q, should be in 'namespace/secretname'", nodeRegistryCredentialsSecret)
+		}
 	}
 
 	runOptions := controllerRunOptions{

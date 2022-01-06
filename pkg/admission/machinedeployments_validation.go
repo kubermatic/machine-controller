@@ -20,11 +20,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	osmresources "k8c.io/operating-system-manager/pkg/controllers/osc/resources"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	osmresources "k8c.io/operating-system-manager/pkg/controllers/osc/resources"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
