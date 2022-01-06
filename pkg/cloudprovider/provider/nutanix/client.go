@@ -78,6 +78,10 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 		Insecure: config.AllowInsecure,
 	}
 
+	if config.ProxyURL != "" {
+		credentials.ProxyURL = config.ProxyURL
+	}
+
 	clientV3, err := nutanixv3.NewV3Client(credentials)
 	if err != nil {
 		return nil, err

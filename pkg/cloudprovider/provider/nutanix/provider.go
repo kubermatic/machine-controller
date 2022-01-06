@@ -43,6 +43,7 @@ type Config struct {
 	Username      string
 	Password      string
 	AllowInsecure bool
+	ProxyURL      string
 
 	ClusterName string
 	ProjectName string
@@ -150,6 +151,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 
 	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.AllowInsecure, "NUTANIX_ALLOW_INSECURE")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	c.ProxyURL, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProxyURL, "NUTANIX_PROXY_URL")
 	if err != nil {
 		return nil, nil, nil, err
 	}
