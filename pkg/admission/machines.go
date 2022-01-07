@@ -113,7 +113,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		}
 	}
 
-	skg := providerconfig.NewConfigVarResolver(ctx, ad.client)
+	skg := providerconfig.NewConfigVarResolver(ctx, ad.workerClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
