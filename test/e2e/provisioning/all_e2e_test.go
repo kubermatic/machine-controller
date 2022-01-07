@@ -913,7 +913,7 @@ func getNutanixTestParams(t *testing.T) []string {
 func TestNutanixProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "rhel", "amzn2"))
+	selector := OsSelector("ubuntu", "centos")
 	params := getNutanixTestParams(t)
 	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
