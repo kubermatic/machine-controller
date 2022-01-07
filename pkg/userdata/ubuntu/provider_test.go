@@ -119,6 +119,7 @@ type userDataTestCase struct {
 	noProxy               string
 	insecureRegistries    []string
 	registryMirrors       map[string][]string
+	registryCredentials   map[string]containerruntime.AuthConfig
 	pauseImage            string
 	containerruntime      string
 }
@@ -410,6 +411,16 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name:             "containerd",
 			containerruntime: "containerd",
+			registryCredentials: map[string]containerruntime.AuthConfig{
+				"docker.io": {
+					Username: "login1",
+					Password: "passwd1",
+				},
+			},
+			insecureRegistries: []string{"k8s.gcr.io"},
+			registryMirrors: map[string][]string{
+				"k8s.gcr.io": {"https://intranet.local"},
+			},
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
@@ -477,6 +488,7 @@ func TestUserDataGeneration(t *testing.T) {
 					test.containerruntime,
 					containerruntime.WithInsecureRegistries(test.insecureRegistries),
 					containerruntime.WithRegistryMirrors(test.registryMirrors),
+					containerruntime.WithRegistryCredentials(test.registryCredentials),
 				),
 			}
 			s, err := provider.UserData(req)

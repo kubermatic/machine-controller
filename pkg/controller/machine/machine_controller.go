@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -140,6 +141,8 @@ type NodeSettings struct {
 	ExternalCloudProvider bool
 	// container runtime to install
 	ContainerRuntime containerruntime.Config
+	// Registry credentials secret object reference
+	RegistryCredentialsSecretRef string
 }
 
 type KubeconfigProvider interface {
@@ -721,6 +724,27 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				externalCloudProvider, _ = strconv.ParseBool(val)
 			}
 
+			registryCredentials := map[string]containerruntime.AuthConfig{}
+
+			if secRef := strings.SplitN(r.nodeSettings.RegistryCredentialsSecretRef, "/", 2); len(secRef) == 2 {
+				var credsSecret corev1.Secret
+				err := r.client.Get(ctx, types.NamespacedName{Namespace: secRef[0], Name: secRef[1]}, &credsSecret)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retrieve registry credentials secret object: %w", err)
+				}
+
+				for registry, data := range credsSecret.Data {
+					var regCred containerruntime.AuthConfig
+					if err := json.Unmarshal(data, &regCred); err != nil {
+						return nil, fmt.Errorf("failed to unmarshal registry credentials: %w", err)
+					}
+					registryCredentials[registry] = regCred
+				}
+			}
+
+			crRuntime := r.nodeSettings.ContainerRuntime
+			crRuntime.RegistryCredentials = registryCredentials
+
 			req := plugin.UserDataRequest{
 				MachineSpec:           machine.Spec,
 				Kubeconfig:            kubeconfig,
@@ -733,10 +757,11 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				KubeletConfigs:        KubeletConfigs,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
-				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
+				ContainerRuntime:      crRuntime,
 				PodCIDR:               r.podCIDR,
 				NodePortRange:         r.nodePortRange,
 			}
+
 			// Here we do stuff!
 			var userdata string
 
