@@ -885,14 +885,14 @@ func getNutanixTestParams(t *testing.T) []string {
 	// test data
 	password := os.Getenv("NUTANIX_E2E_PASSWORD")
 	username := os.Getenv("NUTANIX_E2E_USERNAME")
-	cluster := os.Getenv("NUTANIX_E2E_CLUSTER")
-	project := os.Getenv("NUTANIX_E2E_PROJECT")
-	subnet := os.Getenv("NUTANIX_E2E_SUBNET")
+	cluster := os.Getenv("NUTANIX_E2E_CLUSTER_NAME")
+	project := os.Getenv("NUTANIX_E2E_PROJECT_NAME")
+	subnet := os.Getenv("NUTANIX_E2E_SUBNET_NAME")
 	endpoint := os.Getenv("NUTANIX_E2E_ENDPOINT")
 
 	if password == "" || username == "" || endpoint == "" || cluster == "" || project == "" || subnet == "" {
-		t.Fatal("unable to run the test suite, NUTANIX_E2E_PASSWORD, NUTANIX_E2E_USERNAME, NUTANIX_E2E_CLUSTER, " +
-			"NUTANIX_E2E_ENDPOINT, NUTANIX_E2E_PROJECT or NUTANIX_E2E_SUBNET environment variables cannot be empty")
+		t.Fatal("unable to run the test suite, NUTANIX_E2E_PASSWORD, NUTANIX_E2E_USERNAME, NUTANIX_E2E_CLUSTER_NAME, " +
+			"NUTANIX_E2E_ENDPOINT, NUTANIX_E2E_PROJECT_NAME or NUTANIX_E2E_SUBNET_NAME environment variables cannot be empty")
 	}
 
 	proxyURL := os.Getenv("NUTANIX_E2E_PROXY_URL")
