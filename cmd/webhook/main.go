@@ -59,7 +59,7 @@ func main() {
 	flag.StringVar(&opt.admissionTLSKeyPath, "tls-key-path", "/tmp/cert/key.pem", "The path of the TLS key for the MutatingWebhook")
 	flag.StringVar(&opt.caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.StringVar(&opt.namespace, "namespace", "kubermatic", "The namespace where the webhooks will run")
-	flag.StringVar(&opt.workerClusterKubeconfig, "worker-cluster-kubeconfig", "", "Path to kubeconfig of worker/user cluster where machines and machinedeployments exist")
+	flag.StringVar(&opt.workerClusterKubeconfig, "worker-cluster-kubeconfig", "", "Path to kubeconfig of worker/user cluster where machines and machinedeployments exist. If not specified, value from --kubeconfig or in-cluster config will be used")
 
 	// OSM specific flags
 	flag.BoolVar(&opt.useOSM, "use-osm", false, "osm controller is enabled for node bootstrap")
@@ -84,9 +84,7 @@ func main() {
 		klog.Fatalf("error building kubeconfig: %v", err)
 	}
 
-	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{
-		Scheme: scheme.Scheme,
-	})
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
 		klog.Fatalf("failed to build client: %v", err)
 	}
@@ -103,9 +101,7 @@ func main() {
 		}
 
 		// Build dedicated client for worker cluster
-		workerClient, err = ctrlruntimeclient.New(workerClusterConfig, ctrlruntimeclient.Options{
-			Scheme: scheme.Scheme,
-		})
+		workerClient, err = ctrlruntimeclient.New(workerClusterConfig, ctrlruntimeclient.Options{})
 		if err != nil {
 			klog.Fatalf("failed to build worker client: %v", err)
 		}
