@@ -576,7 +576,6 @@ presubmits:
       preset-e2e-ssh: "true"
       preset-nutanix: "true"
       preset-goproxy: "true"
-      preset-squid: "true"
     spec:
       containers:
         - image: golang:1.17.1
