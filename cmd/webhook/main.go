@@ -31,58 +31,84 @@ import (
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	masterURL              string
-	kubeconfig             string
-	admissionListenAddress string
-	admissionTLSCertPath   string
-	admissionTLSKeyPath    string
-	caBundleFile           string
-	useOSM                 bool
-	namespace              string
-)
+type options struct {
+	masterURL               string
+	kubeconfig              string
+	admissionListenAddress  string
+	admissionTLSCertPath    string
+	admissionTLSKeyPath     string
+	caBundleFile            string
+	useOSM                  bool
+	namespace               string
+	workerClusterKubeconfig string
+}
 
 func main() {
 	nodeFlags := node.NewFlags(flag.CommandLine)
+	opt := &options{}
 
 	klog.InitFlags(nil)
 	if flag.Lookup("kubeconfig") == nil {
-		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+		flag.StringVar(&opt.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	}
 	if flag.Lookup("master") == nil {
-		flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+		flag.StringVar(&opt.masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	}
-	flag.StringVar(&admissionListenAddress, "listen-address", ":9876", "The address on which the MutatingWebhook will listen on")
-	flag.StringVar(&admissionTLSCertPath, "tls-cert-path", "/tmp/cert/cert.pem", "The path of the TLS cert for the MutatingWebhook")
-	flag.StringVar(&admissionTLSKeyPath, "tls-key-path", "/tmp/cert/key.pem", "The path of the TLS key for the MutatingWebhook")
-	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
-	flag.StringVar(&namespace, "namespace", "kubermatic", "The namespace where the webhooks will run")
+	flag.StringVar(&opt.admissionListenAddress, "listen-address", ":9876", "The address on which the MutatingWebhook will listen on")
+	flag.StringVar(&opt.admissionTLSCertPath, "tls-cert-path", "/tmp/cert/cert.pem", "The path of the TLS cert for the MutatingWebhook")
+	flag.StringVar(&opt.admissionTLSKeyPath, "tls-key-path", "/tmp/cert/key.pem", "The path of the TLS key for the MutatingWebhook")
+	flag.StringVar(&opt.caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
+	flag.StringVar(&opt.namespace, "namespace", "kubermatic", "The namespace where the webhooks will run")
+	flag.StringVar(&opt.workerClusterKubeconfig, "worker-cluster-kubeconfig", "", "Path to kubeconfig of worker/user cluster where machines and machinedeployments exist")
 
 	// OSM specific flags
-	flag.BoolVar(&useOSM, "use-osm", false, "osm controller is enabled for node bootstrap")
+	flag.BoolVar(&opt.useOSM, "use-osm", false, "osm controller is enabled for node bootstrap")
 
 	flag.Parse()
-	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
-	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
+	opt.kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
+	opt.masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
-	if caBundleFile != "" {
-		if err := util.SetCABundleFile(caBundleFile); err != nil {
+	if opt.caBundleFile != "" {
+		if err := util.SetCABundleFile(opt.caBundleFile); err != nil {
 			klog.Fatalf("-ca-bundle is invalid: %v", err)
 		}
 	}
 
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-	if err != nil {
-		klog.Fatalf("error building kubeconfig: %v", err)
-	}
-
+	// Add osmv1alpha1 to scheme
 	if err := osmv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
 	}
 
-	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
+	cfg, err := clientcmd.BuildConfigFromFlags(opt.masterURL, opt.kubeconfig)
+	if err != nil {
+		klog.Fatalf("error building kubeconfig: %v", err)
+	}
+
+	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{
+		Scheme: scheme.Scheme,
+	})
 	if err != nil {
 		klog.Fatalf("failed to build client: %v", err)
+	}
+
+	// Start with assuming that current cluster will be used as worker cluster
+	workerClient := client
+	// Handing for worker client
+	if opt.workerClusterKubeconfig != "" {
+		workerClusterConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: opt.workerClusterKubeconfig},
+			&clientcmd.ConfigOverrides{}).ClientConfig()
+		if err != nil {
+			klog.Fatal(err)
+		}
+
+		// Build dedicated client for worker cluster
+		workerClient, err = ctrlruntimeclient.New(workerClusterConfig, ctrlruntimeclient.Options{
+			Scheme: scheme.Scheme,
+		})
+		if err != nil {
+			klog.Fatalf("failed to build worker client: %v", err)
+		}
 	}
 
 	um, err := userdatamanager.New()
@@ -90,12 +116,12 @@ func main() {
 		klog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
-	srv, err := admission.New(admissionListenAddress, client, um, nodeFlags, useOSM, namespace)
+	srv, err := admission.New(opt.admissionListenAddress, client, workerClient, um, nodeFlags, opt.useOSM, opt.namespace)
 	if err != nil {
 		klog.Fatalf("failed to create admission hook: %v", err)
 	}
 
-	if err := srv.ListenAndServeTLS(admissionTLSCertPath, admissionTLSKeyPath); err != nil {
+	if err := srv.ListenAndServeTLS(opt.admissionTLSCertPath, opt.admissionTLSKeyPath); err != nil {
 		klog.Fatalf("Failed to start server: %v", err)
 	}
 	defer func() {
@@ -103,6 +129,6 @@ func main() {
 			klog.Fatalf("Failed to shutdown server: %v", err)
 		}
 	}()
-	klog.Infof("Listening on %s", admissionListenAddress)
+	klog.Infof("Listening on %s", opt.admissionListenAddress)
 	select {}
 }

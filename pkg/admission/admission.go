@@ -42,6 +42,7 @@ import (
 
 type admissionData struct {
 	client          ctrlruntimeclient.Client
+	workerClient    ctrlruntimeclient.Client
 	userDataManager *userdatamanager.Manager
 	nodeSettings    machinecontroller.NodeSettings
 	useOSM          bool
@@ -53,6 +54,7 @@ var jsonPatch = admissionv1.PatchTypeJSONPatch
 func New(
 	listenAddress string,
 	client ctrlruntimeclient.Client,
+	workerClient ctrlruntimeclient.Client,
 	um *userdatamanager.Manager,
 	nodeFlags *node.Flags,
 	useOSM bool,
@@ -61,6 +63,7 @@ func New(
 	mux := http.NewServeMux()
 	ad := &admissionData{
 		client:          client,
+		workerClient:    workerClient,
 		userDataManager: um,
 		useOSM:          useOSM,
 		namespace:       namespace,
