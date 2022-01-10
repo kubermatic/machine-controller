@@ -135,13 +135,16 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfi
 	if err != nil {
 		return false, err
 	}
-	if stringVal == "" {
+
+	// if stringVar is "false", it might have been not set and we can attempt to read from environment.
+	// if it is "true", we know it was configured via value or secret reference.
+	if stringVal == "" || stringVal == strconv.FormatBool(false) {
 		envVal, envValFound := os.LookupEnv(envVarName)
-		if !envValFound {
-			return false, fmt.Errorf("all mechanisms(value, secret, configMap) of getting the value failed, including reading from environment variable = %s which was not set", envVarName)
+		if envValFound {
+			stringVal = envVal
 		}
-		stringVal = envVal
 	}
+
 	boolVal, err := strconv.ParseBool(stringVal)
 	if err != nil {
 		return false, err
