@@ -95,6 +95,11 @@ export E2E_SSH_PUBKEY="$(cat ~/.ssh/id_rsa.pub)"
 ./test/tools/integration/provision_master.sh
 
 echo "Running e2e tests..."
+if [[ ! -z "${NUTANIX_E2E_PROXY_HOST:-}" ]]; then
+  priv_ip=$(cat vm_priv_addr)
+  export NUTANIX_E2E_PROXY_URL="http://${NUTANIX_E2E_PROXY_USER}:${NUTANIX_E2E_PROXY_PASSWORD}@${priv_ip}:${NUTANIX_E2E_PROXY_PORT}/"
+fi
+
 export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig
 EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then
