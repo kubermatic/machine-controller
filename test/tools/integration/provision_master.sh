@@ -63,7 +63,8 @@ done
 
 # set up SSH port-forwarding if necessary
 if [[ ! -z "${NUTANIX_E2E_PROXY_HOST:-}" ]]; then
-  ssh -4 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -fNT -R ${LC_PRIV_ADDR}:1${NUTANIX_E2E_PROXY_PORT}:${NUTANIX_E2E_PROXY_HOST}:${NUTANIX_E2E_PROXY_PORT} root@${LC_ADDR}
+  echo -n "${LC_PRIV_ADDR}" > ${MC_ROOT}/./priv_addr
+
+  ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -fNT -R ${LC_PRIV_ADDR}:1${NUTANIX_E2E_PROXY_PORT}:${NUTANIX_E2E_PROXY_HOST}:${NUTANIX_E2E_PROXY_PORT} root@${LC_ADDR}
 fi
 
-echo -n "${LC_PRIV_ADDR}"

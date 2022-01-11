@@ -95,10 +95,11 @@ cd -
 
 echo "Creating kubeadm cluster and installing machine-controller into it..."
 export E2E_SSH_PUBKEY="$(cat ~/.ssh/id_rsa.pub)"
-vm_priv_addr=$(./test/tools/integration/provision_master.sh)
+./test/tools/integration/provision_master.sh
 
 echo "Running e2e tests..."
 if [[ ! -z "${NUTANIX_E2E_PROXY_HOST:-}" ]]; then
+  vm_priv_addr=$(cat ./priv_addr)
   export NUTANIX_E2E_PROXY_URL="http://${NUTANIX_E2E_PROXY_USERNAME}:${NUTANIX_E2E_PROXY_PASSWORD}@${vm_priv_addr}:1${NUTANIX_E2E_PROXY_PORT}/"
 fi
 
