@@ -896,11 +896,6 @@ func getNutanixTestParams(t *testing.T) []string {
 	}
 
 	proxyURL := os.Getenv("NUTANIX_E2E_PROXY_URL")
-	allowInsecure := os.Getenv("NUTANIX_E2E_ALLOW_INSECURE")
-
-	if allowInsecure == "" {
-		allowInsecure = "false"
-	}
 
 	// set up parameters
 	params := []string{fmt.Sprintf("<< NUTANIX_PASSWORD >>=%s", password),
@@ -910,7 +905,6 @@ func getNutanixTestParams(t *testing.T) []string {
 		fmt.Sprintf("<< NUTANIX_PROJECT >>=%s", project),
 		fmt.Sprintf("<< NUTANIX_SUBNET >>=%s", subnet),
 		fmt.Sprintf("<< NUTANIX_PROXY_URL >>=%s", proxyURL),
-		fmt.Sprintf("<< NUTANIX_ALLOW_INSECURE >>=%s", allowInsecure),
 	}
 	return params
 }

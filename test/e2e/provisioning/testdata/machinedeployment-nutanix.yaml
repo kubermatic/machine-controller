@@ -27,8 +27,8 @@ spec:
             username: '<< NUTANIX_USERNAME >>'
             password: '<< NUTANIX_PASSWORD >>'
             endpoint: '<< NUTANIX_ENDPOINT >>'
-            allowInsecure: '<< NUTANIX_ALLOW_INSECURE >>'
             proxyURL: '<< NUTANIX_PROXY_URL >>'
+            allowInsecure: true
             clusterName: '<< NUTANIX_CLUSTER >>'
             projectName: '<< NUTANIX_PROJECT >>'
             subnetName: '<< NUTANIX_SUBNET >>'
