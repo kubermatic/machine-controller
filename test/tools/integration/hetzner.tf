@@ -23,7 +23,7 @@ resource "hcloud_server" "machine-controller-test" {
 resource "hcloud_network_subnet" "machine_controller" {
   network_id   = hcloud_network.net.id
   type         = "server"
-  network_zone = var.network_zone
+  network_zone = var.hcloud_network_zone
   ip_range     = "192.168.0.0/16"
 }
 
