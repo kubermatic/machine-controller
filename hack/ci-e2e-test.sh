@@ -38,7 +38,7 @@ function cleanup {
   done
 
   # Kill background port forward if it's there
-  pkill ssh || true
+  pkill ssh || true
 }
 trap cleanup EXIT
 
