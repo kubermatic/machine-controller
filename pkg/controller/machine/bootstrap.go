@@ -30,7 +30,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
 
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,16 +53,23 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 		return "", fmt.Errorf("failed to get providerSpec: %v", err)
 	}
 
-	// Ignition configuration is used for flatcar
-	if useIgnition(pconfig) {
-		return getOSMBootstrapUserDataForIgnition(req, pconfig.SSHPublicKeys, token, secretName, clusterName)
+	bootstrapKubeconfig, err := helper.StringifyKubeconfig(req.Kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to format bootstrap kubeconfig: %v", err)
 	}
+
+	// Regardless if the provisioningUtility is set to use cloud-init, we only allow using ignition to provision flatcar
+	// machines with osm.
+	if pconfig.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+		return getOSMBootstrapUserDataForIgnition(req, pconfig.SSHPublicKeys, token, secretName, clusterName, bootstrapKubeconfig)
+	}
+
 	// cloud-init is used for all other operating systems
-	return getOSMBootstrapUserDataForCloudInit(req, pconfig, token, secretName, clusterName)
+	return getOSMBootstrapUserDataForCloudInit(req, pconfig, token, secretName, clusterName, bootstrapKubeconfig)
 }
 
 // getOSMBootstrapUserDataForIgnition returns the userdata for the ignition bootstrap config
-func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName, bootstrapKfg string) (string, error) {
 	data := struct {
 		Token      string
 		SecretName string
@@ -89,15 +95,17 @@ func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKey
 
 	ignitionConfig := &bytes.Buffer{}
 	err = bsIgnitionConfig.Execute(ignitionConfig, struct {
-		Script        string
-		Service       string
-		SSHPublicKeys []string
 		plugin.UserDataRequest
+		Script              string
+		Service             string
+		SSHPublicKeys       []string
+		BootstrapKubeconfig string
 	}{
-		Script:          script.String(),
-		Service:         bootstrapServiceContentTemplate,
-		SSHPublicKeys:   sshPublicKeys,
-		UserDataRequest: req,
+		UserDataRequest:     req,
+		Script:              script.String(),
+		Service:             bootstrapServiceContentTemplate,
+		SSHPublicKeys:       sshPublicKeys,
+		BootstrapKubeconfig: bootstrapKfg,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute ignitionTemplate template: %v", err)
@@ -107,7 +115,7 @@ func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKey
 }
 
 // getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
-func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName, bootstrapKfg string) (string, error) {
 	data := struct {
 		Token           string
 		SecretName      string
@@ -167,11 +175,6 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
 
-	bootstrapKubeconfig, err := helper.StringifyKubeconfig(req.Kubeconfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to format bootstrap kubeconfig: %v", err)
-	}
-
 	cloudInit := &bytes.Buffer{}
 	err = bsCloudInit.Execute(cloudInit, struct {
 		Script  string
@@ -184,7 +187,7 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 		Service:             base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
 		UserDataRequest:     req,
 		ProviderSpec:        pconfig,
-		BootstrapKubeconfig: base64.StdEncoding.EncodeToString([]byte(bootstrapKubeconfig)),
+		BootstrapKubeconfig: base64.StdEncoding.EncodeToString([]byte(bootstrapKfg)),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %v", err)
@@ -200,17 +203,6 @@ func cleanupTemplateOutput(output string) (string, error) {
 	// So far only cleanup.
 	woBlankLines := regexp.MustCompile(`(?m)^[ \t]+$`).ReplaceAllString(output, "")
 	return woBlankLines, nil
-}
-
-func useIgnition(p *providerconfigtypes.Config) bool {
-	if p.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
-		config, err := flatcar.LoadConfig(p.OperatingSystemSpec)
-		if err != nil {
-			return false
-		}
-		return config.ProvisioningUtility == flatcar.Ignition
-	}
-	return false
 }
 
 const (
@@ -349,7 +341,7 @@ storage:
     filesystem: root
     contents:
       inline: |
-      {{ .BootstrapKubeconfig }}
+{{ .BootstrapKubeconfig | indent 10 }}
   - path: /opt/bin/bootstrap
     mode: 0755
     filesystem: root
