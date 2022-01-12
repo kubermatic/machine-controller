@@ -308,8 +308,9 @@ write_files:
   encoding: b64
   content: |
     {{ .BootstrapKubeconfig }}
-{{ if ne .CloudProviderName "aws" }}
-{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
+{{- if and (eq .ProviderSpec.CloudProvider "openstack") (eq .ProviderSpec.OperatingSystem "centos") }}
+{{- /*  The normal way of setting it via cloud-init is broken, see */}}
+{{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
 - path: /etc/hostname
   permissions: '0600'
   content: |
