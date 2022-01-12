@@ -255,7 +255,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.TrustDevicePath, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
+	c.TrustDevicePath, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -161,7 +161,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("cannot retrieve subnetwork: %v", err)
 	}
 
-	cfg.preemptible, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
+	cfg.preemptible, _, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
 	}
@@ -170,18 +170,18 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.assignPublicIPAddress = true
 
 	if cpSpec.AssignPublicIPAddress != nil {
-		cfg.assignPublicIPAddress, err = resolver.GetConfigVarBoolValue(*cpSpec.AssignPublicIPAddress)
+		cfg.assignPublicIPAddress, _, err = resolver.GetConfigVarBoolValue(*cpSpec.AssignPublicIPAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
 		}
 	}
 
-	cfg.multizone, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
+	cfg.multizone, _, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve multizone: %v", err)
 	}
 
-	cfg.regional, err = resolver.GetConfigVarBoolValue(cpSpec.Regional)
+	cfg.regional, _, err = resolver.GetConfigVarBoolValue(cpSpec.Regional)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve regional: %v", err)
 	}

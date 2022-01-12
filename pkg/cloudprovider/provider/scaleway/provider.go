@@ -127,7 +127,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, err
 	}
-	c.IPv6, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.IPv6)
+	c.IPv6, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.IPv6)
 	if err != nil {
 		return nil, nil, err
 	}
