@@ -141,7 +141,7 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtype
 			return false, false, fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%v'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
 		}
 		if val, ok := configMap.Data[configVar.ConfigMapKeyRef.Key]; ok {
-			boolVal, err := strconv.ParseBool(string(val))
+			boolVal, err := strconv.ParseBool(val)
 			return boolVal, (err == nil), err
 		}
 		return false, false, fmt.Errorf("configmap '%s' in namespace '%s' has no key '%s'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, configVar.ConfigMapKeyRef.Key)

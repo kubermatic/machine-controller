@@ -250,9 +250,9 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 	if secretKeyRefEmpty && configMapKeyRefEmpty {
 		if configVarBool.Valid {
 			return []byte(fmt.Sprintf("%v", configVarBool.Value)), nil
-		} else {
-			return []byte{}, nil
 		}
+
+		return []byte{}, nil
 	}
 
 	buffer := bytes.NewBufferString("{")
@@ -286,15 +286,15 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 		if string(b) == "" {
 			configVarBool.Valid = false
 			return nil
-		} else {
-			value, err := strconv.ParseBool(string(b))
-			if err != nil {
-				return fmt.Errorf("Error converting string to bool: '%v'", err)
-			}
-			configVarBool.Value = value
-			configVarBool.Valid = true
-			return nil
 		}
+
+		value, err := strconv.ParseBool(string(b))
+		if err != nil {
+			return fmt.Errorf("Error converting string to bool: '%v'", err)
+		}
+		configVarBool.Value = value
+		configVarBool.Valid = true
+		return nil
 	}
 	var cvbDummy configVarBoolWithoutUnmarshaller
 	err := json.Unmarshal(b, &cvbDummy)
