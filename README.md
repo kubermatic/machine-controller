@@ -28,10 +28,10 @@ machine-controller tries to follow the Kubernetes version
 
 Currently supported K8S versions are:
 
+- 1.23
 - 1.22
 - 1.21
 - 1.20
-- 1.19
 
 ## What does not work
 - Master creation (Not planned at the moment)
