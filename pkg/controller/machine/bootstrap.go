@@ -216,6 +216,8 @@ func useIgnition(p *providerconfigtypes.Config) bool {
 const (
 	bootstrapAptBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
 apt update && apt install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
@@ -304,8 +306,15 @@ write_files:
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: '0600'
   encoding: b64
-  content: | 
+  content: |
     {{ .BootstrapKubeconfig }}
+{{ if ne .CloudProviderName "aws" }}
+{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
+- path: /etc/hostname
+  permissions: '0600'
+  content: |
+    {{ .MachineSpec.Name }}
+{{ end }}
 - path: /etc/systemd/system/bootstrap.service
   permissions: '0644'
   encoding: b64
