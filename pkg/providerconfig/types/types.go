@@ -247,7 +247,10 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 	}
 
 	if secretKeyRefEmpty && configMapKeyRefEmpty {
-		jsonVal, _ := json.Marshal(configVarBool.Value)
+		jsonVal, err := json.Marshal(configVarBool.Value)
+		if err != nil {
+			return []byte{}, err
+		}
 		return []byte(fmt.Sprintf("%v", string(jsonVal))), nil
 	}
 
@@ -272,7 +275,11 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
-	jsonVal, _ := json.Marshal(configVarBool.Value)
+	jsonVal, err := json.Marshal(configVarBool.Value)
+	if err != nil {
+		return []byte{}, err
+	}
+
 	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, string(jsonVal)))
 
 	return buffer.Bytes(), nil
