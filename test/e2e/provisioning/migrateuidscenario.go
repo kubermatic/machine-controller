@@ -38,6 +38,7 @@ import (
 
 func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 	// prepare the manifest
+
 	manifest, err := readAndModifyManifest(manifestPath, parameters)
 	if err != nil {
 		return fmt.Errorf("failed to prepare the manifest, due to: %v", err)

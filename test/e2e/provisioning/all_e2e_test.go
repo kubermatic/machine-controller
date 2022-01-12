@@ -913,7 +913,9 @@ func getNutanixTestParams(t *testing.T) []string {
 func TestNutanixProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := OsSelector("ubuntu", "centos")
+	// exclude migrateUID test case because it's a no-op for Nutanix and runs from a different
+	// location, thus possibly blocking access a HTTP proxy if it is configured
+	selector := And(OsSelector("ubuntu", "centos"), Not(NameSelector("migrateUID")))
 	params := getNutanixTestParams(t)
 	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
