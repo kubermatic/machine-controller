@@ -147,11 +147,11 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtype
 		return false, false, fmt.Errorf("configmap '%s' in namespace '%s' has no key '%s'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, configVar.ConfigMapKeyRef.Key)
 	}
 
-	if !configVar.Valid {
+	if configVar.Value == nil {
 		return false, false, nil
 	}
 
-	return configVar.Value, true, nil
+	return configVar.Value != nil && *configVar.Value, true, nil
 }
 
 func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfigtypes.ConfigVarBool, envVarName string) (bool, error) {

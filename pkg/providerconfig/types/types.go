@@ -221,8 +221,7 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 }
 
 type ConfigVarBool struct {
-	Value           bool                       `json:"value,omitempty"`
-	Valid           bool                       `json:"-"`
+	Value           *bool                      `json:"value,omitempty"`
 	SecretKeyRef    GlobalSecretKeySelector    `json:"secretKeyRef,omitempty"`
 	ConfigMapKeyRef GlobalConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
 }
@@ -248,11 +247,8 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 	}
 
 	if secretKeyRefEmpty && configMapKeyRefEmpty {
-		if configVarBool.Valid {
-			return []byte(fmt.Sprintf("%v", configVarBool.Value)), nil
-		}
-
-		return []byte{}, nil
+		jsonVal, _ := json.Marshal(configVarBool.Value)
+		return []byte(fmt.Sprintf("%v", string(jsonVal))), nil
 	}
 
 	buffer := bytes.NewBufferString("{")
@@ -276,26 +272,22 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
-	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, configVarBool.Value))
+	jsonVal, _ := json.Marshal(configVarBool.Value)
+	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, string(jsonVal)))
 
 	return buffer.Bytes(), nil
 }
 
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		if string(b) == "" {
-			configVarBool.Valid = false
-			return nil
-		}
-
 		value, err := strconv.ParseBool(string(b))
 		if err != nil {
 			return fmt.Errorf("Error converting string to bool: '%v'", err)
 		}
-		configVarBool.Value = value
-		configVarBool.Valid = true
+		configVarBool.Value = &value
 		return nil
 	}
+
 	var cvbDummy configVarBoolWithoutUnmarshaller
 	err := json.Unmarshal(b, &cvbDummy)
 	if err != nil {
