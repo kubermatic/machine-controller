@@ -65,6 +65,6 @@ done
 if [[ ! -z "${NUTANIX_E2E_PROXY_HOST:-}" ]]; then
   echo -n "${LC_PRIV_ADDR}" > ${MC_ROOT}/./priv_addr
 
-  ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -fNT -R ${LC_PRIV_ADDR}:1${NUTANIX_E2E_PROXY_PORT}:${NUTANIX_E2E_PROXY_HOST}:${NUTANIX_E2E_PROXY_PORT} root@${LC_ADDR}
+  ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -fNT -R ${LC_PRIV_ADDR}:${NUTANIX_E2E_PROXY_PORT}:10.240.20.100:${NUTANIX_E2E_PROXY_PORT} root@${LC_ADDR}
 fi
 
