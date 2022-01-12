@@ -355,7 +355,7 @@ func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
 		name:              "MachineDeploy with project auth vars",
 		osName:            "ubuntu",
 		containerRuntime:  "containerd",
-		kubernetesVersion: "1.21.2",
+		kubernetesVersion: "1.21.8",
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, OSManifestProjectAuth, false)
@@ -425,7 +425,7 @@ func TestAWSAssumeRoleProvisioningE2E(t *testing.T) {
 		name:              "AWS with AssumeRole",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.19.9",
+		kubernetesVersion: "1.22.5",
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
@@ -534,7 +534,7 @@ func TestAWSFlatcarContainerdProvisioningE2E(t *testing.T) {
 		name:              "flatcar with containerd in AWS",
 		osName:            "flatcar",
 		containerRuntime:  "containerd",
-		kubernetesVersion: "1.19.15",
+		kubernetesVersion: "1.22.5",
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
@@ -584,7 +584,7 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 		name:              "AWS with ebs encryption enabled",
 		osName:            "ubuntu",
 		containerRuntime:  "containerd",
-		kubernetesVersion: "v1.21.5",
+		kubernetesVersion: "v1.21.8",
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
@@ -667,7 +667,7 @@ func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 		name:              "Azure redhat satellite server subscription",
 		osName:            "rhel",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.21.5",
+		kubernetesVersion: "1.21.8",
 		executor:          verifyCreateAndDelete,
 	}
 
@@ -837,7 +837,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 		name:              "vSphere resource pool provisioning",
 		osName:            "flatcar",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.22.2",
+		kubernetesVersion: "1.22.5",
 		executor:          verifyCreateAndDelete,
 	}
 
@@ -911,7 +911,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		name:              "Ubuntu upgrade",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.22.2",
+		kubernetesVersion: "1.22.5",
 		executor:          verifyCreateAndDelete,
 	}
 
@@ -936,7 +936,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		name:              "MachineDeployment upgrade",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.21.5",
+		kubernetesVersion: "1.21.8",
 		executor:          verifyCreateUpdateAndDelete,
 	}
 	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)

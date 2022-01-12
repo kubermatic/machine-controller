@@ -14,6 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-go test ./... -update || go test ./...
+go test ./... -v -update || go test ./...
 
 if [[ $? -eq 0 ]]; then echo "Successfully updated fixtures"; else "Failed to update fixtures"; fi

@@ -17,7 +17,7 @@
 set -euo pipefail
 set -x
 
-K8S_VERSION=1.22.2
+K8S_VERSION=1.23.0
 echo "$LC_E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 
 # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.

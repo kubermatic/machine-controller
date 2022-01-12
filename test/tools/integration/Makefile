@@ -27,7 +27,7 @@ endif
 .PHONY: terraform
 terraform:
 	@if ! which terraform; then \
-		curl https://releases.hashicorp.com/terraform/1.0.9/terraform_1.0.9_linux_amd64.zip \
+		curl https://releases.hashicorp.com/terraform/1.1.3/terraform_1.1.3_linux_amd64.zip \
 			--retry 5 \
 			-o	/tmp/terraform.zip && \
 		unzip -n /tmp/terraform.zip terraform && \
