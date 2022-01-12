@@ -564,7 +564,7 @@ presubmits:
             requests:
               memory: 1Gi
               cpu: 500m
-  
+
   - name: pull-machine-controller-e2e-nutanix
     optional: true
     always_run: true
