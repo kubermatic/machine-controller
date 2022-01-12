@@ -567,7 +567,7 @@ presubmits:
   
   - name: pull-machine-controller-e2e-nutanix
     optional: true
-    run_if_changed: pkg\/cloudprovider\/provider\/nutanix\/.*
+    always_run: true
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
