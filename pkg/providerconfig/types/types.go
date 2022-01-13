@@ -222,6 +222,7 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 
 type ConfigVarBool struct {
 	Value           bool                       `json:"value,omitempty"`
+	Valid           bool                       `json:"-"`
 	SecretKeyRef    GlobalSecretKeySelector    `json:"secretKeyRef,omitempty"`
 	ConfigMapKeyRef GlobalConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
 }
@@ -283,16 +284,19 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 			return fmt.Errorf("Error converting string to bool: '%v'", err)
 		}
 		configVarBool.Value = value
+		configVarBool.Valid = true
+
 		return nil
 	}
+
 	var cvbDummy configVarBoolWithoutUnmarshaller
-	err := json.Unmarshal(b, &cvbDummy)
-	if err != nil {
+	if err := json.Unmarshal(b, &cvbDummy); err != nil {
 		return err
 	}
-	configVarBool.Value = cvbDummy.Value
-	configVarBool.SecretKeyRef = cvbDummy.SecretKeyRef
-	configVarBool.ConfigMapKeyRef = cvbDummy.ConfigMapKeyRef
+
+	*configVarBool = ConfigVarBool(cvbDummy)
+	configVarBool.Valid = true
+
 	return nil
 }
 

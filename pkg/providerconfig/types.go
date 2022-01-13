@@ -131,21 +131,25 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtype
 
 func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfigtypes.ConfigVarBool, envVarName string) (bool, error) {
 	cvs := providerconfigtypes.ConfigVarString{Value: strconv.FormatBool(configVar.Value), SecretKeyRef: configVar.SecretKeyRef}
+
 	stringVal, err := cvr.GetConfigVarStringValue(cvs)
 	if err != nil {
 		return false, err
 	}
-	if stringVal == "" {
+
+	if !configVar.Valid || stringVal == "" {
 		envVal, envValFound := os.LookupEnv(envVarName)
 		if !envValFound {
 			return false, fmt.Errorf("all mechanisms(value, secret, configMap) of getting the value failed, including reading from environment variable = %s which was not set", envVarName)
 		}
 		stringVal = envVal
 	}
+
 	boolVal, err := strconv.ParseBool(stringVal)
 	if err != nil {
 		return false, err
 	}
+
 	return boolVal, nil
 }
 

@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestConfigVarStringUnmarshalling(t *testing.T) {
@@ -48,7 +48,7 @@ func TestConfigVarBoolUnmarshalling(t *testing.T) {
 	jsonBool := []byte("true")
 	jsonMapBool := []byte(`{"value":true}`)
 
-	expectedResult := ConfigVarBool{Value: true}
+	expectedResult := ConfigVarBool{Value: true, Valid: true}
 
 	var jsonBoolTarget ConfigVarBool
 	var jsonMapBoolTarget ConfigVarBool
@@ -74,7 +74,7 @@ func TestConfigVarStringMarshalling(t *testing.T) {
 			expected: `"val"`,
 		},
 		{
-			cvs:      ConfigVarString{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+			cvs:      ConfigVarString{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 			expected: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
 		},
 	}
@@ -101,7 +101,7 @@ func TestConfigVarBoolMarshalling(t *testing.T) {
 			expected: `true`,
 		},
 		{
-			cvb:      ConfigVarBool{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+			cvb:      ConfigVarBool{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 			expected: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"},"value":false}`,
 		},
 	}
@@ -121,17 +121,17 @@ func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 
 	testCases := []ConfigVarString{
 		{Value: "val"},
-		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		{Value: "val", SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: "val", SecretKeyRef: GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 		{
-			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
-			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},
 		{
 			Value:           "val",
-			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
-			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},
 	}
 
@@ -156,18 +156,18 @@ func TestConfigVarBoolMarshallingAndUnmarshalling(t *testing.T) {
 
 	testCases := []ConfigVarBool{
 		{Value: true},
-		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		{Value: true, SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		{Value: true, ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: true, SecretKeyRef: GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: true, ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 		{
-			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
-			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},
 		{
 			Value:           true,
-			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
-			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: corev1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},
 	}
 
@@ -177,9 +177,10 @@ func TestConfigVarBoolMarshallingAndUnmarshalling(t *testing.T) {
 			t.Errorf("Failed to marshall config var string: %v", err)
 		}
 
+		cvs.Valid = true // every time we use unmarshal, this field is set
+
 		var unmarshalled ConfigVarBool
-		err = json.Unmarshal(marshalled, &unmarshalled)
-		if err != nil {
+		if err = json.Unmarshal(marshalled, &unmarshalled); err != nil {
 			t.Errorf("Failed to unmarshall config var bool after marshalling: %v, '%v'", err, string(marshalled))
 		}
 		if !reflect.DeepEqual(cvs, unmarshalled) {
