@@ -4,16 +4,10 @@ hostname: node1
 
 
 ssh_pwauth: false
+ssh_authorized_keys:
+- "ssh-rsa AAABBB"
 
 write_files:
-- path: "/etc/environment"
-  content: |
-    HTTP_PROXY=http://192.168.100.100:3128
-    http_proxy=http://192.168.100.100:3128
-    HTTPS_PROXY=http://192.168.100.100:3128
-    https_proxy=http://192.168.100.100:3128
-    NO_PROXY=192.168.1.0
-    no_proxy=192.168.1.0
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -50,52 +44,56 @@ write_files:
     fs.inotify.max_user_watches = 1048576
 
 
-- path: /etc/selinux/config
+- path: "/etc/default/grub.d/60-swap-accounting.cfg"
   content: |
-    # This file controls the state of SELinux on the system.
-    # SELINUX= can take one of these three values:
-    #     enforcing - SELinux security policy is enforced.
-    #     permissive - SELinux prints warnings instead of enforcing.
-    #     disabled - No SELinux policy is loaded.
-    SELINUX=permissive
-    # SELINUXTYPE= can take one of three two values:
-    #     targeted - Targeted processes are protected,
-    #     minimum - Modification of targeted policy. Only selected processes are protected.
-    #     mls - Multi Level Security protection.
-    SELINUXTYPE=targeted
+    # Added by kubermatic machine-controller
+    # Enable cgroups memory and swap accounting
+    GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
 
 - path: "/opt/bin/setup"
   permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
-
-    setenforce 0 || true
+    if systemctl is-active ufw; then systemctl stop ufw; fi
+    systemctl mask ufw
     systemctl restart systemd-modules-load.service
     sysctl --system
     sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
 
-    hostnamectl set-hostname node1
+    apt-get update
 
-
-    yum install -y \
-      device-mapper-persistent-data \
-      lvm2 \
+    DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
+      curl \
+      ca-certificates \
+      ceph-common \
+      cifs-utils \
+      conntrack \
+      e2fsprogs \
       ebtables \
       ethtool \
-      nfs-utils \
-      bash-completion \
-      sudo \
+      glusterfs-client \
+      iptables \
+      jq \
+      kmod \
+      openssh-client \
+      nfs-common \
       socat \
-      wget \
-      curl \
-      open-vm-tools \
+      util-linux \
+      open-iscsi \
       ipvsadm
+    systemctl enable --now iscsid
 
-    yum install -y yum-utils
-    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
+
+    # Update grub to include kernel command options to enable swap accounting.
+    # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
+
+
+    apt-get update
+    apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+    add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
     mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
 
@@ -105,12 +103,11 @@ write_files:
     EnvironmentFile=-/etc/environment
     EOF
 
-    yum install -y \
-        docker-ce-cli-19.03* \
-        containerd.io-1.4* \
-        docker-ce-19.03* \
-        yum-plugin-versionlock
-    yum versionlock add docker-ce* containerd.io
+    apt-get install --allow-downgrades -y \
+        containerd.io=1.4* \
+        docker-ce-cli=5:19.03* \
+        docker-ce=5:19.03*
+    apt-mark hold docker-ce* containerd.io
 
     systemctl daemon-reload
     systemctl enable --now docker
@@ -157,7 +154,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.8}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.21.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -182,11 +179,8 @@ write_files:
     fi
 
     # set kubelet nodeip environment variable
-    mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
-
-    systemctl enable --now vmtoolsd.service
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
 
@@ -226,12 +220,11 @@ write_files:
       --config=/etc/kubernetes/kubelet.conf \
       --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=vsphere \
+      --cloud-provider=nutanix \
       --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
       --container-runtime=docker \
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
@@ -241,10 +234,17 @@ write_files:
     [Install]
     WantedBy=multi-user.target
 
+- path: "/etc/systemd/system/kubelet.service.d/extras.conf"
+  content: |
+    [Service]
+    Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
+
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-    {config:true}
+    custom
+    cloud
+    config
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"
@@ -297,72 +297,6 @@ write_files:
     - name: ""
       user:
         token: my-token
-
-
-- path: "/etc/kubernetes/kubelet.conf"
-  content: |
-    apiVersion: kubelet.config.k8s.io/v1beta1
-    authentication:
-      anonymous:
-        enabled: false
-      webhook:
-        cacheTTL: 0s
-        enabled: true
-      x509:
-        clientCAFile: /etc/kubernetes/pki/ca.crt
-    authorization:
-      mode: Webhook
-      webhook:
-        cacheAuthorizedTTL: 0s
-        cacheUnauthorizedTTL: 0s
-    cgroupDriver: systemd
-    clusterDomain: cluster.local
-    cpuManagerReconcilePeriod: 0s
-    evictionHard:
-      imagefs.available: 15%
-      memory.available: 100Mi
-      nodefs.available: 10%
-      nodefs.inodesFree: 5%
-    evictionPressureTransitionPeriod: 0s
-    featureGates:
-      RotateKubeletServerCertificate: true
-    fileCheckFrequency: 0s
-    httpCheckFrequency: 0s
-    imageMinimumGCAge: 0s
-    kind: KubeletConfiguration
-    kubeReserved:
-      cpu: 200m
-      ephemeral-storage: 1Gi
-      memory: 200Mi
-    logging: {}
-    memorySwap: {}
-    nodeStatusReportFrequency: 0s
-    nodeStatusUpdateFrequency: 0s
-    protectKernelDefaults: true
-    rotateCertificates: true
-    runtimeRequestTimeout: 0s
-    serverTLSBootstrap: true
-    shutdownGracePeriod: 0s
-    shutdownGracePeriodCriticalPods: 0s
-    staticPodPath: /etc/kubernetes/manifests
-    streamingConnectionIdleTimeout: 0s
-    syncFrequency: 0s
-    systemReserved:
-      cpu: 200m
-      ephemeral-storage: 1Gi
-      memory: 200Mi
-    tlsCipherSuites:
-    - TLS_AES_128_GCM_SHA256
-    - TLS_AES_256_GCM_SHA384
-    - TLS_CHACHA20_POLY1305_SHA256
-    - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
-    - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
-    - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
-    - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-    - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-    - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
-    volumePluginDir: /var/lib/kubelet/volumeplugins
-    volumeStatsAggPeriod: 0s
 
 
 - path: "/etc/kubernetes/pki/ca.crt"
@@ -418,7 +352,75 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"},"insecure-registries":["192.168.100.100:5000","10.0.0.1:5000"]}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"}}
+
+- path: "/etc/kubernetes/kubelet.conf"
+  content: |
+    apiVersion: kubelet.config.k8s.io/v1beta1
+    authentication:
+      anonymous:
+        enabled: false
+      webhook:
+        cacheTTL: 0s
+        enabled: true
+      x509:
+        clientCAFile: /etc/kubernetes/pki/ca.crt
+    authorization:
+      mode: Webhook
+      webhook:
+        cacheAuthorizedTTL: 0s
+        cacheUnauthorizedTTL: 0s
+    cgroupDriver: systemd
+    clusterDNS:
+    - 10.10.10.10
+    clusterDomain: cluster.local
+    cpuManagerReconcilePeriod: 0s
+    evictionHard:
+      imagefs.available: 15%
+      memory.available: 100Mi
+      nodefs.available: 10%
+      nodefs.inodesFree: 5%
+    evictionPressureTransitionPeriod: 0s
+    featureGates:
+      RotateKubeletServerCertificate: true
+    fileCheckFrequency: 0s
+    httpCheckFrequency: 0s
+    imageMinimumGCAge: 0s
+    kind: KubeletConfiguration
+    kubeReserved:
+      cpu: 200m
+      ephemeral-storage: 1Gi
+      memory: 200Mi
+    logging: {}
+    memorySwap: {}
+    nodeStatusReportFrequency: 0s
+    nodeStatusUpdateFrequency: 0s
+    protectKernelDefaults: true
+    rotateCertificates: true
+    runtimeRequestTimeout: 0s
+    serverTLSBootstrap: true
+    shutdownGracePeriod: 0s
+    shutdownGracePeriodCriticalPods: 0s
+    staticPodPath: /etc/kubernetes/manifests
+    streamingConnectionIdleTimeout: 0s
+    syncFrequency: 0s
+    systemReserved:
+      cpu: 200m
+      ephemeral-storage: 1Gi
+      memory: 200Mi
+    tlsCipherSuites:
+    - TLS_AES_128_GCM_SHA256
+    - TLS_AES_256_GCM_SHA384
+    - TLS_CHACHA20_POLY1305_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+    - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+    - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+    volumePluginDir: /var/lib/kubelet/volumeplugins
+    volumeStatsAggPeriod: 0s
+
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

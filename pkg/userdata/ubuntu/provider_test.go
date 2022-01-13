@@ -444,6 +444,32 @@ func TestUserDataGeneration(t *testing.T) {
 				DistUpgradeOnBoot: true,
 			},
 		},
+		{
+			name: "nutanix",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider:        "nutanix",
+				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
+				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.21.5",
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "nutanix",
+				config: "{nutanix-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
+		},
 	}...)
 
 	for _, test := range tests {

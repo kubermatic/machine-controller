@@ -193,6 +193,16 @@ func TestUserDataGeneration(t *testing.T) {
 			registryMirrors:   map[string][]string{"docker.io": {"https://registry.docker-cn.com"}},
 			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
+		{
+			name: "kubelet-v1.22-nutanix",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.22.2",
+				},
+			},
+			cloudProviderName: stringPtr("nutanix"),
+		},
 	}
 
 	defaultCloudProvider := &fakeCloudConfigProvider{
