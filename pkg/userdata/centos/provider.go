@@ -246,7 +246,7 @@ write_files:
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
 
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"

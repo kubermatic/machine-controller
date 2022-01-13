@@ -421,16 +421,17 @@ func TestUserDataGeneration(t *testing.T) {
 			}
 
 			req := plugin.UserDataRequest{
-				MachineSpec:           test.spec,
-				Kubeconfig:            kubeconfig,
-				CloudConfig:           cloudConfig,
-				CloudProviderName:     cloudProviderName,
-				DNSIPs:                test.DNSIPs,
-				ExternalCloudProvider: test.externalCloudProvider,
-				HTTPProxy:             test.httpProxy,
-				NoProxy:               test.noProxy,
-				PauseImage:            test.pauseImage,
-				KubeletFeatureGates:   kubeletFeatureGates,
+				MachineSpec:              test.spec,
+				Kubeconfig:               kubeconfig,
+				CloudConfig:              cloudConfig,
+				CloudProviderName:        cloudProviderName,
+				KubeletCloudProviderName: cloudProviderName,
+				DNSIPs:                   test.DNSIPs,
+				ExternalCloudProvider:    test.externalCloudProvider,
+				HTTPProxy:                test.httpProxy,
+				NoProxy:                  test.noProxy,
+				PauseImage:               test.pauseImage,
+				KubeletFeatureGates:      kubeletFeatureGates,
 				ContainerRuntime: containerruntime.Get(
 					test.containerruntime,
 					containerruntime.WithInsecureRegistries(test.insecureRegistries),
