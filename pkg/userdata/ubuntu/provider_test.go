@@ -92,7 +92,7 @@ kPe6XoSbiLm/kxk32T0=
 )
 
 const (
-	defaultVersion = "1.21.5"
+	defaultVersion = "1.22.5"
 )
 
 type fakeCloudConfigProvider struct {
@@ -126,10 +126,10 @@ type userDataTestCase struct {
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.19.15"),
-		semver.MustParse("v1.20.11"),
-		semver.MustParse("v1.21.5"),
-		semver.MustParse("v1.22.2"),
+		semver.MustParse("v1.20.14"),
+		semver.MustParse("v1.21.8"),
+		semver.MustParse("v1.22.5"),
+		semver.MustParse("v1.23.0"),
 	}
 
 	var tests []userDataTestCase
@@ -232,7 +232,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.22.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -257,7 +257,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.22.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -308,7 +308,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.22.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -334,7 +334,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.22.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -360,7 +360,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.22.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -390,7 +390,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.22.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
