@@ -216,6 +216,8 @@ func Add(
 		return err
 	}
 
+	metrics.Workers.Set(float64(numWorkers))
+
 	return c.Watch(
 		&source.Kind{Type: &corev1.Node{}},
 		handler.EnqueueRequestsFromMapFunc(func(node client.Object) (result []reconcile.Request) {
