@@ -702,7 +702,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %v", err)
 			}
 
-			cloudConfig, cloudProviderName, err := prov.GetCloudConfig(machine.Spec)
+			cloudConfig, kubeletCloudProviderName, err := prov.GetCloudConfig(machine.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to render cloud config: %v", err)
 			}
@@ -746,20 +746,21 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			crRuntime.RegistryCredentials = registryCredentials
 
 			req := plugin.UserDataRequest{
-				MachineSpec:           machine.Spec,
-				Kubeconfig:            kubeconfig,
-				CloudConfig:           cloudConfig,
-				CloudProviderName:     cloudProviderName,
-				ExternalCloudProvider: externalCloudProvider,
-				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
-				PauseImage:            r.nodeSettings.PauseImage,
-				KubeletFeatureGates:   kubeletFeatureGates,
-				KubeletConfigs:        KubeletConfigs,
-				NoProxy:               r.nodeSettings.NoProxy,
-				HTTPProxy:             r.nodeSettings.HTTPProxy,
-				ContainerRuntime:      crRuntime,
-				PodCIDR:               r.podCIDR,
-				NodePortRange:         r.nodePortRange,
+				MachineSpec:              machine.Spec,
+				Kubeconfig:               kubeconfig,
+				CloudConfig:              cloudConfig,
+				CloudProviderName:        string(providerConfig.CloudProvider),
+				ExternalCloudProvider:    externalCloudProvider,
+				DNSIPs:                   r.nodeSettings.ClusterDNSIPs,
+				PauseImage:               r.nodeSettings.PauseImage,
+				KubeletCloudProviderName: kubeletCloudProviderName,
+				KubeletFeatureGates:      kubeletFeatureGates,
+				KubeletConfigs:           KubeletConfigs,
+				NoProxy:                  r.nodeSettings.NoProxy,
+				HTTPProxy:                r.nodeSettings.HTTPProxy,
+				ContainerRuntime:         crRuntime,
+				PodCIDR:                  r.podCIDR,
+				NodePortRange:            r.nodePortRange,
 			}
 
 			// Here we do stuff!
