@@ -215,7 +215,15 @@ write_files:
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
+      {{- if eq .CloudProviderName "nutanix" }}
+      open-iscsi \
+      {{- end }}
       ipvsadm
+    
+    {{- /* iscsid service is required on Nutanix machines for CSI driver to attach volumes. */}}
+    {{- if eq .CloudProviderName "nutanix" }}
+    systemctl enable --now iscsid
+    {{ end }}
 
     # Update grub to include kernel command options to enable swap accounting.
     # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
