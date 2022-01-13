@@ -208,6 +208,8 @@ func cleanupTemplateOutput(output string) (string, error) {
 const (
 	bootstrapAptBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
 apt update && apt install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
@@ -296,8 +298,16 @@ write_files:
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: '0600'
   encoding: b64
-  content: | 
+  content: |
     {{ .BootstrapKubeconfig }}
+{{- if and (eq .ProviderSpec.CloudProvider "openstack") (eq .ProviderSpec.OperatingSystem "centos") }}
+{{- /*  The normal way of setting it via cloud-init is broken, see */}}
+{{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
+- path: /etc/hostname
+  permissions: '0600'
+  content: |
+    {{ .MachineSpec.Name }}
+{{ end }}
 - path: /etc/systemd/system/bootstrap.service
   permissions: '0644'
   encoding: b64
