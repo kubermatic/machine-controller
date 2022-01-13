@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
@@ -287,11 +286,12 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		value, err := strconv.ParseBool(string(b))
-		if err != nil {
-			return fmt.Errorf("Error converting string to bool: '%v'", err)
+		var val *bool
+		if err := json.Unmarshal(b, &val); err != nil {
+			return fmt.Errorf("Error parsing value: '%v'", err)
 		}
-		configVarBool.Value = &value
+		configVarBool.Value = val
+
 		return nil
 	}
 
