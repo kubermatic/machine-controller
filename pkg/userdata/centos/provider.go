@@ -229,7 +229,6 @@ write_files:
     {{- if eq .CloudProviderName "nutanix" }}
     systemctl enable --now iscsid
     {{ end }}
-
 {{ .ContainerRuntimeScript | indent 4 }}
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
