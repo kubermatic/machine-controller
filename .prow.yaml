@@ -475,7 +475,6 @@ presubmits:
 
   - name: pull-machine-controller-e2e-linode
     always_run: false
-    run_if_changed: pkg\/cloudprovider\/provider\/linode\/.*
     optional: true
     decorate: true
     error_on_eviction: true
