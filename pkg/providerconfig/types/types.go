@@ -250,7 +250,7 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		if err != nil {
 			return []byte{}, err
 		}
-		return []byte(fmt.Sprintf("%v", string(jsonVal))), nil
+		return jsonVal, nil
 	}
 
 	buffer := bytes.NewBufferString("{")
@@ -274,12 +274,16 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
-	jsonVal, err := json.Marshal(configVarBool.Value)
-	if err != nil {
-		return []byte{}, err
+	if configVarBool.Value != nil {
+		jsonVal, err := json.Marshal(configVarBool.Value)
+		if err != nil {
+			return []byte{}, err
+		}
+
+		buffer.WriteString(fmt.Sprintf(`,"value":%v`, string(jsonVal)))
 	}
 
-	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, string(jsonVal)))
+	buffer.WriteString("}")
 
 	return buffer.Bytes(), nil
 }
