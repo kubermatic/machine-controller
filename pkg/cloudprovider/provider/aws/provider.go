@@ -436,7 +436,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		c.DiskIops = rawConfig.DiskIops
 	}
 
-	c.EBSVolumeEncrypted, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.EBSVolumeEncrypted)
+	c.EBSVolumeEncrypted, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.EBSVolumeEncrypted)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %v", err)
 	}
@@ -450,7 +450,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		}
 		c.SpotMaxPrice = pointer.StringPtr(maxPrice)
 
-		persistentRequest, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.SpotInstanceConfig.PersistentRequest)
+		persistentRequest, _, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.SpotInstanceConfig.PersistentRequest)
 		if err != nil {
 			return nil, nil, nil, err
 		}

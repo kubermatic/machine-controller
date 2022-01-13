@@ -140,11 +140,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Backups, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Backups)
+	c.Backups, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.Backups)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.PrivateNetworking, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.PrivateNetworking)
+	c.PrivateNetworking, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.PrivateNetworking)
 	if err != nil {
 		return nil, nil, err
 	}

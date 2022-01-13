@@ -271,7 +271,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get the value of \"routeTableName\" field, error = %v", err)
 	}
 
-	c.AssignPublicIP, err = p.configVarResolver.GetConfigVarBoolValue(rawCfg.AssignPublicIP)
+	c.AssignPublicIP, _, err = p.configVarResolver.GetConfigVarBoolValue(rawCfg.AssignPublicIP)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %v", err)
 	}

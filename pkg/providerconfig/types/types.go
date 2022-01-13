@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
@@ -221,7 +220,7 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 }
 
 type ConfigVarBool struct {
-	Value           bool                       `json:"value,omitempty"`
+	Value           *bool                      `json:"value,omitempty"`
 	SecretKeyRef    GlobalSecretKeySelector    `json:"secretKeyRef,omitempty"`
 	ConfigMapKeyRef GlobalConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
 }
@@ -247,7 +246,11 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 	}
 
 	if secretKeyRefEmpty && configMapKeyRefEmpty {
-		return []byte(fmt.Sprintf("%v", configVarBool.Value)), nil
+		jsonVal, err := json.Marshal(configVarBool.Value)
+		if err != nil {
+			return []byte{}, err
+		}
+		return []byte(fmt.Sprintf("%v", string(jsonVal))), nil
 	}
 
 	buffer := bytes.NewBufferString("{")
@@ -271,20 +274,27 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
-	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, configVarBool.Value))
+	jsonVal, err := json.Marshal(configVarBool.Value)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, string(jsonVal)))
 
 	return buffer.Bytes(), nil
 }
 
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		value, err := strconv.ParseBool(string(b))
-		if err != nil {
-			return fmt.Errorf("Error converting string to bool: '%v'", err)
+		var val *bool
+		if err := json.Unmarshal(b, &val); err != nil {
+			return fmt.Errorf("Error parsing value: '%v'", err)
 		}
-		configVarBool.Value = value
+		configVarBool.Value = val
+
 		return nil
 	}
+
 	var cvbDummy configVarBoolWithoutUnmarshaller
 	err := json.Unmarshal(b, &cvbDummy)
 	if err != nil {
