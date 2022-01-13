@@ -1,0 +1,465 @@
+#cloud-config
+bootcmd:
+- modprobe ip_tables
+
+hostname: node1
+fqdn: node1
+
+
+ssh_pwauth: false
+
+write_files:
+
+- path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
+  content: |
+    [Journal]
+    SystemMaxUse=5G
+
+
+- path: "/opt/load-kernel-modules.sh"
+  permissions: "0755"
+  content: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    modprobe ip_vs
+    modprobe ip_vs_rr
+    modprobe ip_vs_wrr
+    modprobe ip_vs_sh
+
+    if modinfo nf_conntrack_ipv4 &> /dev/null; then
+      modprobe nf_conntrack_ipv4
+    else
+      modprobe nf_conntrack
+    fi
+
+
+- path: "/etc/sysctl.d/k8s.conf"
+  content: |
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.bridge.bridge-nf-call-iptables = 1
+    kernel.panic_on_oops = 1
+    kernel.panic = 10
+    net.ipv4.ip_forward = 1
+    vm.overcommit_memory = 1
+    fs.inotify.max_user_watches = 1048576
+
+
+- path: /etc/selinux/config
+  content: |
+    # This file controls the state of SELinux on the system.
+    # SELINUX= can take one of these three values:
+    #     enforcing - SELinux security policy is enforced.
+    #     permissive - SELinux prints warnings instead of enforcing.
+    #     disabled - No SELinux policy is loaded.
+    SELINUX=permissive
+    # SELINUXTYPE= can take one of three two values:
+    #     targeted - Targeted processes are protected,
+    #     minimum - Modification of targeted policy. Only selected processes are protected.
+    #     mls - Multi Level Security protection.
+    SELINUXTYPE=targeted
+
+- path: "/opt/bin/setup"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+
+    setenforce 0 || true
+    systemctl restart systemd-modules-load.service
+    sysctl --system
+    sed -i.orig '/.*swap.*/d' /etc/fstab
+    swapoff -a
+
+    hostnamectl set-hostname node1
+
+
+    yum install -y \
+      device-mapper-persistent-data \
+      lvm2 \
+      ebtables \
+      ethtool \
+      nfs-utils \
+      bash-completion \
+      sudo \
+      socat \
+      wget \
+      curl \
+      iscsi-initiator-utils \
+      ipvsadm
+    systemctl enable --now iscsid
+
+
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
+
+    mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
+
+    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
+    [Service]
+    Restart=always
+    EnvironmentFile=-/etc/environment
+    EOF
+
+    yum install -y \
+        docker-ce-cli-19.03* \
+        containerd.io-1.4* \
+        docker-ce-19.03* \
+        yum-plugin-versionlock
+    yum versionlock add docker-ce* containerd.io
+
+    systemctl daemon-reload
+    systemctl enable --now docker
+
+    opt_bin=/opt/bin
+    usr_local_bin=/usr/local/bin
+    cni_bin_dir=/opt/cni/bin
+    mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+    arch=${HOST_ARCH-}
+    if [ -z "$arch" ]
+    then
+    case $(uname -m) in
+    x86_64)
+        arch="amd64"
+        ;;
+    aarch64)
+        arch="arm64"
+        ;;
+    *)
+        echo "unsupported CPU architecture, exiting"
+        exit 1
+        ;;
+    esac
+    fi
+    CNI_VERSION="${CNI_VERSION:-v0.8.7}"
+    cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
+    cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
+    curl -Lfo "$cni_bin_dir/$cni_filename" "$cni_base_url/$cni_filename"
+    cni_sum=$(curl -Lf "$cni_base_url/$cni_filename.sha256")
+    cd "$cni_bin_dir"
+    sha256sum -c <<<"$cni_sum"
+    tar xvf "$cni_filename"
+    rm -f "$cni_filename"
+    cd -
+    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.22.0}"
+    cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
+    cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
+    curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
+    cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+    cd "$opt_bin"
+    sha256sum -c <<<"$cri_tools_sum"
+    tar xvf "$cri_tools_filename"
+    rm -f "$cri_tools_filename"
+    ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
+    cd -
+    KUBE_VERSION="${KUBE_VERSION:-v1.22.2}"
+    kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
+    kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
+    kube_sum_file="$kube_dir/sha256"
+    mkdir -p "$kube_dir"
+    : >"$kube_sum_file"
+
+    for bin in kubelet kubeadm kubectl; do
+        curl -Lfo "$kube_dir/$bin" "$kube_base_url/$bin"
+        chmod +x "$kube_dir/$bin"
+        sum=$(curl -Lf "$kube_base_url/$bin.sha256")
+        echo "$sum  $kube_dir/$bin" >>"$kube_sum_file"
+    done
+    sha256sum -c "$kube_sum_file"
+
+    for bin in kubelet kubeadm kubectl; do
+        ln -sf "$kube_dir/$bin" "$opt_bin"/$bin
+    done
+
+    if [[ ! -x /opt/bin/health-monitor.sh ]]; then
+        curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh
+        chmod +x /opt/bin/health-monitor.sh
+    fi
+
+    # set kubelet nodeip environment variable
+    mkdir -p /etc/systemd/system/kubelet.service.d/
+    /opt/bin/setup_net_env.sh
+
+    systemctl enable --now kubelet
+    systemctl enable --now --no-block kubelet-healthcheck.service
+
+- path: "/opt/bin/supervise.sh"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    while ! "$@"; do
+      sleep 1
+    done
+
+- path: "/etc/systemd/system/kubelet.service"
+  content: |
+    [Unit]
+    After=docker.service
+    Requires=docker.service
+
+    Description=kubelet: The Kubernetes Node Agent
+    Documentation=https://kubernetes.io/docs/home/
+
+    [Service]
+    Restart=always
+    StartLimitInterval=0
+    RestartSec=10
+    CPUAccounting=true
+    MemoryAccounting=true
+
+    Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+    EnvironmentFile=-/etc/environment
+
+    ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+    ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
+    ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
+      --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+      --kubeconfig=/var/lib/kubelet/kubeconfig \
+      --config=/etc/kubernetes/kubelet.conf \
+      --network-plugin=cni \
+      --cert-dir=/etc/kubernetes/pki \
+      --cloud-provider=nutanix \
+      --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
+      --exit-on-lock-contention \
+      --lock-file=/tmp/kubelet.lock \
+      --container-runtime=docker \
+      --container-runtime-endpoint=unix:///var/run/dockershim.sock \
+      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
+      --feature-gates=DynamicKubeletConfig=true \
+      --node-ip ${KUBELET_NODE_IP}
+
+    [Install]
+    WantedBy=multi-user.target
+
+- path: "/etc/kubernetes/cloud-config"
+  permissions: "0600"
+  content: |
+    {config:true}
+
+- path: "/opt/bin/setup_net_env.sh"
+  permissions: "0755"
+  content: |
+    #!/usr/bin/env bash
+    echodate() {
+      echo "[$(date -Is)]" "$@"
+    }
+
+    # get the default interface IP address
+    DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
+
+    # get the full hostname
+    FULL_HOSTNAME=$(hostname -f)
+
+    if [ -z "${DEFAULT_IFC_IP}" ]
+    then
+    	echodate "Failed to get IP address for the default route interface"
+    	exit 1
+    fi
+
+    # write the nodeip_env file
+    # we need the line below because flatcar has the same string "coreos" in that file
+    if grep -q coreos /etc/os-release
+    then
+      echo -e "KUBELET_NODE_IP=${DEFAULT_IFC_IP}\nKUBELET_HOSTNAME=${FULL_HOSTNAME}" > /etc/kubernetes/nodeip.conf
+    elif [ ! -d /etc/systemd/system/kubelet.service.d ]
+    then
+    	echodate "Can't find kubelet service extras directory"
+    	exit 1
+    else
+      echo -e "[Service]\nEnvironment=\"KUBELET_NODE_IP=${DEFAULT_IFC_IP}\"\nEnvironment=\"KUBELET_HOSTNAME=${FULL_HOSTNAME}\"" > /etc/systemd/system/kubelet.service.d/nodeip.conf
+    fi
+
+
+- path: "/etc/kubernetes/bootstrap-kubelet.conf"
+  permissions: "0600"
+  content: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUVXakNDQTBLZ0F3SUJBZ0lKQUxmUmxXc0k4WVFITUEwR0NTcUdTSWIzRFFFQkJRVUFNSHN4Q3pBSkJnTlYKQkFZVEFsVlRNUXN3Q1FZRFZRUUlFd0pEUVRFV01CUUdBMVVFQnhNTlUyRnVJRVp5WVc1amFYTmpiekVVTUJJRwpBMVVFQ2hNTFFuSmhaR1pwZEhwcGJtTXhFakFRQmdOVkJBTVRDV3h2WTJGc2FHOXpkREVkTUJzR0NTcUdTSWIzCkRRRUpBUllPWW5KaFpFQmtZVzVuWVM1amIyMHdIaGNOTVRRd056RTFNakEwTmpBMVdoY05NVGN3TlRBME1qQTAKTmpBMVdqQjdNUXN3Q1FZRFZRUUdFd0pWVXpFTE1Ba0dBMVVFQ0JNQ1EwRXhGakFVQmdOVkJBY1REVk5oYmlCRwpjbUZ1WTJselkyOHhGREFTQmdOVkJBb1RDMEp5WVdSbWFYUjZhVzVqTVJJd0VBWURWUVFERXdsc2IyTmhiR2h2CmMzUXhIVEFiQmdrcWhraUc5dzBCQ1FFV0RtSnlZV1JBWkdGdVoyRXVZMjl0TUlJQklqQU5CZ2txaGtpRzl3MEIKQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdDVmQWpwNGZUY2VrV1VUZnpzcDBreWloMU9ZYnNHTDBLWDFlUmJTUwpSOE9kMCs5UTYySHlueStHRndNVGI0QS9LVThtc3NvSHZjY2VTQUFid2ZieEZLLytzNTFUb2JxVW5PUlpyT29UClpqa1V5Z2J5WERTSzk5WUJiY1IxUGlwOHZ3TVRtNFhLdUx0Q2lnZUJCZGpqQVFkZ1VPMjhMRU5HbHNNbm1lWWsKSmZPRFZHblZtcjVMdGI5QU5BOElLeVRmc25ISjRpT0NTL1BsUGJVajJxN1lub1ZMcG9zVUJNbGdVYi9DeWtYMwptT29MYjR5SkpReUEvaVNUNlp4aUlFajM2RDR5V1o1bGc3WUpsK1VpaUJRSEdDblBkR3lpcHFWMDZleDBoZVlXCmNhaVc4TFdaU1VROTNqUStXVkNIOGhUN0RRTzFkbXN2VW1YbHEvSmVBbHdRL1FJREFRQUJvNEhnTUlIZE1CMEcKQTFVZERnUVdCQlJjQVJPdGhTNFA0VTd2VGZqQnlDNTY5UjdFNkRDQnJRWURWUjBqQklHbE1JR2lnQlJjQVJPdApoUzRQNFU3dlRmakJ5QzU2OVI3RTZLRi9wSDB3ZXpFTE1Ba0dBMVVFQmhNQ1ZWTXhDekFKQmdOVkJBZ1RBa05CCk1SWXdGQVlEVlFRSEV3MVRZVzRnUm5KaGJtTnBjMk52TVJRd0VnWURWUVFLRXd0Q2NtRmtabWwwZW1sdVl6RVMKTUJBR0ExVUVBeE1KYkc5allXeG9iM04wTVIwd0d3WUpLb1pJaHZjTkFRa0JGZzVpY21Ga1FHUmhibWRoTG1OdgpiWUlKQUxmUmxXc0k4WVFITUF3R0ExVWRFd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVGQlFBRGdnRUJBRzZoClU5ZjlzTkgwLzZvQmJHR3kyRVZVMFVnSVRVUUlyRldvOXJGa3JXNWsvWGtEalFtKzNsempUMGlHUjRJeEUvQW8KZVU2c1FodWE3d3JXZUZFbjQ3R0w5OGxuQ3NKZEQ3b1pOaEZtUTk1VGIvTG5EVWpzNVlqOWJyUDBOV3pYZllVNApVSzJabklOSlJjSnBCOGlSQ2FDeEU4RGRjVUYwWHFJRXE2cEEyNzJzbm9MbWlYTE12Tmwza1lFZG0ramU2dm9ECjU4U05WRVVzenR6UXlYbUpFaENwd1ZJMEE2UUNqelhqK3F2cG13M1paSGk4SndYZWk4WlpCTFRTRkJraThaN24Kc0g5QkJIMzgvU3pVbUFONFFIU1B5MWdqcW0wME9BRThOYVlEa2gvYnpFNGQ3bUxHR01XcC9XRTNLUFN1ODJIRgprUGU2WG9TYmlMbS9reGszMlQwPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
+        server: https://server:443
+      name: ""
+    contexts: null
+    current-context: ""
+    kind: Config
+    preferences: {}
+    users:
+    - name: ""
+      user:
+        token: my-token
+
+
+- path: "/etc/kubernetes/kubelet.conf"
+  content: |
+    apiVersion: kubelet.config.k8s.io/v1beta1
+    authentication:
+      anonymous:
+        enabled: false
+      webhook:
+        cacheTTL: 0s
+        enabled: true
+      x509:
+        clientCAFile: /etc/kubernetes/pki/ca.crt
+    authorization:
+      mode: Webhook
+      webhook:
+        cacheAuthorizedTTL: 0s
+        cacheUnauthorizedTTL: 0s
+    cgroupDriver: systemd
+    clusterDomain: cluster.local
+    cpuManagerReconcilePeriod: 0s
+    evictionHard:
+      imagefs.available: 15%
+      memory.available: 100Mi
+      nodefs.available: 10%
+      nodefs.inodesFree: 5%
+    evictionPressureTransitionPeriod: 0s
+    featureGates:
+      RotateKubeletServerCertificate: true
+    fileCheckFrequency: 0s
+    httpCheckFrequency: 0s
+    imageMinimumGCAge: 0s
+    kind: KubeletConfiguration
+    kubeReserved:
+      cpu: 200m
+      ephemeral-storage: 1Gi
+      memory: 200Mi
+    logging: {}
+    memorySwap: {}
+    nodeStatusReportFrequency: 0s
+    nodeStatusUpdateFrequency: 0s
+    protectKernelDefaults: true
+    rotateCertificates: true
+    runtimeRequestTimeout: 0s
+    serverTLSBootstrap: true
+    shutdownGracePeriod: 0s
+    shutdownGracePeriodCriticalPods: 0s
+    staticPodPath: /etc/kubernetes/manifests
+    streamingConnectionIdleTimeout: 0s
+    syncFrequency: 0s
+    systemReserved:
+      cpu: 200m
+      ephemeral-storage: 1Gi
+      memory: 200Mi
+    tlsCipherSuites:
+    - TLS_AES_128_GCM_SHA256
+    - TLS_AES_256_GCM_SHA384
+    - TLS_CHACHA20_POLY1305_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+    - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+    - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+    volumePluginDir: /var/lib/kubelet/volumeplugins
+    volumeStatsAggPeriod: 0s
+
+
+- path: "/etc/kubernetes/pki/ca.crt"
+  content: |
+    -----BEGIN CERTIFICATE-----
+    MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
+    BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
+    A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
+    DQEJARYOYnJhZEBkYW5nYS5jb20wHhcNMTQwNzE1MjA0NjA1WhcNMTcwNTA0MjA0
+    NjA1WjB7MQswCQYDVQQGEwJVUzELMAkGA1UECBMCQ0ExFjAUBgNVBAcTDVNhbiBG
+    cmFuY2lzY28xFDASBgNVBAoTC0JyYWRmaXR6aW5jMRIwEAYDVQQDEwlsb2NhbGhv
+    c3QxHTAbBgkqhkiG9w0BCQEWDmJyYWRAZGFuZ2EuY29tMIIBIjANBgkqhkiG9w0B
+    AQEFAAOCAQ8AMIIBCgKCAQEAt5fAjp4fTcekWUTfzsp0kyih1OYbsGL0KX1eRbSS
+    R8Od0+9Q62Hyny+GFwMTb4A/KU8mssoHvcceSAAbwfbxFK/+s51TobqUnORZrOoT
+    ZjkUygbyXDSK99YBbcR1Pip8vwMTm4XKuLtCigeBBdjjAQdgUO28LENGlsMnmeYk
+    JfODVGnVmr5Ltb9ANA8IKyTfsnHJ4iOCS/PlPbUj2q7YnoVLposUBMlgUb/CykX3
+    mOoLb4yJJQyA/iST6ZxiIEj36D4yWZ5lg7YJl+UiiBQHGCnPdGyipqV06ex0heYW
+    caiW8LWZSUQ93jQ+WVCH8hT7DQO1dmsvUmXlq/JeAlwQ/QIDAQABo4HgMIHdMB0G
+    A1UdDgQWBBRcAROthS4P4U7vTfjByC569R7E6DCBrQYDVR0jBIGlMIGigBRcAROt
+    hS4P4U7vTfjByC569R7E6KF/pH0wezELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNB
+    MRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRQwEgYDVQQKEwtCcmFkZml0emluYzES
+    MBAGA1UEAxMJbG9jYWxob3N0MR0wGwYJKoZIhvcNAQkBFg5icmFkQGRhbmdhLmNv
+    bYIJALfRlWsI8YQHMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBAG6h
+    U9f9sNH0/6oBbGGy2EVU0UgITUQIrFWo9rFkrW5k/XkDjQm+3lzjT0iGR4IxE/Ao
+    eU6sQhua7wrWeFEn47GL98lnCsJdD7oZNhFmQ95Tb/LnDUjs5Yj9brP0NWzXfYU4
+    UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
+    58SNVEUsztzQyXmJEhCpwVI0A6QCjzXj+qvpmw3ZZHi8JwXei8ZZBLTSFBki8Z7n
+    sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
+    kPe6XoSbiLm/kxk32T0=
+    -----END CERTIFICATE-----
+
+- path: "/etc/systemd/system/setup.service"
+  permissions: "0644"
+  content: |
+    [Install]
+    WantedBy=multi-user.target
+
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
+    ExecStart=/opt/bin/supervise.sh /opt/bin/setup
+
+- path: "/etc/profile.d/opt-bin-path.sh"
+  permissions: "0644"
+  content: |
+    export PATH="/opt/bin:$PATH"
+
+- path: /etc/docker/daemon.json
+  permissions: "0644"
+  content: |
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"}}
+
+- path: /etc/systemd/system/kubelet-healthcheck.service
+  permissions: "0644"
+  content: |
+    [Unit]
+    Requires=kubelet.service
+    After=kubelet.service
+
+    [Service]
+    ExecStart=/opt/bin/health-monitor.sh kubelet
+
+    [Install]
+    WantedBy=multi-user.target
+
+
+- path: "/opt/bin/disable-nm-cloud-setup"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    if systemctl status 'nm-cloud-setup.timer' 2> /dev/null | grep -Fq "Active:"; then
+            systemctl stop nm-cloud-setup.timer
+            systemctl disable nm-cloud-setup.service
+            systemctl disable nm-cloud-setup.timer
+            reboot
+    fi
+
+- path: "/etc/systemd/system/disable-nm-cloud-setup.service"
+  permissions: "0644"
+  content: |
+    [Install]
+    WantedBy=multi-user.target
+
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
+    ExecStart=/opt/bin/supervise.sh /opt/bin/disable-nm-cloud-setup
+
+rh_subscription:
+    username: ""
+    password: ""
+    auto-attach: false
+
+runcmd:
+- systemctl start setup.service
+- systemctl start disable-nm-cloud-setup.service
