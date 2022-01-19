@@ -28,6 +28,7 @@ import (
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	osextendedstatus "github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
 	osservers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	osfloatingips "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	osnetworks "github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
@@ -43,7 +44,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -103,6 +104,7 @@ type Config struct {
 	RootDiskSizeGB        *int
 	RootDiskVolumeType    string
 	NodeVolumeAttachLimit *uint
+	ServerGroup           string
 
 	InstanceReadyCheckPeriod  time.Duration
 	InstanceReadyCheckTimeout time.Duration
@@ -173,15 +175,17 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	return nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(spec v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
+	if spec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
+
 	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+	err := json.Unmarshal(spec.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	var rawConfig openstacktypes.RawConfig
 	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
 	if err != nil {
@@ -192,89 +196,107 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	c := Config{}
-	c.IdentityEndpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.IdentityEndpoint, "OS_AUTH_URL")
+	cfg := Config{}
+	cfg.IdentityEndpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.IdentityEndpoint, "OS_AUTH_URL")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"identityEndpoint\" field, error = %v", err)
 	}
+
 	// Retrieve authentication config, username/password or application credentials
-	err = p.getConfigAuth(&c, &rawConfig)
+	err = p.getConfigAuth(&cfg, &rawConfig)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to retrieve authentication credentials, error = %v", err)
 	}
+
 	// Ignore Region not found as Region might not be found and we can default it later
-	c.Region, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
+	cfg.Region, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
 	if err != nil {
 		klog.V(6).Infof("Region from configuration or environment variable not found")
 	}
 
-	c.InstanceReadyCheckPeriod, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckPeriod, 5*time.Second)
+	cfg.InstanceReadyCheckPeriod, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckPeriod, 5*time.Second)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckPeriod" field, error = %v`, err)
 	}
 
-	c.InstanceReadyCheckTimeout, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckTimeout, 10*time.Second)
+	cfg.InstanceReadyCheckTimeout, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckTimeout, 10*time.Second)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckTimeout" field, error = %v`, err)
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
-	c.DomainName, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
-	c.TokenID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TokenID)
+	cfg.DomainName, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
+	cfg.TokenID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TokenID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Image, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Image)
+
+	cfg.Image, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Image)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.Flavor, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Flavor)
+
+	cfg.Flavor, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Flavor)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	for _, securityGroup := range rawConfig.SecurityGroups {
 		securityGroupValue, err := p.configVarResolver.GetConfigVarStringValue(securityGroup)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.SecurityGroups = append(c.SecurityGroups, securityGroupValue)
-	}
-	c.Network, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Network)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.Subnet, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Subnet)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.FloatingIPPool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.FloatingIPPool)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.TrustDevicePath, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.ComputeAPIVersion, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ComputeAPIVersion)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.RootDiskSizeGB = rawConfig.RootDiskSizeGB
-	c.RootDiskVolumeType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RootDiskVolumeType)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	c.NodeVolumeAttachLimit = rawConfig.NodeVolumeAttachLimit
-	c.Tags = rawConfig.Tags
-	if c.Tags == nil {
-		c.Tags = map[string]string{}
+		cfg.SecurityGroups = append(cfg.SecurityGroups, securityGroupValue)
 	}
 
-	return &c, &pconfig, &rawConfig, err
+	cfg.Network, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Network)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.Subnet, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Subnet)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.FloatingIPPool, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.FloatingIPPool)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.AvailabilityZone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AvailabilityZone)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.TrustDevicePath, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.TrustDevicePath)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.ComputeAPIVersion, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ComputeAPIVersion)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.RootDiskSizeGB = rawConfig.RootDiskSizeGB
+	cfg.RootDiskVolumeType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.RootDiskVolumeType)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	cfg.NodeVolumeAttachLimit = rawConfig.NodeVolumeAttachLimit
+	cfg.Tags = rawConfig.Tags
+	if cfg.Tags == nil {
+		cfg.Tags = map[string]string{}
+	}
+
+	cfg.ServerGroup, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ServerGroup)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return &cfg, &pconfig, &rawConfig, err
 }
 
 func setProviderSpec(rawConfig openstacktypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
@@ -533,7 +555,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	cfg, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -541,46 +563,46 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	client, err := p.clientGetter(c)
+	client, err := p.clientGetter(cfg)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
-	computeClient, err := getNewComputeV2(client, c)
+	computeClient, err := getNewComputeV2(client, cfg)
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a openstack client")
 	}
 
-	flavor, err := getFlavor(computeClient, c)
+	flavor, err := getFlavor(computeClient, cfg)
 	if err != nil {
-		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get flavor %s", c.Flavor))
+		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get flavor %s", cfg.Flavor))
 	}
 
 	// Get OS Image Client
-	imageClient, err := goopenstack.NewImageServiceV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	imageClient, err := goopenstack.NewImageServiceV2(client, gophercloud.EndpointOpts{Region: cfg.Region})
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a image client")
 	}
 
-	image, err := getImageByName(imageClient, c)
+	image, err := getImageByName(imageClient, cfg)
 	if err != nil {
-		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get image %s", c.Image))
+		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get image %s", cfg.Image))
 	}
 
-	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
+	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: cfg.Region})
 	if err != nil {
 		return nil, err
 	}
 
-	network, err := getNetwork(netClient, c.Network)
+	network, err := getNetwork(netClient, cfg.Network)
 	if err != nil {
-		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get network %s", c.Network))
+		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get network %s", cfg.Network))
 	}
 
-	securityGroups := c.SecurityGroups
+	securityGroups := cfg.SecurityGroups
 	if len(securityGroups) == 0 {
 		klog.V(2).Infof("creating security group %s for worker nodes", securityGroupName)
-		err = ensureKubernetesSecurityGroupExist(client, c.Region, securityGroupName)
+		err = ensureKubernetesSecurityGroupExist(client, cfg.Region, securityGroupName)
 		if err != nil {
 			return nil, fmt.Errorf("Error occurred creating security groups: %v", err)
 		}
@@ -588,7 +610,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	// we check against reserved tags in Validation method
-	allTags := c.Tags
+	allTags := cfg.Tags
 	allTags[machineUIDMetaKey] = string(machine.UID)
 
 	serverOpts := osservers.CreateOpts{
@@ -596,13 +618,24 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		FlavorRef:        flavor.ID,
 		UserData:         []byte(userdata),
 		SecurityGroups:   securityGroups,
-		AvailabilityZone: c.AvailabilityZone,
+		AvailabilityZone: cfg.AvailabilityZone,
 		Networks:         []osservers.Network{{UUID: network.ID}},
 		Metadata:         allTags,
 	}
 
+	var createOpts osservers.CreateOptsBuilder = &serverOpts
+
+	if cfg.ServerGroup != "" {
+		createOpts = schedulerhints.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
+			SchedulerHints: schedulerhints.SchedulerHints{
+				Group: cfg.ServerGroup,
+			},
+		}
+	}
+
 	var server serverWithExt
-	if c.RootDiskSizeGB != nil {
+	if cfg.RootDiskSizeGB != nil {
 		blockDevices := []bootfromvolume.BlockDevice{
 			{
 				BootIndex:           0,
@@ -610,14 +643,16 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 				DestinationType:     bootfromvolume.DestinationVolume,
 				SourceType:          bootfromvolume.SourceImage,
 				UUID:                image.ID,
-				VolumeSize:          *c.RootDiskSizeGB,
-				VolumeType:          c.RootDiskVolumeType,
+				VolumeSize:          *cfg.RootDiskSizeGB,
+				VolumeType:          cfg.RootDiskVolumeType,
 			},
 		}
-		createOpts := bootfromvolume.CreateOptsExt{
-			CreateOptsBuilder: serverOpts,
+
+		createOpts = bootfromvolume.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
 			BlockDevice:       blockDevices,
 		}
+
 		if err := bootfromvolume.Create(computeClient, createOpts).ExtractInto(&server); err != nil {
 			return nil, osErrorToTerminalError(err, "failed to create server with volume")
 		}
@@ -626,18 +661,19 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		// mapping is not used. Otherwish an error may occur with some
 		// OpenStack providers/versions .e.g. OpenTelekom Cloud
 		serverOpts.ImageRef = image.ID
-		if err := osservers.Create(computeClient, serverOpts).ExtractInto(&server); err != nil {
+
+		if err := osservers.Create(computeClient, createOpts).ExtractInto(&server); err != nil {
 			return nil, osErrorToTerminalError(err, "failed to create server")
 		}
 	}
 
-	if c.FloatingIPPool != "" {
-		if err := p.portReadinessWaiter(netClient, server.ID, network.ID, c.InstanceReadyCheckPeriod, c.InstanceReadyCheckTimeout); err != nil {
+	if cfg.FloatingIPPool != "" {
+		if err := p.portReadinessWaiter(netClient, server.ID, network.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
 			klog.V(2).Infof("port for instance %q did not became active due to: %v", server.ID, err)
 		}
 
 		// Find a free FloatingIP or allocate a new one
-		if err := assignFloatingIPToInstance(data.Update, machine, netClient, server.ID, c.FloatingIPPool, c.Region, network); err != nil {
+		if err := assignFloatingIPToInstance(data.Update, machine, netClient, server.ID, cfg.FloatingIPPool, cfg.Region, network); err != nil {
 			defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %w", server.ID, err)
 		}
@@ -895,8 +931,8 @@ func (d *osInstance) ID() string {
 	return d.server.ID
 }
 
-func (d *osInstance) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (d *osInstance) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 	for _, networkAddresses := range d.server.Addresses {
 		for _, element := range networkAddresses.([]interface{}) {
 			address := element.(map[string]interface{})
