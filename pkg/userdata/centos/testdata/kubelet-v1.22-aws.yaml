@@ -300,6 +300,7 @@ write_files:
         cacheUnauthorizedTTL: 0s
     cgroupDriver: systemd
     clusterDomain: cluster.local
+    containerLogMaxSize: 100Mi
     cpuManagerReconcilePeriod: 0s
     evictionHard:
       imagefs.available: 15%

@@ -157,6 +157,7 @@ write_files:
     clusterDNS:
     - 10.10.10.10
     clusterDomain: cluster.local
+    containerLogMaxSize: 100Mi
     cpuManagerReconcilePeriod: 0s
     evictionHard:
       imagefs.available: 15%

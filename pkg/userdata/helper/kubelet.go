@@ -203,6 +203,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		EvictionHard:          map[string]string{"memory.available": "100Mi", "nodefs.available": "10%", "nodefs.inodesFree": "5%", "imagefs.available": "15%"},
 		VolumePluginDir:       "/var/lib/kubelet/volumeplugins",
 		TLSCipherSuites:       kubeletTLSCipherSuites,
+		ContainerLogMaxSize:   "100Mi",
 	}
 
 	if kubeReserved, ok := kubeletConfigs[common.KubeReservedKubeletConfig]; ok {
@@ -233,6 +234,9 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 			}
 			cfg.EvictionHard[ehKV[0]] = ehKV[1]
 		}
+	}
+	if containerLogMaxSize, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
+		cfg.ContainerLogMaxSize = containerLogMaxSize
 	}
 
 	buf, err := kyaml.Marshal(cfg)
