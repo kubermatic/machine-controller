@@ -543,7 +543,7 @@ presubmits:
               cpu: 500m
 
   - name: pull-machine-controller-e2e-vsphere
-    always_run: true
+    always_run: false
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
@@ -788,7 +788,7 @@ presubmits:
               cpu: 500m
 
   - name: pull-machine-controller-e2e-vsphere-resource-pool
-    always_run: true
+    always_run: false
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
