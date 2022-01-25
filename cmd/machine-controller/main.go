@@ -23,7 +23,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"net/url"
 	"strings"
 	"time"
 
@@ -84,7 +83,7 @@ var (
 	podCidr                       string
 	nodePortRange                 string
 	nodeRegistryCredentialsSecret string
-	nodeContainerdRegistryMirrors = registryMirrorsFlags{}
+	nodeContainerdRegistryMirrors = containerruntime.RegistryMirrorsFlags{}
 )
 
 const (
@@ -237,37 +236,17 @@ func main() {
 	ctrlMetrics := machinecontroller.NewMachineControllerMetrics()
 	ctrlMetrics.MustRegister(metrics.Registry)
 
-	var insecureRegistries []string
-	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
-		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {
-			insecureRegistries = append(insecureRegistries, trimmedRegistry)
-		}
+	containerRuntimeOpts := containerruntime.Opts{
+		ContainerRuntime:          nodeContainerRuntime,
+		ContainerdRegistryMirrors: nodeContainerdRegistryMirrors,
+		InsecureRegistries:        nodeInsecureRegistries,
+		PauseImage:                nodePauseImage,
+		RegistryMirrors:           nodeRegistryMirrors,
+		RegistryCredentialsSecret: nodeRegistryCredentialsSecret,
 	}
-
-	var registryMirrors []string
-	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
-		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
-			if !strings.HasPrefix(mirror, "http") {
-				trimmedMirror = "https://" + mirror
-			}
-
-			_, err := url.Parse(trimmedMirror)
-			if err != nil {
-				klog.Fatalf("incorrect mirror provided: %v", err)
-			}
-
-			registryMirrors = append(registryMirrors, trimmedMirror)
-		}
-	}
-
-	if len(registryMirrors) > 0 {
-		nodeContainerdRegistryMirrors["docker.io"] = registryMirrors
-	}
-
-	if nodeRegistryCredentialsSecret != "" {
-		if secRef := strings.Split(nodeRegistryCredentialsSecret, "/"); len(secRef) != 2 {
-			klog.Fatalf("-node-registry-credentials-secret is in incorrect format %q, should be in 'namespace/secretname'", nodeRegistryCredentialsSecret)
-		}
+	containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
+	if err != nil {
+		klog.Fatalf("failed to generate container runtime config: %v", err)
 	}
 
 	runOptions := controllerRunOptions{
@@ -285,12 +264,7 @@ func main() {
 			NoProxy:                      nodeNoProxy,
 			PauseImage:                   nodePauseImage,
 			RegistryCredentialsSecretRef: nodeRegistryCredentialsSecret,
-			ContainerRuntime: containerruntime.Get(
-				nodeContainerRuntime,
-				containerruntime.WithInsecureRegistries(insecureRegistries),
-				containerruntime.WithRegistryMirrors(nodeContainerdRegistryMirrors),
-				containerruntime.WithSandboxImage(nodePauseImage),
-			),
+			ContainerRuntime:             containerRuntimeConfig,
 		},
 		useOSM:        useOSM,
 		podCidr:       podCidr,
