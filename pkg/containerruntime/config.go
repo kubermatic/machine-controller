@@ -37,7 +37,7 @@ type Opts struct {
 	ContainerdRegistryMirrors RegistryMirrorsFlags
 }
 
-func GenerateContainerRuntimeConfig(opts Opts) (Config, error) {
+func BuildConfig(opts Opts) (Config, error) {
 	var insecureRegistries []string
 	for _, registry := range strings.Split(opts.InsecureRegistries, ",") {
 		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {

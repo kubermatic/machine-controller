@@ -425,7 +425,7 @@ func TestUserDataGeneration(t *testing.T) {
 				InsecureRegistries: test.insecureRegistries,
 				RegistryMirrors:    test.registryMirrors,
 			}
-			containerRuntimeConfig, err := containerruntime.GenerateContainerRuntimeConfig(containerRuntimeOpts)
+			containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
 			if err != nil {
 				t.Fatalf("failed to generate container runtime config: %v", err)
 			}

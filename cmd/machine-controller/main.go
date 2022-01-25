@@ -244,7 +244,7 @@ func main() {
 		RegistryMirrors:           nodeRegistryMirrors,
 		RegistryCredentialsSecret: nodeRegistryCredentialsSecret,
 	}
-	containerRuntimeConfig, err := containerruntime.GenerateContainerRuntimeConfig(containerRuntimeOpts)
+	containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
 	if err != nil {
 		klog.Fatalf("failed to generate container runtime config: %v", err)
 	}
