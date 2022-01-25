@@ -21,15 +21,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type RegistryMirrorsFlags map[string][]string
 
 type Opts struct {
 	ContainerRuntime          string
@@ -38,41 +35,6 @@ type Opts struct {
 	RegistryCredentialsSecret string
 	PauseImage                string
 	ContainerdRegistryMirrors RegistryMirrorsFlags
-}
-
-func (fl RegistryMirrorsFlags) Set(val string) error {
-	split := strings.SplitN(val, "=", 2)
-	if len(split) != 2 {
-		return fmt.Errorf("should have exactly 1 =")
-	}
-
-	key, value := split[0], split[1]
-	slice := fl[key]
-	slice = append(slice, value)
-	fl[key] = slice
-
-	return nil
-}
-
-func (fl RegistryMirrorsFlags) String() string {
-	var (
-		registryNames []string
-		result        []string
-	)
-
-	for registryName := range fl {
-		registryNames = append(registryNames, registryName)
-	}
-
-	sort.Strings(registryNames)
-
-	for _, registryName := range registryNames {
-		for _, mirror := range fl[registryName] {
-			result = append(result, fmt.Sprintf("%s=%s", registryName, mirror))
-		}
-	}
-
-	return fmt.Sprintf("%v", result)
 }
 
 func GenerateContainerRuntimeConfig(opts Opts) (Config, error) {

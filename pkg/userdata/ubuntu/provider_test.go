@@ -119,6 +119,7 @@ type userDataTestCase struct {
 	noProxy               string
 	insecureRegistries    string
 	registryMirrors       string
+	containerdRegistryMirrors containerruntime.RegistryMirrorsFlags
 	registryCredentials   map[string]containerruntime.AuthConfig
 	pauseImage            string
 	containerruntime      string
@@ -405,7 +406,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			httpProxy:       "http://192.168.100.100:3128",
 			noProxy:         "192.168.1.0",
-			registryMirrors: "docker.io=https://registry.docker-cn.com",
+			registryMirrors: "https://registry.docker-cn.com",
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -418,7 +419,9 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			insecureRegistries: "k8s.gcr.io",
-			registryMirrors:    "k8s.gcr.io=https://intranet.local",
+			containerdRegistryMirrors: map[string][]string{
+				"k8s.gcr.io": {"https://intranet.local"},
+			},
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
@@ -501,6 +504,7 @@ func TestUserDataGeneration(t *testing.T) {
 				ContainerRuntime:   test.containerruntime,
 				InsecureRegistries: test.insecureRegistries,
 				RegistryMirrors:    test.registryMirrors,
+				ContainerdRegistryMirrors: test.containerdRegistryMirrors,
 			}
 			containerRuntimeConfig, err := containerruntime.GenerateContainerRuntimeConfig(containerRuntimeOpts)
 			if err != nil {
