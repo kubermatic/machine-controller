@@ -117,8 +117,8 @@ type userDataTestCase struct {
 	externalCloudProvider bool
 	httpProxy             string
 	noProxy               string
-	insecureRegistries    []string
-	registryMirrors       map[string][]string
+	insecureRegistries    string
+	registryMirrors       string
 	registryCredentials   map[string]containerruntime.AuthConfig
 	pauseImage            string
 	containerruntime      string
@@ -375,7 +375,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			httpProxy:          "http://192.168.100.100:3128",
 			noProxy:            "192.168.1.0",
-			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			insecureRegistries: "192.168.100.100:5000, 10.0.0.1:5000",
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -405,7 +405,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			httpProxy:       "http://192.168.100.100:3128",
 			noProxy:         "192.168.1.0",
-			registryMirrors: map[string][]string{"docker.io": {"https://registry.docker-cn.com"}},
+			registryMirrors: "docker.io=https://registry.docker-cn.com",
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -417,10 +417,8 @@ func TestUserDataGeneration(t *testing.T) {
 					Password: "passwd1",
 				},
 			},
-			insecureRegistries: []string{"k8s.gcr.io"},
-			registryMirrors: map[string][]string{
-				"k8s.gcr.io": {"https://intranet.local"},
-			},
+			insecureRegistries: "k8s.gcr.io",
+			registryMirrors:    "k8s.gcr.io=https://intranet.local",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
@@ -499,6 +497,17 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
+			containerRuntimeOpts := containerruntime.Opts{
+				ContainerRuntime:   test.containerruntime,
+				InsecureRegistries: test.insecureRegistries,
+				RegistryMirrors:    test.registryMirrors,
+			}
+			containerRuntimeConfig, err := containerruntime.GenerateContainerRuntimeConfig(containerRuntimeOpts)
+			if err != nil {
+				t.Fatalf("failed to generate container runtime config: %v", err)
+			}
+			containerRuntimeConfig.RegistryCredentials = test.registryCredentials
+
 			req := plugin.UserDataRequest{
 				MachineSpec:              test.spec,
 				Kubeconfig:               kubeconfig,
@@ -511,12 +520,7 @@ func TestUserDataGeneration(t *testing.T) {
 				NoProxy:                  test.noProxy,
 				PauseImage:               test.pauseImage,
 				KubeletFeatureGates:      kubeletFeatureGates,
-				ContainerRuntime: containerruntime.Get(
-					test.containerruntime,
-					containerruntime.WithInsecureRegistries(test.insecureRegistries),
-					containerruntime.WithRegistryMirrors(test.registryMirrors),
-					containerruntime.WithRegistryCredentials(test.registryCredentials),
-				),
+				ContainerRuntime:         containerRuntimeConfig,
 			}
 			s, err := provider.UserData(req)
 			if err != nil {

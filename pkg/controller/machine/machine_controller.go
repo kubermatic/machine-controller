@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -726,22 +725,9 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				externalCloudProvider, _ = strconv.ParseBool(val)
 			}
 
-			registryCredentials := map[string]containerruntime.AuthConfig{}
-
-			if secRef := strings.SplitN(r.nodeSettings.RegistryCredentialsSecretRef, "/", 2); len(secRef) == 2 {
-				var credsSecret corev1.Secret
-				err := r.client.Get(ctx, types.NamespacedName{Namespace: secRef[0], Name: secRef[1]}, &credsSecret)
-				if err != nil {
-					return nil, fmt.Errorf("failed to retrieve registry credentials secret object: %w", err)
-				}
-
-				for registry, data := range credsSecret.Data {
-					var regCred containerruntime.AuthConfig
-					if err := json.Unmarshal(data, &regCred); err != nil {
-						return nil, fmt.Errorf("failed to unmarshal registry credentials: %w", err)
-					}
-					registryCredentials[registry] = regCred
-				}
+			registryCredentials, err := containerruntime.GetContainerdAuthConfig(ctx, r.client, r.nodeSettings.RegistryCredentialsSecretRef)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get containerd auth config: %v", err)
 			}
 
 			crRuntime := r.nodeSettings.ContainerRuntime
