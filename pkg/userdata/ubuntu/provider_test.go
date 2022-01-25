@@ -107,22 +107,22 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 
 // userDataTestCase contains the data for a table-driven test.
 type userDataTestCase struct {
-	name                  string
-	spec                  clusterv1alpha1.MachineSpec
-	ccProvider            cloud.ConfigProvider
-	osConfig              *Config
-	providerSpec          *providerconfigtypes.Config
-	DNSIPs                []net.IP
-	kubernetesCACert      string
-	externalCloudProvider bool
-	httpProxy             string
-	noProxy               string
-	insecureRegistries    string
-	registryMirrors       string
+	name                      string
+	spec                      clusterv1alpha1.MachineSpec
+	ccProvider                cloud.ConfigProvider
+	osConfig                  *Config
+	providerSpec              *providerconfigtypes.Config
+	DNSIPs                    []net.IP
+	kubernetesCACert          string
+	externalCloudProvider     bool
+	httpProxy                 string
+	noProxy                   string
+	insecureRegistries        string
+	registryMirrors           string
 	containerdRegistryMirrors containerruntime.RegistryMirrorsFlags
-	registryCredentials   map[string]containerruntime.AuthConfig
-	pauseImage            string
-	containerruntime      string
+	registryCredentials       map[string]containerruntime.AuthConfig
+	pauseImage                string
+	containerruntime          string
 }
 
 func simpleVersionTests() []userDataTestCase {
@@ -501,9 +501,9 @@ func TestUserDataGeneration(t *testing.T) {
 			}
 
 			containerRuntimeOpts := containerruntime.Opts{
-				ContainerRuntime:   test.containerruntime,
-				InsecureRegistries: test.insecureRegistries,
-				RegistryMirrors:    test.registryMirrors,
+				ContainerRuntime:          test.containerruntime,
+				InsecureRegistries:        test.insecureRegistries,
+				RegistryMirrors:           test.registryMirrors,
 				ContainerdRegistryMirrors: test.containerdRegistryMirrors,
 			}
 			containerRuntimeConfig, err := containerruntime.GenerateContainerRuntimeConfig(containerRuntimeOpts)
