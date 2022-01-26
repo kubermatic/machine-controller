@@ -235,6 +235,10 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		}
 	}
 
+	if enabled, ok := featureGates["SeccompDefault"]; ok && enabled {
+		cfg.SeccompDefault = pointer.Bool(true)
+	}
+
 	buf, err := kyaml.Marshal(cfg)
 	return string(buf), err
 }
