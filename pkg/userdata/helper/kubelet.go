@@ -36,6 +36,10 @@ import (
 )
 
 const (
+	defaultKubeletContainerLogMaxFiles = "5"
+)
+
+const (
 	kubeletFlagsTpl = `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
@@ -205,7 +209,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		EvictionHard:          map[string]string{"memory.available": "100Mi", "nodefs.available": "10%", "nodefs.inodesFree": "5%", "imagefs.available": "15%"},
 		VolumePluginDir:       "/var/lib/kubelet/volumeplugins",
 		TLSCipherSuites:       kubeletTLSCipherSuites,
-		ContainerLogMaxSize:   "100Mi",
+		ContainerLogMaxSize:   defaultKubeletContainerLogMaxFiles,
 	}
 
 	if kubeReserved, ok := kubeletConfigs[common.KubeReservedKubeletConfig]; ok {
