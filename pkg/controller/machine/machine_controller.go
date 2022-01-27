@@ -717,7 +717,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 			// grab kubelet general options from the annotations
 			kubeletFlags := common.GetKubeletFlags(machine.GetAnnotations())
-			KubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
+			kubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
 
 			// look up for ExternalCloudProvider feature, with fallback to command-line input
 			externalCloudProvider := r.nodeSettings.ExternalCloudProvider
@@ -733,11 +733,11 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			crRuntime := r.nodeSettings.ContainerRuntime
 			crRuntime.RegistryCredentials = registryCredentials
 
-			if val, ok := kubeletFlags[common.ContainerLogMaxSizeKubeletConfig]; ok {
+			if val, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
 				crRuntime.ContainerLogMaxSize = val
 			}
 
-			if val, ok := kubeletFlags[common.ContainerLogMaxFilesKubeletConfig]; ok {
+			if val, ok := kubeletConfigs[common.ContainerLogMaxFilesKubeletConfig]; ok {
 				crRuntime.ContainerLogMaxFiles = val
 			}
 
@@ -751,7 +751,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				PauseImage:               r.nodeSettings.PauseImage,
 				KubeletCloudProviderName: kubeletCloudProviderName,
 				KubeletFeatureGates:      kubeletFeatureGates,
-				KubeletConfigs:           KubeletConfigs,
+				KubeletConfigs:           kubeletConfigs,
 				NoProxy:                  r.nodeSettings.NoProxy,
 				HTTPProxy:                r.nodeSettings.HTTPProxy,
 				ContainerRuntime:         crRuntime,
