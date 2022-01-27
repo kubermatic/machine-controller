@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Machine Controller Authors.
+Copyright 2022 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package containerruntime
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 	"strings"
 )
 
-type registryMirrorsFlags map[string][]string
+type RegistryMirrorsFlags map[string][]string
 
-func (fl registryMirrorsFlags) Set(val string) error {
+func (fl RegistryMirrorsFlags) Set(val string) error {
 	split := strings.SplitN(val, "=", 2)
 	if len(split) != 2 {
 		return fmt.Errorf("should have exactly 1 =")
@@ -38,7 +38,7 @@ func (fl registryMirrorsFlags) Set(val string) error {
 	return nil
 }
 
-func (fl registryMirrorsFlags) String() string {
+func (fl RegistryMirrorsFlags) String() string {
 	var (
 		registryNames []string
 		result        []string

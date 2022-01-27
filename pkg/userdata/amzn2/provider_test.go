@@ -87,8 +87,8 @@ type userDataTestCase struct {
 	externalCloudProvider bool
 	httpProxy             string
 	noProxy               string
-	insecureRegistries    []string
-	registryMirrors       map[string][]string
+	insecureRegistries    string
+	registryMirrors       string
 	pauseImage            string
 	containerruntime      string
 }
@@ -158,7 +158,7 @@ func TestUserDataGeneration(t *testing.T) {
 			cloudProviderName:  stringPtr("vsphere"),
 			httpProxy:          "http://192.168.100.100:3128",
 			noProxy:            "192.168.1.0",
-			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			insecureRegistries: "192.168.100.100:5000, 10.0.0.1:5000",
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -172,7 +172,7 @@ func TestUserDataGeneration(t *testing.T) {
 			cloudProviderName: stringPtr("vsphere"),
 			httpProxy:         "http://192.168.100.100:3128",
 			noProxy:           "192.168.1.0",
-			registryMirrors:   map[string][]string{"docker.io": {"https://registry.docker-cn.com"}},
+			registryMirrors:   "https://registry.docker-cn.com",
 			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -240,6 +240,16 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
+			containerRuntimeOpts := containerruntime.Opts{
+				ContainerRuntime:   test.containerruntime,
+				InsecureRegistries: test.insecureRegistries,
+				RegistryMirrors:    test.registryMirrors,
+			}
+			containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
+			if err != nil {
+				t.Fatalf("failed to generate container runtime config: %v", err)
+			}
+
 			req := plugin.UserDataRequest{
 				MachineSpec:              test.spec,
 				Kubeconfig:               kubeconfig,
@@ -252,11 +262,7 @@ func TestUserDataGeneration(t *testing.T) {
 				NoProxy:                  test.noProxy,
 				PauseImage:               test.pauseImage,
 				KubeletFeatureGates:      kubeletFeatureGates,
-				ContainerRuntime: containerruntime.Get(
-					test.containerruntime,
-					containerruntime.WithInsecureRegistries(test.insecureRegistries),
-					containerruntime.WithRegistryMirrors(test.registryMirrors),
-				),
+				ContainerRuntime:         containerRuntimeConfig,
 			}
 
 			s, err := provider.UserData(req)

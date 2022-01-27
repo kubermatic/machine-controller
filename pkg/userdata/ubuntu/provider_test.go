@@ -107,21 +107,22 @@ func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpe
 
 // userDataTestCase contains the data for a table-driven test.
 type userDataTestCase struct {
-	name                  string
-	spec                  clusterv1alpha1.MachineSpec
-	ccProvider            cloud.ConfigProvider
-	osConfig              *Config
-	providerSpec          *providerconfigtypes.Config
-	DNSIPs                []net.IP
-	kubernetesCACert      string
-	externalCloudProvider bool
-	httpProxy             string
-	noProxy               string
-	insecureRegistries    []string
-	registryMirrors       map[string][]string
-	registryCredentials   map[string]containerruntime.AuthConfig
-	pauseImage            string
-	containerruntime      string
+	name                      string
+	spec                      clusterv1alpha1.MachineSpec
+	ccProvider                cloud.ConfigProvider
+	osConfig                  *Config
+	providerSpec              *providerconfigtypes.Config
+	DNSIPs                    []net.IP
+	kubernetesCACert          string
+	externalCloudProvider     bool
+	httpProxy                 string
+	noProxy                   string
+	insecureRegistries        string
+	registryMirrors           string
+	containerdRegistryMirrors containerruntime.RegistryMirrorsFlags
+	registryCredentials       map[string]containerruntime.AuthConfig
+	pauseImage                string
+	containerruntime          string
 }
 
 func simpleVersionTests() []userDataTestCase {
@@ -375,7 +376,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			httpProxy:          "http://192.168.100.100:3128",
 			noProxy:            "192.168.1.0",
-			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			insecureRegistries: "192.168.100.100:5000, 10.0.0.1:5000",
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -405,7 +406,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			httpProxy:       "http://192.168.100.100:3128",
 			noProxy:         "192.168.1.0",
-			registryMirrors: map[string][]string{"docker.io": {"https://registry.docker-cn.com"}},
+			registryMirrors: "https://registry.docker-cn.com",
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -417,8 +418,8 @@ func TestUserDataGeneration(t *testing.T) {
 					Password: "passwd1",
 				},
 			},
-			insecureRegistries: []string{"k8s.gcr.io"},
-			registryMirrors: map[string][]string{
+			insecureRegistries: "k8s.gcr.io",
+			containerdRegistryMirrors: map[string][]string{
 				"k8s.gcr.io": {"https://intranet.local"},
 			},
 			providerSpec: &providerconfigtypes.Config{
@@ -499,6 +500,18 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
+			containerRuntimeOpts := containerruntime.Opts{
+				ContainerRuntime:          test.containerruntime,
+				InsecureRegistries:        test.insecureRegistries,
+				RegistryMirrors:           test.registryMirrors,
+				ContainerdRegistryMirrors: test.containerdRegistryMirrors,
+			}
+			containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
+			if err != nil {
+				t.Fatalf("failed to generate container runtime config: %v", err)
+			}
+			containerRuntimeConfig.RegistryCredentials = test.registryCredentials
+
 			req := plugin.UserDataRequest{
 				MachineSpec:              test.spec,
 				Kubeconfig:               kubeconfig,
@@ -511,12 +524,7 @@ func TestUserDataGeneration(t *testing.T) {
 				NoProxy:                  test.noProxy,
 				PauseImage:               test.pauseImage,
 				KubeletFeatureGates:      kubeletFeatureGates,
-				ContainerRuntime: containerruntime.Get(
-					test.containerruntime,
-					containerruntime.WithInsecureRegistries(test.insecureRegistries),
-					containerruntime.WithRegistryMirrors(test.registryMirrors),
-					containerruntime.WithRegistryCredentials(test.registryCredentials),
-				),
+				ContainerRuntime:         containerRuntimeConfig,
 			}
 			s, err := provider.UserData(req)
 			if err != nil {

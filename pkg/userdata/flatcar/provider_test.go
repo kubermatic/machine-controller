@@ -109,8 +109,8 @@ type userDataTestCase struct {
 	externalCloudProvider bool
 	httpProxy             string
 	noProxy               string
-	insecureRegistries    []string
-	registryMirrors       map[string][]string
+	insecureRegistries    string
+	registryMirrors       string
 	pauseImage            string
 	containerruntime      string
 }
@@ -420,6 +420,16 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
+			containerRuntimeOpts := containerruntime.Opts{
+				ContainerRuntime:   test.containerruntime,
+				InsecureRegistries: test.insecureRegistries,
+				RegistryMirrors:    test.registryMirrors,
+			}
+			containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
+			if err != nil {
+				t.Fatalf("failed to generate container runtime config: %v", err)
+			}
+
 			req := plugin.UserDataRequest{
 				MachineSpec:              test.spec,
 				Kubeconfig:               kubeconfig,
@@ -432,11 +442,7 @@ func TestUserDataGeneration(t *testing.T) {
 				NoProxy:                  test.noProxy,
 				PauseImage:               test.pauseImage,
 				KubeletFeatureGates:      kubeletFeatureGates,
-				ContainerRuntime: containerruntime.Get(
-					test.containerruntime,
-					containerruntime.WithInsecureRegistries(test.insecureRegistries),
-					containerruntime.WithRegistryMirrors(test.registryMirrors),
-				),
+				ContainerRuntime:         containerRuntimeConfig,
 			}
 
 			s, err := provider.UserData(req)

@@ -128,6 +128,9 @@ spec:
             computeAPIVersion: "2.67"
             image: "Ubuntu 18.04 amd64"
             flavor: "m1.small"
+            # UUID of the server group
+            # used to configure affinity or anti-affinity of the VM instaces relative to hypervisor
+            serverGroup: ""
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
             securityGroups:
               - configMapKeyRef:

@@ -21,7 +21,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.7
 	github.com/google/uuid v1.1.2
-	github.com/gophercloud/gophercloud v0.14.0
+	github.com/gophercloud/gophercloud v0.24.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.25.0
 	github.com/linode/linodego v0.24.0
@@ -35,14 +35,14 @@ require (
 	github.com/sethvargo/go-password v0.2.0
 	github.com/tinkerbell/tink v0.0.0-20210315140655-1b178daeaeda
 	github.com/vmware/govmomi v0.23.1
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
+	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	google.golang.org/api v0.36.0
 	google.golang.org/grpc v1.38.0
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-	k8c.io/operating-system-manager v0.3.6
+	k8c.io/operating-system-manager v0.3.9
 	k8s.io/api v0.22.2
 	k8s.io/apiextensions-apiserver v0.22.2
 	k8s.io/apimachinery v0.22.2
