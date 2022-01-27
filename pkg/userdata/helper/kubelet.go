@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	defaultKubeletContainerLogMaxFiles = "5"
+	defaultKubeletContainerLogMaxSize = "100Mi"
 )
 
 const (
@@ -209,7 +209,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		EvictionHard:          map[string]string{"memory.available": "100Mi", "nodefs.available": "10%", "nodefs.inodesFree": "5%", "imagefs.available": "15%"},
 		VolumePluginDir:       "/var/lib/kubelet/volumeplugins",
 		TLSCipherSuites:       kubeletTLSCipherSuites,
-		ContainerLogMaxSize:   defaultKubeletContainerLogMaxFiles,
+		ContainerLogMaxSize:   defaultKubeletContainerLogMaxSize,
 	}
 
 	if kubeReserved, ok := kubeletConfigs[common.KubeReservedKubeletConfig]; ok {
