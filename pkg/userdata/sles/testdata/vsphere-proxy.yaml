@@ -189,6 +189,8 @@ write_files:
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
       --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
+      --container-runtime=docker \
+      --container-runtime-endpoint=unix:///var/run/dockershim.sock \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --feature-gates=DynamicKubeletConfig=true \
       --node-ip ${KUBELET_NODE_IP}
@@ -326,6 +328,7 @@ write_files:
     clusterDNS:
     - 10.10.10.10
     clusterDomain: cluster.local
+    containerLogMaxSize: 100Mi
     cpuManagerReconcilePeriod: 0s
     evictionHard:
       imagefs.available: 15%
@@ -382,7 +385,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"},"insecure-registries":["192.168.100.100:5000","10.0.0.1:5000"]}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"},"insecure-registries":["192.168.100.100:5000","10.0.0.1:5000"]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

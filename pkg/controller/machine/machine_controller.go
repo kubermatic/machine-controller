@@ -717,7 +717,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 			// grab kubelet general options from the annotations
 			kubeletFlags := common.GetKubeletFlags(machine.GetAnnotations())
-			KubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
+			kubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
 
 			// look up for ExternalCloudProvider feature, with fallback to command-line input
 			externalCloudProvider := r.nodeSettings.ExternalCloudProvider
@@ -733,6 +733,14 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			crRuntime := r.nodeSettings.ContainerRuntime
 			crRuntime.RegistryCredentials = registryCredentials
 
+			if val, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
+				crRuntime.ContainerLogMaxSize = val
+			}
+
+			if val, ok := kubeletConfigs[common.ContainerLogMaxFilesKubeletConfig]; ok {
+				crRuntime.ContainerLogMaxFiles = val
+			}
+
 			req := plugin.UserDataRequest{
 				MachineSpec:              machine.Spec,
 				Kubeconfig:               kubeconfig,
@@ -743,7 +751,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				PauseImage:               r.nodeSettings.PauseImage,
 				KubeletCloudProviderName: kubeletCloudProviderName,
 				KubeletFeatureGates:      kubeletFeatureGates,
-				KubeletConfigs:           KubeletConfigs,
+				KubeletConfigs:           kubeletConfigs,
 				NoProxy:                  r.nodeSettings.NoProxy,
 				HTTPProxy:                r.nodeSettings.HTTPProxy,
 				ContainerRuntime:         crRuntime,
@@ -760,8 +768,9 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
 				}
 
-				cloudConfigSecretName := fmt.Sprintf("%s-%s",
+				cloudConfigSecretName := fmt.Sprintf("%s-%s-%s",
 					referencedMachineDeployment,
+					machine.Namespace,
 					provisioningSuffix)
 
 				// It is important to check if the secret holding cloud-config exists

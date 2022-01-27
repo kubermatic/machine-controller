@@ -31,12 +31,14 @@ const (
 )
 
 type Docker struct {
-	insecureRegistries []string
-	registryMirrors    []string
+	insecureRegistries   []string
+	registryMirrors      []string
+	containerLogMaxFiles string
+	containerLogMaxSize  string
 }
 
 func (eng *Docker) Config() (string, error) {
-	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors)
+	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors, eng.containerLogMaxFiles, eng.containerLogMaxSize)
 }
 
 func (eng *Docker) ConfigFileName() string {
