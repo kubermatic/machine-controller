@@ -733,6 +733,14 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			crRuntime := r.nodeSettings.ContainerRuntime
 			crRuntime.RegistryCredentials = registryCredentials
 
+			if val, ok := kubeletFlags[common.ContainerLogMaxSizeKubeletConfig]; ok {
+				crRuntime.ContainerLogMaxSize = val
+			}
+
+			if val, ok := kubeletFlags[common.ContainerLogMaxFilesKubeletConfig]; ok {
+				crRuntime.ContainerLogMaxFiles = val
+			}
+
 			req := plugin.UserDataRequest{
 				MachineSpec:              machine.Spec,
 				Kubeconfig:               kubeconfig,
@@ -760,8 +768,9 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
 				}
 
-				cloudConfigSecretName := fmt.Sprintf("%s-%s",
+				cloudConfigSecretName := fmt.Sprintf("%s-%s-%s",
 					referencedMachineDeployment,
+					machine.Namespace,
 					provisioningSuffix)
 
 				// It is important to check if the secret holding cloud-config exists

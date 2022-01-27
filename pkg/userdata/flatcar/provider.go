@@ -277,7 +277,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root
@@ -551,7 +551,7 @@ write_files:
 - path: "/etc/kubernetes/kubelet.conf"
   permissions: "0644"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
 
 - path: /opt/load-kernel-modules.sh
   permissions: "0755"

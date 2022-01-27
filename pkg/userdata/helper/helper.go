@@ -25,6 +25,11 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
+const (
+	DefaultDockerContainerLogMaxFiles = "5"
+	DefaultDockerContainerLogMaxSize  = "100m"
+)
+
 func GetServerAddressFromKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
 	if len(kubeconfig.Clusters) != 1 {
 		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address")
@@ -112,14 +117,29 @@ type dockerConfig struct {
 }
 
 // DockerConfig returns the docker daemon.json.
-func DockerConfig(insecureRegistries, registryMirrors []string) (string, error) {
+func DockerConfig(insecureRegistries, registryMirrors []string, logMaxFiles string, logMaxSize string) (string, error) {
+	if len(logMaxSize) > 0 {
+		// Parse log max size to ensure that it has the correct units
+		logMaxSize = strings.ToLower(logMaxSize)
+		logMaxSize = strings.ReplaceAll(logMaxSize, "ki", "k")
+		logMaxSize = strings.ReplaceAll(logMaxSize, "mi", "m")
+		logMaxSize = strings.ReplaceAll(logMaxSize, "gi", "g")
+	} else {
+		logMaxSize = DefaultDockerContainerLogMaxSize
+	}
+
+	// Default if value is not provided
+	if len(logMaxFiles) == 0 {
+		logMaxFiles = DefaultDockerContainerLogMaxFiles
+	}
+
 	cfg := dockerConfig{
 		ExecOpts:      []string{"native.cgroupdriver=systemd"},
 		StorageDriver: "overlay2",
 		LogDriver:     "json-file",
 		LogOpts: map[string]string{
-			"max-size": "10m",
-			"max-file": "5",
+			"max-size": logMaxSize,
+			"max-file": logMaxFiles,
 		},
 		InsecureRegistries: insecureRegistries,
 		RegistryMirrors:    registryMirrors,

@@ -224,7 +224,7 @@ write_files:
       iscsi-initiator-utils \
       {{- end }}
       ipvsadm
-      
+
     {{- /* iscsid service is required on Nutanix machines for CSI driver to attach volumes. */}}
     {{- if eq .CloudProviderName "nutanix" }}
     systemctl enable --now iscsid
@@ -272,7 +272,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
 
 - path: "/etc/kubernetes/pki/ca.crt"
   content: |
