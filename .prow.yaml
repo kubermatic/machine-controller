@@ -766,7 +766,7 @@ presubmits:
               cpu: 500m
 
   - name: pull-machine-controller-e2e-vsphere-datastore-cluster
-    always_run: false
+    always_run: true
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
