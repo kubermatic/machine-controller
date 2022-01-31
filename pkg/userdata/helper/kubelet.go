@@ -22,6 +22,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Masterminds/semver/v3"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeletv1b1 "k8s.io/kubelet/config/v1beta1"
@@ -40,8 +42,9 @@ const (
 {{- end }}
 {{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
+{{- else if and (eq .CloudProvider "aws") (.IsExternal) }}
+--hostname-override=${KUBELET_HOSTNAME} \
 {{- end }}
---dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
 --exit-on-lock-contention \
 --lock-file=/tmp/kubelet.lock \
 {{- if .PauseImage }}
@@ -79,10 +82,35 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
 
 [Install]
 WantedBy=multi-user.target`
+
+	containerRuntimeHealthCheckSystemdUnitTpl = `[Unit]
+Requires={{ .ContainerRuntime }}.service
+After={{ .ContainerRuntime }}.service
+
+[Service]
+ExecStart=/opt/bin/health-monitor.sh container-runtime
+
+[Install]
+WantedBy=multi-user.target`
 )
 
 const cpFlags = `--cloud-provider=%s \
 --cloud-config=/etc/kubernetes/cloud-config`
+
+// List of allowed TLS cipher suites for kubelet
+var kubeletTLSCipherSuites = []string{
+	// TLS 1.3 cipher suites
+	"TLS_AES_128_GCM_SHA256",
+	"TLS_AES_256_GCM_SHA384",
+	"TLS_CHACHA20_POLY1305_SHA256",
+	// TLS 1.0 - 1.2 cipher suites
+	"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+	"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+	"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+	"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+	"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
+}
 
 // CloudProviderFlags returns --cloud-provider and --cloud-config flags
 func CloudProviderFlags(cpName string, external bool) (string, error) {
@@ -171,6 +199,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		KubeReserved:          map[string]string{"cpu": "200m", "memory": "300Mi", "ephemeral-storage": "1Gi"},
 		SystemReserved:        map[string]string{"cpu": "200m", "memory": "500Mi", "ephemeral-storage": "1Gi"},
 		VolumePluginDir:       "/var/lib/kubelet/volumeplugins",
+		TLSCipherSuites:       kubeletTLSCipherSuites,
 	}
 
 	buf, err := kyaml.Marshal(cfg)
@@ -187,6 +216,25 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 	initialTaintsArgs := []string{}
 	for _, taint := range initialTaints {
 		initialTaintsArgs = append(initialTaintsArgs, fmt.Sprintf("%s=%s:%s", taint.Key, taint.Value, taint.Effect))
+	}
+
+	kubeletFlags := make([]string, len(extraKubeletFlags))
+	copy(kubeletFlags, extraKubeletFlags)
+
+	ver, err := semver.NewVersion(version)
+	if err != nil {
+		return "", err
+	}
+	con, err := semver.NewConstraint("< 1.23")
+	if err != nil {
+		return "", err
+	}
+
+	if con.Check(ver) {
+		kubeletFlags = append(kubeletFlags,
+			"--dynamic-config-dir=/etc/kubernetes/dynamic-config-dir",
+			"--feature-gates=DynamicKubeletConfig=true",
+		)
 	}
 
 	data := struct {
@@ -206,7 +254,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		IsExternal:        external,
 		PauseImage:        pauseImage,
 		InitialTaints:     strings.Join(initialTaintsArgs, ","),
-		ExtraKubeletFlags: extraKubeletFlags,
+		ExtraKubeletFlags: kubeletFlags,
 	}
 
 	var buf strings.Builder
@@ -232,16 +280,23 @@ WantedBy=multi-user.target
 }
 
 // ContainerRuntimeHealthCheckSystemdUnit container-runtime health checking systemd unit
-func ContainerRuntimeHealthCheckSystemdUnit() string {
-	return `[Unit]
-Requires=docker.service
-After=docker.service
+func ContainerRuntimeHealthCheckSystemdUnit(containerRuntime string) (string, error) {
+	tmpl, err := template.New("container-runtime-healthcheck-systemd-unit").Funcs(TxtFuncMap()).Parse(containerRuntimeHealthCheckSystemdUnitTpl)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse container-runtime-healthcheck-systemd-unit template: %v", err)
+	}
 
-[Service]
-ExecStart=/opt/bin/health-monitor.sh container-runtime
+	data := struct {
+		ContainerRuntime string
+	}{
+		ContainerRuntime: containerRuntime,
+	}
 
-[Install]
-WantedBy=multi-user.target`
+	var buf strings.Builder
+	if err = tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute container-runtime-healthcheck-systemd-unit template: %w", err)
+	}
+	return buf.String(), nil
 }
 
 // KubeletRestartOnNotReadyScript script to check kubelet stopped posting node status every 10 minutes

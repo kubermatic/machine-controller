@@ -550,6 +550,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			Password:     c.Password,
 			InsecureFlag: c.AllowInsecure,
 			VCenterPort:  u.Port(),
+			ClusterID:    c.Cluster,
 		},
 		Disk: vspheretypes.DiskOpts{
 			SCSIControllerType: "pvscsi",

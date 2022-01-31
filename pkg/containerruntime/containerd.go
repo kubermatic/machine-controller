@@ -59,6 +59,9 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 	}
 
 	switch os {
+	case types.OperatingSystemAmazonLinux2:
+		err := containerdAmzn2Template.Execute(&buf, args)
+		return buf.String(), err
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL:
 		err := containerdYumTemplate.Execute(&buf, args)
 		return buf.String(), err
@@ -75,6 +78,28 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 }
 
 var (
+	containerdAmzn2Template = template.Must(template.New("containerd-yum-amzn2").Parse(`
+mkdir -p /etc/systemd/system/containerd.service.d
+
+cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
+[Service]
+Restart=always
+EnvironmentFile=-/etc/environment
+EOF
+
+cat <<EOF | tee /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+EOF
+
+yum install -y \
+	containerd-{{ .ContainerdVersion }}* \
+	yum-plugin-versionlock
+yum versionlock add containerd
+
+systemctl daemon-reload
+systemctl enable --now containerd
+`))
+
 	containerdYumTemplate = template.Must(template.New("containerd-yum").Parse(`
 yum install -y yum-utils
 yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
@@ -119,10 +144,14 @@ Restart=always
 EnvironmentFile=-/etc/environment
 EOF
 
-apt-get install -y containerd.io={{ .ContainerdVersion }}*
+apt-get install -y --allow-downgrades containerd.io={{ .ContainerdVersion }}*
 apt-mark hold containerd.io
 
 systemctl daemon-reload
 systemctl enable --now containerd
 `))
 )
+
+func (eng *Containerd) String() string {
+	return containerdName
+}

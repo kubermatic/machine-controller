@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -97,6 +97,8 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	}
 	kubeletImage = kubeletImage + ":v" + kubeletVersion.String()
 
+	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+
 	data := struct {
 		plugin.UserDataRequest
 		ProviderSpec       *providerconfigtypes.Config
@@ -119,6 +121,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletImage:       kubeletImage,
 		KubeletVersion:     kubeletVersion.String(),
 		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
+		ExtraKubeletFlags:  crEngine.KubeletFlags(),
 		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors,
 		MaxLogSize:         req.ContainerRuntime.NodeMaxLogSize,
@@ -224,7 +227,7 @@ systemd:
           Requires=download-script.service
           After=download-script.service
       contents: |
-{{ containerRuntimeHealthCheckSystemdUnit | indent 10 }}
+{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 10 }}
 
     - name: kubelet-healthcheck.service
       enabled: true
@@ -527,7 +530,7 @@ coreos:
         Requires=download-script.service
         After=download-script.service
     content: |
-{{ containerRuntimeHealthCheckSystemdUnit | indent 6 }}
+{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 6 }}
 
   - name: kubelet-healthcheck.service
     enable: true
@@ -739,4 +742,16 @@ write_files:
     set -xeuo pipefail
     sysctl --system
     systemctl disable apply-sysctl-settings.service
+
+{{- with .ProviderSpec.CAPublicKey }}
+
+- path: "/etc/ssh/trusted-user-ca-keys.pem"
+  content: |
+{{ . | indent 4 }}
+
+- path: "/etc/ssh/sshd_config"
+  content: |
+{{ sshConfigAddendum | indent 4 }}
+  append: true
+{{- end }}
 `

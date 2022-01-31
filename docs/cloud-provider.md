@@ -101,8 +101,14 @@ username: ""
 password: ""
 # the openstack domain
 domainName: "default"
-# tenant name
-tenantName: ""
+# project name
+projectName: ""
+# project id
+projectID: ""
+# tenant name (deprecated, should use projectName)
+tenantName: "" 
+# tenant Id (deprecated, should use projectID)
+tenantID: ""
 # image to use (currently only ubuntu is supported)
 image: "Ubuntu 18.04 amd64"
 # instance flavor
@@ -121,10 +127,14 @@ availabilityZone: ""
 region: ""
 # the name of the network to use
 network: ""
+# compute microversion
+computeAPIVersion: ""
 # set trust-device-path flag for kubelet
 trustDevicePath: false
 # set root disk size
 rootDiskSizeGB: 50
+# set root disk volume type
+rootDiskVolumeType: ""
 # set node-volume-attach-limit flag for cloud-config
 nodeVolumeAttachLimit: 20
 # the list of tags you would like to attach to the instance

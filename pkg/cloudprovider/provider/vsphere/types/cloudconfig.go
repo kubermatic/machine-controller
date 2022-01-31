@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/kubermatic/machine-controller/pkg/ini"
-
 	"github.com/Masterminds/sprig/v3"
+
+	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
 const (
@@ -78,6 +78,7 @@ type GlobalOpts struct {
 	Datacenter       string `gcfg:"datacenter"`
 	DefaultDatastore string `gcfg:"datastore"`
 	VCenterIP        string `gcfg:"server"`
+	ClusterID        string `gcfg:"cluster-id"`
 }
 
 type VirtualCenterConfig struct {

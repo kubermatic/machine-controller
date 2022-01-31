@@ -22,10 +22,11 @@ import (
 	"time"
 
 	"gopkg.in/gcfg.v1"
-	"k8s.io/utils/pointer"
 
 	"github.com/kubermatic/machine-controller/pkg/ini"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
+
+	"k8s.io/utils/pointer"
 )
 
 var update = flag.Bool("update", false, "update testdata files")
@@ -39,12 +40,12 @@ func TestCloudConfigToString(t *testing.T) {
 			name: "simple-config",
 			config: &CloudConfig{
 				Global: GlobalOpts{
-					AuthURL:    "https://127.0.0.1:8443",
-					Username:   "admin",
-					Password:   "password",
-					DomainName: "Default",
-					TenantName: "Test",
-					Region:     "eu-central1",
+					AuthURL:     "https://127.0.0.1:8443",
+					Username:    "admin",
+					Password:    "password",
+					DomainName:  "Default",
+					ProjectName: "Test",
+					Region:      "eu-central1",
 				},
 				BlockStorage: BlockStorageOpts{
 					BSVersion:             "v2",
@@ -62,12 +63,12 @@ func TestCloudConfigToString(t *testing.T) {
 			name: "use-octavia-explicitly-enabled",
 			config: &CloudConfig{
 				Global: GlobalOpts{
-					AuthURL:    "https://127.0.0.1:8443",
-					Username:   "admin",
-					Password:   "password",
-					DomainName: "Default",
-					TenantName: "Test",
-					Region:     "eu-central1",
+					AuthURL:     "https://127.0.0.1:8443",
+					Username:    "admin",
+					Password:    "password",
+					DomainName:  "Default",
+					ProjectName: "Test",
+					Region:      "eu-central1",
 				},
 				BlockStorage: BlockStorageOpts{
 					BSVersion:             "v2",
@@ -86,12 +87,12 @@ func TestCloudConfigToString(t *testing.T) {
 			name: "use-octavia-explicitly-disabled",
 			config: &CloudConfig{
 				Global: GlobalOpts{
-					AuthURL:    "https://127.0.0.1:8443",
-					Username:   "admin",
-					Password:   "password",
-					DomainName: "Default",
-					TenantName: "Test",
-					Region:     "eu-central1",
+					AuthURL:     "https://127.0.0.1:8443",
+					Username:    "admin",
+					Password:    "password",
+					DomainName:  "Default",
+					ProjectName: "Test",
+					Region:      "eu-central1",
 				},
 				BlockStorage: BlockStorageOpts{
 					BSVersion:             "v2",
@@ -110,12 +111,12 @@ func TestCloudConfigToString(t *testing.T) {
 			name: "config-with-special-chars",
 			config: &CloudConfig{
 				Global: GlobalOpts{
-					AuthURL:    "https://127.0.0.1:8443",
-					Username:   "admin",
-					Password:   `.)\^x[tt0L@};p<KJ|f.VQ]7r9u;"ZF|`,
-					DomainName: "Default",
-					TenantName: "Test",
-					Region:     "eu-central1",
+					AuthURL:     "https://127.0.0.1:8443",
+					Username:    "admin",
+					Password:    `.)\^x[tt0L@};p<KJ|f.VQ]7r9u;"ZF|`,
+					DomainName:  "Default",
+					ProjectName: "Test",
+					Region:      "eu-central1",
 				},
 				BlockStorage: BlockStorageOpts{
 					BSVersion:             "v2",

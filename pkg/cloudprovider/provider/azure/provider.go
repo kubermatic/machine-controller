@@ -72,20 +72,21 @@ type config struct {
 	ClientID       string
 	ClientSecret   string
 
-	Location          string
-	ResourceGroup     string
-	VNetResourceGroup string
-	VMSize            string
-	VNetName          string
-	SubnetName        string
-	LoadBalancerSku   string
-	RouteTableName    string
-	AvailabilitySet   string
-	SecurityGroupName string
-	ImageID           string
-	Zones             []string
-	ImagePlan         *compute.Plan
-	ImageReference    *compute.ImageReference
+	Location              string
+	ResourceGroup         string
+	VNetResourceGroup     string
+	VMSize                string
+	VNetName              string
+	SubnetName            string
+	LoadBalancerSku       string
+	RouteTableName        string
+	AvailabilitySet       string
+	AssignAvailabilitySet *bool
+	SecurityGroupName     string
+	ImageID               string
+	Zones                 []string
+	ImagePlan             *compute.Plan
+	ImageReference        *compute.ImageReference
 
 	OSDiskSize   int32
 	DataDiskSize int32
@@ -124,17 +125,14 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	providerconfigtypes.OperatingSystemCentOS: {
 		Publisher: to.StringPtr("OpenLogic"),
 		Offer:     to.StringPtr("CentOS"),
-		Sku:       to.StringPtr("7-CI"), // https://docs.microsoft.com/en-us/azure/virtual-machines/linux/using-cloud-init
+		Sku:       to.StringPtr("7_9"), // https://docs.microsoft.com/en-us/azure/virtual-machines/linux/using-cloud-init
 		Version:   to.StringPtr("latest"),
 	},
 	providerconfigtypes.OperatingSystemUbuntu: {
 		Publisher: to.StringPtr("Canonical"),
-		Offer:     to.StringPtr("UbuntuServer"),
-		// FIXME We'd like to use Ubuntu 18.04 eventually, but the docker's release
-		// deb repo for `bionic` is empty, and we use `$RELEASE` in userdata.
-		// Either Docker needs to fix their repo, or we need to hardcode `xenial`.
-		Sku:     to.StringPtr("18.04-LTS"),
-		Version: to.StringPtr("latest"),
+		Offer:     to.StringPtr("0001-com-ubuntu-server-focal"),
+		Sku:       to.StringPtr("20_04-lts"),
+		Version:   to.StringPtr("latest"),
 	},
 	providerconfigtypes.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
@@ -146,7 +144,7 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 		Publisher: to.StringPtr("kinvolk"),
 		Offer:     to.StringPtr("flatcar-container-linux"),
 		Sku:       to.StringPtr("stable"),
-		Version:   to.StringPtr("2345.3.0"),
+		Version:   to.StringPtr("2905.2.5"),
 	},
 }
 
@@ -281,6 +279,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %v", err)
 	}
+
+	c.AssignAvailabilitySet = rawCfg.AssignAvailabilitySet
 
 	c.AvailabilitySet, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.AvailabilitySet)
 	if err != nil {
@@ -586,7 +586,8 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		Zones: &config.Zones,
 	}
 
-	if config.AvailabilitySet != "" {
+	if config.AssignAvailabilitySet == nil && config.AvailabilitySet != "" ||
+		config.AssignAvailabilitySet != nil && *config.AssignAvailabilitySet && config.AvailabilitySet != "" {
 		// Azure expects the full path to the resource
 		asURI := fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s", config.SubscriptionID, config.ResourceGroup, config.AvailabilitySet)
 		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
@@ -820,6 +821,12 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
 	}
 
+	var avSet string
+	if c.AssignAvailabilitySet == nil && c.AvailabilitySet != "" ||
+		c.AssignAvailabilitySet != nil && *c.AssignAvailabilitySet && c.AvailabilitySet != "" {
+		avSet = c.AvailabilitySet
+	}
+
 	cc := &azuretypes.CloudConfig{
 		Cloud:                      "AZUREPUBLICCLOUD",
 		TenantID:                   c.TenantID,
@@ -833,7 +840,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 		SubnetName:                 c.SubnetName,
 		LoadBalancerSku:            c.LoadBalancerSku,
 		RouteTableName:             c.RouteTableName,
-		PrimaryAvailabilitySetName: c.AvailabilitySet,
+		PrimaryAvailabilitySetName: avSet,
 		SecurityGroupName:          c.SecurityGroupName,
 		UseInstanceMetadata:        true,
 	}

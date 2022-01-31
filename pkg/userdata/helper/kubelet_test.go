@@ -21,11 +21,11 @@ import (
 	"net"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
+	"github.com/Masterminds/semver/v3"
 
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
-	"github.com/Masterminds/semver"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type kubeletFlagTestCase struct {

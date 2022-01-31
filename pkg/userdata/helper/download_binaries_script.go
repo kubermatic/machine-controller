@@ -21,13 +21,12 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-
-	"github.com/Masterminds/semver"
 )
 
 const (
 	safeDownloadBinariesTpl = `{{- /*setup some common directories */ -}}
 opt_bin=/opt/bin
+usr_local_bin=/usr/local/bin
 cni_bin_dir=/opt/cni/bin
 
 {{- /* create all the necessary dirs */}}
@@ -69,6 +68,28 @@ sha256sum -c <<<"$cni_sum"
 {{- /* unpack CNI */}}
 tar xvf "$cni_filename"
 rm -f "$cni_filename"
+cd -
+
+{{- /* # cri-tools variables */}}
+CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-{{ .CRIToolsVersion }}}"
+cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
+cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
+
+{{- /* download cri-tools */}}
+curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
+
+{{- /* download cri-tools checksum */}}
+{{- /* the cri-tools checksum file has a filename prefix that breaks sha256sum so we need to drop it with sed */}}
+cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+cd "$opt_bin"
+
+{{- /* verify cri-tools checksum */}}
+sha256sum -c <<<"$cri_tools_sum"
+
+{{- /* unpack cri-tools and symlink to path so it's available to all users */}}
+tar xvf "$cri_tools_filename"
+rm -f "$cri_tools_filename"
+ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
 cd -
 
 {{- /* kubelet */}}
@@ -122,7 +143,7 @@ fi
 {{- if .DownloadKubelet }}
 {{- /* kubelet */}}
 if [ ! -f /opt/bin/kubelet ]; then
-    curl -Lfo /opt/bin/kubelet {{ .KubeletURL }}
+    curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubeletVersion }}/bin/linux/amd64/kubelet
     chmod +x /opt/bin/kubelet
 fi
 {{- end }}
@@ -142,7 +163,10 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
 
-	const CNIVersion = "v0.8.7"
+	const (
+		CNIVersion      = "v0.8.7"
+		CRIToolsVersion = "v1.22.0"
+	)
 
 	// force v in case if it's not there
 	if !strings.HasPrefix(kubeVersion, "v") {
@@ -150,11 +174,13 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	}
 
 	data := struct {
-		KubeVersion string
-		CNIVersion  string
+		KubeVersion     string
+		CNIVersion      string
+		CRIToolsVersion string
 	}{
-		KubeVersion: kubeVersion,
-		CNIVersion:  CNIVersion,
+		KubeVersion:     kubeVersion,
+		CNIVersion:      CNIVersion,
+		CRIToolsVersion: CRIToolsVersion,
 	}
 
 	b := &bytes.Buffer{}
@@ -174,44 +200,11 @@ func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
 
-	// Use patched kubelet where necessary
-	var kubeletDownloadURL string
-	{
-		upstreamURL := "https://storage.googleapis.com/kubernetes-release/release/v" + kubeletVersion + "/bin/linux/amd64/kubelet"
-		sys11Url := "https://s3.dbl.cloud.syseleven.net/sys11-metakube-kubelet/v" + kubeletVersion + "-sys11-2/kubelet"
-
-		kubeletDownloadURL = upstreamURL
-
-		kubeletSemVersion, err := semver.NewVersion(kubeletVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse kubelet version: %v", err)
-		}
-
-		switch kubeletSemVersion.Minor() {
-		case 15:
-			if kubeletSemVersion.Patch() < 8 {
-				kubeletDownloadURL = sys11Url
-			}
-
-		case 16:
-			if kubeletSemVersion.Patch() < 5 {
-				kubeletDownloadURL = sys11Url
-			}
-
-		case 17:
-			if kubeletSemVersion.Patch() < 1 {
-				kubeletDownloadURL = sys11Url
-			}
-		}
-	}
-
 	data := struct {
 		KubeletVersion  string
-		KubeletURL      string
 		DownloadKubelet bool
 	}{
 		KubeletVersion:  kubeletVersion,
-		KubeletURL:      kubeletDownloadURL,
 		DownloadKubelet: downloadKubelet,
 	}
 	b := &bytes.Buffer{}

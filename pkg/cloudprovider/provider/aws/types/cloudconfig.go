@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/kubermatic/machine-controller/pkg/ini"
-
 	"github.com/Masterminds/sprig/v3"
+
+	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
 const (

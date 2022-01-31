@@ -14,7 +14,7 @@
 
 SHELL = /bin/bash -eu -o pipefail
 
-GO_VERSION ?= 1.16.1
+GO_VERSION ?= 1.17.1
 
 GOOS ?= $(shell go env GOOS)
 
@@ -35,7 +35,7 @@ IMAGE_TAG = \
 		$(shell echo $$(git rev-parse HEAD && if [[ -n $$(git status --porcelain) ]]; then echo '-dirty'; fi)|tr -d ' ')
 IMAGE_NAME ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 
-OS = centos ubuntu sles rhel flatcar
+OS = amzn2 centos ubuntu sles rhel flatcar
 USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
 
 .PHONY: all
@@ -118,6 +118,7 @@ test-unit:
 .PHONY: build-tests
 build-tests:
 	go test -run nope ./...
+	go test -tags e2e -run nope ./...
 
 .PHONY: e2e-cluster
 e2e-cluster: machine-controller webhook

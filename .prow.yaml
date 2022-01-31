@@ -8,7 +8,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - make
           args:
@@ -26,7 +26,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - make
           args:
@@ -43,7 +43,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golangci/golangci-lint:v1.23.6
+        - image: golangci/golangci-lint:v1.42.1
           command:
             - make
           args:
@@ -76,7 +76,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-      - image: docker.io/mvdan/shfmt:v3.2.1
+      - image: docker.io/mvdan/shfmt:v3.3.1
         command:
         - "/bin/shfmt"
         args:
@@ -104,9 +104,29 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     spec:
       containers:
-        - image: python:2.7
+        - image: quay.io/kubermatic-labs/boilerplate:v0.2.0
           command:
             - "./hack/verify-boilerplate.sh"
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 100m
+
+  - name: pull-machine-controller-license-validation
+    run_if_changed: "^go.(mod|sum)$"
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+      - image: quay.io/kubermatic/wwhrd:0.4.0-1
+        command:
+        - ./hack/verify-licenses.sh
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 1
 
   - name: pull-machine-controller-test
     always_run: true
@@ -116,7 +136,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - make
           args:
@@ -145,7 +165,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -169,7 +189,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -193,7 +213,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -217,7 +237,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -240,7 +260,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -263,11 +283,34 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestOpenstackProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-openstack-project-auth
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-openstack: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-rhel: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.17.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestOpenstackProjectAuthProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -286,7 +329,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -308,7 +351,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -330,7 +373,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -353,7 +396,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -376,7 +419,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -400,7 +443,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -423,7 +466,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -444,7 +487,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -468,7 +511,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -491,7 +534,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -514,7 +557,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -537,7 +580,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -559,7 +602,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-      - image: golang:1.16.1
+      - image: golang:1.17.1
         command:
         - "./hack/ci-e2e-test.sh"
         args:
@@ -581,7 +624,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -602,7 +645,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -625,11 +668,56 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
-            - "TestAWSProvisioningE2EWithEbsEncryptionEnabled"
+            - "TestAWSEbsEncryptionEnabledProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-aws-flatcar-containerd
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-aws: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.17.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAWSFlatcarContainerdProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-aws-spot-instance
+    always_run: true
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-aws: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-goproxy: "true"
+      preset-rhel: "true"
+    spec:
+      containers:
+        - image: golang:1.17.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAWSSpotInstanceProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -670,7 +758,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -692,7 +780,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -714,7 +802,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -737,7 +825,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -760,7 +848,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -782,11 +870,33 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.16.1
+        - image: golang:1.17.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestScalewayProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-aws-assume-role
+    always_run: false
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-aws-assume-role: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.17.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestAWSAssumeRoleProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -806,15 +916,15 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/go-docker:16.1-1903-0
+        - image: quay.io/kubermatic/build:go-1.17-node-14-kind-0.11-0
           command:
             - /bin/bash
             - -c
-            - >-
-              set -euo pipefail &&
-              /usr/local/bin/entrypoint.sh &&
-              docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD &&
-              docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io &&
+            - |
+              set -euo pipefail
+              start-docker.sh
+              docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+              docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io
               make download-gocache docker-image-publish
           # docker-in-docker needs privileged mode
           securityContext:
@@ -834,7 +944,7 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/go-docker:16.1-1903-0
+        - image: quay.io/kubermatic/build:go-1.17-node-14-kind-0.11-0
           command:
             - "./hack/ci-upload-gocache.sh"
           resources:

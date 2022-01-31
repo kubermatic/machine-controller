@@ -24,34 +24,35 @@ import (
 	"testing"
 	"time"
 
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"github.com/Masterminds/semver/v3"
 
-	"github.com/Masterminds/semver"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.17.16"),
-		semver.MustParse("v1.18.14"),
-		semver.MustParse("v1.19.4"),
-		semver.MustParse("v1.20.1"),
+		semver.MustParse("v1.19.15"),
+		semver.MustParse("v1.20.11"),
+		semver.MustParse("v1.21.5"),
+		semver.MustParse("v1.22.2"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemCentOS,
+		providerconfigtypes.OperatingSystemAmazonLinux2,
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemFlatcar,
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu",
+		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu-20-04",
 		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
 		string(providerconfigtypes.OperatingSystemRHEL):    "machine-controller-e2e-rhel",
-		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar",
+		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar-stable-2983",
 	}
 )
 
@@ -173,6 +174,10 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.02"))
 	}
 
+	// only used by assume role scenario, otherwise empty (disabled)
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< AWS_ASSUME_ROLE_ARN >>=%s", os.Getenv("AWS_ASSUME_ROLE_ARN")))
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< AWS_ASSUME_ROLE_EXTERNAL_ID >>=%s", os.Getenv("AWS_ASSUME_ROLE_EXTERNAL_ID")))
+
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
 
@@ -206,8 +211,7 @@ func buildScenarios() []scenario {
 	for _, version := range versions {
 		for _, operatingSystem := range operatingSystems {
 			s := scenario{
-				name: fmt.Sprintf("%s-%s", operatingSystem, version),
-				// We only support docker
+				name:              fmt.Sprintf("%s-%s", operatingSystem, version),
 				containerRuntime:  "docker",
 				kubernetesVersion: version.String(),
 				osName:            string(operatingSystem),
@@ -219,7 +223,7 @@ func buildScenarios() []scenario {
 
 	all = append(all, scenario{
 		name:             "migrateUID",
-		containerRuntime: "docker",
+		containerRuntime: "containerd",
 		osName:           "ubuntu",
 		executor:         verifyMigrateUID,
 	})

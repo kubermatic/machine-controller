@@ -17,13 +17,14 @@ limitations under the License.
 package containerruntime
 
 import (
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 const (
-	Default = "docker"
+	dockerName     = "docker"
+	containerdName = "containerd"
 )
 
 type Engine interface {
@@ -31,6 +32,7 @@ type Engine interface {
 	ScriptFor(os types.OperatingSystem) (string, error)
 	ConfigFileName() string
 	Config() (string, error)
+	String() string
 }
 
 type Opt func(*Config)
@@ -57,10 +59,10 @@ func Get(containerRuntimeName string, opts ...Opt) Config {
 	cfg := Config{}
 
 	switch containerRuntimeName {
-	case "docker":
+	case dockerName:
 		cfg.Docker = &Docker{}
 		cfg.Containerd = nil
-	case "containerd":
+	case containerdName:
 		cfg.Containerd = &Containerd{}
 		cfg.Docker = nil
 	default:
@@ -86,12 +88,12 @@ type Config struct {
 func (cfg Config) String() string {
 	switch {
 	case cfg.Containerd != nil:
-		return "containerd"
+		return containerdName
 	case cfg.Docker != nil:
-		return "docker"
+		return dockerName
 	}
 
-	return Default
+	return dockerName
 }
 
 func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
@@ -108,10 +110,10 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		}
 	)
 
-	moreThen122, _ := semver.NewConstraint(">= 1.22")
+	moreThan122, _ := semver.NewConstraint(">= 1.22")
 
 	switch {
-	case moreThen122.Check(kubeletVersion):
+	case moreThan122.Check(kubeletVersion):
 		return containerd
 	case cfg.Docker != nil:
 		return docker

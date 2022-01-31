@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/sts"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -95,36 +96,82 @@ var (
 		ec2.VolumeTypeSt1,
 	)
 
-	amiFilters = map[providerconfigtypes.OperatingSystem]amiFilter{
+	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
+		// Source: https://wiki.centos.org/Cloud/AWS
 		providerconfigtypes.OperatingSystemCentOS: {
-			description: "CentOS Linux 7 x86_64 HVM EBS*",
-			// The AWS marketplace ID from AWS
-			owner:       "679593333241",
-			productCode: "aw0evgkw8e5c1q413zgy5pjce",
+			awstypes.CPUArchitectureX86_64: {
+				description: "CentOS 7* x86_64",
+				// The AWS marketplace ID from CentOS Community Platform Engineering (CPE)
+				owner: "125523088429",
+			},
+			awstypes.CPUArchitectureARM64: {
+				description: "CentOS 7* aarch64",
+				// The AWS marketplace ID from CentOS Community Platform Engineering (CPE)
+				owner: "125523088429",
+			},
+		},
+		providerconfigtypes.OperatingSystemAmazonLinux2: {
+			awstypes.CPUArchitectureX86_64: {
+				description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
+				// The AWS marketplace ID from Amazon
+				owner: "137112412989",
+			},
+			awstypes.CPUArchitectureARM64: {
+				description: "Amazon Linux 2 LTS Arm64 AMI * arm64 HVM gp2",
+				// The AWS marketplace ID from Amazon
+				owner: "137112412989",
+			},
 		},
 		providerconfigtypes.OperatingSystemUbuntu: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Canonical, Ubuntu, 18.04 LTS, amd64 bionic image build on ????-??-??",
-			// The AWS marketplace ID from Canonical
-			owner: "099720109477",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on ????-??-??",
+				// The AWS marketplace ID from Canonical
+				owner: "099720109477",
+			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Canonical, Ubuntu, 20.04 LTS, arm64 focal image build on ????-??-??",
+				// The AWS marketplace ID from Canonical
+				owner: "099720109477",
+			},
 		},
 		providerconfigtypes.OperatingSystemSLES: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
-			// The AWS marketplace ID from SLES
-			owner: "013907871322",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				// The AWS marketplace ID from SLES
+				owner: "013907871322",
+			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				// The AWS marketplace ID from SLES
+				owner: "013907871322",
+			},
 		},
 		providerconfigtypes.OperatingSystemRHEL: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Provided by Red Hat, Inc.",
-			// The AWS marketplace ID from RedHat
-			owner: "309956199498",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Provided by Red Hat, Inc.",
+				// The AWS marketplace ID from RedHat
+				owner: "309956199498",
+			},
+			awstypes.CPUArchitectureARM64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Provided by Red Hat, Inc.",
+				// The AWS marketplace ID from RedHat
+				owner: "309956199498",
+			},
 		},
 		providerconfigtypes.OperatingSystemFlatcar: {
-			// Be as precise as possible - otherwise we might get a nightly dev build
-			description: "Flatcar Container Linux stable 2345.3.1 (HVM)",
-			// The AWS marketplace ID from AWS
-			owner: "075585003325",
+			awstypes.CPUArchitectureX86_64: {
+				// Be as precise as possible - otherwise we might get a nightly dev build
+				description: "Flatcar Container Linux stable *",
+				// The AWS marketplace ID from AWS
+				owner: "075585003325",
+			},
+			// 2021-10-14 - Flatcar stable does not support ARM yet (only alpha channels supports it)
 		},
 	}
 
@@ -157,6 +204,9 @@ type Config struct {
 	SpotMaxPrice             *string
 	SpotPersistentRequest    *bool
 	SpotInterruptionBehavior *string
+
+	AssumeRoleARN        string
+	AssumeRoleExternalID string
 }
 
 type amiFilter struct {
@@ -165,16 +215,21 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string) (string, error) {
+func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
-	filter, osSupported := amiFilters[os]
+	osFilter, osSupported := amiFilters[os]
 	if !osSupported {
 		return "", fmt.Errorf("operating system %q not supported", os)
 	}
 
-	cacheKey := fmt.Sprintf("ami-id-%s-%s", region, os)
+	filter, archSupported := osFilter[cpuArchitecture]
+	if !archSupported {
+		return "", fmt.Errorf("CPU architecture '%s' not supported for operating system '%s'", cpuArchitecture, os)
+	}
+
+	cacheKey := fmt.Sprintf("ami-id-%s-%s-%s", region, os, cpuArchitecture)
 	amiID, found := cache.Get(cacheKey)
 	if found {
 		klog.V(3).Info("found AMI-ID in cache!")
@@ -198,7 +253,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 			},
 			{
 				Name:   aws.String("architecture"),
-				Values: aws.StringSlice([]string{"x86_64"}),
+				Values: aws.StringSlice([]string{string(cpuArchitecture)}),
 			},
 		},
 	}
@@ -216,7 +271,7 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 	}
 
 	if len(imagesOut.Images) == 0 {
-		return "", fmt.Errorf("could not find Image for '%s'", os)
+		return "", fmt.Errorf("could not find Image for '%s' with arch '%s'", os, cpuArchitecture)
 	}
 
 	if os == providerconfigtypes.OperatingSystemRHEL {
@@ -239,22 +294,53 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 	return *image.ImageId, nil
 }
 
+func getCPUArchitecture(client *ec2.EC2, instanceType string) (awstypes.CPUArchitecture, error) {
+	// read the instance type to know which cpu architecture is needed in the AMI
+	instanceTypes, err := client.DescribeInstanceTypes(&ec2.DescribeInstanceTypesInput{
+		InstanceTypes: []*string{aws.String(instanceType)},
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(instanceTypes.InstanceTypes) != 1 {
+		return "", fmt.Errorf("unexpected length of instance type list: %d", len(instanceTypes.InstanceTypes))
+	}
+
+	if instanceTypes.InstanceTypes[0].ProcessorInfo != nil &&
+		len(instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures) > 0 {
+		for _, v := range instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures {
+			// machine-controller currently supports x86_64 and ARM64, so only CPU architectures
+			// that are supported will be returned if found in the AWS API response
+			if arch := awstypes.CPUArchitecture(*v); arch == awstypes.CPUArchitectureX86_64 || arch == awstypes.CPUArchitectureARM64 {
+				return arch, nil
+			}
+		}
+	}
+
+	return "", errors.New("returned instance type data did not include supported architectures")
+}
+
 func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, error) {
 	const (
-		rootDevicePathUbuntuCentOSRHEL = "/dev/sda1"
-		rootDevicePathSLES             = "/dev/xvda"
+		rootDevicePathSDA  = "/dev/sda1"
+		rootDevicePathXVDA = "/dev/xvda"
 	)
+
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return rootDevicePathUbuntuCentOSRHEL, nil
+		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemCentOS:
-		return rootDevicePathUbuntuCentOSRHEL, nil
+		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemSLES:
-		return rootDevicePathSLES, nil
+		return rootDevicePathXVDA, nil
 	case providerconfigtypes.OperatingSystemRHEL:
-		return rootDevicePathUbuntuCentOSRHEL, nil
+		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return rootDevicePathSLES, nil
+		return rootDevicePathXVDA, nil
+	case providerconfigtypes.OperatingSystemAmazonLinux2:
+		return rootDevicePathXVDA, nil
 	}
 
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
@@ -365,28 +451,76 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		}
 		c.SpotInterruptionBehavior = pointer.StringPtr(interruptionBehavior)
 	}
+	assumeRoleARN, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleARN, "AWS_ASSUME_ROLE_ARN")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	c.AssumeRoleARN = assumeRoleARN
+	assumeRoleExternalID, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleExternalID, "AWS_ASSUME_ROLE_EXTERNAL_ID")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	c.AssumeRoleExternalID = assumeRoleExternalID
 
 	return &c, &pconfig, &rawConfig, err
 }
 
-func getSession(id, secret, token, region string) (*session.Session, error) {
+func getSession(id, secret, token, region, assumeRoleARN, assumeRoleExternalID string) (*session.Session, error) {
 	config := aws.NewConfig()
 	config = config.WithRegion(region)
 	config = config.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
 	config = config.WithMaxRetries(maxRetries)
-	return session.NewSession(config)
+	awsSession, err := session.NewSession(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %v", err)
+	}
+
+	// Assume IAM role of e.g. external AWS account if configured
+	if assumeRoleARN != "" {
+		awsSession, err = getAssumeRoleSession(awsSession, assumeRoleARN, assumeRoleExternalID, region)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temporary AWS session for assumed role: %v", err)
+		}
+	}
+
+	return awsSession, err
 }
 
-func getIAMclient(id, secret, region string) (*iam.IAM, error) {
-	sess, err := getSession(id, secret, "", region)
+func getAssumeRoleSession(awsSession *session.Session, assumeRoleARN, assumeRoleExternalID, region string) (*session.Session, error) {
+	assumeRoleOutput, err := getAssumeRoleCredentials(awsSession, assumeRoleARN, assumeRoleExternalID)
+	if err != nil {
+		return nil, awsErrorToTerminalError(err, "unable to initialize aws external id session")
+	}
+
+	assumedRoleConfig := aws.NewConfig()
+	assumedRoleConfig = assumedRoleConfig.WithRegion(region)
+	assumedRoleConfig = assumedRoleConfig.WithCredentials(credentials.NewStaticCredentials(*assumeRoleOutput.Credentials.AccessKeyId,
+		*assumeRoleOutput.Credentials.SecretAccessKey,
+		*assumeRoleOutput.Credentials.SessionToken))
+	assumedRoleConfig = assumedRoleConfig.WithMaxRetries(maxRetries)
+	return session.NewSession(assumedRoleConfig)
+}
+
+func getAssumeRoleCredentials(session *session.Session, assumeRoleARN, assumeRoleExternalID string) (*sts.AssumeRoleOutput, error) {
+	stsSession := sts.New(session)
+	sessionName := "kubermatic-machine-controller"
+	return stsSession.AssumeRole(&sts.AssumeRoleInput{
+		ExternalId:      &assumeRoleExternalID,
+		RoleArn:         &assumeRoleARN,
+		RoleSessionName: &sessionName,
+	})
+}
+
+func getIAMclient(id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*iam.IAM, error) {
+	sess, err := getSession(id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
 	return iam.New(sess), nil
 }
 
-func getEC2client(id, secret, region string) (*ec2.EC2, error) {
-	sess, err := getSession(id, secret, "", region)
+func getEC2client(id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*ec2.EC2, error) {
+	sess, err := getSession(id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed to get aws session")
 	}
@@ -403,6 +537,12 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	}
 	if rawConfig.AssignPublicIP == nil {
 		rawConfig.AssignPublicIP = aws.Bool(true)
+	}
+	if rawConfig.IsSpotInstance != nil && *rawConfig.IsSpotInstance {
+		if spec.Labels == nil {
+			spec.Labels = map[string]string{}
+		}
+		spec.Labels["k8c.io/aws-spot"] = "aws-node-termination-handler"
 	}
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
 	return spec, err
@@ -432,7 +572,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("diskSize must be specified and > 0")
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to create ec2 client: %v", err)
 	}
@@ -469,7 +609,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to validate security group id's: %v", err)
 	}
 
-	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to create iam client: %v", err)
 	}
@@ -511,7 +651,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +663,17 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 
 	amiID := config.AMI
 	if amiID == "" {
-		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region); err != nil {
+		// read the instance type to know which cpu architecture is needed in the AMI
+		cpuArchitecture, err := getCPUArchitecture(ec2Client, config.InstanceType)
+
+		if err != nil {
+			return nil, cloudprovidererrors.TerminalError{
+				Reason:  common.InvalidConfigurationMachineError,
+				Message: fmt.Sprintf("Failed to find instance type %s in region %s: %v", config.InstanceType, config.Region, err),
+			}
+		}
+
+		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region, cpuArchitecture); err != nil {
 			return nil, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
 				Message: fmt.Sprintf("Failed to get AMI-ID for operating system %s in region %s: %v", pc.OperatingSystem, config.Region, err),
@@ -641,7 +791,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 }
 
 func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.get(machine)
+	ec2instance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return true, nil
@@ -649,7 +799,9 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		return false, err
 	}
 
+	//(*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error)
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
+
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -657,20 +809,36 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return false, err
 	}
 
+	if config.IsSpotInstance != nil && *config.IsSpotInstance &&
+		config.SpotPersistentRequest != nil && *config.SpotPersistentRequest {
+
+		cOut, err := ec2Client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: aws.StringSlice([]string{*ec2instance.instance.SpotInstanceRequestId}),
+		})
+
+		if err != nil {
+			return false, awsErrorToTerminalError(err, "failed to cancel spot instance request")
+		}
+
+		if *cOut.CancelledSpotInstanceRequests[0].State == ec2.CancelSpotInstanceRequestStateCancelled {
+			klog.V(3).Infof("successfully canceled spot instance request %s at aws", *ec2instance.instance.SpotInstanceRequestId)
+		}
+	}
+
 	tOut, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
-		InstanceIds: aws.StringSlice([]string{instance.ID()}),
+		InstanceIds: aws.StringSlice([]string{ec2instance.ID()}),
 	})
 	if err != nil {
 		return false, awsErrorToTerminalError(err, "failed to terminate instance")
 	}
 
 	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
-		klog.V(3).Infof("successfully triggered termination of instance %s at aws", instance.ID())
+		klog.V(3).Infof("successfully triggered termination of instance %s at aws", ec2instance.ID())
 	}
 
 	return false, nil
@@ -689,7 +857,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*awsInstance, error) {
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return nil, err
 	}
@@ -765,7 +933,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
-	instance, err := p.get(machine)
+	machineInstance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
 			return nil
@@ -781,13 +949,13 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region)
+	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to get EC2 client: %v", err)
 	}
 
 	_, err = ec2Client.CreateTags(&ec2.CreateTagsInput{
-		Resources: aws.StringSlice([]string{instance.ID()}),
+		Resources: aws.StringSlice([]string{machineInstance.ID()}),
 		Tags:      []*ec2.Tag{{Key: aws.String(machineUIDTag), Value: aws.String(string(new))}}})
 	if err != nil {
 		return fmt.Errorf("failed to update instance with new machineUIDTag: %v", err)
@@ -913,44 +1081,49 @@ func setProviderSpec(rawConfig awstypes.RawConfig, s v1alpha1.ProviderSpec) (*ru
 }
 
 func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+	metricInstancesForMachines.Reset()
+
 	if len(machines.Items) < 1 {
 		return nil
 	}
 
 	type ec2Credentials struct {
-		acccessKeyID    string
-		secretAccessKey string
-		region          string
+		acccessKeyID         string
+		secretAccessKey      string
+		region               string
+		assumeRoleARN        string
+		assumeRoleExternalID string
 	}
 
-	var errors []error
-	credentials := map[string]ec2Credentials{}
+	var machineErrors []error
+	machineEc2Credentials := map[string]ec2Credentials{}
 	for _, machine := range machines.Items {
 		config, _, _, err := p.getConfig(machines.Items[0].Spec.ProviderSpec)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to parse MachineSpec of machine %s/%s, due to %v", machine.Namespace, machine.Name, err))
+			machineErrors = append(machineErrors, fmt.Errorf("failed to parse MachineSpec of machine %s/%s, due to %v", machine.Namespace, machine.Name, err))
 			continue
 		}
 
 		// Very simple and very stupid
-		credentials[fmt.Sprintf("%s/%s/%s", config.AccessKeyID, config.SecretAccessKey, config.Region)] = ec2Credentials{
-			acccessKeyID:    config.AccessKeyID,
-			secretAccessKey: config.SecretAccessKey,
-			region:          config.Region,
+		machineEc2Credentials[fmt.Sprintf("%s/%s/%s/%s/%s", config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)] = ec2Credentials{
+			acccessKeyID:         config.AccessKeyID,
+			secretAccessKey:      config.SecretAccessKey,
+			region:               config.Region,
+			assumeRoleARN:        config.AssumeRoleARN,
+			assumeRoleExternalID: config.AssumeRoleExternalID,
 		}
-
 	}
 
 	allReservations := []*ec2.Reservation{}
-	for _, cred := range credentials {
-		ec2Client, err := getEC2client(cred.acccessKeyID, cred.secretAccessKey, cred.region)
+	for _, cred := range machineEc2Credentials {
+		ec2Client, err := getEC2client(cred.acccessKeyID, cred.secretAccessKey, cred.region, cred.assumeRoleARN, cred.assumeRoleExternalID)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to get EC2 client: %v", err))
+			machineErrors = append(machineErrors, fmt.Errorf("failed to get EC2 client: %v", err))
 			continue
 		}
 		inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
 		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to get EC2 instances: %v", err))
+			machineErrors = append(machineErrors, fmt.Errorf("failed to get EC2 instances: %v", err))
 			continue
 		}
 		allReservations = append(allReservations, inOut.Reservations...)
@@ -961,8 +1134,8 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 			getIntanceCountForMachine(machine, allReservations))
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("errors: %v", errors)
+	if len(machineErrors) > 0 {
+		return fmt.Errorf("errors: %v", machineErrors)
 	}
 
 	return nil

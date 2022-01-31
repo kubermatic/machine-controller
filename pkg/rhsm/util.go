@@ -23,14 +23,14 @@ import (
 )
 
 const (
-	redhatSubscriptionFinalizer = "kubermatic.io/red-hat-subscription"
+	RedhatSubscriptionFinalizer = "kubermatic.io/red-hat-subscription"
 )
 
-// AddRHELSubscriptionFinalizer adds finalizer redhatSubscriptionFinalizer to the machine object on rhel machine creation.
+// AddRHELSubscriptionFinalizer adds finalizer RedhatSubscriptionFinalizer to the machine object on rhel machine creation.
 func AddRHELSubscriptionFinalizer(machine *v1alpha1.Machine, update types.MachineUpdater) error {
-	if !kuberneteshelper.HasFinalizer(machine, redhatSubscriptionFinalizer) {
+	if !kuberneteshelper.HasFinalizer(machine, RedhatSubscriptionFinalizer) {
 		if err := update(machine, func(m *v1alpha1.Machine) {
-			machine.Finalizers = append(m.Finalizers, redhatSubscriptionFinalizer)
+			machine.Finalizers = append(m.Finalizers, RedhatSubscriptionFinalizer)
 		}); err != nil {
 			return err
 		}
@@ -39,11 +39,11 @@ func AddRHELSubscriptionFinalizer(machine *v1alpha1.Machine, update types.Machin
 	return nil
 }
 
-// RemoveRHELSubscriptionFinalizer removes finalizer redhatSubscriptionFinalizer to the machine object on rhel machine deletion.
+// RemoveRHELSubscriptionFinalizer removes finalizer RedhatSubscriptionFinalizer to the machine object on rhel machine deletion.
 func RemoveRHELSubscriptionFinalizer(machine *v1alpha1.Machine, update types.MachineUpdater) error {
-	if kuberneteshelper.HasFinalizer(machine, redhatSubscriptionFinalizer) {
+	if kuberneteshelper.HasFinalizer(machine, RedhatSubscriptionFinalizer) {
 		if err := update(machine, func(m *v1alpha1.Machine) {
-			machine.Finalizers = kuberneteshelper.RemoveFinalizer(machine.Finalizers, redhatSubscriptionFinalizer)
+			machine.Finalizers = kuberneteshelper.RemoveFinalizer(machine.Finalizers, RedhatSubscriptionFinalizer)
 		}); err != nil {
 			return err
 		}

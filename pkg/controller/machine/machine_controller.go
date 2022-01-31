@@ -36,6 +36,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
+	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -84,7 +85,8 @@ const (
 
 	deletionRetryWaitPeriod = 10 * time.Second
 
-	controllerNameLabelKey  = "machine.k8s.io/controller"
+	controllerNameLabelKey = "machine.k8s.io/controller"
+
 	NodeOwnerLabelName      = "machine-controller/owned-by"
 	PhysicalHostIDLabelName = "machine-controller/physical-host-id"
 	// HostIDLabelName label key to specify physical host id the node is running on.
@@ -94,6 +96,8 @@ const (
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
 	// cluster-api provider to match Nodes to Machines
 	AnnotationAutoscalerIdentifier = "cluster.k8s.io/machine"
+
+	provisioningSuffix = "osc-provisioning"
 )
 
 // Reconciler is the controller implementation for machine resources
@@ -114,6 +118,10 @@ type Reconciler struct {
 	nodeSettings                     NodeSettings
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
+
+	useOSM        bool
+	podCIDR       string
+	nodePortRange string
 }
 
 type NodeSettings struct {
@@ -146,6 +154,7 @@ type NodeSettings struct {
 
 type KubeconfigProvider interface {
 	GetKubeconfig(context.Context) (*clientcmdapi.Config, error)
+	GetBearerToken() string
 }
 
 // MetricsCollection is a struct of all metrics used in
@@ -172,6 +181,9 @@ func Add(
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
+	useOSM bool,
+	podCIDR string,
+	nodePortRange string,
 ) error {
 	reconciler := &Reconciler{
 		kubeClient:                       kubeClient,
@@ -187,6 +199,10 @@ func Add(
 		nodeSettings:                     nodeSettings,
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
+
+		useOSM:        useOSM,
+		podCIDR:       podCIDR,
+		nodePortRange: nodePortRange,
 	}
 	m, err := userdatamanager.New()
 	if err != nil {
@@ -588,9 +604,16 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 		}
 
 		if rhelConfig.RHELUseSatelliteServer {
-			if err := r.satelliteSubscriptionManager.DeleteSatelliteHost(machineName, rhelConfig.RHELSubscriptionManagerUser,
-				rhelConfig.RHELSubscriptionManagerPassword, rhelConfig.RHELSatelliteServer); err != nil {
-				return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %v", machine.Name, err)
+			if kuberneteshelper.HasFinalizer(machine, rhsm.RedhatSubscriptionFinalizer) {
+				err = r.satelliteSubscriptionManager.DeleteSatelliteHost(
+					machineName,
+					rhelConfig.RHELSubscriptionManagerUser,
+					rhelConfig.RHELSubscriptionManagerPassword,
+					rhelConfig.RHELSatelliteServer)
+				if err != nil {
+					return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %v", machine.Name, err)
+				}
+
 			}
 		}
 
@@ -721,11 +744,44 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
 				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
+				PodCIDR:               r.podCIDR,
+				NodePortRange:         r.nodePortRange,
 			}
+			// Here we do stuff!
+			var userdata string
 
-			userdata, err := userdataPlugin.UserData(req)
-			if err != nil {
-				return nil, fmt.Errorf("failed get userdata: %v", err)
+			if r.useOSM {
+				referencedMachineDeployment, err := r.getMachineDeploymentNameForMachine(ctx, machine)
+				if err != nil {
+					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
+				}
+
+				cloudConfigSecretName := fmt.Sprintf("%s-%s",
+					referencedMachineDeployment,
+					provisioningSuffix)
+
+				// It is important to check if the secret holding cloud-config exists
+				if err := r.client.Get(ctx,
+					types.NamespacedName{Name: cloudConfigSecretName, Namespace: "kube-system"},
+					&corev1.Secret{}); err != nil {
+					klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
+					return nil, err
+				}
+
+				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudConfigSecretName)
+				if err != nil {
+					return nil, fmt.Errorf("failed get OSM userdata: %v", err)
+				}
+
+				userdata, err = cleanupTemplateOutput(userdata)
+				if err != nil {
+					return nil, fmt.Errorf("failed to cleanup user-data template: %v", err)
+				}
+			} else {
+				userdata, err = userdataPlugin.UserData(req)
+				if err != nil {
+					return nil, fmt.Errorf("failed get userdata: %v", err)
+				}
 			}
 
 			// Create the instance
@@ -1054,4 +1110,35 @@ func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifier
 		}
 		return r.client.Update(ctx, node)
 	})
+}
+
+func (r *Reconciler) getMachineDeploymentNameForMachine(ctx context.Context, machine *clusterv1alpha1.Machine) (string, error) {
+	var (
+		machineSetName        string
+		machineDeploymentName string
+	)
+	for _, ownerRef := range machine.OwnerReferences {
+		if ownerRef.Kind == "MachineSet" {
+			machineSetName = ownerRef.Name
+		}
+	}
+
+	if machineSetName != "" {
+		machineSet := &clusterv1alpha1.MachineSet{}
+		if err := r.client.Get(ctx, types.NamespacedName{Name: machineSetName, Namespace: "kube-system"}, machineSet); err != nil {
+			return "", err
+		}
+
+		for _, ownerRef := range machineSet.OwnerReferences {
+			if ownerRef.Kind == "MachineDeployment" {
+				machineDeploymentName = ownerRef.Name
+			}
+		}
+
+		if machineDeploymentName != "" {
+			return machineDeploymentName, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to find machine deployment reference for the machine %s", machine.Name)
 }

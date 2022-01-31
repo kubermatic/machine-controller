@@ -124,6 +124,17 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("Invalid public keys specified: %v", err)
 	}
 
+	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(providerConfig.OperatingSystem, providerConfig.OperatingSystemSpec)
+	if err != nil {
+		return err
+	}
+
+	providerConfig.OperatingSystemSpec = defaultedOperatingSystemSpec
+	spec.ProviderSpec.Value.Raw, err = json.Marshal(providerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %v", err)
+	}
+
 	defaultedSpec, err := prov.AddDefaults(*spec)
 	if err != nil {
 		return fmt.Errorf("failed to default machineSpec: %v", err)

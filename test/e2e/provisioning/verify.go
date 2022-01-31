@@ -27,6 +27,7 @@ import (
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -326,7 +327,7 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	if err != nil {
 		return "", err
 	}
-	content := fmt.Sprintf("%s", contentRaw)
+	content := string(contentRaw)
 
 	for _, keyValuePair := range keyValuePairs {
 		// stopping on the first encountered match allows to read base64 encoded values

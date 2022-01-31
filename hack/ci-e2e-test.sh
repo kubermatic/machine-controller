@@ -17,6 +17,9 @@
 set -euo pipefail
 set -o monitor
 
+export TF_IN_AUTOMATION=true
+export TF_CLI_ARGS="-no-color"
+
 function cleanup {
   set +e
 
@@ -28,7 +31,7 @@ function cleanup {
   for try in {1..20}; do
     # Clean up master
     echo "Cleaning up controller, attempt ${try}"
-    terraform destroy -force
+    terraform apply -destroy -auto-approve
     if [[ $? == 0 ]]; then break; fi
     echo "Sleeping for $try seconds"
     sleep ${try}s
@@ -40,7 +43,7 @@ trap cleanup EXIT
 echo "Installing dependencies..."
 apt update && apt install -y jq rsync unzip genisoimage
 curl --retry 5 --location --remote-name \
-  https://storage.googleapis.com/kubernetes-release/release/v1.12.4/bin/linux/amd64/kubectl &&
+  https://storage.googleapis.com/kubernetes-release/release/v1.22.2/bin/linux/amd64/kubectl &&
   chmod +x kubectl &&
   mv kubectl /usr/local/bin
 

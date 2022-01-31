@@ -22,9 +22,9 @@ import (
 	"strconv"
 	"text/template"
 
-	"github.com/kubermatic/machine-controller/pkg/ini"
-
 	"github.com/Masterminds/sprig/v3"
+
+	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
 //  use-octavia is enabled by default in CCM since v1.17.0, and disabled by
@@ -39,8 +39,8 @@ application-credential-secret = {{ .Global.ApplicationCredentialSecret | iniEsca
 {{- else }}
 username    = {{ .Global.Username | iniEscape }}
 password    = {{ .Global.Password | iniEscape }}
-tenant-name = {{ .Global.TenantName | iniEscape }}
-tenant-id   = {{ .Global.TenantID | iniEscape }}
+tenant-name = {{ .Global.ProjectName | iniEscape }}
+tenant-id   = {{ .Global.ProjectID | iniEscape }}
 {{- end }}
 domain-name = {{ .Global.DomainName | iniEscape }}
 region      = {{ .Global.Region | iniEscape }}
@@ -81,18 +81,19 @@ node-volume-attach-limit = {{ .BlockStorage.NodeVolumeAttachLimit }}
 )
 
 type LoadBalancerOpts struct {
-	LBVersion             string       `gcfg:"lb-version"`
-	SubnetID              string       `gcfg:"subnet-id"`
-	FloatingNetworkID     string       `gcfg:"floating-network-id"`
-	LBMethod              string       `gcfg:"lb-method"`
-	LBProvider            string       `gcfg:"lb-provider"`
-	CreateMonitor         bool         `gcfg:"create-monitor"`
-	MonitorDelay          ini.Duration `gcfg:"monitor-delay"`
-	MonitorTimeout        ini.Duration `gcfg:"monitor-timeout"`
-	MonitorMaxRetries     uint         `gcfg:"monitor-max-retries"`
-	ManageSecurityGroups  bool         `gcfg:"manage-security-groups"`
-	UseOctavia            *bool        `gcfg:"use-octavia"`
-	EnableIngressHostname bool         `gcfg:"enable-ingress-hostname"`
+	LBVersion            string       `gcfg:"lb-version"`
+	SubnetID             string       `gcfg:"subnet-id"`
+	FloatingNetworkID    string       `gcfg:"floating-network-id"`
+	LBMethod             string       `gcfg:"lb-method"`
+	LBProvider           string       `gcfg:"lb-provider"`
+	CreateMonitor        bool         `gcfg:"create-monitor"`
+	MonitorDelay         ini.Duration `gcfg:"monitor-delay"`
+	MonitorTimeout       ini.Duration `gcfg:"monitor-timeout"`
+	MonitorMaxRetries    uint         `gcfg:"monitor-max-retries"`
+	ManageSecurityGroups bool         `gcfg:"manage-security-groups"`
+	UseOctavia           *bool        `gcfg:"use-octavia"`
+
+	EnableIngressHostname bool `gcfg:"enable-ingress-hostname"`
 }
 
 type BlockStorageOpts struct {
@@ -108,10 +109,17 @@ type GlobalOpts struct {
 	Password                    string
 	ApplicationCredentialID     string `gcfg:"application-credential-id"`
 	ApplicationCredentialSecret string `gcfg:"application-credential-secret"`
-	TenantName                  string `gcfg:"tenant-name"`
-	TenantID                    string `gcfg:"tenant-id"`
-	DomainName                  string `gcfg:"domain-name"`
-	Region                      string
+
+	// project name formerly known as tenant name.
+	// it serialized as tenant-name because openstack CCM reads only tenant-name. In CCM, internally project and tenant
+	// are stored into tenant-name.
+	ProjectName string `gcfg:"tenant-name"`
+
+	// project id formerly known as tenant id.
+	// serialized as tenant-id for same reason as ProjectName
+	ProjectID  string `gcfg:"tenant-id"`
+	DomainName string `gcfg:"domain-name"`
+	Region     string
 }
 
 // CloudConfig is used to read and store information from the cloud configuration file
