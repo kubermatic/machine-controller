@@ -40,6 +40,5 @@ spec:
           operatingSystemSpec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
-            attachSubscription: false
       versions:
         kubelet: "<< KUBERNETES_VERSION >>"
