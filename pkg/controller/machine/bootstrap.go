@@ -230,6 +230,11 @@ systemctl restart kubelet-healthcheck.service
 
 	bootstrapYumBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
+source /etc/os-release
+if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
+  sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+  sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+fi
 {{- if .EnterpriseLinux }}
 yum install epel-release -y
 {{- end }}
@@ -241,7 +246,7 @@ systemctl daemon-reload
 systemctl restart setup.service
 systemctl restart kubelet.service
 systemctl restart kubelet-healthcheck.service
-  `
+	`
 
 	bootstrapZypperBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
