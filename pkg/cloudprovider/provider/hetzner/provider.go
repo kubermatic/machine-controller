@@ -39,6 +39,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/klog"
 )
 
@@ -280,12 +281,10 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			return nil, hzErrorToTerminalError(err, "failed to get placement groups of type spread")
 		}
 		var n *hcloud.PlacementGroup
-		count := 1
 		for _, p := range placementGroups {
 			if !strings.HasPrefix(p.Name, c.PlacementGroupPrefix) {
 				continue
 			}
-			count += 1
 			if len(p.Servers) < 10 {
 				n = p
 				break
@@ -293,7 +292,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		}
 		if n == nil {
 			p, _, err := client.PlacementGroup.Create(ctx, hcloud.PlacementGroupCreateOpts{
-				Name:   fmt.Sprintf("%s-%d", c.PlacementGroupPrefix, count),
+				Name:   fmt.Sprintf("%s-%s", c.PlacementGroupPrefix, rand.SafeEncodeString(rand.String(5))),
 				Labels: c.Labels,
 				Type:   hcloud.PlacementGroupTypeSpread,
 			})
@@ -414,6 +413,26 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
 		return false, fmt.Errorf("invalid status code returned. expected=%d got=%d", http.StatusOK, res.StatusCode)
 	}
+
+	if instance.(*hetznerServer).server.PlacementGroup != nil {
+		pg, _, err := client.PlacementGroup.Get(ctx, instance.(*hetznerServer).server.PlacementGroup.Name)
+		if err != nil {
+			return false, hzErrorToTerminalError(err, "failed to get placement group")
+		}
+		count := 0
+		for _, s := range pg.Servers {
+			if s != instance.(*hetznerServer).server.ID {
+				count += 1
+			}
+		}
+		if count == 0 {
+			_, err := client.PlacementGroup.Delete(ctx, pg)
+			if err != nil {
+				return false, hzErrorToTerminalError(err, "failed to delete empty placement group")
+			}
+		}
+	}
+
 	return false, nil
 }
 
