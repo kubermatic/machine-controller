@@ -291,9 +291,15 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			}
 		}
 		if n == nil {
+			labels := map[string]string{}
+			for k, v := range c.Labels {
+				if k != machineUIDLabelKey {
+					labels[k] = v
+				}
+			}
 			p, _, err := client.PlacementGroup.Create(ctx, hcloud.PlacementGroupCreateOpts{
 				Name:   fmt.Sprintf("%s-%s", c.PlacementGroupPrefix, rand.SafeEncodeString(rand.String(5))),
-				Labels: c.Labels,
+				Labels: labels,
 				Type:   hcloud.PlacementGroupTypeSpread,
 			})
 			if err != nil {
