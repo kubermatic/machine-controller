@@ -280,34 +280,34 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		if err != nil {
 			return nil, hzErrorToTerminalError(err, "failed to get placement groups of type spread")
 		}
-		var n *hcloud.PlacementGroup
-		for _, p := range placementGroups {
-			if !strings.HasPrefix(p.Name, c.PlacementGroupPrefix) {
+		var selectedPg *hcloud.PlacementGroup
+		for _, pg := range placementGroups {
+			if !strings.HasPrefix(pg.Name, c.PlacementGroupPrefix) {
 				continue
 			}
-			if len(p.Servers) < 10 {
-				n = p
+			if len(pg.Servers) < 10 {
+				selectedPg = pg
 				break
 			}
 		}
-		if n == nil {
-			labels := map[string]string{}
+		if selectedPg == nil {
+			pgLabels := map[string]string{}
 			for k, v := range c.Labels {
 				if k != machineUIDLabelKey {
-					labels[k] = v
+					pgLabels[k] = v
 				}
 			}
-			p, _, err := client.PlacementGroup.Create(ctx, hcloud.PlacementGroupCreateOpts{
+			createdPg, _, err := client.PlacementGroup.Create(ctx, hcloud.PlacementGroupCreateOpts{
 				Name:   fmt.Sprintf("%s-%s", c.PlacementGroupPrefix, rand.SafeEncodeString(rand.String(5))),
-				Labels: labels,
+				Labels: pgLabels,
 				Type:   hcloud.PlacementGroupTypeSpread,
 			})
 			if err != nil {
 				return nil, hzErrorToTerminalError(err, "failed to create placement group")
 			}
-			n = p.PlacementGroup
+			selectedPg = createdPg.PlacementGroup
 		}
-		serverCreateOpts.PlacementGroup = n
+		serverCreateOpts.PlacementGroup = selectedPg
 	}
 
 	if len(c.Networks) != 0 {
@@ -411,8 +411,9 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	ctx := context.TODO()
 	client := getClient(c.Token)
+	hzServer := instance.(*hetznerServer).server
 
-	res, err := client.Server.Delete(ctx, instance.(*hetznerServer).server)
+	res, err := client.Server.Delete(ctx, hzServer)
 	if err != nil {
 		return false, hzErrorToTerminalError(err, "failed to delete the server")
 	}
@@ -420,19 +421,19 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("invalid status code returned. expected=%d got=%d", http.StatusOK, res.StatusCode)
 	}
 
-	if instance.(*hetznerServer).server.PlacementGroup != nil {
-		pg, _, err := client.PlacementGroup.Get(ctx, instance.(*hetznerServer).server.PlacementGroup.Name)
+	if hzServer.PlacementGroup != nil {
+		pgHzServer, _, err := client.PlacementGroup.Get(ctx, hzServer.PlacementGroup.Name)
 		if err != nil {
 			return false, hzErrorToTerminalError(err, "failed to get placement group")
 		}
 		count := 0
-		for _, s := range pg.Servers {
-			if s != instance.(*hetznerServer).server.ID {
-				count += 1
+		for _, s := range pgHzServer.Servers {
+			if s != hzServer.ID {
+				count++
 			}
 		}
 		if count == 0 {
-			_, err := client.PlacementGroup.Delete(ctx, pg)
+			_, err := client.PlacementGroup.Delete(ctx, pgHzServer)
 			if err != nil {
 				return false, hzErrorToTerminalError(err, "failed to delete empty placement group")
 			}
