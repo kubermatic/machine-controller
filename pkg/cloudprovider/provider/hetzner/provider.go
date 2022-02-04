@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
@@ -55,14 +56,15 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	Token      string
-	ServerType string
-	Datacenter string
-	Image      string
-	Location   string
-	Networks   []string
-	Firewalls  []string
-	Labels     map[string]string
+	Token                string
+	ServerType           string
+	Datacenter           string
+	Image                string
+	Location             string
+	PlacementGroupPrefix string
+	Networks             []string
+	Firewalls            []string
+	Labels               map[string]string
 }
 
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
@@ -120,6 +122,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 
 	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Location)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.PlacementGroupPrefix, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.PlacementGroupPrefix)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -265,6 +272,37 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 			return nil, fmt.Errorf("location %q does not exist", c.Location)
 		}
 		serverCreateOpts.Location = location
+	}
+
+	if c.PlacementGroupPrefix != "" {
+		placementGroups, _, err := client.PlacementGroup.List(ctx, hcloud.PlacementGroupListOpts{Type: hcloud.PlacementGroupTypeSpread})
+		if err != nil {
+			return nil, hzErrorToTerminalError(err, "failed to get placement groups of type spread")
+		}
+		var n *hcloud.PlacementGroup
+		count := 1
+		for _, p := range placementGroups {
+			if !strings.HasPrefix(p.Name, c.PlacementGroupPrefix) {
+				continue
+			}
+			count += 1
+			if len(p.Servers) < 10 {
+				n = p
+				break
+			}
+		}
+		if n == nil {
+			p, _, err := client.PlacementGroup.Create(ctx, hcloud.PlacementGroupCreateOpts{
+				Name:   fmt.Sprintf("%s-%d", c.PlacementGroupPrefix, count),
+				Labels: c.Labels,
+				Type:   hcloud.PlacementGroupTypeSpread,
+			})
+			if err != nil {
+				return nil, hzErrorToTerminalError(err, "failed to create placement group")
+			}
+			n = p.PlacementGroup
+		}
+		serverCreateOpts.PlacementGroup = n
 	}
 
 	if len(c.Networks) != 0 {

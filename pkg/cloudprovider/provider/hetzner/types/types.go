@@ -21,12 +21,13 @@ import (
 )
 
 type RawConfig struct {
-	Token      providerconfigtypes.ConfigVarString   `json:"token,omitempty"`
-	ServerType providerconfigtypes.ConfigVarString   `json:"serverType"`
-	Datacenter providerconfigtypes.ConfigVarString   `json:"datacenter"`
-	Image      providerconfigtypes.ConfigVarString   `json:"image"`
-	Location   providerconfigtypes.ConfigVarString   `json:"location"`
-	Networks   []providerconfigtypes.ConfigVarString `json:"networks"`
-	Firewalls  []providerconfigtypes.ConfigVarString `json:"firewalls"`
-	Labels     map[string]string                     `json:"labels,omitempty"`
+	Token                providerconfigtypes.ConfigVarString   `json:"token,omitempty"`
+	ServerType           providerconfigtypes.ConfigVarString   `json:"serverType"`
+	Datacenter           providerconfigtypes.ConfigVarString   `json:"datacenter"`
+	Image                providerconfigtypes.ConfigVarString   `json:"image"`
+	Location             providerconfigtypes.ConfigVarString   `json:"location"`
+	PlacementGroupPrefix providerconfigtypes.ConfigVarString   `json:"placementGroupPrefix"`
+	Networks             []providerconfigtypes.ConfigVarString `json:"networks"`
+	Firewalls            []providerconfigtypes.ConfigVarString `json:"firewalls"`
+	Labels               map[string]string                     `json:"labels,omitempty"`
 }

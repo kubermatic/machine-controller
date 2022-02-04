@@ -48,6 +48,8 @@ spec:
             datacenter: ""
             location: "fsn1"
             image: "ubuntu-20.04"
+            # Optional: placement group prefix
+            placementGroupPrefix: "<< YOUR_PLACEMENT_GROUP_PREFIX >>"
             # Optional: network IDs or names
             networks:
               - "<< YOUR_NETWORK >>"
