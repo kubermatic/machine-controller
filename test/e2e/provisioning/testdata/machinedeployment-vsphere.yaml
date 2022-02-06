@@ -32,7 +32,7 @@ spec:
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
             cluster: '<< VSPHERE_CLUSTER >>'
-            datastore: exsi-nas
+            datastore: HS-FreeNAS
             cpus: 2
             MemoryMB: 2048
             diskSizeGB: << DISK_SIZE >>
