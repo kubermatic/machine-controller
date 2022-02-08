@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/hetznercloud/hcloud-go/hcloud"
 
@@ -38,6 +39,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/klog"
 )
 
@@ -55,14 +57,15 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	Token      string
-	ServerType string
-	Datacenter string
-	Image      string
-	Location   string
-	Networks   []string
-	Firewalls  []string
-	Labels     map[string]string
+	Token                string
+	ServerType           string
+	Datacenter           string
+	Image                string
+	Location             string
+	PlacementGroupPrefix string
+	Networks             []string
+	Firewalls            []string
+	Labels               map[string]string
 }
 
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
@@ -124,6 +127,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, err
 	}
 
+	c.PlacementGroupPrefix, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.PlacementGroupPrefix)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	for _, network := range rawConfig.Networks {
 		networkValue, err := p.configVarResolver.GetConfigVarStringValue(network)
 		if err != nil {
@@ -142,6 +150,36 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 
 	c.Labels = rawConfig.Labels
 	return &c, &pconfig, err
+}
+
+func (p *provider) getServerPlacementGroup(ctx context.Context, client *hcloud.Client, c *Config) (*hcloud.PlacementGroup, error) {
+	placementGroups, _, err := client.PlacementGroup.List(ctx, hcloud.PlacementGroupListOpts{Type: hcloud.PlacementGroupTypeSpread})
+	if err != nil {
+		return nil, hzErrorToTerminalError(err, "failed to get placement groups of type spread")
+	}
+	for _, pg := range placementGroups {
+		if !strings.HasPrefix(pg.Name, c.PlacementGroupPrefix) {
+			continue
+		}
+		if len(pg.Servers) < 10 {
+			return pg, nil
+		}
+	}
+	pgLabels := map[string]string{}
+	for k, v := range c.Labels {
+		if k != machineUIDLabelKey {
+			pgLabels[k] = v
+		}
+	}
+	createdPg, _, err := client.PlacementGroup.Create(ctx, hcloud.PlacementGroupCreateOpts{
+		Name:   fmt.Sprintf("%s-%s", c.PlacementGroupPrefix, rand.SafeEncodeString(rand.String(5))),
+		Labels: pgLabels,
+		Type:   hcloud.PlacementGroupTypeSpread,
+	})
+	if err != nil {
+		return nil, hzErrorToTerminalError(err, "failed to create placement group")
+	}
+	return createdPg.PlacementGroup, nil
 }
 
 func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
@@ -184,23 +222,19 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	}
 
-	if len(c.Networks) != 0 {
-		for _, network := range c.Networks {
-			if _, _, err = client.Network.Get(ctx, network); err != nil {
-				return fmt.Errorf("failed to get network %q: %v", network, err)
-			}
+	for _, network := range c.Networks {
+		if _, _, err = client.Network.Get(ctx, network); err != nil {
+			return fmt.Errorf("failed to get network %q: %v", network, err)
 		}
 	}
 
-	if len(c.Firewalls) != 0 {
-		for _, firewall := range c.Firewalls {
-			f, _, err := client.Firewall.Get(ctx, firewall)
-			if err != nil {
-				return fmt.Errorf("failed to get firewall %q: %v", firewall, err)
-			}
-			if f == nil {
-				return fmt.Errorf("firewall %q does not exist", firewall)
-			}
+	for _, firewall := range c.Firewalls {
+		f, _, err := client.Firewall.Get(ctx, firewall)
+		if err != nil {
+			return fmt.Errorf("failed to get firewall %q: %v", firewall, err)
+		}
+		if f == nil {
+			return fmt.Errorf("firewall %q does not exist", firewall)
 		}
 	}
 
@@ -267,31 +301,34 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 		serverCreateOpts.Location = location
 	}
 
-	if len(c.Networks) != 0 {
-		serverCreateOpts.Networks = []*hcloud.Network{}
-		for _, network := range c.Networks {
-			n, _, err := client.Network.Get(ctx, network)
-			if err != nil {
-				return nil, hzErrorToTerminalError(err, "failed to get network")
-			}
-			if n == nil {
-				return nil, fmt.Errorf("network %q does not exist", network)
-			}
-			serverCreateOpts.Networks = append(serverCreateOpts.Networks, n)
+	if c.PlacementGroupPrefix != "" {
+		selectedPg, err := p.getServerPlacementGroup(ctx, client, c)
+		if err != nil {
+			return nil, err
 		}
+		serverCreateOpts.PlacementGroup = selectedPg
 	}
 
-	if len(c.Firewalls) != 0 {
-		for _, firewall := range c.Firewalls {
-			n, _, err := client.Firewall.Get(ctx, firewall)
-			if err != nil {
-				return nil, hzErrorToTerminalError(err, "failed to get firewall")
-			}
-			if n == nil {
-				return nil, fmt.Errorf("firewall %q does not exist", firewall)
-			}
-			serverCreateOpts.Firewalls = append(serverCreateOpts.Firewalls, &hcloud.ServerCreateFirewall{Firewall: *n})
+	for _, network := range c.Networks {
+		n, _, err := client.Network.Get(ctx, network)
+		if err != nil {
+			return nil, hzErrorToTerminalError(err, "failed to get network")
 		}
+		if n == nil {
+			return nil, fmt.Errorf("network %q does not exist", network)
+		}
+		serverCreateOpts.Networks = append(serverCreateOpts.Networks, n)
+	}
+
+	for _, firewall := range c.Firewalls {
+		n, _, err := client.Firewall.Get(ctx, firewall)
+		if err != nil {
+			return nil, hzErrorToTerminalError(err, "failed to get firewall")
+		}
+		if n == nil {
+			return nil, fmt.Errorf("firewall %q does not exist", firewall)
+		}
+		serverCreateOpts.Firewalls = append(serverCreateOpts.Firewalls, &hcloud.ServerCreateFirewall{Firewall: *n})
 	}
 
 	image, _, err := client.Image.Get(ctx, c.Image)
@@ -368,14 +405,35 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 
 	ctx := context.TODO()
 	client := getClient(c.Token)
+	hzServer := instance.(*hetznerServer).server
 
-	res, err := client.Server.Delete(ctx, instance.(*hetznerServer).server)
+	res, err := client.Server.Delete(ctx, hzServer)
 	if err != nil {
 		return false, hzErrorToTerminalError(err, "failed to delete the server")
 	}
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
 		return false, fmt.Errorf("invalid status code returned. expected=%d got=%d", http.StatusOK, res.StatusCode)
 	}
+
+	if hzServer.PlacementGroup != nil {
+		pgHzServer, _, err := client.PlacementGroup.Get(ctx, hzServer.PlacementGroup.Name)
+		if err != nil {
+			return false, hzErrorToTerminalError(err, "failed to get placement group")
+		}
+		count := 0
+		for _, s := range pgHzServer.Servers {
+			if s != hzServer.ID {
+				count++
+			}
+		}
+		if count == 0 {
+			_, err := client.PlacementGroup.Delete(ctx, pgHzServer)
+			if err != nil {
+				return false, hzErrorToTerminalError(err, "failed to delete empty placement group")
+			}
+		}
+	}
+
 	return false, nil
 }
 
