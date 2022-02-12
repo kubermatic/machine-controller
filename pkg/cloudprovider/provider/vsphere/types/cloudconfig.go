@@ -78,7 +78,6 @@ type GlobalOpts struct {
 	Datacenter       string `gcfg:"datacenter"`
 	DefaultDatastore string `gcfg:"datastore"`
 	VCenterIP        string `gcfg:"server"`
-	ClusterID        string `gcfg:"cluster-id"`
 }
 
 type VirtualCenterConfig struct {

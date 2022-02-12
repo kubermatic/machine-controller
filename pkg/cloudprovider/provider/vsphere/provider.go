@@ -64,7 +64,6 @@ type Config struct {
 	Password         string
 	VSphereURL       string
 	Datacenter       string
-	Cluster          string
 	Folder           string
 	ResourcePool     string
 	Datastore        string
@@ -160,11 +159,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
-	c.Cluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Cluster)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	c.Folder, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Folder)
 	if err != nil {
 		return nil, nil, nil, err
@@ -223,10 +217,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	} else {
 		return fmt.Errorf("one between datastore and datastore cluster should be specified: %v", err)
-	}
-
-	if _, err := session.Finder.ClusterComputeResource(ctx, config.Cluster); err != nil {
-		return fmt.Errorf("failed to get cluster: %s: %v", config.Cluster, err)
 	}
 
 	if _, err := session.Finder.Folder(ctx, config.Folder); err != nil {
@@ -546,7 +536,6 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			Password:     c.Password,
 			InsecureFlag: c.AllowInsecure,
 			VCenterPort:  u.Port(),
-			ClusterID:    c.Cluster,
 		},
 		Disk: vspheretypes.DiskOpts{
 			SCSIControllerType: "pvscsi",
@@ -582,7 +571,6 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	if err == nil {
 		labels["size"] = fmt.Sprintf("%d-cpus-%d-mb", c.CPUs, c.MemoryMB)
 		labels["dc"] = c.Datacenter
-		labels["cluster"] = c.Cluster
 	}
 
 	return labels, err
