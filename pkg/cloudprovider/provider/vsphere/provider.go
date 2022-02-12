@@ -32,7 +32,7 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	vspheretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere/types"
@@ -104,11 +104,11 @@ func (vsphereServer Server) Status() instance.Status {
 // Ensures that provider implements Provider interface.
 var _ cloudprovidertypes.Provider = &provider{}
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error) {
+func (p *provider) getConfig(s clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error) {
 	if s.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
@@ -191,7 +191,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	return &c, &pconfig, &rawConfig, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
@@ -264,7 +264,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	vm, err := p.create(machine, userdata)
 	if err != nil {
 		_, cleanupErr := p.Cleanup(machine, data)
@@ -276,7 +276,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return vm, nil
 }
 
-func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (p *provider) create(machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -344,7 +344,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -437,7 +437,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	return true, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -503,11 +503,11 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new ktypes.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
@@ -564,7 +564,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return s, "vsphere", nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -576,11 +576,11 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return labels, err
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) get(ctx context.Context, folder string, spec v1alpha1.MachineSpec, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
+func (p *provider) get(ctx context.Context, folder string, spec clusterv1alpha1.MachineSpec, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
 	path := fmt.Sprintf("%s/%s", folder, spec.Name)
 	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, path)
 	if err != nil {
