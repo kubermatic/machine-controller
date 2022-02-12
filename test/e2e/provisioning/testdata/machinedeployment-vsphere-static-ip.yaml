@@ -31,7 +31,6 @@ spec:
             folder: '/Customer-A/vm/e2e-tests'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            cluster: '<< VSPHERE_CLUSTER >>'
             datastore: datastore1
             allowInsecure: true
             cpus: 2

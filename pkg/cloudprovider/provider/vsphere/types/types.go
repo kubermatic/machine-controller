@@ -28,7 +28,6 @@ type RawConfig struct {
 	Password       providerconfigtypes.ConfigVarString `json:"password"`
 	VSphereURL     providerconfigtypes.ConfigVarString `json:"vsphereURL"`
 	Datacenter     providerconfigtypes.ConfigVarString `json:"datacenter"`
-	Cluster        providerconfigtypes.ConfigVarString `json:"cluster"`
 	Folder         providerconfigtypes.ConfigVarString `json:"folder"`
 	ResourcePool   providerconfigtypes.ConfigVarString `json:"resourcePool"`
 

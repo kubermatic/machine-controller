@@ -788,11 +788,10 @@ func getVSphereTestParams(t *testing.T) []string {
 	// test data
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
-	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
 	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
 
-	if vsPassword == "" || vsUsername == "" || vsAddress == "" || vsCluster == "" {
-		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER " +
+	if vsPassword == "" || vsUsername == "" || vsAddress == "" {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME" +
 			"or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
@@ -800,7 +799,6 @@ func getVSphereTestParams(t *testing.T) []string {
 	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
 		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
 		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
-		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
 	}
 	return params
 }
