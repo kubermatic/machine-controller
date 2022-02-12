@@ -57,12 +57,12 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) getConfig(s clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
 	pConfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pConfig)
+	err := json.Unmarshal(provSpec.Value.Raw, &pConfig)
 	if err != nil {
 		return nil, nil, err
 	}

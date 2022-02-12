@@ -175,13 +175,13 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	return nil
 }
 
-func (p *provider) getConfig(spec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
-	if spec.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
+	if provSpec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 
 	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(spec.Value.Raw, &pconfig)
+	err := json.Unmarshal(provSpec.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}

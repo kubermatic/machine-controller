@@ -341,12 +341,12 @@ func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) e
 	return nil
 }
 
-func (p *provider) getConfig(s clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, errors.New("machine.spec.providerconfig.value is nil")
 	}
 	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+	err := json.Unmarshal(provSpec.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode providers config: %v", err)
 	}

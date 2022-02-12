@@ -116,12 +116,12 @@ func (k *kubeVirtServer) Status() instance.Status {
 
 var _ instance.Instance = &kubeVirtServer{}
 
-func (p *provider) getConfig(s clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+	err := json.Unmarshal(provSpec.Value.Raw, &pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
