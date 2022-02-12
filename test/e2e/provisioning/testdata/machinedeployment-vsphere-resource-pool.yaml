@@ -36,9 +36,9 @@ spec:
             cpus: 2
             MemoryMB: 2048
             diskSizeGB: << DISK_SIZE >>
-            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
+            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
       versions:
         kubelet: "<< KUBERNETES_VERSION >>"
