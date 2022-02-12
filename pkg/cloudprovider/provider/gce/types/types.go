@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -66,4 +67,12 @@ func (cpSpec *CloudProviderSpec) UpdateProviderSpec(spec v1alpha1.ProviderSpec) 
 		return nil, err
 	}
 	return &runtime.RawExtension{Raw: rawProviderConfig}, nil
+}
+
+type RawConfig = CloudProviderSpec
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }
