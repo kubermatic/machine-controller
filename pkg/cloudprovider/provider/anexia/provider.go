@@ -61,18 +61,18 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
-	pConfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(provSpec.Value.Raw, &pConfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if pConfig.OperatingSystemSpec.Raw == nil {
+	if pconfig.OperatingSystemSpec.Raw == nil {
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := anxtypes.RawConfig{}
-	if err = json.Unmarshal(pConfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := anxtypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -101,7 +101,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf("failed to get 'vlanID': %v", err)
 	}
 
-	return &c, &pConfig, nil
+	return &c, pconfig, nil
 }
 
 // New returns an Anexia provider

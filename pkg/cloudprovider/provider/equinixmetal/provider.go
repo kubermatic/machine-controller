@@ -81,14 +81,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 	if provSpec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(provSpec.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	rawConfig := equinixmetaltypes.RawConfig{}
-	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := equinixmetaltypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, nil, err
 	}
 
@@ -143,7 +143,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 	// ensure we have defaults
 	c.populateDefaults()
 
-	return &c, &rawConfig, &pconfig, err
+	return &c, rawConfig, pconfig, err
 }
 
 func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.Device, *packngo.Client, error) {
@@ -404,20 +404,23 @@ func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s clusterv1alpha1.Pr
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(s)
 	if err != nil {
 		return nil, err
 	}
+
 	rawCloudProviderSpec, err := json.Marshal(rawConfig)
 	if err != nil {
 		return nil, err
 	}
+
 	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
 	rawPconfig, err := json.Marshal(pconfig)
 	if err != nil {
 		return nil, err
 	}
+
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 

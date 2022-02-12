@@ -180,20 +180,18 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(provSpec.Value.Raw, &pconfig)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	var rawConfig openstacktypes.RawConfig
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	if pconfig.OperatingSystemSpec.Raw == nil {
 		return nil, nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
+	}
+
+	rawConfig, err := openstacktypes.GetConfig(*pconfig)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	cfg := Config{}
@@ -203,7 +201,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	// Retrieve authentication config, username/password or application credentials
-	err = p.getConfigAuth(&cfg, &rawConfig)
+	err = p.getConfigAuth(&cfg, rawConfig)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to retrieve authentication credentials, error = %v", err)
 	}
@@ -296,22 +294,24 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, err
 	}
 
-	return &cfg, &pconfig, &rawConfig, err
+	return &cfg, pconfig, rawConfig, err
 }
 
-func setProviderSpec(rawConfig openstacktypes.RawConfig, s clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	if s.Value == nil {
+func setProviderSpec(rawConfig openstacktypes.RawConfig, provSpec clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+	if provSpec.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, err
 	}
+
 	rawCloudProviderSpec, err := json.Marshal(rawConfig)
 	if err != nil {
 		return nil, err
 	}
+
 	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
 	rawPconfig, err := json.Marshal(pconfig)
 	if err != nil {

@@ -18,7 +18,6 @@ package alibaba
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -345,8 +344,8 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if provSpec.Value == nil {
 		return nil, nil, errors.New("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(provSpec.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode providers config: %v", err)
 	}
@@ -355,8 +354,8 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := alibabatypes.RawConfig{}
-	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := alibabatypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode alibaba providers config: %v", err)
 	}
 
@@ -398,7 +397,8 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"diskSize\" field, error = %v", err)
 	}
-	return &c, &pconfig, err
+
+	return &c, pconfig, err
 }
 
 func getClient(regionID, accessKeyID, accessKeySecret string) (*ecs.Client, error) {

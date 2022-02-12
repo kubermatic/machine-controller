@@ -66,8 +66,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 
 // Validate returns success or failure based according to its FakeCloudProviderSpec
 func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(machinespec.ProviderSpec.Value.Raw, &pconfig)
+	pconfig, err := providerconfigtypes.GetConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return err
 	}

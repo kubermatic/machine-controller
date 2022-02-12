@@ -301,13 +301,16 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	}
 
 	var cvbDummy configVarBoolWithoutUnmarshaller
+
 	err := json.Unmarshal(b, &cvbDummy)
 	if err != nil {
 		return err
 	}
+
 	configVarBool.Value = cvbDummy.Value
 	configVarBool.SecretKeyRef = cvbDummy.SecretKeyRef
 	configVarBool.ConfigMapKeyRef = cvbDummy.ConfigMapKeyRef
+
 	return nil
 }
 
