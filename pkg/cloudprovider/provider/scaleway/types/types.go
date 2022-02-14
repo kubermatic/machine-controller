@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
@@ -28,4 +29,10 @@ type RawConfig struct {
 	CommercialType providerconfigtypes.ConfigVarString `json:"commercialType"`
 	IPv6           providerconfigtypes.ConfigVarBool   `json:"ipv6"`
 	Tags           []string                            `json:"tags,omitempty"`
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

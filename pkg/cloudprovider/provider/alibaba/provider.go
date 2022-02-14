@@ -18,7 +18,6 @@ package alibaba
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -27,7 +26,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	alibabatypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/alibaba/types"
@@ -104,11 +103,11 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(machineSpec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(machineSpec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -149,7 +148,7 @@ func (p *provider) Validate(machineSpec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -195,11 +194,11 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	return nil, fmt.Errorf("instance %v is not ready", foundInstance.InstanceId)
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -243,7 +242,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		return nil, fmt.Errorf("failed to create instance at Alibaba cloud: %v", err)
 	}
 
-	if err = data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err = data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerInstance) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerInstance)
 		}
@@ -259,7 +258,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return &alibabaInstance{instance: foundInstance}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	foundInstance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -292,7 +291,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	return false, nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -304,7 +303,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return labels, err
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %v", err)
@@ -337,16 +336,16 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, errors.New("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode providers config: %v", err)
 	}
@@ -355,8 +354,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := alibabatypes.RawConfig{}
-	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := alibabatypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode alibaba providers config: %v", err)
 	}
 
@@ -398,7 +397,8 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"diskSize\" field, error = %v", err)
 	}
-	return &c, &pconfig, err
+
+	return &c, pconfig, err
 }
 
 func getClient(regionID, accessKeyID, accessKeySecret string) (*ecs.Client, error) {
@@ -434,7 +434,7 @@ func getInstance(client *ecs.Client, instanceName string, uid string) (*ecs.Inst
 	return &response.Instances.Instance[0], nil
 }
 
-func (p *provider) getImageIDForOS(machineSpec v1alpha1.MachineSpec, os providerconfigtypes.OperatingSystem) (string, error) {
+func (p *provider) getImageIDForOS(machineSpec clusterv1alpha1.MachineSpec, os providerconfigtypes.OperatingSystem) (string, error) {
 	c, _, err := p.getConfig(machineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get alibaba client: %v", err)

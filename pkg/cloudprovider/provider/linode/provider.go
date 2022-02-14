@@ -32,7 +32,7 @@ import (
 	"golang.org/x/oauth2"
 
 	common "github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -107,12 +107,12 @@ func getClient(token string) linodego.Client {
 	return client
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,8 +121,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := linodetypes.RawConfig{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	rawConfig, err := linodetypes.GetConfig(*pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,14 +156,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		c.Tags = append(c.Tags, tagVal)
 	}
 
-	return &c, &pconfig, err
+	return &c, pconfig, err
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -213,7 +212,7 @@ func createRandomPassword() (string, error) {
 	return rootPass, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -275,7 +274,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	return &linodeInstance{linode: linode}, err
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	instance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -316,7 +315,7 @@ func getListOptions(name string) *linodego.ListOptions {
 	return listOptions
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -344,7 +343,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -383,11 +382,11 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -459,6 +458,6 @@ func linodeStatusAndErrToTerminalError(err error) error {
 	}
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }

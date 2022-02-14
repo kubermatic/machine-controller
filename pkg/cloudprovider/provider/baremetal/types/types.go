@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,4 +35,10 @@ type MetadataClientConfig struct {
 	Username   providerconfigtypes.ConfigVarString `json:"username,omitempty"`
 	Password   providerconfigtypes.ConfigVarString `json:"password,omitempty"`
 	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

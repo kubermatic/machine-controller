@@ -35,7 +35,7 @@ import (
 	"github.com/gophercloud/gophercloud/pagination"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	openstacktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack/types"
@@ -175,25 +175,23 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	return nil
 }
 
-func (p *provider) getConfig(spec v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
-	if spec.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *openstacktypes.RawConfig, error) {
+	if provSpec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
 
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(spec.Value.Raw, &pconfig)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	var rawConfig openstacktypes.RawConfig
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	if pconfig.OperatingSystemSpec.Raw == nil {
 		return nil, nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
+	}
+
+	rawConfig, err := openstacktypes.GetConfig(*pconfig)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	cfg := Config{}
@@ -203,7 +201,7 @@ func (p *provider) getConfig(spec v1alpha1.ProviderSpec) (*Config, *providerconf
 	}
 
 	// Retrieve authentication config, username/password or application credentials
-	err = p.getConfigAuth(&cfg, &rawConfig)
+	err = p.getConfigAuth(&cfg, rawConfig)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to retrieve authentication credentials, error = %v", err)
 	}
@@ -296,22 +294,24 @@ func (p *provider) getConfig(spec v1alpha1.ProviderSpec) (*Config, *providerconf
 		return nil, nil, nil, err
 	}
 
-	return &cfg, &pconfig, &rawConfig, err
+	return &cfg, pconfig, rawConfig, err
 }
 
-func setProviderSpec(rawConfig openstacktypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	if s.Value == nil {
+func setProviderSpec(rawConfig openstacktypes.RawConfig, provSpec clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+	if provSpec.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, err
 	}
+
 	rawCloudProviderSpec, err := json.Marshal(rawConfig)
 	if err != nil {
 		return nil, err
 	}
+
 	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
 	rawPconfig, err := json.Marshal(pconfig)
 	if err != nil {
@@ -349,7 +349,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	return pc, err
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	c, _, rawConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, cloudprovidererrors.TerminalError{
@@ -439,7 +439,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -554,7 +554,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	cfg, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -723,7 +723,7 @@ func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, se
 	klog.V(0).Infof("Instance %s got deleted", serverID)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	var hasFloatingIPReleaseFinalizer bool
 	if finalizers := sets.NewString(machine.Finalizers...); finalizers.Has(floatingIPReleaseFinalizer) {
 		hasFloatingIPReleaseFinalizer = true
@@ -771,7 +771,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -814,7 +814,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -862,7 +862,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
@@ -901,7 +901,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return s, "openstack", nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -1002,7 +1002,7 @@ type forbiddenResponse struct {
 	} `json:"forbidden"`
 }
 
-func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudprovidertypes.MachineUpdater) error {
+func (p *provider) cleanupFloatingIP(machine *clusterv1alpha1.Machine, updater cloudprovidertypes.MachineUpdater) error {
 	floatingIPID, exists := machine.Annotations[floatingIPIDAnnotationKey]
 	if !exists {
 		return osErrorToTerminalError(fmt.Errorf("failed to release floating ip"),
@@ -1028,7 +1028,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && err.Error() != "Resource not found" {
 		return fmt.Errorf("failed to delete floating ip %s: %v", floatingIPID, err)
 	}
-	if err := updater(machine, func(m *v1alpha1.Machine) {
+	if err := updater(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(floatingIPReleaseFinalizer)
 		m.Finalizers = finalizers.List()
@@ -1039,7 +1039,7 @@ func (p *provider) cleanupFloatingIP(machine *v1alpha1.Machine, updater cloudpro
 	return nil
 }
 
-func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater, machine *v1alpha1.Machine, netClient *gophercloud.ServiceClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
+func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater, machine *clusterv1alpha1.Machine, netClient *gophercloud.ServiceClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
 	port, err := getInstancePort(netClient, instanceID, network.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get instance port for network %s in region %s: %v", network.ID, region, err)
@@ -1067,7 +1067,7 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 		if ip, err = createFloatingIP(netClient, port.ID, floatingIPPool); err != nil {
 			return osErrorToTerminalError(err, "failed to allocate a floating ip")
 		}
-		if err := machineUpdater(machine, func(m *v1alpha1.Machine) {
+		if err := machineUpdater(machine, func(m *clusterv1alpha1.Machine) {
 			m.Finalizers = append(m.Finalizers, floatingIPReleaseFinalizer)
 			if m.Annotations == nil {
 				m.Annotations = map[string]string{}
@@ -1103,6 +1103,6 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 	return nil
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
@@ -32,4 +33,10 @@ type RawConfig struct {
 	StorageClassName providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
 	DNSPolicy        providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
 	DNSConfig        *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

@@ -66,27 +66,28 @@ const (
 
 // newCloudProviderSpec creates a cloud provider specification out of the
 // given ProviderSpec.
-func newCloudProviderSpec(spec v1alpha1.ProviderSpec) (*gcetypes.CloudProviderSpec, *providerconfigtypes.Config, error) {
+func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProviderSpec, *providerconfigtypes.Config, error) {
 	// Retrieve provider configuration from machine specification.
-	if spec.Value == nil {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	providerConfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(spec.Value.Raw, &providerConfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
 	}
 
-	if providerConfig.OperatingSystemSpec.Raw == nil {
+	if pconfig.OperatingSystemSpec.Raw == nil {
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
+
 	// Retrieve cloud provider specification from cloud provider specification.
-	cpSpec := &gcetypes.CloudProviderSpec{}
-	err = json.Unmarshal(providerConfig.CloudProviderSpec.Raw, cpSpec)
+	cpSpec, err := gcetypes.GetConfig(*pconfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
 	}
-	return cpSpec, &providerConfig, nil
+
+	return cpSpec, pconfig, nil
 }
 
 // config contains the configuration of the Provider.

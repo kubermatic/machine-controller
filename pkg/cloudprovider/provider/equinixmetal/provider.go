@@ -26,7 +26,7 @@ import (
 	"github.com/packethost/packngo"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	equinixmetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/equinixmetal/types"
@@ -77,18 +77,18 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *equinixmetaltypes.RawConfig, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *equinixmetaltypes.RawConfig, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	rawConfig := equinixmetaltypes.RawConfig{}
-	if err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := equinixmetaltypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, nil, err
 	}
 
@@ -143,10 +143,10 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *equinixmetaltyp
 	// ensure we have defaults
 	c.populateDefaults()
 
-	return &c, &rawConfig, &pconfig, err
+	return &c, rawConfig, pconfig, err
 }
 
-func (p *provider) getMetalDevice(machine *v1alpha1.Machine) (*packngo.Device, *packngo.Client, error) {
+func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.Device, *packngo.Client, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, nil, cloudprovidererrors.TerminalError{
@@ -163,7 +163,7 @@ func (p *provider) getMetalDevice(machine *v1alpha1.Machine) (*packngo.Device, *
 	return device, client, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, _, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -214,7 +214,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -254,7 +254,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	return &metalDevice{device: device}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	instance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -280,7 +280,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	return false, nil
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	_, rawConfig, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, err
@@ -293,7 +293,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	device, _, err := p.getMetalDevice(machine)
 	if err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, newID types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newID types.UID) error {
 	device, client, err := p.getMetalDevice(machine)
 	if err != nil {
 		return err
@@ -340,11 +340,11 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, newID types.UID) error 
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -356,7 +356,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return labels, err
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }
 
@@ -400,24 +400,27 @@ func (s *metalDevice) Status() instance.Status {
 /******
 CONVENIENCE INTERNAL FUNCTIONS
 ******/
-func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(s)
 	if err != nil {
 		return nil, err
 	}
+
 	rawCloudProviderSpec, err := json.Marshal(rawConfig)
 	if err != nil {
 		return nil, err
 	}
+
 	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
 	rawPconfig, err := json.Marshal(pconfig)
 	if err != nil {
 		return nil, err
 	}
+
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 

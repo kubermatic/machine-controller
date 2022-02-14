@@ -19,7 +19,6 @@ package azure
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -29,7 +28,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -186,12 +185,12 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 	return &provider{configVarResolver: configVarResolver}
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -200,8 +199,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawCfg := azuretypes.RawConfig{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawCfg)
+	rawCfg, err := azuretypes.GetConfig(*pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -315,7 +313,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get image id: %v", err)
 	}
 
-	return &c, &pconfig, nil
+	return &c, pconfig, nil
 }
 
 func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) (map[string]v1.NodeAddressType, error) {
@@ -449,7 +447,7 @@ func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigNa
 	return ipAddresses, nil
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
@@ -482,7 +480,7 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 	return sp, nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -506,7 +504,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	publicIPName := ifaceName + "-pubip"
 	var publicIP *network.PublicIPAddress
 	if config.AssignPublicIP {
-		if err = data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+		if err = data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 			if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerPublicIP) {
 				updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerPublicIP)
 			}
@@ -519,7 +517,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 		}
 	}
 
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerNIC) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerNIC)
 		}
@@ -590,7 +588,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	}
 
 	klog.Infof("Creating machine %q", machine.Name)
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerDisks) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerDisks)
 		}
@@ -635,7 +633,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse MachineSpec: %v", err)
@@ -656,7 +654,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 		return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
 	}
 
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
 	}); err != nil {
 		return false, err
@@ -666,7 +664,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if err := deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
 	}
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerDisks)
 	}); err != nil {
 		return false, err
@@ -676,7 +674,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if err := deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
 	}
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerNIC)
 	}); err != nil {
 		return false, err
@@ -686,7 +684,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	if err := deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
 	}
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerPublicIP)
 	}); err != nil {
 		return false, err
@@ -779,11 +777,11 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	}
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return p.get(machine)
 }
 
-func (p *provider) get(machine *v1alpha1.Machine) (*azureVM, error) {
+func (p *provider) get(machine *clusterv1alpha1.Machine) (*azureVM, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MachineSpec: %v", err)
@@ -811,7 +809,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*azureVM, error) {
 	return &azureVM{vm: vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
@@ -849,7 +847,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return s, "azure", nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, providerCfg, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -909,7 +907,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return err
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -986,7 +984,7 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -998,7 +996,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return labels, err
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }
 

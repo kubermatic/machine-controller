@@ -36,7 +36,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	awstypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws/types"
@@ -347,12 +347,12 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error) {
+	if provSpec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -361,10 +361,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := awstypes.RawConfig{}
-	if err := json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := awstypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
+
 	c := Config{}
 	c.AccessKeyID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKeyID, "AWS_ACCESS_KEY_ID")
 	if err != nil {
@@ -473,7 +474,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 	c.AssumeRoleExternalID = assumeRoleExternalID
 
-	return &c, &pconfig, &rawConfig, err
+	return &c, pconfig, rawConfig, err
 }
 
 func getSession(id, secret, token, region, assumeRoleARN, assumeRoleExternalID string) (*session.Session, error) {
@@ -538,7 +539,7 @@ func getEC2client(id, secret, region, assumeRoleArn, assumeRoleExternalID string
 	return ec2.New(sess), nil
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	_, _, rawConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, err
@@ -559,7 +560,7 @@ func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 	return spec, err
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -653,7 +654,7 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 	return vpcOut.Vpcs[0], nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -801,7 +802,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return &awsInstance{instance: runOut.Instances[0]}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	ec2instance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -855,11 +856,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return p.get(machine)
 }
 
-func (p *provider) get(machine *v1alpha1.Machine) (*awsInstance, error) {
+func (p *provider) get(machine *clusterv1alpha1.Machine) (*awsInstance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -906,7 +907,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*awsInstance, error) {
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
@@ -929,7 +930,7 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -943,7 +944,7 @@ func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 	return labels, err
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	machineInstance, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -1065,19 +1066,21 @@ func awsErrorToTerminalError(err error, msg string) error {
 	return nil
 }
 
-func setProviderSpec(rawConfig awstypes.RawConfig, s v1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
-	if s.Value == nil {
+func setProviderSpec(rawConfig awstypes.RawConfig, provSpec clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
+	if provSpec.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, err
 	}
+
 	rawCloudProviderSpec, err := json.Marshal(rawConfig)
 	if err != nil {
 		return nil, err
 	}
+
 	pconfig.CloudProviderSpec = runtime.RawExtension{Raw: rawCloudProviderSpec}
 	rawPconfig, err := json.Marshal(pconfig)
 	if err != nil {
@@ -1087,7 +1090,7 @@ func setProviderSpec(rawConfig awstypes.RawConfig, s v1alpha1.ProviderSpec) (*ru
 	return &runtime.RawExtension{Raw: rawPconfig}, nil
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	metricInstancesForMachines.Reset()
 
 	if len(machines.Items) < 1 {
@@ -1148,7 +1151,7 @@ func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
 	return nil
 }
 
-func getIntanceCountForMachine(machine v1alpha1.Machine, reservations []*ec2.Reservation) float64 {
+func getIntanceCountForMachine(machine clusterv1alpha1.Machine, reservations []*ec2.Reservation) float64 {
 	var count float64
 	for _, reservation := range reservations {
 		for _, i := range reservation.Instances {
@@ -1195,7 +1198,7 @@ func filterSupportedRHELImages(images []*ec2.Image) ([]*ec2.Image, error) {
 // That could result in two or more instances created for one Machine object.
 // This happens more often in some AWS regions because some regions have
 // slower instance creation (e.g. us-east-1 and us-west-2).
-func (p *provider) waitForInstance(machine *v1alpha1.Machine) error {
+func (p *provider) waitForInstance(machine *clusterv1alpha1.Machine) error {
 	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		_, err := p.get(machine)
 		if err == cloudprovidererrors.ErrInstanceNotFound {
