@@ -47,6 +47,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
 
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -550,7 +551,7 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 		return nil, nil
 	}
 
-	return nil, r.deleteNodeForMachine(ctx, machine)
+	return r.deleteNodeForMachine(ctx, machine)
 }
 
 func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
@@ -623,26 +624,40 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 	})
 }
 
-func (r *Reconciler) deleteNodeForMachine(ctx context.Context, machine *clusterv1alpha1.Machine) error {
+func (r *Reconciler) deleteNodeForMachine(ctx context.Context, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
+	// List all the volumeAttachments in the cluster; we must be sure that all
+	// of them will be deleted before deleting the node
+	volumeAttachments := &storagev1.VolumeAttachmentList{}
+	if err := r.client.List(ctx, volumeAttachments); err != nil {
+		return nil, fmt.Errorf("failed to list volumeAttachments: %v", err)
+	}
+
 	// If there's NodeRef on the Machine object, remove the Node by using the
 	// value of the NodeRef. If there's no NodeRef, try to find the Node by
 	// listing nodes using the NodeOwner label selector.
+
 	if machine.Status.NodeRef != nil {
 		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
 		node := &corev1.Node{}
 		nodeFound := true
 		if err := r.client.Get(ctx, objKey, node); err != nil {
 			if !kerrors.IsNotFound(err) {
-				return fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
+				return nil, fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
 			}
 			nodeFound = false
 			klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
 		}
 
 		if nodeFound {
+			for _, va := range volumeAttachments.Items {
+				if va.Spec.NodeName == node.Name {
+					klog.V(3).Infof("waiting for the volumeAttachment %s to be deleted before deleting node %s", va.Name, node.Name)
+					return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
+				}
+			}
 			if err := r.client.Delete(ctx, node); err != nil {
 				if !kerrors.IsNotFound(err) {
-					return err
+					return nil, err
 				}
 				klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
 			}
@@ -650,12 +665,12 @@ func (r *Reconciler) deleteNodeForMachine(ctx context.Context, machine *clusterv
 	} else {
 		selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
 		if err != nil {
-			return fmt.Errorf("failed to parse label selector: %v", err)
+			return nil, fmt.Errorf("failed to parse label selector: %v", err)
 		}
 		listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
 		nodes := &corev1.NodeList{}
 		if err := r.client.List(ctx, nodes, listOpts); err != nil {
-			return fmt.Errorf("failed to list nodes: %v", err)
+			return nil, fmt.Errorf("failed to list nodes: %v", err)
 		}
 		if len(nodes.Items) == 0 {
 			// We just want log that we didn't found the node. We don't want to
@@ -664,13 +679,19 @@ func (r *Reconciler) deleteNodeForMachine(ctx context.Context, machine *clusterv
 		}
 
 		for _, node := range nodes.Items {
+			for _, va := range volumeAttachments.Items {
+				if va.Spec.NodeName == node.Name {
+					klog.V(3).Infof("waiting for the volumeAttachment %s to be deleted before deleting node %s", va.Name, node.Name)
+					return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
+				}
+			}
 			if err := r.client.Delete(ctx, &node); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
 
-	return r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+	return nil, r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		if finalizers.Has(FinalizerDeleteNode) {
 			finalizers := sets.NewString(m.Finalizers...)

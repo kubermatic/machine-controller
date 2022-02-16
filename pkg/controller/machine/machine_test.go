@@ -595,7 +595,7 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 				providerData: providerData,
 			}
 
-			err := reconciler.deleteNodeForMachine(ctx, test.machine)
+			_, err := reconciler.deleteNodeForMachine(ctx, test.machine)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}
