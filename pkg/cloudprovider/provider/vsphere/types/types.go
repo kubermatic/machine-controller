@@ -29,8 +29,12 @@ type RawConfig struct {
 	Password       providerconfigtypes.ConfigVarString `json:"password"`
 	VSphereURL     providerconfigtypes.ConfigVarString `json:"vsphereURL"`
 	Datacenter     providerconfigtypes.ConfigVarString `json:"datacenter"`
-	Folder         providerconfigtypes.ConfigVarString `json:"folder"`
-	ResourcePool   providerconfigtypes.ConfigVarString `json:"resourcePool"`
+
+	// Cluster is a noop field, it's not used anywhere but left here intentionally for backward compatibility purposes
+	Cluster providerconfigtypes.ConfigVarString `json:"cluster"`
+
+	Folder       providerconfigtypes.ConfigVarString `json:"folder"`
+	ResourcePool providerconfigtypes.ConfigVarString `json:"resourcePool"`
 
 	// Either Datastore or DatastoreCluster have to be provided.
 	DatastoreCluster providerconfigtypes.ConfigVarString `json:"datastoreCluster"`
