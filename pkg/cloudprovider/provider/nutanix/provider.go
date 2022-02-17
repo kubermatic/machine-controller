@@ -315,6 +315,10 @@ func (p *provider) cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 		return false, err
 	}
 
+	if vm.Metadata == nil || vm.Metadata.UUID == nil {
+		return false, fmt.Errorf("failed to get valid VM metadata for machine '%s'", machine.Name)
+	}
+
 	// TODO: figure out if VM is already in deleting state
 
 	resp, err := client.Prism.V3.DeleteVM(*vm.Metadata.UUID)
