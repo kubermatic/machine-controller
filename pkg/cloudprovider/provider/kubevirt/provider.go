@@ -79,7 +79,7 @@ type Config struct {
 	CPUs               string
 	Memory             string
 	Namespace          string
-	SourceURL          string
+	OsImage            string
 	StorageClassName   string
 	PVCSize            resource.Quantity
 	FlavorName         string
@@ -156,7 +156,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
 	}
 	config.Namespace = metav1.NamespaceDefault
-	config.SourceURL, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImageURL)
+	config.OsImage, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImage)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
 	}
@@ -332,7 +332,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	if err == nil {
 		labels["cpus"] = c.CPUs
 		labels["memoryMIB"] = c.Memory
-		labels["sourceURL"] = c.SourceURL
+		labels["osImage"] = c.OsImage
 	}
 
 	return labels, err
@@ -355,9 +355,22 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
 	labels := map[string]string{"kubevirt.io/vm": c.VirtualMachineName}
+
+	sigClient, err := client.New(c.RestConfig, client.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
+	}
+	ctx := context.Background()
+
 	// Add VMIPreset label if specified
 	if c.FlavorName != "" {
-		labels["kubevirt.io/flavor"] = c.FlavorName
+		vmiPreset := kubevirtv1.VirtualMachineInstancePreset{}
+		if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: c.FlavorName}, &vmiPreset); err != nil {
+			return nil, err
+		}
+		for key, val := range vmiPreset.Spec.Selector.MatchLabels {
+			labels[key] = val
+		}
 	} else {
 		requestsAndLimits, err := parseResources(c.CPUs, c.Memory)
 		if err != nil {
@@ -369,8 +382,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 
 	var (
 		dataVolumeName = c.VirtualMachineName
-
-		annotations map[string]string
+		annotations    map[string]string
 	)
 
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
@@ -412,7 +424,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 						Resources: resourceRequirements,
 					},
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-					Volumes:                       getVMVolumes(c),
+					Volumes:                       getVMVolumes(c, userDataSecretName),
 					DNSPolicy:                     c.DNSPolicy,
 					DNSConfig:                     c.DNSConfig,
 				},
@@ -420,12 +432,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 			DataVolumeTemplates: getDataVolumeTemplates(c),
 		},
 	}
-
-	sigClient, err := client.New(c.RestConfig, client.Options{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
-	}
-	ctx := context.Background()
 
 	if err := sigClient.Create(ctx, virtualMachine); err != nil {
 		return nil, fmt.Errorf("failed to create vmi: %v", err)
@@ -526,9 +532,8 @@ func getVMDisks(config *Config) []kubevirtv1.Disk {
 	return disks
 }
 
-func getVMVolumes(config *Config) []kubevirtv1.Volume {
+func getVMVolumes(config *Config, userDataSecretName string) []kubevirtv1.Volume {
 	dataVolumeName := config.VirtualMachineName
-	userDataSecretName := fmt.Sprintf("userdata-%s-%s", config.VirtualMachineName, strconv.Itoa(int(time.Now().Unix())))
 	volumes := []kubevirtv1.Volume{
 		{
 			Name: "datavolumedisk",
@@ -581,7 +586,7 @@ func getDataVolumeTemplates(config *Config) []kubevirtv1.DataVolumeTemplateSpec 
 				},
 				Source: &cdiv1beta1.DataVolumeSource{
 					HTTP: &cdiv1beta1.DataVolumeSourceHTTP{
-						URL: config.SourceURL,
+						URL: config.OsImage,
 					},
 				},
 			},
@@ -604,7 +609,7 @@ func getDataVolumeTemplates(config *Config) []kubevirtv1.DataVolumeTemplateSpec 
 				},
 				Source: &cdiv1beta1.DataVolumeSource{
 					HTTP: &cdiv1beta1.DataVolumeSourceHTTP{
-						URL: config.SourceURL,
+						URL: config.OsImage,
 					},
 				},
 			},

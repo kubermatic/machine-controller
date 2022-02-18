@@ -58,7 +58,7 @@ type Template struct {
 // PrimaryDisk
 type PrimaryDisk struct {
 	Disk
-	OsImageURL providerconfigtypes.ConfigVarString `json:"osImageURL,omitempty"`
+	OsImage providerconfigtypes.ConfigVarString `json:"osImage,omitempty"`
 }
 
 // SecondaryDisks
