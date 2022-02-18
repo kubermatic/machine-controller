@@ -232,8 +232,11 @@ func getSubnetByName(client *ClientSet, name, clusterID string) (*nutanixv3.Subn
 	}
 
 	for _, subnet := range subnets.Entities {
-		if *subnet.Status.Name == name && *subnet.Status.ClusterReference.UUID == clusterID {
-			return subnet, nil
+		if subnet != nil && subnet.Status != nil && subnet.Status.Name != nil && *subnet.Status.Name == name {
+			// some subnet types (e.g. VPC overlays) do not come with a cluster reference; we don't need to check them
+			if subnet.Status.ClusterReference == nil || (subnet.Status.ClusterReference.UUID != nil && *subnet.Status.ClusterReference.UUID == clusterID) {
+				return subnet, nil
+			}
 		}
 	}
 
@@ -260,15 +263,7 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 	}
 
 	for _, project := range projects.Entities {
-		if project == nil {
-			return nil, errors.New("project is nil")
-		}
-
-		if project.Status == nil {
-			return nil, errors.New("project status is nil")
-		}
-
-		if project.Status.Name == name {
+		if project != nil && project.Status != nil && project.Status.Name == name {
 			return project, nil
 		}
 	}
@@ -295,7 +290,7 @@ func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentR
 	}
 
 	for _, cluster := range clusters.Entities {
-		if *cluster.Status.Name == name {
+		if cluster.Status != nil && cluster.Status.Name != nil && *cluster.Status.Name == name {
 			return cluster, nil
 		}
 	}
@@ -322,7 +317,7 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 	}
 
 	for _, image := range images.Entities {
-		if *image.Status.Name == name {
+		if image.Status != nil && image.Status.Name != nil && *image.Status.Name == name {
 			return image, nil
 		}
 	}
@@ -343,7 +338,8 @@ func getVMByName(client *ClientSet, name string, projectID *string) (*nutanixv3.
 
 	for _, vm := range vms.Entities {
 		if *vm.Status.Name == name {
-			if projectID != nil && *vm.Metadata.ProjectReference.UUID != *projectID {
+			if projectID != nil && vm.Metadata != nil && vm.Metadata.ProjectReference != nil &&
+				vm.Metadata.ProjectReference.UUID != nil && *vm.Metadata.ProjectReference.UUID != *projectID {
 				continue
 			}
 			return vm, nil
