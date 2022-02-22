@@ -409,7 +409,7 @@ func (r *Reconciler) reconcile(ctx context.Context, machine *clusterv1alpha1.Mac
 
 	// step 2: check if a user requested to delete the machine
 	if machine.DeletionTimestamp != nil {
-		return r.deleteMachine(ctx, prov, machine)
+		return r.deleteMachine(ctx, prov, providerConfig.CloudProvider, machine)
 	}
 
 	// Step 3: Essentially creates an instance for the given machine.
@@ -522,7 +522,7 @@ func (r *Reconciler) shouldEvict(ctx context.Context, machine *clusterv1alpha1.M
 }
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
-func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
+func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.Provider, providerName providerconfigtypes.CloudProvider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
 	shouldEvict, err := r.shouldEvict(ctx, machine)
 	if err != nil {
 		return nil, err
@@ -551,7 +551,69 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 		return nil, nil
 	}
 
-	return r.deleteNodeForMachine(ctx, machine)
+	nodes, err := r.retrieveNodesRelatedToMachine(ctx, machine)
+	if err != nil {
+		return nil, err
+	}
+
+	if providerName == providerconfigtypes.CloudProviderVsphere {
+		// List all the volumeAttachments in the cluster; we must be sure that all
+		// of them will be deleted before deleting the node
+		volumeAttachments := &storagev1.VolumeAttachmentList{}
+		if err := r.client.List(ctx, volumeAttachments); err != nil {
+			return nil, fmt.Errorf("failed to list volumeAttachments: %v", err)
+		}
+		for _, va := range volumeAttachments.Items {
+			for _, node := range nodes {
+				if va.Spec.NodeName == machine.Status.NodeRef.Name {
+					klog.V(3).Infof("waiting for the volumeAttachment %s to be deleted before deleting node %s", va.Name, node.Name)
+					return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
+				}
+			}
+		}
+	}
+
+	return nil, r.deleteNodeForMachine(ctx, nodes, machine)
+}
+
+func (r *Reconciler) retrieveNodesRelatedToMachine(ctx context.Context, machine *clusterv1alpha1.Machine) ([]*corev1.Node, error) {
+	nodes := make([]*corev1.Node, 0)
+
+	// If there's NodeRef on the Machine object, remove the Node by using the
+	// value of the NodeRef. If there's no NodeRef, try to find the Node by
+	// listing nodes using the NodeOwner label selector.
+	if machine.Status.NodeRef != nil {
+		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
+		node := &corev1.Node{}
+		if err := r.client.Get(ctx, objKey, node); err != nil {
+			if !kerrors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
+			}
+			klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
+		} else {
+			nodes = append(nodes, node)
+		}
+	} else {
+		selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse label selector: %v", err)
+		}
+		listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
+		nodeList := &corev1.NodeList{}
+		if err := r.client.List(ctx, nodeList, listOpts); err != nil {
+			return nil, fmt.Errorf("failed to list nodes: %v", err)
+		}
+		if len(nodeList.Items) == 0 {
+			// We just want log that we didn't found the node.
+			klog.V(3).Infof("No node found for the machine %s", machine.Spec.Name)
+		}
+
+		for _, node := range nodeList.Items {
+			nodes = append(nodes, &node)
+		}
+	}
+
+	return nodes, nil
 }
 
 func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
@@ -624,74 +686,21 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 	})
 }
 
-func (r *Reconciler) deleteNodeForMachine(ctx context.Context, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
-	// List all the volumeAttachments in the cluster; we must be sure that all
-	// of them will be deleted before deleting the node
-	volumeAttachments := &storagev1.VolumeAttachmentList{}
-	if err := r.client.List(ctx, volumeAttachments); err != nil {
-		return nil, fmt.Errorf("failed to list volumeAttachments: %v", err)
-	}
-
+func (r *Reconciler) deleteNodeForMachine(ctx context.Context, nodes []*corev1.Node, machine *clusterv1alpha1.Machine) error {
 	// If there's NodeRef on the Machine object, remove the Node by using the
 	// value of the NodeRef. If there's no NodeRef, try to find the Node by
 	// listing nodes using the NodeOwner label selector.
 
-	if machine.Status.NodeRef != nil {
-		objKey := ctrlruntimeclient.ObjectKey{Name: machine.Status.NodeRef.Name}
-		node := &corev1.Node{}
-		nodeFound := true
-		if err := r.client.Get(ctx, objKey, node); err != nil {
+	for _, node := range nodes {
+		if err := r.client.Delete(ctx, node); err != nil {
 			if !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to get node %s: %v", machine.Status.NodeRef.Name, err)
+				return err
 			}
-			nodeFound = false
 			klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
-		}
-
-		if nodeFound {
-			for _, va := range volumeAttachments.Items {
-				if va.Spec.NodeName == node.Name {
-					klog.V(3).Infof("waiting for the volumeAttachment %s to be deleted before deleting node %s", va.Name, node.Name)
-					return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
-				}
-			}
-			if err := r.client.Delete(ctx, node); err != nil {
-				if !kerrors.IsNotFound(err) {
-					return nil, err
-				}
-				klog.V(2).Infof("node %q does not longer exist for machine %q", machine.Status.NodeRef.Name, machine.Spec.Name)
-			}
-		}
-	} else {
-		selector, err := labels.Parse(NodeOwnerLabelName + "=" + string(machine.UID))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse label selector: %v", err)
-		}
-		listOpts := &ctrlruntimeclient.ListOptions{LabelSelector: selector}
-		nodes := &corev1.NodeList{}
-		if err := r.client.List(ctx, nodes, listOpts); err != nil {
-			return nil, fmt.Errorf("failed to list nodes: %v", err)
-		}
-		if len(nodes.Items) == 0 {
-			// We just want log that we didn't found the node. We don't want to
-			// return here, as we want to remove finalizers at the end.
-			klog.V(3).Infof("No node found for the machine %s", machine.Spec.Name)
-		}
-
-		for _, node := range nodes.Items {
-			for _, va := range volumeAttachments.Items {
-				if va.Spec.NodeName == node.Name {
-					klog.V(3).Infof("waiting for the volumeAttachment %s to be deleted before deleting node %s", va.Name, node.Name)
-					return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
-				}
-			}
-			if err := r.client.Delete(ctx, &node); err != nil {
-				return nil, err
-			}
 		}
 	}
 
-	return nil, r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
+	return r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		if finalizers.Has(FinalizerDeleteNode) {
 			finalizers := sets.NewString(m.Finalizers...)
