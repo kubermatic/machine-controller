@@ -557,8 +557,8 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 	}
 
 	if providerName == providerconfigtypes.CloudProviderVsphere {
-		// List all the volumeAttachments in the cluster; we must be sure that all
-		// of them will be deleted before deleting the node
+		// Under vSphere, list all the volumeAttachments in the cluster;
+		// we must be sure that all of them will be deleted before deleting the node
 		volumeAttachments := &storagev1.VolumeAttachmentList{}
 		if err := r.client.List(ctx, volumeAttachments); err != nil {
 			return nil, fmt.Errorf("failed to list volumeAttachments: %v", err)
@@ -579,7 +579,7 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 func (r *Reconciler) retrieveNodesRelatedToMachine(ctx context.Context, machine *clusterv1alpha1.Machine) ([]*corev1.Node, error) {
 	nodes := make([]*corev1.Node, 0)
 
-	// If there's NodeRef on the Machine object, remove the Node by using the
+	// If there's NodeRef on the Machine object, retrieve the node by using the
 	// value of the NodeRef. If there's no NodeRef, try to find the Node by
 	// listing nodes using the NodeOwner label selector.
 	if machine.Status.NodeRef != nil {
@@ -687,10 +687,7 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 }
 
 func (r *Reconciler) deleteNodeForMachine(ctx context.Context, nodes []*corev1.Node, machine *clusterv1alpha1.Machine) error {
-	// If there's NodeRef on the Machine object, remove the Node by using the
-	// value of the NodeRef. If there's no NodeRef, try to find the Node by
-	// listing nodes using the NodeOwner label selector.
-
+	// iterates on all nodes and delete them. Finally, remove the finalizer on the machine
 	for _, node := range nodes {
 		if err := r.client.Delete(ctx, node); err != nil {
 			if !kerrors.IsNotFound(err) {
