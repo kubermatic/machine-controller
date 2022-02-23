@@ -44,6 +44,14 @@ type RawConfig struct {
 	MemoryMB      int64                             `json:"memoryMB"`
 	DiskSizeGB    *int64                            `json:"diskSizeGB,omitempty"`
 	AllowInsecure providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
+	Tags          []Tag                             `json:"tags,omitempty"`
+}
+
+type Tag struct {
+	ID          string `json:"id,omitempty"`
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name,omitempty"`
+	CategoryID  string `json:"category_id,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
