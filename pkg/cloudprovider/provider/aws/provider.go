@@ -633,6 +633,12 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to validate instance profile: %v", err)
 	}
 
+	if config.IsSpotInstance != nil && *config.IsSpotInstance {
+		if config.SpotMaxPrice == nil {
+			return errors.New("failed to validate max price for the spot instance: max price cannot be empty when spot instance ")
+		}
+	}
+
 	return nil
 }
 
