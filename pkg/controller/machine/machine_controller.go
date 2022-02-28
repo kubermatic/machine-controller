@@ -39,6 +39,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
+	"github.com/kubermatic/machine-controller/pkg/node/poddeletion"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/rhsm"
@@ -47,7 +48,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
 
 	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,6 +117,7 @@ type Reconciler struct {
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
 	useOSM        bool
+	externalCSI   bool
 	podCIDR       string
 	nodePortRange string
 }
@@ -175,6 +176,7 @@ func Add(
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
 	useOSM bool,
+	externalCSI bool,
 	podCIDR string,
 	nodePortRange string,
 ) error {
@@ -194,6 +196,7 @@ func Add(
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
 		useOSM:        useOSM,
+		externalCSI:   externalCSI,
 		podCIDR:       podCIDR,
 		nodePortRange: nodePortRange,
 	}
@@ -463,6 +466,25 @@ func (r *Reconciler) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 	})
 }
 
+func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, machine *clusterv1alpha1.Machine) (bool, error) {
+	// No node - No volumeAttachments to be collected
+	if machine.Status.NodeRef == nil {
+		klog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
+		return false, nil
+	}
+
+	node := &corev1.Node{}
+	if err := r.client.Get(ctx, types.NamespacedName{Name: machine.Status.NodeRef.Name}, node); err != nil {
+		// Node does not exist - No volumeAttachments to be collected
+		if kerrors.IsNotFound(err) {
+			klog.V(4).Infof("Skipping eviction for machine %q since it does not have a node", machine.Name)
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get node %q", machine.Status.NodeRef.Name)
+	}
+	return true, nil
+}
+
 // evictIfNecessary checks if the machine has a node and evicts it if necessary
 func (r *Reconciler) shouldEvict(ctx context.Context, machine *clusterv1alpha1.Machine) (bool, error) {
 	// If the deletion got triggered a few hours ago, skip eviction.
@@ -527,15 +549,27 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 	if err != nil {
 		return nil, err
 	}
+	shouldCleanUpVolumes, err := r.shouldCleanupVolumes(ctx, machine)
+	if err != nil {
+		return nil, err
+	}
 
+	var evictedSomething, deletedSomething, volumesFree bool
 	if shouldEvict {
-		evictedSomething, err := eviction.New(ctx, machine.Status.NodeRef.Name, r.client, r.kubeClient).Run()
+		evictedSomething, err = eviction.New(ctx, machine.Status.NodeRef.Name, r.client, r.kubeClient).Run()
 		if err != nil {
 			return nil, fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
 		}
-		if evictedSomething {
-			return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+	if shouldCleanUpVolumes && r.externalCSI {
+		deletedSomething, volumesFree, err = poddeletion.New(ctx, machine.Status.NodeRef.Name, r.client, r.kubeClient).Run()
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete pods bound to volumes running on node %s: %v", machine.Status.NodeRef.Name, err)
 		}
+	}
+
+	if evictedSomething || deletedSomething || (r.externalCSI && !volumesFree) {
+		return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	if result, err := r.deleteCloudProviderInstance(prov, machine); result != nil || err != nil {
@@ -554,23 +588,6 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 	nodes, err := r.retrieveNodesRelatedToMachine(ctx, machine)
 	if err != nil {
 		return nil, err
-	}
-
-	if providerName == providerconfigtypes.CloudProviderVsphere {
-		// Under vSphere, list all the volumeAttachments in the cluster;
-		// we must be sure that all of them will be deleted before deleting the node
-		volumeAttachments := &storagev1.VolumeAttachmentList{}
-		if err := r.client.List(ctx, volumeAttachments); err != nil {
-			return nil, fmt.Errorf("failed to list volumeAttachments: %v", err)
-		}
-		for _, va := range volumeAttachments.Items {
-			for _, node := range nodes {
-				if va.Spec.NodeName == machine.Status.NodeRef.Name {
-					klog.V(3).Infof("waiting for the volumeAttachment %s to be deleted before deleting node %s", va.Name, node.Name)
-					return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
-				}
-			}
-		}
 	}
 
 	return nil, r.deleteNodeForMachine(ctx, nodes, machine)

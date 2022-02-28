@@ -70,7 +70,8 @@ var (
 	skipEvictionAfter                time.Duration
 	caBundleFile                     string
 
-	useOSM bool
+	useOSM      bool
+	externalCSI bool
 
 	nodeCSRApprover               bool
 	nodeHTTPProxy                 string
@@ -127,6 +128,8 @@ type controllerRunOptions struct {
 
 	useOSM bool
 
+	externalCSI bool
+
 	// Assigns the POD networks that will be allocated.
 	podCidr string
 
@@ -169,6 +172,8 @@ func main() {
 	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
+
+	flag.BoolVar(&externalCSI, "external-csi", false, "the Kubernetese cluster uses the external CSI driver")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
 
 	flag.Parse()
@@ -266,6 +271,7 @@ func main() {
 			ContainerRuntime:             containerRuntimeConfig,
 		},
 		useOSM:        useOSM,
+		externalCSI:   externalCSI,
 		podCidr:       podCidr,
 		nodePortRange: nodePortRange,
 	}
@@ -402,6 +408,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
 		bs.opt.useOSM,
+		bs.opt.externalCSI,
 		bs.opt.podCidr,
 		bs.opt.nodePortRange,
 	); err != nil {
