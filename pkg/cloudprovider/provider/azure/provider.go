@@ -88,7 +88,9 @@ type config struct {
 	ImageReference        *compute.ImageReference
 
 	OSDiskSize   int32
+	OSDiskType   *compute.StorageAccountTypes
 	DataDiskSize int32
+	DataDiskType *compute.StorageAccountTypes
 
 	AssignPublicIP bool
 	Tags           map[string]string
@@ -154,6 +156,19 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 		Publisher: pointer.StringPtr("redhat"),
 		Product:   pointer.StringPtr("rhel-byos"),
 	},
+}
+
+var osDiskTypes = []compute.StorageAccountTypes{
+	compute.StorageAccountTypesStandardLRS,    // Standard_LRS
+	compute.StorageAccountTypesStandardSSDLRS, // StandardSSD_LRS
+	compute.StorageAccountTypesPremiumLRS,     // Premium_LRS
+}
+
+var dataDiskTypes = []compute.StorageAccountTypes{
+	compute.StorageAccountTypesStandardLRS,    // Standard_LRS
+	compute.StorageAccountTypesStandardSSDLRS, // StandardSSD_LRS
+	compute.StorageAccountTypesPremiumLRS,     // Premium_LRS
+	compute.StorageAccountTypesUltraSSDLRS,    // UltraSSD_LRS
 }
 
 func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
@@ -290,6 +305,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	c.Tags = rawCfg.Tags
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
+
+	if rawCfg.OSDiskType != nil {
+		c.OSDiskType = StorageTypePtr(*rawCfg.OSDiskType)
+	}
+
+	if rawCfg.DataDiskType != nil {
+		c.DataDiskType = StorageTypePtr(*rawCfg.DataDiskType)
+	}
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
 		c.ImagePlan = &compute.Plan{
@@ -465,6 +488,12 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 			DiskSizeGB:   pointer.Int32Ptr(config.OSDiskSize),
 			CreateOption: compute.DiskCreateOptionTypesFromImage,
 		}
+
+		if config.OSDiskType != nil {
+			sp.OsDisk.ManagedDisk = &compute.ManagedDiskParameters{
+				StorageAccountType: *config.OSDiskType,
+			}
+		}
 	}
 
 	if config.DataDiskSize != 0 {
@@ -476,6 +505,13 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 				CreateOption: compute.DiskCreateOptionTypesEmpty,
 			},
 		}
+
+		if config.DataDiskType != nil {
+			(*sp.DataDisks)[0].ManagedDisk = &compute.ManagedDiskParameters{
+				StorageAccountType: *config.DataDiskType,
+			}
+		}
+
 	}
 	return sp, nil
 }
@@ -903,6 +939,32 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
+	if c.OSDiskType != nil {
+		valid := false
+		for _, t := range osDiskTypes {
+			if t == *c.OSDiskType {
+				valid = true
+			}
+		}
+
+		if !valid {
+			return fmt.Errorf("invalid OS disk type '%s'", *c.OSDiskType)
+		}
+	}
+
+	if c.DataDiskType != nil {
+		valid := false
+		for _, t := range osDiskTypes {
+			if t == *c.DataDiskType {
+				valid = true
+			}
+		}
+
+		if !valid {
+			return fmt.Errorf("invalid data disk type '%s'", *c.DataDiskType)
+		}
+	}
+
 	_, err = getOSImageReference(c, providerCfg.OperatingSystem)
 	return err
 }
@@ -1007,4 +1069,9 @@ func getOSUsername(os providerconfigtypes.OperatingSystem) string {
 	default:
 		return string(os)
 	}
+}
+
+func StorageTypePtr(storageType string) *compute.StorageAccountTypes {
+	storage := compute.StorageAccountTypes(storageType)
+	return &storage
 }
