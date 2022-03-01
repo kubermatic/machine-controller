@@ -954,7 +954,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	if c.DataDiskType != nil {
 		valid := false
-		for _, t := range osDiskTypes {
+		for _, t := range dataDiskTypes {
 			if t == *c.DataDiskType {
 				valid = true
 			}
