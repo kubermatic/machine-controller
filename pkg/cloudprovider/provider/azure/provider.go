@@ -89,9 +89,9 @@ type config struct {
 	ImageReference        *compute.ImageReference
 
 	OSDiskSize   int32
-	OSDiskType   *compute.StorageAccountTypes
+	OSDiskSKU    *compute.StorageAccountTypes
 	DataDiskSize int32
-	DataDiskType *compute.StorageAccountTypes
+	DataDiskSKU  *compute.StorageAccountTypes
 
 	AssignPublicIP bool
 	Tags           map[string]string
@@ -308,12 +308,12 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
 
-	if rawCfg.OSDiskType != nil {
-		c.OSDiskType = StorageTypePtr(*rawCfg.OSDiskType)
+	if rawCfg.OSDiskSKU != nil {
+		c.OSDiskSKU = StorageTypePtr(*rawCfg.OSDiskSKU)
 	}
 
-	if rawCfg.DataDiskType != nil {
-		c.DataDiskType = StorageTypePtr(*rawCfg.DataDiskType)
+	if rawCfg.DataDiskSKU != nil {
+		c.DataDiskSKU = StorageTypePtr(*rawCfg.DataDiskSKU)
 	}
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
@@ -491,9 +491,9 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 			CreateOption: compute.DiskCreateOptionTypesFromImage,
 		}
 
-		if config.OSDiskType != nil {
+		if config.OSDiskSKU != nil {
 			sp.OsDisk.ManagedDisk = &compute.ManagedDiskParameters{
-				StorageAccountType: *config.OSDiskType,
+				StorageAccountType: *config.OSDiskSKU,
 			}
 		}
 	}
@@ -508,9 +508,9 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 			},
 		}
 
-		if config.DataDiskType != nil {
+		if config.DataDiskSKU != nil {
 			(*sp.DataDisks)[0].ManagedDisk = &compute.ManagedDiskParameters{
-				StorageAccountType: *config.DataDiskType,
+				StorageAccountType: *config.DataDiskSKU,
 			}
 		}
 
@@ -941,29 +941,29 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	if c.OSDiskType != nil {
+	if c.OSDiskSKU != nil {
 		valid := false
 		for _, t := range osDiskTypes {
-			if t == *c.OSDiskType {
+			if t == *c.OSDiskSKU {
 				valid = true
 			}
 		}
 
 		if !valid {
-			return fmt.Errorf("invalid OS disk type '%s'", *c.OSDiskType)
+			return fmt.Errorf("invalid OS disk SKU '%s'", *c.OSDiskSKU)
 		}
 	}
 
-	if c.DataDiskType != nil {
+	if c.DataDiskSKU != nil {
 		valid := false
 		for _, t := range dataDiskTypes {
-			if t == *c.DataDiskType {
+			if t == *c.DataDiskSKU {
 				valid = true
 			}
 		}
 
 		if !valid {
-			return fmt.Errorf("invalid data disk type '%s'", *c.DataDiskType)
+			return fmt.Errorf("invalid data disk SKU '%s'", *c.DataDiskSKU)
 		}
 	}
 
