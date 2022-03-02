@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 
@@ -113,7 +113,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 		return err
 	}
 
-	list, err := vmClient.ListAll(ctx)
+	list, err := vmClient.ListAll(ctx, "", "")
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 
 	for _, vm := range allServers {
 		if vm.Tags != nil && vm.Tags[machineUIDTag] != nil && *vm.Tags[machineUIDTag] == string(machineUID) {
-			future, err := vmClient.Delete(ctx, c.ResourceGroup, *vm.Name)
+			future, err := vmClient.Delete(ctx, c.ResourceGroup, *vm.Name, nil)
 			if err != nil {
 				return err
 			}
@@ -203,8 +203,8 @@ func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, machineUI
 		Name:     to.StringPtr(ipName),
 		Location: to.StringPtr(c.Location),
 		PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-			PublicIPAddressVersion:   network.IPv4,
-			PublicIPAllocationMethod: network.Static,
+			PublicIPAddressVersion:   network.IPVersionIPv4,
+			PublicIPAllocationMethod: network.IPAllocationMethodStatic,
 		},
 		Tags:  map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
 		Zones: &c.Zones,
@@ -279,7 +279,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 					Name: to.StringPtr("ip-config-1"),
 					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 						Subnet:                    &subnet,
-						PrivateIPAllocationMethod: network.Dynamic,
+						PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
 						PublicIPAddress:           publicIP,
 					},
 				},

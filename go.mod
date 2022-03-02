@@ -5,7 +5,7 @@ go 1.17
 require (
 	cloud.google.com/go v0.73.0
 	cloud.google.com/go/logging v1.1.2
-	github.com/Azure/azure-sdk-for-go v49.0.0+incompatible
+	github.com/Azure/azure-sdk-for-go v62.0.0+incompatible
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/BurntSushi/toml v0.3.1
