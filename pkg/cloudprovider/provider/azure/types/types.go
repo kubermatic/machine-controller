@@ -45,9 +45,9 @@ type RawConfig struct {
 
 	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`
-	OSDiskType     *string                             `json:"osDiskType,omitempty"`
+	OSDiskSKU      *string                             `json:"osDiskSKU,omitempty"`
 	DataDiskSize   int32                               `json:"dataDiskSize"`
-	DataDiskType   *string                             `json:"dataDiskType,omitempty"`
+	DataDiskSKU    *string                             `json:"dataDiskSKU,omitempty"`
 	AssignPublicIP providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
 	Tags           map[string]string                   `json:"tags,omitempty"`
 }
