@@ -47,6 +47,9 @@ import (
 )
 
 const (
+	CapabilityPremiumIO = "PremiumIO"
+	CapabilityValueTrue = "True"
+
 	machineUIDTag = "Machine-UID"
 
 	finalizerPublicIP = "kubermatic.io/cleanup-azure-public-ip"
@@ -159,13 +162,13 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 	},
 }
 
-var osDiskTypes = []compute.StorageAccountTypes{
+var osDiskSKUs = []compute.StorageAccountTypes{
 	compute.StorageAccountTypesStandardLRS,    // Standard_LRS
 	compute.StorageAccountTypesStandardSSDLRS, // StandardSSD_LRS
 	compute.StorageAccountTypesPremiumLRS,     // Premium_LRS
 }
 
-var dataDiskTypes = []compute.StorageAccountTypes{
+var dataDiskSKUs = []compute.StorageAccountTypes{
 	compute.StorageAccountTypesStandardLRS,    // Standard_LRS
 	compute.StorageAccountTypesStandardSSDLRS, // StandardSSD_LRS
 	compute.StorageAccountTypesPremiumLRS,     // Premium_LRS
@@ -309,11 +312,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.DataDiskSize = rawCfg.DataDiskSize
 
 	if rawCfg.OSDiskSKU != nil {
-		c.OSDiskSKU = StorageTypePtr(*rawCfg.OSDiskSKU)
+		c.OSDiskSKU = storageTypePtr(*rawCfg.OSDiskSKU)
 	}
 
 	if rawCfg.DataDiskSKU != nil {
-		c.DataDiskSKU = StorageTypePtr(*rawCfg.DataDiskSKU)
+		c.DataDiskSKU = storageTypePtr(*rawCfg.DataDiskSKU)
 	}
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
@@ -941,9 +944,15 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
+	var sku compute.ResourceSku
+
+	if sku, err = getSKU(context.TODO(), c); err != nil {
+		return fmt.Errorf("failed to get SKU: %w", err)
+	}
+
 	if c.OSDiskSKU != nil {
 		valid := false
-		for _, t := range osDiskTypes {
+		for _, t := range osDiskSKUs {
 			if t == *c.OSDiskSKU {
 				valid = true
 			}
@@ -952,11 +961,15 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		if !valid {
 			return fmt.Errorf("invalid OS disk SKU '%s'", *c.OSDiskSKU)
 		}
+
+		if err := supportsDiskSKU(sku, *c.OSDiskSKU); err != nil {
+			return err
+		}
 	}
 
 	if c.DataDiskSKU != nil {
 		valid := false
-		for _, t := range dataDiskTypes {
+		for _, t := range dataDiskSKUs {
 			if t == *c.DataDiskSKU {
 				valid = true
 			}
@@ -964,6 +977,10 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 
 		if !valid {
 			return fmt.Errorf("invalid data disk SKU '%s'", *c.DataDiskSKU)
+		}
+
+		if err := supportsDiskSKU(sku, *c.OSDiskSKU); err != nil {
+			return err
 		}
 	}
 
@@ -1073,7 +1090,28 @@ func getOSUsername(os providerconfigtypes.OperatingSystem) string {
 	}
 }
 
-func StorageTypePtr(storageType string) *compute.StorageAccountTypes {
+func storageTypePtr(storageType string) *compute.StorageAccountTypes {
 	storage := compute.StorageAccountTypes(storageType)
 	return &storage
+}
+
+// supportsDiskSKU validates some disk SKU types against the chosen VM SKU / VM type.
+func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTypes) error {
+	// sanity check to make sure the Azure API did not return something bad
+	if vmSKU.Name == nil || vmSKU.Capabilities == nil {
+		return fmt.Errorf("invalid VM SKU object")
+	}
+
+	switch diskSKU {
+	case compute.StorageAccountTypesPremiumLRS:
+		for _, capability := range *vmSKU.Capabilities {
+			if *capability.Name == CapabilityPremiumIO {
+				if *capability.Value != CapabilityValueTrue {
+					return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
+				}
+			}
+		}
+	}
+
+	return nil
 }
