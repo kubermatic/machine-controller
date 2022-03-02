@@ -35,7 +35,6 @@ import (
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -46,6 +45,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	utilpointer "k8s.io/utils/pointer"
+	"net/url"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -79,7 +79,7 @@ type Config struct {
 	CPUs               string
 	Memory             string
 	Namespace          string
-	OsImage            string
+	OsImage            OSImage
 	StorageClassName   string
 	PVCSize            resource.Quantity
 	FlavorName         string
@@ -90,6 +90,11 @@ type Config struct {
 type SecondaryDisks struct {
 	Size             resource.Quantity
 	StorageClassName string
+}
+
+type OSImage struct {
+	URL            string
+	DataVolumeName string
 }
 
 type kubeVirtServer struct {
@@ -156,9 +161,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
 	}
 	config.Namespace = metav1.NamespaceDefault
-	config.OsImage, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImage)
+	osImage, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImage)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
+	}
+	if _, err = url.ParseRequestURI(osImage); err == nil {
+		config.OsImage.URL = osImage
+	} else {
+		config.OsImage.DataVolumeName = osImage
 	}
 	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
 	if err != nil {
@@ -332,7 +342,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	if err == nil {
 		labels["cpus"] = c.CPUs
 		labels["memoryMIB"] = c.Memory
-		labels["osImage"] = c.OsImage
+		labels["osImage"] = c.OsImage.URL
 	}
 
 	return labels, err
@@ -397,7 +407,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 		return nil, fmt.Errorf("dataVolumeName size %v, is bigger than 63 characters", len(dataVolumeName))
 	}
 
-	cpu := resourceRequirements.Requests[corev1.ResourceCPU]
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      c.VirtualMachineName,
@@ -415,9 +424,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 				},
 				Spec: kubevirtv1.VirtualMachineInstanceSpec{
 					Domain: kubevirtv1.DomainSpec{
-						CPU: &kubevirtv1.CPU{
-							Cores: uint32(cpu.Value()),
-						},
 						Devices: kubevirtv1.Devices{
 							Disks: getVMDisks(c),
 						},
@@ -586,7 +592,7 @@ func getDataVolumeTemplates(config *Config) []kubevirtv1.DataVolumeTemplateSpec 
 				},
 				Source: &cdiv1beta1.DataVolumeSource{
 					HTTP: &cdiv1beta1.DataVolumeSourceHTTP{
-						URL: config.OsImage,
+						URL: config.OsImage.URL,
 					},
 				},
 			},
@@ -609,7 +615,7 @@ func getDataVolumeTemplates(config *Config) []kubevirtv1.DataVolumeTemplateSpec 
 				},
 				Source: &cdiv1beta1.DataVolumeSource{
 					HTTP: &cdiv1beta1.DataVolumeSourceHTTP{
-						URL: config.OsImage,
+						URL: config.OsImage.URL,
 					},
 				},
 			},
