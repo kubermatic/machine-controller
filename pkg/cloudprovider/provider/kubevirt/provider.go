@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -188,6 +189,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &config, pconfig, nil
 }
 
+// getNamespace returns the namespace where the VM is created.
+// VM is created in a dedicated namespace <cluster-id>
+// which is the namespace where the machine-controller pod is running.
+// Defaults to `kube-system`.
+func getNamespace() string {
+	ns := os.Getenv("POD_NAMESPACE")
+	if ns == "" {
+		// Useful especially for ci tests.
+		ns = metav1.NamespaceSystem
+	}
+	return ns
+}
+
 func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
@@ -203,7 +217,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	ctx := context.Background()
 
 	virtualMachine := &kubevirtv1.VirtualMachine{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachine); err != nil {
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: getNamespace(), Name: machine.Name}, virtualMachine); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get VirtualMachine %s: %v", machine.Name, err)
 		}
@@ -211,7 +225,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	}
 
 	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: getNamespace(), Name: machine.Name}, virtualMachineInstance); err != nil {
 		if kerrors.IsNotFound(err) {
 			return &kubeVirtServer{}, nil
 		}
@@ -271,7 +285,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	}
 	// Check if we can reach the API of the target cluster
 	vmi := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(context.Background(), types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
+	if err := sigClient.Get(context.Background(), types.NamespacedName{Namespace: getNamespace(), Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
 		return fmt.Errorf("failed to request VirtualMachineInstances: %v", err)
 	}
 
@@ -349,7 +363,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
-			Namespace: c.Namespace,
+			Namespace: getNamespace(),
 			Labels: map[string]string{
 				"kubevirt.io/vm": machine.Name,
 			},
@@ -473,7 +487,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 	ctx := context.Background()
 
 	vm := &kubevirtv1.VirtualMachine{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vm); err != nil {
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: getNamespace(), Name: machine.Name}, vm); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
