@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -53,6 +54,7 @@ func init() {
 	if err := kubevirtv1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add kubevirtv1 to scheme: %v", err)
 	}
+
 }
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
@@ -160,7 +162,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
 	}
-	config.Namespace = metav1.NamespaceDefault
+	config.Namespace = getNamespace()
 	osImage, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImage)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
@@ -208,7 +210,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		config.DNSConfig = rawConfig.VirtualMachine.DNSConfig
 	}
 	if len(rawConfig.VirtualMachine.Template.SecondaryDisks) > 0 {
-		config.SecondaryDisks = make([]SecondaryDisks, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
 		for _, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
 			pvc, err := resource.ParseQuantity(sd.Size.Value)
 			if err != nil {
@@ -222,6 +223,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	return &config, pconfig, nil
+}
+
+// getNamespace returns the namespace where the VM is created.
+// VM is created in a dedicated namespace <cluster-id>
+// which is the namespace where the machine-controller pod is running.
+// Defaults to `kube-system`.
+func getNamespace() string {
+	ns := os.Getenv("POD_NAMESPACE")
+	if ns == "" {
+		// Useful especially for ci tests.
+		ns = metav1.NamespaceSystem
+	}
+	return ns
 }
 
 func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
@@ -410,7 +424,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      c.VirtualMachineName,
-			Namespace: metav1.NamespaceDefault,
+			Namespace: c.Namespace,
 			Labels: map[string]string{
 				"kubevirt.io/vm": c.VirtualMachineName,
 			},
