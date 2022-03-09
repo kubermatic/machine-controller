@@ -117,7 +117,6 @@ type Reconciler struct {
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
 	useOSM        bool
-	externalCSI   bool
 	podCIDR       string
 	nodePortRange string
 }
@@ -176,7 +175,6 @@ func Add(
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
 	useOSM bool,
-	externalCSI bool,
 	podCIDR string,
 	nodePortRange string,
 ) error {
@@ -196,7 +194,6 @@ func Add(
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
 		useOSM:        useOSM,
-		externalCSI:   externalCSI,
 		podCIDR:       podCIDR,
 		nodePortRange: nodePortRange,
 	}
@@ -412,7 +409,7 @@ func (r *Reconciler) reconcile(ctx context.Context, machine *clusterv1alpha1.Mac
 
 	// step 2: check if a user requested to delete the machine
 	if machine.DeletionTimestamp != nil {
-		return r.deleteMachine(ctx, prov, providerConfig.CloudProvider, machine)
+		return r.deleteMachine(ctx, prov, machine)
 	}
 
 	// Step 3: Essentially creates an instance for the given machine.
@@ -544,12 +541,17 @@ func (r *Reconciler) shouldEvict(ctx context.Context, machine *clusterv1alpha1.M
 }
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
-func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.Provider, providerName providerconfigtypes.CloudProvider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
+func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
 	shouldEvict, err := r.shouldEvict(ctx, machine)
 	if err != nil {
 		return nil, err
 	}
 	shouldCleanUpVolumes, err := r.shouldCleanupVolumes(ctx, machine)
+	if err != nil {
+		return nil, err
+	}
+
+	externalCSI, err := useExternalCSI(machine)
 	if err != nil {
 		return nil, err
 	}
@@ -561,14 +563,14 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 			return nil, fmt.Errorf("failed to evict node %s: %v", machine.Status.NodeRef.Name, err)
 		}
 	}
-	if shouldCleanUpVolumes && r.externalCSI {
+	if shouldCleanUpVolumes && externalCSI {
 		deletedSomething, volumesFree, err = poddeletion.New(ctx, machine.Status.NodeRef.Name, r.client, r.kubeClient).Run()
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete pods bound to volumes running on node %s: %v", machine.Status.NodeRef.Name, err)
 		}
 	}
 
-	if evictedSomething || deletedSomething || (r.externalCSI && !volumesFree) {
+	if evictedSomething || deletedSomething || (externalCSI && !volumesFree) {
 		return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
