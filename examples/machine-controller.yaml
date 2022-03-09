@@ -536,7 +536,7 @@ rules:
   - "list"
   - "get"
   - "watch"
-# volumeAttachments permissions are needed by clusters using external CSI
+# volumeAttachments permissions are needed by vsphere clusters
 - apiGroups:
   - "storage.k8s.io"
   resources:
