@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/kubermatic/machine-controller/pkg/node/manager"
+	"github.com/kubermatic/machine-controller/pkg/node/nodemanager"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +35,7 @@ const (
 )
 
 type NodeVolumeAttachmentsCleanup struct {
-	nodeManager *manager.NodeManager
+	nodeManager *nodemanager.NodeManager
 	ctx         context.Context
 	nodeName    string
 	kubeClient  kubernetes.Interface
@@ -44,14 +44,14 @@ type NodeVolumeAttachmentsCleanup struct {
 // New returns a new NodeVolumeAttachmentsCleanup
 func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeVolumeAttachmentsCleanup {
 	return &NodeVolumeAttachmentsCleanup{
-		nodeManager: manager.NewNodeManager(ctx, client, nodeName),
+		nodeManager: nodemanager.New(ctx, client, nodeName),
 		ctx:         ctx,
 		nodeName:    nodeName,
 		kubeClient:  kubeClient,
 	}
 }
 
-// Run executes the eviction
+// Run executes the pod deletion
 func (vc *NodeVolumeAttachmentsCleanup) Run() (bool, bool, error) {
 	node, err := vc.nodeManager.GetNode()
 	if err != nil {
@@ -59,6 +59,7 @@ func (vc *NodeVolumeAttachmentsCleanup) Run() (bool, bool, error) {
 	}
 	klog.V(3).Infof("Starting to cleanup node %s", vc.nodeName)
 
+	// if there are no more volumeAttachments related to the node, then it can be deleted
 	volumeAttachmentsDeleted, err := vc.nodeCanBeDeleted()
 	if err != nil {
 		return false, false, fmt.Errorf("failed to check volumeAttachments deletion: %v", err)
@@ -67,11 +68,13 @@ func (vc *NodeVolumeAttachmentsCleanup) Run() (bool, bool, error) {
 		return false, true, nil
 	}
 
+	// cordon the node to be sure that the deleted pods are re-scheduled in the same node
 	if err := vc.nodeManager.CordonNode(node); err != nil {
 		return false, false, fmt.Errorf("failed to cordon node %s: %v", vc.nodeName, err)
 	}
 	klog.V(6).Infof("Successfully cordoned node %s", vc.nodeName)
 
+	// get all the pods that needs to be deleted (i.e. those mounting volumes attached to the node that is going to be deleted)
 	podsToDelete, errors := vc.getFilteredPods()
 	if len(errors) > 0 {
 		return false, false, fmt.Errorf("failed to get Pods to delete for node %s, errors encountered: %v", vc.nodeName, err)
@@ -82,11 +85,11 @@ func (vc *NodeVolumeAttachmentsCleanup) Run() (bool, bool, error) {
 		return false, false, nil
 	}
 
-	// If we arrived here we have pods to evict, so tell the controller to retry later
+	// delete the previously filtered pods, then tells the controller to retry later
 	if errs := vc.deletePods(podsToDelete); len(errs) > 0 {
 		return false, false, fmt.Errorf("failed to delete pods, errors encountered: %v", errs)
 	}
-	klog.V(6).Infof("Successfully deleted all pods mounting persistent volumes on node %s", vc.nodeName)
+	klog.V(6).Infof("Successfully deleted all pods mounting persistent volumes attached on node %s", vc.nodeName)
 	return true, false, err
 }
 
@@ -124,7 +127,7 @@ func (vc *NodeVolumeAttachmentsCleanup) getFilteredPods() ([]corev1.Pod, []error
 							errCh <- fmt.Errorf("failed to list pod: %v", err)
 						default:
 							for _, pod := range pods.Items {
-								if doesPodClaimVolume(pod, pvc.Name) {
+								if doesPodClaimVolume(pod, pvc.Name) && pod.Spec.NodeName == vc.nodeName {
 									lock.Lock()
 									filteredPods = append(filteredPods, pod)
 									lock.Unlock()
@@ -180,13 +183,13 @@ func (vc *NodeVolumeAttachmentsCleanup) deletePods(pods []corev1.Pod) []error {
 				}
 				err := vc.kubeClient.CoreV1().Pods(p.Namespace).Delete(vc.ctx, p.Name, metav1.DeleteOptions{})
 				if err == nil || kerrors.IsNotFound(err) {
-					klog.V(6).Infof("Successfully evicted pod %s/%s on node %s", p.Namespace, p.Name, vc.nodeName)
+					klog.V(6).Infof("Successfully deleted pod %s/%s on node %s", p.Namespace, p.Name, vc.nodeName)
 					return
 				} else if kerrors.IsTooManyRequests(err) {
-					// PDB prevents eviction, return and make the controller retry later
+					// PDB prevents pod deletion, return and make the controller retry later
 					return
 				} else {
-					errCh <- fmt.Errorf("error evicting pod %s/%s on node %s: %v", p.Namespace, p.Name, vc.nodeName, err)
+					errCh <- fmt.Errorf("error deleting pod %s/%s on node %s: %v", p.Namespace, p.Name, vc.nodeName, err)
 					return
 				}
 			}

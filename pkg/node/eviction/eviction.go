@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
-	"github.com/kubermatic/machine-controller/pkg/node/manager"
+	"github.com/kubermatic/machine-controller/pkg/node/nodemanager"
 
 	corev1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
@@ -35,7 +35,7 @@ import (
 )
 
 type NodeEviction struct {
-	nodeManager *manager.NodeManager
+	nodeManager *nodemanager.NodeManager
 	ctx         context.Context
 	nodeName    string
 	kubeClient  kubernetes.Interface
@@ -44,7 +44,7 @@ type NodeEviction struct {
 // New returns a new NodeEviction
 func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeEviction {
 	return &NodeEviction{
-		nodeManager: manager.NewNodeManager(ctx, client, nodeName),
+		nodeManager: nodemanager.New(ctx, client, nodeName),
 		ctx:         ctx,
 		nodeName:    nodeName,
 		kubeClient:  kubeClient,

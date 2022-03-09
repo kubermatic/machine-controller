@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manager
+package nodemanager
 
 import (
 	"context"
@@ -34,7 +34,7 @@ type NodeManager struct {
 	nodeName string
 }
 
-func NewNodeManager(ctx context.Context, client ctrlruntimeclient.Client, nodeName string) *NodeManager {
+func New(ctx context.Context, client ctrlruntimeclient.Client, nodeName string) *NodeManager {
 	return &NodeManager{
 		ctx:      ctx,
 		client:   client,
