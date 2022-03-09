@@ -20,43 +20,40 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
+	"github.com/kubermatic/machine-controller/pkg/node/manager"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	ErrorQueueLen = 1000
+	errorQueueLen = 100
 )
 
 type NodeVolumeAttachmentsCleanup struct {
-	ctx        context.Context
-	nodeName   string
-	client     ctrlruntimeclient.Client
-	kubeClient kubernetes.Interface
+	nodeManager *manager.NodeManager
+	ctx         context.Context
+	nodeName    string
+	kubeClient  kubernetes.Interface
 }
 
 // New returns a new NodeVolumeAttachmentsCleanup
 func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeVolumeAttachmentsCleanup {
 	return &NodeVolumeAttachmentsCleanup{
-		ctx:        ctx,
-		nodeName:   nodeName,
-		client:     client,
-		kubeClient: kubeClient,
+		nodeManager: manager.NewNodeManager(ctx, client, nodeName),
+		ctx:         ctx,
+		nodeName:    nodeName,
+		kubeClient:  kubeClient,
 	}
 }
 
 // Run executes the eviction
 func (vc *NodeVolumeAttachmentsCleanup) Run() (bool, bool, error) {
-	node, err := vc.getNode()
+	node, err := vc.nodeManager.GetNode()
 	if err != nil {
 		return false, false, fmt.Errorf("failed to get node from lister: %v", err)
 	}
@@ -70,7 +67,7 @@ func (vc *NodeVolumeAttachmentsCleanup) Run() (bool, bool, error) {
 		return false, true, nil
 	}
 
-	if err := vc.CordonNode(node); err != nil {
+	if err := vc.nodeManager.CordonNode(node); err != nil {
 		return false, false, fmt.Errorf("failed to cordon node %s: %v", vc.nodeName, err)
 	}
 	klog.V(6).Infof("Successfully cordoned node %s", vc.nodeName)
@@ -93,42 +90,6 @@ func (vc *NodeVolumeAttachmentsCleanup) Run() (bool, bool, error) {
 	return true, false, err
 }
 
-func (vc *NodeVolumeAttachmentsCleanup) getNode() (*corev1.Node, error) {
-	node := &corev1.Node{}
-	if err := vc.client.Get(vc.ctx, types.NamespacedName{Name: vc.nodeName}, node); err != nil {
-		return nil, fmt.Errorf("failed to get node from lister: %v", err)
-	}
-	return node, nil
-}
-
-func (vc *NodeVolumeAttachmentsCleanup) CordonNode(node *corev1.Node) error {
-	if !node.Spec.Unschedulable {
-		_, err := vc.updateNode(func(n *corev1.Node) {
-			n.Spec.Unschedulable = true
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	// Be paranoid and wait until the change got propagated to the lister
-	// This assumes that the delay between our lister and the APIserver
-	// is smaller or equal to the delay the schedulers lister has - If
-	// that is not the case, there is a small chance the scheduler schedules
-	// pods in between, those will then get deleted upon node deletion and
-	// not evicted
-	return wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
-		node := &corev1.Node{}
-		if err := vc.client.Get(vc.ctx, types.NamespacedName{Name: vc.nodeName}, node); err != nil {
-			return false, err
-		}
-		if node.Spec.Unschedulable {
-			return true, nil
-		}
-		return false, nil
-	})
-}
-
 func (vc *NodeVolumeAttachmentsCleanup) getFilteredPods() ([]corev1.Pod, []error) {
 	filteredPods := []corev1.Pod{}
 	lock := sync.Mutex{}
@@ -146,7 +107,7 @@ func (vc *NodeVolumeAttachmentsCleanup) getFilteredPods() ([]corev1.Pod, []error
 		return nil, retErrs
 	}
 
-	errCh := make(chan error, ErrorQueueLen)
+	errCh := make(chan error, errorQueueLen)
 	wg := sync.WaitGroup{}
 	for _, va := range volumeAttachments.Items {
 		if va.Spec.NodeName == vc.nodeName {
@@ -183,16 +144,6 @@ func (vc *NodeVolumeAttachmentsCleanup) getFilteredPods() ([]corev1.Pod, []error
 	}
 
 	return filteredPods, nil
-}
-
-// doesPodClaimVolume checks if the volume is mounted by the pod
-func doesPodClaimVolume(pod corev1.Pod, pvcName string) bool {
-	for _, volumeMount := range pod.Spec.Volumes {
-		if volumeMount.PersistentVolumeClaim != nil && volumeMount.PersistentVolumeClaim.ClaimName == pvcName {
-			return true
-		}
-	}
-	return false
 }
 
 // nodeCanBeDeleted checks if all the volumeAttachments related to the node have already been collected by the external CSI driver
@@ -251,17 +202,12 @@ func (vc *NodeVolumeAttachmentsCleanup) deletePods(pods []corev1.Pod) []error {
 	return retErrs
 }
 
-func (vc *NodeVolumeAttachmentsCleanup) updateNode(modify func(*corev1.Node)) (*corev1.Node, error) {
-	node := &corev1.Node{}
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		if err := vc.client.Get(vc.ctx, types.NamespacedName{Name: vc.nodeName}, node); err != nil {
-			return err
+// doesPodClaimVolume checks if the volume is mounted by the pod
+func doesPodClaimVolume(pod corev1.Pod, pvcName string) bool {
+	for _, volumeMount := range pod.Spec.Volumes {
+		if volumeMount.PersistentVolumeClaim != nil && volumeMount.PersistentVolumeClaim.ClaimName == pvcName {
+			return true
 		}
-		// Apply modifications
-		modify(node)
-		// Update the node
-		return vc.client.Update(vc.ctx, node)
-	})
-
-	return node, err
+	}
+	return false
 }
