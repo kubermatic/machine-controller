@@ -312,7 +312,7 @@ func TestKubevirtDNSConfigProvisioningE2E(t *testing.T) {
 		name:              "Kubevirt with dns config",
 		osName:            "ubuntu",
 		containerRuntime:  "docker",
-		kubernetesVersion: "v1.17.0",
+		kubernetesVersion: "v1.19.16",
 		executor:          verifyCreateAndDelete,
 	}
 
@@ -794,7 +794,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 		name:              "vSphere resource pool provisioning",
 		osName:            "flatcar",
 		containerRuntime:  "docker",
-		kubernetesVersion: "1.17.0",
+		kubernetesVersion: "1.19.16",
 		executor:          verifyCreateAndDelete,
 	}
 
