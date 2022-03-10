@@ -54,7 +54,6 @@ func init() {
 	if err := kubevirtv1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add kubevirtv1 to scheme: %v", err)
 	}
-
 }
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
@@ -74,19 +73,18 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	Kubeconfig         string
-	RestConfig         *rest.Config
-	DNSConfig          *corev1.PodDNSConfig
-	DNSPolicy          corev1.DNSPolicy
-	CPUs               string
-	Memory             string
-	Namespace          string
-	OsImage            OSImage
-	StorageClassName   string
-	PVCSize            resource.Quantity
-	FlavorName         string
-	VirtualMachineName string
-	SecondaryDisks     []SecondaryDisks
+	Kubeconfig       string
+	RestConfig       *rest.Config
+	DNSConfig        *corev1.PodDNSConfig
+	DNSPolicy        corev1.DNSPolicy
+	CPUs             string
+	Memory           string
+	Namespace        string
+	OsImage          OSImage
+	StorageClassName string
+	PVCSize          resource.Quantity
+	FlavorName       string
+	SecondaryDisks   []SecondaryDisks
 }
 
 type SecondaryDisks struct {
@@ -191,10 +189,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "flavor.name" field: %v`, err)
 	}
-	config.VirtualMachineName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Name)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "virtualMachine.name" field: %v`, err)
-	}
 
 	dnsPolicyString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.DNSPolicy)
 	if err != nil {
@@ -253,15 +247,15 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	ctx := context.Background()
 
 	virtualMachine := &kubevirtv1.VirtualMachine{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: c.VirtualMachineName}, virtualMachine); err != nil {
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachine); err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get VirtualMachine %s: %v", c.VirtualMachineName, err)
+			return nil, fmt.Errorf("failed to get VirtualMachine %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
 	virtualMachineInstance := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: c.VirtualMachineName}, virtualMachineInstance); err != nil {
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachineInstance); err != nil {
 		if kerrors.IsNotFound(err) {
 			return &kubeVirtServer{}, nil
 		}
@@ -284,7 +278,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
 		if err := sigClient.Delete(ctx, virtualMachineInstance); err != nil {
-			return nil, fmt.Errorf("failed to delete failed VMI %s: %v", c.VirtualMachineName, err)
+			return nil, fmt.Errorf("failed to delete failed VMI %s: %v", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
@@ -375,10 +369,10 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up
 	terminationGracePeriodSeconds := int64(30)
-	userDataSecretName := fmt.Sprintf("userdata-%s-%s", c.VirtualMachineName, strconv.Itoa(int(time.Now().Unix())))
+	userDataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
 
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
-	labels := map[string]string{"kubevirt.io/vm": c.VirtualMachineName}
+	labels := map[string]string{"kubevirt.io/vm": machine.Name}
 
 	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
@@ -405,7 +399,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 	}
 
 	var (
-		dataVolumeName = c.VirtualMachineName
+		dataVolumeName = machine.Name
 		annotations    map[string]string
 	)
 
@@ -423,11 +417,9 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      c.VirtualMachineName,
+			Name:      machine.Name,
 			Namespace: c.Namespace,
-			Labels: map[string]string{
-				"kubevirt.io/vm": c.VirtualMachineName,
-			},
+			Labels:    labels,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
 			Running: utilpointer.BoolPtr(true),
@@ -444,12 +436,12 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertype
 						Resources: resourceRequirements,
 					},
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-					Volumes:                       getVMVolumes(c, userDataSecretName),
+					Volumes:                       getVMVolumes(c, dataVolumeName, userDataSecretName),
 					DNSPolicy:                     c.DNSPolicy,
 					DNSConfig:                     c.DNSConfig,
 				},
 			},
-			DataVolumeTemplates: getDataVolumeTemplates(c),
+			DataVolumeTemplates: getDataVolumeTemplates(c, dataVolumeName),
 		},
 	}
 
@@ -487,9 +479,9 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 	ctx := context.Background()
 
 	vm := &kubevirtv1.VirtualMachine{}
-	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: c.VirtualMachineName}, vm); err != nil {
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vm); err != nil {
 		if !kerrors.IsNotFound(err) {
-			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", c.VirtualMachineName, err)
+			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
 		}
 		// VMI is gone
 		return true, nil
@@ -552,8 +544,7 @@ func getVMDisks(config *Config) []kubevirtv1.Disk {
 	return disks
 }
 
-func getVMVolumes(config *Config, userDataSecretName string) []kubevirtv1.Volume {
-	dataVolumeName := config.VirtualMachineName
+func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName string) []kubevirtv1.Volume {
 	volumes := []kubevirtv1.Volume{
 		{
 			Name: "datavolumedisk",
@@ -586,9 +577,8 @@ func getVMVolumes(config *Config, userDataSecretName string) []kubevirtv1.Volume
 	return volumes
 }
 
-func getDataVolumeTemplates(config *Config) []kubevirtv1.DataVolumeTemplateSpec {
+func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.DataVolumeTemplateSpec {
 	pvcRequest := corev1.ResourceList{corev1.ResourceStorage: config.PVCSize}
-	dataVolumeName := config.VirtualMachineName
 	dataVolumeTemplates := []kubevirtv1.DataVolumeTemplateSpec{
 		{
 			ObjectMeta: metav1.ObjectMeta{

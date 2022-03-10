@@ -30,7 +30,6 @@ spec:
               kubeconfig:
                 value: '<< KUBECONFIG >>'
             virtualMachine:
-              name: << MACHINE_NAME >>
               template:
                 cpus: "1"
                 memory: "4096M"

@@ -34,7 +34,6 @@ type Auth struct {
 
 // VirtualMachine
 type VirtualMachine struct {
-	Name      providerconfigtypes.ConfigVarString `json:"name,omitempty"`
 	Flavor    Flavor                              `json:"flavor,omitempty"`
 	Template  Template                            `json:"template,omitempty"`
 	DNSPolicy providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
