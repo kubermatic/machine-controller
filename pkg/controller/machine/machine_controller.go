@@ -117,7 +117,7 @@ type Reconciler struct {
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
 	useOSM        bool
-	podCIDR       string
+	podCIDRs      []string
 	nodePortRange string
 }
 
@@ -175,7 +175,7 @@ func Add(
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
 	useOSM bool,
-	podCIDR string,
+	podCIDRs []string,
 	nodePortRange string,
 ) error {
 	reconciler := &Reconciler{
@@ -194,7 +194,7 @@ func Add(
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
 		useOSM:        useOSM,
-		podCIDR:       podCIDR,
+		podCIDRs:      podCIDRs,
 		nodePortRange: nodePortRange,
 	}
 	m, err := userdatamanager.New()
@@ -802,7 +802,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				NoProxy:                  r.nodeSettings.NoProxy,
 				HTTPProxy:                r.nodeSettings.HTTPProxy,
 				ContainerRuntime:         crRuntime,
-				PodCIDR:                  r.podCIDR,
+				PodCIDRs:                 r.podCIDRs,
 				NodePortRange:            r.nodePortRange,
 			}
 
