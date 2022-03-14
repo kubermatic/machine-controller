@@ -73,7 +73,7 @@ func (w *cachingValidationWrapper) GetCloudConfig(spec v1alpha1.MachineSpec) (st
 }
 
 // Create just calls the underlying cloudproviders Create
-func (w *cachingValidationWrapper) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string, networkConfig cloudprovidertypes.NetworkConfig) (instance.Instance, error) {
+func (w *cachingValidationWrapper) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string, networkConfig *cloudprovidertypes.NetworkConfig) (instance.Instance, error) {
 	return w.actualProvider.Create(machine, data, userdata, networkConfig)
 }
 

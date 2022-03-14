@@ -340,7 +340,7 @@ func (r *Reconciler) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 	return fmt.Errorf("%s, due to %v", errMsg, err)
 }
 
-func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string, networkConfig cloudprovidertypes.NetworkConfig) (instance.Instance, error) {
+func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string, networkConfig *cloudprovidertypes.NetworkConfig) (instance.Instance, error) {
 	// Ensure finalizer is there
 	_, err := r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
@@ -844,7 +844,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				}
 			}
 
-			networkConfig := cloudprovidertypes.NetworkConfig{
+			networkConfig := &cloudprovidertypes.NetworkConfig{
 				PodCIDRs: r.podCIDRs,
 			}
 

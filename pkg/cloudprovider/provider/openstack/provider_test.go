@@ -295,7 +295,7 @@ func TestCreateServer(t *testing.T) {
 			// It only verifies that the content of the create request matches
 			// the expectation
 			// TODO(irozzo) check the returned instance too
-			_, err := p.Create(m, tt.data, tt.userdata)
+			_, err := p.Create(m, tt.data, tt.userdata, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("provider.Create() or = %v, wantErr %v", err, tt.wantErr)
 				return
