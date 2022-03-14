@@ -255,7 +255,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, providerData *cloudp
 		}
 
 		status.ProvisioningID = provisionResponse.Identifier
-		if err := updateStatus(machine, status, providerData.Update); err != nil {
+		if err := updateStatus(machine, status, data.Update); err != nil {
 			return nil, newError(common.UpdateMachineError, "machine status update failed: %v", err)
 		}
 	}
@@ -266,11 +266,11 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, providerData *cloudp
 	}
 
 	status.InstanceID = instanceID
-	if err := updateStatus(machine, status, providerData.Update); err != nil {
+	if err := updateStatus(machine, status, data.Update); err != nil {
 		return nil, newError(common.UpdateMachineError, "machine status update failed: %v", err)
 	}
 
-	return p.Get(machine, providerData)
+	return p.Get(machine, data)
 }
 
 func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {

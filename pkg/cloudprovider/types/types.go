@@ -52,7 +52,7 @@ type Provider interface {
 	GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error)
 
 	// Create creates a cloud instance according to the given machine
-	Create(machine *clusterv1alpha1.Machine, data *ProviderData, userdata string) (instance.Instance, error)
+	Create(machine *clusterv1alpha1.Machine, data *ProviderData, userdata string, networkConfig NetworkConfig) (instance.Instance, error)
 
 	// Cleanup will delete the instance associated with the machine and all associated resources.
 	// If all resources have been cleaned up, true will be returned.
@@ -74,6 +74,10 @@ type Provider interface {
 	// SetMetricsForMachines allows providers to provide provider-specific metrics. This may be implemented
 	// as no-op
 	SetMetricsForMachines(machines clusterv1alpha1.MachineList) error
+}
+
+type NetworkConfig struct {
+	PodCIDRs []string `json:"podCIDRs"`
 }
 
 // MachineModifier defines a function to modify a machine
