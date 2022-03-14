@@ -79,7 +79,7 @@ var (
 	nodeRegistryMirrors           string
 	nodePauseImage                string
 	nodeContainerRuntime          string
-	podCIDRs                      listFlag
+	podCIDRs                      string
 	nodePortRange                 string
 	nodeRegistryCredentialsSecret string
 	nodeContainerdRegistryMirrors = containerruntime.RegistryMirrorsFlags{}
@@ -177,7 +177,7 @@ func main() {
 	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
-	flag.Var(&podCIDRs, "pod-cidr", "The network ranges from which POD networks are allocated. Can be passed multiple times.")
+	flag.StringVar(&podCIDRs, "pod-cidr", "172.25.0.0/16", "Comma separated network ranges from which POD networks are allocated. Example: 172.25.0.0/16,fd00::/104")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
@@ -189,10 +189,6 @@ func main() {
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
 		klog.Fatalf("invalid cluster dns specified: %v", err)
-	}
-
-	if len(podCIDRs) == 0 {
-		podCIDRs = append(podCIDRs, "172.25.0.0/16")
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
@@ -281,7 +277,7 @@ func main() {
 			ContainerRuntime:             containerRuntimeConfig,
 		},
 		useOSM:        useOSM,
-		podCIDRs:      podCIDRs,
+		podCIDRs:      strings.Split(podCIDRs, ","),
 		nodePortRange: nodePortRange,
 	}
 
