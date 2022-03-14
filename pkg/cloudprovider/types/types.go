@@ -76,6 +76,8 @@ type Provider interface {
 	SetMetricsForMachines(machines clusterv1alpha1.MachineList) error
 }
 
+// NetworkConfig holds information about cluster networking.
+// PodCIDRs fields is used to choose IPv4, IPv6 or dual-stack modes. 
 type NetworkConfig struct {
 	PodCIDRs []string `json:"podCIDRs"`
 }
