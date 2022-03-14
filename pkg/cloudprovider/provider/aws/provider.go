@@ -796,6 +796,10 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		},
 	}
 
+	if networkConfig.ContainsCIDR(cloudprovidertypes.IPv6) {
+		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
+	}
+
 	runOut, err := ec2Client.RunInstances(instanceRequest)
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed create instance at aws")
