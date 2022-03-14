@@ -190,7 +190,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (string, str
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(machine *clusterv1alpha1.Machine, providerData *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string, networkConfig cloudprovidertypes.NetworkConfig) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
