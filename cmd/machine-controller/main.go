@@ -134,17 +134,6 @@ type controllerRunOptions struct {
 	nodePortRange string
 }
 
-type listFlag []string
-
-func (i *listFlag) String() string {
-	return "my string representation"
-}
-
-func (i *listFlag) Set(value string) error {
-	*i = append(*i, value)
-	return nil
-}
-
 func main() {
 	nodeFlags := node.NewFlags(flag.CommandLine)
 
