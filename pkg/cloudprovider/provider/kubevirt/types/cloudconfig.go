@@ -23,6 +23,8 @@ import (
 type CloudConfig struct {
 	// Kubeconfig used to connect to the cluster that runs KubeVirt
 	Kubeconfig string `yaml:"kubeconfig"`
+	// Namespace used in KubeVirt cloud-controller-manager as infra cluster namespace.
+	Namespace string `yaml:"namespace"`
 }
 
 func (c *CloudConfig) String() (string, error) {
