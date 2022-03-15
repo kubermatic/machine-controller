@@ -203,6 +203,16 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			cloudProviderName: stringPtr("nutanix"),
 		},
+		{
+			name: "pod-cidr-azure-rhel",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.22.2",
+				},
+			},
+			cloudProviderName: stringPtr("azure"),
+		},
 	}
 
 	defaultCloudProvider := &fakeCloudConfigProvider{
@@ -273,6 +283,7 @@ func TestUserDataGeneration(t *testing.T) {
 				PauseImage:               test.pauseImage,
 				KubeletFeatureGates:      kubeletFeatureGates,
 				ContainerRuntime:         containerRuntimeConfig,
+				PodCIDRs:                 []string{"172.25.0.0/16", "fd00::/104"},
 			}
 			s, err := provider.UserData(req)
 			if err != nil {
