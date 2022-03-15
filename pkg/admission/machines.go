@@ -26,6 +26,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -159,6 +160,12 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		return fmt.Errorf("validation failed: %v", err)
 	}
 
+	openstack, ok := prov.(openstack.Validation)
+	if ok {
+		if err := openstack.ValidateApplicationCredentials(*spec, ad.nodeSettings.ExternalCloudProvider); err != nil {
+			return fmt.Errorf("validation failed: %v", err)
+		}
+	}
 	return nil
 }
 
