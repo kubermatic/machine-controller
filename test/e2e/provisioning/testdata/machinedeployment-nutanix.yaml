@@ -22,23 +22,23 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "vsphere"
+          cloudProvider: "nutanix"
           cloudProviderSpec:
-            templateVMName: 'machine-controller-e2e-<< OS_NAME >>'
-            username: '<< VSPHERE_USERNAME >>'
-            vsphereURL: '<< VSPHERE_ADDRESS >>'
-            datacenter: 'dc-1'
-            folder: '/dc-1/vm/e2e-tests'
-            password: << VSPHERE_PASSWORD >>
-            # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            datastoreCluster: 'dsc-1'
-            resourcePool: 'e2e-resource-pool'
+            username: '<< NUTANIX_USERNAME >>'
+            password: '<< NUTANIX_PASSWORD >>'
+            endpoint: '<< NUTANIX_ENDPOINT >>'
+            proxyURL: '<< NUTANIX_PROXY_URL >>'
+            allowInsecure: true
+            clusterName: '<< NUTANIX_CLUSTER >>'
+            projectName: '<< NUTANIX_PROJECT >>'
+            subnetName: '<< NUTANIX_SUBNET >>'
+            imageName: 'machine-controller-e2e-<< OS_NAME >>'
             cpus: 2
-            MemoryMB: 2048
-            diskSizeGB: << DISK_SIZE >>
+            memoryMB: 2048
+            diskSize: 20
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
-            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
+            disableAutoUpdate: true
       versions:
         kubelet: "<< KUBERNETES_VERSION >>"

@@ -17,16 +17,24 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 type RawConfig struct {
-	Token      providerconfigtypes.ConfigVarString   `json:"token,omitempty"`
-	ServerType providerconfigtypes.ConfigVarString   `json:"serverType"`
-	Datacenter providerconfigtypes.ConfigVarString   `json:"datacenter"`
-	Image      providerconfigtypes.ConfigVarString   `json:"image"`
-	Location   providerconfigtypes.ConfigVarString   `json:"location"`
-	Networks   []providerconfigtypes.ConfigVarString `json:"networks"`
-	Firewalls  []providerconfigtypes.ConfigVarString `json:"firewalls"`
-	Labels     map[string]string                     `json:"labels,omitempty"`
+	Token                providerconfigtypes.ConfigVarString   `json:"token,omitempty"`
+	ServerType           providerconfigtypes.ConfigVarString   `json:"serverType"`
+	Datacenter           providerconfigtypes.ConfigVarString   `json:"datacenter"`
+	Image                providerconfigtypes.ConfigVarString   `json:"image"`
+	Location             providerconfigtypes.ConfigVarString   `json:"location"`
+	PlacementGroupPrefix providerconfigtypes.ConfigVarString   `json:"placementGroupPrefix"`
+	Networks             []providerconfigtypes.ConfigVarString `json:"networks"`
+	Firewalls            []providerconfigtypes.ConfigVarString `json:"firewalls"`
+	Labels               map[string]string                     `json:"labels,omitempty"`
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

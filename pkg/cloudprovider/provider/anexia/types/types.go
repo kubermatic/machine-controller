@@ -19,6 +19,7 @@ package types
 import (
 	"time"
 
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
@@ -47,4 +48,10 @@ type ProviderStatus struct {
 	InstanceID     string `json:"instanceID"`
 	ProvisioningID string `json:"provisioningID"`
 	// TODO: add conditions to track progress on the provider side
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

@@ -54,7 +54,6 @@ spec:
             vmNetName: network1
             # Optional
             folder: folder1
-            cluster: cluster1
             datastore: datastore1
             # Can also be set via the env var 'VSPHERE_ALLOW_INSECURE' on the machine-controller
             allowInsecure: true

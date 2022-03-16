@@ -31,16 +31,15 @@ spec:
             folder: '/Customer-A/vm/e2e-tests'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            cluster: '<< VSPHERE_CLUSTER >>'
             datastore: datastore1
             allowInsecure: true
             cpus: 2
             MemoryMB: 2048
-            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
+            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
           network:
            cidr: "192.168.44.<< IP_OCTET >>/20"
            gateway: "192.168.32.1"

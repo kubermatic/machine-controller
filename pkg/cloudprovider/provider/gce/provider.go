@@ -31,7 +31,7 @@ import (
 	"google.golang.org/api/googleapi"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
@@ -81,7 +81,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 }
 
 // AddDefaults reads the MachineSpec and applies defaults for provider specific fields
-func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *Provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	// Read cloud provider spec.
 	cpSpec, _, err := newCloudProviderSpec(spec.ProviderSpec)
 	if err != nil {
@@ -99,7 +99,7 @@ func (p *Provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec,
 }
 
 // Validate checks the given machine's specification.
-func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, spec.ProviderSpec)
 	if err != nil {
@@ -129,11 +129,11 @@ func (p *Provider) Validate(spec v1alpha1.MachineSpec) error {
 }
 
 // Get retrieves a node instance that is associated with the given machine.
-func (p *Provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *Provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return p.get(machine)
 }
 
-func (p *Provider) get(machine *v1alpha1.Machine) (*googleInstance, error) {
+func (p *Provider) get(machine *clusterv1alpha1.Machine) (*googleInstance, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
@@ -169,7 +169,7 @@ func (p *Provider) get(machine *v1alpha1.Machine) (*googleInstance, error) {
 }
 
 // GetCloudConfig returns the cloud provider specific cloud-config for the kubelet.
-func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *Provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, spec.ProviderSpec)
 	if err != nil {
@@ -196,7 +196,7 @@ func (p *Provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 
 // Create inserts a cloud instance according to the given machine.
 func (p *Provider) Create(
-	machine *v1alpha1.Machine,
+	machine *clusterv1alpha1.Machine,
 	data *cloudprovidertypes.ProviderData,
 	userdata string,
 ) (instance.Instance, error) {
@@ -270,7 +270,7 @@ func (p *Provider) Create(
 }
 
 // Cleanup deletes the instance associated with the machine and all associated resources.
-func (p *Provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *Provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
@@ -300,7 +300,7 @@ func (p *Provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 }
 
 // MachineMetricsLabels returns labels used for the  Prometheus metrics about created machines.
-func (p *Provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *Provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
@@ -320,7 +320,7 @@ func (p *Provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]s
 
 // MigrateUID updates the UID of an instance after the controller migrates types
 // and the UID of the machine object changed.
-func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error {
+func (p *Provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
@@ -362,7 +362,7 @@ func (p *Provider) MigrateUID(machine *v1alpha1.Machine, newUID types.UID) error
 }
 
 // SetMetricsForMachines allows providers to provide provider-specific metrics.
-func (p *Provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *Provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }
 
