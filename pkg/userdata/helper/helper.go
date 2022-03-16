@@ -94,6 +94,7 @@ kernel.panic = 10
 net.ipv4.ip_forward = 1
 vm.overcommit_memory = 1
 fs.inotify.max_user_watches = 1048576
+fs.inotify.max_user_instances = 8192
 `
 }
 
