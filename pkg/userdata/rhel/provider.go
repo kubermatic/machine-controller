@@ -241,9 +241,9 @@ write_files:
     /opt/bin/setup_net_env.sh
 
     {{ if eq .CloudProviderName "azure" }}
-	{{- range .PodCIDRs }} 
-    firewall-cmd --permanent --zone=trusted --add-source={{ . -}}
-	{{- end }}
+	{{- range $idx, $podCIDR := .PodCIDRs }} 
+    firewall-cmd --permanent --zone=trusted --add-source={{ $podCIDR}}
+	{{ end }}
     firewall-cmd --permanent --add-port=8472/udp
     firewall-cmd --permanent --add-port={{ .NodePortRange }}/tcp
     firewall-cmd --permanent --add-port={{ .NodePortRange }}/udp
