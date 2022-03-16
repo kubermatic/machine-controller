@@ -29,6 +29,7 @@ import (
 	"text/template"
 
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
@@ -454,4 +455,48 @@ func resolveResourcePoolRef(ctx context.Context, config *Config, session *Sessio
 		return types.NewReference(targetResourcePool.Reference()), nil
 	}
 	return nil, nil
+}
+
+func createAndAttachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
+	restAPISession, err := NewRESTSession(ctx, config)
+	if err != nil {
+		return fmt.Errorf("failed to create REST API session: %v", err)
+	}
+	defer restAPISession.Logout(ctx)
+	tagManager := tags.NewManager(restAPISession.Client)
+	klog.V(3).Info("Creating tags")
+	for _, tag := range config.Tags {
+		tagID, err := tagManager.CreateTag(ctx, &tag)
+		if err != nil {
+			return fmt.Errorf("failed to create tag: %v %v", tag, err)
+		}
+
+		if err := tagManager.AttachTag(ctx, tagID, vm.Reference()); err != nil {
+			return fmt.Errorf("failed to attach tag to VM: %v %v", tag, err)
+		}
+	}
+	return nil
+}
+
+func deleteTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
+	restAPISession, err := NewRESTSession(ctx, config)
+	if err != nil {
+		return fmt.Errorf("failed to create REST API session: %v", err)
+	}
+	defer restAPISession.Logout(ctx)
+	tagManager := tags.NewManager(restAPISession.Client)
+
+	tags, err := tagManager.GetAttachedTags(ctx, vm.Reference())
+	if err != nil {
+		return fmt.Errorf("failed to get attached tags for the VM: %s, %v", vm.Name(), err)
+	}
+	klog.V(3).Info("Deleting tags")
+	for _, tag := range tags {
+		err := tagManager.DeleteTag(ctx, &tag)
+		if err != nil {
+			return fmt.Errorf("failed to delete tag: %v %v", tag, err)
+		}
+	}
+
+	return nil
 }

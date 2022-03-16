@@ -43,7 +43,15 @@ type RawConfig struct {
 	CPUs          int32                             `json:"cpus"`
 	MemoryMB      int64                             `json:"memoryMB"`
 	DiskSizeGB    *int64                            `json:"diskSizeGB,omitempty"`
+	Tags          []Tag                             `json:"tags,omitempty"`
 	AllowInsecure providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
+}
+
+// Tag represents vsphere tag
+type Tag struct {
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
+	CategoryID  string `json:"categoryID"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
