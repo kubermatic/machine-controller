@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -300,26 +301,33 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	}
 
 	var cvbDummy configVarBoolWithoutUnmarshaller
+
 	err := json.Unmarshal(b, &cvbDummy)
 	if err != nil {
 		return err
 	}
+
 	configVarBool.Value = cvbDummy.Value
 	configVarBool.SecretKeyRef = cvbDummy.SecretKeyRef
 	configVarBool.ConfigMapKeyRef = cvbDummy.ConfigMapKeyRef
+
 	return nil
 }
 
-func GetConfig(r clusterv1alpha1.ProviderSpec) (*Config, error) {
-	if r.Value == nil {
+func GetConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, error) {
+	if provSpec.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
-	p := new(Config)
-	if len(r.Value.Raw) == 0 {
-		return p, nil
+
+	var cfg Config
+
+	if len(provSpec.Value.Raw) == 0 {
+		return &cfg, nil
 	}
-	if err := json.Unmarshal(r.Value.Raw, p); err != nil {
+
+	if err := jsonutil.StrictUnmarshal(provSpec.Value.Raw, &cfg); err != nil {
 		return nil, err
 	}
-	return p, nil
+
+	return &cfg, nil
 }

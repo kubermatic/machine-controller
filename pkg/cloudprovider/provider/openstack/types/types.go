@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
@@ -53,4 +54,10 @@ type RawConfig struct {
 	ServerGroup           providerconfigtypes.ConfigVarString   `json:"serverGroup"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags map[string]string `json:"tags,omitempty"`
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

@@ -30,7 +30,7 @@ import (
 	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/common/ssh"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -57,22 +57,22 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
-	pConfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pConfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if pConfig.OperatingSystemSpec.Raw == nil {
+	if pconfig.OperatingSystemSpec.Raw == nil {
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := anxtypes.RawConfig{}
-	if err = json.Unmarshal(pConfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := anxtypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -101,7 +101,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, fmt.Errorf("failed to get 'vlanID': %v", err)
 	}
 
-	return &c, &pConfig, nil
+	return &c, pconfig, nil
 }
 
 // New returns an Anexia provider
@@ -110,12 +110,12 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 // AddDefaults adds omitted optional values to the given MachineSpec
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
 // Validate returns success or failure based according to its ProviderSpec
-func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
 	config, _, err := p.getConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -152,7 +152,7 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -185,12 +185,12 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	}, nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (string, string, error) {
 	return "", "", nil
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, providerData *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -273,7 +273,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, providerData *cloudprovider
 	return p.Get(machine, providerData)
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -305,15 +305,15 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	return true, nil
 }
 
-func (p *provider) MigrateUID(_ *v1alpha1.Machine, _ k8stypes.UID) error {
+func (p *provider) MigrateUID(_ *clusterv1alpha1.Machine, _ k8stypes.UID) error {
 	return nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 
-func (p *provider) SetMetricsForMachines(machine v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machine clusterv1alpha1.MachineList) error {
 	return nil
 }
 
@@ -340,12 +340,12 @@ func newError(reason common.MachineStatusError, msg string, args ...interface{})
 	}
 }
 
-func updateStatus(machine *v1alpha1.Machine, status *anxtypes.ProviderStatus, updater cloudprovidertypes.MachineUpdater) error {
+func updateStatus(machine *clusterv1alpha1.Machine, status *anxtypes.ProviderStatus, updater cloudprovidertypes.MachineUpdater) error {
 	rawStatus, err := json.Marshal(status)
 	if err != nil {
 		return err
 	}
-	err = updater(machine, func(machine *v1alpha1.Machine) {
+	err = updater(machine, func(machine *clusterv1alpha1.Machine) {
 		machine.Status.ProviderStatus = &runtime.RawExtension{
 			Raw: rawStatus,
 		}

@@ -36,6 +36,9 @@ function cleanup {
     echo "Sleeping for $try seconds"
     sleep ${try}s
   done
+
+  # Kill background port forward if it's there
+  pkill ssh || true
 }
 trap cleanup EXIT
 
@@ -95,6 +98,11 @@ export E2E_SSH_PUBKEY="$(cat ~/.ssh/id_rsa.pub)"
 ./test/tools/integration/provision_master.sh
 
 echo "Running e2e tests..."
+if [[ ! -z "${NUTANIX_E2E_PROXY_HOST:-}" ]]; then
+  vm_priv_addr=$(cat ./priv_addr)
+  export NUTANIX_E2E_PROXY_URL="http://${NUTANIX_E2E_PROXY_USERNAME}:${NUTANIX_E2E_PROXY_PASSWORD}@${vm_priv_addr}:${NUTANIX_E2E_PROXY_PORT}/"
+fi
+
 export KUBECONFIG=$GOPATH/src/github.com/kubermatic/machine-controller/.kubeconfig
 EXTRA_ARGS=""
 if [[ $# -gt 0 ]]; then

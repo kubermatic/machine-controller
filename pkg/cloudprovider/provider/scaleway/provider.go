@@ -18,7 +18,6 @@ package scaleway
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -28,7 +27,7 @@ import (
 	"github.com/scaleway/scaleway-sdk-go/validation"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	cloudInstance "github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	scalewaytypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway/types"
@@ -36,7 +35,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
@@ -87,12 +86,12 @@ func getImageNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	return "", providerconfigtypes.ErrOSNotSupported
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,11 +100,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := scalewaytypes.RawConfig{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	rawConfig, err := scalewaytypes.GetConfig(*pconfig)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	c := Config{}
 	c.AccessKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKey, scw.ScwAccessKeyEnv)
 	if err != nil {
@@ -133,14 +132,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 	c.Tags = rawConfig.Tags
 
-	return &c, &pconfig, err
+	return &c, pconfig, err
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -173,7 +172,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (cloudInstance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (cloudInstance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -222,7 +221,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 	return &scwServer{server: serverResp.Server}, err
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	i, err := p.get(machine)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
@@ -255,7 +254,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, _ *cloudprovidertypes.Prov
 	return false, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (cloudInstance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (cloudInstance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -289,7 +288,7 @@ func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provider
 	return i, nil
 }
 
-func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
+func (p *provider) get(machine *clusterv1alpha1.Machine) (*scwServer, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -320,7 +319,7 @@ func (p *provider) get(machine *v1alpha1.Machine) (*scwServer, error) {
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %v", err)
@@ -354,11 +353,11 @@ func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -382,18 +381,18 @@ func (s *scwServer) ID() string {
 	return s.server.ID
 }
 
-func (s *scwServer) Addresses() map[string]v1.NodeAddressType {
-	addresses := map[string]v1.NodeAddressType{}
+func (s *scwServer) Addresses() map[string]corev1.NodeAddressType {
+	addresses := map[string]corev1.NodeAddressType{}
 	if s.server.PrivateIP != nil {
-		addresses[*s.server.PrivateIP] = v1.NodeInternalIP
+		addresses[*s.server.PrivateIP] = corev1.NodeInternalIP
 	}
 
 	if s.server.PublicIP != nil {
-		addresses[s.server.PublicIP.Address.String()] = v1.NodeExternalIP
+		addresses[s.server.PublicIP.Address.String()] = corev1.NodeExternalIP
 	}
 
 	if s.server.IPv6 != nil {
-		addresses[s.server.IPv6.Address.String()] = v1.NodeExternalIP
+		addresses[s.server.IPv6.Address.String()] = corev1.NodeExternalIP
 	}
 
 	return addresses
@@ -444,6 +443,6 @@ func scalewayErrToTerminalError(err error) error {
 	}
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }

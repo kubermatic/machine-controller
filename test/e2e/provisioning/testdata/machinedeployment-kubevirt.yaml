@@ -26,18 +26,21 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "kubevirt"
           cloudProviderSpec:
-            storageClassName: local-path
-            pvcSize: "10Gi"
-            sourceURL: http://10.107.208.71/<< OS_NAME >>.img
-            cpus: "1"
-            memory: "4096M"
-            dnsPolicy: "None"
-            dnsConfig:
-              nameservers:
-                - 8.8.8.8
-            kubeconfig:
-              value: '<< KUBECONFIG >>'
-            namespace: kube-system
+            auth:
+              kubeconfig:
+                value: '<< KUBECONFIG >>'
+            virtualMachine:
+              template:
+                cpus: "1"
+                memory: "4096M"
+                primaryDisk:
+                  osImage: http://10.107.208.71/<< OS_NAME >>.img
+                  size: "10Gi"
+                  storageClassName: local-path
+              dnsPolicy: "None"
+              dnsConfig:
+                nameservers:
+                  - 8.8.8.8
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false

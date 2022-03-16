@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
@@ -80,12 +80,12 @@ type Config struct {
 	driverSpec runtime.RawExtension
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
+	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,10 +94,11 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := baremetaltypes.RawConfig{}
-	if err := json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig); err != nil {
+	rawConfig, err := baremetaltypes.GetConfig(*pconfig)
+	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
+
 	c := Config{}
 	endpoint, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Endpoint, "METADATA_SERVER_ENDPOINT")
 	if err != nil {
@@ -156,15 +157,16 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	default:
 		return nil, nil, fmt.Errorf("unsupported baremetal driver: %s", pconfig.CloudProvider)
 	}
-	return &c, &pconfig, err
+
+	return &c, pconfig, err
 }
 
-func (p provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	_, _, err := p.getConfig(spec.ProviderSpec)
 	return spec, err
 }
 
-func (p provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)
@@ -181,7 +183,7 @@ func (p provider) Validate(spec v1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -204,11 +206,11 @@ func (p provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderD
 	}, nil
 }
 
-func (p provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
-func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -244,7 +246,7 @@ func (p provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pro
 	}, nil
 }
 
-func (p provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
@@ -274,14 +276,14 @@ func (p provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return true, nil
 }
 
-func (p provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	return nil, nil
 }
 
-func (p provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }

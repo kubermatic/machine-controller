@@ -75,6 +75,7 @@ const (
 	kubevirtManifest                  = "./testdata/machinedeployment-kubevirt.yaml"
 	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
 	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
+	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -787,11 +788,10 @@ func getVSphereTestParams(t *testing.T) []string {
 	// test data
 	vsPassword := os.Getenv("VSPHERE_E2E_PASSWORD")
 	vsUsername := os.Getenv("VSPHERE_E2E_USERNAME")
-	vsCluster := os.Getenv("VSPHERE_E2E_CLUSTER")
 	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
 
-	if vsPassword == "" || vsUsername == "" || vsAddress == "" || vsCluster == "" {
-		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME, VSPHERE_E2E_CLUSTER " +
+	if vsPassword == "" || vsUsername == "" || vsAddress == "" {
+		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME" +
 			"or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
@@ -799,7 +799,6 @@ func getVSphereTestParams(t *testing.T) []string {
 	params := []string{fmt.Sprintf("<< VSPHERE_PASSWORD >>=%s", vsPassword),
 		fmt.Sprintf("<< VSPHERE_USERNAME >>=%s", vsUsername),
 		fmt.Sprintf("<< VSPHERE_ADDRESS >>=%s", vsAddress),
-		fmt.Sprintf("<< VSPHERE_CLUSTER >>=%s", vsCluster),
 	}
 	return params
 }
@@ -820,7 +819,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := OsSelector("ubuntu", "centos")
+	selector := OsSelector("ubuntu", "centos", "rhel", "flatcar")
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, selector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
@@ -878,6 +877,48 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< SCW_DEFAULT_PROJECT_ID >>=%s", scwProjectID),
 	}
 	runScenarios(t, selector, params, ScalewayManifest, fmt.Sprintf("scw-%s", *testRunIdentifier))
+}
+
+func getNutanixTestParams(t *testing.T) []string {
+	// test data
+	password := os.Getenv("NUTANIX_E2E_PASSWORD")
+	username := os.Getenv("NUTANIX_E2E_USERNAME")
+	cluster := os.Getenv("NUTANIX_E2E_CLUSTER_NAME")
+	project := os.Getenv("NUTANIX_E2E_PROJECT_NAME")
+	subnet := os.Getenv("NUTANIX_E2E_SUBNET_NAME")
+	endpoint := os.Getenv("NUTANIX_E2E_ENDPOINT")
+
+	if password == "" || username == "" || endpoint == "" || cluster == "" || project == "" || subnet == "" {
+		t.Fatal("unable to run the test suite, NUTANIX_E2E_PASSWORD, NUTANIX_E2E_USERNAME, NUTANIX_E2E_CLUSTER_NAME, " +
+			"NUTANIX_E2E_ENDPOINT, NUTANIX_E2E_PROJECT_NAME or NUTANIX_E2E_SUBNET_NAME environment variables cannot be empty")
+	}
+
+	// a proxy URL will be passed in our e2e test environment so
+	// a HTTP proxy can be used to access the Nutanix API in a different
+	// network segment.
+	proxyURL := os.Getenv("NUTANIX_E2E_PROXY_URL")
+
+	// set up parameters
+	params := []string{fmt.Sprintf("<< NUTANIX_PASSWORD >>=%s", password),
+		fmt.Sprintf("<< NUTANIX_USERNAME >>=%s", username),
+		fmt.Sprintf("<< NUTANIX_ENDPOINT >>=%s", endpoint),
+		fmt.Sprintf("<< NUTANIX_CLUSTER >>=%s", cluster),
+		fmt.Sprintf("<< NUTANIX_PROJECT >>=%s", project),
+		fmt.Sprintf("<< NUTANIX_SUBNET >>=%s", subnet),
+		fmt.Sprintf("<< NUTANIX_PROXY_URL >>=%s", proxyURL),
+	}
+	return params
+}
+
+// TestNutanixProvisioningE2E tests provisioning on Nutanix as cloud provider
+func TestNutanixProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// exclude migrateUID test case because it's a no-op for Nutanix and runs from a different
+	// location, thus possibly blocking access a HTTP proxy if it is configured
+	selector := And(OsSelector("ubuntu", "centos"), Not(NameSelector("migrateUID")))
+	params := getNutanixTestParams(t)
+	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604

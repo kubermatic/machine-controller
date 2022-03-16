@@ -20,13 +20,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 )
@@ -47,7 +47,7 @@ func (f CloudProviderInstance) ID() string {
 	return ""
 }
 
-func (f CloudProviderInstance) Addresses() map[string]v1.NodeAddressType {
+func (f CloudProviderInstance) Addresses() map[string]corev1.NodeAddressType {
 	return nil
 }
 
@@ -60,14 +60,13 @@ func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
 // Validate returns success or failure based according to its FakeCloudProviderSpec
-func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(machinespec.ProviderSpec.Value.Raw, &pconfig)
+func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
+	pconfig, err := providerconfigtypes.GetConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return err
 	}
@@ -86,31 +85,31 @@ func (p *provider) Validate(machinespec v1alpha1.MachineSpec) error {
 	return fmt.Errorf("failing validation as requested")
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (string, string, error) {
 	return "", "", nil
 }
 
 // Create creates a cloud instance according to the given machine
-func (p *provider) Create(_ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData, _ string) (instance.Instance, error) {
+func (p *provider) Create(_ *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, _ string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) Cleanup(_ *v1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(_ *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	return true, nil
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	return nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 
-func (p *provider) SetMetricsForMachines(_ v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }

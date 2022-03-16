@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Machine Controller Authors.
+Copyright 2019 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,23 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package types
+package jsonutil
 
 import (
-	"gopkg.in/yaml.v3"
+	"bytes"
+	"encoding/json"
 )
 
-type CloudConfig struct {
-	// Kubeconfig used to connect to the cluster that runs KubeVirt
-	Kubeconfig string `yaml:"kubeconfig"`
-	// Namespace used in KubeVirt cloud-controller-manager as infra cluster namespace.
-	Namespace string `yaml:"namespace"`
-}
+func StrictUnmarshal(buf []byte, obj interface{}) error {
+	dec := json.NewDecoder(bytes.NewReader(buf))
+	dec.DisallowUnknownFields()
 
-func (c *CloudConfig) String() (string, error) {
-	out, err := yaml.Marshal(c)
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
+	return dec.Decode(obj)
 }

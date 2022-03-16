@@ -242,19 +242,16 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		}
 	}
 
-	// ContainerLogMaxSize and ContainerLogMaxFiles have no effect if container runtime is docker i.e. not remote
-	if containerRuntime != "docker" {
-		if containerLogMaxSize, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
-			cfg.ContainerLogMaxSize = containerLogMaxSize
-		}
-		if containerLogMaxFiles, ok := kubeletConfigs[common.ContainerLogMaxFilesKubeletConfig]; ok {
-			maxFiles, err := strconv.Atoi(containerLogMaxFiles)
-			if err != nil || maxFiles < 0 {
-				// Instead of breaking the workflow, just print a warning and skip the configuration
-				klog.Warningf("Skipping invalid ContainerLogMaxSize value %v for Kubelet configuration", containerLogMaxFiles)
-			} else {
-				cfg.ContainerLogMaxFiles = pointer.Int32Ptr(int32(maxFiles))
-			}
+	if containerLogMaxSize, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
+		cfg.ContainerLogMaxSize = containerLogMaxSize
+	}
+	if containerLogMaxFiles, ok := kubeletConfigs[common.ContainerLogMaxFilesKubeletConfig]; ok {
+		maxFiles, err := strconv.Atoi(containerLogMaxFiles)
+		if err != nil || maxFiles < 0 {
+			// Instead of breaking the workflow, just print a warning and skip the configuration
+			klog.Warningf("Skipping invalid ContainerLogMaxSize value %v for Kubelet configuration", containerLogMaxFiles)
+		} else {
+			cfg.ContainerLogMaxFiles = pointer.Int32Ptr(int32(maxFiles))
 		}
 	}
 
