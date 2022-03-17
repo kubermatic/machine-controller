@@ -58,10 +58,6 @@ const (
 	floatingIPIDAnnotationKey  = "kubermatic.io/release-openstack-floating-ip"
 )
 
-type Validation interface {
-	ValidateApplicationCredentials(machinespec clusterv1alpha1.MachineSpec, externalCloudProvider bool) error
-}
-
 // clientGetterFunc returns an OpenStack client.
 type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 
@@ -554,20 +550,6 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("the tag with the given name =%s is reserved, choose a different one", machineUIDMetaKey)
 	}
 
-	return nil
-}
-
-// ValidateApplicationCredentials will return error if application credentials are being used without using external
-// cloud provider; it's unsupported
-func (p *provider) ValidateApplicationCredentials(spec clusterv1alpha1.MachineSpec, externalCloudProvider bool) error {
-	c, _, _, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
-	}
-
-	if c.ApplicationCredentialID != "" && !externalCloudProvider {
-		return errors.New("application credentials can only be used with external CCM")
-	}
 	return nil
 }
 
