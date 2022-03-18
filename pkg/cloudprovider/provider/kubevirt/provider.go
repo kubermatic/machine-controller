@@ -365,9 +365,6 @@ func (p *provider) Create(machine *v1alpha1.Machine, _ *cloudprovidertypes.Provi
 				},
 				Spec: kubevirtv1.VirtualMachineInstanceSpec{
 					Domain: kubevirtv1.DomainSpec{
-						CPU: &kubevirtv1.CPU{
-							Cores: 2,
-						},
 						Devices: kubevirtv1.Devices{
 							Disks: []kubevirtv1.Disk{
 								{
