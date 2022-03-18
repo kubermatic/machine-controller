@@ -95,6 +95,11 @@ tags:
 ```yaml
 # identity endpoint of your openstack installation
 identityEndpoint: ""
+# application Credential ID and Secret can be used in place of username, password, tenantName/tenantID, and domainName.
+# application credentials ID
+applicationCredentialID: ""
+# application credentials secret
+applicationCredentialSecret: ""
 # your openstack username
 username: ""
 # your openstack password
