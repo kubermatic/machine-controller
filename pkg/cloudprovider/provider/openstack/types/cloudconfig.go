@@ -41,8 +41,8 @@ username    = {{ .Global.Username | iniEscape }}
 password    = {{ .Global.Password | iniEscape }}
 tenant-name = {{ .Global.ProjectName | iniEscape }}
 tenant-id   = {{ .Global.ProjectID | iniEscape }}
-{{- end }}
 domain-name = {{ .Global.DomainName | iniEscape }}
+{{- end }}
 region      = {{ .Global.Region | iniEscape }}
 
 [LoadBalancer]
