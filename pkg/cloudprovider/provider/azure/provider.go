@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	gocache "github.com/patrickmn/go-cache"
 
@@ -751,7 +751,7 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 		return nil, err
 	}
 
-	list, err := vmClient.ListAll(ctx)
+	list, err := vmClient.ListAll(ctx, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -942,7 +942,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to (create) vm client: %v", err.Error())
 	}
 
-	_, err = vmClient.ListAll(context.TODO())
+	_, err = vmClient.ListAll(context.TODO(), "", "")
 	if err != nil {
 		return fmt.Errorf("failed to list all: %v", err.Error())
 	}
