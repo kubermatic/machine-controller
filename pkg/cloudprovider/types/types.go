@@ -18,7 +18,6 @@ package types
 
 import (
 	"context"
-	netutils "k8s.io/utils/net"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -26,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+	netutils "k8s.io/utils/net"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
