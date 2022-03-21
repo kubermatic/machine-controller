@@ -251,12 +251,22 @@ func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
 }
 
 func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+
+	cacheKey := fmt.Sprintf("%s-%s", c.Location, c.VMSize)
+	cacheSku, found := cache.Get(cacheKey)
+	if found {
+		klog.V(3).Info("found SKU in cache!")
+		return cacheSku.(compute.ResourceSku), nil
+	}
+
 	skuClient, err := getSKUClient(c)
 	if err != nil {
 		return compute.ResourceSku{}, fmt.Errorf("failed to (create) SKU client: %w", err)
 	}
 
-	skuPages, err := skuClient.List(context.TODO())
+	skuPages, err := skuClient.List(context.TODO(), fmt.Sprintf("location eq '%s'", c.Location), "false")
 	if err != nil {
 		return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
 	}
@@ -286,6 +296,8 @@ skuLoop:
 	if sku == nil {
 		return compute.ResourceSku{}, fmt.Errorf("VM SKU '%s' not found in subscription '%s'", c.VMSize, c.SubscriptionID)
 	}
+
+	cache.SetDefault(cacheKey, *sku)
 
 	return *sku, nil
 }
