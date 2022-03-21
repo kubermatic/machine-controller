@@ -23,10 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
+	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -174,6 +177,13 @@ var dataDiskSKUs = []compute.StorageAccountTypes{
 	compute.StorageAccountTypesPremiumLRS,     // Premium_LRS
 	compute.StorageAccountTypesUltraSSDLRS,    // UltraSSD_LRS
 }
+
+var (
+	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
+	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data
+	cacheLock = &sync.Mutex{}
+	cache     = gocache.New(10*time.Minute, 10*time.Minute)
+)
 
 func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
 	if c.ImageID != "" {
