@@ -117,7 +117,7 @@ type Reconciler struct {
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
 	useOSM        bool
-	podCIDR       string
+	podCIDRs      []string
 	nodePortRange string
 }
 
@@ -175,7 +175,7 @@ func Add(
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
 	useOSM bool,
-	podCIDR string,
+	podCIDRs []string,
 	nodePortRange string,
 ) error {
 	reconciler := &Reconciler{
@@ -194,7 +194,7 @@ func Add(
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
 		useOSM:        useOSM,
-		podCIDR:       podCIDR,
+		podCIDRs:      podCIDRs,
 		nodePortRange: nodePortRange,
 	}
 	m, err := userdatamanager.New()
@@ -340,13 +340,13 @@ func (r *Reconciler) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 	return fmt.Errorf("%s, due to %v", errMsg, err)
 }
 
-func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string, networkConfig *cloudprovidertypes.NetworkConfig) (instance.Instance, error) {
 	// Ensure finalizer is there
 	_, err := r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %v", FinalizerDeleteInstance, err)
 	}
-	instance, err := prov.Create(machine, r.providerData, userdata)
+	instance, err := prov.Create(machine, r.providerData, userdata, networkConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -802,7 +802,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				NoProxy:                  r.nodeSettings.NoProxy,
 				HTTPProxy:                r.nodeSettings.HTTPProxy,
 				ContainerRuntime:         crRuntime,
-				PodCIDR:                  r.podCIDR,
+				PodCIDRs:                 r.podCIDRs,
 				NodePortRange:            r.nodePortRange,
 			}
 
@@ -844,8 +844,12 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				}
 			}
 
+			networkConfig := &cloudprovidertypes.NetworkConfig{
+				PodCIDRs: r.podCIDRs,
+			}
+
 			// Create the instance
-			if _, err = r.createProviderInstance(prov, machine, userdata); err != nil {
+			if _, err = r.createProviderInstance(prov, machine, userdata, networkConfig); err != nil {
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return nil, r.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprovider")
 			}

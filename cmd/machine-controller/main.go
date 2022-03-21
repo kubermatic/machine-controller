@@ -79,7 +79,7 @@ var (
 	nodeRegistryMirrors           string
 	nodePauseImage                string
 	nodeContainerRuntime          string
-	podCidr                       string
+	podCIDRs                      string
 	nodePortRange                 string
 	nodeRegistryCredentialsSecret string
 	nodeContainerdRegistryMirrors = containerruntime.RegistryMirrorsFlags{}
@@ -128,7 +128,7 @@ type controllerRunOptions struct {
 	useOSM bool
 
 	// Assigns the POD networks that will be allocated.
-	podCidr string
+	podCIDRs []string
 
 	// A port range to reserve for services with NodePort visibility
 	nodePortRange string
@@ -166,7 +166,7 @@ func main() {
 	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
-	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
+	flag.StringVar(&podCIDRs, "pod-cidr", "172.25.0.0/16", "Comma separated network ranges from which POD networks are allocated. Example: 172.25.0.0/16,fd00::/104")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
@@ -266,7 +266,7 @@ func main() {
 			ContainerRuntime:             containerRuntimeConfig,
 		},
 		useOSM:        useOSM,
-		podCidr:       podCidr,
+		podCIDRs:      strings.Split(podCIDRs, ","),
 		nodePortRange: nodePortRange,
 	}
 
@@ -402,7 +402,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
 		bs.opt.useOSM,
-		bs.opt.podCidr,
+		bs.opt.podCIDRs,
 		bs.opt.nodePortRange,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)
