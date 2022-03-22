@@ -29,6 +29,7 @@ import (
 	"github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
 	"github.com/gophercloud/gophercloud/testhelper"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/utils"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -62,7 +63,11 @@ func TestAnexiaProvider(t *testing.T) {
 			UserData: "",
 			Config:   &anxtypes.Config{},
 
-			ProviderData: &cloudprovidertypes.ProviderData{},
+			ProviderData: &cloudprovidertypes.ProviderData{
+				Update: func(m *clusterv1alpha1.Machine, mod ...cloudprovidertypes.MachineModifier) error {
+					return nil
+				},
+			},
 		})
 
 		err := waitForVM(ctx, client)
@@ -157,7 +162,11 @@ func TestAnexiaProvider(t *testing.T) {
 				Memory:     5,
 				DiskSize:   5,
 			},
-			ProviderData: &cloudprovidertypes.ProviderData{},
+			ProviderData: &cloudprovidertypes.ProviderData{
+				Update: func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
+					return nil
+				},
+			},
 		})
 
 		err := provisionVM(ctx, client)
