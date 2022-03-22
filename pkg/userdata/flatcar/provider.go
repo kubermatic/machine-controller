@@ -184,10 +184,12 @@ systemd:
   units:
 {{- if .FlatcarConfig.DisableUpdateEngine }}
     - name: update-engine.service
+      command: stop
       mask: true
 {{- end }}
 {{- if .FlatcarConfig.DisableLocksmithD }}
     - name: locksmithd.service
+      command: stop
       mask: true
 {{- end }}
 
