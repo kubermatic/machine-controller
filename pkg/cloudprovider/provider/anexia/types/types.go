@@ -17,6 +17,9 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/jsonutil"
@@ -30,9 +33,17 @@ const (
 	GetRequestTimeout    = 1 * time.Minute
 	DeleteRequestTimeout = 1 * time.Minute
 
+	IPStateBound   = "Bound"
+	IPStateUnbound = "Unbound"
+
 	VmxNet3NIC       = "vmxnet3"
 	MachinePoweredOn = "poweredOn"
 )
+
+var StatusUpdateFailed = cloudprovidererrors.TerminalError{
+	Reason:  common.UpdateMachineError,
+	Message: "Unable to update the machine status",
+}
 
 type RawConfig struct {
 	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
@@ -45,9 +56,22 @@ type RawConfig struct {
 }
 
 type ProviderStatus struct {
-	InstanceID     string `json:"instanceID"`
-	ProvisioningID string `json:"provisioningID"`
-	// TODO: add conditions to track progress on the provider side
+	InstanceID       string         `json:"instanceID"`
+	ProvisioningID   string         `json:"provisioningID"`
+	DeprovisioningID string         `json:"deprovisioningID"`
+	ReservedIP       string         `json:"reservedIP"`
+	IPState          string         `json:"ipState"`
+	Conditions       []v1.Condition `json:"conditions,omitempty"`
+}
+
+type Config struct {
+	Token      string
+	VlanID     string
+	LocationID string
+	TemplateID string
+	CPUs       int
+	Memory     int
+	DiskSize   int
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
