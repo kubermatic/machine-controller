@@ -41,6 +41,14 @@ spec:
               dnsConfig:
                 nameservers:
                   - 8.8.8.8
+            affinity:
+              podAffinityPreset: "" # Allowed values: "", "soft", "hard"
+              podAntiAffinityPreset: "" # Allowed values: "", "soft", "hard"
+              nodeAffinityPreset:
+                type: "" # Allowed values: "", "soft", "hard"
+                key: "foo"
+                values:
+                - bar
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
