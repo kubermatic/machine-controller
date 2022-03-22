@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Machine Controller Authors.
+Copyright 2022 The Machine Controller Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,9 +63,6 @@ const (
 	// estimated once a deployment is paused.
 	PausedDeployReason = "DeploymentPaused"
 
-	//
-	// Available:
-	//
 	// MinimumReplicasAvailable is added in a deployment when it has its minimum replicas required available.
 	MinimumReplicasAvailable = "MinimumReplicasAvailable"
 	// MinimumReplicasUnavailable is added in a deployment when it doesn't have the minimum required replicas

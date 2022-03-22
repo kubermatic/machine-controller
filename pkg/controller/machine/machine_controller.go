@@ -37,6 +37,7 @@ import (
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
+	controllerutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
 	"github.com/kubermatic/machine-controller/pkg/node/poddeletion"
@@ -223,7 +224,7 @@ func Add(
 		handler.EnqueueRequestsFromMapFunc(func(node client.Object) (result []reconcile.Request) {
 			machinesList := &clusterv1alpha1.MachineList{}
 			if err := mgr.GetClient().List(ctx, machinesList); err != nil {
-				utilruntime.HandleError(fmt.Errorf("Failed to list machines in lister: %v", err))
+				utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %v", err))
 				return
 			}
 
@@ -346,11 +347,11 @@ func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, ma
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %v", FinalizerDeleteInstance, err)
 	}
-	instance, err := prov.Create(machine, r.providerData, userdata, networkConfig)
+	i, err := prov.Create(machine, r.providerData, userdata, networkConfig)
 	if err != nil {
 		return nil, err
 	}
-	return instance, nil
+	return i, nil
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -810,7 +811,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			var userdata string
 
 			if r.useOSM {
-				referencedMachineDeployment, err := r.getMachineDeploymentNameForMachine(ctx, machine)
+				referencedMachineDeployment, err := controllerutil.GetMachineDeploymentNameForMachine(ctx, machine, r.client)
 				if err != nil {
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
 				}
@@ -1151,35 +1152,4 @@ func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifier
 		}
 		return r.client.Update(ctx, node)
 	})
-}
-
-func (r *Reconciler) getMachineDeploymentNameForMachine(ctx context.Context, machine *clusterv1alpha1.Machine) (string, error) {
-	var (
-		machineSetName        string
-		machineDeploymentName string
-	)
-	for _, ownerRef := range machine.OwnerReferences {
-		if ownerRef.Kind == "MachineSet" {
-			machineSetName = ownerRef.Name
-		}
-	}
-
-	if machineSetName != "" {
-		machineSet := &clusterv1alpha1.MachineSet{}
-		if err := r.client.Get(ctx, types.NamespacedName{Name: machineSetName, Namespace: "kube-system"}, machineSet); err != nil {
-			return "", err
-		}
-
-		for _, ownerRef := range machineSet.OwnerReferences {
-			if ownerRef.Kind == "MachineDeployment" {
-				machineDeploymentName = ownerRef.Name
-			}
-		}
-
-		if machineDeploymentName != "" {
-			return machineDeploymentName, nil
-		}
-	}
-
-	return "", fmt.Errorf("failed to find machine deployment reference for the machine %s", machine.Name)
 }
