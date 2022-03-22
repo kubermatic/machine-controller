@@ -133,8 +133,7 @@ func waitForVM(ctx context.Context, client anxclient.Client) error {
 	}
 
 	reconcileContext.Status.InstanceID = identifier
-	updateMachineStatus(reconcileContext.Machine, *reconcileContext.Status, reconcileContext.ProviderData.Update)
-	return nil
+	return updateMachineStatus(reconcileContext.Machine, *reconcileContext.Status, reconcileContext.ProviderData.Update)
 }
 
 func provisionVM(ctx context.Context, client anxclient.Client) error {
@@ -205,7 +204,7 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 
 	instanceID, err := vmAPI.Provisioning().Progress().AwaitCompletion(ctx, status.ProvisioningID)
 	if err != nil {
-		klog.Error("failed to await machine completion '%s'", reconcileContext.Machine.Name)
+		klog.Errorf("failed to await machine completion '%s'", reconcileContext.Machine.Name)
 		// something went wrong remove provisioning ID, so we can start from scratch
 		status.ProvisioningID = ""
 		return newError(common.CreateMachineError, "instance provisioning failed: %v", err)

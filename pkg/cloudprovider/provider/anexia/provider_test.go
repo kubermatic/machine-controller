@@ -3,6 +3,10 @@ package anexia
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+	"testing"
+	"time"
+
 	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
 	"github.com/anexia-it/go-anxcloud/pkg/ipam/address"
 	"github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/progress"
@@ -15,9 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"net/http"
-	"testing"
-	"time"
 )
 
 const TestIdentifier = "TestIdent"
@@ -184,7 +185,7 @@ func TestAnexiaProvider(t *testing.T) {
 		t.Parallel()
 		providerStatus := &anxtypes.ProviderStatus{
 			ReservedIP: "",
-			IPState: "",
+			IPState:    "",
 		}
 		ctx := utils.CreateReconcileContext(utils.ReconcileContext{Status: providerStatus})
 
