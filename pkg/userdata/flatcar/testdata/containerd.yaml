@@ -9,8 +9,10 @@ users:
 coreos:
   units:
   - name: update-engine.service
+    command: stop
     mask: true
   - name: locksmithd.service
+    command: stop
     mask: true
   - name: download-script.service
     enable: true

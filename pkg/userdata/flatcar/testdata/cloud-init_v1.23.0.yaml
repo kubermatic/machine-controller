@@ -24,8 +24,10 @@ coreos:
       DNS=8.8.8.8
 
   - name: update-engine.service
+    command: stop
     mask: true
   - name: locksmithd.service
+    command: stop
     mask: true
   - name: download-script.service
     enable: true
