@@ -266,7 +266,7 @@ func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
 		return compute.ResourceSku{}, fmt.Errorf("failed to (create) SKU client: %w", err)
 	}
 
-	skuPages, err := skuClient.List(context.TODO(), fmt.Sprintf("location eq '%s'", c.Location), "false")
+	skuPages, err := skuClient.List(ctx, fmt.Sprintf("location eq '%s'", c.Location), "false")
 	if err != nil {
 		return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
 	}
@@ -288,7 +288,7 @@ skuLoop:
 			}
 		}
 
-		if err := skuPages.NextWithContext(context.TODO()); err != nil {
+		if err := skuPages.NextWithContext(ctx); err != nil {
 			return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
 		}
 	}

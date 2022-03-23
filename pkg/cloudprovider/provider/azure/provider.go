@@ -51,6 +51,7 @@ import (
 
 const (
 	CapabilityPremiumIO = "PremiumIO"
+	CapabilityUltraSSD  = "UltraSSDAvailable"
 	CapabilityValueTrue = "True"
 
 	machineUIDTag = "Machine-UID"
@@ -954,43 +955,51 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	var sku compute.ResourceSku
+	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
+		var sku compute.ResourceSku
 
-	if sku, err = getSKU(context.TODO(), c); err != nil {
-		return fmt.Errorf("failed to get SKU: %w", err)
-	}
+		if sku, err = getSKU(context.TODO(), c); err != nil {
+			return fmt.Errorf("failed to get SKU: %w", err)
+		}
 
-	if c.OSDiskSKU != nil {
-		valid := false
-		for _, t := range osDiskSKUs {
-			if t == *c.OSDiskSKU {
-				valid = true
+		if c.OSDiskSKU != nil {
+			valid := false
+			for _, t := range osDiskSKUs {
+				if t == *c.OSDiskSKU {
+					valid = true
+				}
+			}
+
+			if !valid {
+				return fmt.Errorf("invalid OS disk SKU '%s'", *c.OSDiskSKU)
+			}
+
+			if err := supportsDiskSKU(sku, *c.OSDiskSKU, c.Zones); err != nil {
+				return err
 			}
 		}
 
-		if !valid {
-			return fmt.Errorf("invalid OS disk SKU '%s'", *c.OSDiskSKU)
-		}
-
-		if err := supportsDiskSKU(sku, *c.OSDiskSKU); err != nil {
-			return err
-		}
-	}
-
-	if c.DataDiskSKU != nil {
-		valid := false
-		for _, t := range dataDiskSKUs {
-			if t == *c.DataDiskSKU {
-				valid = true
+		if c.DataDiskSKU != nil {
+			valid := false
+			for _, t := range dataDiskSKUs {
+				if t == *c.DataDiskSKU {
+					valid = true
+				}
 			}
-		}
 
-		if !valid {
-			return fmt.Errorf("invalid data disk SKU '%s'", *c.DataDiskSKU)
-		}
+			if !valid {
+				return fmt.Errorf("invalid data disk SKU '%s'", *c.DataDiskSKU)
+			}
 
-		if err := supportsDiskSKU(sku, *c.OSDiskSKU); err != nil {
-			return err
+			// Ultra SSDs do not support availability sets, see for reference:
+			// https://docs.microsoft.com/en-us/azure/virtual-machines/disks-enable-ultra-ssd#ga-scope-and-limitations
+			if *c.DataDiskSKU == compute.StorageAccountTypesUltraSSDLRS && ((c.AssignAvailabilitySet != nil && *c.AssignAvailabilitySet) || c.AvailabilitySet != "") {
+				return fmt.Errorf("data disk SKU '%s' does not support availability sets", *c.DataDiskSKU)
+			}
+
+			if err := supportsDiskSKU(sku, *c.DataDiskSKU, c.Zones); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1106,7 +1115,7 @@ func storageTypePtr(storageType string) *compute.StorageAccountTypes {
 }
 
 // supportsDiskSKU validates some disk SKU types against the chosen VM SKU / VM type.
-func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTypes) error {
+func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTypes, zones []string) error {
 	// sanity check to make sure the Azure API did not return something bad
 	if vmSKU.Name == nil || vmSKU.Capabilities == nil {
 		return fmt.Errorf("invalid VM SKU object")
@@ -1114,10 +1123,59 @@ func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTy
 
 	switch diskSKU {
 	case compute.StorageAccountTypesPremiumLRS:
+		found := false
 		for _, capability := range *vmSKU.Capabilities {
-			if *capability.Name == CapabilityPremiumIO {
-				if *capability.Value != CapabilityValueTrue {
-					return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
+			if *capability.Name == CapabilityPremiumIO && *capability.Value == CapabilityValueTrue {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
+		}
+
+	case compute.StorageAccountTypesUltraSSDLRS:
+		if vmSKU.LocationInfo == nil || len(*vmSKU.LocationInfo) == 0 || (*vmSKU.LocationInfo)[0].Zones == nil || len(*(*vmSKU.LocationInfo)[0].Zones) == 0 {
+			// no zone information found, let's check for capability
+			found := false
+			for _, capability := range *vmSKU.Capabilities {
+				if *capability.Name == CapabilityUltraSSD && *capability.Value == CapabilityValueTrue {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
+			}
+		} else {
+			if (*vmSKU.LocationInfo)[0].ZoneDetails != nil {
+				for _, zone := range zones {
+					found := false
+					for _, details := range *(*vmSKU.LocationInfo)[0].ZoneDetails {
+						matchesZone := false
+						for _, zoneName := range *details.Name {
+							if zone == zoneName {
+								matchesZone = true
+								break
+							}
+						}
+
+						// we only check this zone details for capabilities if it actually includes the zone we're checking for
+						if matchesZone {
+							for _, capability := range *details.Capabilities {
+								if *capability.Name == CapabilityUltraSSD && *capability.Value == CapabilityValueTrue {
+									found = true
+									break
+								}
+							}
+						}
+					}
+
+					if !found {
+						return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s' in zone '%s'", *vmSKU.Name, diskSKU, zone)
+					}
 				}
 			}
 		}
