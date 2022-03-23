@@ -11,7 +11,6 @@ aliases:
     - themue
     - xmudrii
     - xrstf
-    - youssefazrak
 
   # Temporary SIG to oversee changes in userdata and cloudprovider sub-directories
   # This SIG is responsible for ensuring that OSM and machine-controller are in sync
