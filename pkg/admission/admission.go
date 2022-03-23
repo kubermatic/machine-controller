@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"gomodules.xyz/jsonpatch/v2"
 
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
@@ -47,29 +48,34 @@ type admissionData struct {
 	nodeSettings    machinecontroller.NodeSettings
 	useOSM          bool
 	namespace       string
+	constraints     *semver.Constraints
 }
 
 var jsonPatch = admissionv1.PatchTypeJSONPatch
 
-func New(
-	listenAddress string,
-	client ctrlruntimeclient.Client,
-	workerClient ctrlruntimeclient.Client,
-	um *userdatamanager.Manager,
-	nodeFlags *node.Flags,
-	useOSM bool,
-	namespace string,
-) (*http.Server, error) {
+type Builder struct {
+	ListenAddress      string
+	Client             ctrlruntimeclient.Client
+	WorkerClient       ctrlruntimeclient.Client
+	UserdataManager    *userdatamanager.Manager
+	NodeFlags          *node.Flags
+	UseOSM             bool
+	Namespace          string
+	VersionConstraints *semver.Constraints
+}
+
+func (build Builder) Build() (*http.Server, error) {
 	mux := http.NewServeMux()
 	ad := &admissionData{
-		client:          client,
-		workerClient:    workerClient,
-		userDataManager: um,
-		useOSM:          useOSM,
-		namespace:       namespace,
+		client:          build.Client,
+		workerClient:    build.WorkerClient,
+		userDataManager: build.UserdataManager,
+		useOSM:          build.UseOSM,
+		namespace:       build.Namespace,
+		constraints:     build.VersionConstraints,
 	}
 
-	if err := nodeFlags.UpdateNodeSettings(&ad.nodeSettings); err != nil {
+	if err := build.NodeFlags.UpdateNodeSettings(&ad.nodeSettings); err != nil {
 		return nil, fmt.Errorf("error updating nodeSettings, %w", err)
 	}
 
@@ -78,7 +84,7 @@ func New(
 	mux.HandleFunc("/healthz", healthZHandler)
 
 	return &http.Server{
-		Addr:    listenAddress,
+		Addr:    build.ListenAddress,
 		Handler: http.TimeoutHandler(mux, 25*time.Second, "timeout"),
 	}, nil
 }
