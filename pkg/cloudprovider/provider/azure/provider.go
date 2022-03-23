@@ -953,11 +953,19 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
-	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
-		var sku compute.ResourceSku
+	if err := validateDiskSKUs(c); err != nil {
+		return fmt.Errorf("failed to validate disk SKUs: %w", err)
+	}
 
-		if sku, err = getSKU(context.TODO(), c); err != nil {
-			return fmt.Errorf("failed to get SKU: %w", err)
+	_, err = getOSImageReference(c, providerCfg.OperatingSystem)
+	return err
+}
+
+func validateDiskSKUs(c *config) error {
+	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
+		sku, err := getSKU(context.TODO(), c)
+		if err != nil {
+			return fmt.Errorf("failed to get VM SKU: %w", err)
 		}
 
 		if c.OSDiskSKU != nil {
@@ -1001,8 +1009,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		}
 	}
 
-	_, err = getOSImageReference(c, providerCfg.OperatingSystem)
-	return err
+	return nil
 }
 
 func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
