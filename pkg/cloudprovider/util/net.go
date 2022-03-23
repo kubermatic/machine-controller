@@ -19,7 +19,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	net2 "k8s.io/utils/net"
 	"net"
 )
@@ -46,8 +45,8 @@ const (
 	IPv6
 )
 
-// ContainsCIDR checks if n.PodCIDRs contains a CIDR block of given version (IPv4 or IPv6).
-func ContainsCIDR(n *types.NetworkConfig, version IPVersion) bool {
+// ContainsCIDR checks if cidrs contains a CIDR block of given version (IPv4 or IPv6).
+func ContainsCIDR(cidrs []string, version IPVersion) bool {
 	f := func(string) bool { return false }
 
 	switch version {
@@ -57,7 +56,7 @@ func ContainsCIDR(n *types.NetworkConfig, version IPVersion) bool {
 		f = net2.IsIPv6CIDRString
 	}
 
-	for _, cidr := range n.PodCIDRs {
+	for _, cidr := range cidrs {
 		if f(cidr) {
 			return true
 		}

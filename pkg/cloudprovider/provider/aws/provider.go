@@ -797,7 +797,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		},
 	}
 
-	if util.ContainsCIDR(networkConfig, util.IPv6) {
+	if util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv6) {
 		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
 	}
 
