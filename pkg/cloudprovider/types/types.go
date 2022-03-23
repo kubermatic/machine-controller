@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
-	netutils "k8s.io/utils/net"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -80,32 +79,6 @@ type Provider interface {
 // NetworkConfig holds information about cluster networking.
 type NetworkConfig struct {
 	PodCIDRs []string `json:"podCIDRs"` // PodCIDRs fields is used to choose IPv4, IPv6 or dual-stack modes.
-}
-
-type IPVersion int
-
-const (
-	IPv4 = iota
-	IPv6
-)
-
-func (n NetworkConfig) ContainsCIDR(version IPVersion) bool {
-	f := func(string) bool { return false }
-
-	switch version {
-	case IPv4:
-		f = netutils.IsIPv4CIDRString
-	case IPv6:
-		f = netutils.IsIPv6CIDRString
-	}
-
-	for _, cidr := range n.PodCIDRs {
-		if f(cidr) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // MachineModifier defines a function to modify a machine
