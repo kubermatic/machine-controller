@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+
+	net2 "k8s.io/utils/net"
 )
 
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
@@ -35,4 +37,31 @@ func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 
 	netmask := fmt.Sprintf("%d.%d.%d.%d", ipNet.Mask[0], ipNet.Mask[1], ipNet.Mask[2], ipNet.Mask[3])
 	return ip.String(), netmask, size, nil
+}
+
+type IPVersion int
+
+const (
+	IPv4 = iota
+	IPv6
+)
+
+// ContainsCIDR checks if cidrs contains a CIDR block of given version (IPv4 or IPv6).
+func ContainsCIDR(cidrs []string, version IPVersion) bool {
+	f := func(string) bool { return false }
+
+	switch version {
+	case IPv4:
+		f = net2.IsIPv4CIDRString
+	case IPv6:
+		f = net2.IsIPv6CIDRString
+	}
+
+	for _, cidr := range cidrs {
+		if f(cidr) {
+			return true
+		}
+	}
+
+	return false
 }
