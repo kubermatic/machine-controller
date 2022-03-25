@@ -21,13 +21,19 @@ limitations under the License.
 package gce
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/option"
 
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 )
 
 const (
@@ -52,15 +58,17 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	svc, err := compute.New(cfg.jwtConfig.Client(oauth2.NoContext))
+	svc, err := compute.NewService(context.Background(),
+		option.WithHTTPClient(cfg.jwtConfig.Client(context.Background())))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud: %v", err)
 	}
+
 	return &service{svc}, nil
 }
 
 // networkInterfaces returns the configured network interfaces for an instance creation.
-func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface, error) {
+func (svc *service) networkInterfaces(cfg *config, networkConfig *cloudprovidertypes.NetworkConfig) ([]*compute.NetworkInterface, error) {
 	network := cfg.network
 
 	if cfg.network == "" && cfg.subnetwork == "" {
@@ -71,15 +79,68 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 		Network:    network,
 		Subnetwork: cfg.subnetwork,
 	}
+	klog.Infoln("NETWORK ", cfg.network, cfg.subnetwork)
+
+	// NOSUBMIT
+	ifc.Network = "global/networks/pratik-test"
+	ifc.Subnetwork = "regions/europe-west2/subnetworks/sub-a"
 
 	if cfg.assignPublicIPAddress {
-		ifc.AccessConfigs = []*compute.AccessConfig{{
-			Name: "External NAT",
-			Type: "ONE_TO_ONE_NAT",
-		}}
+		ifc.AccessConfigs = []*compute.AccessConfig{
+			{
+				Name: "External NAT",
+				Type: "ONE_TO_ONE_NAT",
+			},
+		}
+	}
+
+	// Setup IPv6
+	// GCP allocates public IPv6 addr so we only try to setup IPv6
+	// if assigning public IP addresses is enabled.
+	if cfg.assignPublicIPAddress {
+
+		// GCP doesn't support IPv6 only stack
+		if util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv4) &&
+			util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv6) {
+
+			if isIPv6Suported(cfg.zone) {
+				ifc.StackType = "IPV4_IPV6"
+
+				ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
+					{
+						Name:        "external-ipv6",
+						NetworkTier: "PREMIUM", // TODO: check if ipv6 is supported in other tiers
+						Type:        "DIRECT_IPV6",
+					},
+				}
+			} else {
+				klog.Infof("dualstack is not supported in %q zone", cfg.zone)
+			}
+
+		} else {
+			klog.Infof("pod cidr %q doesn't specify dual stack cluster", networkConfig.PodCIDRs)
+		}
 	}
 
 	return []*compute.NetworkInterface{ifc}, nil
+}
+
+func isIPv6Suported(zone string) bool {
+	supportedRegions := []string{
+		"asia-east1",
+		"asia-south1",
+		"europe-west2",
+		"us-west2",
+	}
+
+	for _, region := range supportedRegions {
+		// this is fine since zones are constructed from region + zone suffix
+		if strings.HasPrefix(zone, region) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // attachedDisks returns the configured attached disks for an instance creation.

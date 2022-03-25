@@ -26,7 +26,7 @@ import (
 	"strconv"
 
 	"cloud.google.com/go/logging"
-	monitoring "cloud.google.com/go/monitoring/apiv3"
+	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
@@ -207,7 +207,7 @@ func (p *Provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
 	// Create Google compute instance spec and insert it.
-	networkInterfaces, err := svc.networkInterfaces(cfg)
+	networkInterfaces, err := svc.networkInterfaces(cfg, networkConfig)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
