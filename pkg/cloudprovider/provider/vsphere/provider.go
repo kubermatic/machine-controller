@@ -223,10 +223,10 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		klog.V(3).Info("Found tags")
 		for _, tag := range config.Tags {
 			if tag.Name == "" {
-				return fmt.Errorf("one of the tag name is empty")
+				return fmt.Errorf("one of the tags name is empty")
 			}
 			if tag.CategoryID == "" {
-				return fmt.Errorf("one of the tag category is empty")
+				return fmt.Errorf("one of the tags category is empty")
 			}
 			if _, err := tagManager.GetCategory(ctx, tag.CategoryID); err != nil {
 				return fmt.Errorf("can't get the category with ID %s, %w", tag.CategoryID, err)

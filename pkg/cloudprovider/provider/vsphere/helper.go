@@ -472,6 +472,16 @@ func createAndAttachTags(ctx context.Context, config *Config, vm *object.Virtual
 		}
 
 		if err := tagManager.AttachTag(ctx, tagID, vm.Reference()); err != nil {
+			// If attaching the tag to VM failed then delete this tag. It prevents orphan tags.
+			if errDelete := tagManager.DeleteTag(ctx, &tags.Tag{
+				ID:          tagID,
+				Description: tag.Description,
+				Name:        tag.Name,
+				CategoryID:  tag.CategoryID,
+			}); errDelete != nil {
+				return fmt.Errorf("failed to attach tag to VM and delete the orphan tag: %v, attach error: %v, delete error: %v", tag, err, errDelete)
+			}
+			klog.V(3).Infof("Failed to attach tag %v. The tag was successfully deleted", tag)
 			return fmt.Errorf("failed to attach tag to VM: %v %v", tag, err)
 		}
 	}
