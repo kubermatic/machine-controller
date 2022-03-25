@@ -1003,10 +1003,21 @@ func (d *awsInstance) ID() string {
 
 func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{
-		aws.StringValue(d.instance.PublicIpAddress):  v1.NodeExternalIP,
-		aws.StringValue(d.instance.PublicDnsName):    v1.NodeExternalDNS,
-		aws.StringValue(d.instance.PrivateIpAddress): v1.NodeInternalIP,
-		aws.StringValue(d.instance.PrivateDnsName):   v1.NodeInternalDNS,
+		aws.StringValue(d.instance.PublicIpAddress):                                   v1.NodeExternalIP,
+		aws.StringValue(d.instance.PublicDnsName):                                     v1.NodeExternalDNS,
+		aws.StringValue(d.instance.PrivateIpAddress):                                  v1.NodeInternalIP,
+		aws.StringValue(d.instance.PrivateDnsName):                                    v1.NodeInternalDNS,
+		aws.StringValue(d.instance.NetworkInterfaces[0].Ipv6Addresses[0].Ipv6Address): util.IPv6Address,
+	}
+
+	if len(d.instance.NetworkInterfaces) > 0 {
+		netInterface := d.instance.NetworkInterfaces[0]
+		if netInterface != nil && len(netInterface.Ipv6Addresses) > 0 {
+			ipv6Addr := netInterface.Ipv6Addresses[0]
+			if ipv6Addr != nil {
+				addresses[aws.StringValue(ipv6Addr.Ipv6Address)] = util.IPv6Address
+			}
+		}
 	}
 
 	delete(addresses, "")
