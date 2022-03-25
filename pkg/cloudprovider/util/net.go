@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net"
 
-	v1 "k8s.io/api/core/v1"
 	net2 "k8s.io/utils/net"
 )
 
@@ -67,4 +66,8 @@ func ContainsCIDR(cidrs []string, version IPVersion) bool {
 	return false
 }
 
-const IPv6Address v1.NodeAddressType = "IPv6Address"
+// IsLinkLocal checks if given ip address is link local
+func IsLinkLocal(ipAddr string) bool {
+	addr := net.ParseIP(ipAddr)
+	return addr.IsLinkLocalMulticast() || addr.IsLinkLocalUnicast()
+}
