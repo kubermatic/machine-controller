@@ -19,6 +19,7 @@ package types
 import (
 	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	corev1 "k8s.io/api/core/v1"
 )
 

@@ -19,8 +19,9 @@ package util
 import (
 	"errors"
 	"fmt"
-	net2 "k8s.io/utils/net"
 	"net"
+
+	net2 "k8s.io/utils/net"
 )
 
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
