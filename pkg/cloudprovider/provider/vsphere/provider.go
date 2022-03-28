@@ -27,6 +27,7 @@ import (
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
+	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 
@@ -71,6 +72,7 @@ type Config struct {
 	CPUs             int32
 	MemoryMB         int64
 	DiskSizeGB       *int64
+	Tags             []tags.Tag
 }
 
 // Ensures that Server implements Instance interface.
@@ -186,6 +188,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	c.MemoryMB = rawConfig.MemoryMB
 	c.DiskSizeGB = rawConfig.DiskSizeGB
 
+	for _, tag := range rawConfig.Tags {
+		c.Tags = append(c.Tags, tags.Tag{
+			Description: tag.Description,
+			Name:        tag.Name,
+			CategoryID:  tag.CategoryID,
+		})
+	}
+
 	return &c, pconfig, rawConfig, nil
 }
 
@@ -202,6 +212,28 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to create vCenter session: %v", err)
 	}
 	defer session.Logout()
+
+	if config.Tags != nil {
+		restAPISession, err := NewRESTSession(ctx, config)
+		if err != nil {
+			return fmt.Errorf("failed to create REST API session: %v", err)
+		}
+		defer restAPISession.Logout(ctx)
+		tagManager := tags.NewManager(restAPISession.Client)
+		klog.V(3).Info("Found tags")
+		for _, tag := range config.Tags {
+			if tag.Name == "" {
+				return fmt.Errorf("one of the tags name is empty")
+			}
+			if tag.CategoryID == "" {
+				return fmt.Errorf("one of the tags category is empty")
+			}
+			if _, err := tagManager.GetCategory(ctx, tag.CategoryID); err != nil {
+				return fmt.Errorf("can't get the category with ID %s, %w", tag.CategoryID, err)
+			}
+		}
+		klog.V(3).Info("Tag validation passed")
+	}
 
 	// Only and only one between datastore and datastre cluster should be
 	// present, otherwise an error is raised.
@@ -304,6 +336,10 @@ func (p *provider) create(machine *clusterv1alpha1.Machine, userdata string) (in
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%v'", err))
 	}
 
+	if err := createAndAttachTags(ctx, config, virtualMachine); err != nil {
+		return nil, fmt.Errorf("failed create and attach tags: %v", err)
+	}
+
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
 		localUserdataIsoFilePath, err := generateLocalUserdataISO(userdata, machine.Spec.Name)
 		if err != nil {
@@ -363,6 +399,10 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 			return true, nil
 		}
 		return false, fmt.Errorf("failed to get instance from vSphere: %v", err)
+	}
+
+	if err := deleteTags(ctx, config, virtualMachine); err != nil {
+		return false, fmt.Errorf("failed to delete tags: %v", err)
 	}
 
 	powerState, err := virtualMachine.PowerState(ctx)
