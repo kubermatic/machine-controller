@@ -80,7 +80,7 @@ func (svc *service) networkInterfaces(cfg *config, networkConfig *cloudprovidert
 		Subnetwork: cfg.subnetwork,
 	}
 
-	klog.Infoln("using network:%s subnetwork: %s", cfg.network, cfg.subnetwork)
+	klog.Infof("using network:%s subnetwork: %s", cfg.network, cfg.subnetwork)
 
 	if cfg.assignPublicIPAddress {
 		ifc.AccessConfigs = []*compute.AccessConfig{
