@@ -182,6 +182,7 @@ write_files:
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
+    systemctl disable --now firewalld || true
 
     systemctl enable --now vmtoolsd.service
     systemctl enable --now kubelet

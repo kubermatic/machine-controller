@@ -229,6 +229,7 @@ write_files:
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
+    systemctl disable --now firewalld || true
     {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
