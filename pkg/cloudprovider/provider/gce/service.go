@@ -79,11 +79,8 @@ func (svc *service) networkInterfaces(cfg *config, networkConfig *cloudprovidert
 		Network:    network,
 		Subnetwork: cfg.subnetwork,
 	}
-	klog.Infoln("NETWORK ", cfg.network, cfg.subnetwork)
 
-	// NOSUBMIT
-	ifc.Network = "global/networks/pratik-test"
-	ifc.Subnetwork = "regions/europe-west2/subnetworks/sub-a"
+	klog.Infoln("using network:%s subnetwork: %s", cfg.network, cfg.subnetwork)
 
 	if cfg.assignPublicIPAddress {
 		ifc.AccessConfigs = []*compute.AccessConfig{
