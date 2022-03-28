@@ -240,16 +240,7 @@ write_files:
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
-    {{ if eq .CloudProviderName "azure" }}
-	{{- range $idx, $podCIDR := .PodCIDRs }} 
-    firewall-cmd --permanent --zone=trusted --add-source={{ $podCIDR}}
-	{{ end }}
-    firewall-cmd --permanent --add-port=8472/udp
-    firewall-cmd --permanent --add-port={{ .NodePortRange }}/tcp
-    firewall-cmd --permanent --add-port={{ .NodePortRange }}/udp
-    firewall-cmd --reload
-    systemctl restart firewalld
-    {{ end -}}
+    systemctl disable --now firewalld || true
     {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}

@@ -181,16 +181,7 @@ write_files:
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
-
-    firewall-cmd --permanent --zone=trusted --add-source=172.25.0.0/16
-
-    firewall-cmd --permanent --zone=trusted --add-source=fd00::/104
-
-    firewall-cmd --permanent --add-port=8472/udp
-    firewall-cmd --permanent --add-port=/tcp
-    firewall-cmd --permanent --add-port=/udp
-    firewall-cmd --reload
-    systemctl restart firewalld
+    systemctl disable --now firewalld || true
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
 
