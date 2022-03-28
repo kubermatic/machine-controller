@@ -22,30 +22,30 @@ import (
 
 // RawConfig is a direct representation of an Azure machine object's configuration
 type RawConfig struct {
-	SubscriptionID providerconfigtypes.ConfigVarString `json:"subscriptionID,omitempty"`
-	TenantID       providerconfigtypes.ConfigVarString `json:"tenantID,omitempty"`
-	ClientID       providerconfigtypes.ConfigVarString `json:"clientID,omitempty"`
-	ClientSecret   providerconfigtypes.ConfigVarString `json:"clientSecret,omitempty"`
+	SubscriptionID *providerconfigtypes.ConfigVarString `json:"subscriptionID,omitempty"`
+	TenantID       *providerconfigtypes.ConfigVarString `json:"tenantID,omitempty"`
+	ClientID       *providerconfigtypes.ConfigVarString `json:"clientID,omitempty"`
+	ClientSecret   *providerconfigtypes.ConfigVarString `json:"clientSecret,omitempty"`
 
-	Location              providerconfigtypes.ConfigVarString `json:"location"`
-	ResourceGroup         providerconfigtypes.ConfigVarString `json:"resourceGroup"`
-	VNetResourceGroup     providerconfigtypes.ConfigVarString `json:"vnetResourceGroup"`
-	VMSize                providerconfigtypes.ConfigVarString `json:"vmSize"`
-	VNetName              providerconfigtypes.ConfigVarString `json:"vnetName"`
-	SubnetName            providerconfigtypes.ConfigVarString `json:"subnetName"`
-	LoadBalancerSku       providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
-	RouteTableName        providerconfigtypes.ConfigVarString `json:"routeTableName"`
-	AvailabilitySet       providerconfigtypes.ConfigVarString `json:"availabilitySet"`
+	Location              *providerconfigtypes.ConfigVarString `json:"location"`
+	ResourceGroup         *providerconfigtypes.ConfigVarString `json:"resourceGroup"`
+	VNetResourceGroup     *providerconfigtypes.ConfigVarString `json:"vnetResourceGroup"`
+	VMSize                *providerconfigtypes.ConfigVarString `json:"vmSize"`
+	VNetName              *providerconfigtypes.ConfigVarString `json:"vnetName"`
+	SubnetName            *providerconfigtypes.ConfigVarString `json:"subnetName"`
+	LoadBalancerSku       *providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
+	RouteTableName        *providerconfigtypes.ConfigVarString `json:"routeTableName"`
+	AvailabilitySet       *providerconfigtypes.ConfigVarString `json:"availabilitySet"`
 	AssignAvailabilitySet *bool                               `json:"assignAvailabilitySet"`
-	SecurityGroupName     providerconfigtypes.ConfigVarString `json:"securityGroupName"`
+	SecurityGroupName     *providerconfigtypes.ConfigVarString `json:"securityGroupName"`
 	Zones                 []string                            `json:"zones"`
 	ImagePlan             *ImagePlan                          `json:"imagePlan,omitempty"`
 	ImageReference        *ImageReference                     `json:"imageReference,omitempty"`
 
-	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
+	ImageID        *providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`
 	DataDiskSize   int32                               `json:"dataDiskSize"`
-	AssignPublicIP providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
+	AssignPublicIP *providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
 	Tags           map[string]string                   `json:"tags,omitempty"`
 }
 

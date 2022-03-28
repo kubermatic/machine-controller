@@ -114,14 +114,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *packettypes.Raw
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"billingCycle\" field, error = %v", err)
 	}
 	for i, tag := range rawConfig.Tags {
-		tagValue, err := p.configVarResolver.GetConfigVarStringValue(tag)
+		tagValue, err := p.configVarResolver.GetConfigVarStringValue(&tag)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"tags\" field, error = %v", i, err)
 		}
 		c.Tags = append(c.Tags, tagValue)
 	}
 	for i, facility := range rawConfig.Facilities {
-		facilityValue, err := p.configVarResolver.GetConfigVarStringValue(facility)
+		facilityValue, err := p.configVarResolver.GetConfigVarStringValue(&facility)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"facilities\" field, error = %v", i, err)
 		}

@@ -21,10 +21,10 @@ import (
 )
 
 type RawConfig struct {
-	APIKey       providerconfigtypes.ConfigVarString   `json:"apiKey,omitempty"`
-	ProjectID    providerconfigtypes.ConfigVarString   `json:"projectID,omitempty"`
-	BillingCycle providerconfigtypes.ConfigVarString   `json:"billingCycle"`
-	InstanceType providerconfigtypes.ConfigVarString   `json:"instanceType"`
+	APIKey       *providerconfigtypes.ConfigVarString   `json:"apiKey,omitempty"`
+	ProjectID    *providerconfigtypes.ConfigVarString   `json:"projectID,omitempty"`
+	BillingCycle *providerconfigtypes.ConfigVarString   `json:"billingCycle"`
+	InstanceType *providerconfigtypes.ConfigVarString   `json:"instanceType"`
 	Facilities   []providerconfigtypes.ConfigVarString `json:"facilities"`
 	Tags         []providerconfigtypes.ConfigVarString `json:"tags,omitempty"`
 }

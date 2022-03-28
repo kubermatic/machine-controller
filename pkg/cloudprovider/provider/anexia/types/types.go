@@ -34,10 +34,10 @@ const (
 )
 
 type RawConfig struct {
-	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
-	VlanID     providerconfigtypes.ConfigVarString `json:"vlanID"`
-	LocationID providerconfigtypes.ConfigVarString `json:"locationID"`
-	TemplateID providerconfigtypes.ConfigVarString `json:"templateID"`
+	Token      *providerconfigtypes.ConfigVarString `json:"token,omitempty"`
+	VlanID     *providerconfigtypes.ConfigVarString `json:"vlanID"`
+	LocationID *providerconfigtypes.ConfigVarString `json:"locationID"`
+	TemplateID *providerconfigtypes.ConfigVarString `json:"templateID"`
 	CPUs       int                                 `json:"cpus"`
 	Memory     int                                 `json:"memory"`
 	DiskSize   int                                 `json:"diskSize"`
