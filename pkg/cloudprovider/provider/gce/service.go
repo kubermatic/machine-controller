@@ -111,7 +111,7 @@ func (svc *service) networkInterfaces(cfg *config, networkConfig *cloudprovidert
 					},
 				}
 			} else {
-				klog.Infof("dualstack is not supported in %q zone", cfg.zone)
+				return nil, fmt.Errorf("dualstack is not supported in %q zone", cfg.zone)
 			}
 
 		} else {
