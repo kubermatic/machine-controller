@@ -22,5 +22,13 @@ MC_KUBECONFIG=${MC_KUBECONFIG:-$(dirname $0)/../.kubeconfig}
 
 make -C $(dirname $0)/.. build-machine-controller
 $(dirname $0)/../machine-controller \
-  -kubeconfig=/home/pratik/Downloads/kubeconfig-admin-65mwlchzr2 \
-  -pod-cidr=172.25.0.0/16,fd00::/104
+  -kubeconfig=$MC_KUBECONFIG \
+  -worker-count=50 \
+  -logtostderr \
+  -v=6 \
+  -cluster-dns=172.16.0.10 \
+  -enable-profiling \
+  -metrics-address=0.0.0.0:8080 \
+  -use-osm \
+  -health-probe-address=0.0.0.0:8085 \
+  -node-container-runtime=containerd
