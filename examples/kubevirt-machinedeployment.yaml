@@ -37,6 +37,14 @@ spec:
                   osImage: http://10.109.79.210/<< OS_NAME >>.img
                   size: "10Gi"
                   storageClassName: kubermatic-fast
+            affinity:
+              podAffinityPreset: "" # Allowed values: "", "soft", "hard"
+              podAntiAffinityPreset: "" # Allowed values: "", "soft", "hard"
+              nodeAffinityPreset:
+                type: "" # Allowed values: "", "soft", "hard"
+                key: "foo"
+                values:
+                - bar
           # Can also be `centos`, must align with he configured registryImage above
           operatingSystem: "ubuntu"
           operatingSystemSpec:

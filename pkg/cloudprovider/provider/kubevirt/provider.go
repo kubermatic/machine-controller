@@ -58,6 +58,14 @@ func init() {
 	}
 }
 
+const (
+	// topologyKeyHostname defines the topology key for the node hostname.
+	topologyKeyHostname = "kubernetes.io/hostname"
+	// machineDeploymentLabelKey defines the label key used to contains as value the MachineDeployment name
+	// which machine comes from.
+	machineDeploymentLabelKey = "md"
+)
+
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
 	providerconfigtypes.OperatingSystemCentOS:  nil,
 	providerconfigtypes.OperatingSystemUbuntu:  nil,
@@ -75,18 +83,57 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	Kubeconfig       string
-	RestConfig       *rest.Config
-	DNSConfig        *corev1.PodDNSConfig
-	DNSPolicy        corev1.DNSPolicy
-	CPUs             string
-	Memory           string
-	Namespace        string
-	OsImage          OSImage
-	StorageClassName string
-	PVCSize          resource.Quantity
-	FlavorName       string
-	SecondaryDisks   []SecondaryDisks
+	Kubeconfig            string
+	RestConfig            *rest.Config
+	DNSConfig             *corev1.PodDNSConfig
+	DNSPolicy             corev1.DNSPolicy
+	CPUs                  string
+	Memory                string
+	Namespace             string
+	OsImage               OSImage
+	StorageClassName      string
+	PVCSize               resource.Quantity
+	FlavorName            string
+	SecondaryDisks        []SecondaryDisks
+	PodAffinityPreset     AffinityType
+	PodAntiAffinityPreset AffinityType
+	NodeAffinityPreset    NodeAffinityPreset
+}
+
+type AffinityType string
+
+const (
+	// Facade for podAffinity, podAntiAffinity, nodeAffinity, nodeAntiAffinity
+	// HardAffinityType: affinity will include requiredDuringSchedulingIgnoredDuringExecution
+	hardAffinityType = "hard"
+	// SoftAffinityType: affinity will include preferredDuringSchedulingIgnoredDuringExecution
+	softAffinityType = "soft"
+	// NoAffinityType: affinity section will not be preset
+	noAffinityType = ""
+)
+
+func (p *provider) affinityType(affinityType providerconfigtypes.ConfigVarString) (AffinityType, error) {
+	podAffinityPresetString, err := p.configVarResolver.GetConfigVarStringValue(affinityType)
+	if err != nil {
+		return "", fmt.Errorf(`failed to parse "podAffinityPreset" field: %v`, err)
+	}
+	switch strings.ToLower(podAffinityPresetString) {
+	case string(hardAffinityType):
+		return hardAffinityType, nil
+	case string(softAffinityType):
+		return softAffinityType, nil
+	case string(noAffinityType):
+		return noAffinityType, nil
+	}
+
+	return "", fmt.Errorf("unknown affinityType: %s", affinityType)
+}
+
+// NodeAffinityPreset
+type NodeAffinityPreset struct {
+	Type   AffinityType
+	Key    string
+	Values []string
 }
 
 type SecondaryDisks struct {
@@ -205,20 +252,65 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if rawConfig.VirtualMachine.DNSConfig != nil {
 		config.DNSConfig = rawConfig.VirtualMachine.DNSConfig
 	}
-	if len(rawConfig.VirtualMachine.Template.SecondaryDisks) > 0 {
-		for _, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
-			pvc, err := resource.ParseQuantity(sd.Size.Value)
-			if err != nil {
-				return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %v`, err)
-			}
-			config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
-				Size:             pvc,
-				StorageClassName: sd.StorageClassName.Value,
-			})
+	config.SecondaryDisks = make([]SecondaryDisks, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
+	for _, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
+
+		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %v`, err)
 		}
+		pvc, err := resource.ParseQuantity(sdSizeString)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %v`, err)
+		}
+
+		scString, err := p.configVarResolver.GetConfigVarStringValue(sd.StorageClassName)
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %v`, err)
+		}
+		config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
+			Size:             pvc,
+			StorageClassName: scString,
+		})
+	}
+
+	// Affinity/AntiAffinity
+	config.PodAffinityPreset, err = p.affinityType(rawConfig.Affinity.PodAffinityPreset)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse "podAffinityPreset" field: %v`, err)
+	}
+	config.PodAntiAffinityPreset, err = p.affinityType(rawConfig.Affinity.PodAntiAffinityPreset)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse "podAntiAffinityPreset" field: %v`, err)
+	}
+	config.NodeAffinityPreset, err = p.parseNodeAffinityPreset(rawConfig.Affinity.NodeAffinityPreset)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse "nodeAffinityPreset" field: %v`, err)
 	}
 
 	return &config, pconfig, nil
+}
+
+func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.NodeAffinityPreset) (NodeAffinityPreset, error) {
+	nodeAffinity := NodeAffinityPreset{}
+	var err error
+	nodeAffinity.Type, err = p.affinityType(nodeAffinityPreset.Type)
+	if err != nil {
+		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.type" field: %v`, err)
+	}
+	nodeAffinity.Key, err = p.configVarResolver.GetConfigVarStringValue(nodeAffinityPreset.Key)
+	if err != nil {
+		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.key" field: %v`, err)
+	}
+	nodeAffinity.Values = make([]string, len(nodeAffinityPreset.Values))
+	for _, v := range nodeAffinityPreset.Values {
+		valueString, err := p.configVarResolver.GetConfigVarStringValue(v)
+		if err != nil {
+			return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.value" field: %v`, err)
+		}
+		nodeAffinity.Values = append(nodeAffinity.Values, valueString)
+	}
+	return nodeAffinity, nil
 }
 
 // getNamespace returns the namespace where the VM is created.
@@ -377,7 +469,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	labels := map[string]string{"kubevirt.io/vm": machine.Name}
 	// Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name)
 	if mdName, err := controllerutil.GetMachineDeploymentNameForMachine(context.Background(), machine, data.Client); err == nil {
-		labels["md"] = mdName
+		labels[machineDeploymentLabelKey] = mdName
 	}
 
 	sigClient, err := client.New(c.RestConfig, client.Options{})
@@ -441,6 +533,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 						},
 						Resources: resourceRequirements,
 					},
+					Affinity:                      getAffinity(c, machineDeploymentLabelKey, labels[machineDeploymentLabelKey]),
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Volumes:                       getVMVolumes(c, dataVolumeName, userDataSecretName),
 					DNSPolicy:                     c.DNSPolicy,
@@ -632,4 +725,100 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 		})
 	}
 	return dataVolumeTemplates
+}
+
+func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
+	affinity := &corev1.Affinity{}
+
+	// PodAffinity
+	switch config.PodAffinityPreset {
+	case softAffinityType:
+		affinity.PodAffinity = &corev1.PodAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: hostnameWeightedAffinityTerm(matchKey, matchValue),
+		}
+	case hardAffinityType:
+		affinity.PodAffinity = &corev1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: hostnameAffinityTerm(matchKey, matchValue),
+		}
+	}
+
+	// PodAntiAffinity
+	switch config.PodAntiAffinityPreset {
+	case softAffinityType:
+		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: hostnameWeightedAffinityTerm(matchKey, matchValue),
+		}
+	case hardAffinityType:
+		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: hostnameAffinityTerm(matchKey, matchValue),
+		}
+	}
+
+	// NodeAffinity
+	switch config.NodeAffinityPreset.Type {
+	case softAffinityType:
+		affinity.NodeAffinity = &corev1.NodeAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+				{
+					Weight: 1,
+					Preference: corev1.NodeSelectorTerm{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      config.NodeAffinityPreset.Key,
+								Values:   config.NodeAffinityPreset.Values,
+								Operator: corev1.NodeSelectorOperator(metav1.LabelSelectorOpIn),
+							},
+						},
+					},
+				},
+			},
+		}
+	case hardAffinityType:
+		affinity.NodeAffinity = &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      config.NodeAffinityPreset.Key,
+								Values:   config.NodeAffinityPreset.Values,
+								Operator: corev1.NodeSelectorOperator(metav1.LabelSelectorOpIn),
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	return affinity
+}
+
+func hostnameWeightedAffinityTerm(matchKey, matchValue string) []corev1.WeightedPodAffinityTerm {
+	return []corev1.WeightedPodAffinityTerm{
+		{
+			Weight: 1,
+			PodAffinityTerm: corev1.PodAffinityTerm{
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						matchKey: matchValue,
+					},
+				},
+				TopologyKey: topologyKeyHostname,
+			},
+		},
+	}
+}
+
+func hostnameAffinityTerm(matchKey, matchValue string) []corev1.PodAffinityTerm {
+	return []corev1.PodAffinityTerm{
+		{
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					matchKey: matchValue,
+				},
+			},
+			TopologyKey: topologyKeyHostname,
+		},
+	}
 }

@@ -26,6 +26,7 @@ import (
 type RawConfig struct {
 	Auth           Auth           `json:"auth,omitempty"`
 	VirtualMachine VirtualMachine `json:"virtualMachine,omitempty"`
+	Affinity       Affinity       `json:"affinity,omitempty"`
 }
 
 // Auth
@@ -70,6 +71,20 @@ type SecondaryDisks struct {
 type Disk struct {
 	Size             providerconfigtypes.ConfigVarString `json:"size,omitempty"`
 	StorageClassName providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
+}
+
+// Affinity
+type Affinity struct {
+	PodAffinityPreset     providerconfigtypes.ConfigVarString `json:"podAffinityPreset,omitempty"`
+	PodAntiAffinityPreset providerconfigtypes.ConfigVarString `json:"podAntiAffinityPreset,omitempty"`
+	NodeAffinityPreset    NodeAffinityPreset                  `json:"nodeAffinityPreset,omitempty"`
+}
+
+// NodeAffinityPreset
+type NodeAffinityPreset struct {
+	Type   providerconfigtypes.ConfigVarString   `json:"type,omitempty"`
+	Key    providerconfigtypes.ConfigVarString   `json:"key,omitempty"`
+	Values []providerconfigtypes.ConfigVarString `json:"values,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
