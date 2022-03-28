@@ -26,11 +26,11 @@ import (
 	"strings"
 	"time"
 
-	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
+
+	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
