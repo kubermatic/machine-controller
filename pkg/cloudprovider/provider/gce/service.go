@@ -58,7 +58,7 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	svc, err := compute.NewService(context.Background(),
+	svc, err := compute.NewService(context.TODO(),
 		option.WithHTTPClient(cfg.jwtConfig.Client(context.Background())))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud: %v", err)
@@ -100,7 +100,7 @@ func (svc *service) networkInterfaces(cfg *config, networkConfig *cloudprovidert
 		if util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv4) &&
 			util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv6) {
 
-			if isIPv6Suported(cfg.zone) {
+			if isIPv6Supported(cfg.zone) {
 				ifc.StackType = "IPV4_IPV6"
 
 				ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
@@ -115,14 +115,14 @@ func (svc *service) networkInterfaces(cfg *config, networkConfig *cloudprovidert
 			}
 
 		} else {
-			klog.Infof("pod cidr %q doesn't specify dual stack cluster", networkConfig.PodCIDRs)
+			klog.Infof("no IPv6 found in for PodCIDR in network configs: %s", networkConfig.PodCIDRs)
 		}
 	}
 
 	return []*compute.NetworkInterface{ifc}, nil
 }
 
-func isIPv6Suported(zone string) bool {
+func isIPv6Supported(zone string) bool {
 	supportedRegions := []string{
 		"asia-east1",
 		"asia-south1",
