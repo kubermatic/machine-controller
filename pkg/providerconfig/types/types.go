@@ -140,6 +140,14 @@ type ConfigVarString struct {
 	ConfigMapKeyRef GlobalConfigMapKeySelector
 }
 
+func (c *ConfigVarString) Empty() bool {
+	return c == nil || (c.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
+		c.ConfigMapKeyRef.ObjectReference.Name == "" &&
+		c.ConfigMapKeyRef.Key == "" && c.SecretKeyRef.ObjectReference.Namespace == "" &&
+		c.SecretKeyRef.ObjectReference.Name == "" &&
+		c.SecretKeyRef.Key == "" && c.Value == "")
+}
+
 // This type only exists to have the same fields as ConfigVarString but
 // not its funcs, so it can be used as target for json.Unmarshal without
 // causing a recursion
@@ -220,6 +228,14 @@ type ConfigVarBool struct {
 	Value           bool
 	SecretKeyRef    GlobalSecretKeySelector
 	ConfigMapKeyRef GlobalConfigMapKeySelector
+}
+
+func (c *ConfigVarBool) Empty() bool {
+	return c == nil || (c.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
+		c.ConfigMapKeyRef.ObjectReference.Name == "" &&
+		c.ConfigMapKeyRef.Key == "" && c.SecretKeyRef.ObjectReference.Namespace == "" &&
+		c.SecretKeyRef.ObjectReference.Name == "" &&
+		c.SecretKeyRef.Key == "")
 }
 
 type configVarBoolWithoutUnmarshaller ConfigVarBool
