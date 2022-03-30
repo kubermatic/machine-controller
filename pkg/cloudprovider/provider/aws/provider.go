@@ -800,7 +800,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	if util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv6) {
 		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
 	} else {
-		klog.Infoln("PodCIDRs don't contain IPv6")
+		klog.Infof("no IPv6 found for PodCIDR in network configs: %s", networkConfig.PodCIDRs)
 	}
 
 	runOut, err := ec2Client.RunInstances(instanceRequest)
