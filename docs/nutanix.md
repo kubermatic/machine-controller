@@ -1,6 +1,6 @@
 # Nutanix Prism Central
 
-This provider implementation is currently in **alpha** stage. Currently, the only supported API version is [Prism v3](https://www.nutanix.dev/reference/prism_central/v3/).
+Currently the `machine-controller` implementation of Nutanix supports the [Prism v3 API](https://www.nutanix.dev/reference/prism_central/v3/) to create `Machines`.
 
 ## Prerequisites
 
