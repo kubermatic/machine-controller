@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"cloud.google.com/go/logging"
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
@@ -48,6 +49,7 @@ const (
 	errConnect               = "Failed to connect: %v"
 	errInvalidServiceAccount = "Service account is missing"
 	errInvalidZone           = "Zone is missing"
+	errIPv6UnsupportedZone   = "IPv6 is not supported in zone: %s"
 	errInvalidMachineType    = "Machine type is missing"
 	errInvalidDiskSize       = "Disk size must be a positive number"
 	errInvalidDiskType       = "Disk type is missing or has wrong type, allowed are 'pd-standard' and 'pd-ssd'"
@@ -112,6 +114,9 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	if cfg.zone == "" {
 		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
 	}
+	if !isIPv6Supported(cfg.zone) {
+		return newError(common.InvalidConfigurationMachineError, errIPv6UnsupportedZone, cfg.zone)
+	}
 	if cfg.machineType == "" {
 		return newError(common.InvalidConfigurationMachineError, errInvalidMachineType)
 	}
@@ -126,6 +131,24 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return newError(common.InvalidConfigurationMachineError, errOperatingSystem, cfg.providerConfig.OperatingSystem, err)
 	}
 	return nil
+}
+
+func isIPv6Supported(zone string) bool {
+	supportedRegions := []string{
+		"asia-east1",
+		"asia-south1",
+		"europe-west2",
+		"us-west2",
+	}
+
+	for _, region := range supportedRegions {
+		// this is fine since zones are constructed from region + zone suffix
+		if strings.HasPrefix(zone, region) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Get retrieves a node instance that is associated with the given machine.

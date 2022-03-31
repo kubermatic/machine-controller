@@ -23,7 +23,6 @@ package gce
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"google.golang.org/api/compute/v1"
@@ -99,45 +98,21 @@ func (svc *service) networkInterfaces(cfg *config, networkConfig *cloudprovidert
 		// GCP doesn't support IPv6 only stack
 		if util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv4) &&
 			util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv6) {
+			ifc.StackType = "IPV4_IPV6"
 
-			if isIPv6Supported(cfg.zone) {
-				ifc.StackType = "IPV4_IPV6"
-
-				ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
-					{
-						Name:        "external-ipv6",
-						NetworkTier: "PREMIUM", // TODO: check if ipv6 is supported in other tiers
-						Type:        "DIRECT_IPV6",
-					},
-				}
-			} else {
-				return nil, fmt.Errorf("dualstack is not supported in %q zone", cfg.zone)
+			ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
+				{
+					Name:        "external-ipv6",
+					NetworkTier: "PREMIUM", // TODO: check if ipv6 is supported in other tiers
+					Type:        "DIRECT_IPV6",
+				},
 			}
-
 		} else {
 			klog.Infof("no IPv6 found in for PodCIDR in network configs: %s", networkConfig.PodCIDRs)
 		}
 	}
 
 	return []*compute.NetworkInterface{ifc}, nil
-}
-
-func isIPv6Supported(zone string) bool {
-	supportedRegions := []string{
-		"asia-east1",
-		"asia-south1",
-		"europe-west2",
-		"us-west2",
-	}
-
-	for _, region := range supportedRegions {
-		// this is fine since zones are constructed from region + zone suffix
-		if strings.HasPrefix(zone, region) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // attachedDisks returns the configured attached disks for an instance creation.
