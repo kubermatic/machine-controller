@@ -59,8 +59,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData,
-	userdata string, networkConfig *cloudprovidertypes.NetworkConfig) (instance instance.Instance, retErr error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
 	status := getProviderStatus(machine)
 	klog.V(3).Infof(fmt.Sprintf("'%s' has status %#v", machine.Name, status))
 

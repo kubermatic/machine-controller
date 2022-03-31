@@ -195,7 +195,7 @@ func (p *Provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 }
 
 // Create inserts a cloud instance according to the given machine.
-func (p *Provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string, networkConfig *cloudprovidertypes.NetworkConfig) (instance.Instance, error) {
+func (p *Provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
