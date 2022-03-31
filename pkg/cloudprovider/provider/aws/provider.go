@@ -41,7 +41,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	awstypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
@@ -795,10 +794,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 				Tags:         tags,
 			},
 		},
-	}
-
-	if util.ContainsCIDR(networkConfig.PodCIDRs, util.IPv6) {
-		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
 	}
 
 	runOut, err := ec2Client.RunInstances(instanceRequest)
