@@ -166,17 +166,17 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 	},
 }
 
-var osDiskSKUs = []compute.StorageAccountTypes{
-	compute.StorageAccountTypesStandardLRS,    // Standard_LRS
-	compute.StorageAccountTypesStandardSSDLRS, // StandardSSD_LRS
-	compute.StorageAccountTypesPremiumLRS,     // Premium_LRS
+var osDiskSKUs = map[compute.StorageAccountTypes]string{
+	compute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
+	compute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
+	compute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
 }
 
-var dataDiskSKUs = []compute.StorageAccountTypes{
-	compute.StorageAccountTypesStandardLRS,    // Standard_LRS
-	compute.StorageAccountTypesStandardSSDLRS, // StandardSSD_LRS
-	compute.StorageAccountTypesPremiumLRS,     // Premium_LRS
-	compute.StorageAccountTypesUltraSSDLRS,    // UltraSSD_LRS
+var dataDiskSKUs = map[compute.StorageAccountTypes]string{
+	compute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
+	compute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
+	compute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
+	compute.StorageAccountTypesUltraSSDLRS:    "", // UltraSSD_LRS
 }
 
 var (
@@ -971,14 +971,7 @@ func validateDiskSKUs(c *config) error {
 		}
 
 		if c.OSDiskSKU != nil {
-			valid := false
-			for _, t := range osDiskSKUs {
-				if t == *c.OSDiskSKU {
-					valid = true
-				}
-			}
-
-			if !valid {
+			if _, ok := osDiskSKUs[*c.OSDiskSKU]; !ok {
 				return fmt.Errorf("invalid OS disk SKU '%s'", *c.OSDiskSKU)
 			}
 
@@ -988,14 +981,7 @@ func validateDiskSKUs(c *config) error {
 		}
 
 		if c.DataDiskSKU != nil {
-			valid := false
-			for _, t := range dataDiskSKUs {
-				if t == *c.DataDiskSKU {
-					valid = true
-				}
-			}
-
-			if !valid {
+			if _, ok := dataDiskSKUs[*c.DataDiskSKU]; !ok {
 				return fmt.Errorf("invalid data disk SKU '%s'", *c.DataDiskSKU)
 			}
 
