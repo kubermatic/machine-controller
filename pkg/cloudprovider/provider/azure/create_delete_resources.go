@@ -294,7 +294,7 @@ skuLoop:
 	}
 
 	if sku == nil {
-		return compute.ResourceSku{}, fmt.Errorf("VM SKU '%s' not found in subscription '%s'", c.VMSize, c.SubscriptionID)
+		return compute.ResourceSku{}, fmt.Errorf("no VM SKU '%s' found for subscription '%s'", c.VMSize, c.SubscriptionID)
 	}
 
 	cache.SetDefault(cacheKey, *sku)
