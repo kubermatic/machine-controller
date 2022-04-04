@@ -50,6 +50,7 @@ var (
 		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemUbuntu,
+		providerconfigtypes.OperatingSystemRockyLinux,
 	}
 )
 
