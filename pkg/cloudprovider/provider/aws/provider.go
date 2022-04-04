@@ -111,6 +111,18 @@ var (
 				owner: "125523088429",
 			},
 		},
+		providerconfigtypes.OperatingSystemRockyLinux: {
+			awstypes.CPUArchitectureX86_64: {
+				description: "Rocky Linux Base System",
+				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
+				owner: "057448758665",
+			},
+			awstypes.CPUArchitectureARM64: {
+				description: "* Rocky Linux 8.4 aarch64",
+				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
+				owner: "679593333241",
+			},
+		},
 		providerconfigtypes.OperatingSystemAmazonLinux2: {
 			awstypes.CPUArchitectureX86_64: {
 				description: "Amazon Linux 2 AMI * x86_64 HVM gp2",
@@ -333,6 +345,8 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemCentOS:
+		return rootDevicePathSDA, nil
+	case providerconfigtypes.OperatingSystemRockyLinux:
 		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemSLES:
 		return rootDevicePathXVDA, nil
