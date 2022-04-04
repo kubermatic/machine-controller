@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
 	"os"
 	"strconv"
 	"time"
@@ -198,6 +199,8 @@ func DefaultOperatingSystemSpec(
 		return sles.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return ubuntu.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemRockyLinux:
+		return rockylinux.DefaultConfig(operatingSystemSpec), nil
 	}
 
 	return operatingSystemSpec, errors.New("unknown OperatingSystem")
