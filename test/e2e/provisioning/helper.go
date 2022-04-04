@@ -46,6 +46,7 @@ var (
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemFlatcar,
+		providerconfigtypes.OperatingSystemRockyLinux,
 	}
 
 	openStackImages = map[string]string{
