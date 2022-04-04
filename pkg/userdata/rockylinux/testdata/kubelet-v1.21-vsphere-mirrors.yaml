@@ -79,6 +79,7 @@ write_files:
 
     hostnamectl set-hostname node1
 
+
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \

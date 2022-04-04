@@ -67,6 +67,7 @@ write_files:
     sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
 
+
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
