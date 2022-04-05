@@ -134,7 +134,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 const userDataTemplate = `#cloud-config
 bootcmd:
 - modprobe ip_tables
-
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
@@ -203,11 +202,12 @@ write_files:
 {{- /* Make sure we always disable swap - Otherwise the kubelet won't start */}}
     sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
+
     {{ if ne .CloudProviderName "aws" }}
 {{- /*  The normal way of setting it via cloud-init is broken, see */}}
 {{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
     hostnamectl set-hostname {{ .MachineSpec.Name }}
-    {{ end }}
+    {{ end -}}
 
     yum install -y \
       device-mapper-persistent-data \
@@ -233,7 +233,6 @@ write_files:
     systemctl enable --now iscsid
     {{ end }}
 {{ .ContainerRuntimeScript | indent 4 }}
-
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/

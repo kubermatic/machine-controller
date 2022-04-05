@@ -118,7 +118,7 @@ var (
 				owner: "792107900819",
 			},
 			awstypes.CPUArchitectureARM64: {
-				description: "Rocky-8-ec2-8*.x86_64",
+				description: "Rocky-8-ec2-8*.aarch64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
 				owner: "792107900819",
 			},

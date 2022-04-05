@@ -1,4 +1,6 @@
 #cloud-config
+bootcmd:
+- modprobe ip_tables
 
 hostname: node1
 
@@ -77,9 +79,8 @@ write_files:
     sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
 
+
     hostnamectl set-hostname node1
-
-
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
@@ -115,7 +116,6 @@ write_files:
 
     systemctl daemon-reload
     systemctl enable --now docker
-
 
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
