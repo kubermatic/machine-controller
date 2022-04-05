@@ -132,6 +132,9 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 // UserData template.
 const userDataTemplate = `#cloud-config
+bootcmd:
+- modprobe ip_tables
+
 {{ if ne .CloudProviderName "aws" }}
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}

@@ -113,14 +113,14 @@ var (
 		},
 		providerconfigtypes.OperatingSystemRockyLinux: {
 			awstypes.CPUArchitectureX86_64: {
-				description: "Rocky Linux Base System",
+				description: "Rocky-8-ec2-8*.x86_64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
-				owner: "057448758665",
+				owner: "792107900819",
 			},
 			awstypes.CPUArchitectureARM64: {
-				description: "* Rocky Linux 8.4 aarch64",
+				description: "Rocky-8-ec2-8*.x86_64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
-				owner: "679593333241",
+				owner: "792107900819",
 			},
 		},
 		providerconfigtypes.OperatingSystemAmazonLinux2: {
