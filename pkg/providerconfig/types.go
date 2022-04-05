@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
 	"os"
 	"strconv"
 	"time"
@@ -30,6 +29,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
 	"github.com/kubermatic/machine-controller/pkg/userdata/sles"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 

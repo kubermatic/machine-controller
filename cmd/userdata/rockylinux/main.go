@@ -41,6 +41,6 @@ func main() {
 	var p = userdataplugin.New(provider, debug)
 
 	if err := p.Run(); err != nil {
-		klog.Fatalf("error running CentOS plugin: %v", err)
+		klog.Fatalf("error running RockyLinux plugin: %v", err)
 	}
 }
