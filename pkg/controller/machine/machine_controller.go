@@ -816,9 +816,8 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %v", err)
 				}
 
-				cloudConfigSecretName := fmt.Sprintf("%s-%s-%s",
+				cloudConfigSecretName := fmt.Sprintf("%s-%s",
 					referencedMachineDeployment,
-					machine.Namespace,
 					provisioningSuffix)
 
 				// It is important to check if the secret holding cloud-config exists
