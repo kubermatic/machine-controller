@@ -273,8 +273,7 @@ func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
 
 	var sku *compute.ResourceSku
 
-skuLoop:
-	for skuPages.NotDone() {
+	for skuPages.NotDone() && sku == nil {
 		skus := skuPages.Values()
 		for _, skuResult := range skus {
 			// skip invalid SKU results so we don't trigger a nil pointer exception
@@ -284,12 +283,15 @@ skuLoop:
 
 			if *skuResult.ResourceType == "virtualMachines" && *skuResult.Name == c.VMSize {
 				sku = &skuResult
-				break skuLoop
+				break
 			}
 		}
 
-		if err := skuPages.NextWithContext(ctx); err != nil {
-			return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
+		// only fetch the next page if we haven't found our SKU yet
+		if sku == nil {
+			if err := skuPages.NextWithContext(ctx); err != nil {
+				return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
+			}
 		}
 	}
 
