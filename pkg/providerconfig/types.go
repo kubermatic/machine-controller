@@ -29,6 +29,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
 	"github.com/kubermatic/machine-controller/pkg/userdata/sles"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 
@@ -198,6 +199,8 @@ func DefaultOperatingSystemSpec(
 		return sles.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return ubuntu.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemRockyLinux:
+		return rockylinux.DefaultConfig(operatingSystemSpec), nil
 	}
 
 	return operatingSystemSpec, errors.New("unknown OperatingSystem")

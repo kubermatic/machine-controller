@@ -39,6 +39,7 @@ const (
 	OperatingSystemSLES         OperatingSystem = "sles"
 	OperatingSystemRHEL         OperatingSystem = "rhel"
 	OperatingSystemFlatcar      OperatingSystem = "flatcar"
+	OperatingSystemRockyLinux   OperatingSystem = "rockylinux"
 )
 
 type CloudProvider string
@@ -75,6 +76,7 @@ var (
 		OperatingSystemSLES,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
+		OperatingSystemRockyLinux,
 	}
 
 	// AllCloudProviders is a slice containing all supported cloud providers.

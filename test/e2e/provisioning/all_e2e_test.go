@@ -321,7 +321,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "amzn2"))
+	selector := Not(OsSelector("sles", "rhel", "amzn2", "rockylinux"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -605,7 +605,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "amzn2"))
+	selector := Not(OsSelector("sles", "amzn2", "rockylinux"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -729,7 +729,7 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "amzn2"))
+	selector := Not(OsSelector("sles", "rhel", "amzn2", "rockylinux"))
 
 	// act
 	params := []string{
@@ -808,7 +808,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "amzn2"))
+	selector := Not(OsSelector("sles", "amzn2", "rockylinux"))
 	params := getVSphereTestParams(t)
 
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -869,7 +869,7 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar"))
+	selector := Not(OsSelector("sles", "rhel", "flatcar", "rockylinux"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< SCW_ACCESS_KEY >>=%s", scwAccessKey),
