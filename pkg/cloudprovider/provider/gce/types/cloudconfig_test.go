@@ -24,6 +24,8 @@ package types
 
 import (
 	"testing"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 )
 
 func TestCloudConfigAsString(t *testing.T) {
@@ -36,15 +38,15 @@ func TestCloudConfigAsString(t *testing.T) {
 			name: "minimum test",
 			config: &CloudConfig{
 				Global: GlobalOpts{
-					ProjectID:      "my-project-id",
-					LocalZone:      "my-zone",
-					NetworkName:    "my-cool-network",
-					SubnetworkName: "my-cool-subnetwork",
-					TokenURL:       "nil",
-					MultiZone:      true,
-					Regional:       true,
-					NodeTags:       []string{"tag1", "tag2"},
-					PodCIDRs:       []string{"172.25.0.0/16", "fd00::/104"},
+					ProjectID:        "my-project-id",
+					LocalZone:        "my-zone",
+					NetworkName:      "my-cool-network",
+					SubnetworkName:   "my-cool-subnetwork",
+					TokenURL:         "nil",
+					MultiZone:        true,
+					Regional:         true,
+					NodeTags:         []string{"tag1", "tag2"},
+					PodNetworkFamily: util.DualStack,
 				},
 			},
 			contents: "[global]\n" +
@@ -55,7 +57,7 @@ func TestCloudConfigAsString(t *testing.T) {
 				"token-url = \"nil\"\n" +
 				"multizone = true\n" +
 				"regional = true\n" +
-				"podCIDRs = 172.25.0.0/16,fd00::/104\n" +
+				"podNetworkFamily = IPv4+IPv6\n" +
 				"node-tags = \"tag1\"\n" +
 				"node-tags = \"tag2\"\n",
 		},

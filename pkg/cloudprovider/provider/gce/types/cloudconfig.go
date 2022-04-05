@@ -23,11 +23,11 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
@@ -41,7 +41,7 @@ const cloudConfigTemplate = "[global]\n" +
 	"token-url = {{ .Global.TokenURL | iniEscape }}\n" +
 	"multizone = {{ .Global.MultiZone }}\n" +
 	"regional = {{ .Global.Regional }}\n" +
-	"podCIDRs = {{ join .Global.PodCIDRs }}\n" +
+	"podNetworkFamily = {{ .Global.PodNetworkFamily }}\n" +
 	"{{ range .Global.NodeTags }}node-tags = {{ . | iniEscape }}\n{{end}}"
 
 // GlobalOpts contains the values of the global section of the cloud configuration.
@@ -54,7 +54,7 @@ type GlobalOpts struct {
 	MultiZone        bool
 	Regional         bool
 	NodeTags         []string
-	PodCIDRs         []string
+	PodNetworkFamily util.NetworkFamily
 	RHSMOfflineToken string
 }
 
@@ -67,9 +67,6 @@ type CloudConfig struct {
 func (cc *CloudConfig) AsString() (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
-	funcMap["join"] = func(xs []string) string {
-		return strings.Join(xs, ",")
-	}
 
 	tmpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTemplate)
 	if err != nil {

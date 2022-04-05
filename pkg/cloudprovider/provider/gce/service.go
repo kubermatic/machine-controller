@@ -91,8 +91,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 	// if assigning public IP addresses is enabled.
 	if cfg.assignPublicIPAddress {
 		// GCP doesn't support IPv6 only stack
-		if util.ContainsCIDR(cfg.podCIDRs, util.IPv4) &&
-			util.ContainsCIDR(cfg.podCIDRs, util.IPv6) {
+		if cfg.podNetworkFamily == util.DualStack {
 			ifc.StackType = "IPV4_IPV6"
 
 			ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
@@ -103,7 +102,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 				},
 			}
 		} else {
-			klog.Infof("no IPv6 found in for PodCIDR in network configs: %s", cfg.podCIDRs)
+			klog.Infof("pod network family doesn't specify dual stack: %s", cfg.podNetworkFamily)
 		}
 
 	}

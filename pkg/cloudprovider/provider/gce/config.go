@@ -25,7 +25,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
@@ -33,6 +32,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
@@ -110,7 +110,7 @@ type config struct {
 	multizone             bool
 	regional              bool
 	customImage           string
-	podCIDRs              []string
+	podNetworkFamily      util.NetworkFamily
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -194,11 +194,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
 	}
 
-	podCIDRs, err := resolver.GetConfigVarStringValue(cpSpec.PodCIDRs)
+	podNetworkFamily, err := resolver.GetConfigVarStringValue(cpSpec.PodNetworkFamily)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve podCIDRs: %s", err)
 	}
-	cfg.podCIDRs = strings.Split(podCIDRs, ",")
+	cfg.podNetworkFamily = util.NetworkFamily(podNetworkFamily)
 
 	return cfg, nil
 }
