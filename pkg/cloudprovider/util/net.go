@@ -59,7 +59,8 @@ func GenerateRandMAC() (net.HardwareAddr, error) {
 type NetworkFamily string
 
 const (
-	IPv4      NetworkFamily = "IPv4"
-	IPv6      NetworkFamily = "IPv6"
-	DualStack NetworkFamily = "IPv4+IPv6"
+	Unspecified NetworkFamily = "" // interpreted as IPv4
+	IPv4        NetworkFamily = "IPv4"
+	IPv6        NetworkFamily = "IPv6"
+	DualStack   NetworkFamily = "IPv4+IPv6"
 )
