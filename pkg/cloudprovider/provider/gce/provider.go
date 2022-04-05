@@ -50,6 +50,7 @@ const (
 	errConnect               = "Failed to connect: %v"
 	errInvalidServiceAccount = "Service account is missing"
 	errIPv6UnsupportedZone   = "IPv6 is not supported in zone: %s"
+	errIPv6OnlyUnsupported   = "IPv6 only network family not supported yet"
 	errInvalidZone           = "Zone is missing"
 	errInvalidMachineType    = "Machine type is missing"
 	errInvalidDiskSize       = "Disk size must be a positive number"
@@ -116,7 +117,12 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
 	}
 
-	if cfg.networkFamily == util.DualStack {
+	switch cfg.networkFamily {
+	case util.IPv4:
+		// noop
+	case util.IPv6:
+		return newError(common.InvalidConfigurationMachineError, errIPv6OnlyUnsupported)
+	case util.DualStack:
 		if !isIPv6Supported(cfg.zone) {
 			return newError(common.InvalidConfigurationMachineError, errIPv6UnsupportedZone, cfg.zone)
 		}
