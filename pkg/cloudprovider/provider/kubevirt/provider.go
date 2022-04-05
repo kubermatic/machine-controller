@@ -514,6 +514,11 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, fmt.Errorf("dataVolumeName size %v, is bigger than 63 characters", len(dataVolumeName))
 	}
 
+	defaultBridgeNetwork, err := defaultBridgeNetwork()
+	if err != nil {
+		return nil, fmt.Errorf("could not compute a random MAC address")
+	}
+
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -534,7 +539,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
 							Disks:      getVMDisks(c),
-							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork()},
+							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork},
 						},
 						Resources: resourceRequirements,
 					},
@@ -648,11 +653,14 @@ func getVMDisks(config *Config) []kubevirtv1.Disk {
 	return disks
 }
 
-func defaultBridgeNetwork() *kubevirtv1.Interface {
+func defaultBridgeNetwork() (*kubevirtv1.Interface, error) {
 	defaultBridgeNetwork := kubevirtv1.DefaultBridgeNetworkInterface()
-	defaultBridgeNetwork.MacAddress = netutil.GenerateRandMAC().String()
-
-	return defaultBridgeNetwork
+	mac, err := netutil.GenerateRandMAC()
+	if err != nil {
+		return nil, err
+	}
+	defaultBridgeNetwork.MacAddress = mac.String()
+	return defaultBridgeNetwork, nil
 }
 
 func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName string) []kubevirtv1.Volume {

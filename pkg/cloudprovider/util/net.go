@@ -39,17 +39,18 @@ func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 }
 
 // GenerateRandMAC generates a random unicast and locally administered MAC address.
-func GenerateRandMAC() net.HardwareAddr {
+func GenerateRandMAC() (net.HardwareAddr, error) {
 	buf := make([]byte, 6)
 	var mac net.HardwareAddr
 
 	_, err := rand.Read(buf)
 	if err != nil {
+		return mac, err
 	}
 
 	// Set locally administered addresses bit and reset multicast bit
 	buf[0] = (buf[0] | 0x02) & 0xfe
 	mac = append(mac, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
 
-	return mac
+	return mac, nil
 }
