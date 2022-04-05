@@ -141,6 +141,12 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 		Sku:       to.StringPtr("stable"),
 		Version:   to.StringPtr("2905.2.5"),
 	},
+	providerconfigtypes.OperatingSystemRockyLinux: {
+		Publisher: to.StringPtr("procomputers"),
+		Offer:     to.StringPtr("rocky-linux-8-5"),
+		Sku:       to.StringPtr("rocky-linux-8-5"),
+		Version:   to.StringPtr("8.5.20211118"),
+	},
 }
 
 var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
@@ -153,6 +159,11 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 		Name:      pointer.StringPtr("rhel-lvm83"),
 		Publisher: pointer.StringPtr("redhat"),
 		Product:   pointer.StringPtr("rhel-byos"),
+	},
+	providerconfigtypes.OperatingSystemRockyLinux: {
+		Name:      pointer.StringPtr("rocky-linux-8-5"),
+		Publisher: pointer.StringPtr("procomputers"),
+		Product:   pointer.StringPtr("rocky-linux-8-5"),
 	},
 }
 
