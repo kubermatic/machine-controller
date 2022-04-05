@@ -196,7 +196,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 
 	podCIDRs, err := resolver.GetConfigVarStringValue(cpSpec.PodCIDRs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrive podCIDRs: %s", err)
+		return nil, fmt.Errorf("failed to retrieve podCIDRs: %s", err)
 	}
 	cfg.podCIDRs = strings.Split(podCIDRs, ",")
 
