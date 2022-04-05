@@ -196,7 +196,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 
 	podNetworkFamily, err := resolver.GetConfigVarStringValue(cpSpec.PodNetworkFamily)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve podCIDRs: %s", err)
+		return nil, fmt.Errorf("failed to retrieve pod network family: %s", err)
 	}
 	cfg.podNetworkFamily = util.NetworkFamily(podNetworkFamily)
 
