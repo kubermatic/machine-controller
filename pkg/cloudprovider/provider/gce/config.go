@@ -110,7 +110,7 @@ type config struct {
 	multizone             bool
 	regional              bool
 	customImage           string
-	podNetworkFamily      util.NetworkFamily
+	networkFamily         util.NetworkFamily
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -194,11 +194,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
 	}
 
-	podNetworkFamily, err := resolver.GetConfigVarStringValue(cpSpec.PodNetworkFamily)
+	networkFamily, err := resolver.GetConfigVarStringValue(cpSpec.NetworkFamily)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve pod network family: %s", err)
+		return nil, fmt.Errorf("failed to retrieve network family: %s", err)
 	}
-	cfg.podNetworkFamily = util.NetworkFamily(podNetworkFamily)
+	cfg.networkFamily = util.NetworkFamily(networkFamily)
 
 	return cfg, nil
 }

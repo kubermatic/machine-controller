@@ -116,7 +116,7 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
 	}
 
-	if cfg.podNetworkFamily == util.DualStack {
+	if cfg.networkFamily == util.DualStack {
 		if !isIPv6Supported(cfg.zone) {
 			return newError(common.InvalidConfigurationMachineError, errIPv6UnsupportedZone, cfg.zone)
 		}

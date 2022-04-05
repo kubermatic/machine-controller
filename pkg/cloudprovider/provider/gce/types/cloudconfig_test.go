@@ -38,15 +38,15 @@ func TestCloudConfigAsString(t *testing.T) {
 			name: "minimum test",
 			config: &CloudConfig{
 				Global: GlobalOpts{
-					ProjectID:        "my-project-id",
-					LocalZone:        "my-zone",
-					NetworkName:      "my-cool-network",
-					SubnetworkName:   "my-cool-subnetwork",
-					TokenURL:         "nil",
-					MultiZone:        true,
-					Regional:         true,
-					NodeTags:         []string{"tag1", "tag2"},
-					PodNetworkFamily: util.DualStack,
+					ProjectID:      "my-project-id",
+					LocalZone:      "my-zone",
+					NetworkName:    "my-cool-network",
+					SubnetworkName: "my-cool-subnetwork",
+					TokenURL:       "nil",
+					MultiZone:      true,
+					Regional:       true,
+					NodeTags:       []string{"tag1", "tag2"},
+					NetworkFamily:  util.DualStack,
 				},
 			},
 			contents: "[global]\n" +
@@ -57,7 +57,7 @@ func TestCloudConfigAsString(t *testing.T) {
 				"token-url = \"nil\"\n" +
 				"multizone = true\n" +
 				"regional = true\n" +
-				"podNetworkFamily = IPv4+IPv6\n" +
+				"networkFamily = IPv4+IPv6\n" +
 				"node-tags = \"tag1\"\n" +
 				"node-tags = \"tag2\"\n",
 		},

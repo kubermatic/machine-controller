@@ -130,12 +130,12 @@ func TestValidate(t *testing.T) {
 			false,
 		},
 		{
-			"with pod network family",
+			"with network family",
 			v1alpha1.MachineSpec{
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("cloudProviderSpec.podNetworkFamily", "IPv4+IPv6"),
+							with("cloudProviderSpec.networkFamily", "IPv4+IPv6"),
 						),
 					},
 				},
@@ -148,7 +148,7 @@ func TestValidate(t *testing.T) {
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("cloudProviderSpec.podNetworkFamily", "IPv4+IPv6").
+							with("cloudProviderSpec.networkFamily", "IPv4+IPv6").
 							with("cloudProviderSpec.zone", "europe-west3-a"),
 						),
 					},

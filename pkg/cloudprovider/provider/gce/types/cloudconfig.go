@@ -41,7 +41,7 @@ const cloudConfigTemplate = "[global]\n" +
 	"token-url = {{ .Global.TokenURL | iniEscape }}\n" +
 	"multizone = {{ .Global.MultiZone }}\n" +
 	"regional = {{ .Global.Regional }}\n" +
-	"podNetworkFamily = {{ .Global.PodNetworkFamily }}\n" +
+	"networkFamily = {{ .Global.NetworkFamily }}\n" +
 	"{{ range .Global.NodeTags }}node-tags = {{ . | iniEscape }}\n{{end}}"
 
 // GlobalOpts contains the values of the global section of the cloud configuration.
@@ -54,7 +54,7 @@ type GlobalOpts struct {
 	MultiZone        bool
 	Regional         bool
 	NodeTags         []string
-	PodNetworkFamily util.NetworkFamily
+	NetworkFamily    util.NetworkFamily
 	RHSMOfflineToken string
 }
 
