@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
@@ -109,6 +110,7 @@ type config struct {
 	multizone             bool
 	regional              bool
 	customImage           string
+	podCIDRs              []string
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -191,6 +193,12 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
 	}
+
+	podCIDRs, err := resolver.GetConfigVarStringValue(cpSpec.PodCIDRs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrive podCIDRs: %s", err)
+	}
+	cfg.podCIDRs = strings.Split(podCIDRs, ",")
 
 	return cfg, nil
 }

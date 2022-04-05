@@ -44,6 +44,7 @@ func TestCloudConfigAsString(t *testing.T) {
 					MultiZone:      true,
 					Regional:       true,
 					NodeTags:       []string{"tag1", "tag2"},
+					PodCIDRs:       []string{"172.25.0.0/16", "fd00::/104"},
 				},
 			},
 			contents: "[global]\n" +
@@ -54,6 +55,7 @@ func TestCloudConfigAsString(t *testing.T) {
 				"token-url = \"nil\"\n" +
 				"multizone = true\n" +
 				"regional = true\n" +
+				"podCIDRs = 172.25.0.0/16,fd00::/104\n" +
 				"node-tags = \"tag1\"\n" +
 				"node-tags = \"tag2\"\n",
 		},
@@ -66,7 +68,7 @@ func TestCloudConfigAsString(t *testing.T) {
 				t.Fatalf("failed to convert to string: %v", err)
 			}
 			if s != test.contents {
-				t.Fatalf("output is not as expected")
+				t.Fatalf("output is not as expected: %s", s)
 			}
 		})
 	}

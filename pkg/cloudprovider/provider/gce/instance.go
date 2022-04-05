@@ -68,6 +68,9 @@ func (gi *googleInstance) Addresses() map[string]v1.NodeAddressType {
 		for _, ac := range ifc.AccessConfigs {
 			addrs[ac.NatIP] = v1.NodeExternalIP
 		}
+		for _, ac := range ifc.Ipv6AccessConfigs {
+			addrs[ac.ExternalIpv6] = v1.NodeExternalIP
+		}
 	}
 
 	// GCE has two types of the internal DNS, so we need to take both

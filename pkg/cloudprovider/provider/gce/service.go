@@ -27,7 +27,10 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
 
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 )
 
 const (
@@ -72,11 +75,37 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 		Subnetwork: cfg.subnetwork,
 	}
 
+	klog.Infof("using network:%s subnetwork: %s", cfg.network, cfg.subnetwork)
+
 	if cfg.assignPublicIPAddress {
-		ifc.AccessConfigs = []*compute.AccessConfig{{
-			Name: "External NAT",
-			Type: "ONE_TO_ONE_NAT",
-		}}
+		ifc.AccessConfigs = []*compute.AccessConfig{
+			{
+				Name: "External NAT",
+				Type: "ONE_TO_ONE_NAT",
+			},
+		}
+	}
+
+	// Setup IPv6
+	// GCP allocates public IPv6 addr so we only try to setup IPv6
+	// if assigning public IP addresses is enabled.
+	if cfg.assignPublicIPAddress {
+		// GCP doesn't support IPv6 only stack
+		if util.ContainsCIDR(cfg.podCIDRs, util.IPv4) &&
+			util.ContainsCIDR(cfg.podCIDRs, util.IPv6) {
+			ifc.StackType = "IPV4_IPV6"
+
+			ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
+				{
+					Name:        "external-ipv6",
+					NetworkTier: "PREMIUM",
+					Type:        "DIRECT_IPV6",
+				},
+			}
+		} else {
+			klog.Infof("no IPv6 found in for PodCIDR in network configs: %s", cfg.podCIDRs)
+		}
+
 	}
 
 	return []*compute.NetworkInterface{ifc}, nil

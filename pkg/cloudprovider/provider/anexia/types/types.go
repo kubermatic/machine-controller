@@ -17,13 +17,14 @@ limitations under the License.
 package types
 
 import (
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
