@@ -119,11 +119,24 @@ func TestValidate(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			"without pod cidrs",
+			"without network family",
 			v1alpha1.MachineSpec{
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testProviderSpec()),
+					},
+				},
+			},
+			false,
+		},
+		{
+			"empty network family",
+			v1alpha1.MachineSpec{
+				ProviderSpec: v1alpha1.ProviderSpec{
+					Value: &runtime.RawExtension{
+						Raw: rawBytes(testMap(testProviderSpec()).
+							with("cloudProviderSpec.networkFamily", ""),
+						),
 					},
 				},
 			},
