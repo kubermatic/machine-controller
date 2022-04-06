@@ -191,11 +191,7 @@ write_files:
 - path: "/opt/disable-swap.sh"
   permissions: "0755"
   content: |
-    # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
-    # providers swap gets enabled on reboot or after the setup script has finished executing.
-    cp /etc/fstab /etc/fstab.orig
-    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
-    mv /etc/fstab.noswap /etc/fstab
+    sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
 
 - path: "/etc/systemd/system/kubelet.service"
