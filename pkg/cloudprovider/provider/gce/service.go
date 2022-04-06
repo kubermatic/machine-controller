@@ -91,7 +91,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 	// if assigning public IP addresses is enabled.
 	if cfg.assignPublicIPAddress {
 		// GCP doesn't support IPv6 only stack
-		if cfg.networkFamily == util.DualStack {
+		if cfg.providerConfig.Network.GetNetworkFamily() == util.DualStack {
 			ifc.StackType = "IPV4_IPV6"
 
 			ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
@@ -102,7 +102,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 				},
 			}
 		} else {
-			klog.Infof("network family doesn't specify dual stack: %s", cfg.networkFamily)
+			klog.Infof("network family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetNetworkFamily())
 		}
 
 	}

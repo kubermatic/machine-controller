@@ -59,6 +59,7 @@ func testProviderSpec() map[string]interface{} {
 			"distUpgradeOnBoot": false,
 		},
 		"sshPublicKeys": []string{},
+		"network":       map[string]interface{}{},
 	}
 }
 
@@ -135,7 +136,7 @@ func TestValidate(t *testing.T) {
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("cloudProviderSpec.networkFamily", ""),
+							with("network.networkFamily", ""),
 						),
 					},
 				},
@@ -148,7 +149,7 @@ func TestValidate(t *testing.T) {
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("cloudProviderSpec.networkFamily", "IPv4+IPv6"),
+							with("network.networkFamily", "IPv4+IPv6"),
 						),
 					},
 				},
@@ -161,7 +162,7 @@ func TestValidate(t *testing.T) {
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("cloudProviderSpec.networkFamily", "IPv4+IPv6").
+							with("network.networkFamily", "IPv4+IPv6").
 							with("cloudProviderSpec.zone", "europe-west3-a"),
 						),
 					},

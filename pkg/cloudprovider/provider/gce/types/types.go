@@ -44,7 +44,6 @@ type CloudProviderSpec struct {
 	MultiZone             providerconfigtypes.ConfigVarBool   `json:"multizone"`
 	Regional              providerconfigtypes.ConfigVarBool   `json:"regional"`
 	CustomImage           providerconfigtypes.ConfigVarString `json:"customImage,omitempty"`
-	NetworkFamily         providerconfigtypes.ConfigVarString `json:"networkFamily,omitempty"`
 }
 
 // UpdateProviderSpec updates the given provider spec with changed

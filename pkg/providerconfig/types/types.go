@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 
 	corev1 "k8s.io/api/core/v1"
@@ -108,9 +109,17 @@ type DNSConfig struct {
 
 // NetworkConfig contains a machine's static network configuration
 type NetworkConfig struct {
-	CIDR    string    `json:"cidr"`
-	Gateway string    `json:"gateway"`
-	DNS     DNSConfig `json:"dns"`
+	CIDR          string             `json:"cidr"`
+	Gateway       string             `json:"gateway"`
+	DNS           DNSConfig          `json:"dns"`
+	NetworkFamily util.NetworkFamily `json:"networkFamily,omitempty"`
+}
+
+func (n *NetworkConfig) GetNetworkFamily() util.NetworkFamily {
+	if n == nil {
+		return util.Unspecified
+	}
+	return n.NetworkFamily
 }
 
 type Config struct {

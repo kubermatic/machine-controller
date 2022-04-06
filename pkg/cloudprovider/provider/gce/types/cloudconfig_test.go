@@ -24,8 +24,6 @@ package types
 
 import (
 	"testing"
-
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 )
 
 func TestCloudConfigAsString(t *testing.T) {
@@ -46,7 +44,6 @@ func TestCloudConfigAsString(t *testing.T) {
 					MultiZone:      true,
 					Regional:       true,
 					NodeTags:       []string{"tag1", "tag2"},
-					NetworkFamily:  util.DualStack,
 				},
 			},
 			contents: "[global]\n" +
@@ -57,7 +54,6 @@ func TestCloudConfigAsString(t *testing.T) {
 				"token-url = \"nil\"\n" +
 				"multizone = true\n" +
 				"regional = true\n" +
-				"networkFamily = IPv4+IPv6\n" +
 				"node-tags = \"tag1\"\n" +
 				"node-tags = \"tag2\"\n",
 		},

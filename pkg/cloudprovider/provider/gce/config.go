@@ -32,7 +32,6 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
@@ -110,7 +109,6 @@ type config struct {
 	multizone             bool
 	regional              bool
 	customImage           string
-	networkFamily         util.NetworkFamily
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -193,12 +191,6 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
 	}
-
-	networkFamily, err := resolver.GetConfigVarStringValue(cpSpec.NetworkFamily)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve network family: %s", err)
-	}
-	cfg.networkFamily = util.NetworkFamily(networkFamily)
 
 	return cfg, nil
 }

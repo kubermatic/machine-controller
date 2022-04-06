@@ -118,7 +118,7 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
 	}
 
-	switch cfg.networkFamily {
+	switch cfg.providerConfig.Network.GetNetworkFamily() {
 	case util.Unspecified, util.IPv4:
 		// noop
 	case util.IPv6:
@@ -128,7 +128,7 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 			return newError(common.InvalidConfigurationMachineError, errIPv6UnsupportedZone, cfg.zone)
 		}
 	default:
-		return newError(common.InvalidConfigurationMachineError, errUnknownNetworkFamily, cfg.networkFamily)
+		return newError(common.InvalidConfigurationMachineError, errUnknownNetworkFamily, cfg.providerConfig.Network.GetNetworkFamily())
 	}
 
 	if cfg.machineType == "" {

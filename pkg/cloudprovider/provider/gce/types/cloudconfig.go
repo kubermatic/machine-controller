@@ -27,7 +27,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
@@ -41,7 +40,6 @@ const cloudConfigTemplate = "[global]\n" +
 	"token-url = {{ .Global.TokenURL | iniEscape }}\n" +
 	"multizone = {{ .Global.MultiZone }}\n" +
 	"regional = {{ .Global.Regional }}\n" +
-	"networkFamily = {{ .Global.NetworkFamily }}\n" +
 	"{{ range .Global.NodeTags }}node-tags = {{ . | iniEscape }}\n{{end}}"
 
 // GlobalOpts contains the values of the global section of the cloud configuration.
@@ -54,7 +52,6 @@ type GlobalOpts struct {
 	MultiZone        bool
 	Regional         bool
 	NodeTags         []string
-	NetworkFamily    util.NetworkFamily
 	RHSMOfflineToken string
 }
 
