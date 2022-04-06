@@ -112,6 +112,7 @@ coreos:
       EnvironmentFile=-/etc/environment
 
       ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
       ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
       ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
         --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
@@ -233,10 +234,6 @@ write_files:
     modprobe ip_vs_rr
     modprobe ip_vs_wrr
     modprobe ip_vs_sh
-
-    {{- /* Make sure we always disable swap - In case of a reboot or swap was enabled again'. */}}
-    sed -i.orig '/.*swap.*/d' /etc/fstab
-    swapoff -a
 
     if modinfo nf_conntrack_ipv4 &> /dev/null; then
       modprobe nf_conntrack_ipv4

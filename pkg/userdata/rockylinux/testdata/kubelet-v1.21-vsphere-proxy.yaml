@@ -34,10 +34,6 @@ write_files:
     modprobe ip_vs_wrr
     modprobe ip_vs_sh
 
-    {{- /* Make sure we always disable swap - In case of a reboot or swap was enabled again'. */}}
-    sed -i.orig '/.*swap.*/d' /etc/fstab
-    swapoff -a
-
     if modinfo nf_conntrack_ipv4 &> /dev/null; then
       modprobe nf_conntrack_ipv4
     else
@@ -80,8 +76,6 @@ write_files:
     setenforce 0 || true
     systemctl restart systemd-modules-load.service
     sysctl --system
-    sed -i.orig '/.*swap.*/d' /etc/fstab
-    swapoff -a
 
 
     hostnamectl set-hostname node1
@@ -205,6 +199,14 @@ write_files:
       sleep 1
     done
 
+- path: "/opt/disable-swap.sh"
+  permissions: "0755"
+  content: |
+    # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
+    # providers swap gets enabled on reboot or after the setup script has finished executing.
+    sed -i.orig '/.*swap.*/d' /etc/fstab
+    swapoff -a
+
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
@@ -225,6 +227,9 @@ write_files:
     EnvironmentFile=-/etc/environment
 
     ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
+    ExecStartPre=/bin/bash /opt/disable-swap.sh
+
     ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
