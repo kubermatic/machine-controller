@@ -50,7 +50,7 @@ const (
 	errConnect               = "Failed to connect: %v"
 	errInvalidServiceAccount = "Service account is missing"
 	errIPv6UnsupportedZone   = "IPv6 is not supported in zone: %s"
-	errUnknownNetworkFamily  = "unknown network family only IPv4,IPv6,IPv4+IPv6 are valid values, got: %q"
+	errUnknownNetworkFamily  = "Unknown network family only IPv4,IPv6,IPv4+IPv6 are valid values, got: %q"
 	errIPv6OnlyUnsupported   = "IPv6 only network family not supported yet"
 	errInvalidZone           = "Zone is missing"
 	errInvalidMachineType    = "Machine type is missing"
