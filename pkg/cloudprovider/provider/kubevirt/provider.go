@@ -35,6 +35,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	kubevirttypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	netutil "github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	controllerutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -513,6 +514,11 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, fmt.Errorf("dataVolumeName size %v, is bigger than 63 characters", len(dataVolumeName))
 	}
 
+	defaultBridgeNetwork, err := defaultBridgeNetwork()
+	if err != nil {
+		return nil, fmt.Errorf("could not compute a random MAC address")
+	}
+
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -527,9 +533,13 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 					Labels:      labels,
 				},
 				Spec: kubevirtv1.VirtualMachineInstanceSpec{
+					Networks: []kubevirtv1.Network{
+						*kubevirtv1.DefaultPodNetwork(),
+					},
 					Domain: kubevirtv1.DomainSpec{
 						Devices: kubevirtv1.Devices{
-							Disks: getVMDisks(c),
+							Disks:      getVMDisks(c),
+							Interfaces: []kubevirtv1.Interface{*defaultBridgeNetwork},
 						},
 						Resources: resourceRequirements,
 					},
@@ -641,6 +651,16 @@ func getVMDisks(config *Config) []kubevirtv1.Disk {
 		})
 	}
 	return disks
+}
+
+func defaultBridgeNetwork() (*kubevirtv1.Interface, error) {
+	defaultBridgeNetwork := kubevirtv1.DefaultBridgeNetworkInterface()
+	mac, err := netutil.GenerateRandMAC()
+	if err != nil {
+		return nil, err
+	}
+	defaultBridgeNetwork.MacAddress = mac.String()
+	return defaultBridgeNetwork, nil
 }
 
 func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName string) []kubevirtv1.Volume {

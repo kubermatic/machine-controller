@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"net"
@@ -35,4 +36,21 @@ func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 
 	netmask := fmt.Sprintf("%d.%d.%d.%d", ipNet.Mask[0], ipNet.Mask[1], ipNet.Mask[2], ipNet.Mask[3])
 	return ip.String(), netmask, size, nil
+}
+
+// GenerateRandMAC generates a random unicast and locally administered MAC address.
+func GenerateRandMAC() (net.HardwareAddr, error) {
+	buf := make([]byte, 6)
+	var mac net.HardwareAddr
+
+	_, err := rand.Read(buf)
+	if err != nil {
+		return mac, err
+	}
+
+	// Set locally administered addresses bit and reset multicast bit
+	buf[0] = (buf[0] | 0x02) & 0xfe
+	mac = append(mac, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+
+	return mac, nil
 }
