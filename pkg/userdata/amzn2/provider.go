@@ -196,10 +196,6 @@ write_files:
 {{- /* As we added some modules and don't want to reboot, restart the service */}}
     systemctl restart systemd-modules-load.service
     sysctl --system
-
-{{- /* Make sure we always disable swap - Otherwise the kubelet won't start */}}
-    sed -i.orig '/.*swap.*/d' /etc/fstab
-    swapoff -a
     {{ if ne .CloudProviderName "aws" }}
 {{- /*  The normal way of setting it via cloud-init is broken, see */}}
 {{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
@@ -245,9 +241,17 @@ write_files:
       sleep 1
     done
 
+- path: "/opt/disable-swap.sh"
+  permissions: "0755"
+  content: |
+    # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
+    # providers swap gets enabled on reboot or after the setup script has finished executing.
+    sed -i.orig '/.*swap.*/d' /etc/fstab
+    swapoff -a
+
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags true | indent 4 }}
 
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"

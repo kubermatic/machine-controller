@@ -54,10 +54,6 @@ write_files:
     set -xeuo pipefail
     systemctl restart systemd-modules-load.service
     sysctl --system
-    cp /etc/fstab /etc/fstab.orig
-    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
-    mv /etc/fstab.noswap /etc/fstab
-    swapoff -a
 
     zypper --non-interactive --quiet --color install ebtables \
       ceph-common \
@@ -149,6 +145,16 @@ write_files:
       sleep 1
     done
 
+- path: "/opt/disable-swap.sh"
+  permissions: "0755"
+  content: |
+    # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
+    # providers swap gets enabled on reboot or after the setup script has finished executing.
+    cp /etc/fstab /etc/fstab.orig
+    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
+    mv /etc/fstab.noswap /etc/fstab
+    swapoff -a
+
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
@@ -169,6 +175,9 @@ write_files:
     EnvironmentFile=-/etc/environment
 
     ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
+    ExecStartPre=/bin/bash /opt/disable-swap.sh
+
     ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
