@@ -243,6 +243,9 @@ write_files:
 
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
+    {{- if eq .CloudProviderName "kubevirt" }}
+    systemctl enable --now --no-block restart-kubelet.service
+    {{ end }}
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -326,6 +329,34 @@ write_files:
   content: |
 {{ sshConfigAddendum | indent 4 }}
   append: true
+{{- end }}
+
+{{- if eq .CloudProviderName "kubevirt" }}
+- path: "/opt/per-boot/restart-kubelet.sh"
+  permissions: "0744"
+  content: |
+    #!/bin/bash
+    # Needed for Kubevirt provider because if the virt-launcher pod is deleted,
+    # the VM and DataVolume states are kept and VM is rebooted. We need to restart the kubelet
+    # with the new config (new IP) and run this at every boot.
+    set -xeuo pipefail
+    systemctl daemon-reload
+    systemctl restart kubelet.service
+
+- path: "/etc/systemd/system/restart-kubelet.service"
+  permissions: "0644"
+  content: |
+    [Install]
+    WantedBy=multi-user.target
+
+    [Unit]
+    Description=Reload the configuration and restart the Kubelet service at each reboot
+    Requires=kubelet.service
+    After=kubelet.service
+
+    [Service]
+    Type=oneshot
+    ExecStart=/opt/per-boot/restart-kubelet.sh
 {{- end }}
 
 runcmd:
