@@ -87,6 +87,8 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 		return "ubuntu-20-04-x64", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7-x64", nil
+	case providerconfigtypes.OperatingSystemRockyLinux:
+		return "rockylinux-8-x64", nil
 	}
 	return "", providerconfigtypes.ErrOSNotSupported
 }
