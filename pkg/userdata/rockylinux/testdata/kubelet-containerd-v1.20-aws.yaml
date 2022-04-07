@@ -78,6 +78,7 @@ write_files:
       socat \
       wget \
       curl \
+      tar \
       ipvsadm
 
     yum install -y yum-utils

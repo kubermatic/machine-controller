@@ -216,6 +216,7 @@ write_files:
       socat \
       wget \
       curl \
+      tar \
       {{- if eq .CloudProviderName "vsphere" }}
       open-vm-tools \
       {{- end }}
