@@ -250,6 +250,60 @@ func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
 	return subnetsClient.Get(ctx, c.VNetResourceGroup, c.VNetName, c.SubnetName, "")
 }
 
+func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+
+	cacheKey := fmt.Sprintf("%s-%s", c.Location, c.VMSize)
+	cacheSku, found := cache.Get(cacheKey)
+	if found {
+		klog.V(3).Info("found SKU in cache!")
+		return cacheSku.(compute.ResourceSku), nil
+	}
+
+	skuClient, err := getSKUClient(c)
+	if err != nil {
+		return compute.ResourceSku{}, fmt.Errorf("failed to (create) SKU client: %w", err)
+	}
+
+	skuPages, err := skuClient.List(ctx, fmt.Sprintf("location eq '%s'", c.Location), "false")
+	if err != nil {
+		return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
+	}
+
+	var sku *compute.ResourceSku
+
+	for skuPages.NotDone() && sku == nil {
+		skus := skuPages.Values()
+		for _, skuResult := range skus {
+			// skip invalid SKU results so we don't trigger a nil pointer exception
+			if skuResult.ResourceType == nil || skuResult.Name == nil {
+				continue
+			}
+
+			if *skuResult.ResourceType == "virtualMachines" && *skuResult.Name == c.VMSize {
+				sku = &skuResult
+				break
+			}
+		}
+
+		// only fetch the next page if we haven't found our SKU yet
+		if sku == nil {
+			if err := skuPages.NextWithContext(ctx); err != nil {
+				return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
+			}
+		}
+	}
+
+	if sku == nil {
+		return compute.ResourceSku{}, fmt.Errorf("no VM SKU '%s' found for subscription '%s'", c.VMSize, c.SubscriptionID)
+	}
+
+	cache.SetDefault(cacheKey, *sku)
+
+	return *sku, nil
+}
+
 func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, error) {
 	virtualNetworksClient, err := getVirtualNetworksClient(c)
 	if err != nil {

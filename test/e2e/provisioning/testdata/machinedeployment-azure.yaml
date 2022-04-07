@@ -34,7 +34,9 @@ spec:
             vmSize: "Standard_F2"
             # optional disk size values in GB. If not set, the defaults for the vmSize will be used.
             osDiskSize: << OS_DISK_SIZE >>
+            osDiskSKU: << AZURE_OS_DISK_SKU >>
             dataDiskSize: << DATA_DISK_SIZE >>
+            dataDiskSKU: << AZURE_DATA_DISK_SKU >>
             vnetName: "machine-controller-e2e"
             subnetName: "machine-controller-e2e"
             routeTableName: "machine-controller-e2e"

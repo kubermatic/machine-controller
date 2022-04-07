@@ -78,6 +78,17 @@ func getVMClient(c *config) (*compute.VirtualMachinesClient, error) {
 	return &vmClient, nil
 }
 
+func getSKUClient(c *config) (*compute.ResourceSkusClient, error) {
+	var err error
+	skuClient := compute.NewResourceSkusClient(c.SubscriptionID)
+	skuClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authorizer: %w", err)
+	}
+
+	return &skuClient, nil
+}
+
 func getInterfacesClient(c *config) (*network.InterfacesClient, error) {
 	var err error
 	ifClient := network.NewInterfacesClient(c.SubscriptionID)
