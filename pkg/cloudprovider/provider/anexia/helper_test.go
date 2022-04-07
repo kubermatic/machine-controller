@@ -23,9 +23,11 @@ import (
 
 	"github.com/anexia-it/go-anxcloud/pkg/vsphere/search"
 	"github.com/gophercloud/gophercloud/testhelper"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

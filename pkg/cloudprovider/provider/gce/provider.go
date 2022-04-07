@@ -24,10 +24,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"cloud.google.com/go/logging"
 	monitoring "cloud.google.com/go/monitoring/apiv3"
-	"google.golang.org/api/compute/v1"
+	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
@@ -36,6 +37,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -47,6 +49,9 @@ const (
 	errOperatingSystem       = "Invalid or not supported operating system specified %q: %v"
 	errConnect               = "Failed to connect: %v"
 	errInvalidServiceAccount = "Service account is missing"
+	errIPv6UnsupportedZone   = "IPv6 is not supported in zone: %s"
+	errUnknownNetworkFamily  = "Unknown network family only IPv4,IPv6,IPv4+IPv6 are valid values, got: %q"
+	errIPv6OnlyUnsupported   = "IPv6 only network family not supported yet"
 	errInvalidZone           = "Zone is missing"
 	errInvalidMachineType    = "Machine type is missing"
 	errInvalidDiskSize       = "Disk size must be a positive number"
@@ -112,6 +117,20 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	if cfg.zone == "" {
 		return newError(common.InvalidConfigurationMachineError, errInvalidZone)
 	}
+
+	switch cfg.providerConfig.Network.GetNetworkFamily() {
+	case util.Unspecified, util.IPv4:
+		// noop
+	case util.IPv6:
+		return newError(common.InvalidConfigurationMachineError, errIPv6OnlyUnsupported)
+	case util.DualStack:
+		if !isIPv6Supported(cfg.zone) {
+			return newError(common.InvalidConfigurationMachineError, errIPv6UnsupportedZone, cfg.zone)
+		}
+	default:
+		return newError(common.InvalidConfigurationMachineError, errUnknownNetworkFamily, cfg.providerConfig.Network.GetNetworkFamily())
+	}
+
 	if cfg.machineType == "" {
 		return newError(common.InvalidConfigurationMachineError, errInvalidMachineType)
 	}
@@ -126,6 +145,24 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return newError(common.InvalidConfigurationMachineError, errOperatingSystem, cfg.providerConfig.OperatingSystem, err)
 	}
 	return nil
+}
+
+func isIPv6Supported(zone string) bool {
+	supportedRegions := []string{
+		"asia-east1",
+		"asia-south1",
+		"europe-west2",
+		"us-west2",
+	}
+
+	for _, region := range supportedRegions {
+		// this is fine since zones are constructed from region + zone suffix
+		if strings.HasPrefix(zone, region) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Get retrieves a node instance that is associated with the given machine.

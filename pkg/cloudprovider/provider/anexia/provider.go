@@ -25,16 +25,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/progress"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/utils"
-	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
-
 	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
 	anxaddr "github.com/anexia-it/go-anxcloud/pkg/ipam/address"
 	"github.com/anexia-it/go-anxcloud/pkg/vsphere"
+	"github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/progress"
 	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
@@ -43,12 +37,17 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/utils"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
 )
 
 const (
