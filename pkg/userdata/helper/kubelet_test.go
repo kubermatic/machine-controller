@@ -120,6 +120,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 				test.pauseImage,
 				test.initialTaints,
 				test.extraFlags,
+				true,
 			)
 			if err != nil {
 				t.Error(err)

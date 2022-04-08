@@ -35,7 +35,7 @@ spec:
                 memory: "4096M"
                 primaryDisk:
                   osImage: http://10.107.208.71/<< OS_NAME >>.img
-                  size: "10Gi"
+                  size: "25Gi"
                   storageClassName: local-path
               dnsPolicy: "None"
               dnsConfig:

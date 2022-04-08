@@ -60,9 +60,6 @@ write_files:
     systemctl mask ufw
     systemctl restart systemd-modules-load.service
     sysctl --system
-    sed -i.orig '/.*swap.*/d' /etc/fstab
-    swapoff -a
-
     apt-get update
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
@@ -191,6 +188,12 @@ write_files:
       sleep 1
     done
 
+- path: "/opt/disable-swap.sh"
+  permissions: "0755"
+  content: |
+    sed -i.orig '/.*swap.*/d' /etc/fstab
+    swapoff -a
+
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
@@ -211,6 +214,9 @@ write_files:
     EnvironmentFile=-/etc/environment
 
     ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
+    ExecStartPre=/bin/bash /opt/disable-swap.sh
+
     ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \

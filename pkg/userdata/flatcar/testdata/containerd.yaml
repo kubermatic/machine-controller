@@ -97,6 +97,7 @@ coreos:
       EnvironmentFile=-/etc/environment
 
       ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
       ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
       ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
         --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \

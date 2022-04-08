@@ -68,10 +68,11 @@ const (
 )
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
-	providerconfigtypes.OperatingSystemCentOS:  nil,
-	providerconfigtypes.OperatingSystemUbuntu:  nil,
-	providerconfigtypes.OperatingSystemRHEL:    nil,
-	providerconfigtypes.OperatingSystemFlatcar: nil,
+	providerconfigtypes.OperatingSystemCentOS:     nil,
+	providerconfigtypes.OperatingSystemUbuntu:     nil,
+	providerconfigtypes.OperatingSystemRHEL:       nil,
+	providerconfigtypes.OperatingSystemFlatcar:    nil,
+	providerconfigtypes.OperatingSystemRockyLinux: nil,
 }
 
 type provider struct {

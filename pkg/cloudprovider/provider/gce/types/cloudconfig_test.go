@@ -66,7 +66,7 @@ func TestCloudConfigAsString(t *testing.T) {
 				t.Fatalf("failed to convert to string: %v", err)
 			}
 			if s != test.contents {
-				t.Fatalf("output is not as expected")
+				t.Fatalf("output is not as expected: %s", s)
 			}
 		})
 	}

@@ -84,6 +84,9 @@ Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bi
 EnvironmentFile=-/etc/environment
 
 ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+{{ if .DisableSwap }}
+ExecStartPre=/bin/bash /opt/disable-swap.sh
+{{ end }}
 ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
 {{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .PauseImage .InitialTaints .ExtraKubeletFlags | indent 2 }}
@@ -133,7 +136,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet
-func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %v", err)
@@ -149,6 +152,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		PauseImage        string
 		InitialTaints     []corev1.Taint
 		ExtraKubeletFlags []string
+		DisableSwap       bool
 	}{
 		ContainerRuntime:  containerRuntime,
 		KubeletVersion:    kubeletVersion,
@@ -159,6 +163,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		PauseImage:        pauseImage,
 		InitialTaints:     initialTaints,
 		ExtraKubeletFlags: extraKubeletFlags,
+		DisableSwap:       disableSwap,
 	}
 
 	var buf strings.Builder

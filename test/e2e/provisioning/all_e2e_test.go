@@ -287,7 +287,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "flatcar")
+	selector := OsSelector("ubuntu", "centos", "flatcar", "rockylinux")
 
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
@@ -375,7 +375,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "centos")
+	selector := OsSelector("ubuntu", "centos", "rockylinux")
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
@@ -605,13 +605,15 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "amzn2", "rockylinux"))
+	selector := Not(OsSelector("sles", "amzn2"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
 		fmt.Sprintf("<< AZURE_SUBSCRIPTION_ID >>=%s", azureSubscriptionID),
 		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
+		fmt.Sprintf("<< AZURE_OS_DISK_SKU >>=%s", "Standard_LRS"),
+		fmt.Sprintf("<< AZURE_DATA_DISK_SKU >>=%s", "Standard_LRS"),
 	}
 	runScenarios(t, selector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
@@ -637,6 +639,8 @@ func TestAzureCustomImageReferenceProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_SUBSCRIPTION_ID >>=%s", azureSubscriptionID),
 		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
+		fmt.Sprintf("<< AZURE_OS_DISK_SKU >>=%s", "Standard_LRS"),
+		fmt.Sprintf("<< AZURE_DATA_DISK_SKU >>=%s", "Standard_LRS"),
 	}
 	runScenarios(t, selector, params, AzureCustomImageReferenceManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
@@ -662,6 +666,8 @@ func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_SUBSCRIPTION_ID >>=%s", azureSubscriptionID),
 		fmt.Sprintf("<< AZURE_CLIENT_ID >>=%s", azureClientID),
 		fmt.Sprintf("<< AZURE_CLIENT_SECRET >>=%s", azureClientSecret),
+		fmt.Sprintf("<< AZURE_OS_DISK_SKU >>=%s", "Standard_LRS"),
+		fmt.Sprintf("<< AZURE_DATA_DISK_SKU >>=%s", "Standard_LRS"),
 	}
 
 	scenario := scenario{
@@ -706,7 +712,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "centos")
+	selector := OsSelector("ubuntu", "centos", "rockylinux")
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
