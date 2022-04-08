@@ -823,7 +823,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		},
 	}
 
-	if pc.Network.GetNetworkFamily() == util.DualStack {
+	if pc.Network.GetNetworkFamily() == util.IPv6 || pc.Network.GetNetworkFamily() == util.DualStack {
 		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
 	}
 
