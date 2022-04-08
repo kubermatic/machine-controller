@@ -239,6 +239,24 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
+{{- if eq .CloudProviderName "kubevirt" }}
+    - name: restart-kubelet.service
+      enabled: true
+      contents: |
+        [Unit]
+        Requires=kubelet.service
+        After=kubelet.service
+
+        Description=Service responsible for restarting kubelet when the machine is rebooted
+
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/bin/restart-kubelet.sh
+
+        [Install]
+        WantedBy=multi-user.target
+{{- end }}
+
     - name: kubelet.service
       enabled: true
       dropins:
@@ -347,6 +365,28 @@ storage:
       mode: 0600
       contents:
         inline: '{{ .MachineSpec.Name }}'
+{{- end }}
+
+{{- if eq .CloudProviderName "kubevirt" }}
+    - path: /opt/bin/restart-kubelet.sh
+      filesystem: root
+      mode: 0744
+      contents:
+        inline: |
+          #!/bin/bash
+          # Needed for Kubevirt provider because if the virt-launcher pod is deleted,
+          # the VM and DataVolume states are kept and VM is rebooted. We need to restart the kubelet
+          # with the new config (new IP) and run this at every boot.
+          set -xeuo pipefail
+
+          # This helps us avoid an unnecessary restart for kubelet on the first boot
+          if [ -f /etc/kubelet_needs_restart ]; then
+            # restart kubelet since it's not the first boot
+            systemctl daemon-reload
+            systemctl restart kubelet.service
+          else
+            touch /etc/kubelet_needs_restart
+          fi
 {{- end }}
 
     - path: /etc/ssh/sshd_config
@@ -543,12 +583,15 @@ coreos:
       command: start
       content: |
         [Unit]
-        Description=Reload the configuration and restart the Kubelet service at each reboot
         Requires=kubelet.service
         After=kubelet.service
+
+        Description=Service responsible for restarting kubelet when the machine is rebooted
+
         [Service]
         Type=oneshot
-        ExecStart=/opt/per-boot/restart-kubelet.sh
+        ExecStart=/opt/bin/restart-kubelet.sh
+
         [Install]
         WantedBy=multi-user.target
 {{- end }}
@@ -678,18 +721,24 @@ write_files:
   user: root
   content: |
     runtime-endpoint: unix:///run/containerd/containerd.sock
-   
-{{- if eq .CloudProviderName "kubevirt" }}
 
-- path: "/opt/per-boot/restart-kubelet.sh"
+{{- if eq .CloudProviderName "kubevirt" }}
+- path: "/opt/bin/restart-kubelet.sh"
   permissions: "0744"
   content: |
     #!/bin/bash
-    # Needed for Kubevirt provider because if the virt-launcher pod is deleted, 
-    # the VM and DataVolume states are kept and VM is rebooted. We need to restart the kubelet 
+    # Needed for Kubevirt provider because if the virt-launcher pod is deleted,
+    # the VM and DataVolume states are kept and VM is rebooted. We need to restart the kubelet
     # with the new config (new IP) and run this at every boot.
     set -xeuo pipefail
-    systemctl daemon-reload
-    systemctl restart kubelet.service 
+
+    # This helps us avoid an unnecessary restart for kubelet on the first boot
+    if [ -f /etc/kubelet_needs_restart ]; then
+      # restart kubelet since it's not the first boot
+      systemctl daemon-reload
+      systemctl restart kubelet.service
+    else
+      touch /etc/kubelet_needs_restart
+    fi
 {{- end }}
 `
