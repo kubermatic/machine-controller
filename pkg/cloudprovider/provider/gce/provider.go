@@ -50,7 +50,6 @@ const (
 	errConnect               = "Failed to connect: %v"
 	errInvalidServiceAccount = "Service account is missing"
 	errIPv6UnsupportedZone   = "IPv6 is not supported in zone: %s"
-	errUnknownNetworkFamily  = "Unknown network family only IPv4,IPv6,IPv4+IPv6 are valid values, got: %q"
 	errIPv6OnlyUnsupported   = "IPv6 only network family not supported yet"
 	errInvalidZone           = "Zone is missing"
 	errInvalidMachineType    = "Machine type is missing"
@@ -128,7 +127,7 @@ func (p *Provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 			return newError(common.InvalidConfigurationMachineError, errIPv6UnsupportedZone, cfg.zone)
 		}
 	default:
-		return newError(common.InvalidConfigurationMachineError, errUnknownNetworkFamily, cfg.providerConfig.Network.GetNetworkFamily())
+		return newError(common.InvalidConfigurationMachineError, util.ErrUnknownNetworkFamily, cfg.providerConfig.Network.GetNetworkFamily())
 	}
 
 	if cfg.machineType == "" {

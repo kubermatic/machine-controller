@@ -23,6 +23,10 @@ import (
 	"net"
 )
 
+const (
+	ErrUnknownNetworkFamily = "Unknown network family %q only IPv4,IPv6,IPv4+IPv6 are valid values"
+)
+
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 	ip, ipNet, err := net.ParseCIDR(ipv4)
 	if err != nil {
@@ -64,3 +68,9 @@ const (
 	IPv6        NetworkFamily = "IPv6"
 	DualStack   NetworkFamily = "IPv4+IPv6"
 )
+
+// IsLinkLocal checks if given ip address is link local
+func IsLinkLocal(ipAddr string) bool {
+	addr := net.ParseIP(ipAddr)
+	return addr.IsLinkLocalMulticast() || addr.IsLinkLocalUnicast()
+}
