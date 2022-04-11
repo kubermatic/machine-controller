@@ -480,8 +480,10 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	}
 
 	// Required fields
-	if _, err := getRegion(client, c.Region); err != nil {
-		return fmt.Errorf("failed to get region %q: %v", c.Region, err)
+	if !strings.Contains(c.IdentityEndpoint, "auth.cloud.ovh.net") {
+		if _, err := getRegion(client, c.Region); err != nil {
+			return fmt.Errorf("failed to get region %q: %v", c.Region, err)
+		}
 	}
 
 	// Get OS Compute Client
