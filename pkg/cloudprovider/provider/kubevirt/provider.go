@@ -254,7 +254,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if rawConfig.VirtualMachine.DNSConfig != nil {
 		config.DNSConfig = rawConfig.VirtualMachine.DNSConfig
 	}
-	config.SecondaryDisks = make([]SecondaryDisks, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
+	config.SecondaryDisks = make([]SecondaryDisks, 0, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
 	for _, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
 
 		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
@@ -698,6 +698,7 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 }
 
 func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.DataVolumeTemplateSpec {
+	dataVolumeSource := getDataVolumeSource(config.OsImage)
 	pvcRequest := corev1.ResourceList{corev1.ResourceStorage: config.PVCSize}
 	dataVolumeTemplates := []kubevirtv1.DataVolumeTemplateSpec{
 		{
@@ -714,11 +715,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 						Requests: pvcRequest,
 					},
 				},
-				Source: &cdiv1beta1.DataVolumeSource{
-					HTTP: &cdiv1beta1.DataVolumeSourceHTTP{
-						URL: config.OsImage.URL,
-					},
-				},
+				Source: dataVolumeSource,
 			},
 		},
 	}
@@ -737,15 +734,28 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 						Requests: corev1.ResourceList{corev1.ResourceStorage: sd.Size},
 					},
 				},
-				Source: &cdiv1beta1.DataVolumeSource{
-					HTTP: &cdiv1beta1.DataVolumeSourceHTTP{
-						URL: config.OsImage.URL,
-					},
-				},
+				Source: dataVolumeSource,
 			},
 		})
 	}
 	return dataVolumeTemplates
+}
+
+// getDataVolumeSource returns DataVolumeSource, HTTP or PVC
+func getDataVolumeSource(osImage OSImage) *cdiv1beta1.DataVolumeSource {
+	dataVolumeSource := &cdiv1beta1.DataVolumeSource{}
+	if osImage.URL != "" {
+		dataVolumeSource.HTTP = &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage.URL}
+	} else if osImage.DataVolumeName != "" {
+		if nameSpaceAndName := strings.Split(osImage.DataVolumeName, "/"); len(nameSpaceAndName) >= 2 {
+			dataVolumeSource.PVC = &cdiv1beta1.DataVolumeSourcePVC{
+				Namespace: nameSpaceAndName[0],
+				Name:      nameSpaceAndName[1],
+			}
+		}
+
+	}
+	return dataVolumeSource
 }
 
 func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
