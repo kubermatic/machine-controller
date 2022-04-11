@@ -21,15 +21,15 @@ import (
 )
 
 type RawConfig struct {
-	AccessKeyID             providerconfigtypes.ConfigVarString `json:"accessKeyID,omitempty"`
-	AccessKeySecret         providerconfigtypes.ConfigVarString `json:"accessKeySecret,omitempty"`
-	RegionID                providerconfigtypes.ConfigVarString `json:"regionID,omitempty"`
-	InstanceName            providerconfigtypes.ConfigVarString `json:"instanceName,omitempty"`
-	InstanceType            providerconfigtypes.ConfigVarString `json:"instanceType,omitempty"`
-	VSwitchID               providerconfigtypes.ConfigVarString `json:"vSwitchID,omitempty"`
-	InternetMaxBandwidthOut providerconfigtypes.ConfigVarString `json:"internetMaxBandwidthOut,omitempty"`
+	AccessKeyID             *providerconfigtypes.ConfigVarString `json:"accessKeyID,omitempty"`
+	AccessKeySecret         *providerconfigtypes.ConfigVarString `json:"accessKeySecret,omitempty"`
+	RegionID                *providerconfigtypes.ConfigVarString `json:"regionID,omitempty"`
+	InstanceName            *providerconfigtypes.ConfigVarString `json:"instanceName,omitempty"`
+	InstanceType            *providerconfigtypes.ConfigVarString `json:"instanceType,omitempty"`
+	VSwitchID               *providerconfigtypes.ConfigVarString `json:"vSwitchID,omitempty"`
+	InternetMaxBandwidthOut *providerconfigtypes.ConfigVarString `json:"internetMaxBandwidthOut,omitempty"`
 	Labels                  map[string]string                   `json:"labels,omitempty"`
-	ZoneID                  providerconfigtypes.ConfigVarString `json:"zoneID,omitempty"`
-	DiskType                providerconfigtypes.ConfigVarString `json:"diskType,omitempty"`
-	DiskSize                providerconfigtypes.ConfigVarString `json:"diskSize,omitempty"`
+	ZoneID                  *providerconfigtypes.ConfigVarString `json:"zoneID,omitempty"`
+	DiskType                *providerconfigtypes.ConfigVarString `json:"diskType,omitempty"`
+	DiskSize                *providerconfigtypes.ConfigVarString `json:"diskSize,omitempty"`
 }

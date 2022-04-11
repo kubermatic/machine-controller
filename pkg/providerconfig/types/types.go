@@ -109,7 +109,7 @@ type NetworkConfig struct {
 
 type Config struct {
 	SSHPublicKeys []string `json:"sshPublicKeys"`
-	CAPublicKey   string   `json:"caPublicKey"`
+	CAPublicKey   *string   `json:"caPublicKey,omitempty"`
 
 	CloudProvider     CloudProvider        `json:"cloudProvider"`
 	CloudProviderSpec runtime.RawExtension `json:"cloudProviderSpec"`
@@ -135,9 +135,17 @@ type GlobalSecretKeySelector GlobalObjectKeySelector
 type GlobalConfigMapKeySelector GlobalObjectKeySelector
 
 type ConfigVarString struct {
-	Value           string                     `json:"value,omitempty"`
-	SecretKeyRef    GlobalSecretKeySelector    `json:"secretKeyRef,omitempty"`
-	ConfigMapKeyRef GlobalConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
+	Value           string
+	SecretKeyRef    GlobalSecretKeySelector
+	ConfigMapKeyRef GlobalConfigMapKeySelector
+}
+
+func (c *ConfigVarString) Empty() bool {
+	return c == nil || (c.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
+		c.ConfigMapKeyRef.ObjectReference.Name == "" &&
+		c.ConfigMapKeyRef.Key == "" && c.SecretKeyRef.ObjectReference.Namespace == "" &&
+		c.SecretKeyRef.ObjectReference.Name == "" &&
+		c.SecretKeyRef.Key == "" && c.Value == "")
 }
 
 // This type only exists to have the same fields as ConfigVarString but
@@ -217,9 +225,17 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 }
 
 type ConfigVarBool struct {
-	Value           bool                       `json:"value,omitempty"`
-	SecretKeyRef    GlobalSecretKeySelector    `json:"secretKeyRef,omitempty"`
-	ConfigMapKeyRef GlobalConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
+	Value           bool
+	SecretKeyRef    GlobalSecretKeySelector
+	ConfigMapKeyRef GlobalConfigMapKeySelector
+}
+
+func (c *ConfigVarBool) Empty() bool {
+	return c == nil || (c.ConfigMapKeyRef.ObjectReference.Namespace == "" &&
+		c.ConfigMapKeyRef.ObjectReference.Name == "" &&
+		c.ConfigMapKeyRef.Key == "" && c.SecretKeyRef.ObjectReference.Namespace == "" &&
+		c.SecretKeyRef.ObjectReference.Name == "" &&
+		c.SecretKeyRef.Key == "")
 }
 
 type configVarBoolWithoutUnmarshaller ConfigVarBool

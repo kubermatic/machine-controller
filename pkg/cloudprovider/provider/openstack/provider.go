@@ -239,7 +239,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 	for _, securityGroup := range rawConfig.SecurityGroups {
-		securityGroupValue, err := p.configVarResolver.GetConfigVarStringValue(securityGroup)
+		securityGroupValue, err := p.configVarResolver.GetConfigVarStringValue(&securityGroup)
 		if err != nil {
 			return nil, nil, nil, err
 		}

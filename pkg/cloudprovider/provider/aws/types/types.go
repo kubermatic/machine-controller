@@ -21,24 +21,24 @@ import (
 )
 
 type RawConfig struct {
-	AccessKeyID     providerconfigtypes.ConfigVarString `json:"accessKeyId,omitempty"`
-	SecretAccessKey providerconfigtypes.ConfigVarString `json:"secretAccessKey,omitempty"`
+	AccessKeyID     *providerconfigtypes.ConfigVarString `json:"accessKeyId,omitempty"`
+	SecretAccessKey *providerconfigtypes.ConfigVarString `json:"secretAccessKey,omitempty"`
 
-	AssumeRoleARN        providerconfigtypes.ConfigVarString `json:"assumeRoleARN,omitempty"`
-	AssumeRoleExternalID providerconfigtypes.ConfigVarString `json:"assumeRoleExternalID,omitempty"`
+	AssumeRoleARN        *providerconfigtypes.ConfigVarString `json:"assumeRoleARN,omitempty"`
+	AssumeRoleExternalID *providerconfigtypes.ConfigVarString `json:"assumeRoleExternalID,omitempty"`
 
-	Region             providerconfigtypes.ConfigVarString   `json:"region"`
-	AvailabilityZone   providerconfigtypes.ConfigVarString   `json:"availabilityZone,omitempty"`
-	VpcID              providerconfigtypes.ConfigVarString   `json:"vpcId"`
-	SubnetID           providerconfigtypes.ConfigVarString   `json:"subnetId"`
+	Region             *providerconfigtypes.ConfigVarString   `json:"region"`
+	AvailabilityZone   *providerconfigtypes.ConfigVarString   `json:"availabilityZone,omitempty"`
+	VpcID              *providerconfigtypes.ConfigVarString   `json:"vpcId"`
+	SubnetID           *providerconfigtypes.ConfigVarString   `json:"subnetId"`
 	SecurityGroupIDs   []providerconfigtypes.ConfigVarString `json:"securityGroupIDs,omitempty"`
-	InstanceProfile    providerconfigtypes.ConfigVarString   `json:"instanceProfile,omitempty"`
-	InstanceType       providerconfigtypes.ConfigVarString   `json:"instanceType,omitempty"`
-	AMI                providerconfigtypes.ConfigVarString   `json:"ami,omitempty"`
+	InstanceProfile    *providerconfigtypes.ConfigVarString   `json:"instanceProfile,omitempty"`
+	InstanceType       *providerconfigtypes.ConfigVarString   `json:"instanceType,omitempty"`
+	AMI                *providerconfigtypes.ConfigVarString   `json:"ami,omitempty"`
 	DiskSize           int64                                 `json:"diskSize"`
-	DiskType           providerconfigtypes.ConfigVarString   `json:"diskType,omitempty"`
+	DiskType           *providerconfigtypes.ConfigVarString   `json:"diskType,omitempty"`
 	DiskIops           *int64                                `json:"diskIops,omitempty"`
-	EBSVolumeEncrypted providerconfigtypes.ConfigVarBool     `json:"ebsVolumeEncrypted"`
+	EBSVolumeEncrypted *providerconfigtypes.ConfigVarBool     `json:"ebsVolumeEncrypted"`
 	Tags               map[string]string                     `json:"tags,omitempty"`
 	AssignPublicIP     *bool                                 `json:"assignPublicIP,omitempty"`
 
@@ -47,9 +47,9 @@ type RawConfig struct {
 }
 
 type SpotInstanceConfig struct {
-	MaxPrice             providerconfigtypes.ConfigVarString `json:"maxPrice,omitempty"`
-	PersistentRequest    providerconfigtypes.ConfigVarBool   `json:"persistentRequest,omitempty"`
-	InterruptionBehavior providerconfigtypes.ConfigVarString `json:"interruptionBehavior,omitempty"`
+	MaxPrice             *providerconfigtypes.ConfigVarString `json:"maxPrice,omitempty"`
+	PersistentRequest    *providerconfigtypes.ConfigVarBool   `json:"persistentRequest,omitempty"`
+	InterruptionBehavior *providerconfigtypes.ConfigVarString `json:"interruptionBehavior,omitempty"`
 }
 
 // CPUArchitecture defines processor architectures returned by the AWS API

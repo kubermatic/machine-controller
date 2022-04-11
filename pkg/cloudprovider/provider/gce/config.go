@@ -170,7 +170,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.assignPublicIPAddress = true
 
 	if cpSpec.AssignPublicIPAddress != nil {
-		cfg.assignPublicIPAddress, err = resolver.GetConfigVarBoolValue(*cpSpec.AssignPublicIPAddress)
+		cfg.assignPublicIPAddress, err = resolver.GetConfigVarBoolValue(cpSpec.AssignPublicIPAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
 		}

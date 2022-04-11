@@ -125,7 +125,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 
 	for _, network := range rawConfig.Networks {
-		networkValue, err := p.configVarResolver.GetConfigVarStringValue(network)
+		networkValue, err := p.configVarResolver.GetConfigVarStringValue(&network)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -133,7 +133,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	}
 
 	for _, firewall := range rawConfig.Firewalls {
-		firewallValue, err := p.configVarResolver.GetConfigVarStringValue(firewall)
+		firewallValue, err := p.configVarResolver.GetConfigVarStringValue(&firewall)
 		if err != nil {
 			return nil, nil, err
 		}

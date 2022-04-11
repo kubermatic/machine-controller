@@ -29,20 +29,20 @@ import (
 // CloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
 type CloudProviderSpec struct {
-	ServiceAccount        providerconfigtypes.ConfigVarString `json:"serviceAccount,omitempty"`
-	Zone                  providerconfigtypes.ConfigVarString `json:"zone"`
-	MachineType           providerconfigtypes.ConfigVarString `json:"machineType"`
+	ServiceAccount        *providerconfigtypes.ConfigVarString `json:"serviceAccount,omitempty"`
+	Zone                  *providerconfigtypes.ConfigVarString `json:"zone"`
+	MachineType           *providerconfigtypes.ConfigVarString `json:"machineType"`
 	DiskSize              int64                               `json:"diskSize"`
-	DiskType              providerconfigtypes.ConfigVarString `json:"diskType"`
-	Network               providerconfigtypes.ConfigVarString `json:"network"`
-	Subnetwork            providerconfigtypes.ConfigVarString `json:"subnetwork"`
-	Preemptible           providerconfigtypes.ConfigVarBool   `json:"preemptible"`
+	DiskType              *providerconfigtypes.ConfigVarString `json:"diskType"`
+	Network               *providerconfigtypes.ConfigVarString `json:"network"`
+	Subnetwork            *providerconfigtypes.ConfigVarString `json:"subnetwork"`
+	Preemptible           *providerconfigtypes.ConfigVarBool   `json:"preemptible"`
 	Labels                map[string]string                   `json:"labels,omitempty"`
 	Tags                  []string                            `json:"tags,omitempty"`
 	AssignPublicIPAddress *providerconfigtypes.ConfigVarBool  `json:"assignPublicIPAddress,omitempty"`
-	MultiZone             providerconfigtypes.ConfigVarBool   `json:"multizone"`
-	Regional              providerconfigtypes.ConfigVarBool   `json:"regional"`
-	CustomImage           providerconfigtypes.ConfigVarString `json:"customImage,omitempty"`
+	MultiZone             *providerconfigtypes.ConfigVarBool   `json:"multizone"`
+	Regional              *providerconfigtypes.ConfigVarBool   `json:"regional"`
+	CustomImage           *providerconfigtypes.ConfigVarString `json:"customImage,omitempty"`
 }
 
 // UpdateProviderSpec updates the given provider spec with changed

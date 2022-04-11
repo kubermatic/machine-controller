@@ -23,13 +23,13 @@ import (
 )
 
 type RawConfig struct {
-	Kubeconfig       providerconfigtypes.ConfigVarString `json:"kubeconfig,omitempty"`
-	CPUs             providerconfigtypes.ConfigVarString `json:"cpus,omitempty"`
-	Memory           providerconfigtypes.ConfigVarString `json:"memory,omitempty"`
-	Namespace        providerconfigtypes.ConfigVarString `json:"namespace,omitempty"`
-	SourceURL        providerconfigtypes.ConfigVarString `json:"sourceURL,omitempty"`
-	PVCSize          providerconfigtypes.ConfigVarString `json:"pvcSize,omitempty"`
-	StorageClassName providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
-	DNSPolicy        providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
+	Kubeconfig       *providerconfigtypes.ConfigVarString `json:"kubeconfig,omitempty"`
+	CPUs             *providerconfigtypes.ConfigVarString `json:"cpus,omitempty"`
+	Memory           *providerconfigtypes.ConfigVarString `json:"memory,omitempty"`
+	Namespace        *providerconfigtypes.ConfigVarString `json:"namespace,omitempty"`
+	SourceURL        *providerconfigtypes.ConfigVarString `json:"sourceURL,omitempty"`
+	PVCSize          *providerconfigtypes.ConfigVarString `json:"pvcSize,omitempty"`
+	StorageClassName *providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
+	DNSPolicy        *providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
 	DNSConfig        *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
 }

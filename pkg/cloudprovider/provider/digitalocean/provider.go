@@ -150,7 +150,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, err
 	}
 	for _, tag := range rawConfig.Tags {
-		tagVal, err := p.configVarResolver.GetConfigVarStringValue(tag)
+		tagVal, err := p.configVarResolver.GetConfigVarStringValue(&tag)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -21,10 +21,10 @@ import (
 )
 
 type RawConfig struct {
-	Token             providerconfigtypes.ConfigVarString   `json:"token,omitempty"`
-	Region            providerconfigtypes.ConfigVarString   `json:"region"`
-	Type              providerconfigtypes.ConfigVarString   `json:"type"`
-	Backups           providerconfigtypes.ConfigVarBool     `json:"backups"`
-	PrivateNetworking providerconfigtypes.ConfigVarBool     `json:"private_networking"`
+	Token             *providerconfigtypes.ConfigVarString   `json:"token,omitempty"`
+	Region            *providerconfigtypes.ConfigVarString   `json:"region"`
+	Type              *providerconfigtypes.ConfigVarString   `json:"type"`
+	Backups           *providerconfigtypes.ConfigVarBool     `json:"backups"`
+	PrivateNetworking *providerconfigtypes.ConfigVarBool     `json:"private_networking"`
 	Tags              []providerconfigtypes.ConfigVarString `json:"tags,omitempty"`
 }
