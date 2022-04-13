@@ -41,6 +41,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	awstypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/aws/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
@@ -611,8 +612,20 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		}
 	}
 
-	if _, err := getVpc(ec2Client, config.VpcID); err != nil {
+	vpc, err := getVpc(ec2Client, config.VpcID)
+	if err != nil {
 		return fmt.Errorf("invalid vpc %q specified: %v", config.VpcID, err)
+	}
+
+	switch f := pc.Network.GetNetworkFamily(); f {
+	case util.Unspecified, util.IPv4:
+		// noop
+	case util.IPv6, util.DualStack:
+		if len(vpc.Ipv6CidrBlockAssociationSet) == 0 {
+			return fmt.Errorf("vpc %q does not have IPv6 CIDR block", aws.StringValue(vpc.VpcId))
+		}
+	default:
+		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
 	}
 
 	_, err = ec2Client.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{ZoneNames: aws.StringSlice([]string{config.AvailabilityZone})})
@@ -808,6 +821,10 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 				Tags:         tags,
 			},
 		},
+	}
+
+	if pc.Network.GetNetworkFamily() == util.IPv6 || pc.Network.GetNetworkFamily() == util.DualStack {
+		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
 	}
 
 	runOut, err := ec2Client.RunInstances(instanceRequest)
@@ -1014,6 +1031,18 @@ func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 		aws.StringValue(d.instance.PublicDnsName):    v1.NodeExternalDNS,
 		aws.StringValue(d.instance.PrivateIpAddress): v1.NodeInternalIP,
 		aws.StringValue(d.instance.PrivateDnsName):   v1.NodeInternalDNS,
+	}
+
+	for _, netInterface := range d.instance.NetworkInterfaces {
+		for _, addr := range netInterface.Ipv6Addresses {
+			ipAddr := aws.StringValue(addr.Ipv6Address)
+
+			// link-local addresses not very useful in machine status
+			// filter them out
+			if !util.IsLinkLocal(ipAddr) {
+				addresses[ipAddr] = v1.NodeExternalIP
+			}
+		}
 	}
 
 	delete(addresses, "")
