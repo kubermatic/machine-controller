@@ -439,6 +439,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
+//nolint:gocyclo
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
