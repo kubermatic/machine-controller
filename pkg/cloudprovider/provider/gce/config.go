@@ -101,6 +101,8 @@ type config struct {
 	network               string
 	subnetwork            string
 	preemptible           bool
+	automaticRestart      bool
+	provisioningModel     string
 	labels                map[string]string
 	tags                  []string
 	jwtConfig             *jwt.Config

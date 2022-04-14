@@ -265,7 +265,9 @@ func (p *Provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		Disks:             disks,
 		Labels:            labels,
 		Scheduling: &compute.Scheduling{
-			Preemptible: cfg.preemptible,
+			Preemptible:       cfg.preemptible,
+			AutomaticRestart:  &cfg.automaticRestart,
+			ProvisioningModel: cfg.provisioningModel,
 		},
 		ServiceAccounts: []*compute.ServiceAccount{
 			{
