@@ -55,10 +55,11 @@ const (
 
 	machineUIDTag = "Machine-UID"
 
-	finalizerPublicIP = "kubermatic.io/cleanup-azure-public-ip"
-	finalizerNIC      = "kubermatic.io/cleanup-azure-nic"
-	finalizerDisks    = "kubermatic.io/cleanup-azure-disks"
-	finalizerVM       = "kubermatic.io/cleanup-azure-vm"
+	finalizerPublicIP   = "kubermatic.io/cleanup-azure-public-ip"
+	finalizerPublicIPv6 = "kubermatic.io/cleanup-azure-public-ipv6"
+	finalizerNIC        = "kubermatic.io/cleanup-azure-nic"
+	finalizerDisks      = "kubermatic.io/cleanup-azure-disks"
+	finalizerVM         = "kubermatic.io/cleanup-azure-vm"
 )
 
 const (
@@ -434,6 +435,16 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 				for _, ip := range publicIPs {
 					ipAddresses[ip] = v1.NodeExternalIP
 				}
+
+				publicIP6Name := ifaceName + "-pubipv6"
+				publicIP6s, err := getIPAddressStrings(ctx, c, publicIP6Name)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+				}
+				for _, ip := range publicIP6s {
+					ipAddresses[ip] = v1.NodeExternalIP
+				}
+
 			}
 
 			internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
@@ -561,9 +572,12 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
 
-	ifaceName := machine.Name + "-netiface"
-	publicIPName := ifaceName + "-pubip"
-	var publicIP *network.PublicIPAddress
+	netFamily := providerCfg.Network.GetNetworkFamily()
+	sku := network.PublicIPAddressSkuNameBasic
+	if netFamily == util.DualStack {
+		sku = network.PublicIPAddressSkuNameStandard
+	}
+	var publicIP, publicIPv6 *network.PublicIPAddress
 	if config.AssignPublicIP {
 		if err = data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 			if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerPublicIP) {
@@ -572,9 +586,16 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}); err != nil {
 			return nil, err
 		}
-		publicIP, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPName, machine.UID, config)
+		publicIP, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPName(machine), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %v", err)
+		}
+
+		if netFamily == util.DualStack {
+			publicIPv6, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPv6Name(machine), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create public IP: %v", err)
+			}
 		}
 	}
 
@@ -585,7 +606,8 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	}); err != nil {
 		return nil, err
 	}
-	iface, err := createOrUpdateNetworkInterface(context.TODO(), ifaceName, machine.UID, config, publicIP)
+
+	iface, err := createOrUpdateNetworkInterface(context.TODO(), ifaceName(machine), machine.UID, config, publicIP, publicIPv6, netFamily)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
 	}
@@ -606,6 +628,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	if err != nil {
 		return nil, fmt.Errorf("failed to get StorageProfile: %v", err)
 	}
+
 	vmSpec := compute.VirtualMachine{
 		Location: &config.Location,
 		Plan:     osPlane,
@@ -908,70 +931,6 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 	return s, "azure", nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
-	c, providerCfg, err := p.getConfig(spec.ProviderSpec)
-	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
-	}
-
-	if c.SubscriptionID == "" {
-		return errors.New("subscriptionID is missing")
-	}
-
-	if c.TenantID == "" {
-		return errors.New("tenantID is missing")
-	}
-
-	if c.ClientID == "" {
-		return errors.New("clientID is missing")
-	}
-
-	if c.ClientSecret == "" {
-		return errors.New("clientSecret is missing")
-	}
-
-	if c.ResourceGroup == "" {
-		return errors.New("resourceGroup is missing")
-	}
-
-	if c.VMSize == "" {
-		return errors.New("vmSize is missing")
-	}
-
-	if c.VNetName == "" {
-		return errors.New("vnetName is missing")
-	}
-
-	if c.SubnetName == "" {
-		return errors.New("subnetName is missing")
-	}
-
-	vmClient, err := getVMClient(c)
-	if err != nil {
-		return fmt.Errorf("failed to (create) vm client: %v", err.Error())
-	}
-
-	_, err = vmClient.ListAll(context.TODO(), "", "")
-	if err != nil {
-		return fmt.Errorf("failed to list all: %v", err.Error())
-	}
-
-	if _, err := getVirtualNetwork(context.TODO(), c); err != nil {
-		return fmt.Errorf("failed to get virtual network: %v", err)
-	}
-
-	if _, err := getSubnet(context.TODO(), c); err != nil {
-		return fmt.Errorf("failed to get subnet: %v", err)
-	}
-
-	if err := validateDiskSKUs(c); err != nil {
-		return fmt.Errorf("failed to validate disk SKUs: %w", err)
-	}
-
-	_, err = getOSImageReference(c, providerCfg.OperatingSystem)
-	return err
-}
-
 func validateDiskSKUs(c *config) error {
 	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
 		sku, err := getSKU(context.TODO(), c)
@@ -1009,7 +968,94 @@ func validateDiskSKUs(c *config) error {
 	return nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+	c, providerConfig, err := p.getConfig(spec.ProviderSpec)
+	if err != nil {
+		return fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	if c.SubscriptionID == "" {
+		return errors.New("subscriptionID is missing")
+	}
+
+	if c.TenantID == "" {
+		return errors.New("tenantID is missing")
+	}
+
+	if c.ClientID == "" {
+		return errors.New("clientID is missing")
+	}
+
+	if c.ClientSecret == "" {
+		return errors.New("clientSecret is missing")
+	}
+
+	if c.ResourceGroup == "" {
+		return errors.New("resourceGroup is missing")
+	}
+
+	if c.VMSize == "" {
+		return errors.New("vmSize is missing")
+	}
+
+	if c.VNetName == "" {
+		return errors.New("vnetName is missing")
+	}
+
+	if c.SubnetName == "" {
+		return errors.New("subnetName is missing")
+	}
+
+	switch f := providerConfig.Network.GetNetworkFamily(); f {
+	case util.Unspecified, util.IPv4:
+		//noop
+	case util.IPv6:
+		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
+	case util.DualStack:
+		// validate
+	default:
+		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+	}
+
+	vmClient, err := getVMClient(c)
+	if err != nil {
+		return fmt.Errorf("failed to (create) vm client: %v", err.Error())
+	}
+
+	_, err = vmClient.ListAll(context.TODO(), "", "")
+	if err != nil {
+		return fmt.Errorf("failed to list all: %v", err.Error())
+	}
+
+	if _, err := getVirtualNetwork(context.TODO(), c); err != nil {
+		return fmt.Errorf("failed to get virtual network: %v", err)
+	}
+
+	if _, err := getSubnet(context.TODO(), c); err != nil {
+		return fmt.Errorf("failed to get subnet: %v", err)
+	}
+
+	if err := validateDiskSKUs(c); err != nil {
+		return fmt.Errorf("failed to validate disk SKUs: %w", err)
+	}
+
+	_, err = getOSImageReference(c, providerConfig.OperatingSystem)
+	return err
+}
+
+func ifaceName(machine *clusterv1alpha1.Machine) string {
+	return machine.Name + "-netiface"
+}
+
+func publicIPName(machine *clusterv1alpha1.Machine) string {
+	return ifaceName(machine) + "-pubip"
+}
+
+func publicIPv6Name(machine *clusterv1alpha1.Machine) string {
+	return ifaceName(machine) + "-pubipv6"
+}
+
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1026,19 +1072,26 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 		return fmt.Errorf("failed to create VM client: %v", err)
 	}
 
-	ifaceName := machine.Name + "-netiface"
-	publicIPName := ifaceName + "-pubip"
-	var publicIP *network.PublicIPAddress
+	var publicIP, publicIPv6 *network.PublicIPAddress
+	sku := network.PublicIPAddressSkuNameBasic
+
+	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIPv6) {
+		sku = network.PublicIPAddressSkuNameStandard
+		_, err = createOrUpdatePublicIPAddress(ctx, publicIPv6Name(machine), network.IPVersionIPv6, sku, network.IPAllocationMethodDynamic, newUID, config)
+		if err != nil {
+			return fmt.Errorf("failed to update UID on public IP: %v", err)
+		}
+	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		_, err = createOrUpdatePublicIPAddress(ctx, publicIPName, new, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, publicIPName(machine), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %v", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
-		_, err = createOrUpdateNetworkInterface(ctx, ifaceName, new, config, publicIP)
+		_, err = createOrUpdateNetworkInterface(ctx, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.Unspecified)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on main network interface: %v", err)
 		}
@@ -1056,7 +1109,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 		}
 
 		for _, disk := range disks {
-			disk.Tags[machineUIDTag] = to.StringPtr(string(new))
+			disk.Tags[machineUIDTag] = to.StringPtr(string(newUID))
 			future, err := disksClient.CreateOrUpdate(ctx, config.ResourceGroup, *disk.Name, disk)
 			if err != nil {
 				return fmt.Errorf("failed to update UID for disk %s: %v", *disk.Name, err)
@@ -1071,7 +1124,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 	for k, v := range config.Tags {
 		tags[k] = to.StringPtr(v)
 	}
-	tags[machineUIDTag] = to.StringPtr(string(new))
+	tags[machineUIDTag] = to.StringPtr(string(newUID))
 
 	vmSpec := compute.VirtualMachine{Location: &config.Location, Tags: tags}
 	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec)

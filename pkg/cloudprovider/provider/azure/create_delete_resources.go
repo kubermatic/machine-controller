@@ -19,11 +19,11 @@ package azure
 import (
 	"context"
 	"fmt"
-
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -47,7 +47,7 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 
 	for list.NotDone() {
 		allInterfaces = append(allInterfaces, list.Values()...)
-		if err = list.Next(); err != nil {
+		if err = list.NextWithContext(ctx); err != nil {
 			return fmt.Errorf("failed to iterate the result list: %s", err)
 		}
 	}
@@ -192,7 +192,7 @@ func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient,
 	return matchingDisks, nil
 }
 
-func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, machineUID types.UID, c *config) (*network.PublicIPAddress, error) {
+func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, ipVersion network.IPVersion, sku network.PublicIPAddressSkuName, ipAllocationMethod network.IPAllocationMethod, machineUID types.UID, c *config) (*network.PublicIPAddress, error) {
 	klog.Infof("Creating public IP %q", ipName)
 	ipClient, err := getIPClient(c)
 	if err != nil {
@@ -203,12 +203,16 @@ func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, machineUI
 		Name:     to.StringPtr(ipName),
 		Location: to.StringPtr(c.Location),
 		PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-			PublicIPAddressVersion:   network.IPVersionIPv4,
-			PublicIPAllocationMethod: network.IPAllocationMethodStatic,
+			PublicIPAddressVersion:   ipVersion,
+			PublicIPAllocationMethod: ipAllocationMethod,
 		},
 		Tags:  map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
 		Zones: &c.Zones,
+		Sku: &network.PublicIPAddressSku{
+			Name: sku,
+		},
 	}
+
 	future, err := ipClient.CreateOrUpdate(ctx, c.ResourceGroup, ipName, ipParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create public IP address: %v", err)
@@ -313,7 +317,7 @@ func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, 
 	return virtualNetworksClient.Get(ctx, c.VNetResourceGroup, c.VNetName, "")
 }
 
-func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP *network.PublicIPAddress) (*network.Interface, error) {
+func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *network.PublicIPAddress, netFamily util.NetworkFamily) (*network.Interface, error) {
 	ifClient, err := getInterfacesClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %v", err)
@@ -328,19 +332,34 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 		Name:     to.StringPtr(ifName),
 		Location: &config.Location,
 		InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
-			IPConfigurations: &[]network.InterfaceIPConfiguration{
-				{
-					Name: to.StringPtr("ip-config-1"),
-					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
-						Subnet:                    &subnet,
-						PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
-						PublicIPAddress:           publicIP,
-					},
-				},
-			},
+			IPConfigurations: &[]network.InterfaceIPConfiguration{},
 		},
 		Tags: map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
 	}
+
+	*ifSpec.InterfacePropertiesFormat.IPConfigurations = append(*ifSpec.InterfacePropertiesFormat.IPConfigurations, network.InterfaceIPConfiguration{
+		Name: to.StringPtr("ip-config-1"),
+		InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
+			Subnet:                    &subnet,
+			PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
+			PublicIPAddress:           publicIP,
+			Primary:                   to.BoolPtr(true),
+		},
+	})
+
+	if netFamily == util.DualStack {
+		*ifSpec.InterfacePropertiesFormat.IPConfigurations = append(*ifSpec.InterfacePropertiesFormat.IPConfigurations, network.InterfaceIPConfiguration{
+			Name: to.StringPtr("ip-config-2"),
+			InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
+				PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
+				Subnet:                    &subnet,
+				PublicIPAddress:           publicIPv6,
+				Primary:                   to.BoolPtr(false),
+				PrivateIPAddressVersion:   network.IPVersionIPv6,
+			},
+		})
+	}
+
 	if config.SecurityGroupName != "" {
 		authorizer, err := auth.NewClientCredentialsConfig(config.ClientID, config.ClientSecret, config.TenantID).Authorizer()
 		if err != nil {
