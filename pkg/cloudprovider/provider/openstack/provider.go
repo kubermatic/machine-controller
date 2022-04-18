@@ -115,6 +115,7 @@ type Config struct {
 const (
 	machineUIDMetaKey = "machine-uid"
 	securityGroupName = "kubernetes-v1"
+	ovhAuthURL        = "auth.cloud.ovh.net"
 )
 
 // Protects floating ip assignment
@@ -480,8 +481,10 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	}
 
 	// Required fields
-	if _, err := getRegion(client, c.Region); err != nil {
-		return fmt.Errorf("failed to get region %q: %v", c.Region, err)
+	if !strings.Contains(c.IdentityEndpoint, ovhAuthURL) {
+		if _, err := getRegion(client, c.Region); err != nil {
+			return fmt.Errorf("failed to get region %q: %v", c.Region, err)
+		}
 	}
 
 	// Get OS Compute Client
