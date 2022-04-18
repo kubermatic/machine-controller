@@ -19,10 +19,12 @@ package azure
 import (
 	"context"
 	"fmt"
+
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
+
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	"k8s.io/apimachinery/pkg/types"
