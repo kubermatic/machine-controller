@@ -112,14 +112,14 @@ type NetworkConfig struct {
 	CIDR          string             `json:"cidr"`
 	Gateway       string             `json:"gateway"`
 	DNS           DNSConfig          `json:"dns"`
-	NetworkFamily util.NetworkFamily `json:"networkFamily,omitempty"`
+	AddressFamily util.AddressFamily `json:"addressFamily,omitempty"`
 }
 
-func (n *NetworkConfig) GetNetworkFamily() util.NetworkFamily {
+func (n *NetworkConfig) GetAddressFamily() util.AddressFamily {
 	if n == nil {
 		return util.Unspecified
 	}
-	return n.NetworkFamily
+	return n.AddressFamily
 }
 
 type Config struct {

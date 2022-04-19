@@ -617,7 +617,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid vpc %q specified: %v", config.VpcID, err)
 	}
 
-	switch f := pc.Network.GetNetworkFamily(); f {
+	switch f := pc.Network.GetAddressFamily(); f {
 	case util.Unspecified, util.IPv4:
 		// noop
 	case util.IPv6, util.DualStack:
@@ -823,7 +823,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		},
 	}
 
-	if pc.Network.GetNetworkFamily() == util.IPv6 || pc.Network.GetNetworkFamily() == util.DualStack {
+	if pc.Network.GetAddressFamily() == util.IPv6 || pc.Network.GetAddressFamily() == util.DualStack {
 		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
 	}
 
