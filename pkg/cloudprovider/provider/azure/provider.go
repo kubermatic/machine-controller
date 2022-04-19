@@ -427,8 +427,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 			}
 
 			if c.AssignPublicIP {
-				publicIPName := ifaceName + "-pubip"
-				publicIPs, err := getIPAddressStrings(ctx, c, publicIPName)
+				publicIPs, err := getIPAddressStrings(ctx, c, publicIPName(ifaceName))
 				if err != nil {
 					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
 				}
@@ -436,8 +435,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 					ipAddresses[ip] = v1.NodeExternalIP
 				}
 
-				publicIP6Name := ifaceName + "-pubipv6"
-				publicIP6s, err := getIPAddressStrings(ctx, c, publicIP6Name)
+				publicIP6s, err := getIPAddressStrings(ctx, c, publicIPv6Name(ifaceName))
 				if err != nil {
 					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
 				}
@@ -593,13 +591,13 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}); err != nil {
 			return nil, err
 		}
-		publicIP, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPName(machine), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, machine.UID, config)
+		publicIP, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %v", err)
 		}
 
 		if netFamily == util.DualStack {
-			publicIPv6, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPv6Name(machine), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
+			publicIPv6, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create public IP: %v", err)
 			}
@@ -1054,12 +1052,12 @@ func ifaceName(machine *clusterv1alpha1.Machine) string {
 	return machine.Name + "-netiface"
 }
 
-func publicIPName(machine *clusterv1alpha1.Machine) string {
-	return ifaceName(machine) + "-pubip"
+func publicIPName(ifaceName string) string {
+	return ifaceName + "-pubip"
 }
 
-func publicIPv6Name(machine *clusterv1alpha1.Machine) string {
-	return ifaceName(machine) + "-pubipv6"
+func publicIPv6Name(ifaceName string) string {
+	return ifaceName + "-pubipv6"
 }
 
 func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
@@ -1084,14 +1082,14 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIPv6) {
 		sku = network.PublicIPAddressSkuNameStandard
-		_, err = createOrUpdatePublicIPAddress(ctx, publicIPv6Name(machine), network.IPVersionIPv6, sku, network.IPAllocationMethodDynamic, newUID, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodDynamic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %v", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		_, err = createOrUpdatePublicIPAddress(ctx, publicIPName(machine), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, newUID, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %v", err)
 		}
