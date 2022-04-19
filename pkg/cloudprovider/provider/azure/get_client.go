@@ -29,7 +29,7 @@ func getIPClient(c *config) (*network.PublicIPAddressesClient, error) {
 	ipClient := network.NewPublicIPAddressesClient(c.SubscriptionID)
 	ipClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create authorizer: %s", err.Error())
+		return nil, fmt.Errorf("failed to create authorizer: %v", err)
 	}
 
 	return &ipClient, nil
