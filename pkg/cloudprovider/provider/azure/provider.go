@@ -575,6 +575,13 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	netFamily := providerCfg.Network.GetNetworkFamily()
 	sku := network.PublicIPAddressSkuNameBasic
 	if netFamily == util.DualStack {
+		// 1. Cannot specify basic sku PublicIp for an IPv6 network interface ipConfiguration.
+		// 2. Different basic sku and standard sku public Ip resources in availability set is not allowed.
+		// 1 & 2 means we have to use standard sku in dual-stack configuration.
+
+		// It is not clear from the documentation, but you get the
+		// errors if you try mixing skus or try to create IPv6 public IP with
+		// basic sku.
 		sku = network.PublicIPAddressSkuNameStandard
 	}
 	var publicIP, publicIPv6 *network.PublicIPAddress
