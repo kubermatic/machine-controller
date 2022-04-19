@@ -102,7 +102,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 				},
 			}
 		} else {
-			klog.Infof("network family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetAddressFamily())
+			klog.Infof("address family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetAddressFamily())
 		}
 
 	}
