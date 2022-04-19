@@ -120,7 +120,7 @@ func TestValidate(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			"without address family",
+			"without IP family",
 			v1alpha1.MachineSpec{
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
@@ -131,12 +131,12 @@ func TestValidate(t *testing.T) {
 			false,
 		},
 		{
-			"empty address family",
+			"empty IP family",
 			v1alpha1.MachineSpec{
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("network.addressFamily", ""),
+							with("network.ipFamily", ""),
 						),
 					},
 				},
@@ -144,12 +144,12 @@ func TestValidate(t *testing.T) {
 			false,
 		},
 		{
-			"with address family",
+			"with IP family",
 			v1alpha1.MachineSpec{
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("network.addressFamily", "IPv4+IPv6"),
+							with("network.ipFamily", "IPv4+IPv6"),
 						),
 					},
 				},
@@ -162,7 +162,7 @@ func TestValidate(t *testing.T) {
 				ProviderSpec: v1alpha1.ProviderSpec{
 					Value: &runtime.RawExtension{
 						Raw: rawBytes(testMap(testProviderSpec()).
-							with("network.addressFamily", "IPv4+IPv6").
+							with("network.ipFamily", "IPv4+IPv6").
 							with("cloudProviderSpec.zone", "europe-west3-a"),
 						),
 					},
