@@ -169,6 +169,22 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
 	}
 
+	cfg.automaticRestart = !cfg.preemptible
+	if cpSpec.AutomaticRestart != nil {
+		cfg.automaticRestart, _, err = resolver.GetConfigVarBoolValue(*cpSpec.AutomaticRestart)
+		if err != nil {
+			return nil, fmt.Errorf("cannot retrieve automaticRestart: %v", err)
+		}
+	}
+
+	cfg.provisioningModel = "STANDARD"
+	if cpSpec.ProvisioningModel != nil {
+		cfg.provisioningModel, err = resolver.GetConfigVarStringValue(*cpSpec.ProvisioningModel)
+		if err != nil {
+			return nil, fmt.Errorf("cannot retrieve provisioningModel: %v", err)
+		}
+	}
+
 	// make it true by default
 	cfg.assignPublicIPAddress = true
 
