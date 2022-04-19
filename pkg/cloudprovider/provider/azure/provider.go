@@ -412,48 +412,50 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 
 	ipAddresses := map[string]v1.NodeAddressType{}
 
-	if netIf.IPConfigurations != nil {
-		for _, conf := range *netIf.IPConfigurations {
-			var name string
-			if conf.Name != nil {
-				name = *conf.Name
-			} else {
-				klog.Warningf("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
-				if conf.ID == nil || len(*conf.ID) == 0 {
-					return nil, fmt.Errorf("IP configuration of NIC %q was returned with no ID", ifaceName)
-				}
-				splitConfID := strings.Split(*conf.ID, "/")
-				name = splitConfID[len(splitConfID)-1]
+	if netIf.IPConfigurations == nil {
+		return ipAddresses, nil
+	}
+
+	for _, conf := range *netIf.IPConfigurations {
+		var name string
+		if conf.Name != nil {
+			name = *conf.Name
+		} else {
+			klog.Warningf("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
+			if conf.ID == nil || len(*conf.ID) == 0 {
+				return nil, fmt.Errorf("IP configuration of NIC %q was returned with no ID", ifaceName)
 			}
+			splitConfID := strings.Split(*conf.ID, "/")
+			name = splitConfID[len(splitConfID)-1]
+		}
 
-			if c.AssignPublicIP {
-				publicIPs, err := getIPAddressStrings(ctx, c, publicIPName(ifaceName))
-				if err != nil {
-					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
-				}
-				for _, ip := range publicIPs {
-					ipAddresses[ip] = v1.NodeExternalIP
-				}
-
-				publicIP6s, err := getIPAddressStrings(ctx, c, publicIPv6Name(ifaceName))
-				if err != nil {
-					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
-				}
-				for _, ip := range publicIP6s {
-					ipAddresses[ip] = v1.NodeExternalIP
-				}
-
-			}
-
-			internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
+		if c.AssignPublicIP {
+			publicIPs, err := getIPAddressStrings(ctx, c, publicIPName(ifaceName))
 			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
+				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
 			}
-			for _, ip := range internalIPs {
-				ipAddresses[ip] = v1.NodeInternalIP
+			for _, ip := range publicIPs {
+				ipAddresses[ip] = v1.NodeExternalIP
+			}
+
+			publicIP6s, err := getIPAddressStrings(ctx, c, publicIPv6Name(ifaceName))
+			if err != nil {
+				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+			}
+			for _, ip := range publicIP6s {
+				ipAddresses[ip] = v1.NodeExternalIP
 			}
 
 		}
+
+		internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
+		}
+		for _, ip := range internalIPs {
+			ipAddresses[ip] = v1.NodeInternalIP
+		}
+
 	}
 
 	return ipAddresses, nil
