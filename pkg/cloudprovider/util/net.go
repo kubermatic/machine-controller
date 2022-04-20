@@ -25,7 +25,7 @@ import (
 
 const (
 	ErrIPv6OnlyUnsupported  = "IPv6 only network family not supported yet"
-	ErrUnknownNetworkFamily = "Unknown network family %q only IPv4,IPv6,IPv4+IPv6 are valid values"
+	ErrUnknownNetworkFamily = "Unknown IP family %q only IPv4,IPv6,IPv4+IPv6 are valid values"
 )
 
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
@@ -60,14 +60,14 @@ func GenerateRandMAC() (net.HardwareAddr, error) {
 	return mac, nil
 }
 
-// NetworkFamily IPv4 | IPv6 | IPv4+IPv6
-type NetworkFamily string
+// IPFamily IPv4 | IPv6 | IPv4+IPv6
+type IPFamily string
 
 const (
-	Unspecified NetworkFamily = "" // interpreted as IPv4
-	IPv4        NetworkFamily = "IPv4"
-	IPv6        NetworkFamily = "IPv6"
-	DualStack   NetworkFamily = "IPv4+IPv6"
+	Unspecified IPFamily = "" // interpreted as IPv4
+	IPv4        IPFamily = "IPv4"
+	IPv6        IPFamily = "IPv6"
+	DualStack   IPFamily = "IPv4+IPv6"
 )
 
 // IsLinkLocal checks if given ip address is link local

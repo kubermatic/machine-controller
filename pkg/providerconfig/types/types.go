@@ -109,17 +109,17 @@ type DNSConfig struct {
 
 // NetworkConfig contains a machine's static network configuration
 type NetworkConfig struct {
-	CIDR          string             `json:"cidr"`
-	Gateway       string             `json:"gateway"`
-	DNS           DNSConfig          `json:"dns"`
-	NetworkFamily util.NetworkFamily `json:"networkFamily,omitempty"`
+	CIDR     string        `json:"cidr"`
+	Gateway  string        `json:"gateway"`
+	DNS      DNSConfig     `json:"dns"`
+	IPFamily util.IPFamily `json:"ipFamily,omitempty"`
 }
 
-func (n *NetworkConfig) GetNetworkFamily() util.NetworkFamily {
+func (n *NetworkConfig) GetIPFamily() util.IPFamily {
 	if n == nil {
 		return util.Unspecified
 	}
-	return n.NetworkFamily
+	return n.IPFamily
 }
 
 type Config struct {

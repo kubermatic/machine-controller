@@ -572,9 +572,9 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
 	}
 
-	netFamily := providerCfg.Network.GetNetworkFamily()
+	ipFamily := providerCfg.Network.GetIPFamily()
 	sku := network.PublicIPAddressSkuNameBasic
-	if netFamily == util.DualStack {
+	if ipFamily == util.DualStack {
 		// 1. Cannot specify basic sku PublicIp for an IPv6 network interface ipConfiguration.
 		// 2. Different basic sku and standard sku public Ip resources in availability set is not allowed.
 		// 1 & 2 means we have to use standard sku in dual-stack configuration.
@@ -598,7 +598,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 			return nil, fmt.Errorf("failed to create public IP: %v", err)
 		}
 
-		if netFamily == util.DualStack {
+		if ipFamily == util.DualStack {
 			publicIPv6, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create public IP: %v", err)
@@ -614,7 +614,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, err
 	}
 
-	iface, err := createOrUpdateNetworkInterface(context.TODO(), ifaceName(machine), machine.UID, config, publicIP, publicIPv6, netFamily)
+	iface, err := createOrUpdateNetworkInterface(context.TODO(), ifaceName(machine), machine.UID, config, publicIP, publicIPv6, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
 	}
@@ -1013,7 +1013,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return errors.New("subnetName is missing")
 	}
 
-	switch f := providerConfig.Network.GetNetworkFamily(); f {
+	switch f := providerConfig.Network.GetIPFamily(); f {
 	case util.Unspecified, util.IPv4:
 		//noop
 	case util.IPv6:

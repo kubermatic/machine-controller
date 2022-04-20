@@ -319,7 +319,7 @@ func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, 
 	return virtualNetworksClient.Get(ctx, c.VNetResourceGroup, c.VNetName, "")
 }
 
-func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *network.PublicIPAddress, netFamily util.NetworkFamily) (*network.Interface, error) {
+func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *network.PublicIPAddress, ipFamily util.IPFamily) (*network.Interface, error) {
 	ifClient, err := getInterfacesClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %v", err)
@@ -349,7 +349,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 		},
 	})
 
-	if netFamily == util.DualStack {
+	if ipFamily == util.DualStack {
 		*ifSpec.InterfacePropertiesFormat.IPConfigurations = append(*ifSpec.InterfacePropertiesFormat.IPConfigurations, network.InterfaceIPConfiguration{
 			Name: to.StringPtr("ip-config-2"),
 			InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
