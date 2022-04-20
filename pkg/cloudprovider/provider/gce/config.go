@@ -101,7 +101,7 @@ type config struct {
 	network               string
 	subnetwork            string
 	preemptible           bool
-	automaticRestart      bool
+	automaticRestart      *bool
 	provisioningModel     string
 	labels                map[string]string
 	tags                  []string
@@ -169,15 +169,16 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
 	}
 
-	cfg.automaticRestart = !cfg.preemptible
+	cfg.automaticRestart = nil
 	if cpSpec.AutomaticRestart != nil {
-		cfg.automaticRestart, _, err = resolver.GetConfigVarBoolValue(*cpSpec.AutomaticRestart)
+		var automaticRestart, _, err = resolver.GetConfigVarBoolValue(*cpSpec.AutomaticRestart)
 		if err != nil {
 			return nil, fmt.Errorf("cannot retrieve automaticRestart: %v", err)
 		}
+		cfg.automaticRestart = &automaticRestart
 	}
 
-	cfg.provisioningModel = "STANDARD"
+	cfg.provisioningModel = ""
 	if cpSpec.ProvisioningModel != nil {
 		cfg.provisioningModel, err = resolver.GetConfigVarStringValue(*cpSpec.ProvisioningModel)
 		if err != nil {
