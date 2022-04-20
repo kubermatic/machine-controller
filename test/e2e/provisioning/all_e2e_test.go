@@ -814,7 +814,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "amzn2", "rockylinux"))
+	selector := Not(OsSelector("sles", "amzn2"))
 	params := getVSphereTestParams(t)
 
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
