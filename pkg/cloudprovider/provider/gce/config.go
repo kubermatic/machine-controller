@@ -102,7 +102,7 @@ type config struct {
 	subnetwork            string
 	preemptible           bool
 	automaticRestart      *bool
-	provisioningModel     string
+	provisioningModel     *string
 	labels                map[string]string
 	tags                  []string
 	jwtConfig             *jwt.Config
@@ -169,21 +169,24 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
 	}
 
-	cfg.automaticRestart = nil
 	if cpSpec.AutomaticRestart != nil {
-		var automaticRestart, _, err = resolver.GetConfigVarBoolValue(*cpSpec.AutomaticRestart)
+		automaticRestart, _, err := resolver.GetConfigVarBoolValue(*cpSpec.AutomaticRestart)
 		if err != nil {
 			return nil, fmt.Errorf("cannot retrieve automaticRestart: %v", err)
 		}
 		cfg.automaticRestart = &automaticRestart
+
+		if *cfg.automaticRestart && cfg.preemptible {
+			return nil, fmt.Errorf("automatic restart option can only be enabled for standard instances. Preemptible instances cannot be automatically restarted")
+		}
 	}
 
-	cfg.provisioningModel = ""
 	if cpSpec.ProvisioningModel != nil {
-		cfg.provisioningModel, err = resolver.GetConfigVarStringValue(*cpSpec.ProvisioningModel)
+		provisioningModel, err := resolver.GetConfigVarStringValue(*cpSpec.ProvisioningModel)
 		if err != nil {
 			return nil, fmt.Errorf("cannot retrieve provisioningModel: %v", err)
 		}
+		cfg.provisioningModel = &provisioningModel
 	}
 
 	// make it true by default
