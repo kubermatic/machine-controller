@@ -44,6 +44,7 @@ func testProviderSpec() map[string]interface{} {
 			"multizone":             false,
 			"network":               "global/networks/default",
 			"preemptible":           false,
+			"provisioningModel":     "STANDARD",
 			"regional":              false,
 			"serviceAccount":        "",
 			"subnetwork":            "",

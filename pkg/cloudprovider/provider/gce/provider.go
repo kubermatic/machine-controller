@@ -288,6 +288,15 @@ func (p *Provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 			Items: cfg.tags,
 		},
 	}
+
+	if cfg.automaticRestart != nil {
+		inst.Scheduling.AutomaticRestart = cfg.automaticRestart
+	}
+
+	if cfg.provisioningModel != nil {
+		inst.Scheduling.ProvisioningModel = *cfg.provisioningModel
+	}
+
 	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
