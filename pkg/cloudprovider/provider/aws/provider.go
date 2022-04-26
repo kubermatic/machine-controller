@@ -362,6 +362,7 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 	return "", fmt.Errorf("no default root path found for %s operating system", os)
 }
 
+//gocyclo:ignore
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error) {
 	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
