@@ -363,10 +363,6 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error) {
-	if provSpec.Value == nil {
-		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
-	}
-
 	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
@@ -848,7 +844,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 		return false, err
 	}
 
-	//(*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error)
+	// (*Config, *providerconfigtypes.Config, *awstypes.RawConfig, error)
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 
 	if err != nil {

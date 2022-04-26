@@ -54,7 +54,6 @@ type UserDataRequest struct {
 	KubeletFeatureGates      map[string]bool
 	KubeletConfigs           map[string]string
 	ContainerRuntime         containerruntime.Config
-	PodCIDRs                 []string
 	NodePortRange            string
 }
 
