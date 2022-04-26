@@ -398,7 +398,6 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
 		bs.opt.useOSM,
-		bs.opt.podCIDRs,
 		bs.opt.nodePortRange,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)
