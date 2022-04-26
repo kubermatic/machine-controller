@@ -221,7 +221,7 @@ func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*co
 	return &ref, nil
 }
 
-// New returns a digitalocean provider
+// New returns a new azure provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
