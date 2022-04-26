@@ -79,7 +79,7 @@ var (
 	nodeRegistryMirrors           string
 	nodePauseImage                string
 	nodeContainerRuntime          string
-	podCIDRs                      string
+	podCIDR                       string
 	nodePortRange                 string
 	nodeRegistryCredentialsSecret string
 	nodeContainerdRegistryMirrors = containerruntime.RegistryMirrorsFlags{}
@@ -127,9 +127,6 @@ type controllerRunOptions struct {
 
 	useOSM bool
 
-	// Assigns the POD networks that will be allocated.
-	podCIDRs []string
-
 	// A port range to reserve for services with NodePort visibility
 	nodePortRange string
 }
@@ -140,7 +137,7 @@ func main() {
 	klog.InitFlags(nil)
 	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
 	// we have to guard it
-	//TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
+	// TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
 	if flag.Lookup("kubeconfig") == nil {
 		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	}
@@ -166,7 +163,7 @@ func main() {
 	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
-	flag.StringVar(&podCIDRs, "pod-cidr", "172.25.0.0/16", "Comma separated network ranges from which POD networks are allocated. Example: 172.25.0.0/16,fd00::/104")
+	flag.StringVar(&podCIDR, "pod-cidr", "172.25.0.0/16", "WARNING: flag is unused, kept only for backwards compatibility")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
@@ -266,7 +263,6 @@ func main() {
 			ContainerRuntime:             containerRuntimeConfig,
 		},
 		useOSM:        useOSM,
-		podCIDRs:      strings.Split(podCIDRs, ","),
 		nodePortRange: nodePortRange,
 	}
 
@@ -402,7 +398,6 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
 		bs.opt.useOSM,
-		bs.opt.podCIDRs,
 		bs.opt.nodePortRange,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)

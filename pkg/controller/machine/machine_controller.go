@@ -118,7 +118,6 @@ type Reconciler struct {
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
 	useOSM        bool
-	podCIDRs      []string
 	nodePortRange string
 }
 
@@ -176,7 +175,6 @@ func Add(
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
 	useOSM bool,
-	podCIDRs []string,
 	nodePortRange string,
 ) error {
 	reconciler := &Reconciler{
@@ -195,7 +193,6 @@ func Add(
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
 		useOSM:        useOSM,
-		podCIDRs:      podCIDRs,
 		nodePortRange: nodePortRange,
 	}
 	m, err := userdatamanager.New()
@@ -426,7 +423,7 @@ func (r *Reconciler) reconcile(ctx context.Context, machine *clusterv1alpha1.Mac
 
 	node, err := r.getNodeByNodeRef(ctx, machine.Status.NodeRef)
 	if err != nil {
-		//In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
+		// In case we cannot find a node for the NodeRef we must remove the NodeRef & recreate an instance on the next sync
 		if kerrors.IsNotFound(err) {
 			klog.V(3).Infof("found invalid NodeRef on machine %s. Deleting reference...", machine.Name)
 			return nil, r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
@@ -803,7 +800,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				NoProxy:                  r.nodeSettings.NoProxy,
 				HTTPProxy:                r.nodeSettings.HTTPProxy,
 				ContainerRuntime:         crRuntime,
-				PodCIDRs:                 r.podCIDRs,
 				NodePortRange:            r.nodePortRange,
 			}
 

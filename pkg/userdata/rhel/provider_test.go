@@ -283,7 +283,6 @@ func TestUserDataGeneration(t *testing.T) {
 				PauseImage:               test.pauseImage,
 				KubeletFeatureGates:      kubeletFeatureGates,
 				ContainerRuntime:         containerRuntimeConfig,
-				PodCIDRs:                 []string{"172.25.0.0/16", "fd00::/104"},
 			}
 			s, err := provider.UserData(req)
 			if err != nil {
