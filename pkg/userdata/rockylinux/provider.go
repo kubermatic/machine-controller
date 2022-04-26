@@ -57,7 +57,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		req.CloudConfig = *pconfig.OverwriteCloudConfig
 	}
 
-	if pconfig.Network != nil {
+	if pconfig.Network.IsStaticIPConfig() {
 		return "", errors.New("static IP config is not supported with RockyLinux")
 	}
 

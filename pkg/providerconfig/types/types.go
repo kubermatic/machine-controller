@@ -115,6 +115,15 @@ type NetworkConfig struct {
 	IPFamily util.IPFamily `json:"ipFamily,omitempty"`
 }
 
+func (n *NetworkConfig) IsStaticIPConfig() bool {
+	if n == nil {
+		return false
+	}
+	return n.CIDR != "" ||
+		n.Gateway != "" ||
+		len(n.DNS.Servers) != 0
+}
+
 func (n *NetworkConfig) GetIPFamily() util.IPFamily {
 	if n == nil {
 		return util.Unspecified
