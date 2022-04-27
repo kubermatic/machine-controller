@@ -26,7 +26,7 @@ export GIT_TAG ?= $(shell git tag --points-at HEAD)
 
 export GOFLAGS?=-mod=readonly -trimpath
 
-REGISTRY ?= docker.io
+REGISTRY ?= quay.io
 REGISTRY_NAMESPACE ?= kubermatic
 
 LDFLAGS ?= -ldflags '-s -w'
