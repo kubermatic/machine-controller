@@ -394,7 +394,12 @@ write_files:
       cpu: 200m
       ephemeral-storage: 1Gi
       memory: 200Mi
-    logging: {}
+    logging:
+      flushFrequency: 0
+      options:
+        json:
+          infoBufferSize: "0"
+      verbosity: 0
     memorySwap: {}
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s
