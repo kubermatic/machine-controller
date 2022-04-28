@@ -322,7 +322,7 @@ write_files:
   encoding: b64
   content: |
     {{ .BootstrapKubeconfig }}
-{{- if and (eq .ProviderSpec.CloudProvider "openstack") (eq .ProviderSpec.OperatingSystem "centos") }}
+{{- if and (eq .ProviderSpec.CloudProvider "openstack") (or (eq .ProviderSpec.OperatingSystem "centos") (eq .ProviderSpec.OperatingSystem "rhel")) }}
 {{- /*  The normal way of setting it via cloud-init is broken, see */}}
 {{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
 - path: /etc/hostname
