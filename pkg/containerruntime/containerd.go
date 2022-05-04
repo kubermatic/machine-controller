@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	LegacyContainerdVersion  = "1.4"
 	DefaultContainerdVersion = "1.5"
 )
 
@@ -60,6 +61,11 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 
 	if eng.version != "" {
 		args.ContainerdVersion = eng.version
+	}
+
+	// Amazon Linux 2 does not have containerd 1.5
+	if eng.version == "" && os == types.OperatingSystemAmazonLinux2 {
+		args.ContainerdVersion = LegacyContainerdVersion
 	}
 
 	switch os {
