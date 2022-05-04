@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	DefaultContainerdVersion = "1.4"
+	DefaultContainerdVersion = "1.5"
 )
 
 type Containerd struct {
@@ -35,6 +35,7 @@ type Containerd struct {
 	registryMirrors     map[string][]string
 	sandboxImage        string
 	registryCredentials map[string]AuthConfig
+	version             string
 }
 
 func (eng *Containerd) ConfigFileName() string {
@@ -55,6 +56,10 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 		ContainerdVersion string
 	}{
 		ContainerdVersion: DefaultContainerdVersion,
+	}
+
+	if eng.version != "" {
+		args.ContainerdVersion = eng.version
 	}
 
 	switch os {
