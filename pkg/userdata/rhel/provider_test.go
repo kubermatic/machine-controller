@@ -137,6 +137,25 @@ func TestUserDataGeneration(t *testing.T) {
 			externalCloudProvider: true,
 		},
 		{
+			name: "kubelet-v1.24-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.24.0",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.24-aws-external",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.24.0",
+				},
+			},
+			externalCloudProvider: true,
+		},
+		{
 			name: "kubelet-v1.23-vsphere",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},

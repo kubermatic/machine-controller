@@ -129,6 +129,7 @@ func simpleVersionTests() []userDataTestCase {
 		semver.MustParse("v1.21.10"),
 		semver.MustParse("v1.22.7"),
 		semver.MustParse("v1.23.5"),
+		semver.MustParse("v1.24.0"),
 	}
 
 	var tests []userDataTestCase
