@@ -96,7 +96,7 @@ write_files:
     EnvironmentFile=-/etc/environment
     EOF
 
-    yum install -y containerd.io-1.4* yum-plugin-versionlock
+    yum install -y containerd.io-1.5* yum-plugin-versionlock
     yum versionlock add containerd.io
 
     systemctl daemon-reload
@@ -220,7 +220,6 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
       --cloud-provider=external \
       --hostname-override=${KUBELET_HOSTNAME} \

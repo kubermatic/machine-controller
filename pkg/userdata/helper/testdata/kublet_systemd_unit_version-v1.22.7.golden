@@ -24,13 +24,13 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
   --kubeconfig=/var/lib/kubelet/kubeconfig \
   --config=/etc/kubernetes/kubelet.conf \
-  --network-plugin=cni \
   --cert-dir=/etc/kubernetes/pki \
   --hostname-override=some-test-node \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
   --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
   --feature-gates=DynamicKubeletConfig=true \
+  --network-plugin=cni \
   --node-ip ${KUBELET_NODE_IP}
 
 [Install]

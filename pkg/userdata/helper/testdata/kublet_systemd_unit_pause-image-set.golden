@@ -24,13 +24,13 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
   --kubeconfig=/var/lib/kubelet/kubeconfig \
   --config=/etc/kubernetes/kubelet.conf \
-  --network-plugin=cni \
   --cert-dir=/etc/kubernetes/pki \
   --cloud-provider=aws \
   --cloud-config=/etc/kubernetes/cloud-config \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
   --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
+  --network-plugin=cni \
   --node-ip ${KUBELET_NODE_IP}
 
 [Install]
