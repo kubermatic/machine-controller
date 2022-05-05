@@ -109,7 +109,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion:                 kubeletVersion.String(),
 		Kubeconfig:                     kubeconfigString,
 		KubernetesCACert:               kubernetesCACert,
-		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
+		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(pconfig.Network.GetIPFamily()),
 		ExtraKubeletFlags:              crEngine.KubeletFlags(),
 		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
 		ContainerRuntimeConfig:         crConfig,

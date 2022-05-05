@@ -19,6 +19,7 @@ package helper
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"strings"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -159,14 +160,29 @@ NO_PROXY=%s
 no_proxy=%s`, proxy, proxy, proxy, proxy, noProxy, noProxy)
 }
 
-func SetupNodeIPEnvScript() string {
+func SetupNodeIPEnvScript(ipFamily util.IPFamily) string {
+	var defaultIfcIP string
+	switch ipFamily {
+	case util.Unspecified, util.IPv4:
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
+	case util.IPv6:
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")`
+	case util.DualStack:
+		defaultIfcIP = `
+DEFAULT_IFC_IP=$(ip -o route get  1:: | grep -oP "src \K\S+")
+DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
+DEFAULT_IFC_IP=$DEFAULT_IFC_IP,$DEFAULT_IFC_IP6
+`
+	default:
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
+	}
 	return `#!/usr/bin/env bash
 echodate() {
   echo "[$(date -Is)]" "$@"
 }
 
 # get the default interface IP address
-DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
+` + defaultIfcIP + `
 
 # get the full hostname
 FULL_HOSTNAME=$(hostname -f)
