@@ -184,6 +184,15 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			cloudProviderName: stringPtr("nutanix"),
 		},
+		{
+			name: "kubelet-v1.24-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.24.0",
+				},
+			},
+		},
 	}
 
 	defaultCloudProvider := &fakeCloudConfigProvider{

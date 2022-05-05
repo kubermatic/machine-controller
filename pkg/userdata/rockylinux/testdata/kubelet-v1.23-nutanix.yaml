@@ -228,7 +228,6 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
       --cloud-provider=nutanix \
       --cloud-config=/etc/kubernetes/cloud-config \
@@ -237,6 +236,7 @@ write_files:
       --lock-file=/tmp/kubelet.lock \
       --container-runtime=docker \
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
+      --network-plugin=cni \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]

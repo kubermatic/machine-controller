@@ -118,7 +118,6 @@ coreos:
         --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
         --kubeconfig=/var/lib/kubelet/kubeconfig \
         --config=/etc/kubernetes/kubelet.conf \
-        --network-plugin=cni \
         --cert-dir=/etc/kubernetes/pki \
         --cloud-provider=anexia \
         --cloud-config=/etc/kubernetes/cloud-config \
@@ -129,6 +128,7 @@ coreos:
         --container-runtime-endpoint=unix:///var/run/dockershim.sock \
         --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
         --feature-gates=DynamicKubeletConfig=true \
+        --network-plugin=cni \
         --node-ip ${KUBELET_NODE_IP}
 
       [Install]
