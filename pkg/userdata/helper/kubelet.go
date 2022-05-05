@@ -104,8 +104,8 @@ ExecStart=/opt/bin/health-monitor.sh container-runtime
 WantedBy=multi-user.target`
 )
 
-const cpFlags = `--cloud-provider=%s \
---cloud-config=/etc/kubernetes/cloud-config`
+// TODO: remove ... maybe already removed by the update
+const cpFlags = `--cloud-config=/etc/kubernetes/cloud-config`
 
 // List of allowed TLS cipher suites for kubelet
 var kubeletTLSCipherSuites = []string{
@@ -131,7 +131,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 	if external {
 		return "--cloud-provider=external", nil
 	}
-	return fmt.Sprintf(cpFlags, cpName), nil
+	return cpFlags, nil
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet
