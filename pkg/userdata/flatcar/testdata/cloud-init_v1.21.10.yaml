@@ -4,10 +4,25 @@ users:
 - name: core
   ssh_authorized_keys:
   - ssh-rsa AAABBB
+  - ssh-rsa CCCDDD
 
 
 coreos:
   units:
+  - name: static-nic.network
+    content: |
+      [Match]
+      # Because of difficulty predicting specific NIC names on different cloud providers,
+      # we only support static addressing on VSphere. There should be a single NIC attached
+      # that we will match by name prefix 'en' which denotes ethernet devices.
+      Name=en*
+
+      [Network]
+      DHCP=no
+      Address=192.168.81.4/24
+      Gateway=192.168.81.1
+      DNS=8.8.8.8
+
   - name: update-engine.service
     command: stop
     mask: true
@@ -80,8 +95,8 @@ coreos:
         After=download-script.service
     content: |
       [Unit]
-      After=containerd.service
-      Requires=containerd.service
+      After=docker.service
+      Requires=docker.service
 
       Description=kubelet: The Kubernetes Node Agent
       Documentation=https://kubernetes.io/docs/home/
@@ -105,11 +120,13 @@ coreos:
         --config=/etc/kubernetes/kubelet.conf \
         --network-plugin=cni \
         --cert-dir=/etc/kubernetes/pki \
+        --cloud-provider=anexia \
+        --cloud-config=/etc/kubernetes/cloud-config \
         --hostname-override=node1 \
         --exit-on-lock-contention \
         --lock-file=/tmp/kubelet.lock \
-        --container-runtime=remote \
-        --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+        --container-runtime=docker \
+        --container-runtime-endpoint=unix:///var/run/dockershim.sock \
         --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
         --feature-gates=DynamicKubeletConfig=true \
         --node-ip ${KUBELET_NODE_IP}
@@ -301,7 +318,7 @@ write_files:
 - path: /etc/kubernetes/cloud-config
   permissions: "0400"
   content: |
-
+    {anexia-config:true}
 
 - path: /etc/kubernetes/pki/ca.crt
   permissions: "0644"
@@ -423,18 +440,8 @@ write_files:
     fi
 
 
-    mkdir -p /etc/systemd/system/containerd.service.d
-
-    cat <<EOF | tee /etc/systemd/system/containerd.service.d/10-machine-controller.conf
-    [Service]
-    Restart=always
-    Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
-    ExecStart=
-    ExecStart=/usr/bin/env PATH=\${TORCX_BINDIR}:\${PATH} \${TORCX_BINDIR}/containerd --config \${CONTAINERD_CONFIG}
-    EOF
-
     systemctl daemon-reload
-    systemctl enable --now containerd
+    systemctl enable --now docker
 
     systemctl disable download-script.service
 
@@ -457,28 +464,11 @@ write_files:
     CASignatureAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519,rsa-sha2-512,rsa-sha2-256,ssh-rsa
   append: true
 
-- path: /etc/containerd/config.toml
+- path: /etc/docker/daemon.json
   permissions: "0644"
   user: root
   content: |
-    version = 2
-
-    [metrics]
-    address = "127.0.0.1:1338"
-
-    [plugins]
-    [plugins."io.containerd.grpc.v1.cri"]
-    [plugins."io.containerd.grpc.v1.cri".containerd]
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-    runtime_type = "io.containerd.runc.v2"
-    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-    SystemdCgroup = true
-    [plugins."io.containerd.grpc.v1.cri".registry]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-    endpoint = ["https://registry-1.docker.io"]
-
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"}}
 
 - path: /etc/crictl.yaml
   permissions: "0644"
