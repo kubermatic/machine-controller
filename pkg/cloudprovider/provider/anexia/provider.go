@@ -484,7 +484,7 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 
 func getClient(token string) (anxclient.Client, error) {
 	tokenOpt := anxclient.TokenFromString(token)
-	client := anxclient.HTTPClient(&http.Client{Timeout: 30 * time.Second})
+	client := anxclient.HTTPClient(&http.Client{Timeout: 120 * time.Second})
 	return anxclient.New(tokenOpt, client)
 }
 
