@@ -31,7 +31,6 @@ Currently supported K8S versions are:
 - 1.23
 - 1.22
 - 1.21
-- 1.20
 
 ## What does not work
 - Master creation (Not planned at the moment)
