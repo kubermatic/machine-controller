@@ -131,7 +131,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 	if external {
 		return "--cloud-provider=external", nil
 	}
-	return fmt.Sprintf(cpFlags, cpName),, nil
+	return fmt.Sprintf(cpFlags, cpName), nil
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet
