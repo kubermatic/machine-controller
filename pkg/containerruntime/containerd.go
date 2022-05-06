@@ -63,13 +63,10 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 		args.ContainerdVersion = eng.version
 	}
 
-	// Amazon Linux 2 does not have containerd 1.5
-	if eng.version == "" && os == types.OperatingSystemAmazonLinux2 {
-		args.ContainerdVersion = LegacyContainerdVersion
-	}
-
 	switch os {
 	case types.OperatingSystemAmazonLinux2:
+		// Amazon Linux 2 does not have containerd 1.5
+		args.ContainerdVersion = LegacyContainerdVersion
 		err := containerdAmzn2Template.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL, types.OperatingSystemRockyLinux:
