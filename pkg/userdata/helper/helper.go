@@ -161,24 +161,26 @@ no_proxy=%s`, proxy, proxy, proxy, proxy, noProxy, noProxy)
 }
 
 func SetupNodeIPEnvScript(ipFamily util.IPFamily) string {
+	const defaultIfcIPv4 = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
+
 	var defaultIfcIP string
 	switch ipFamily {
 	case util.Unspecified, util.IPv4:
-		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
+		defaultIfcIP = defaultIfcIPv4
 	case util.IPv6:
 		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")`
 	case util.DualStack:
 		//  NOTE: This case is not supported unless we remove deprecated
 		// --cloud-provider, --cloud-config flags and migrate to external
 		// CCM. Till then we use IPv4 address for dualstack.
-		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
+		defaultIfcIP = defaultIfcIPv4
 		//		defaultIfcIP = `
 		//DEFAULT_IFC_IP=$(ip -o route get  1 | grep -oP "src \K\S+")
 		//DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
 		//DEFAULT_IFC_IP=$DEFAULT_IFC_IP,$DEFAULT_IFC_IP6
 		//`
 	default:
-		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
+		defaultIfcIP = defaultIfcIPv4
 	}
 	return `#!/usr/bin/env bash
 echodate() {
