@@ -122,6 +122,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 	case cfg.Docker != nil:
 		return docker
 	case cfg.Containerd != nil:
+		containerd.version = LegacyContainerdVersion
 		return containerd
 	}
 
