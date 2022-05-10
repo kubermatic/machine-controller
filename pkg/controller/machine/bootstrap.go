@@ -248,12 +248,6 @@ fi
 yum install epel-release -y
 {{- end }}
 
-{{- if and (eq .ProviderSpec.CloudProvider "azure") (eq .ProviderSpec.OperatingSystem "rhel") }}
-yum --disablerepo='*' remove -y 'rhui-azure-rhel8'
-wget https://rhelimage.blob.core.windows.net/repositories/rhui-microsoft-azure-rhel8.config
-yum --config=rhui-microsoft-azure-rhel8.config install -y rhui-azure-rhel8
-{{- end }}
-
 yum install -y curl jq
 
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg

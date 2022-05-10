@@ -142,8 +142,8 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 	providerconfigtypes.OperatingSystemRHEL: {
 		Publisher: to.StringPtr("RedHat"),
 		Offer:     to.StringPtr("rhel-byos"),
-		Sku:       to.StringPtr("rhel-lvm83"),
-		Version:   to.StringPtr("8.3.20201109"),
+		Sku:       to.StringPtr("rhel-lvm85"),
+		Version:   to.StringPtr("8.5.20220316"),
 	},
 	providerconfigtypes.OperatingSystemFlatcar: {
 		Publisher: to.StringPtr("kinvolk"),
@@ -166,7 +166,7 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 		Product:   pointer.StringPtr("flatcar-container-linux"),
 	},
 	providerconfigtypes.OperatingSystemRHEL: {
-		Name:      pointer.StringPtr("rhel-lvm83"),
+		Name:      pointer.StringPtr("rhel-lvm85"),
 		Publisher: pointer.StringPtr("redhat"),
 		Product:   pointer.StringPtr("rhel-byos"),
 	},
