@@ -76,7 +76,8 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 		err := dockerAptTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemFlatcar:
-		return "", nil
+		err := dockerFlatcarTemplate.Execute(&buf, args)
+		return buf.String(), err
 	case types.OperatingSystemSLES:
 		return "", nil
 	}
@@ -85,6 +86,11 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 }
 
 var (
+	dockerFlatcarTemplate = template.Must(template.New("docker-flatcar").Parse(`
+systemctl daemon-reload
+systemctl enable --now docker
+`))
+
 	dockerAmazonTemplate = template.Must(template.New("docker-yum-amzn2").Parse(`
 mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
 

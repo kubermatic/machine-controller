@@ -278,6 +278,7 @@ func main() {
 				nodeContainerRuntime,
 				containerruntime.WithInsecureRegistries(insecureRegistries),
 				containerruntime.WithRegistryMirrors(registryMirrors),
+				containerruntime.WithSandboxImage(nodePauseImage),
 				containerruntime.WithNodeMaxLogSize(nodeMaxLogSize),
 			),
 		},

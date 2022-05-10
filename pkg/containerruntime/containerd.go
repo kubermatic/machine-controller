@@ -32,10 +32,11 @@ const (
 type Containerd struct {
 	insecureRegistries []string
 	registryMirrors    []string
+	sandboxImage       string
 }
 
 func (eng *Containerd) Config() (string, error) {
-	return helper.ContainerdConfig(eng.insecureRegistries, eng.registryMirrors)
+	return helper.ContainerdConfig(eng.insecureRegistries, eng.registryMirrors, eng.sandboxImage)
 }
 
 func (eng *Containerd) ConfigFileName() string {
@@ -69,7 +70,8 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 		err := containerdAptTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemFlatcar:
-		return "", nil
+		err := containedFlatcarTemplate.Execute(&buf, args)
+		return buf.String(), err
 	case types.OperatingSystemSLES:
 		return "", nil
 	}
@@ -78,6 +80,21 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 }
 
 var (
+	containedFlatcarTemplate = template.Must(template.New("containerd-flatcar").Parse(`
+mkdir -p /etc/systemd/system/containerd.service.d
+
+cat <<EOF | tee /etc/systemd/system/containerd.service.d/10-machine-controller.conf
+[Service]
+Restart=always
+Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
+ExecStart=
+ExecStart=/usr/bin/env PATH=\${TORCX_BINDIR}:\${PATH} \${TORCX_BINDIR}/containerd --config \${CONTAINERD_CONFIG}
+EOF
+
+systemctl daemon-reload
+systemctl enable --now containerd
+`))
+
 	containerdAmzn2Template = template.Must(template.New("containerd-yum-amzn2").Parse(`
 mkdir -p /etc/systemd/system/containerd.service.d
 
