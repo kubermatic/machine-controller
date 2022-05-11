@@ -91,10 +91,12 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 		Script        string
 		Service       string
 		SSHPublicKeys []string
+		plugin.UserDataRequest
 	}{
-		Script:        script.String(),
-		Service:       bootstrapServiceContentTemplate,
-		SSHPublicKeys: sshPublicKeys,
+		Script:          script.String(),
+		Service:         bootstrapServiceContentTemplate,
+		SSHPublicKeys:   sshPublicKeys,
+		UserDataRequest: req,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute ignitionTemplate template: %v", err)
@@ -106,24 +108,46 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 // getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
 func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
 	data := struct {
-		Token       string
-		SecretName  string
-		ServerURL   string
-		MachineName string
+		Token           string
+		SecretName      string
+		ServerURL       string
+		MachineName     string
+		EnterpriseLinux bool
 	}{
 		Token:       token,
 		SecretName:  secretName,
 		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
 		MachineName: req.MachineSpec.Name,
 	}
-	bsScript, err := template.New("bootstrap-cloud-init").Parse(bootstrapBinContentTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse bootstrapBinContentTemplate template: %v", err)
+
+	var (
+		bsScript *template.Template
+		err      error
+	)
+
+	switch pconfig.OperatingSystem {
+	case providerconfigtypes.OperatingSystemUbuntu:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapAptBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapAptBinContentTemplate template: %v", err)
+		}
+	case providerconfigtypes.OperatingSystemCentOS:
+		data.EnterpriseLinux = true
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+		}
+	case providerconfigtypes.OperatingSystemAmazonLinux2:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+		}
 	}
+
 	script := &bytes.Buffer{}
 	err = bsScript.Execute(script, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template: %v", err)
+		return "", fmt.Errorf("failed to execute bootstrap script template: %v", err)
 	}
 	bsCloudInit, err := template.New("bootstrap-cloud-init").Parse(cloudInitTemplate)
 	if err != nil {
@@ -170,9 +194,24 @@ func useIgnition(p *providerconfigtypes.Config) bool {
 }
 
 const (
-	bootstrapBinContentTemplate = `#!/bin/bash
+	bootstrapAptBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
 apt update && apt install -y curl jq
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+cloud-init clean
+cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
+systemctl daemon-reload
+systemctl restart setup.service
+systemctl restart kubelet.service
+systemctl restart kubelet-healthcheck.service
+	`
+
+	bootstrapYumBinContentTemplate = `#!/bin/bash
+set -xeuo pipefail
+{{- if .EnterpriseLinux }}
+yum install epel-release -y
+{{- end }}
+yum install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
@@ -199,7 +238,7 @@ ExecStart=/opt/bin/bootstrap
 hostname: {{ .MachineSpec.Name }}
 {{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
 {{ end }}
-ssh_pwauth: no
+ssh_pwauth: false
 
 {{- if .ProviderSpec.SSHPublicKeys }}
 ssh_authorized_keys:
@@ -251,6 +290,14 @@ storage:
     contents:
       inline: |
 {{ .Script | indent 10}}
+{{ if ne .CloudProviderName "aws" }}
+{{- /* Never set the hostname on AWS nodes. Kubernetes(kube-proxy) requires the hostname to be the private dns name */}}
+  - path: /etc/hostname
+    mode: 0600
+    filesystem: root
+    contents:
+      inline: '{{ .MachineSpec.Name }}'
+{{ end }}
 systemd:
   units:
   - name: bootstrap.service
