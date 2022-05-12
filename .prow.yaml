@@ -160,7 +160,7 @@ presubmits:
       preset-hetzner: "true"
       preset-openstack: "true"
       preset-vsphere: "true"
-      preset-kubevirt: "true"
+      preset-kkp-kubevirt: "true"
       preset-alibaba: "true"
       preset-goproxy: "true"
     spec:
@@ -182,7 +182,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     max_concurrency: 1
     labels:
-      preset-kubevirt: "true"
+      preset-kkp-kubevirt: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
