@@ -236,6 +236,7 @@ write_files:
     echo IPV6INIT=yes >> /etc/sysconfig/network-scripts/ifcfg-eth0
     echo DHCPV6C=yes >> /etc/sysconfig/network-scripts/ifcfg-eth0
     sudo ifdown eth0 && sudo ifup eth0
+
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
