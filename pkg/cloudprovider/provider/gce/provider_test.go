@@ -157,20 +157,6 @@ func TestValidate(t *testing.T) {
 			},
 			false,
 		},
-		{
-			"with unsupported zone",
-			v1alpha1.MachineSpec{
-				ProviderSpec: v1alpha1.ProviderSpec{
-					Value: &runtime.RawExtension{
-						Raw: rawBytes(testMap(testProviderSpec()).
-							with("network.ipFamily", "IPv4+IPv6").
-							with("cloudProviderSpec.zone", "europe-west3-a"),
-						),
-					},
-				},
-			},
-			true,
-		},
 	}
 
 	for _, test := range tests {
