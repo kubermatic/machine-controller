@@ -17,6 +17,7 @@ limitations under the License.
 package containerruntime
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"text/template"
@@ -36,6 +37,7 @@ type Docker struct {
 	registryMirrors      []string
 	containerLogMaxFiles string
 	containerLogMaxSize  string
+	registryCredentials  map[string]AuthConfig
 }
 
 func (eng *Docker) Config() (string, error) {
@@ -44,6 +46,20 @@ func (eng *Docker) Config() (string, error) {
 
 func (eng *Docker) ConfigFileName() string {
 	return "/etc/docker/daemon.json"
+}
+
+func (eng *Docker) AuthConfig() (string, error) {
+	config := struct {
+		Auths map[string]AuthConfig `json:"auths,omitempty"`
+	}{
+		Auths: eng.registryCredentials,
+	}
+	b, err := json.MarshalIndent(config, "", "  ")
+	return string(b), err
+}
+
+func (eng *Docker) AuthConfigFileName() string {
+	return "/root/.docker/config.json"
 }
 
 func (eng *Docker) KubeletFlags() []string {

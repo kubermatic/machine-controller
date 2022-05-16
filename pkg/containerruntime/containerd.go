@@ -43,6 +43,14 @@ func (eng *Containerd) ConfigFileName() string {
 	return "/etc/containerd/config.toml"
 }
 
+func (eng *Containerd) AuthConfig() (string, error) {
+	return "", nil
+}
+
+func (eng *Containerd) AuthConfigFileName() string {
+	return ""
+}
+
 func (eng *Containerd) KubeletFlags() []string {
 	return []string{
 		"--container-runtime=remote",

@@ -32,6 +32,8 @@ type Engine interface {
 	ScriptFor(os types.OperatingSystem) (string, error)
 	ConfigFileName() string
 	Config() (string, error)
+	AuthConfigFileName() string
+	AuthConfig() (string, error)
 	String() string
 }
 
@@ -105,6 +107,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		registryMirrors:      cfg.RegistryMirrors["docker.io"],
 		containerLogMaxFiles: cfg.ContainerLogMaxFiles,
 		containerLogMaxSize:  cfg.ContainerLogMaxSize,
+		registryCredentials:  cfg.RegistryCredentials,
 	}
 
 	containerd := &Containerd{
