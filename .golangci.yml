@@ -29,6 +29,7 @@ linters:
     - misspell
     - noctx
     - nolintlint
+    - nosprintfhostport
     - revive
     - structcheck
     - unconvert

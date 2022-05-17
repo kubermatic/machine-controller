@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -109,7 +110,7 @@ func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*
 	if port == nil {
 		return nil, errors.New("no secure port in the subset")
 	}
-	url := fmt.Sprintf("https://%s:%d", ip.String(), port.Port)
+	url := fmt.Sprintf("https://%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port.Port))))
 
 	caData, err := getCAData(p.clientConfig)
 	if err != nil {
