@@ -81,7 +81,7 @@ func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigty
 		secret := &corev1.Secret{}
 		name := types.NamespacedName{Namespace: configVar.SecretKeyRef.Namespace, Name: configVar.SecretKeyRef.Name}
 		if err := cvr.client.Get(cvr.ctx, name, secret); err != nil {
-			return "", fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%v'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, err)
+			return "", fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%w'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, err)
 		}
 		if val, ok := secret.Data[configVar.SecretKeyRef.Key]; ok {
 			return string(val), nil
@@ -94,7 +94,7 @@ func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigty
 		configMap := &corev1.ConfigMap{}
 		name := types.NamespacedName{Namespace: configVar.ConfigMapKeyRef.Namespace, Name: configVar.ConfigMapKeyRef.Name}
 		if err := cvr.client.Get(cvr.ctx, name, configMap); err != nil {
-			return "", fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%v'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
+			return "", fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%w'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
 		}
 		if val, ok := configMap.Data[configVar.ConfigMapKeyRef.Key]; ok {
 			return val, nil
@@ -125,7 +125,7 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtype
 		secret := &corev1.Secret{}
 		name := types.NamespacedName{Namespace: configVar.SecretKeyRef.Namespace, Name: configVar.SecretKeyRef.Name}
 		if err := cvr.client.Get(cvr.ctx, name, secret); err != nil {
-			return false, false, fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%v'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, err)
+			return false, false, fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%w'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, err)
 		}
 		if val, ok := secret.Data[configVar.SecretKeyRef.Key]; ok {
 			boolVal, err := strconv.ParseBool(string(val))
@@ -139,7 +139,7 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtype
 		configMap := &corev1.ConfigMap{}
 		name := types.NamespacedName{Namespace: configVar.ConfigMapKeyRef.Namespace, Name: configVar.ConfigMapKeyRef.Name}
 		if err := cvr.client.Get(cvr.ctx, name, configMap); err != nil {
-			return false, false, fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%v'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
+			return false, false, fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%w'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
 		}
 		if val, ok := configMap.Data[configVar.ConfigMapKeyRef.Key]; ok {
 			boolVal, err := strconv.ParseBool(val)

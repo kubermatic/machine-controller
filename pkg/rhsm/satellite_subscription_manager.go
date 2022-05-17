@@ -93,14 +93,14 @@ func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(machineName, 
 
 	deleteHostRequest, err := http.NewRequest(http.MethodDelete, requestURL.String(), nil)
 	if err != nil {
-		return fmt.Errorf("failed to create a delete host request: %v", err)
+		return fmt.Errorf("failed to create a delete host request: %w", err)
 	}
 
 	deleteHostRequest.SetBasicAuth(username, password)
 
 	response, err := s.client.Do(deleteHostRequest)
 	if err != nil {
-		return fmt.Errorf("failed executing delete host request: %v", err)
+		return fmt.Errorf("failed executing delete host request: %w", err)
 	}
 	defer response.Body.Close()
 

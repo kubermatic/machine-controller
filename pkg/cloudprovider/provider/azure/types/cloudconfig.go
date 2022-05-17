@@ -43,7 +43,7 @@ type CloudConfig struct {
 func CloudConfigToString(c *CloudConfig) (string, error) {
 	b, err := json.Marshal(c)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal config: %v", err)
+		return "", fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
 	return string(b), nil

@@ -74,7 +74,7 @@ func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProvid
 
 	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
+		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %w", err)
 	}
 
 	if pconfig.OperatingSystemSpec.Raw == nil {
@@ -84,7 +84,7 @@ func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProvid
 	// Retrieve cloud provider specification from cloud provider specification.
 	cpSpec, err := gcetypes.GetConfig(*pconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
+		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %w", err)
 	}
 
 	return cpSpec, pconfig, nil
@@ -131,48 +131,48 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve service account: %v", err)
+		return nil, fmt.Errorf("cannot retrieve service account: %w", err)
 	}
 
 	err = cfg.postprocessServiceAccount()
 	if err != nil {
-		return nil, fmt.Errorf("cannot prepare JWT: %v", err)
+		return nil, fmt.Errorf("cannot prepare JWT: %w", err)
 	}
 
 	cfg.zone, err = resolver.GetConfigVarStringValue(cpSpec.Zone)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve zone: %v", err)
+		return nil, fmt.Errorf("cannot retrieve zone: %w", err)
 	}
 
 	cfg.machineType, err = resolver.GetConfigVarStringValue(cpSpec.MachineType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve machine type: %v", err)
+		return nil, fmt.Errorf("cannot retrieve machine type: %w", err)
 	}
 
 	cfg.diskType, err = resolver.GetConfigVarStringValue(cpSpec.DiskType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve disk type: %v", err)
+		return nil, fmt.Errorf("cannot retrieve disk type: %w", err)
 	}
 
 	cfg.network, err = resolver.GetConfigVarStringValue(cpSpec.Network)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve network: %v", err)
+		return nil, fmt.Errorf("cannot retrieve network: %w", err)
 	}
 
 	cfg.subnetwork, err = resolver.GetConfigVarStringValue(cpSpec.Subnetwork)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve subnetwork: %v", err)
+		return nil, fmt.Errorf("cannot retrieve subnetwork: %w", err)
 	}
 
 	cfg.preemptible, _, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
+		return nil, fmt.Errorf("cannot retrieve preemptible: %w", err)
 	}
 
 	if cpSpec.AutomaticRestart != nil {
 		automaticRestart, _, err := resolver.GetConfigVarBoolValue(*cpSpec.AutomaticRestart)
 		if err != nil {
-			return nil, fmt.Errorf("cannot retrieve automaticRestart: %v", err)
+			return nil, fmt.Errorf("cannot retrieve automaticRestart: %w", err)
 		}
 		cfg.automaticRestart = &automaticRestart
 
@@ -184,7 +184,7 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	if cpSpec.ProvisioningModel != nil {
 		provisioningModel, err := resolver.GetConfigVarStringValue(*cpSpec.ProvisioningModel)
 		if err != nil {
-			return nil, fmt.Errorf("cannot retrieve provisioningModel: %v", err)
+			return nil, fmt.Errorf("cannot retrieve provisioningModel: %w", err)
 		}
 		cfg.provisioningModel = &provisioningModel
 	}
@@ -195,23 +195,23 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	if cpSpec.AssignPublicIPAddress != nil {
 		cfg.assignPublicIPAddress, _, err = resolver.GetConfigVarBoolValue(*cpSpec.AssignPublicIPAddress)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %w", err)
 		}
 	}
 
 	cfg.multizone, _, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve multizone: %v", err)
+		return nil, fmt.Errorf("failed to retrieve multizone: %w", err)
 	}
 
 	cfg.regional, _, err = resolver.GetConfigVarBoolValue(cpSpec.Regional)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve regional: %v", err)
+		return nil, fmt.Errorf("failed to retrieve regional: %w", err)
 	}
 
 	cfg.customImage, err = resolver.GetConfigVarStringValue(cpSpec.CustomImage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
+		return nil, fmt.Errorf("failed to retrieve gce custom image: %w", err)
 	}
 
 	return cfg, nil
@@ -222,17 +222,17 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 func (cfg *config) postprocessServiceAccount() error {
 	sa, err := base64.StdEncoding.DecodeString(cfg.serviceAccount)
 	if err != nil {
-		return fmt.Errorf("failed to decode base64 service account: %v", err)
+		return fmt.Errorf("failed to decode base64 service account: %w", err)
 	}
 	sam := map[string]string{}
 	err = json.Unmarshal(sa, &sam)
 	if err != nil {
-		return fmt.Errorf("failed unmarshalling service account: %v", err)
+		return fmt.Errorf("failed unmarshalling service account: %w", err)
 	}
 	cfg.projectID = sam["project_id"]
 	cfg.jwtConfig, err = google.JWTConfigFromJSON(sa, compute.ComputeScope)
 	if err != nil {
-		return fmt.Errorf("failed preparing JWT: %v", err)
+		return fmt.Errorf("failed preparing JWT: %w", err)
 	}
 	return nil
 }

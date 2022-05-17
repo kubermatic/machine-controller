@@ -43,7 +43,7 @@ const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-s
 func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 	machine := clusterv1alpha1.Machine{}
 	if err := json.Unmarshal(ar.Object.Raw, &machine); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
 	machineOriginal := machine.DeepCopy()
@@ -57,7 +57,7 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 	if ar.Operation == admissionv1.Update {
 		oldMachine := clusterv1alpha1.Machine{}
 		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachine); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal OldObject: %v", err)
+			return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
 		}
 		if oldMachine.Spec.Name != machine.Spec.Name && machine.Spec.Name == machine.Name {
 			oldMachine.Spec.Name = machine.Spec.Name
@@ -103,26 +103,26 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec *clusterv1alpha1.MachineSpec) error {
 	providerConfig, err := providerconfigtypes.GetConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
+		return fmt.Errorf("failed to read machine.spec.providerSpec: %w", err)
 	}
 
 	// Packet has been renamed to Equinix Metal
 	if providerConfig.CloudProvider == cloudProviderPacket {
 		err = migrateToEquinixMetal(providerConfig)
 		if err != nil {
-			return fmt.Errorf("failed to migrate packet to equinix metal: %v", err)
+			return fmt.Errorf("failed to migrate packet to equinix metal: %w", err)
 		}
 	}
 
 	skg := providerconfig.NewConfigVarResolver(ctx, ad.workerClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
-		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
+		return fmt.Errorf("failed to get cloud provider %q: %w", providerConfig.CloudProvider, err)
 	}
 
 	// Verify operating system.
 	if _, err := ad.userDataManager.ForOS(providerConfig.OperatingSystem); err != nil {
-		return fmt.Errorf("failed to get OS '%s': %v", providerConfig.OperatingSystem, err)
+		return fmt.Errorf("failed to get OS '%s': %w", providerConfig.OperatingSystem, err)
 	}
 
 	// Check kubelet version
@@ -141,7 +141,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 
 	// Validate SSH keys
 	if err := validatePublicKeys(providerConfig.SSHPublicKeys); err != nil {
-		return fmt.Errorf("Invalid public keys specified: %v", err)
+		return fmt.Errorf("Invalid public keys specified: %w", err)
 	}
 
 	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(
@@ -156,17 +156,17 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 	providerConfig.OperatingSystemSpec = defaultedOperatingSystemSpec
 	spec.ProviderSpec.Value.Raw, err = json.Marshal(providerConfig)
 	if err != nil {
-		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %v", err)
+		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %w", err)
 	}
 
 	defaultedSpec, err := prov.AddDefaults(*spec)
 	if err != nil {
-		return fmt.Errorf("failed to default machineSpec: %v", err)
+		return fmt.Errorf("failed to default machineSpec: %w", err)
 	}
 	spec = &defaultedSpec
 
 	if err := prov.Validate(*spec); err != nil {
-		return fmt.Errorf("validation failed: %v", err)
+		return fmt.Errorf("validation failed: %w", err)
 	}
 
 	return nil
@@ -176,7 +176,7 @@ func validatePublicKeys(keys []string) error {
 	for _, s := range keys {
 		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(s))
 		if err != nil {
-			return fmt.Errorf("invalid public key %q: %v", s, err)
+			return fmt.Errorf("invalid public key %q: %w", s, err)
 		}
 	}
 

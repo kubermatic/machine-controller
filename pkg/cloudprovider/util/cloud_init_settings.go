@@ -40,7 +40,7 @@ const (
 func ExtractAPIServerToken(ctx context.Context, client ctrlruntimeclient.Client) (string, error) {
 	secretList := corev1.SecretList{}
 	if err := client.List(ctx, &secretList, &ctrlruntimeclient.ListOptions{Namespace: CloudInitNamespace}); err != nil {
-		return "", fmt.Errorf("failed to list secrets in namespace %s: %v", CloudInitNamespace, err)
+		return "", fmt.Errorf("failed to list secrets in namespace %s: %w", CloudInitNamespace, err)
 	}
 
 	for _, secret := range secretList.Items {
@@ -62,12 +62,12 @@ func ExtractAPIServerToken(ctx context.Context, client ctrlruntimeclient.Client)
 func ExtractTokenAndAPIServer(ctx context.Context, userdata string, client ctrlruntimeclient.Client) (token string, apiServer string, err error) {
 	secretList := corev1.SecretList{}
 	if err := client.List(ctx, &secretList, &ctrlruntimeclient.ListOptions{Namespace: CloudInitNamespace}); err != nil {
-		return "", "", fmt.Errorf("failed to list secrets in namespace %s: %v", CloudInitNamespace, err)
+		return "", "", fmt.Errorf("failed to list secrets in namespace %s: %w", CloudInitNamespace, err)
 	}
 
 	apiServer, err = extractAPIServer(userdata)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to extract api server address: %v", err)
+		return "", "", fmt.Errorf("failed to extract api server address: %w", err)
 	}
 
 	for _, secret := range secretList.Items {
@@ -97,11 +97,11 @@ func CreateMachineCloudInitSecret(ctx context.Context, userdata, machineName str
 				Data: map[string][]byte{"cloud_init": []byte(userdata)},
 			}
 			if err := client.Create(ctx, secret); err != nil {
-				return fmt.Errorf("failed to create secret for userdata: %v", err)
+				return fmt.Errorf("failed to create secret for userdata: %w", err)
 			}
 		}
 
-		return fmt.Errorf("failed to fetch cloud-init secret: %v", err)
+		return fmt.Errorf("failed to fetch cloud-init secret: %w", err)
 	}
 
 	return nil
@@ -119,14 +119,14 @@ func extractAPIServer(userdata string) (string, error) {
 	}{}
 
 	if err := yaml.Unmarshal([]byte(userdata), files); err != nil {
-		return "", fmt.Errorf("failed to unmarshal userdata: %v", err)
+		return "", fmt.Errorf("failed to unmarshal userdata: %w", err)
 	}
 
 	for _, file := range files.WriteFiles {
 		if file.Path == "/etc/kubernetes/bootstrap-kubelet.conf" {
 			config, err := clientcmd.RESTConfigFromKubeConfig([]byte(file.Content))
 			if err != nil {
-				return "", fmt.Errorf("failed to get kubeconfig from userdata: %v", err)
+				return "", fmt.Errorf("failed to get kubeconfig from userdata: %w", err)
 			}
 
 			return config.Host, nil

@@ -29,7 +29,7 @@ var (
 )
 
 func IsNotFound(err error) bool {
-	return err == ErrInstanceNotFound
+	return errors.Is(err, ErrInstanceNotFound)
 }
 
 // TerminalError is a helper struct that holds errors of type "terminal"
@@ -44,8 +44,8 @@ func (te TerminalError) Error() string {
 
 // IsTerminalError is a helper function that helps to determine if a given error is terminal
 func IsTerminalError(err error) (bool, common.MachineStatusError, string) {
-	tError, ok := err.(TerminalError)
-	if !ok {
+	var tError TerminalError
+	if errors.As(err, &tError) {
 		return false, "", ""
 	}
 	return true, tError.Reason, tError.Message

@@ -118,12 +118,12 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.Adm
 	if !apiequality.Semantic.DeepEqual(original, mutated) {
 		patchOpts, err := newJSONPatch(original, mutated)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create json patch: %v", err)
+			return nil, fmt.Errorf("failed to create json patch: %w", err)
 		}
 
 		patchRaw, err := json.Marshal(patchOpts)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal json patch: %v", err)
+			return nil, fmt.Errorf("failed to marshal json patch: %w", err)
 		}
 		klog.V(3).Infof("Produced jsonpatch: %s", string(patchRaw))
 
@@ -183,7 +183,7 @@ func readReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 	}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading data from request body: %v", err)
+		return nil, fmt.Errorf("error reading data from request body: %w", err)
 	}
 
 	// verify the content type is accurate
@@ -193,7 +193,7 @@ func readReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 
 	admissionReview := &admissionv1.AdmissionReview{}
 	if err := json.Unmarshal(body, admissionReview); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal request into admissionReview: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal request into admissionReview: %w", err)
 	}
 	if admissionReview.Request == nil {
 		return nil, errors.New("invalid admission review: no request defined")

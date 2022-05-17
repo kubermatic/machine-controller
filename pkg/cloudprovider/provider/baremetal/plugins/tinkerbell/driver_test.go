@@ -130,7 +130,7 @@ func TestDriver_GetServer(t *testing.T) {
 			ctx := context.Background()
 			s, err := d.GetServer(ctx, "0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94", test.hardwareSpec)
 			if err != nil {
-				if test.errorIsExpected && test.expectedError == err {
+				if test.errorIsExpected && errors.Is(err, test.expectedError) {
 					return
 				}
 

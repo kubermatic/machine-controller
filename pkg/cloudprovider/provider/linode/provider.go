@@ -129,7 +129,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	c := Config{}
 	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "LINODE_TOKEN")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %w", err)
 	}
 	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
@@ -166,7 +166,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if c.Token == "" {
@@ -183,7 +183,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	_, err = getSlugForOS(pc.OperatingSystem)
 	if err != nil {
-		return fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
+		return fmt.Errorf("invalid operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
 	ctx := context.TODO()
@@ -226,7 +226,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 
 	sshkey, err := ssh.NewKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
+		return nil, fmt.Errorf("failed to generate ssh key: %w", err)
 	}
 
 	slug, err := getSlugForOS(pc.OperatingSystem)
@@ -277,7 +277,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	instance, err := p.Get(machine, data)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
 		}
 		return false, err
@@ -295,7 +295,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 
 	linodeID, err := strconv.Atoi(instance.ID())
 	if err != nil {
-		return false, fmt.Errorf("failed to convert instance id %s to int: %v", instance.ID(), err)
+		return false, fmt.Errorf("failed to convert instance id %s to int: %w", instance.ID(), err)
 	}
 
 	err = client.DeleteInstance(ctx, linodeID)
@@ -349,13 +349,13 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to decode providerconfig: %v", err)
+		return fmt.Errorf("failed to decode providerconfig: %w", err)
 	}
 	client := getClient(c.Token)
 	listOptions := getListOptions(machine.Spec.Name)
 	linodes, err := client.ListInstances(ctx, listOptions)
 	if err != nil {
-		return fmt.Errorf("failed to list linodes: %v", err)
+		return fmt.Errorf("failed to list linodes: %w", err)
 	}
 
 	for _, linode := range linodes {
@@ -374,7 +374,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 			updateOpts.Tags = &tags
 			_, err = client.UpdateInstance(ctx, linode.ID, updateOpts)
 			if err != nil {
-				return fmt.Errorf("failed to revise linode UID tags: %v", err)
+				return fmt.Errorf("failed to revise linode UID tags: %w", err)
 			}
 		}
 	}
@@ -441,7 +441,8 @@ func (d *linodeInstance) Status() instance.Status {
 // an argument will be returned
 func linodeStatusAndErrToTerminalError(err error) error {
 	status := 0
-	if apiErr, ok := err.(*linodego.Error); ok {
+	var apiErr *linodego.Error
+	if errors.As(err, &apiErr) {
 		status = apiErr.Code
 	}
 

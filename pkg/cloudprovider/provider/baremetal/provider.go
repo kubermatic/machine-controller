@@ -96,29 +96,29 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	rawConfig, err := baremetaltypes.GetConfig(*pconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal: %v", err)
+		return nil, nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
 	c := Config{}
 	endpoint, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Endpoint, "METADATA_SERVER_ENDPOINT")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of \"endpoint\" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of \"endpoint\" field: %w`, err)
 	}
 	authMethod, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.AuthMethod, "METADATA_SERVER_AUTH_METHOD")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of \"authMethod\" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of \"authMethod\" field: %w`, err)
 	}
 	username, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Username, "METADATA_SERVER_USERNAME")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of \"username\" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of \"username\" field: %w`, err)
 	}
 	password, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Password, "METADATA_SERVER_PASSWORD")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of \"password\" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of \"password\" field: %w`, err)
 	}
 	token, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.MetadataClient.Token, "METADATA_SERVER_TOKEN")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of \"token\" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of \"token\" field: %w`, err)
 	}
 
 	mdCfg := &metadata.Config{
@@ -133,7 +133,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	driverName, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.Driver)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get baremetal provider's driver name: %v", err)
+		return nil, nil, fmt.Errorf("failed to get baremetal provider's driver name: %w", err)
 	}
 	c.driverName = plugins.Driver(driverName)
 
@@ -147,12 +147,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		}{}
 
 		if err := json.Unmarshal(c.driverSpec.Raw, &driverConfig); err != nil {
-			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %v", err)
+			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %w", err)
 		}
 
 		c.driver, err = tinkerbell.NewTinkerbellDriver(mdCfg, nil, driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %v", err)
+			return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %w", err)
 		}
 	default:
 		return nil, nil, fmt.Errorf("unsupported baremetal driver: %s", pconfig.CloudProvider)
@@ -169,7 +169,7 @@ func (p provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1
 func (p provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if c.driverName == "" {
@@ -194,11 +194,11 @@ func (p provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.Pr
 
 	server, err := c.driver.GetServer(context.Background(), machine.UID, c.driverSpec)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 
-		return nil, fmt.Errorf("failed to fetch server with the id %s: %v", machine.Name, err)
+		return nil, fmt.Errorf("failed to fetch server with the id %s: %w", machine.Name, err)
 	}
 
 	return &bareMetalServer{
@@ -221,12 +221,12 @@ func (p provider) Create(machine *clusterv1alpha1.Machine, data *cloudproviderty
 
 	ctx := context.Background()
 	if err := util.CreateMachineCloudInitSecret(ctx, userdata, machine.Name, data.Client); err != nil {
-		return nil, fmt.Errorf("failed to create cloud-init secret for machine %s: %v", machine.Name, err)
+		return nil, fmt.Errorf("failed to create cloud-init secret for machine %s: %w", machine.Name, err)
 	}
 
 	token, apiServer, err := util.ExtractTokenAndAPIServer(ctx, userdata, data.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extarct token and api server address: %v", err)
+		return nil, fmt.Errorf("failed to extarct token and api server address: %w", err)
 	}
 
 	cfg := &plugins.CloudConfigSettings{
@@ -238,7 +238,7 @@ func (p provider) Create(machine *clusterv1alpha1.Machine, data *cloudproviderty
 
 	server, err := c.driver.ProvisionServer(ctx, machine.UID, cfg, c.driverSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to provision server: %v", err)
+		return nil, fmt.Errorf("failed to provision server: %w", err)
 	}
 
 	return &bareMetalServer{
@@ -257,20 +257,20 @@ func (p provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidert
 
 	ctx := context.Background()
 	if err := c.driver.DeprovisionServer(ctx, machine.UID); err != nil {
-		return false, fmt.Errorf("failed to de-provision server: %v", err)
+		return false, fmt.Errorf("failed to de-provision server: %w", err)
 	}
 
 	secret := &corev1.Secret{}
 	if err := data.Client.Get(ctx, types.NamespacedName{Namespace: util.CloudInitNamespace, Name: machine.Name}, secret); err != nil {
 		if !kerrors.IsNotFound(err) {
-			return false, fmt.Errorf("failed to fetching secret for userdata: %v", err)
+			return false, fmt.Errorf("failed to fetching secret for userdata: %w", err)
 		}
 
 		return true, nil
 	}
 
 	if err := data.Client.Delete(ctx, secret); err != nil {
-		return false, fmt.Errorf("failed to cleanup secret for userdata: %v", err)
+		return false, fmt.Errorf("failed to cleanup secret for userdata: %w", err)
 	}
 
 	return true, nil

@@ -55,7 +55,7 @@ func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, 
 func (ne *NodeEviction) Run() (bool, error) {
 	node, err := ne.nodeManager.GetNode()
 	if err != nil {
-		return false, fmt.Errorf("failed to get node from lister: %v", err)
+		return false, fmt.Errorf("failed to get node from lister: %w", err)
 	}
 	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
 		klog.V(3).Infof("Skipping eviction for node %s as it has a %s annotation", ne.nodeName, evictiontypes.SkipEvictionAnnotationKey)
@@ -64,13 +64,13 @@ func (ne *NodeEviction) Run() (bool, error) {
 	klog.V(3).Infof("Starting to evict node %s", ne.nodeName)
 
 	if err := ne.nodeManager.CordonNode(node); err != nil {
-		return false, fmt.Errorf("failed to cordon node %s: %v", ne.nodeName, err)
+		return false, fmt.Errorf("failed to cordon node %s: %w", ne.nodeName, err)
 	}
 	klog.V(6).Infof("Successfully cordoned node %s", ne.nodeName)
 
 	podsToEvict, err := ne.getFilteredPods()
 	if err != nil {
-		return false, fmt.Errorf("failed to get Pods to evict for node %s: %v", ne.nodeName, err)
+		return false, fmt.Errorf("failed to get Pods to evict for node %s: %w", ne.nodeName, err)
 	}
 	klog.V(6).Infof("Found %v pods to evict for node %s", len(podsToEvict), ne.nodeName)
 
@@ -95,7 +95,7 @@ func (ne *NodeEviction) getFilteredPods() ([]corev1.Pod, error) {
 		FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": ne.nodeName}).String(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pods: %v", err)
+		return nil, fmt.Errorf("failed to list pods: %w", err)
 	}
 
 	var filteredPods []corev1.Pod
@@ -140,7 +140,7 @@ func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
 					// PDB prevents eviction, return and make the controller retry later
 					return
 				} else {
-					errCh <- fmt.Errorf("error evicting pod %s/%s on node %s: %v", p.Namespace, p.Name, ne.nodeName, err)
+					errCh <- fmt.Errorf("error evicting pod %s/%s on node %s: %w", p.Namespace, p.Name, ne.nodeName, err)
 					return
 				}
 			}

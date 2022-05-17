@@ -117,7 +117,7 @@ const (
 func (p *provider) affinityType(affinityType providerconfigtypes.ConfigVarString) (AffinityType, error) {
 	podAffinityPresetString, err := p.configVarResolver.GetConfigVarStringValue(affinityType)
 	if err != nil {
-		return "", fmt.Errorf(`failed to parse "podAffinityPreset" field: %v`, err)
+		return "", fmt.Errorf(`failed to parse "podAffinityPreset" field: %w`, err)
 	}
 	switch strings.ToLower(podAffinityPresetString) {
 	case string(hardAffinityType):
@@ -201,20 +201,20 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	config := Config{}
 	config.Kubeconfig, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Auth.Kubeconfig, "KUBEVIRT_KUBECONFIG")
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
 	}
 	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.CPUs)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %w`, err)
 	}
 	config.Memory, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.Memory)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %w`, err)
 	}
 	config.Namespace = getNamespace()
 	osImage, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImage)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %w`, err)
 	}
 	if _, err = url.ParseRequestURI(osImage); err == nil {
 		config.OsImage.URL = osImage
@@ -223,32 +223,32 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "pvcSize" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "pvcSize" field: %w`, err)
 	}
 	if config.PVCSize, err = resource.ParseQuantity(pvcSize); err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse value of "pvcSize" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to parse value of "pvcSize" field: %w`, err)
 	}
 	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %w`, err)
 	}
 	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %v", err)
+		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %w", err)
 	}
 	config.FlavorName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Flavor.Name)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "flavor.name" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "flavor.name" field: %w`, err)
 	}
 
 	dnsPolicyString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.DNSPolicy)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "dnsPolicy" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to parse "dnsPolicy" field: %w`, err)
 	}
 	if dnsPolicyString != "" {
 		config.DNSPolicy, err = dnsPolicy(dnsPolicyString)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get dns policy: %v", err)
+			return nil, nil, fmt.Errorf("failed to get dns policy: %w", err)
 		}
 	}
 	if rawConfig.VirtualMachine.DNSConfig != nil {
@@ -259,16 +259,16 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
 		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %v`, err)
+			return nil, nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
 		}
 		pvc, err := resource.ParseQuantity(sdSizeString)
 		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %v`, err)
+			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.size" field: %w`, err)
 		}
 
 		scString, err := p.configVarResolver.GetConfigVarStringValue(sd.StorageClassName)
 		if err != nil {
-			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %v`, err)
+			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
 		}
 		config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
 			Size:             pvc,
@@ -279,15 +279,15 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	// Affinity/AntiAffinity
 	config.PodAffinityPreset, err = p.affinityType(rawConfig.Affinity.PodAffinityPreset)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "podAffinityPreset" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to parse "podAffinityPreset" field: %w`, err)
 	}
 	config.PodAntiAffinityPreset, err = p.affinityType(rawConfig.Affinity.PodAntiAffinityPreset)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "podAntiAffinityPreset" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to parse "podAntiAffinityPreset" field: %w`, err)
 	}
 	config.NodeAffinityPreset, err = p.parseNodeAffinityPreset(rawConfig.Affinity.NodeAffinityPreset)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "nodeAffinityPreset" field: %v`, err)
+		return nil, nil, fmt.Errorf(`failed to parse "nodeAffinityPreset" field: %w`, err)
 	}
 
 	return &config, pconfig, nil
@@ -298,17 +298,17 @@ func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.Node
 	var err error
 	nodeAffinity.Type, err = p.affinityType(nodeAffinityPreset.Type)
 	if err != nil {
-		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.type" field: %v`, err)
+		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.type" field: %w`, err)
 	}
 	nodeAffinity.Key, err = p.configVarResolver.GetConfigVarStringValue(nodeAffinityPreset.Key)
 	if err != nil {
-		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.key" field: %v`, err)
+		return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.key" field: %w`, err)
 	}
 	nodeAffinity.Values = make([]string, len(nodeAffinityPreset.Values))
 	for _, v := range nodeAffinityPreset.Values {
 		valueString, err := p.configVarResolver.GetConfigVarStringValue(v)
 		if err != nil {
-			return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.value" field: %v`, err)
+			return nodeAffinity, fmt.Errorf(`failed to parse "nodeAffinity.value" field: %w`, err)
 		}
 		nodeAffinity.Values = append(nodeAffinity.Values, valueString)
 	}
@@ -338,14 +338,14 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	}
 	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
+		return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 	ctx := context.Background()
 
 	virtualMachine := &kubevirtv1.VirtualMachine{}
 	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachine); err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get VirtualMachine %s: %v", machine.Name, err)
+			return nil, fmt.Errorf("failed to get VirtualMachine %s: %w", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
@@ -374,7 +374,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
 		// will get recreated
 		if err := sigClient.Delete(ctx, virtualMachineInstance); err != nil {
-			return nil, fmt.Errorf("failed to delete failed VMI %s: %v", machine.Name, err)
+			return nil, fmt.Errorf("failed to delete failed VMI %s: %w", machine.Name, err)
 		}
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
@@ -392,7 +392,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 	// If VMIPreset is specified, skip CPU and Memory validation
 	if c.FlavorName == "" {
@@ -403,10 +403,10 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
-		return fmt.Errorf("failed to get kubevirt client: %v", err)
+		return fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 	if _, ok := supportedOS[pc.OperatingSystem]; !ok {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
+		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
 	if c.DNSPolicy == corev1.DNSNone {
 		if c.DNSConfig == nil || len(c.DNSConfig.Nameservers) == 0 {
@@ -416,7 +416,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	// Check if we can reach the API of the target cluster
 	vmi := &kubevirtv1.VirtualMachineInstance{}
 	if err := sigClient.Get(context.Background(), types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
-		return fmt.Errorf("failed to request VirtualMachineInstances: %v", err)
+		return fmt.Errorf("failed to request VirtualMachineInstances: %w", err)
 	}
 
 	return nil
@@ -429,7 +429,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %v", err)
+		return "", "", fmt.Errorf("failed to parse config: %w", err)
 	}
 	cc := kubevirttypes.CloudConfig{
 		Kubeconfig: c.Kubeconfig,
@@ -476,7 +476,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 
 	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kubevirt client: %v", err)
+		return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 	ctx := context.Background()
 
@@ -556,7 +556,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	}
 
 	if err := sigClient.Create(ctx, virtualMachine); err != nil {
-		return nil, fmt.Errorf("failed to create vmi: %v", err)
+		return nil, fmt.Errorf("failed to create vmi: %w", err)
 	}
 
 	secret := &corev1.Secret{
@@ -568,7 +568,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		Data: map[string][]byte{"userdata": []byte(userdata)},
 	}
 	if err := sigClient.Create(ctx, secret); err != nil {
-		return nil, fmt.Errorf("failed to create secret for userdata: %v", err)
+		return nil, fmt.Errorf("failed to create secret for userdata: %w", err)
 	}
 	return &kubeVirtServer{}, nil
 
@@ -584,14 +584,14 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 	}
 	sigClient, err := client.New(c.RestConfig, client.Options{})
 	if err != nil {
-		return false, fmt.Errorf("failed to get kubevirt client: %v", err)
+		return false, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
 	ctx := context.Background()
 
 	vm := &kubevirtv1.VirtualMachine{}
 	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vm); err != nil {
 		if !kerrors.IsNotFound(err) {
-			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %v", machine.Name, err)
+			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %w", machine.Name, err)
 		}
 		// VMI is gone
 		return true, nil
@@ -603,11 +603,11 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
 	memoryResource, err := resource.ParseQuantity(memory)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse memory requests: %v", err)
+		return nil, fmt.Errorf("failed to parse memory requests: %w", err)
 	}
 	cpuResource, err := resource.ParseQuantity(cpus)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse cpu request: %v", err)
+		return nil, fmt.Errorf("failed to parse cpu request: %w", err)
 	}
 	return &corev1.ResourceList{
 		corev1.ResourceMemory: memoryResource,

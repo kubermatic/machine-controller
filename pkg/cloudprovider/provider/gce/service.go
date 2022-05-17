@@ -57,7 +57,7 @@ type service struct {
 func connectComputeService(cfg *config) (*service, error) {
 	svc, err := compute.New(cfg.jwtConfig.Client(oauth2.NoContext))
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to Google Cloud: %v", err)
+		return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
 	}
 	return &service{svc}, nil
 }

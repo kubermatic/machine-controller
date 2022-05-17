@@ -299,7 +299,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*anxtypes.C
 	c := anxtypes.Config{}
 	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, anxtypes.AnxTokenEnv)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'token': %v", err)
+		return nil, nil, fmt.Errorf("failed to get 'token': %w", err)
 	}
 
 	c.CPUs = rawConfig.CPUs
@@ -308,17 +308,17 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*anxtypes.C
 
 	c.LocationID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.LocationID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'locationID': %v", err)
+		return nil, nil, fmt.Errorf("failed to get 'locationID': %w", err)
 	}
 
 	c.TemplateID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'templateID': %v", err)
+		return nil, nil, fmt.Errorf("failed to get 'templateID': %w", err)
 	}
 
 	c.VlanID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VlanID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'vlanID': %v", err)
+		return nil, nil, fmt.Errorf("failed to get 'vlanID': %w", err)
 	}
 
 	return &c, pconfig, nil

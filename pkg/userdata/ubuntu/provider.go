@@ -40,17 +40,17 @@ type Provider struct{}
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+		return "", fmt.Errorf("failed to parse user-data template: %w", err)
 	}
 
 	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
 	if err != nil {
-		return "", fmt.Errorf("invalid kubelet version: %v", err)
+		return "", fmt.Errorf("invalid kubelet version: %w", err)
 	}
 
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get providerSpec: %v", err)
+		return "", fmt.Errorf("failed to get providerSpec: %w", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {
@@ -63,12 +63,12 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	ubuntuConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get ubuntu config from provider config: %v", err)
+		return "", fmt.Errorf("failed to get ubuntu config from provider config: %w", err)
 	}
 
 	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(req.Kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting server address from kubeconfig: %v", err)
+		return "", fmt.Errorf("error extracting server address from kubeconfig: %w", err)
 	}
 
 	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
@@ -78,7 +78,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	kubernetesCACert, err := userdatahelper.GetCACert(req.Kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting cacert: %v", err)
+		return "", fmt.Errorf("error extracting cacert: %w", err)
 	}
 
 	crEngine := req.ContainerRuntime.Engine(kubeletVersion)

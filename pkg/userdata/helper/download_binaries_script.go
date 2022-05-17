@@ -160,7 +160,7 @@ fi
 func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(safeDownloadBinariesTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to parse download-binaries template: %w", err)
 	}
 
 	const (
@@ -186,7 +186,7 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to execute download-binaries template: %w", err)
 	}
 
 	return b.String(), nil
@@ -197,7 +197,7 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string, error) {
 	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(downloadBinariesTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to parse download-binaries template: %w", err)
 	}
 
 	data := struct {
@@ -210,7 +210,7 @@ func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to execute download-binaries template: %w", err)
 	}
 
 	return b.String(), nil

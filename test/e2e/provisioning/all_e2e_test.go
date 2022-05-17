@@ -137,7 +137,7 @@ func TestCustomCAsAreApplied(t *testing.T) {
 
 			executor: func(kubeConfig, manifestPath string, parameters []string, d time.Duration) error {
 				if err := updateMachineControllerForCustomCA(kubeConfig); err != nil {
-					return fmt.Errorf("failed to add CA: %v", err)
+					return fmt.Errorf("failed to add CA: %w", err)
 				}
 
 				return verifyCreateMachineFails(kubeConfig, manifestPath, parameters, d)
@@ -153,12 +153,12 @@ func TestCustomCAsAreApplied(t *testing.T) {
 func updateMachineControllerForCustomCA(kubeconfig string) error {
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		return fmt.Errorf("Error building kubeconfig: %v", err)
+		return fmt.Errorf("Error building kubeconfig: %w", err)
 	}
 
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
-		return fmt.Errorf("failed to create Client: %v", err)
+		return fmt.Errorf("failed to create Client: %w", err)
 	}
 
 	ctx := context.Background()
@@ -210,14 +210,14 @@ C8QmzsMaZhk+mVFr1sGy
 	}
 
 	if err := client.Create(ctx, caBundle); err != nil {
-		return fmt.Errorf("failed to create ca-bundle ConfigMap: %v", err)
+		return fmt.Errorf("failed to create ca-bundle ConfigMap: %w", err)
 	}
 
 	// add CA to deployments
 	deployments := []string{"machine-controller", "machine-controller-webhook"}
 	for _, deployment := range deployments {
 		if err := addCAToDeployment(ctx, client, deployment, ns); err != nil {
-			return fmt.Errorf("failed to add CA to %s Deployment: %v", deployment, err)
+			return fmt.Errorf("failed to add CA to %s Deployment: %w", deployment, err)
 		}
 	}
 
@@ -228,12 +228,12 @@ C8QmzsMaZhk+mVFr1sGy
 			key := types.NamespacedName{Namespace: ns, Name: deployment}
 
 			if err := client.Get(ctx, key, d); err != nil {
-				return false, fmt.Errorf("failed to get Deployment: %v", err)
+				return false, fmt.Errorf("failed to get Deployment: %w", err)
 			}
 
 			return d.Status.AvailableReplicas > 0, nil
 		}); err != nil {
-			return fmt.Errorf("%s Deployment never became ready: %v", deployment, err)
+			return fmt.Errorf("%s Deployment never became ready: %w", deployment, err)
 		}
 	}
 
@@ -245,7 +245,7 @@ func addCAToDeployment(ctx context.Context, client ctrlruntimeclient.Client, nam
 	key := types.NamespacedName{Namespace: namespace, Name: name}
 
 	if err := client.Get(ctx, key, deployment); err != nil {
-		return fmt.Errorf("failed to get Deployment: %v", err)
+		return fmt.Errorf("failed to get Deployment: %w", err)
 	}
 
 	caVolume := corev1.Volume{

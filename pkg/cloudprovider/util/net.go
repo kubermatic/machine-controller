@@ -31,7 +31,7 @@ const (
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 	ip, ipNet, err := net.ParseCIDR(ipv4)
 	if err != nil {
-		return "", "", 0, fmt.Errorf("failed to parse CIDR prefix: %v", err)
+		return "", "", 0, fmt.Errorf("failed to parse CIDR prefix: %w", err)
 	}
 
 	if len(ipNet.Mask) != 4 {

@@ -313,7 +313,7 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
 		var val *bool
 		if err := json.Unmarshal(b, &val); err != nil {
-			return fmt.Errorf("Error parsing value: '%v'", err)
+			return fmt.Errorf("Error parsing value: '%w'", err)
 		}
 		configVarBool.Value = val
 

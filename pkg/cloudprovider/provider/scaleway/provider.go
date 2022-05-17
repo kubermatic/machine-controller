@@ -68,7 +68,7 @@ func (c *Config) getInstanceAPI() (*instance.API, error) {
 		scw.WithUserAgent("kubermatic/machine-controller"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize the scaleway client: %s", err.Error())
+		return nil, fmt.Errorf("failed to initialize the scaleway client: %w", err)
 	}
 
 	return instance.NewAPI(client), nil
@@ -108,19 +108,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	c := Config{}
 	c.AccessKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AccessKey, scw.ScwAccessKeyEnv)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"access_key\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"access_key\" field, error = %w", err)
 	}
 	c.SecretKey, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.SecretKey, scw.ScwSecretKeyEnv)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"secret_key\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"secret_key\" field, error = %w", err)
 	}
 	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ProjectID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"project_id\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"project_id\" field, error = %w", err)
 	}
 	c.Zone, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Zone)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"zone\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"zone\" field, error = %w", err)
 	}
 	c.CommercialType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.CommercialType)
 	if err != nil {
@@ -142,7 +142,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if !validation.IsAccessKey(c.AccessKey) {
@@ -166,7 +166,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	_, err = getImageNameForOS(pc.OperatingSystem)
 	if err != nil {
-		return fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
+		return fmt.Errorf("invalid operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
 	return nil
@@ -224,7 +224,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	i, err := p.get(machine)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
 		}
 		return false, err
@@ -322,7 +322,7 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*scwServer, error) {
 func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to decode providerconfig: %v", err)
+		return fmt.Errorf("failed to decode providerconfig: %w", err)
 	}
 	api, err := c.getInstanceAPI()
 	if err != nil {
@@ -417,30 +417,33 @@ func (s *scwServer) Status() cloudInstance.Status {
 // if the given error doesn't qualify the error passed as
 // an argument will be returned
 func scalewayErrToTerminalError(err error) error {
-	switch err.(type) {
-	case *scw.PermissionsDeniedError:
+	var deinedErr *scw.PermissionsDeniedError
+	var invalidArgErr *scw.InvalidArgumentsError
+	var outOfStackErr *scw.OutOfStockError
+	var quotaErr *scw.QuotasExceededError
+
+	if errors.As(err, &deinedErr) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",
 		}
-	case *scw.InvalidArgumentsError:
+	} else if errors.As(err, &invalidArgErr) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: "A request has been rejected due to invalid arguments which were taken from the MachineSpec",
 		}
-	case *scw.OutOfStockError:
+	} else if errors.As(err, &outOfStackErr) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InsufficientResourcesMachineError,
 			Message: "A request has been rejected due to out of stocks",
 		}
-	case *scw.QuotasExceededError:
+	} else if errors.As(err, &quotaErr) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InsufficientResourcesMachineError,
 			Message: "A request has been rejected due to insufficient quotas",
 		}
-	default:
-		return err
 	}
+	return err
 }
 
 func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {

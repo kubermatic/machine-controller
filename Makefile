@@ -67,7 +67,7 @@ clean: clean-certs
 
 .PHONY: lint
 lint:
-	golangci-lint run -v
+	golangci-lint run -v --max-issues-per-linter 0 --max-same-issues 0
 
 .PHONY: docker-image
 docker-image:

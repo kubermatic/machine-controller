@@ -63,12 +63,12 @@ func CloudConfigToString(c *CloudConfig) (string, error) {
 
 	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse the cloud config template: %v", err)
+		return "", fmt.Errorf("failed to parse the cloud config template: %w", err)
 	}
 
 	buf := &bytes.Buffer{}
 	if err := tpl.Execute(buf, c); err != nil {
-		return "", fmt.Errorf("failed to execute cloud config template: %v", err)
+		return "", fmt.Errorf("failed to execute cloud config template: %w", err)
 	}
 
 	return buf.String(), nil

@@ -43,11 +43,11 @@ func GetNetworkSpecs(ctx context.Context, session *Session, devices object.Virtu
 	// Add new NICs based on the machine config.
 	ref, err := session.Finder.Network(ctx, network)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find network %q: %v", network, err)
+		return nil, fmt.Errorf("failed to find network %q: %w", network, err)
 	}
 	backing, err := ref.EthernetCardBackingInfo(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new ethernet card backing info for network %q: %v", network, err)
+		return nil, fmt.Errorf("failed to create new ethernet card backing info for network %q: %w", network, err)
 	}
 	dev, err := object.EthernetCardTypes().CreateEthernetCard(ethCardType, backing)
 	if err != nil {

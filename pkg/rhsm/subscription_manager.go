@@ -103,7 +103,7 @@ func (d *defaultRedHatSubscriptionManager) UnregisterInstance(offlineToken, mach
 	for retries < maxRetries {
 		machineUUID, err := d.findSystemsProfile(ctx, offlineToken, machineName)
 		if err != nil {
-			return fmt.Errorf("failed to find system profile: %v", err)
+			return fmt.Errorf("failed to find system profile: %w", err)
 		}
 
 		if machineUUID == "" {
@@ -130,7 +130,7 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(ctx context.Contex
 	for {
 		systemsInfo, err := d.executeFindSystemsRequest(ctx, offlineToken, offset)
 		if err != nil {
-			return "", fmt.Errorf("failed to retrieve systems: %v", err)
+			return "", fmt.Errorf("failed to retrieve systems: %w", err)
 		}
 
 		for _, system := range systemsInfo.Body {
@@ -154,19 +154,19 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Contex
 	client := newOAuthClientWithRefreshToken(offlineToken, d.authURL)
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/%s", d.apiURL, uuid), nil)
 	if err != nil {
-		return fmt.Errorf("failed to create delete system request: %v", err)
+		return fmt.Errorf("failed to create delete system request: %w", err)
 	}
 	req.WithContext(ctx)
 
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to delete system profile: %v", err)
+		return fmt.Errorf("failed to delete system profile: %w", err)
 	}
 	defer res.Body.Close()
 
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("failed while reading response: %v", err)
+		return fmt.Errorf("failed while reading response: %w", err)
 	}
 
 	if res.StatusCode != http.StatusNoContent {
@@ -184,19 +184,19 @@ func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context
 	client := newOAuthClientWithRefreshToken(offlineToken, d.authURL)
 	req, err := http.NewRequest("GET", fmt.Sprintf(d.apiURL+"?limit=%v&offset=%v", d.requestsLimiter, offset), nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create fetch systems request: %v", err)
+		return nil, fmt.Errorf("failed to create fetch systems request: %w", err)
 	}
 	req.WithContext(ctx)
 
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed executing fetch systems request: %v", err)
+		return nil, fmt.Errorf("failed executing fetch systems request: %w", err)
 	}
 	defer res.Body.Close()
 
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed while reading response: %v", err)
+		return nil, fmt.Errorf("failed while reading response: %w", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -208,7 +208,7 @@ func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context
 
 	var fetchedSystems = &systemsResponse{}
 	if err := json.Unmarshal(data, fetchedSystems); err != nil {
-		return nil, fmt.Errorf("failed while unmarshalling data: %v", err)
+		return nil, fmt.Errorf("failed while unmarshalling data: %w", err)
 	}
 
 	return fetchedSystems, nil

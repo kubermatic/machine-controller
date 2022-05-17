@@ -69,7 +69,7 @@ type reconciler struct {
 func Add(mgr manager.Manager) error {
 	certClient, err := certificatesv1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
-		return fmt.Errorf("failed to create certificate client: %v", err)
+		return fmt.Errorf("failed to create certificate client: %w", err)
 	}
 
 	rec := &reconciler{Client: mgr.GetClient(), certClient: certClient.CertificateSigningRequests()}
@@ -77,7 +77,7 @@ func Add(mgr manager.Manager) error {
 
 	cntrl, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: rec})
 	if err != nil {
-		return fmt.Errorf("failed to construct controller: %v", err)
+		return fmt.Errorf("failed to construct controller: %w", err)
 	}
 
 	return cntrl.Watch(&source.Kind{Type: watchType}, &handler.EnqueueRequestForObject{})
@@ -120,7 +120,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	// Get machine name for the appropriate node
 	machine, found, err := r.getMachineForNode(ctx, nodeName)
 	if err != nil {
-		return fmt.Errorf("failed to get machine for node '%s': %v", nodeName, err)
+		return fmt.Errorf("failed to get machine for node '%s': %w", nodeName, err)
 	}
 	if !found {
 		return fmt.Errorf("no machine found for given node '%s'", nodeName)
@@ -141,7 +141,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 
 	// Validate the certificate request
 	if err := r.validateX509CSR(csr, certRequest, machine); err != nil {
-		return fmt.Errorf("error validating the x509 certificate request: %v", err)
+		return fmt.Errorf("error validating the x509 certificate request: %w", err)
 	}
 
 	// Approve CSR
@@ -154,7 +154,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	csr.Status.Conditions = append(csr.Status.Conditions, approvalCondition)
 
 	if _, err := r.certClient.UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{}); err != nil {
-		return fmt.Errorf("failed to approve CSR %q: %v", csr.Name, err)
+		return fmt.Errorf("failed to approve CSR %q: %w", csr.Name, err)
 	}
 
 	klog.Infof("Successfully approved CSR %s", csr.ObjectMeta.Name)
@@ -241,7 +241,7 @@ func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1
 	// List all Machines in all namespaces
 	machines := &v1alpha1.MachineList{}
 	if err := r.Client.List(ctx, machines); err != nil {
-		return v1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %v", err)
+		return v1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %w", err)
 	}
 
 	for _, machine := range machines.Items {

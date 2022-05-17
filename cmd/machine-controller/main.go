@@ -311,19 +311,19 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 		MetricsBindAddress:      metricsAddress,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error building ctrlruntime manager: %v", err)
+		return nil, fmt.Errorf("error building ctrlruntime manager: %w", err)
 	}
 
 	if err := mgr.AddReadyzCheck("alive", healthz.Ping); err != nil {
-		return nil, fmt.Errorf("failed to add readiness check: %v", err)
+		return nil, fmt.Errorf("failed to add readiness check: %w", err)
 	}
 
 	if err := mgr.AddHealthzCheck("kubeconfig", health.KubeconfigAvailable(options.kubeconfigProvider)); err != nil {
-		return nil, fmt.Errorf("failed to add health check: %v", err)
+		return nil, fmt.Errorf("failed to add health check: %w", err)
 	}
 
 	if err := mgr.AddHealthzCheck("apiserver-connection", health.ApiserverReachable(options.kubeClient)); err != nil {
-		return nil, fmt.Errorf("failed to add health check: %v", err)
+		return nil, fmt.Errorf("failed to add health check: %w", err)
 	}
 
 	if profiling {
@@ -335,7 +335,7 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 		m.HandleFunc("/trace", pprof.Trace)
 
 		if err := mgr.AddMetricsExtraHandler("/debug/pprof/", m); err != nil {
-			return nil, fmt.Errorf("failed to add pprof http handlers: %v", err)
+			return nil, fmt.Errorf("failed to add pprof http handlers: %w", err)
 		}
 	}
 
@@ -343,7 +343,7 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 		mgr: mgr,
 		opt: options,
 	}); err != nil {
-		return nil, fmt.Errorf("failed to add bootstrap runnable: %v", err)
+		return nil, fmt.Errorf("failed to add bootstrap runnable: %w", err)
 	}
 
 	return mgr, nil
@@ -373,12 +373,12 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 
 	// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
 	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, client, bs.opt.kubeClient, providerData); err != nil {
-		return fmt.Errorf("migration to clusterv1alpha1 failed: %v", err)
+		return fmt.Errorf("migration to clusterv1alpha1 failed: %w", err)
 	}
 
 	// Migrate providerConfig field to providerSpec field
 	if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, bs.opt.cfg, client); err != nil {
-		return fmt.Errorf("migration of providerConfig field to providerSpec field failed: %v", err)
+		return fmt.Errorf("migration of providerConfig field to providerSpec field failed: %w", err)
 	}
 
 	machineCollector := machinecontroller.NewMachineCollector(ctx, bs.mgr.GetClient())
@@ -400,20 +400,20 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.useOSM,
 		bs.opt.nodePortRange,
 	); err != nil {
-		return fmt.Errorf("failed to add Machine controller to manager: %v", err)
+		return fmt.Errorf("failed to add Machine controller to manager: %w", err)
 	}
 
 	if err := machinesetcontroller.Add(bs.mgr); err != nil {
-		return fmt.Errorf("failed to add MachineSet controller to manager: %v", err)
+		return fmt.Errorf("failed to add MachineSet controller to manager: %w", err)
 	}
 
 	if err := machinedeploymentcontroller.Add(bs.mgr); err != nil {
-		return fmt.Errorf("failed to add MachineDeployment controller to manager: %v", err)
+		return fmt.Errorf("failed to add MachineDeployment controller to manager: %w", err)
 	}
 
 	if bs.opt.nodeCSRApprover {
 		if err := nodecsrapprover.Add(bs.mgr); err != nil {
-			return fmt.Errorf("failed to add NodeCSRApprover controller to manager: %v", err)
+			return fmt.Errorf("failed to add NodeCSRApprover controller to manager: %w", err)
 		}
 	}
 

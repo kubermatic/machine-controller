@@ -36,7 +36,7 @@ func RemoveFinalizerOnInstanceNotFound(finalizer string,
 	if err := provider.Update(machine, func(updatedMachine *v1alpha1.Machine) {
 		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizer)
 	}); err != nil {
-		return false, fmt.Errorf("failed updating machine %v finzaliers: %v", machine.Name, err)
+		return false, fmt.Errorf("failed updating machine %v finzaliers: %w", machine.Name, err)
 
 	}
 

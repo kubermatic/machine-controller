@@ -59,7 +59,7 @@ func GetCACert(kubeconfig *clientcmdapi.Config) (string, error) {
 func StringifyKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
 	kubeconfigBytes, err := clientcmd.Write(*kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error writing kubeconfig: %v", err)
+		return "", fmt.Errorf("error writing kubeconfig: %w", err)
 	}
 
 	return string(kubeconfigBytes), nil

@@ -44,18 +44,18 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 
 	token, err := util.ExtractAPIServerToken(ctx, client)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch api-server token: %v", err)
+		return "", fmt.Errorf("failed to fetch api-server token: %w", err)
 	}
 
 	// Retrieve provider config from machine
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get providerSpec: %v", err)
+		return "", fmt.Errorf("failed to get providerSpec: %w", err)
 	}
 
 	bootstrapKubeconfig, err := helper.StringifyKubeconfig(req.Kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("failed to format bootstrap kubeconfig: %v", err)
+		return "", fmt.Errorf("failed to format bootstrap kubeconfig: %w", err)
 	}
 
 	// Regardless if the provisioningUtility is set to use cloud-init, we only allow using ignition to provision flatcar
@@ -81,16 +81,16 @@ func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKey
 	}
 	bsScript, err := template.New("bootstrap-script").Parse(ignitionBootstrapBinContentTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse bootstrapBinContentTemplate template for ignition: %v", err)
+		return "", fmt.Errorf("failed to parse bootstrapBinContentTemplate template for ignition: %w", err)
 	}
 	script := &bytes.Buffer{}
 	err = bsScript.Execute(script, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template for ignition: %v", err)
+		return "", fmt.Errorf("failed to execute bootstrapBinContentTemplate template for ignition: %w", err)
 	}
 	bsIgnitionConfig, err := template.New("bootstrap-ignition-config").Funcs(sprig.TxtFuncMap()).Parse(ignitionTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse bootstrap-ignition-config template: %v", err)
+		return "", fmt.Errorf("failed to parse bootstrap-ignition-config template: %w", err)
 	}
 
 	ignitionConfig := &bytes.Buffer{}
@@ -108,7 +108,7 @@ func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKey
 		BootstrapKubeconfig: bootstrapKfg,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to execute ignitionTemplate template: %v", err)
+		return "", fmt.Errorf("failed to execute ignitionTemplate template: %w", err)
 	}
 
 	return convert.ToIgnition(ignitionConfig.String())
@@ -140,39 +140,39 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 	case providerconfigtypes.OperatingSystemUbuntu:
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapAptBinContentTemplate)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse bootstrapAptBinContentTemplate template: %v", err)
+			return "", fmt.Errorf("failed to parse bootstrapAptBinContentTemplate template: %w", err)
 		}
 	case providerconfigtypes.OperatingSystemCentOS:
 		data.EnterpriseLinux = true
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %w", err)
 		}
 	case providerconfigtypes.OperatingSystemAmazonLinux2:
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %w", err)
 		}
 	case providerconfigtypes.OperatingSystemSLES:
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapZypperBinContentTemplate)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse bootstrapZypperBinContentTemplate template: %v", err)
+			return "", fmt.Errorf("failed to parse bootstrapZypperBinContentTemplate template: %w", err)
 		}
 	case providerconfigtypes.OperatingSystemRHEL:
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %w", err)
 		}
 	}
 
 	script := &bytes.Buffer{}
 	err = bsScript.Execute(script, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute bootstrap script template: %v", err)
+		return "", fmt.Errorf("failed to execute bootstrap script template: %w", err)
 	}
 	bsCloudInit, err := template.New("bootstrap-cloud-init").Parse(cloudInitTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to parse download-binaries template: %w", err)
 	}
 
 	cloudInit := &bytes.Buffer{}
@@ -190,7 +190,7 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 		BootstrapKubeconfig: base64.StdEncoding.EncodeToString([]byte(bootstrapKfg)),
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %v", err)
+		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %w", err)
 	}
 	return cloudInit.String(), nil
 }

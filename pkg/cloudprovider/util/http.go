@@ -47,7 +47,7 @@ var (
 func SetCABundleFile(filename string) error {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %v", err)
+		return fmt.Errorf("failed to read file: %w", err)
 	}
 
 	CABundle = x509.NewCertPool()

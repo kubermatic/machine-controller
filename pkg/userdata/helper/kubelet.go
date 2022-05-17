@@ -138,7 +138,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %v", err)
+		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %w", err)
 	}
 
 	data := struct {
@@ -271,7 +271,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
 	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse kubelet-flags template: %v", err)
+		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
 	}
 
 	initialTaintsArgs := []string{}
@@ -333,7 +333,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 
 	var buf strings.Builder
 	if err = tmpl.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("failed to execute kubelet-flags template: %v", err)
+		return "", fmt.Errorf("failed to execute kubelet-flags template: %w", err)
 	}
 
 	return buf.String(), nil
@@ -357,7 +357,7 @@ WantedBy=multi-user.target
 func ContainerRuntimeHealthCheckSystemdUnit(containerRuntime string) (string, error) {
 	tmpl, err := template.New("container-runtime-healthcheck-systemd-unit").Funcs(TxtFuncMap()).Parse(containerRuntimeHealthCheckSystemdUnitTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse container-runtime-healthcheck-systemd-unit template: %v", err)
+		return "", fmt.Errorf("failed to parse container-runtime-healthcheck-systemd-unit template: %w", err)
 	}
 
 	data := struct {

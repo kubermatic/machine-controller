@@ -40,16 +40,16 @@ type Pubkey struct {
 func NewKey() (*Pubkey, error) {
 	tmpRSAKeyPair, err := rsa.GenerateKey(rand.Reader, privateRSAKeyBitSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create private RSA key: %v", err)
+		return nil, fmt.Errorf("failed to create private RSA key: %w", err)
 	}
 
 	if err := tmpRSAKeyPair.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate private RSA key: %v", err)
+		return nil, fmt.Errorf("failed to validate private RSA key: %w", err)
 	}
 
 	pubKey, err := ssh.NewPublicKey(&tmpRSAKeyPair.PublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate ssh public key: %v", err)
+		return nil, fmt.Errorf("failed to generate ssh public key: %w", err)
 	}
 
 	return &Pubkey{

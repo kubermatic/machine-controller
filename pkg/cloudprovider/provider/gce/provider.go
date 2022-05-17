@@ -21,6 +21,7 @@ limitations under the License.
 package gce
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -32,7 +33,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	gcetypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
@@ -160,15 +161,16 @@ func (p *Provider) get(machine *clusterv1alpha1.Machine) (*googleInstance, error
 	label := fmt.Sprintf("labels.%s=%s", labelMachineUID, machine.UID)
 	insts, err := svc.Instances.List(cfg.projectID, cfg.zone).Filter(label).Do()
 	if err != nil {
-		if gerr, ok := err.(*googleapi.Error); ok {
+		var gerr *googleapi.Error
+		if errors.As(err, &gerr) {
 			if gerr.Code == http.StatusNotFound {
-				return nil, errors.ErrInstanceNotFound
+				return nil, cloudprovidererrors.ErrInstanceNotFound
 			}
 		}
 		return nil, newError(common.InvalidConfigurationMachineError, errRetrieveInstance, err)
 	}
 	if len(insts.Items) == 0 {
-		return nil, errors.ErrInstanceNotFound
+		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 	if len(insts.Items) > 1 {
 		return nil, newError(common.InvalidConfigurationMachineError, errGotTooManyInstances)
@@ -301,7 +303,8 @@ func (p *Provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	// Delete instance.
 	op, err := svc.Instances.Delete(cfg.projectID, cfg.zone, machine.Spec.Name).Do()
 	if err != nil {
-		if gerr, ok := err.(*googleapi.Error); ok {
+		var gerr *googleapi.Error
+		if errors.As(err, &gerr) {
 			if gerr.Code == http.StatusNotFound {
 				return true, nil
 			}
@@ -351,7 +354,7 @@ func (p *Provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID
 	// Retrieve instance.
 	inst, err := p.get(machine)
 	if err != nil {
-		if err == errors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return nil
 		}
 		return err
@@ -385,7 +388,7 @@ func (p *Provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) e
 
 // newError creates a terminal error matching to the provider interface.
 func newError(reason common.MachineStatusError, msg string, args ...interface{}) error {
-	return errors.TerminalError{
+	return cloudprovidererrors.TerminalError{
 		Reason:  reason,
 		Message: fmt.Sprintf(msg, args...),
 	}

@@ -46,7 +46,7 @@ func (w *cachingValidationWrapper) AddDefaults(spec v1alpha1.MachineSpec) (v1alp
 func (w *cachingValidationWrapper) Validate(spec v1alpha1.MachineSpec) error {
 	result, exists, err := cache.Get(spec)
 	if err != nil {
-		return fmt.Errorf("error getting validation result from cache: %v", err)
+		return fmt.Errorf("error getting validation result from cache: %w", err)
 	}
 	if exists {
 		klog.V(6).Infof("Got cache hit for validation")
@@ -56,7 +56,7 @@ func (w *cachingValidationWrapper) Validate(spec v1alpha1.MachineSpec) error {
 	klog.V(6).Infof("Got cache miss for validation")
 	err = w.actualProvider.Validate(spec)
 	if err := cache.Set(spec, err); err != nil {
-		return fmt.Errorf("failed to set cache after validation: %v", err)
+		return fmt.Errorf("failed to set cache after validation: %w", err)
 	}
 
 	return err

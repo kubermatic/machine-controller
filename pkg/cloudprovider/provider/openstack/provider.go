@@ -147,31 +147,31 @@ func (p *provider) getConfigAuth(c *Config, rawConfig *openstacktypes.RawConfig)
 	var err error
 	c.ApplicationCredentialID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialID, "OS_APPLICATION_CREDENTIAL_ID")
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"applicationCredentialID\" field, error = %v", err)
+		return fmt.Errorf("failed to get the value of \"applicationCredentialID\" field, error = %w", err)
 	}
 	if c.ApplicationCredentialID != "" {
 		klog.V(6).Infof("applicationCredentialID from configuration or environment was found.")
 		c.ApplicationCredentialSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ApplicationCredentialSecret, "OS_APPLICATION_CREDENTIAL_SECRET")
 		if err != nil {
-			return fmt.Errorf("failed to get the value of \"applicationCredentialSecret\" field, error = %v", err)
+			return fmt.Errorf("failed to get the value of \"applicationCredentialSecret\" field, error = %w", err)
 		}
 		return nil
 	}
 	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "OS_USER_NAME")
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"username\" field, error = %v", err)
+		return fmt.Errorf("failed to get the value of \"username\" field, error = %w", err)
 	}
 	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "OS_PASSWORD")
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"password\" field, error = %v", err)
+		return fmt.Errorf("failed to get the value of \"password\" field, error = %w", err)
 	}
 	c.ProjectName, err = p.getProjectNameOrTenantName(rawConfig)
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"projectName\" field or fallback to \"tenantName\" field, error = %v", err)
+		return fmt.Errorf("failed to get the value of \"projectName\" field or fallback to \"tenantName\" field, error = %w", err)
 	}
 	c.ProjectID, err = p.getProjectIDOrTenantID(rawConfig)
 	if err != nil {
-		return fmt.Errorf("failed to get the value of \"projectID\" or fallback to\"tenantID\" field, error = %v", err)
+		return fmt.Errorf("failed to get the value of \"projectID\" or fallback to\"tenantID\" field, error = %w", err)
 	}
 	return nil
 }
@@ -198,13 +198,13 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	cfg := Config{}
 	cfg.IdentityEndpoint, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.IdentityEndpoint, "OS_AUTH_URL")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"identityEndpoint\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"identityEndpoint\" field, error = %w", err)
 	}
 
 	// Retrieve authentication config, username/password or application credentials
 	err = p.getConfigAuth(&cfg, rawConfig)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to retrieve authentication credentials, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to retrieve authentication credentials, error = %w", err)
 	}
 
 	// Ignore Region not found as Region might not be found and we can default it later
@@ -215,12 +215,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	cfg.InstanceReadyCheckPeriod, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckPeriod, 5*time.Second)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckPeriod" field, error = %v`, err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckPeriod" field, error = %w`, err)
 	}
 
 	cfg.InstanceReadyCheckTimeout, err = p.configVarResolver.GetConfigVarDurationValueOrDefault(rawConfig.InstanceReadyCheckTimeout, 10*time.Second)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckTimeout" field, error = %v`, err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckTimeout" field, error = %w`, err)
 	}
 
 	// We ignore errors here because the OS domain is only required when using Identity API V3
@@ -443,7 +443,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if c.ApplicationCredentialID == "" {
@@ -477,31 +477,31 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	client, err := p.clientGetter(c)
 	if err != nil {
-		return fmt.Errorf("failed to get a openstack client: %v", err)
+		return fmt.Errorf("failed to get a openstack client: %w", err)
 	}
 
 	// Required fields
 	if !strings.Contains(c.IdentityEndpoint, ovhAuthURL) {
 		if _, err := getRegion(client, c.Region); err != nil {
-			return fmt.Errorf("failed to get region %q: %v", c.Region, err)
+			return fmt.Errorf("failed to get region %q: %w", c.Region, err)
 		}
 	}
 
 	// Get OS Compute Client
 	computeClient, err := getNewComputeV2(client, c)
 	if err != nil {
-		return fmt.Errorf("failed to get compute client: %v", err)
+		return fmt.Errorf("failed to get compute client: %w", err)
 	}
 
 	// Get OS Image Client
 	imageClient, err := goopenstack.NewImageServiceV2(client, gophercloud.EndpointOpts{Region: c.Region})
 	if err != nil {
-		return fmt.Errorf("failed to get image client: %v", err)
+		return fmt.Errorf("failed to get image client: %w", err)
 	}
 
 	image, err := getImageByName(imageClient, c)
 	if err != nil {
-		return fmt.Errorf("failed to get image %q: %v", c.Image, err)
+		return fmt.Errorf("failed to get image %q: %w", c.Image, err)
 	}
 	if c.RootDiskSizeGB != nil {
 		if *c.RootDiskSizeGB < image.MinDiskGigabytes {
@@ -511,7 +511,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	}
 
 	if _, err := getFlavor(computeClient, c); err != nil {
-		return fmt.Errorf("failed to get flavor %q: %v", c.Flavor, err)
+		return fmt.Errorf("failed to get flavor %q: %w", c.Flavor, err)
 	}
 
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
@@ -520,30 +520,30 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	}
 
 	if _, err := getNetwork(netClient, c.Network); err != nil {
-		return fmt.Errorf("failed to get network %q: %v", c.Network, err)
+		return fmt.Errorf("failed to get network %q: %w", c.Network, err)
 	}
 
 	if _, err := getSubnet(netClient, c.Subnet); err != nil {
-		return fmt.Errorf("failed to get subnet %q: %v", c.Subnet, err)
+		return fmt.Errorf("failed to get subnet %q: %w", c.Subnet, err)
 	}
 
 	if c.FloatingIPPool != "" {
 		if _, err := getNetwork(netClient, c.FloatingIPPool); err != nil {
-			return fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
+			return fmt.Errorf("failed to get floating ip pool %q: %w", c.FloatingIPPool, err)
 		}
 	}
 
 	if _, err := getAvailabilityZone(computeClient, c); err != nil {
-		return fmt.Errorf("failed to get availability zone %q: %v", c.AvailabilityZone, err)
+		return fmt.Errorf("failed to get availability zone %q: %w", c.AvailabilityZone, err)
 	}
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
+		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
 	// Optional fields
 	if len(c.SecurityGroups) != 0 {
 		for _, s := range c.SecurityGroups {
 			if _, err := getSecurityGroup(client, c.Region, s); err != nil {
-				return fmt.Errorf("failed to get security group %q: %v", s, err)
+				return fmt.Errorf("failed to get security group %q: %w", s, err)
 			}
 		}
 	}
@@ -606,7 +606,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		klog.V(2).Infof("creating security group %s for worker nodes", securityGroupName)
 		err = ensureKubernetesSecurityGroupExist(client, cfg.Region, securityGroupName)
 		if err != nil {
-			return nil, fmt.Errorf("Error occurred creating security groups: %v", err)
+			return nil, fmt.Errorf("Error occurred creating security groups: %w", err)
 		}
 		securityGroups = append(securityGroups, securityGroupName)
 	}
@@ -704,12 +704,12 @@ func waitForPort(netClient *gophercloud.ServiceClient, serverID string, networkI
 	}
 
 	if err := wait.Poll(checkPeriod, checkTimeout, portIsReady); err != nil {
-		if err == wait.ErrWaitTimeout {
+		if errors.Is(err, wait.ErrWaitTimeout) {
 			// In case we have a timeout, include the timeout details
 			return fmt.Errorf("instance port became not active after %f seconds", checkTimeout.Seconds())
 		}
 		// Some terminal error happened
-		return fmt.Errorf("failed to wait for instance port to become active: %v", err)
+		return fmt.Errorf("failed to wait for instance port to become active: %w", err)
 	}
 
 	klog.V(2).Infof("Instance %q port became active after %f seconds", serverID, time.Since(started).Seconds())
@@ -719,7 +719,7 @@ func waitForPort(netClient *gophercloud.ServiceClient, serverID string, networkI
 func deleteInstanceDueToFatalLogged(computeClient *gophercloud.ServiceClient, serverID string) {
 	klog.V(0).Infof("Deleting instance %s due to fatal error during machine creation...", serverID)
 	if err := osservers.Delete(computeClient, serverID).ExtractErr(); err != nil {
-		utilruntime.HandleError(fmt.Errorf("failed to delete the instance %s. Please take care of manually deleting the instance: %v", serverID, err))
+		utilruntime.HandleError(fmt.Errorf("failed to delete the instance %s. Please take care of manually deleting the instance: %w", serverID, err))
 		return
 	}
 	klog.V(0).Infof("Instance %s got deleted", serverID)
@@ -733,10 +733,10 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 
 	instance, err := p.Get(machine, data)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			if hasFloatingIPReleaseFinalizer {
 				if err := p.cleanupFloatingIP(machine, data.Update); err != nil {
-					return false, fmt.Errorf("failed to clean up floating ip: %v", err)
+					return false, fmt.Errorf("failed to clean up floating ip: %w", err)
 				}
 			}
 			return true, nil
@@ -856,7 +856,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 			metadataOpts[machineUIDMetaKey] = string(new)
 			response := osservers.UpdateMetadata(computeClient, s.ID, metadataOpts)
 			if response.Err != nil {
-				return fmt.Errorf("failed to update instance metadata with new UID: %v", err)
+				return fmt.Errorf("failed to update instance metadata with new UID: %w", err)
 			}
 		}
 	}
@@ -867,7 +867,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %v", err)
+		return "", "", fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	cc := &openstacktypes.CloudConfig{
@@ -898,7 +898,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 
 	s, err := openstacktypes.CloudConfigToString(cc)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %v", err)
+		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %w", err)
 	}
 	return s, "openstack", nil
 }
@@ -961,14 +961,16 @@ func (d *osInstance) Status() instance.Status {
 //
 // if the given error doesn't qualify the error passed as an argument will be returned
 func osErrorToTerminalError(err error, msg string) error {
-	if errUnauthorized, ok := err.(gophercloud.ErrDefault401); ok {
+	var errUnauthorized gophercloud.ErrDefault401
+	if errors.As(err, &errUnauthorized) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("A request has been rejected due to invalid credentials which were taken from the MachineSpec: %v", errUnauthorized),
 		}
 	}
 
-	if errForbidden, ok := err.(gophercloud.ErrDefault403); ok {
+	var errForbidden gophercloud.ErrDefault403
+	if errors.As(err, &errForbidden) {
 		terr := cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("%s. The request against the OpenStack API is forbidden: %s", msg, errForbidden.Error()),
@@ -993,7 +995,7 @@ func osErrorToTerminalError(err error, msg string) error {
 		return terr
 	}
 
-	return fmt.Errorf("%s, due to %s", msg, err)
+	return fmt.Errorf("%s, due to %w", msg, err)
 }
 
 // forbiddenResponse is a potential response body from the OpenStack API when the request is forbidden (code: 403)
@@ -1025,17 +1027,17 @@ func (p *provider) cleanupFloatingIP(machine *clusterv1alpha1.Machine, updater c
 	}
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
 	if err != nil {
-		return fmt.Errorf("failed to create the networkv2 client for region %s: %v", c.Region, err)
+		return fmt.Errorf("failed to create the networkv2 client for region %s: %w", c.Region, err)
 	}
 	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && err.Error() != "Resource not found" {
-		return fmt.Errorf("failed to delete floating ip %s: %v", floatingIPID, err)
+		return fmt.Errorf("failed to delete floating ip %s: %w", floatingIPID, err)
 	}
 	if err := updater(machine, func(m *clusterv1alpha1.Machine) {
 		finalizers := sets.NewString(m.Finalizers...)
 		finalizers.Delete(floatingIPReleaseFinalizer)
 		m.Finalizers = finalizers.List()
 	}); err != nil {
-		return fmt.Errorf("failed to delete %s finalizer from Machine: %v", floatingIPReleaseFinalizer, err)
+		return fmt.Errorf("failed to delete %s finalizer from Machine: %w", floatingIPReleaseFinalizer, err)
 	}
 
 	return nil
@@ -1044,7 +1046,7 @@ func (p *provider) cleanupFloatingIP(machine *clusterv1alpha1.Machine, updater c
 func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater, machine *clusterv1alpha1.Machine, netClient *gophercloud.ServiceClient, instanceID, floatingIPPoolName, region string, network *osnetworks.Network) error {
 	port, err := getInstancePort(netClient, instanceID, network.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get instance port for network %s in region %s: %v", network.ID, region, err)
+		return fmt.Errorf("failed to get instance port for network %s in region %s: %w", network.ID, region, err)
 	}
 
 	floatingIPPool, err := getNetwork(netClient, floatingIPPoolName)
@@ -1076,7 +1078,7 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 			}
 			m.Annotations[floatingIPIDAnnotationKey] = ip.ID
 		}); err != nil {
-			return fmt.Errorf("failed to add floating ip release finalizer after allocating floating ip: %v", err)
+			return fmt.Errorf("failed to add floating ip release finalizer after allocating floating ip: %w", err)
 		}
 	} else {
 		freeIP := freeFloatingIps[0]
@@ -1084,7 +1086,7 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 			PortID: &port.ID,
 		}).Extract()
 		if err != nil {
-			return fmt.Errorf("failed to update FloatingIP %s(%s): %v", freeIP.ID, freeIP.FloatingIP, err)
+			return fmt.Errorf("failed to update FloatingIP %s(%s): %w", freeIP.ID, freeIP.FloatingIP, err)
 		}
 
 		// We're now going to wait 3 seconds and check if the IP is still ours. If not, we're going to fail
@@ -1092,7 +1094,7 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 		time.Sleep(floatingReassignIPCheckPeriod)
 		currentIP, err := osfloatingips.Get(netClient, ip.ID).Extract()
 		if err != nil {
-			return fmt.Errorf("failed to load FloatingIP %s after assignment has been done: %v", ip.FloatingIP, err)
+			return fmt.Errorf("failed to load FloatingIP %s after assignment has been done: %w", ip.FloatingIP, err)
 		}
 		// Verify if the port is still the one we set it to
 		if currentIP.PortID != port.ID {

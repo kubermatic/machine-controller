@@ -104,7 +104,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
 		c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "PACKET_API_KEY")
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %w", err)
 		}
 	}
 	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "METAL_PROJECT_ID")
@@ -114,28 +114,28 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
 		c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %w", err)
 		}
 	}
 	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %w", err)
 	}
 	c.BillingCycle, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.BillingCycle)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"billingCycle\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"billingCycle\" field, error = %w", err)
 	}
 	for i, tag := range rawConfig.Tags {
 		tagValue, err := p.configVarResolver.GetConfigVarStringValue(tag)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"tags\" field, error = %v", i, err)
+			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"tags\" field, error = %w", i, err)
 		}
 		c.Tags = append(c.Tags, tagValue)
 	}
 	for i, facility := range rawConfig.Facilities {
 		facilityValue, err := p.configVarResolver.GetConfigVarStringValue(facility)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"facilities\" field, error = %v", i, err)
+			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"facilities\" field, error = %w", i, err)
 		}
 		c.Facilities = append(c.Facilities, facilityValue)
 	}
@@ -166,7 +166,7 @@ func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.De
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, _, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if c.Token == "" {
@@ -181,7 +181,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	_, err = getNameForOS(pc.OperatingSystem)
 	if err != nil {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
+		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
 	client := getClient(c.Token)
@@ -193,7 +193,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	// get all valid facilities
 	facilities, _, err := client.Facilities.List(nil)
 	if err != nil {
-		return fmt.Errorf("failed to list facilities: %v", err)
+		return fmt.Errorf("failed to list facilities: %w", err)
 	}
 	// ensure our requested facilities are in those facilities
 	if missingFacilities := itemsNotInList(facilityProp(facilities, "Code"), c.Facilities); len(missingFacilities) > 0 {
@@ -203,7 +203,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	// get all valid plans a.k.a. instance types
 	plans, _, err := client.Plans.List(nil)
 	if err != nil {
-		return fmt.Errorf("failed to list instance types / plans: %v", err)
+		return fmt.Errorf("failed to list instance types / plans: %w", err)
 	}
 	// ensure our requested plan is in those plans
 	validPlanNames := planProp(plans, "Name")
@@ -257,7 +257,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	instance, err := p.Get(machine, data)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
 		}
 		return false, err
@@ -473,7 +473,7 @@ func getTagUID(tag string) (string, error) {
 // if the given error doesn't qualify the error passed as an argument will be returned
 func metalErrorToTerminalError(err error, response *packngo.Response, msg string) error {
 	prepareAndReturnError := func() error {
-		return fmt.Errorf("%s, due to %s", msg, err)
+		return fmt.Errorf("%s, due to %w", msg, err)
 	}
 
 	if err != nil {

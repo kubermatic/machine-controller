@@ -78,7 +78,7 @@ func (p *KubeconfigProvider) getKubeconfigFromConfigMap(ctx context.Context) (*c
 func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*clientcmdapi.Config, error) {
 	e, err := p.kubeClient.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, kubernetesEndpointsName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get endpoint from lister: %v", err)
+		return nil, fmt.Errorf("failed to get endpoint from lister: %w", err)
 	}
 
 	if len(e.Subsets) == 0 {
@@ -113,7 +113,7 @@ func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*
 
 	caData, err := getCAData(p.clientConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get ca data from config: %v", err)
+		return nil, fmt.Errorf("failed to get ca data from config: %w", err)
 	}
 
 	return &clientcmdapi.Config{
