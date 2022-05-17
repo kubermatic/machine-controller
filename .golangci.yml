@@ -24,8 +24,11 @@ linters:
     - gofmt
     - gosimple
     - govet
+    - importas
     - ineffassign
     - misspell
+    - noctx
+    - nolintlint
     - revive
     - structcheck
     - unconvert
