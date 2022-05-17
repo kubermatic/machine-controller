@@ -30,7 +30,6 @@ import (
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
-	out.SelfLink = ""
 	out.UID = ""
 	out.ResourceVersion = ""
 	out.Generation = 0

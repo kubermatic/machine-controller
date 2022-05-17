@@ -905,8 +905,8 @@ func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(ctx context.Context, prov
 		}
 
 		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
-			if err := r.updateNode(ctx, node, func(n *corev1.Node) {
-				n.Spec.ConfigSource = machine.Spec.ConfigSource
+			if err := r.updateNode(ctx, node, func(node *corev1.Node) {
+				node.Spec.ConfigSource = machine.Spec.ConfigSource
 			}); err != nil {
 				return nil, fmt.Errorf("failed to update node %s after setting the config source: %w", node.Name, err)
 			}

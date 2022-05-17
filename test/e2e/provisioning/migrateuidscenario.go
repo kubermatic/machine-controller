@@ -33,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -61,7 +62,10 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	machine.Name = machineDeployment.Name
 	machine.Namespace = metav1.NamespaceSystem
 	machine.Spec.Name = machine.Name
-	fakeClient := fakectrlruntimeclient.NewFakeClient(machine)
+	fakeClient := fakectrlruntimeclient.NewClientBuilder().
+		WithScheme(scheme.Scheme).
+		WithObjects(machine).
+		Build()
 
 	providerData := &cloudprovidertypes.ProviderData{
 		Update: cloudprovidertypes.GetMachineUpdater(context.Background(), fakeClient),

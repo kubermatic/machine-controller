@@ -156,9 +156,8 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Contex
 	if err != nil {
 		return fmt.Errorf("failed to create delete system request: %w", err)
 	}
-	req.WithContext(ctx)
 
-	res, err := client.Do(req)
+	res, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("failed to delete system profile: %w", err)
 	}
@@ -186,9 +185,7 @@ func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetch systems request: %w", err)
 	}
-	req.WithContext(ctx)
-
-	res, err := client.Do(req)
+	res, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed executing fetch systems request: %w", err)
 	}

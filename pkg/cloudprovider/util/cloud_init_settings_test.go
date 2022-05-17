@@ -23,7 +23,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"k8s.io/client-go/kubernetes/scheme"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var testData = []struct {
@@ -53,7 +54,11 @@ var testData = []struct {
 func TestCloudInitGeneration(t *testing.T) {
 	for _, test := range testData {
 		t.Run(test.name, func(t *testing.T) {
-			fakeClient := fake.NewFakeClient(test.secret)
+			fakeClient := fakectrlruntimeclient.
+				NewClientBuilder().
+				WithScheme(scheme.Scheme).
+				WithObjects(test.secret).
+				Build()
 
 			userdata, err := ioutil.ReadFile(test.userdata)
 			if err != nil {
