@@ -26,7 +26,7 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.12-1
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.13-4
           command:
             - /bin/bash
             - -c
@@ -54,7 +54,7 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.12-1
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.13-4
           command:
             - "./hack/ci-upload-gocache.sh"
           resources:

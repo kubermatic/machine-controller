@@ -32,7 +32,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.18.1
+        - image: golang:1.18.2
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -55,7 +55,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.18.1
+        - image: golang:1.18.2
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -77,7 +77,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.18.1
+        - image: golang:1.18.2
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -98,7 +98,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.18.1
+        - image: golang:1.18.2
           command:
             - "./hack/ci-e2e-test.sh"
           args:
