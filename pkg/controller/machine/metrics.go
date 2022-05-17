@@ -101,7 +101,8 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 	}
 
 	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: metricsPrefix + "machines",
+		Name: metricsPrefix + "machines_total",
+		Help: "Total number of machines",
 	}, labelNames)
 
 	counter := counterVec.With(labels)
