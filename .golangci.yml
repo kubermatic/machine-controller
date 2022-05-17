@@ -27,6 +27,7 @@ linters:
     - importas
     - ineffassign
     - misspell
+    - nakedret
     - noctx
     - nolintlint
     - nosprintfhostport
