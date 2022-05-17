@@ -1,0 +1,63 @@
+# Copyright 2022 The Machine Controller Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+postsubmits:
+  - name: ci-push-machine-controller-image
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    branches:
+      - ^master$
+      # Match on tags
+      - ^v\d+\.\d+\.\d+.*
+    labels:
+      preset-docker-push: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.12-1
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              start-docker.sh
+              docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+              docker login -u $QUAY_IO_USERNAME -p $QUAY_IO_PASSWORD quay.io
+              make download-gocache docker-image-publish
+          # docker-in-docker needs privileged mode
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 2
+              memory: 1Gi
+
+  - name: ci-push-machine-controller-upload-gocache
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    branches:
+      - ^master$
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.12-1
+          command:
+            - "./hack/ci-upload-gocache.sh"
+          resources:
+            requests:
+              cpu: 2
+              memory: 1Gi

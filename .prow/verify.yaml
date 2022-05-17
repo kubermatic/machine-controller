@@ -1,0 +1,160 @@
+# Copyright 2022 The Machine Controller Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+presubmits:
+  - name: pull-machine-controller-build
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.18.1
+          command:
+            - make
+          args:
+            - download-gocache
+            - all
+          resources:
+            requests:
+              cpu: 1
+
+  - name: pull-machine-controller-dependencies
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.18.1
+          command:
+            - make
+          args:
+            - check-dependencies
+          resources:
+            requests:
+              cpu: 800m
+
+  - name: pull-machine-controller-lint
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golangci/golangci-lint:v1.42.1
+          command:
+            - make
+          args:
+            - lint
+          resources:
+            requests:
+              cpu: 800m
+              memory: 6Gi
+
+  - name: pull-machine-controller-yamllint
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/yamllint:0.1
+          command:
+            - "sh"
+            - "-c"
+            - "yamllint -c .yamllint.conf ."
+          resources:
+            requests:
+              cpu: 200m
+
+  - name: pre-machine-controller-verify-shfmt
+    run_if_changed: "^hack/"
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    spec:
+      containers:
+        - image: docker.io/mvdan/shfmt:v3.3.1
+          command:
+            - "/bin/shfmt"
+          args:
+            #   -l        list files whose formatting differs from shfmt's
+            #   -d        error with a diff when the formatting differs
+            #   -i uint   indent: 0 for tabs (default), >0 for number of spaces
+            #   -sr       redirect operators will be followed by a space
+            - "-l"
+            - "-sr"
+            - "-i"
+            - "2"
+            - "-d"
+            - "hack"
+          resources:
+            requests:
+              memory: 32Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 250m
+
+  - name: pull-machine-controller-verify-boilerplate
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    spec:
+      containers:
+        - image: quay.io/kubermatic-labs/boilerplate:v0.2.0
+          command:
+            - "./hack/verify-boilerplate.sh"
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 100m
+
+  - name: pull-machine-controller-license-validation
+    run_if_changed: "^go.(mod|sum)$"
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/wwhrd:0.4.0-1
+          command:
+            - ./hack/verify-licenses.sh
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 1
+
+  - name: pull-machine-controller-test
+    always_run: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.18.1
+          command:
+            - make
+          args:
+            - download-gocache
+            - test-unit
+          resources:
+            requests:
+              cpu: 800m
