@@ -59,4 +59,8 @@ issues:
     - 'cyclomatic complexity 34 of func `\(\*provider\)\.getConfig` is high'
     - 'cyclomatic complexity 31 of func `\(\*provider\)\.Validate` is high'
     - 'cyclomatic complexity 31 of func `\(\*provider\)\.Create` is high'
+    # SA1019: node.Spec.ConfigSource is deprecated: Previously used to specify the source of the node's configuration for the DynamicKubeletConfig feature.
+    # This feature is removed from Kubelets as of 1.24 and will be fully removed in 1.26. +optional
+    # We still support setting dynamic kubelet config feature in machine-controller. Hence, ignoring this error.
+    # TODO: remove this once we remove support for the feature in 1.23
     - "SA1019: node.Spec.ConfigSource is deprecated"
