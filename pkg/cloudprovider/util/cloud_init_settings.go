@@ -56,7 +56,6 @@ func ExtractAPIServerToken(ctx context.Context, client ctrlruntimeclient.Client)
 	}
 
 	return "", errors.New("failed to fetch api server token")
-
 }
 
 func ExtractTokenAndAPIServer(ctx context.Context, userdata string, client ctrlruntimeclient.Client) (token string, apiServer string, err error) {

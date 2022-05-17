@@ -54,9 +54,7 @@ func TestEvictPods(t *testing.T) {
 			literalPods = append(literalPods, *(pod.(*corev1.Pod)))
 		}
 		client := kubefake.NewSimpleClientset(test.Pods...)
-
 		t.Run(test.Name, func(t *testing.T) {
-
 			ne := &NodeEviction{kubeClient: client, nodeName: "node1"}
 			if errs := ne.evictPods(literalPods); len(errs) > 0 {
 				t.Fatalf("Got unexpected errors=%v when running evictPods", errs)

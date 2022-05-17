@@ -688,7 +688,6 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 				if err != nil {
 					return nil, fmt.Errorf("failed to delete redhat satellite host for machine name %s: %w", machine.Name, err)
 				}
-
 			}
 		}
 
@@ -738,7 +737,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
-
 		// case 2.1: instance was not found and we are going to create one
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			klog.V(3).Infof("Validated machine spec of %s", machine.Name)

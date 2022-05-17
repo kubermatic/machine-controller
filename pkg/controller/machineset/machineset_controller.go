@@ -233,10 +233,8 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, machineSet *cluster
 	if updatedMS.Spec.MinReadySeconds > 0 &&
 		updatedMS.Status.ReadyReplicas == replicas &&
 		updatedMS.Status.AvailableReplicas != replicas {
-
 		return reconcile.Result{RequeueAfter: time.Duration(updatedMS.Spec.MinReadySeconds) * time.Second}, nil
 	}
-
 	return reconcile.Result{}, nil
 }
 

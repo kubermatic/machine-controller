@@ -80,7 +80,6 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	prov, err := cloudprovider.ForProvider(providerSpec.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %w", providerSpec.CloudProvider, err)
-
 	}
 	defaultedSpec, err := prov.AddDefaults(machine.Spec)
 	if err != nil {
@@ -156,7 +155,6 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 4: Delete the instance and then verify instance is gone
 	for i := 0; i < maxTries; i++ {
-
 		// Deletion part 0: Delete and continue on err if there are tries left
 		done, err := prov.Cleanup(machine, providerData)
 		if err != nil {

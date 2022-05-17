@@ -172,7 +172,6 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 }
 
 func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient, c *config, UID types.UID) ([]compute.Disk, error) {
-
 	list, err := disksClient.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list disks: %w", err)

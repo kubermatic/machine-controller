@@ -56,7 +56,6 @@ func verifyCreateMachineFails(kubeConfig, manifestPath string, parameters []stri
 }
 
 func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
-
 	client, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
@@ -76,7 +75,6 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 }
 
 func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []string) (ctrlruntimeclient.Client, *clusterv1alpha1.MachineDeployment, error) {
-
 	client, manifest, err := prepare(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return nil, nil, err
@@ -97,7 +95,6 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 }
 
 func prepareMachine(kubeConfig, manifestPath string, parameters []string) (ctrlruntimeclient.Client, *clusterv1alpha1.Machine, error) {
-
 	client, manifest, err := prepare(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return nil, nil, err
@@ -264,7 +261,6 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 // assureNodeForMachineDeployment according to shouldExists parameter check if a node for machine exists in the system or not
 // this method examines OwnerReference of each node.
 func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client, shouldExist bool) error {
-
 	machines, err := getMatchingMachines(machineDeployment, client)
 	if err != nil {
 		return fmt.Errorf("failed to list Machines: %w", err)
@@ -289,7 +285,6 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 				return fmt.Errorf("expected to find a node for MachineDeployment %q but Machine %q has no address yet, indicating instance creation at the provider failed", machineDeployment.Name, machine.Name)
 			}
 		}
-
 	}
 
 	nodes := &corev1.NodeList{}

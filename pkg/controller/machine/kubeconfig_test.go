@@ -96,6 +96,5 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		if time.Until(expirationTimeParsed).Minutes() < 0 {
 			t.Errorf("Error, secret expiration is in the past!")
 		}
-
 	}
 }

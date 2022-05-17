@@ -153,7 +153,6 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 					continue
 				}
 			}
-
 		}
 		for {
 			metricGatheringExecutor()

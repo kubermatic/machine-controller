@@ -30,7 +30,6 @@ import (
 )
 
 func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
-
 	client, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err

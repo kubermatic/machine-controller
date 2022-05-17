@@ -862,7 +862,6 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 
 	if config.IsSpotInstance != nil && *config.IsSpotInstance &&
 		config.SpotPersistentRequest != nil && *config.SpotPersistentRequest {
-
 		cOut, err := ec2Client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: aws.StringSlice([]string{*ec2instance.instance.SpotInstanceRequestId}),
 		})
@@ -961,7 +960,6 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 	}
 
 	return s, "aws", nil
-
 }
 
 func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {

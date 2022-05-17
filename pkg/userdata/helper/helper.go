@@ -38,9 +38,7 @@ func GetServerAddressFromKubeconfig(kubeconfig *clientcmdapi.Config) (string, er
 	for _, clusterConfig := range kubeconfig.Clusters {
 		return strings.Replace(clusterConfig.Server, "https://", "", -1), nil
 	}
-
 	return "", fmt.Errorf("no server address found")
-
 }
 
 func GetCACert(kubeconfig *clientcmdapi.Config) (string, error) {

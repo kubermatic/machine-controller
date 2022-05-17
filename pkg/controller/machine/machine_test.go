@@ -325,7 +325,6 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func durationPtr(d time.Duration) *time.Duration {

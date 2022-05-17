@@ -256,7 +256,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 	config.SecondaryDisks = make([]SecondaryDisks, 0, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
 	for _, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
-
 		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
 		if err != nil {
 			return nil, nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
@@ -571,7 +570,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, fmt.Errorf("failed to create secret for userdata: %w", err)
 	}
 	return &kubeVirtServer{}, nil
-
 }
 
 func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
@@ -753,7 +751,6 @@ func getDataVolumeSource(osImage OSImage) *cdiv1beta1.DataVolumeSource {
 				Name:      nameSpaceAndName[1],
 			}
 		}
-
 	}
 	return dataVolumeSource
 }

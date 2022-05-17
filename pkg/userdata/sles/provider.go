@@ -38,7 +38,6 @@ type Provider struct{}
 
 // UserData renders user-data template to string.
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
-
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %w", err)

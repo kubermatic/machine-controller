@@ -116,7 +116,6 @@ func (ne *NodeEviction) getFilteredPods() ([]corev1.Pod, error) {
 }
 
 func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
-
 	errCh := make(chan error, len(pods))
 	retErrs := []error{}
 

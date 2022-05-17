@@ -75,7 +75,6 @@ func TestAnexiaProvider(t *testing.T) {
 		err := waitForVM(ctx, client)
 		if err != nil {
 			t.Fatal("No error was expected", err)
-
 		}
 
 		if providerStatus.InstanceID != TestIdentifier {
@@ -308,7 +307,6 @@ func TestGetProviderStatus(t *testing.T) {
 	returnedStatus := getProviderStatus(machine)
 
 	testhelper.AssertEquals(t, "InstanceID", returnedStatus.InstanceID)
-
 }
 
 func TestUpdateStatus(t *testing.T) {

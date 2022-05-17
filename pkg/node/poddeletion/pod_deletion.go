@@ -166,7 +166,6 @@ func (vc *NodeVolumeAttachmentsCleanup) nodeCanBeDeleted() (bool, error) {
 }
 
 func (vc *NodeVolumeAttachmentsCleanup) deletePods(pods []corev1.Pod) []error {
-
 	errCh := make(chan error, len(pods))
 	retErrs := []error{}
 

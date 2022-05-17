@@ -77,7 +77,6 @@ func NewTinkerbellDriver(mdConfig *metadataclient.Config, factory ClientFactory,
 		hwClient = tinkerbellclient.NewHardwareClient(tinkclient.HardwareClient)
 		tmplClient = tinkerbellclient.NewTemplateClient(tinkclient.TemplateClient)
 		wflClient = tinkerbellclient.NewWorkflowClient(tinkclient.WorkflowClient, tinkerbellclient.NewHardwareClient(tinkclient.HardwareClient))
-
 	} else {
 		mdClient, hwClient, tmplClient, wflClient = factory()
 	}

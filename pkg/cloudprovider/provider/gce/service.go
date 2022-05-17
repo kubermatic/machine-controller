@@ -106,9 +106,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 		} else {
 			klog.Infof("IP family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetIPFamily())
 		}
-
 	}
-
 	return []*compute.NetworkInterface{ifc}, nil
 }
 

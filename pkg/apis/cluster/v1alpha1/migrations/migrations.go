@@ -142,7 +142,6 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	ctx context.Context, client ctrlruntimeclient.Client,
 	kubeClient kubernetes.Interface,
 	providerData *cloudprovidertypes.ProviderData) error {
-
 	var (
 		cachePopulatingInterval = 15 * time.Second
 		cachePopulatingTimeout  = 10 * time.Minute
@@ -375,7 +374,6 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machine *clusterv1a
 
 func deleteMachinesV1Alpha1Machine(ctx context.Context,
 	machine *machinesv1alpha1.Machine, client ctrlruntimeclient.Client) error {
-
 	machine.Finalizers = []string{}
 	if err := client.Update(ctx, machine); err != nil {
 		return fmt.Errorf("failed to update machinesv1alpha1.machine %s after removing finalizer: %w", machine.Name, err)

@@ -186,7 +186,6 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertype
 			if err != nil {
 				return nil, fmt.Errorf("failed to allocate ip address for instance %v: %w", foundInstance.InstanceId, err)
 			}
-
 		}
 		return &alibabaInstance{instance: foundInstance}, nil
 	}

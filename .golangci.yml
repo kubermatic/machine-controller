@@ -39,6 +39,8 @@ linters:
     - unconvert
     - unused
     - varcheck
+    - wastedassign
+    - whitespace
   disable-all: true
 
 issues:

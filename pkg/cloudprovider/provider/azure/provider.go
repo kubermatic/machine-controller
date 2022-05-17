@@ -445,7 +445,6 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 			for _, ip := range publicIP6s {
 				ipAddresses[ip] = v1.NodeExternalIP
 			}
-
 		}
 
 		internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
@@ -455,9 +454,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 		for _, ip := range internalIPs {
 			ipAddresses[ip] = v1.NodeInternalIP
 		}
-
 	}
-
 	return ipAddresses, nil
 }
 
@@ -547,7 +544,6 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 				StorageAccountType: *config.DataDiskSKU,
 			}
 		}
-
 	}
 	return sp, nil
 }

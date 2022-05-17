@@ -42,7 +42,6 @@ type ValidateCallTestCase struct {
 }
 
 func getSpecsForValidationTest(t *testing.T, configCases []ConfigTestCase) []ValidateCallTestCase {
-
 	var testCases []ValidateCallTestCase
 
 	for _, configCase := range configCases {

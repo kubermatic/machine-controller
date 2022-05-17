@@ -36,7 +36,6 @@ import (
 )
 
 func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Client, req plugin.UserDataRequest, secretName string) (string, error) {
-
 	var clusterName string
 	for key := range req.Kubeconfig.Clusters {
 		clusterName = key

@@ -259,7 +259,6 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("no project found for name==%s", name),
 		}
-
 	}
 
 	for _, project := range projects.Entities {
@@ -394,7 +393,6 @@ func waitForCompletion(client *ClientSet, taskID string, interval time.Duration,
 		default:
 			return false, fmt.Errorf("unknown status: %s", *task.Status)
 		}
-
 	})
 }
 

@@ -185,7 +185,6 @@ func DefaultOperatingSystemSpec(
 	cloudProvider providerconfigtypes.CloudProvider,
 	operatingSystemSpec runtime.RawExtension,
 ) (runtime.RawExtension, error) {
-
 	switch osys {
 	case providerconfigtypes.OperatingSystemAmazonLinux2:
 		return amzn2.DefaultConfig(operatingSystemSpec), nil
