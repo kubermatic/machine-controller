@@ -385,7 +385,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 // We don't use the UID for kubevirt because the name of a VMI must stay stable
 // in order for the node name to stay stable. The operator is responsible for ensuring
 // there are no conflicts, e.G. by using one Namespace per Kubevirt user cluster.
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error {
 	return nil
 }
 

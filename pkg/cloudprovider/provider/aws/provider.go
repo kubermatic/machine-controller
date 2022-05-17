@@ -978,7 +978,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	machineInstance, err := p.get(machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
@@ -1002,7 +1002,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 
 	_, err = ec2Client.CreateTags(&ec2.CreateTagsInput{
 		Resources: aws.StringSlice([]string{machineInstance.ID()}),
-		Tags:      []*ec2.Tag{{Key: aws.String(machineUIDTag), Value: aws.String(string(new))}}})
+		Tags:      []*ec2.Tag{{Key: aws.String(machineUIDTag), Value: aws.String(string(newUID))}}})
 	if err != nil {
 		return fmt.Errorf("failed to update instance with new machineUIDTag: %w", err)
 	}

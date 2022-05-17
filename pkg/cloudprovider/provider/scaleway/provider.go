@@ -319,7 +319,7 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*scwServer, error) {
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %w", err)
@@ -335,7 +335,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 	}
 
 	oldTags := server.server.Tags
-	newTags := []string{string(new)}
+	newTags := []string{string(newUID)}
 	for _, oldTag := range oldTags {
 		if oldTag != string(machine.UID) {
 			newTags = append(newTags, oldTag)

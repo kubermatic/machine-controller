@@ -83,8 +83,8 @@ func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloudprovid
 }
 
 // MigrateUID just calls the underlying cloudproviders MigrateUID.
-func (w *cachingValidationWrapper) MigrateUID(m *v1alpha1.Machine, new types.UID) error {
-	return w.actualProvider.MigrateUID(m, new)
+func (w *cachingValidationWrapper) MigrateUID(m *v1alpha1.Machine, newUID types.UID) error {
+	return w.actualProvider.MigrateUID(m, newUID)
 }
 
 // MachineMetricsLabels just calls the underlying cloudproviders MachineMetricsLabels.

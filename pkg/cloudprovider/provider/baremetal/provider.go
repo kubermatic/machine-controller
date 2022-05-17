@@ -280,7 +280,7 @@ func (p provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[st
 	return nil, nil
 }
 
-func (p provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p provider) MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error {
 	return nil
 }
 

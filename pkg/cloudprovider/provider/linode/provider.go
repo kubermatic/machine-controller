@@ -343,7 +343,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -362,7 +362,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 		if sets.NewString(linode.Tags...).Has(string(machine.UID)) {
 			updateOpts := linode.GetUpdateOptions()
 
-			tags := []string{string(new)}
+			tags := []string{string(newUID)}
 			if updateOpts.Tags != nil {
 				oldUID := string(machine.UID)
 				for _, existingTag := range *updateOpts.Tags {

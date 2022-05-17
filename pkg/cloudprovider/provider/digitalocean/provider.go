@@ -428,7 +428,7 @@ func (p *provider) listDroplets(token string) ([]godo.Droplet, error) {
 	return result, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -443,7 +443,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 	}
 
 	// The create does not fail if that tag already exists, it even keep responding with a http/201
-	_, response, err := client.Tags.Create(ctx, &godo.TagCreateRequest{Name: string(new)})
+	_, response, err := client.Tags.Create(ctx, &godo.TagCreateRequest{Name: string(newUID)})
 	if err != nil {
 		return fmt.Errorf("failed to create new UID tag: %w, status code: %v", err, response.StatusCode)
 	}
@@ -453,7 +453,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 			tagResourceRequest := &godo.TagResourcesRequest{
 				Resources: []godo.Resource{{ID: strconv.Itoa(droplet.ID), Type: godo.DropletResourceType}},
 			}
-			_, err = client.Tags.TagResources(ctx, string(new), tagResourceRequest)
+			_, err = client.Tags.TagResources(ctx, string(newUID), tagResourceRequest)
 			if err != nil {
 				return fmt.Errorf("failed to tag droplet with new UID tag: %w", err)
 			}

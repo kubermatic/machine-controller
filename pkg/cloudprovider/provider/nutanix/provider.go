@@ -403,7 +403,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertype
 	}, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new ktypes.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid ktypes.UID) error {
 	return nil
 }
 

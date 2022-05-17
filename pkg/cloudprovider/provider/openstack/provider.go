@@ -816,7 +816,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -853,7 +853,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 	for _, s := range allServers {
 		if s.Metadata[machineUIDMetaKey] == string(machine.UID) {
 			metadataOpts := osservers.MetadataOpts(s.Metadata)
-			metadataOpts[machineUIDMetaKey] = string(new)
+			metadataOpts[machineUIDMetaKey] = string(newUID)
 			response := osservers.UpdateMetadata(computeClient, s.ID, metadataOpts)
 			if response.Err != nil {
 				return fmt.Errorf("failed to update instance metadata with new UID: %w", err)

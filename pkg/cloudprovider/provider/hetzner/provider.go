@@ -471,7 +471,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -496,7 +496,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 
 	klog.Infof("Setting UID label for machine %s", machine.Name)
 	_, response, err := client.Server.Update(ctx, server, hcloud.ServerUpdateOpts{
-		Labels: map[string]string{machineUIDLabelKey: string(new)},
+		Labels: map[string]string{machineUIDLabelKey: string(newUID)},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update UID label: %w", err)

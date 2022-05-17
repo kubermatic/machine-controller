@@ -69,7 +69,7 @@ type Provider interface {
 
 	// MigrateUID is called when the controller migrates types and the UID of the machine object changes
 	// All cloud providers that use Machine.UID to uniquely identify resources must implement this
-	MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error
+	MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error
 
 	// SetMetricsForMachines allows providers to provide provider-specific metrics. This may be implemented
 	// as no-op

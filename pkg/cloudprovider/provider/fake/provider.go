@@ -102,7 +102,7 @@ func (p *provider) Cleanup(_ *clusterv1alpha1.Machine, _ *cloudprovidertypes.Pro
 	return true, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error {
 	return nil
 }
 
