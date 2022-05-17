@@ -72,9 +72,6 @@ write_files:
 
     hostnamectl set-hostname node1
 
-
-    yum update -y --disablerepo='*' --enablerepo='*microsoft*'
-
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
