@@ -15,6 +15,7 @@ linters:
     - depguard
     - durationcheck
     - errcheck
+    - errname
     - ineffassign
     - goconst
     - gocyclo
