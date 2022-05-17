@@ -8,19 +8,25 @@ run:
 
 linters:
   enable:
-    - revive
-    - govet
-    - gofmt
-    - structcheck
-    - varcheck
-    - unconvert
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - deadcode
+    - depguard
+    - durationcheck
+    - errcheck
     - ineffassign
     - goconst
     - gocyclo
-    - misspell
+    - gofmt
     - gosimple
+    - govet
+    - misspell
+    - revive
+    - structcheck
+    - unconvert
     - unused
-    - errcheck
+    - varcheck
   disable-all: true
 
 issues:
