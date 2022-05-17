@@ -21,7 +21,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
-// RawConfig is a direct representation of an Azure machine object's configuration
+// RawConfig is a direct representation of an Azure machine object's configuration.
 type RawConfig struct {
 	SubscriptionID providerconfigtypes.ConfigVarString `json:"subscriptionID,omitempty"`
 	TenantID       providerconfigtypes.ConfigVarString `json:"tenantID,omitempty"`
@@ -52,7 +52,7 @@ type RawConfig struct {
 	Tags           map[string]string                   `json:"tags,omitempty"`
 }
 
-// ImagePlan contains azure OS Plan fields for the marketplace images
+// ImagePlan contains azure OS Plan fields for the marketplace images.
 type ImagePlan struct {
 	Name      string `json:"name,omitempty"`
 	Publisher string `json:"publisher,omitempty"`

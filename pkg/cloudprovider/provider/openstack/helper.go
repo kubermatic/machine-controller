@@ -88,7 +88,7 @@ func getNewComputeV2(client *gophercloud.ProviderClient, c *Config) (*gopherclou
 		// Validation - empty value default to microversion 2.0=2.1
 		version, err := strconv.ParseFloat(c.ComputeAPIVersion, 32)
 		if err != nil || version < 2.0 {
-			return nil, fmt.Errorf("invalid computeAPIVersion: %v", err)
+			return nil, fmt.Errorf("invalid computeAPIVersion: %w", err)
 		}
 
 		// See https://github.com/gophercloud/gophercloud/blob/master/docs/MICROVERSIONS.md
@@ -277,7 +277,7 @@ func ensureKubernetesSecurityGroupExist(client *gophercloud.ProviderClient, regi
 
 	_, err = getSecurityGroup(client, region, name)
 	if err != nil {
-		if err == errNotFound {
+		if errors.Is(err, errNotFound) {
 			sg, err := ossecuritygroups.Create(netClient, ossecuritygroups.CreateOpts{Name: name}).Extract()
 			if err != nil {
 				return osErrorToTerminalError(err, fmt.Sprintf("failed to create security group %s", name))
@@ -385,7 +385,7 @@ NetworkLoop:
 	for _, network := range networks {
 		for _, subnet := range network.Subnets {
 			_, err := getSubnet(netClient, subnet)
-			if err == errNotFound {
+			if errors.Is(err, errNotFound) {
 				continue
 			} else if err != nil {
 				return nil, err

@@ -38,16 +38,14 @@ func GetServerAddressFromKubeconfig(kubeconfig *clientcmdapi.Config) (string, er
 	for _, clusterConfig := range kubeconfig.Clusters {
 		return strings.Replace(clusterConfig.Server, "https://", "", -1), nil
 	}
-
 	return "", fmt.Errorf("no server address found")
-
 }
 
 func GetCACert(kubeconfig *clientcmdapi.Config) (string, error) {
 	if len(kubeconfig.Clusters) != 1 {
 		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address")
 	}
-	// Clusters is a map so we have to use range here
+	// Clusters is a map so we have to use range here.
 	for _, clusterConfig := range kubeconfig.Clusters {
 		return string(clusterConfig.CertificateAuthorityData), nil
 	}
@@ -55,18 +53,18 @@ func GetCACert(kubeconfig *clientcmdapi.Config) (string, error) {
 	return "", fmt.Errorf("no CACert found")
 }
 
-// StringifyKubeconfig marshals a kubeconfig to its text form
+// StringifyKubeconfig marshals a kubeconfig to its text form.
 func StringifyKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
 	kubeconfigBytes, err := clientcmd.Write(*kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error writing kubeconfig: %v", err)
+		return "", fmt.Errorf("error writing kubeconfig: %w", err)
 	}
 
 	return string(kubeconfigBytes), nil
 }
 
 // LoadKernelModules returns a script which is responsible for loading all required kernel modules
-// The nf_conntrack_ipv4 module get removed in newer kernel versions
+// The nf_conntrack_ipv4 module get removed in newer kernel versions.
 func LoadKernelModulesScript() string {
 	return `#!/usr/bin/env bash
 set -euo pipefail
@@ -85,7 +83,7 @@ fi
 }
 
 // KernelSettings returns the list of kernel settings required for a kubernetes worker node
-// inotify changes according to https://github.com/kubernetes/kubernetes/issues/10421 - better than letting the kubelet die
+// inotify changes according to https://github.com/kubernetes/kubernetes/issues/10421 - better than letting the kubelet die.
 func KernelSettings() string {
 	return `net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
@@ -98,7 +96,7 @@ fs.inotify.max_user_instances = 8192
 `
 }
 
-// JournalDConfig returns the journal config preferable on every node
+// JournalDConfig returns the journal config preferable on every node.
 func JournalDConfig() string {
 	// JournaldMaxUse defines the maximum space that journalD logs can occupy.
 	// https://www.freedesktop.org/software/systemd/man/journald.conf.html#SystemMaxUse=

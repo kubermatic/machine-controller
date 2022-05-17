@@ -54,7 +54,7 @@ func BuildConfig(opts Opts) (Config, error) {
 
 			_, err := url.Parse(trimmedMirror)
 			if err != nil {
-				return Config{}, fmt.Errorf("incorrect mirror provided: %v", err)
+				return Config{}, fmt.Errorf("incorrect mirror provided: %w", err)
 			}
 
 			registryMirrors = append(registryMirrors, trimmedMirror)

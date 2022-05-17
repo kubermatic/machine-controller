@@ -37,7 +37,7 @@ const defaultClientTimeout = 15 * time.Second
 var (
 	// CABundle is set globally once by the main() function
 	// and is used to overwrite the default set of CA certificates
-	// loaded from the host system/pod
+	// loaded from the host system/pod.
 	CABundle *x509.CertPool
 )
 
@@ -47,7 +47,7 @@ var (
 func SetCABundleFile(filename string) error {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %v", err)
+		return fmt.Errorf("failed to read file: %w", err)
 	}
 
 	CABundle = x509.NewCertPool()

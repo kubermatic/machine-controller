@@ -31,14 +31,14 @@ import (
 func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 	machineDeployment := clusterv1alpha1.MachineDeployment{}
 	if err := json.Unmarshal(ar.Object.Raw, &machineDeployment); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 	machineDeploymentOriginal := machineDeployment.DeepCopy()
 
 	machineDeploymentDefaultingFunction(&machineDeployment)
 
 	if err := mutationsForMachineDeployment(&machineDeployment, ad.useOSM); err != nil {
-		return nil, fmt.Errorf("mutation failed: %v", err)
+		return nil, fmt.Errorf("mutation failed: %w", err)
 	}
 
 	if errs := validateMachineDeployment(machineDeployment); len(errs) > 0 {
@@ -57,7 +57,7 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 	if ar.Operation == admissionv1.Update {
 		var oldMachineDeployment clusterv1alpha1.MachineDeployment
 		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachineDeployment); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal OldObject: %v", err)
+			return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
 		}
 		if equal := apiequality.Semantic.DeepEqual(oldMachineDeployment.Spec.Template.Spec, machineDeployment.Spec.Template.Spec); equal {
 			machineSpecNeedsValidation = false

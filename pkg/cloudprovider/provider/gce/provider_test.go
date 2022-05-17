@@ -82,7 +82,7 @@ func testServiceAccount() string {
 
 type testMap map[string]interface{}
 
-// with patches value of m at keypath with val e.g. keypath=x.y val=z then m[x][y] = z
+// with patches value of m at keypath with val e.g. keypath=x.y val=z then m[x][y] = z.
 func (m testMap) with(keypath, val string) testMap {
 	parts := strings.Split(keypath, ".")
 	var curr interface{} = m
@@ -103,7 +103,7 @@ func (m testMap) with(keypath, val string) testMap {
 }
 
 func TestValidate(t *testing.T) {
-	os.Setenv(envGoogleServiceAccount, testServiceAccount())
+	t.Setenv(envGoogleServiceAccount, testServiceAccount())
 	defer os.Unsetenv(envGoogleServiceAccount)
 
 	rawBytes := func(m map[string]interface{}) []byte {

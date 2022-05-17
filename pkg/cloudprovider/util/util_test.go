@@ -36,15 +36,18 @@ func TestRemoveFinalizerOnInstanceNotFound(t *testing.T) {
 		t.Fatalf("failed to add clusterv1alpha1 to scheme: %v", err)
 	}
 
-	var fakeClient = fakectrlruntimeclient.NewFakeClient(
-		&v1alpha1.Machine{
+	var fakeClient = fakectrlruntimeclient.
+		NewClientBuilder().
+		WithScheme(scheme.Scheme).
+		WithObjects(&v1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test_machine",
 				Finalizers: []string{
 					"test_finalizer_1",
 					"test_finalizer_2"},
 			},
-		})
+		}).
+		Build()
 
 	var testCases = []struct {
 		name            string

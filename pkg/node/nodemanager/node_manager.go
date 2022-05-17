@@ -45,7 +45,7 @@ func New(ctx context.Context, client ctrlruntimeclient.Client, nodeName string) 
 func (nm *NodeManager) GetNode() (*corev1.Node, error) {
 	node := &corev1.Node{}
 	if err := nm.client.Get(nm.ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
-		return nil, fmt.Errorf("failed to get node from lister: %v", err)
+		return nil, fmt.Errorf("failed to get node from lister: %w", err)
 	}
 	return node, nil
 }

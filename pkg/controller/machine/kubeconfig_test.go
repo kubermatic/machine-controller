@@ -24,8 +24,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -60,7 +60,11 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		data[tokenIDKey] = []byte("tokenID")
 		data[expirationKey] = []byte(testCase.initialExperirationTime.Format(time.RFC3339))
 		secret.Data = data
-		reconciler.client = ctrlruntimefake.NewFakeClient(runtime.Object(secret))
+		reconciler.client = ctrlruntimefake.
+			NewClientBuilder().
+			WithScheme(scheme.Scheme).
+			WithObjects(secret).
+			Build()
 
 		if _, err := reconciler.updateSecretExpirationAndGetToken(ctx, secret); err != nil {
 			t.Fatalf("Unexpected error running updateSecretExpirationAndGetToken: %v", err)
@@ -92,6 +96,5 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		if time.Until(expirationTimeParsed).Minutes() < 0 {
 			t.Errorf("Error, secret expiration is in the past!")
 		}
-
 	}
 }

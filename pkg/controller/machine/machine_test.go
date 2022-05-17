@@ -32,13 +32,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func init() {
@@ -190,11 +190,15 @@ func TestController_GetNode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			nodes := []runtime.Object{}
+			nodes := []ctrlruntimeclient.Object{}
 			for _, node := range nodeList {
 				nodes = append(nodes, node)
 			}
-			client := ctrlruntimefake.NewFakeClient(nodes...)
+			client := fakectrlruntimeclient.NewClientBuilder().
+				WithScheme(scheme.Scheme).
+				WithObjects(nodes...).
+				Build()
+
 			reconciler := Reconciler{client: client}
 
 			node, exists, err := reconciler.getNode(ctx, test.instance, test.provider)
@@ -298,7 +302,10 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 
 			providerConfig := &providerconfigtypes.Config{CloudProvider: providerconfigtypes.CloudProviderFake}
 
-			client := ctrlruntimefake.NewFakeClient(node, machine)
+			client := fakectrlruntimeclient.NewClientBuilder().
+				WithScheme(scheme.Scheme).
+				WithObjects(node, machine).
+				Build()
 
 			reconciler := Reconciler{
 				client:             client,
@@ -318,7 +325,6 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func durationPtr(d time.Duration) *time.Duration {
@@ -332,14 +338,14 @@ func TestControllerShouldEvict(t *testing.T) {
 	tests := []struct {
 		name               string
 		machine            *clusterv1alpha1.Machine
-		additionalMachines []runtime.Object
-		existingNodes      []runtime.Object
+		additionalMachines []ctrlruntimeclient.Object
+		existingNodes      []ctrlruntimeclient.Object
 		shouldEvict        bool
 	}{
 		{
 			name:        "skip eviction due to eviction timeout",
 			shouldEvict: false,
-			existingNodes: []runtime.Object{&corev1.Node{
+			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				},
@@ -379,7 +385,7 @@ func TestControllerShouldEvict(t *testing.T) {
 		},
 		{
 			name: "Skip eviction due to no available target",
-			existingNodes: []runtime.Object{&corev1.Node{
+			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				},
@@ -396,7 +402,7 @@ func TestControllerShouldEvict(t *testing.T) {
 		{
 			name:        "Eviction possible because of second node",
 			shouldEvict: true,
-			existingNodes: []runtime.Object{&corev1.Node{
+			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				}}, &corev1.Node{
@@ -416,7 +422,7 @@ func TestControllerShouldEvict(t *testing.T) {
 		{
 			name:        "Eviction possible because of machine without noderef",
 			shouldEvict: true,
-			existingNodes: []runtime.Object{&corev1.Node{
+			existingNodes: []ctrlruntimeclient.Object{&corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "existing-node",
 				}}, &corev1.Node{
@@ -432,7 +438,7 @@ func TestControllerShouldEvict(t *testing.T) {
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
 				},
 			},
-			additionalMachines: []runtime.Object{
+			additionalMachines: []ctrlruntimeclient.Object{
 				&clusterv1alpha1.Machine{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "new-machine-without-a-node",
@@ -446,10 +452,14 @@ func TestControllerShouldEvict(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			objects := []runtime.Object{test.machine}
+			objects := []ctrlruntimeclient.Object{test.machine}
 			objects = append(objects, test.existingNodes...)
 			objects = append(objects, test.additionalMachines...)
-			client := ctrlruntimefake.NewFakeClient(objects...)
+
+			client := ctrlruntimefake.NewClientBuilder().
+				WithScheme(scheme.Scheme).
+				WithObjects(objects...).
+				Build()
 
 			reconciler := &Reconciler{
 				client:            client,
@@ -584,12 +594,15 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			objects := []runtime.Object{test.machine}
+			objects := []ctrlruntimeclient.Object{test.machine}
 			for _, n := range test.nodes {
 				objects = append(objects, n)
 			}
 
-			client := ctrlruntimefake.NewFakeClient(objects...)
+			client := fakectrlruntimeclient.NewClientBuilder().
+				WithScheme(scheme.Scheme).
+				WithObjects(objects...).
+				Build()
 
 			providerData := &cloudprovidertypes.ProviderData{
 				Ctx:    ctx,

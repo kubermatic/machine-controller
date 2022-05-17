@@ -56,7 +56,6 @@ func verifyCreateMachineFails(kubeConfig, manifestPath string, parameters []stri
 }
 
 func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
-
 	client, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
@@ -64,11 +63,11 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 
 	machineDeployment, err = createAndAssure(machineDeployment, client, timeout)
 	if err != nil {
-		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %v", err)
+		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %w", err)
 	}
 
 	if err := deleteAndAssure(machineDeployment, client, timeout); err != nil {
-		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%v", err)
+		return fmt.Errorf("Failed to verify if a machine/node has been created/deleted, due to: \n%w", err)
 	}
 
 	klog.Infof("Successfully finished test for MachineDeployment %s", machineDeployment.Name)
@@ -76,7 +75,6 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 }
 
 func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []string) (ctrlruntimeclient.Client, *clusterv1alpha1.MachineDeployment, error) {
-
 	client, manifest, err := prepare(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return nil, nil, err
@@ -97,7 +95,6 @@ func prepareMachineDeployment(kubeConfig, manifestPath string, parameters []stri
 }
 
 func prepareMachine(kubeConfig, manifestPath string, parameters []string) (ctrlruntimeclient.Client, *clusterv1alpha1.Machine, error) {
-
 	client, manifest, err := prepare(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return nil, nil, err
@@ -125,17 +122,17 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (ctrlruntimec
 	// init kube related stuff
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
-		return nil, "", fmt.Errorf("Error building kubeconfig: %v", err)
+		return nil, "", fmt.Errorf("Error building kubeconfig: %w", err)
 	}
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to create Client: %v", err)
+		return nil, "", fmt.Errorf("failed to create Client: %w", err)
 	}
 
 	// prepare the manifest
 	manifest, err := readAndModifyManifest(manifestPath, parameters)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to prepare the manifest, due to: %v", err)
+		return nil, "", fmt.Errorf("failed to prepare the manifest, due to: %w", err)
 	}
 
 	return client, manifest, nil
@@ -145,7 +142,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachineDeployment(machineDeployment, client, false)
 	if err != nil {
-		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %v", err)
+		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %w", err)
 	}
 
 	klog.Infof("Creating a new %q MachineDeployment", machineDeployment.Name)
@@ -164,7 +161,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return true, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create MachineDeployment %q: %v", machineDeployment.Name, err)
+		return nil, fmt.Errorf("failed to create MachineDeployment %q: %w", machineDeployment.Name, err)
 	}
 
 	klog.Infof("MachineDeployment %q created", machineDeployment.Name)
@@ -178,7 +175,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %v (%v)", machineDeployment.Name, err, pollErr)
+		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %w (%v)", machineDeployment.Name, err, pollErr)
 	}
 	klog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 
@@ -200,7 +197,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node in ready state: %v", machineDeployment.Name, err)
+		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node in ready state: %w", machineDeployment.Name, err)
 	}
 	return machineDeployment, nil
 }
@@ -208,7 +205,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimeclient.Client) (bool, error) {
 	nodes := &corev1.NodeList{}
 	if err := client.List(context.Background(), nodes); err != nil {
-		return false, fmt.Errorf("failed to list nodes: %v", err)
+		return false, fmt.Errorf("failed to list nodes: %w", err)
 	}
 	for _, node := range nodes.Items {
 		if isNodeForMachine(&node, machine) {
@@ -231,7 +228,7 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	if err := updateMachineDeployment(machineDeployment, client, func(md *clusterv1alpha1.MachineDeployment) {
 		md.Spec.Replicas = getInt32Ptr(0)
 	}); err != nil {
-		return fmt.Errorf("failed to update replicas of MachineDeployment %s: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to update replicas of MachineDeployment %s: %w", machineDeployment.Name, err)
 	}
 
 	// Ensure machines are gone
@@ -245,12 +242,12 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		}
 		return true, nil
 	}); err != nil {
-		return fmt.Errorf("failed to wait for machines of MachineDeployment %s to be deleted: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to wait for machines of MachineDeployment %s to be deleted: %w", machineDeployment.Name, err)
 	}
 
 	klog.V(2).Infof("Deleting MachineDeployment %s", machineDeployment.Name)
 	if err := client.Delete(context.Background(), machineDeployment); err != nil {
-		return fmt.Errorf("unable to remove MachineDeployment %s, due to %v", machineDeployment.Name, err)
+		return fmt.Errorf("unable to remove MachineDeployment %s, due to %w", machineDeployment.Name, err)
 	}
 	return wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		err := client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
@@ -264,10 +261,9 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 // assureNodeForMachineDeployment according to shouldExists parameter check if a node for machine exists in the system or not
 // this method examines OwnerReference of each node.
 func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client, shouldExist bool) error {
-
 	machines, err := getMatchingMachines(machineDeployment, client)
 	if err != nil {
-		return fmt.Errorf("failed to list Machines: %v", err)
+		return fmt.Errorf("failed to list Machines: %w", err)
 	}
 
 	if shouldExist {
@@ -279,7 +275,7 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 			// Azure doesn't seem to easely expose the private IP address, there is only a PublicIPAddressClient in the sdk
 			providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 			if err != nil {
-				return fmt.Errorf("failed to get provider config: %v", err)
+				return fmt.Errorf("failed to get provider config: %w", err)
 			}
 			if providerConfig.CloudProvider == providerconfigtypes.CloudProviderAzure {
 				continue
@@ -289,12 +285,11 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 				return fmt.Errorf("expected to find a node for MachineDeployment %q but Machine %q has no address yet, indicating instance creation at the provider failed", machineDeployment.Name, machine.Name)
 			}
 		}
-
 	}
 
 	nodes := &corev1.NodeList{}
 	if err := client.List(context.Background(), nodes); err != nil {
-		return fmt.Errorf("failed to list Nodes: %v", err)
+		return fmt.Errorf("failed to list Nodes: %w", err)
 	}
 
 	nodeForMachineExists := false
@@ -341,7 +336,7 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	return content, nil
 }
 
-// getMatchingMachines returns all machines that are owned by the passed machineDeployment
+// getMatchingMachines returns all machines that are owned by the passed machineDeployment.
 func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client) ([]clusterv1alpha1.Machine, error) {
 	matchingMachineSets, err := getMachingMachineSets(machineDeployment, client)
 	if err != nil {
@@ -352,7 +347,7 @@ func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, c
 	for _, machineSet := range matchingMachineSets {
 		machinesForMachineSet, err := getMatchingMachinesForMachineset(&machineSet, client)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get matching Machines for MachineSet %s: %v", machineSet.Name, err)
+			return nil, fmt.Errorf("failed to get matching Machines for MachineSet %s: %w", machineSet.Name, err)
 		}
 		matchingMachines = append(matchingMachines, machinesForMachineSet...)
 	}
@@ -363,7 +358,7 @@ func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, c
 func getMatchingMachinesForMachineset(machineSet *clusterv1alpha1.MachineSet, client ctrlruntimeclient.Client) ([]clusterv1alpha1.Machine, error) {
 	allMachines := &clusterv1alpha1.MachineList{}
 	if err := client.List(context.Background(), allMachines, &ctrlruntimeclient.ListOptions{Namespace: machineSet.Namespace}); err != nil {
-		return nil, fmt.Errorf("failed to list Machines: %v", err)
+		return nil, fmt.Errorf("failed to list Machines: %w", err)
 	}
 	var matchingMachines []clusterv1alpha1.Machine
 	for _, machine := range allMachines.Items {
@@ -374,22 +369,22 @@ func getMatchingMachinesForMachineset(machineSet *clusterv1alpha1.MachineSet, cl
 	return matchingMachines, nil
 }
 
-// getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment
+// getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment.
 func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Reader) ([]clusterv1alpha1.MachineSet, error) {
 	// Ensure we actually have an object from the KubeAPI and not just the result of the yaml parsing, as the latter
-	// can not be the owner of anything due to missing UID
+	// can not be the owner of anything due to missing UID.
 	if machineDeployment.ResourceVersion == "" {
 		nn := types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}
 		if err := client.Get(context.Background(), nn, machineDeployment); err != nil {
 			if !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to get MachineDeployment %s: %v", nn.Name, err)
+				return nil, fmt.Errorf("failed to get MachineDeployment %s: %w", nn.Name, err)
 			}
 			return nil, nil
 		}
 	}
 	allMachineSets := &clusterv1alpha1.MachineSetList{}
 	if err := client.List(context.Background(), allMachineSets, &ctrlruntimeclient.ListOptions{Namespace: machineDeployment.Namespace}); err != nil {
-		return nil, fmt.Errorf("failed to list MachineSets: %v", err)
+		return nil, fmt.Errorf("failed to list MachineSets: %w", err)
 	}
 	var matchingMachineSets []clusterv1alpha1.MachineSet
 	for _, machineSet := range allMachineSets.Items {

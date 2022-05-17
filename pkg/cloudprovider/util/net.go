@@ -31,7 +31,7 @@ const (
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 	ip, ipNet, err := net.ParseCIDR(ipv4)
 	if err != nil {
-		return "", "", 0, fmt.Errorf("failed to parse CIDR prefix: %v", err)
+		return "", "", 0, fmt.Errorf("failed to parse CIDR prefix: %w", err)
 	}
 
 	if len(ipNet.Mask) != 4 {
@@ -60,7 +60,7 @@ func GenerateRandMAC() (net.HardwareAddr, error) {
 	return mac, nil
 }
 
-// IPFamily IPv4 | IPv6 | IPv4+IPv6
+// IPFamily IPv4 | IPv6 | IPv4+IPv6.
 type IPFamily string
 
 const (
@@ -70,7 +70,7 @@ const (
 	DualStack   IPFamily = "IPv4+IPv6"
 )
 
-// IsLinkLocal checks if given ip address is link local
+// IsLinkLocal checks if given ip address is link local..
 func IsLinkLocal(ipAddr string) bool {
 	addr := net.ParseIP(ipAddr)
 	return addr.IsLinkLocalMulticast() || addr.IsLinkLocalUnicast()

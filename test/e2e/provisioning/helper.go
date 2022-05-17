@@ -127,7 +127,7 @@ func (a *and) Match(tc scenario) bool {
 	return a.s1.Match(tc) && a.s2.Match(tc)
 }
 
-// NameSelector is used to match against a test case name
+// NameSelector is used to match against a test case name.
 func NameSelector(tcName string) Selector {
 	return &name{tcName}
 }
@@ -159,7 +159,6 @@ func runScenarios(st *testing.T, selector Selector, testParams []string, manifes
 type scenarioExecutor func(string, string, []string, time.Duration) error
 
 func testScenario(t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string, parallelize bool) {
-
 	if parallelize {
 		t.Parallel()
 	}

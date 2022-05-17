@@ -24,7 +24,7 @@ import (
 )
 
 /// [MachineDeploymentSpec]
-// MachineDeploymentSpec defines the desired state of MachineDeployment
+// MachineDeploymentSpec defines the desired state of MachineDeployment.
 type MachineDeploymentSpec struct {
 	// Number of desired machines. Defaults to 1.
 	// This is a pointer to distinguish between explicit zero and not specified.
@@ -126,7 +126,7 @@ type MachineRollingUpdateDeployment struct {
 /// [MachineRollingUpdateDeployment]
 
 /// [MachineDeploymentStatus]
-// MachineDeploymentStatus defines the observed state of MachineDeployment
+// MachineDeploymentStatus defines the observed state of MachineDeployment.
 type MachineDeploymentStatus struct {
 	// The generation observed by the deployment controller.
 	// +optional
@@ -183,7 +183,7 @@ type MachineDeployment struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MachineDeploymentList contains a list of MachineDeployment
+// MachineDeploymentList contains a list of MachineDeployment.
 type MachineDeploymentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

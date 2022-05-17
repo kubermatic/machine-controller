@@ -30,7 +30,6 @@ import (
 )
 
 func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
-
 	client, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
@@ -40,13 +39,13 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 
 	machineDeployment, err = createAndAssure(machineDeployment, client, timeout)
 	if err != nil {
-		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %v", err)
+		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %w", err)
 	}
 
 	if err := updateMachineDeployment(machineDeployment, client, func(md *clusterv1alpha1.MachineDeployment) {
 		md.Spec.Template.Labels["testUpdate"] = "true"
 	}); err != nil {
-		return fmt.Errorf("failed to update MachineDeployment %s after modifying it: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to update MachineDeployment %s after modifying it: %w", machineDeployment.Name, err)
 	}
 
 	klog.Infof("Waiting for second MachineSet to appear after updating MachineDeployment %s", machineDeployment.Name)
@@ -126,7 +125,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	if err := updateMachineDeployment(machineDeployment, client, func(md *clusterv1alpha1.MachineDeployment) {
 		md.Spec.Replicas = getInt32Ptr(0)
 	}); err != nil {
-		return fmt.Errorf("failed to update replicas of MachineDeployment %s: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to update replicas of MachineDeployment %s: %w", machineDeployment.Name, err)
 	}
 	klog.Infof("Successfully set replicas of MachineDeployment %s to 0", machineDeployment.Name)
 
@@ -141,7 +140,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 
 	klog.Infof("Deleting MachineDeployment %s and waiting for it to disappear", machineDeployment.Name)
 	if err := client.Delete(context.Background(), machineDeployment); err != nil {
-		return fmt.Errorf("failed to delete MachineDeployment %s: %v", machineDeployment.Name, err)
+		return fmt.Errorf("failed to delete MachineDeployment %s: %w", machineDeployment.Name, err)
 	}
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
 		err := client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})

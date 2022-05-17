@@ -67,17 +67,16 @@ func NewTinkerbellDriver(mdConfig *metadataclient.Config, factory ClientFactory,
 	if factory == nil {
 		mdClient, err = metadataclient.NewMetadataClient(mdConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create metadata client: %v", err)
+			return nil, fmt.Errorf("failed to create metadata client: %w", err)
 		}
 
 		if err := tinkclient.Setup(); err != nil {
-			return nil, fmt.Errorf("failed to setup tink-server client: %v", err)
+			return nil, fmt.Errorf("failed to setup tink-server client: %w", err)
 		}
 
 		hwClient = tinkerbellclient.NewHardwareClient(tinkclient.HardwareClient)
 		tmplClient = tinkerbellclient.NewTemplateClient(tinkclient.TemplateClient)
 		wflClient = tinkerbellclient.NewWorkflowClient(tinkclient.WorkflowClient, tinkerbellclient.NewHardwareClient(tinkclient.HardwareClient))
-
 	} else {
 		mdClient, hwClient, tmplClient, wflClient = factory()
 	}
@@ -97,7 +96,7 @@ func NewTinkerbellDriver(mdConfig *metadataclient.Config, factory ClientFactory,
 func (d *driver) GetServer(ctx context.Context, uid types.UID, hwSpec runtime.RawExtension) (plugins.Server, error) {
 	hw := HardwareSpec{}
 	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %w", err)
 	}
 
 	fetchedHW, err := d.hardwareClient.Get(ctx, string(uid), hw.GetIPAddress(),
@@ -107,7 +106,7 @@ func (d *driver) GetServer(ctx context.Context, uid types.UID, hwSpec runtime.Ra
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 
-		return nil, fmt.Errorf("failed to get hardware: %v", err)
+		return nil, fmt.Errorf("failed to get hardware: %w", err)
 	}
 
 	return &HardwareSpec{
@@ -120,7 +119,7 @@ func (d *driver) GetServer(ctx context.Context, uid types.UID, hwSpec runtime.Ra
 func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugins.CloudConfigSettings, hwSpec runtime.RawExtension) (plugins.Server, error) {
 	hw := HardwareSpec{}
 	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %w", err)
 	}
 	hw.Hardware.Id = string(uid)
 	_, err := d.hardwareClient.Get(ctx, hw.Hardware.Id, "", "")
@@ -128,14 +127,14 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugin
 		if resourceNotFoundErr(err) {
 			cfg, err := d.metadataClient.GetMachineMetadata()
 			if err != nil {
-				return nil, fmt.Errorf("failed to get metadata configs: %v", err)
+				return nil, fmt.Errorf("failed to get metadata configs: %w", err)
 			}
 
 			hw.Hardware.Network.Interfaces[0].Dhcp.Mac = cfg.MACAddress
 
 			ip, netmask, _, err := util.CIDRToIPAndNetMask(cfg.CIDR)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse CIDR: %v", err)
+				return nil, fmt.Errorf("failed to parse CIDR: %w", err)
 			}
 			dhcpIP := &hardware.Hardware_DHCP_IP{
 				Address: ip,
@@ -145,7 +144,7 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugin
 			hw.Hardware.Network.Interfaces[0].Dhcp.Ip = dhcpIP
 
 			if err := d.hardwareClient.Create(ctx, hw.Hardware.Hardware); err != nil {
-				return nil, fmt.Errorf("failed to register hardware to tink-server: %v", err)
+				return nil, fmt.Errorf("failed to register hardware to tink-server: %w", err)
 			}
 		}
 	}
@@ -157,7 +156,7 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugin
 			tmpl := createTemplate(d.TinkServerAddress, d.ImageRepoAddress, cfg)
 			payload, err := yaml.Marshal(tmpl)
 			if err != nil {
-				return nil, fmt.Errorf("failed marshalling workflow template: %v", err)
+				return nil, fmt.Errorf("failed marshalling workflow template: %w", err)
 			}
 
 			workflowTemplate = &tinktmpl.WorkflowTemplate{
@@ -167,13 +166,13 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugin
 			}
 
 			if err := d.templateClient.Create(ctx, workflowTemplate); err != nil {
-				return nil, fmt.Errorf("failed to create workflow template: %v", err)
+				return nil, fmt.Errorf("failed to create workflow template: %w", err)
 			}
 		}
 	}
 
 	if _, err := d.workflowClient.Create(ctx, workflowTemplate.Id, hw.GetID()); err != nil {
-		return nil, fmt.Errorf("failed to provisioing server id %s running template id %s: %v", workflowTemplate.Id, hw.GetID(), err)
+		return nil, fmt.Errorf("failed to provisioing server id %s running template id %s: %w", workflowTemplate.Id, hw.GetID(), err)
 	}
 
 	return &hw, nil
@@ -182,7 +181,7 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugin
 func (d *driver) Validate(hwSpec runtime.RawExtension) error {
 	hw := HardwareSpec{}
 	if err := json.Unmarshal(hwSpec.Raw, &hw); err != nil {
-		return fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %v", err)
+		return fmt.Errorf("failed to unmarshal tinkerbell hardware spec: %w", err)
 	}
 
 	if hw.Hardware.Hardware == nil {
@@ -205,7 +204,7 @@ func (d *driver) DeprovisionServer(ctx context.Context, uid types.UID) error {
 		if resourceNotFoundErr(err) {
 			return nil
 		}
-		return fmt.Errorf("failed to delete tinkerbell hardware data: %v", err)
+		return fmt.Errorf("failed to delete tinkerbell hardware data: %w", err)
 	}
 
 	return nil

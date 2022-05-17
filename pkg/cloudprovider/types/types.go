@@ -28,7 +28,7 @@ import (
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Provider exposed all required functions to interact with a cloud provider
+// Provider exposed all required functions to interact with a cloud provider.
 type Provider interface {
 	// AddDefaults will read the MachineSpec and apply defaults for provider specific fields
 	AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error)
@@ -69,41 +69,41 @@ type Provider interface {
 
 	// MigrateUID is called when the controller migrates types and the UID of the machine object changes
 	// All cloud providers that use Machine.UID to uniquely identify resources must implement this
-	MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error
+	MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error
 
 	// SetMetricsForMachines allows providers to provide provider-specific metrics. This may be implemented
 	// as no-op
 	SetMetricsForMachines(machines clusterv1alpha1.MachineList) error
 }
 
-// MachineModifier defines a function to modify a machine
+// MachineModifier defines a function to modify a machine.
 type MachineModifier func(*clusterv1alpha1.Machine)
 
-// MachineUpdater defines a function to persist an update to a machine
+// MachineUpdater defines a function to persist an update to a machine.
 type MachineUpdater func(*clusterv1alpha1.Machine, ...MachineModifier) error
 
-// ProviderData is the struct the cloud providers get when creating or deleting an instance
+// ProviderData is the struct the cloud providers get when creating or deleting an instance.
 type ProviderData struct {
 	Ctx    context.Context
 	Update MachineUpdater
 	Client ctrlruntimeclient.Client
 }
 
-// GetMachineUpdater returns an MachineUpdater based on the passed in context and ctrlruntimeclient.Client
+// GetMachineUpdater returns an MachineUpdater based on the passed in context and ctrlruntimeclient.Client.
 func GetMachineUpdater(ctx context.Context, client ctrlruntimeclient.Client) MachineUpdater {
 	return func(machine *clusterv1alpha1.Machine, modifiers ...MachineModifier) error {
 		if len(modifiers) == 0 {
 			return nil
 		}
 
-		// Store name here, because the machine can be nil if an update failed
+		// Store name here, because the machine can be nil if an update failed.
 		namespacedName := types.NamespacedName{Namespace: machine.Namespace, Name: machine.Name}
 		return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			if err := client.Get(ctx, namespacedName, machine); err != nil {
 				return err
 			}
 
-			// Check if we actually change something and only update if that is the case
+			// Check if we actually change something and only update if that is the case.
 			unmodifiedMachine := machine.DeepCopy()
 			for _, modify := range modifiers {
 				modify(machine)

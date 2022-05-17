@@ -192,7 +192,7 @@ var dataDiskSKUs = map[compute.StorageAccountTypes]string{
 
 var (
 	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
-	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data
+	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data.
 	cacheLock = &sync.Mutex{}
 	cache     = gocache.New(10*time.Minute, 10*time.Minute)
 )
@@ -221,7 +221,7 @@ func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*co
 	return &ref, nil
 }
 
-// New returns a new azure provider
+// New returns a new azure provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -248,32 +248,32 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	c := config{}
 	c.SubscriptionID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.SubscriptionID, envSubscriptionID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"subscriptionID\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"subscriptionID\" field, error = %w", err)
 	}
 
 	c.TenantID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.TenantID, envTenantID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"tenantID\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"tenantID\" field, error = %w", err)
 	}
 
 	c.ClientID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.ClientID, envClientID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"clientID\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"clientID\" field, error = %w", err)
 	}
 
 	c.ClientSecret, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawCfg.ClientSecret, envClientSecret)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"clientSecret\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"clientSecret\" field, error = %w", err)
 	}
 
 	c.ResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ResourceGroup)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"resourceGroup\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"resourceGroup\" field, error = %w", err)
 	}
 
 	c.VNetResourceGroup, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetResourceGroup)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"vnetResourceGroup\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"vnetResourceGroup\" field, error = %w", err)
 	}
 
 	if c.VNetResourceGroup == "" {
@@ -282,49 +282,49 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 
 	c.Location, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.Location)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"location\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"location\" field, error = %w", err)
 	}
 
 	c.VMSize, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VMSize)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"vmSize\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"vmSize\" field, error = %w", err)
 	}
 
 	c.VNetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.VNetName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"vnetName\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"vnetName\" field, error = %w", err)
 	}
 
 	c.SubnetName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.SubnetName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"subnetName\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"subnetName\" field, error = %w", err)
 	}
 
 	c.LoadBalancerSku, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.LoadBalancerSku)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"loadBalancerSku\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"loadBalancerSku\" field, error = %w", err)
 	}
 
 	c.RouteTableName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.RouteTableName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"routeTableName\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"routeTableName\" field, error = %w", err)
 	}
 
 	c.AssignPublicIP, _, err = p.configVarResolver.GetConfigVarBoolValue(rawCfg.AssignPublicIP)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %w", err)
 	}
 
 	c.AssignAvailabilitySet = rawCfg.AssignAvailabilitySet
 
 	c.AvailabilitySet, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.AvailabilitySet)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"availabilitySet\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"availabilitySet\" field, error = %w", err)
 	}
 
 	c.SecurityGroupName, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.SecurityGroupName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"securityGroupName\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"securityGroupName\" field, error = %w", err)
 	}
 
 	c.Zones = rawCfg.Zones
@@ -359,7 +359,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get image id: %v", err)
+		return nil, nil, fmt.Errorf("failed to get image id: %w", err)
 	}
 
 	return &c, pconfig, nil
@@ -392,7 +392,7 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
 		ipAddresses, err = getNICIPAddresses(ctx, c, ifaceName)
 		if vm.NetworkProfile.NetworkInterfaces == nil {
-			return nil, fmt.Errorf("failed to get addresses for interface %q: %v", ifaceName, err)
+			return nil, fmt.Errorf("failed to get addresses for interface %q: %w", ifaceName, err)
 		}
 	}
 
@@ -402,12 +402,12 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[string]v1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create interfaces client: %v", err)
+		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
 	}
 
 	netIf, err := ifClient.Get(ctx, c.ResourceGroup, ifaceName, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get interface %q: %v", ifaceName, err.Error())
+		return nil, fmt.Errorf("failed to get interface %q: %w", ifaceName, err)
 	}
 
 	ipAddresses := map[string]v1.NodeAddressType{}
@@ -432,7 +432,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 		if c.AssignPublicIP {
 			publicIPs, err := getIPAddressStrings(ctx, c, publicIPName(ifaceName))
 			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
 			}
 			for _, ip := range publicIPs {
 				ipAddresses[ip] = v1.NodeExternalIP
@@ -440,36 +440,33 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 
 			publicIP6s, err := getIPAddressStrings(ctx, c, publicIPv6Name(ifaceName))
 			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %v", name, err)
+				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
 			}
 			for _, ip := range publicIP6s {
 				ipAddresses[ip] = v1.NodeExternalIP
 			}
-
 		}
 
 		internalIPs, err := getInternalIPAddresses(ctx, c, ifaceName, name)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %v", name, err)
+			return nil, fmt.Errorf("failed to retrieve internal IP string for IP %q: %w", name, err)
 		}
 		for _, ip := range internalIPs {
 			ipAddresses[ip] = v1.NodeInternalIP
 		}
-
 	}
-
 	return ipAddresses, nil
 }
 
 func getIPAddressStrings(ctx context.Context, c *config, addrName string) ([]string, error) {
 	ipClient, err := getIPClient(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create IP address client: %v", err)
+		return nil, fmt.Errorf("failed to create IP address client: %w", err)
 	}
 
 	ip, err := ipClient.Get(ctx, c.ResourceGroup, addrName, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get IP %q: %v", addrName, err)
+		return nil, fmt.Errorf("failed to get IP %q: %w", addrName, err)
 	}
 
 	if ip.IPConfiguration == nil {
@@ -488,12 +485,12 @@ func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigNa
 	var ipAddresses []string
 	ipConfigClient, err := getIPConfigClient(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create IP config client: %v", err)
+		return nil, fmt.Errorf("failed to create IP config client: %w", err)
 	}
 
 	internalIP, err := ipConfigClient.Get(ctx, c.ResourceGroup, inetface, ipconfigName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get IP config %q: %v", inetface, err)
+		return nil, fmt.Errorf("failed to get IP config %q: %w", inetface, err)
 	}
 
 	if internalIP.ID == nil {
@@ -513,7 +510,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) (*compute.StorageProfile, error) {
 	osRef, err := getOSImageReference(config, providerCfg.OperatingSystem)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get OSImageReference: %v", err)
+		return nil, fmt.Errorf("failed to get OSImageReference: %w", err)
 	}
 	// initial default storage profile, this will use the VMSize default storage profile
 	sp := &compute.StorageProfile{
@@ -547,7 +544,6 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 				StorageAccountType: *config.DataDiskSKU,
 			}
 		}
-
 	}
 	return sp, nil
 }
@@ -563,13 +559,13 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 
 	vmClient, err := getVMClient(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create VM client: %v", err)
+		return nil, fmt.Errorf("failed to create VM client: %w", err)
 	}
 
 	// We genete a random SSH key, since Azure won't let us create a VM without an SSH key or a password
 	key, err := ssh.NewKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate ssh key: %v", err)
+		return nil, fmt.Errorf("failed to generate ssh key: %w", err)
 	}
 
 	ipFamily := providerCfg.Network.GetIPFamily()
@@ -595,13 +591,13 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}
 		publicIP, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, machine.UID, config)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create public IP: %v", err)
+			return nil, fmt.Errorf("failed to create public IP: %w", err)
 		}
 
 		if ipFamily == util.DualStack {
 			publicIPv6, err = createOrUpdatePublicIPAddress(context.TODO(), publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create public IP: %v", err)
+				return nil, fmt.Errorf("failed to create public IP: %w", err)
 			}
 		}
 	}
@@ -616,7 +612,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 
 	iface, err := createOrUpdateNetworkInterface(context.TODO(), ifaceName(machine), machine.UID, config, publicIP, publicIPv6, ipFamily)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate main network interface: %v", err)
+		return nil, fmt.Errorf("failed to generate main network interface: %w", err)
 	}
 
 	tags := make(map[string]*string, len(config.Tags)+1)
@@ -633,7 +629,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	adminUserName := getOSUsername(providerCfg.OperatingSystem)
 	storageProfile, err := getStorageProfile(config, providerCfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get StorageProfile: %v", err)
+		return nil, fmt.Errorf("failed to get StorageProfile: %w", err)
 	}
 
 	vmSpec := compute.VirtualMachine{
@@ -692,33 +688,33 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 
 	future, err := vmClient.CreateOrUpdate(context.TODO(), config.ResourceGroup, machine.Name, vmSpec)
 	if err != nil {
-		return nil, fmt.Errorf("trying to create a VM: %v", err)
+		return nil, fmt.Errorf("trying to create a VM: %w", err)
 	}
 
 	err = future.WaitForCompletionRef(context.TODO(), vmClient.Client)
 	if err != nil {
-		return nil, fmt.Errorf("waiting for operation returned: %v", err.Error())
+		return nil, fmt.Errorf("waiting for operation returned: %w", err)
 	}
 
 	vm, err := future.Result(*vmClient)
 	if err != nil {
-		return nil, fmt.Errorf("decoding result: %v", err.Error())
+		return nil, fmt.Errorf("decoding result: %w", err)
 	}
 
 	// get the actual VM object filled in with additional data
 	vm, err = vmClient.Get(context.TODO(), config.ResourceGroup, machine.Name, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %v", machine.Name, err)
+		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %w", machine.Name, err)
 	}
 
 	ipAddresses, err := getVMIPAddresses(context.TODO(), config, &vm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %v", machine.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %w", machine.Name, err)
 	}
 
 	status, err := getVMStatus(context.TODO(), config, machine.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve status for VM %q: %v", machine.Name, err.Error())
+		return nil, fmt.Errorf("failed to retrieve status for VM %q: %w", machine.Name, err)
 	}
 
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
@@ -727,13 +723,13 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse MachineSpec: %v", err)
+		return false, fmt.Errorf("failed to parse MachineSpec: %w", err)
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerVM) {
 		klog.Infof("deleting VM %q", machine.Name)
 		if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-			return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
+			return false, fmt.Errorf("failed to delete instance for  machine %q: %w", machine.Name, err)
 		}
 
 		if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
@@ -746,7 +742,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	if kuberneteshelper.HasFinalizer(machine, finalizerDisks) {
 		klog.Infof("deleting disks of VM %q", machine.Name)
 		if err := deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
-			return false, fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
+			return false, fmt.Errorf("failed to remove disks of machine %q: %w", machine.Name, err)
 		}
 		if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerDisks)
@@ -758,7 +754,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
 		klog.Infof("deleting network interfaces of VM %q", machine.Name)
 		if err := deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
-			return false, fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
+			return false, fmt.Errorf("failed to remove network interfaces of machine %q: %w", machine.Name, err)
 		}
 		if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerNIC)
@@ -770,7 +766,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
 		klog.Infof("deleting public IP addresses of VM %q", machine.Name)
 		if err := deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
-			return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
+			return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %w", machine.Name, err)
 		}
 		if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerPublicIP)
@@ -798,7 +794,7 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 	for list.NotDone() {
 		allServers = append(allServers, list.Values()...)
 		if err := list.Next(); err != nil {
-			return nil, fmt.Errorf("failed to iterate the result list: %s", err)
+			return nil, fmt.Errorf("failed to iterate the result list: %w", err)
 		}
 	}
 
@@ -819,7 +815,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 
 	iv, err := vmClient.InstanceView(ctx, c.ResourceGroup, vmName)
 	if err != nil {
-		return instance.StatusUnknown, fmt.Errorf("failed to get instance view for machine %q: %v", vmName, err)
+		return instance.StatusUnknown, fmt.Errorf("failed to get instance view for machine %q: %w", vmName, err)
 	}
 
 	if iv.Statuses == nil {
@@ -873,26 +869,26 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 func (p *provider) get(machine *clusterv1alpha1.Machine) (*azureVM, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse MachineSpec: %v", err)
+		return nil, fmt.Errorf("failed to parse MachineSpec: %w", err)
 	}
 
 	vm, err := getVMByUID(context.TODO(), config, machine.UID)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
 		}
 
-		return nil, fmt.Errorf("failed to find machine %q by its UID: %v", machine.UID, err)
+		return nil, fmt.Errorf("failed to find machine %q by its UID: %w", machine.UID, err)
 	}
 
 	ipAddresses, err := getVMIPAddresses(context.TODO(), config, vm)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %v", vm.Name, err)
+		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %w", vm.Name, err)
 	}
 
 	status, err := getVMStatus(context.TODO(), config, machine.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve status for VM %v: %v", vm.Name, err)
+		return nil, fmt.Errorf("failed to retrieve status for VM %v: %w", vm.Name, err)
 	}
 
 	return &azureVM{vm: vm, ipAddresses: ipAddresses, status: status}, nil
@@ -901,7 +897,7 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*azureVM, error) {
 func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to parse config: %v", err)
+		return "", "", fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	var avSet string
@@ -930,7 +926,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 
 	s, err := azuretypes.CloudConfigToString(cc)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to convert cloud-config to string: %v", err)
+		return "", "", fmt.Errorf("failed to convert cloud-config to string: %w", err)
 	}
 
 	return s, "azure", nil
@@ -976,7 +972,7 @@ func validateDiskSKUs(c *config) error {
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	c, providerConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if c.SubscriptionID == "" {
@@ -1024,20 +1020,20 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	vmClient, err := getVMClient(c)
 	if err != nil {
-		return fmt.Errorf("failed to (create) vm client: %v", err.Error())
+		return fmt.Errorf("failed to (create) vm client: %w", err)
 	}
 
 	_, err = vmClient.List(context.TODO(), c.ResourceGroup, "")
 	if err != nil {
-		return fmt.Errorf("failed to list virtual machines: %v", err.Error())
+		return fmt.Errorf("failed to list virtual machines: %w", err)
 	}
 
 	if _, err := getVirtualNetwork(context.TODO(), c); err != nil {
-		return fmt.Errorf("failed to get virtual network: %v", err)
+		return fmt.Errorf("failed to get virtual network: %w", err)
 	}
 
 	if _, err := getSubnet(context.TODO(), c); err != nil {
-		return fmt.Errorf("failed to get subnet: %v", err)
+		return fmt.Errorf("failed to get subnet: %w", err)
 	}
 
 	if err := validateDiskSKUs(c); err != nil {
@@ -1074,7 +1070,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID
 
 	vmClient, err := getVMClient(config)
 	if err != nil {
-		return fmt.Errorf("failed to create VM client: %v", err)
+		return fmt.Errorf("failed to create VM client: %w", err)
 	}
 
 	var publicIP, publicIPv6 *network.PublicIPAddress
@@ -1084,43 +1080,43 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID
 		sku = network.PublicIPAddressSkuNameStandard
 		_, err = createOrUpdatePublicIPAddress(ctx, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodDynamic, newUID, config)
 		if err != nil {
-			return fmt.Errorf("failed to update UID on public IP: %v", err)
+			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
 		_, err = createOrUpdatePublicIPAddress(ctx, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, newUID, config)
 		if err != nil {
-			return fmt.Errorf("failed to update UID on public IP: %v", err)
+			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
 		_, err = createOrUpdateNetworkInterface(ctx, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.Unspecified)
 		if err != nil {
-			return fmt.Errorf("failed to update UID on main network interface: %v", err)
+			return fmt.Errorf("failed to update UID on main network interface: %w", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerDisks) {
 		disksClient, err := getDisksClient(config)
 		if err != nil {
-			return fmt.Errorf("failed to get disks client: %v", err)
+			return fmt.Errorf("failed to get disks client: %w", err)
 		}
 
 		disks, err := getDisksByMachineUID(ctx, disksClient, config, machine.UID)
 		if err != nil {
-			return fmt.Errorf("failed to get disks: %v", err)
+			return fmt.Errorf("failed to get disks: %w", err)
 		}
 
 		for _, disk := range disks {
 			disk.Tags[machineUIDTag] = to.StringPtr(string(newUID))
 			future, err := disksClient.CreateOrUpdate(ctx, config.ResourceGroup, *disk.Name, disk)
 			if err != nil {
-				return fmt.Errorf("failed to update UID for disk %s: %v", *disk.Name, err)
+				return fmt.Errorf("failed to update UID for disk %s: %w", *disk.Name, err)
 			}
 			if err := future.WaitForCompletionRef(ctx, disksClient.Client); err != nil {
-				return fmt.Errorf("failed waiting for completion of update UID operation for disk %s: %v", *disk.Name, err)
+				return fmt.Errorf("failed waiting for completion of update UID operation for disk %s: %w", *disk.Name, err)
 			}
 		}
 	}
@@ -1134,11 +1130,11 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID
 	vmSpec := compute.VirtualMachine{Location: &config.Location, Tags: tags}
 	future, err := vmClient.CreateOrUpdate(ctx, config.ResourceGroup, machine.Name, vmSpec)
 	if err != nil {
-		return fmt.Errorf("failed to update UID of the instance: %v", err)
+		return fmt.Errorf("failed to update UID of the instance: %w", err)
 	}
 
 	if err := future.WaitForCompletionRef(ctx, vmClient.Client); err != nil {
-		return fmt.Errorf("error waiting for instance to have the updated UID: %v", err)
+		return fmt.Errorf("error waiting for instance to have the updated UID: %w", err)
 	}
 
 	return nil

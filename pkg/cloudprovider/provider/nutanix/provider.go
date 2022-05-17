@@ -198,32 +198,32 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse machineSpec: %v", err)
+		return fmt.Errorf("failed to parse machineSpec: %w", err)
 	}
 
 	client, err := GetClientSet(config)
 	if err != nil {
-		return fmt.Errorf("failed to construct client: %v", err)
+		return fmt.Errorf("failed to construct client: %w", err)
 	}
 
 	cluster, err := getClusterByName(client, config.ClusterName)
 	if err != nil {
-		return fmt.Errorf("failed to get cluster: %v", err)
+		return fmt.Errorf("failed to get cluster: %w", err)
 	}
 
 	if config.ProjectName != "" {
 		if _, err := getProjectByName(client, config.ProjectName); err != nil {
-			return fmt.Errorf("failed to get project: %v", err)
+			return fmt.Errorf("failed to get project: %w", err)
 		}
 	}
 
 	if _, err := getSubnetByName(client, config.SubnetName, *cluster.Metadata.UUID); err != nil {
-		return fmt.Errorf("failed to get subnet: %v", err)
+		return fmt.Errorf("failed to get subnet: %w", err)
 	}
 
 	image, err := getImageByName(client, config.ImageName)
 	if err != nil {
-		return fmt.Errorf("failed to get image: %v", err)
+		return fmt.Errorf("failed to get image: %w", err)
 	}
 
 	var imageSizeBytes int64
@@ -246,7 +246,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	if err != nil {
 		_, cleanupErr := p.Cleanup(machine, data)
 		if cleanupErr != nil {
-			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %v", cleanupErr, err)
+			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %w", cleanupErr, err)
 		}
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (p *provider) cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 
 	vm, err := getVMByName(client, machine.Name, projectID)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			// VM is gone already
 			return true, nil
 		}
@@ -332,7 +332,7 @@ func (p *provider) cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	}
 
 	if err := waitForCompletion(client, taskID, time.Second*5, time.Minute*10); err != nil {
-		return false, fmt.Errorf("failed to wait for completion: %v", err)
+		return false, fmt.Errorf("failed to wait for completion: %w", err)
 	}
 
 	return true, nil
@@ -403,11 +403,11 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertype
 	}, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new ktypes.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid ktypes.UID) error {
 	return nil
 }
 
-// GetCloudConfig returns an empty cloud configuration for Nutanix as no CCM exists
+// GetCloudConfig returns an empty cloud configuration for Nutanix as no CCM exists.
 func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
@@ -417,7 +417,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return labels, fmt.Errorf("failed to parse config: %v", err)
+		return labels, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	labels["size"] = fmt.Sprintf("%d-cpus-%d-mb", config.CPUs, config.MemoryMB)

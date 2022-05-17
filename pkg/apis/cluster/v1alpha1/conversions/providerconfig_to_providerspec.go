@@ -86,7 +86,7 @@ func Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(in []byte) (*clust
 	var wasConverted bool
 	superMachineDeployment := &machineDeploymentWithProviderSpecAndProviderConfig{}
 	if err := json.Unmarshal(in, superMachineDeployment); err != nil {
-		return nil, wasConverted, fmt.Errorf("error unmarshalling machineDeployment object: %v", err)
+		return nil, wasConverted, fmt.Errorf("error unmarshalling machineDeployment object: %w", err)
 	}
 	if superMachineDeployment.Spec.Template.Spec.ProviderConfig != nil && superMachineDeployment.Spec.Template.Spec.ProviderSpec != nil {
 		return nil, wasConverted, fmt.Errorf("both .spec.template.spec.providerConfig and .spec.template.spec.providerSpec were non-nil for machineDeployment %s", superMachineDeployment.Name)
@@ -100,10 +100,10 @@ func Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(in []byte) (*clust
 	machineDeployment := &clusterv1alpha1.MachineDeployment{}
 	superMachineDeploymentBytes, err := json.Marshal(superMachineDeployment)
 	if err != nil {
-		return nil, wasConverted, fmt.Errorf("failed to marshal superMachineDeployment object for machineDeployment %s: %v", superMachineDeployment.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to marshal superMachineDeployment object for machineDeployment %s: %w", superMachineDeployment.Name, err)
 	}
 	if err := json.Unmarshal(superMachineDeploymentBytes, machineDeployment); err != nil {
-		return nil, wasConverted, fmt.Errorf("failed to unmarshal superMachineDeployment object for machineDeployment %s back into machineDeployment object: %v", superMachineDeployment.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to unmarshal superMachineDeployment object for machineDeployment %s back into machineDeployment object: %w", superMachineDeployment.Name, err)
 	}
 	return machineDeployment, wasConverted, nil
 }
@@ -112,7 +112,7 @@ func Convert_MachineSet_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alp
 	var wasConverted bool
 	superMachineSet := &machineSetWithProviderSpecAndProviderConfig{}
 	if err := json.Unmarshal(in, superMachineSet); err != nil {
-		return nil, wasConverted, fmt.Errorf("error unmarshalling machineSet object: %v", err)
+		return nil, wasConverted, fmt.Errorf("error unmarshalling machineSet object: %w", err)
 	}
 	if superMachineSet.Spec.Template.Spec.ProviderConfig != nil && superMachineSet.Spec.Template.Spec.ProviderSpec != nil {
 		return nil, wasConverted, fmt.Errorf("both .spec.template.spec.providerConfig and .spec.template.spec.providerSpec were non-nil for machineSet %s", superMachineSet.Name)
@@ -126,10 +126,10 @@ func Convert_MachineSet_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alp
 	machineSet := &clusterv1alpha1.MachineSet{}
 	superMachineSetBytes, err := json.Marshal(superMachineSet)
 	if err != nil {
-		return nil, wasConverted, fmt.Errorf("failed to marshal superMachineSet object for machineSet %s: %v", superMachineSet.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to marshal superMachineSet object for machineSet %s: %w", superMachineSet.Name, err)
 	}
 	if err := json.Unmarshal(superMachineSetBytes, machineSet); err != nil {
-		return nil, wasConverted, fmt.Errorf("failed to unmarshal superMachineSet object for machineSet %s back into machineSet object: %v", superMachineSet.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to unmarshal superMachineSet object for machineSet %s back into machineSet object: %w", superMachineSet.Name, err)
 	}
 	return machineSet, wasConverted, nil
 }
@@ -139,7 +139,7 @@ func Convert_Machine_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alpha1
 
 	superMachine := &machineWithProviderSpecAndProviderConfig{}
 	if err := json.Unmarshal(in, superMachine); err != nil {
-		return nil, wasConverted, fmt.Errorf("error unmarshalling machine object: %v", err)
+		return nil, wasConverted, fmt.Errorf("error unmarshalling machine object: %w", err)
 	}
 	if superMachine.Spec.ProviderConfig != nil && superMachine.Spec.ProviderSpec != nil {
 		return nil, wasConverted, fmt.Errorf("both .spec.providerConfig and .spec.ProviderSpec were non-nil for machine %s", superMachine.Name)
@@ -153,10 +153,10 @@ func Convert_Machine_ProviderConfig_To_ProviderSpec(in []byte) (*clusterv1alpha1
 	machine := &clusterv1alpha1.Machine{}
 	superMachineBytes, err := json.Marshal(superMachine)
 	if err != nil {
-		return nil, wasConverted, fmt.Errorf("failed to marshal superMachine object for machine %s: %v", superMachine.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to marshal superMachine object for machine %s: %w", superMachine.Name, err)
 	}
 	if err := json.Unmarshal(superMachineBytes, machine); err != nil {
-		return nil, wasConverted, fmt.Errorf("failed to unmarshal superMachine object for machine %s back into machine object: %v", superMachine.Name, err)
+		return nil, wasConverted, fmt.Errorf("failed to unmarshal superMachine object for machine %s back into machine object: %w", superMachine.Name, err)
 	}
 	return machine, wasConverted, nil
 }

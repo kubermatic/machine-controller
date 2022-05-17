@@ -40,7 +40,7 @@ type Provider struct{}
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get provider config: %v", err)
+		return "", fmt.Errorf("failed to get provider config: %w", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {
@@ -49,22 +49,22 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	flatcarConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get flatcar config from provider config: %v", err)
+		return "", fmt.Errorf("failed to get flatcar config from provider config: %w", err)
 	}
 
 	userDataTemplate, err := getUserDataTemplate(flatcarConfig.ProvisioningUtility)
 	if err != nil {
-		return "", fmt.Errorf("failed to get an appropriate user-data template: %v", err)
+		return "", fmt.Errorf("failed to get an appropriate user-data template: %w", err)
 	}
 
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+		return "", fmt.Errorf("failed to parse user-data template: %w", err)
 	}
 
 	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
 	if err != nil {
-		return "", fmt.Errorf("invalid kubelet version: %v", err)
+		return "", fmt.Errorf("invalid kubelet version: %w", err)
 	}
 
 	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
@@ -74,7 +74,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	kubernetesCACert, err := userdatahelper.GetCACert(req.Kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting cacert: %v", err)
+		return "", fmt.Errorf("error extracting cacert: %w", err)
 	}
 
 	if flatcarConfig.DisableAutoUpdate {
@@ -124,12 +124,12 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute user-data template: %v", err)
+		return "", fmt.Errorf("failed to execute user-data template: %w", err)
 	}
 
 	out, err := userdatahelper.CleanupTemplateOutput(b.String())
 	if err != nil {
-		return "", fmt.Errorf("failed to cleanup user-data template: %v", err)
+		return "", fmt.Errorf("failed to cleanup user-data template: %w", err)
 	}
 
 	if flatcarConfig.ProvisioningUtility == CloudInit {
@@ -501,7 +501,7 @@ storage:
           runtime-endpoint: unix:///run/containerd/containerd.sock
 `
 
-// Coreos cloud-config template
+// Coreos cloud-config template.
 const userDataCloudInitTemplate = `#cloud-config
 
 users:

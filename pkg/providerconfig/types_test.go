@@ -39,7 +39,6 @@ func TestDefaultOperatingSystemSpec(t *testing.T) {
 			if operatingSystemSpec.Raw == nil {
 				t.Errorf("expected not nil")
 			}
-
 		})
 	}
 }

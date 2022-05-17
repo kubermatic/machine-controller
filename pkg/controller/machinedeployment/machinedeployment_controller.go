@@ -41,7 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// controllerName is the name of this controller
+// controllerName is the name of this controller.
 const controllerName = "machinedeployment-controller"
 
 var (
@@ -166,7 +166,6 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, d *v1alpha1.
 	}
 
 	if !contains(d.Finalizers, metav1.FinalizerDeleteDependents) {
-
 		d.Finalizers = append(d.ObjectMeta.Finalizers, metav1.FinalizerDeleteDependents)
 		if err := r.Client.Update(ctx, d); err != nil {
 			klog.Infof("Failed to add finalizers to MachineSet %q: %v", d.Name, err)
@@ -205,7 +204,6 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, d *v1alpha1.
 
 // getMachineSetsForDeployment returns a list of MachineSets associated with a MachineDeployment.
 func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(ctx context.Context, d *v1alpha1.MachineDeployment) ([]*v1alpha1.MachineSet, error) {
-
 	// List all MachineSets to find those we own but that no longer match our selector.
 	machineSets := &v1alpha1.MachineSetList{}
 	listOptions := &client.ListOptions{Namespace: d.Namespace}

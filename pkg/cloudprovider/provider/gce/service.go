@@ -21,11 +21,12 @@ limitations under the License.
 package gce
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/option"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
@@ -55,9 +56,10 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	svc, err := compute.New(cfg.jwtConfig.Client(oauth2.NoContext))
+	client := cfg.jwtConfig.Client(context.Background())
+	svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to Google Cloud: %v", err)
+		return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
 	}
 	return &service{svc}, nil
 }
@@ -104,9 +106,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 		} else {
 			klog.Infof("IP family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetIPFamily())
 		}
-
 	}
-
 	return []*compute.NetworkInterface{ifc}, nil
 }
 

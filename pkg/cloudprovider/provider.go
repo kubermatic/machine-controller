@@ -44,7 +44,7 @@ import (
 var (
 	cache = cloudprovidercache.New()
 
-	// ErrProviderNotFound tells that the requested cloud provider was not found
+	// ErrProviderNotFound tells that the requested cloud provider was not found.
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
 	providers = map[providerconfigtypes.CloudProvider]func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider{
@@ -107,7 +107,7 @@ var (
 	}
 )
 
-// ForProvider returns a CloudProvider actuator for the requested provider
+// ForProvider returns a CloudProvider actuator for the requested provider.
 func ForProvider(p providerconfigtypes.CloudProvider, cvr *providerconfig.ConfigVarResolver) (cloudprovidertypes.Provider, error) {
 	if p, found := providers[p]; found {
 		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil

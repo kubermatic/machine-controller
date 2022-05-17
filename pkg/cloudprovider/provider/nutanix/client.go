@@ -159,7 +159,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	if conf.ProjectName != "" {
 		project, err := getProjectByName(client, conf.ProjectName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get project: %v", err)
+			return nil, fmt.Errorf("failed to get project: %w", err)
 		}
 
 		request.Metadata.ProjectReference = &nutanixv3.Reference{
@@ -190,7 +190,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
 
 	if err := waitForCompletion(client, taskUUID, time.Second*10, time.Minute*15); err != nil {
-		return nil, fmt.Errorf("failed to wait for task: %v", err)
+		return nil, fmt.Errorf("failed to wait for task: %w", err)
 	}
 
 	if resp.Metadata.UUID == nil {
@@ -198,7 +198,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}
 
 	if err := waitForPowerState(client, *resp.Metadata.UUID, time.Second*10, time.Minute*10); err != nil {
-		return nil, fmt.Errorf("failed to wait for power state: %v", err)
+		return nil, fmt.Errorf("failed to wait for power state: %w", err)
 	}
 
 	vm, err := client.Prism.V3.GetVM(*resp.Metadata.UUID)
@@ -212,7 +212,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	addresses, err := getIPs(client, *vm.Metadata.UUID, time.Second*5, time.Minute*10)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get addresses: %v", err)
+		return nil, fmt.Errorf("failed to get addresses: %w", err)
 	}
 
 	return Server{
@@ -259,7 +259,6 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("no project found for name==%s", name),
 		}
-
 	}
 
 	for _, project := range projects.Entities {
@@ -394,7 +393,6 @@ func waitForCompletion(client *ClientSet, taskID string, interval time.Duration,
 		default:
 			return false, fmt.Errorf("unknown status: %s", *task.Status)
 		}
-
 	})
 }
 

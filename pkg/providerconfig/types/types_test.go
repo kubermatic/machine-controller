@@ -94,7 +94,6 @@ func TestConfigVarBoolUnmarshalling(t *testing.T) {
 }
 
 func TestConfigVarStringMarshalling(t *testing.T) {
-
 	testCases := []struct {
 		cvs      ConfigVarString
 		expected string
@@ -121,7 +120,6 @@ func TestConfigVarStringMarshalling(t *testing.T) {
 }
 
 func TestConfigVarBoolMarshalling(t *testing.T) {
-
 	testCases := []struct {
 		cvb      ConfigVarBool
 		expected string
@@ -160,7 +158,6 @@ func TestConfigVarBoolMarshalling(t *testing.T) {
 }
 
 func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
-
 	testCases := []ConfigVarString{
 		{Value: "val"},
 		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
@@ -195,7 +192,6 @@ func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 }
 
 func TestConfigVarBoolMarshallingAndUnmarshalling(t *testing.T) {
-
 	testCases := []ConfigVarBool{
 		{},
 		{Value: pointer.Bool(false)},

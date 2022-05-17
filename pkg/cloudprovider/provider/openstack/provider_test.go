@@ -38,7 +38,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const expectedServerRequest = `{
@@ -270,7 +270,7 @@ func TestCreateServer(t *testing.T) {
 			ExpectServerCreated(t, tt.wantServerReq)
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.NewClientBuilder().Build()),
 				// mock client config getter
 				clientGetter: func(c *Config) (*gophercloud.ProviderClient, error) {
 					pc := client.ServiceClient()
@@ -334,7 +334,9 @@ func TestProjectAuthVarsAreCorrectlyLoaded(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.
+					NewClientBuilder().
+					Build()),
 			}
 			conf, _, _, _ := p.getConfig(v1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{
@@ -383,7 +385,7 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 
 		w.WriteHeader(http.StatusAccepted)
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprintf(w, string(srvRes))
+		fmt.Fprint(w, string(srvRes))
 	})
 	th.Mux.HandleFunc("/os-volumes_boot", func(w http.ResponseWriter, r *http.Request) {
 		th.TestMethod(t, r, "POST")
@@ -392,7 +394,7 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 
 		w.WriteHeader(http.StatusAccepted)
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprintf(w, string(srvRes))
+		fmt.Fprint(w, string(srvRes))
 	})
 
 	// Handle listing images v2.

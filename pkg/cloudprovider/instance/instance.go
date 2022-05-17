@@ -18,7 +18,7 @@ package instance
 
 import v1 "k8s.io/api/core/v1"
 
-// Instance represents a instance on the cloud provider
+// Instance represents a instance on the cloud provider.
 type Instance interface {
 	// Name returns the instance name.
 	Name() string

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,7 +79,7 @@ func (p *KubeconfigProvider) getKubeconfigFromConfigMap(ctx context.Context) (*c
 func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*clientcmdapi.Config, error) {
 	e, err := p.kubeClient.CoreV1().Endpoints(metav1.NamespaceDefault).Get(ctx, kubernetesEndpointsName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get endpoint from lister: %v", err)
+		return nil, fmt.Errorf("failed to get endpoint from lister: %w", err)
 	}
 
 	if len(e.Subsets) == 0 {
@@ -109,11 +110,11 @@ func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*
 	if port == nil {
 		return nil, errors.New("no secure port in the subset")
 	}
-	url := fmt.Sprintf("https://%s:%d", ip.String(), port.Port)
+	url := fmt.Sprintf("https://%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port.Port))))
 
 	caData, err := getCAData(p.clientConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get ca data from config: %v", err)
+		return nil, fmt.Errorf("failed to get ca data from config: %w", err)
 	}
 
 	return &clientcmdapi.Config{

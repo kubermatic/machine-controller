@@ -3,7 +3,7 @@ module github.com/kubermatic/machine-controller
 go 1.18
 
 require (
-	cloud.google.com/go/logging v1.1.2
+	cloud.google.com/go/logging v1.4.0
 	cloud.google.com/go/monitoring v1.4.0
 	github.com/Azure/azure-sdk-for-go v64.1.0+incompatible
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5

@@ -81,7 +81,7 @@ func NewMetadataClient(cfg *Config) (Client, error) {
 func (d *defaultClient) GetMachineMetadata() (*MachineMetadata, error) {
 	req, err := http.NewRequest(http.MethodGet, d.metadataEndpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a get metadata request: %v", err)
+		return nil, fmt.Errorf("failed to create a get metadata request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -89,7 +89,7 @@ func (d *defaultClient) GetMachineMetadata() (*MachineMetadata, error) {
 
 	res, err := d.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute get metadata request: %v", err)
+		return nil, fmt.Errorf("failed to execute get metadata request: %w", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -97,12 +97,12 @@ func (d *defaultClient) GetMachineMetadata() (*MachineMetadata, error) {
 	}
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	mdConfig := &MachineMetadata{}
 	if err := json.Unmarshal(data, mdConfig); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal metadata config: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal metadata config: %w", err)
 	}
 
 	return mdConfig, nil

@@ -43,7 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// controllerName is the name of this controller
+// controllerName is the name of this controller.
 const controllerName = "machineset-controller"
 
 var (
@@ -105,7 +105,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	)
 }
 
-// ReconcileMachineSet reconciles a MachineSet object
+// ReconcileMachineSet reconciles a MachineSet object.
 type ReconcileMachineSet struct {
 	client.Client
 	scheme   *runtime.Scheme
@@ -233,10 +233,8 @@ func (r *ReconcileMachineSet) reconcile(ctx context.Context, machineSet *cluster
 	if updatedMS.Spec.MinReadySeconds > 0 &&
 		updatedMS.Status.ReadyReplicas == replicas &&
 		updatedMS.Status.AvailableReplicas != replicas {
-
 		return reconcile.Result{RequeueAfter: time.Duration(updatedMS.Spec.MinReadySeconds) * time.Second}, nil
 	}
-
 	return reconcile.Result{}, nil
 }
 

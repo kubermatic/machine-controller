@@ -37,7 +37,7 @@ import (
 func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
-		return fmt.Errorf("failed to create interfaces client: %v", err)
+		return fmt.Errorf("failed to create interfaces client: %w", err)
 	}
 
 	list, err := ifClient.List(ctx, c.ResourceGroup)
@@ -50,7 +50,7 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 	for list.NotDone() {
 		allInterfaces = append(allInterfaces, list.Values()...)
 		if err = list.NextWithContext(ctx); err != nil {
-			return fmt.Errorf("failed to iterate the result list: %s", err)
+			return fmt.Errorf("failed to iterate the result list: %w", err)
 		}
 	}
 
@@ -76,7 +76,7 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
 	ipClient, err := getIPClient(c)
 	if err != nil {
-		return fmt.Errorf("failed to create IP addresses client: %v", err)
+		return fmt.Errorf("failed to create IP addresses client: %w", err)
 	}
 
 	list, err := ipClient.List(ctx, c.ResourceGroup)
@@ -89,7 +89,7 @@ func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID ty
 	for list.NotDone() {
 		allIPs = append(allIPs, list.Values()...)
 		if err = list.Next(); err != nil {
-			return fmt.Errorf("failed to iterate the result list: %s", err)
+			return fmt.Errorf("failed to iterate the result list: %w", err)
 		}
 	}
 
@@ -126,7 +126,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 	for list.NotDone() {
 		allServers = append(allServers, list.Values()...)
 		if err = list.Next(); err != nil {
-			return fmt.Errorf("failed to iterate the result list: %s", err)
+			return fmt.Errorf("failed to iterate the result list: %w", err)
 		}
 	}
 
@@ -149,7 +149,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UID) error {
 	disksClient, err := getDisksClient(c)
 	if err != nil {
-		return fmt.Errorf("failed to get disks client: %v", err)
+		return fmt.Errorf("failed to get disks client: %w", err)
 	}
 
 	matchingDisks, err := getDisksByMachineUID(ctx, disksClient, c, machineUID)
@@ -160,11 +160,11 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 	for _, disk := range matchingDisks {
 		future, err := disksClient.Delete(ctx, c.ResourceGroup, *disk.Name)
 		if err != nil {
-			return fmt.Errorf("failed to delete disk %s: %v", *disk.Name, err)
+			return fmt.Errorf("failed to delete disk %s: %w", *disk.Name, err)
 		}
 
 		if err = future.WaitForCompletionRef(ctx, disksClient.Client); err != nil {
-			return fmt.Errorf("failed to wait for deletion of disk %s: %v", *disk.Name, err)
+			return fmt.Errorf("failed to wait for deletion of disk %s: %w", *disk.Name, err)
 		}
 	}
 
@@ -172,17 +172,16 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 }
 
 func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient, c *config, UID types.UID) ([]compute.Disk, error) {
-
 	list, err := disksClient.List(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list disks: %v", err)
+		return nil, fmt.Errorf("failed to list disks: %w", err)
 	}
 
 	var allDisks, matchingDisks []compute.Disk
 	for list.NotDone() {
 		allDisks = append(allDisks, list.Values()...)
 		if err = list.Next(); err != nil {
-			return nil, fmt.Errorf("failed to iterate the result list: %s", err)
+			return nil, fmt.Errorf("failed to iterate the result list: %w", err)
 		}
 	}
 
@@ -218,22 +217,22 @@ func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, ipVersion
 
 	future, err := ipClient.CreateOrUpdate(ctx, c.ResourceGroup, ipName, ipParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create public IP address: %v", err)
+		return nil, fmt.Errorf("failed to create public IP address: %w", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, ipClient.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve public IP address creation result: %v", err)
+		return nil, fmt.Errorf("failed to retrieve public IP address creation result: %w", err)
 	}
 
 	if _, err = future.Result(*ipClient); err != nil {
-		return nil, fmt.Errorf("failed to create public IP address: %v", err)
+		return nil, fmt.Errorf("failed to create public IP address: %w", err)
 	}
 
 	klog.Infof("Fetching info for IP address %q", ipName)
 	ip, err := getPublicIPAddress(ctx, ipName, c.ResourceGroup, ipClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch info about public IP %q: %v", ipName, err)
+		return nil, fmt.Errorf("failed to fetch info about public IP %q: %w", ipName, err)
 	}
 
 	return ip, nil
@@ -251,7 +250,7 @@ func getPublicIPAddress(ctx context.Context, ipName string, resourceGroup string
 func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
 	subnetsClient, err := getSubnetsClient(c)
 	if err != nil {
-		return network.Subnet{}, fmt.Errorf("failed to create subnets client: %v", err)
+		return network.Subnet{}, fmt.Errorf("failed to create subnets client: %w", err)
 	}
 
 	return subnetsClient.Get(ctx, c.VNetResourceGroup, c.VNetName, c.SubnetName, "")
@@ -282,14 +281,14 @@ func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
 
 	for skuPages.NotDone() && sku == nil {
 		skus := skuPages.Values()
-		for _, skuResult := range skus {
+		for i, skuResult := range skus {
 			// skip invalid SKU results so we don't trigger a nil pointer exception
 			if skuResult.ResourceType == nil || skuResult.Name == nil {
 				continue
 			}
 
 			if *skuResult.ResourceType == "virtualMachines" && *skuResult.Name == c.VMSize {
-				sku = &skuResult
+				sku = &skus[i]
 				break
 			}
 		}
@@ -323,12 +322,12 @@ func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, 
 func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *network.PublicIPAddress, ipFamily util.IPFamily) (*network.Interface, error) {
 	ifClient, err := getInterfacesClient(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create interfaces client: %v", err)
+		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
 	}
 
 	subnet, err := getSubnet(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch subnet: %v", err)
+		return nil, fmt.Errorf("failed to fetch subnet: %w", err)
 	}
 
 	ifSpec := network.Interface{
@@ -366,36 +365,36 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 	if config.SecurityGroupName != "" {
 		authorizer, err := auth.NewClientCredentialsConfig(config.ClientID, config.ClientSecret, config.TenantID).Authorizer()
 		if err != nil {
-			return nil, fmt.Errorf("failed to create authorizer for security groups: %v", err)
+			return nil, fmt.Errorf("failed to create authorizer for security groups: %w", err)
 		}
 		secGroupClient := network.NewSecurityGroupsClient(config.SubscriptionID)
 		secGroupClient.Authorizer = authorizer
 		secGroup, err := secGroupClient.Get(ctx, config.ResourceGroup, config.SecurityGroupName, "")
 		if err != nil {
-			return nil, fmt.Errorf("failed to get securityGroup %q: %v", config.SecurityGroupName, err)
+			return nil, fmt.Errorf("failed to get securityGroup %q: %w", config.SecurityGroupName, err)
 		}
 		ifSpec.NetworkSecurityGroup = &secGroup
 	}
 	klog.Infof("Creating/Updating public network interface %q", ifName)
 	future, err := ifClient.CreateOrUpdate(ctx, config.ResourceGroup, ifName, ifSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create interface: %v", err)
+		return nil, fmt.Errorf("failed to create interface: %w", err)
 	}
 
 	err = future.WaitForCompletionRef(ctx, ifClient.Client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get interface creation response: %v", err)
+		return nil, fmt.Errorf("failed to get interface creation response: %w", err)
 	}
 
 	_, err = future.Result(*ifClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get interface creation result: %v", err)
+		return nil, fmt.Errorf("failed to get interface creation result: %w", err)
 	}
 
 	klog.Infof("Fetching info about network interface %q", ifName)
 	iface, err := ifClient.Get(ctx, config.ResourceGroup, ifName, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch info about interface %q: %v", ifName, err)
+		return nil, fmt.Errorf("failed to fetch info about interface %q: %w", ifName, err)
 	}
 
 	return &iface, nil

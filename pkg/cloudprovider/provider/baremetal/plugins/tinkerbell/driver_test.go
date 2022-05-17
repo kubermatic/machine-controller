@@ -99,7 +99,7 @@ func TestDriver_GetServer(t *testing.T) {
 			hardwareSpec:    runtime.RawExtension{Raw: []byte("{\n    \"hardware\": {\n        \"network\": {\n            \"interfaces\": [\n                {\n                    \"dhcp\": {\n                        \"ip\": {\n                            \"address\": \"10.129.8.90\"\n                        },\n                        \"mac\": \"18:C0:4D:B1:18:E3\"\n                    }\n                }\n            ]\n        }\n    }\n}")},
 			clientFactor: func() (metadata.Client, tinkerbellclient.HardwareClient, tinkerbellclient.TemplateClient, tinkerbellclient.WorkflowClient) {
 				return &fakeMetadataClient{}, &fakeHardwareClient{
-					err: &resourceErr{
+					err: &resourceError{
 						resource: "hardware",
 					},
 				}, &fakeTemplateClient{}, &fakeWorkflowClient{}
@@ -130,7 +130,7 @@ func TestDriver_GetServer(t *testing.T) {
 			ctx := context.Background()
 			s, err := d.GetServer(ctx, "0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94", test.hardwareSpec)
 			if err != nil {
-				if test.errorIsExpected && test.expectedError == err {
+				if test.errorIsExpected && errors.Is(err, test.expectedError) {
 					return
 				}
 
@@ -168,7 +168,7 @@ func TestDriver_ProvisionServer(t *testing.T) {
 			hardwareSpec:    runtime.RawExtension{Raw: []byte("{\n    \"hardware\": {\n        \"metadata\": {\n            \"facility\": {\n                \"facility_code\": \"ewr1\",\n                \"plan_slug\": \"c2.medium.x86\",\n                \"plan_version_slug\": \"\"\n            },\n            \"instance\": {\n                \"operating_system_version\": {\n                    \"distro\": \"ubuntu\",\n                    \"os_slug\": \"ubuntu_18_04\",\n                    \"version\": \"18.04\"\n                }\n            },\n            \"state\": \"\"\n        },\n        \"network\": {\n            \"interfaces\": [\n                {\n                    \"dhcp\": {\n                        \"arch\": \"x86_64\",\n                        \"ip\": {\n                            \"address\": \"10.129.8.90\",\n                            \"gateway\": \"10.129.8.89\",\n                            \"netmask\": \"255.255.255.252\"\n                        },\n                        \"mac\": \"18:C0:4D:B1:18:E3\",\n                        \"uefi\": false\n                    },\n                    \"netboot\": {\n                        \"allow_pxe\": true,\n                        \"allow_workflow\": true\n                    }\n                }\n            ]\n        }\n    }\n}")},
 			clientFactory: func() (metadata.Client, tinkerbellclient.HardwareClient, tinkerbellclient.TemplateClient, tinkerbellclient.WorkflowClient) {
 				return &fakeMetadataClient{}, &fakeHardwareClient{
-					err: &resourceErr{
+					err: &resourceError{
 						resource: "hardware",
 					},
 				}, &fakeTemplateClient{}, &fakeWorkflowClient{}
@@ -220,7 +220,7 @@ func (f *fakeMetadataClient) GetMachineMetadata() (*metadata.MachineMetadata, er
 }
 
 type fakeHardwareClient struct {
-	err *resourceErr
+	err *resourceError
 }
 
 func (f *fakeHardwareClient) Get(_ context.Context, _ string, _ string, _ string) (*hardware.Hardware, error) {
@@ -337,10 +337,10 @@ func (f *fakeWorkflowClient) Create(_ context.Context, _ string, _ string) (stri
 	return "", nil
 }
 
-type resourceErr struct {
+type resourceError struct {
 	resource string
 }
 
-func (re *resourceErr) Error() string {
+func (re *resourceError) Error() string {
 	return fmt.Sprintf("%s %s", re.resource, tinkerbellclient.ErrNotFound.Error())
 }

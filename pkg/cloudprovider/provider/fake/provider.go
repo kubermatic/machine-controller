@@ -55,7 +55,7 @@ func (f CloudProviderInstance) Status() instance.Status {
 	return instance.StatusUnknown
 }
 
-// New returns a fake cloud provider
+// New returns a fake cloud provider.
 func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
@@ -64,7 +64,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-// Validate returns success or failure based according to its FakeCloudProviderSpec
+// Validate returns success or failure based according to its FakeCloudProviderSpec.
 func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
 	pconfig, err := providerconfigtypes.GetConfig(machinespec.ProviderSpec)
 	if err != nil {
@@ -93,7 +93,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (string, str
 	return "", "", nil
 }
 
-// Create creates a cloud instance according to the given machine
+// Create creates a cloud instance according to the given machine.
 func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
@@ -102,7 +102,7 @@ func (p *provider) Cleanup(_ *clusterv1alpha1.Machine, _ *cloudprovidertypes.Pro
 	return true, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error {
 	return nil
 }
 
