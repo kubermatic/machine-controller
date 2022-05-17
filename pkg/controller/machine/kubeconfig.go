@@ -168,7 +168,7 @@ func (r *Reconciler) updateSecretExpirationAndGetToken(ctx context.Context, secr
 		return "", err
 	}
 
-	//If the token is close to expire, reset it's expiration time
+	// If the token is close to expire, reset it's expiration time
 	if time.Until(expirationTime).Minutes() < 30 {
 		secret.Data[expirationKey] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
 	} else {
