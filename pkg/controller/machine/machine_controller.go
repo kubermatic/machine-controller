@@ -83,7 +83,7 @@ const (
 	// AnnotationMachineUninitialized indicates that a machine is not yet
 	// ready to be worked on by the machine-controller. The machine-controller
 	// will ignore all machines that have this anotation with any value
-	// Its value should consist of one or more initializers, separated by a comma
+	// Its value should consist of one or more initializers, separated by a comma.
 	AnnotationMachineUninitialized = "machine-controller.kubermatic.io/initializers"
 
 	deletionRetryWaitPeriod = 10 * time.Second
@@ -92,13 +92,13 @@ const (
 	NodeOwnerLabelName     = "machine-controller/owned-by"
 
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
-	// cluster-api provider to match Nodes to Machines
+	// cluster-api provider to match Nodes to Machines.
 	AnnotationAutoscalerIdentifier = "cluster.k8s.io/machine"
 
 	provisioningSuffix = "osc-provisioning"
 )
 
-// Reconciler is the controller implementation for machine resources
+// Reconciler is the controller implementation for machine resources.
 type Reconciler struct {
 	kubeClient kubernetes.Interface
 	client     ctrlruntimeclient.Client
@@ -281,7 +281,7 @@ func Add(
 }
 
 // clearMachineError is a convenience function to remove a error on the machine if its set.
-// It does not return an error as it's used around the sync handler
+// It does not return an error as it's used around the sync handler.
 func (r *Reconciler) clearMachineError(machine *clusterv1alpha1.Machine) {
 	if machine.Status.ErrorMessage != nil || machine.Status.ErrorReason != nil {
 		if err := r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
@@ -317,7 +317,7 @@ func (r *Reconciler) updateMachine(m *clusterv1alpha1.Machine, modify ...cloudpr
 }
 
 // updateMachine updates machine's ErrorMessage and ErrorReason regardless if they were set or not
-// this essentially overwrites previous values
+// this essentially overwrites previous values.
 func (r *Reconciler) updateMachineError(machine *clusterv1alpha1.Machine, reason common.MachineStatusError, message string) error {
 	return r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.ErrorMessage = &message
@@ -327,7 +327,7 @@ func (r *Reconciler) updateMachineError(machine *clusterv1alpha1.Machine, reason
 
 // updateMachineErrorIfTerminalError is a convenience method that will update machine's Status if the given err is terminal
 // and at the same time terminal error will be returned to the caller
-// otherwise it will return formatted error according to errMsg
+// otherwise it will return formatted error according to errMsg.
 func (r *Reconciler) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.Machine, stReason common.MachineStatusError, stMessage string, err error, errMsg string) error {
 	if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
 		if errNested := r.updateMachineError(machine, stReason, stMessage); errNested != nil {
@@ -339,7 +339,7 @@ func (r *Reconciler) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 }
 
 func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
-	// Ensure finalizer is there
+	// Ensure finalizer is there.
 	_, err := r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %w", FinalizerDeleteInstance, err)
@@ -485,7 +485,7 @@ func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, machine *clusterv
 	return true, nil
 }
 
-// evictIfNecessary checks if the machine has a node and evicts it if necessary
+// evictIfNecessary checks if the machine has a node and evicts it if necessary.
 func (r *Reconciler) shouldEvict(ctx context.Context, machine *clusterv1alpha1.Machine) (bool, error) {
 	// If the deletion got triggered a few hours ago, skip eviction.
 	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime

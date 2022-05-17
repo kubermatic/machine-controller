@@ -53,7 +53,7 @@ type SpotInstanceConfig struct {
 	InterruptionBehavior providerconfigtypes.ConfigVarString `json:"interruptionBehavior,omitempty"`
 }
 
-// CPUArchitecture defines processor architectures returned by the AWS API
+// CPUArchitecture defines processor architectures returned by the AWS API.
 type CPUArchitecture string
 
 const (

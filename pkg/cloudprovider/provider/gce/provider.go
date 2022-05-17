@@ -82,7 +82,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 	}
 }
 
-// AddDefaults reads the MachineSpec and applies defaults for provider specific fields
+// AddDefaults reads the MachineSpec and applies defaults for provider specific fields.
 func (p *Provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	// Read cloud provider spec.
 	cpSpec, _, err := newCloudProviderSpec(spec.ProviderSpec)

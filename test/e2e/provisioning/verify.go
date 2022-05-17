@@ -341,7 +341,7 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 	return content, nil
 }
 
-// getMatchingMachines returns all machines that are owned by the passed machineDeployment
+// getMatchingMachines returns all machines that are owned by the passed machineDeployment.
 func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client) ([]clusterv1alpha1.Machine, error) {
 	matchingMachineSets, err := getMachingMachineSets(machineDeployment, client)
 	if err != nil {
@@ -374,10 +374,10 @@ func getMatchingMachinesForMachineset(machineSet *clusterv1alpha1.MachineSet, cl
 	return matchingMachines, nil
 }
 
-// getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment
+// getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment.
 func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Reader) ([]clusterv1alpha1.MachineSet, error) {
 	// Ensure we actually have an object from the KubeAPI and not just the result of the yaml parsing, as the latter
-	// can not be the owner of anything due to missing UID
+	// can not be the owner of anything due to missing UID.
 	if machineDeployment.ResourceVersion == "" {
 		nn := types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}
 		if err := client.Get(context.Background(), nn, machineDeployment); err != nil {

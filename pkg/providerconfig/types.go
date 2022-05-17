@@ -106,7 +106,7 @@ func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigty
 }
 
 // GetConfigVarStringValueOrEnv tries to get the value from ConfigVarString, when it fails, it falls back to
-// getting the value from an environment variable specified by envVarName parameter
+// getting the value from an environment variable specified by envVarName parameter.
 func (cvr *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar providerconfigtypes.ConfigVarString, envVarName string) (string, error) {
 	cfgVar, err := cvr.GetConfigVarStringValue(configVar)
 	if err == nil && len(cfgVar) > 0 {
@@ -118,7 +118,7 @@ func (cvr *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar providercon
 }
 
 // GetConfigVarBoolValue returns a boolean from a ConfigVarBool. If there is no valid source for the boolean,
-// the second bool returned will be false (to be able to differentiate between "false" and "unset")
+// the second bool returned will be false (to be able to differentiate between "false" and "unset").
 func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtypes.ConfigVarBool) (bool, bool, error) {
 	// We need all three of these to fetch and use a secret
 	if configVar.SecretKeyRef.Name != "" && configVar.SecretKeyRef.Namespace != "" && configVar.SecretKeyRef.Key != "" {

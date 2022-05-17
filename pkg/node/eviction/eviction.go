@@ -41,7 +41,7 @@ type NodeEviction struct {
 	kubeClient  kubernetes.Interface
 }
 
-// New returns a new NodeEviction
+// New returns a new NodeEviction.
 func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeEviction {
 	return &NodeEviction{
 		nodeManager: nodemanager.New(ctx, client, nodeName),
@@ -51,7 +51,7 @@ func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, 
 	}
 }
 
-// Run executes the eviction
+// Run executes the eviction.
 func (ne *NodeEviction) Run() (bool, error) {
 	node, err := ne.nodeManager.GetNode()
 	if err != nil {

@@ -324,17 +324,17 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*anxtypes.C
 	return &c, pconfig, nil
 }
 
-// New returns an Anexia provider
+// New returns an Anexia provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
 
-// AddDefaults adds omitted optional values to the given MachineSpec
+// AddDefaults adds omitted optional values to the given MachineSpec.
 func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-// Validate returns success or failure based according to its ProviderSpec
+// Validate returns success or failure based according to its ProviderSpec.
 func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
 	config, _, err := p.getConfig(machinespec.ProviderSpec)
 	if err != nil {
@@ -509,7 +509,7 @@ func newError(reason common.MachineStatusError, msg string, args ...interface{})
 }
 
 // updateMachineStatus tries to update the machine status by any means
-// an error will lead to a panic
+// an error will lead to a panic.
 func updateMachineStatus(machine *clusterv1alpha1.Machine, status anxtypes.ProviderStatus, updater cloudprovidertypes.MachineUpdater) error {
 	rawStatus, err := json.Marshal(status)
 	if err != nil {

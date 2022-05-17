@@ -331,7 +331,7 @@ func (r *ReconcileMachineDeployment) scale(ctx context.Context, deployment *clus
 	return nil
 }
 
-// syncDeploymentStatus checks if the status is up-to-date and sync it if necessary
+// syncDeploymentStatus checks if the status is up-to-date and sync it if necessary.
 func (r *ReconcileMachineDeployment) syncDeploymentStatus(ctx context.Context, allMSs []*clusterv1alpha1.MachineSet, newMS *clusterv1alpha1.MachineSet, d *clusterv1alpha1.MachineDeployment) error {
 	newStatus := calculateStatus(allMSs, newMS, d)
 	if reflect.DeepEqual(d.Status, newStatus) {
@@ -467,7 +467,7 @@ func (r *ReconcileMachineDeployment) updateMachineDeployment(ctx context.Context
 	return updateMachineDeployment(ctx, r.Client, d, modify)
 }
 
-// We have this as standalone variant to be able to use it from the tests
+// We have this as standalone variant to be able to use it from the tests.
 func updateMachineDeployment(ctx context.Context, c client.Client, d *clusterv1alpha1.MachineDeployment, modify func(*clusterv1alpha1.MachineDeployment)) error {
 	dCopy := d.DeepCopy()
 	modify(dCopy)

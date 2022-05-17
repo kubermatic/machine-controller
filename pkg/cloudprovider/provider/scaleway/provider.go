@@ -45,7 +45,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-// New returns a Scaleway provider
+// New returns a Scaleway provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -415,7 +415,7 @@ func (s *scwServer) Status() cloudInstance.Status {
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 
 // if the given error doesn't qualify the error passed as
-// an argument will be returned
+// an argument will be returned.
 func scalewayErrToTerminalError(err error) error {
 	var deinedErr *scw.PermissionsDeniedError
 	var invalidArgErr *scw.InvalidArgumentsError

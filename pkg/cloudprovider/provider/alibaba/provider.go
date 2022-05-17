@@ -98,7 +98,7 @@ func (a *alibabaInstance) Status() instance.Status {
 	return instance.Status(a.instance.Status)
 }
 
-// New returns an Alibaba cloud provider
+// New returns an Alibaba cloud provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }

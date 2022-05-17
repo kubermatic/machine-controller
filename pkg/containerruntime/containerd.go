@@ -227,7 +227,7 @@ type containerdRegistryTLSConfig struct {
 }
 
 // AuthConfig is a COPY of github.com/containerd/containerd/pkg/cri/config.AuthConfig.
-// AuthConfig contains the config related to authentication to a specific registry
+// AuthConfig contains the config related to authentication to a specific registry.
 type AuthConfig struct {
 	// Username is the username to login the registry.
 	Username string `toml:"username,omitempty" json:"username,omitempty"`

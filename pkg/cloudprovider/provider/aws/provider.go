@@ -76,7 +76,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-// New returns a aws provider
+// New returns a aws provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -190,7 +190,7 @@ var (
 	}
 
 	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
-	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data
+	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data.
 	cacheLock = &sync.Mutex{}
 	cache     = gocache.New(5*time.Minute, 5*time.Minute)
 )
@@ -1075,7 +1075,7 @@ func getTagValue(name string, tags []*ec2.Tag) string {
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 //
 // if the given error doesn't qualify the error passed as
-// an argument will be formatted according to msg and returned
+// an argument will be formatted according to msg and returned.
 func awsErrorToTerminalError(err error, msg string) error {
 	prepareAndReturnError := func() error {
 		return fmt.Errorf("%s, due to %w", msg, err)

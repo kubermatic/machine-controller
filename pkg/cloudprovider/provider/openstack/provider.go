@@ -70,7 +70,7 @@ type provider struct {
 	portReadinessWaiter portReadinessWaiterFunc
 }
 
-// New returns a openstack provider
+// New returns a openstack provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{
 		configVarResolver:   configVarResolver,
@@ -118,28 +118,28 @@ const (
 	ovhAuthURL        = "auth.cloud.ovh.net"
 )
 
-// Protects floating ip assignment
+// Protects floating ip assignment.
 var floatingIPAssignLock = &sync.Mutex{}
 
-// Get the Project name from config or env var. If not defined fallback to tenant name
+// Get the Project name from config or env var. If not defined fallback to tenant name.
 func (p *provider) getProjectNameOrTenantName(rawConfig *openstacktypes.RawConfig) (string, error) {
 	projectName, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectName, "OS_PROJECT_NAME")
 	if err == nil && len(projectName) > 0 {
 		return projectName, nil
 	}
 
-	//fallback to tenantName
+	//fallback to tenantName.
 	return p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantName, "OS_TENANT_NAME")
 }
 
-// Get the Project id from config or env var. If not defined fallback to tenant id
+// Get the Project id from config or env var. If not defined fallback to tenant id.
 func (p *provider) getProjectIDOrTenantID(rawConfig *openstacktypes.RawConfig) (string, error) {
 	projectID, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "OS_PROJECT_ID")
 	if err == nil && len(projectID) > 0 {
 		return projectID, nil
 	}
 
-	//fallback to tenantName
+	//fallback to tenantName.
 	return p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.TenantID, "OS_TENANT_ID")
 }
 
@@ -201,13 +201,13 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"identityEndpoint\" field, error = %w", err)
 	}
 
-	// Retrieve authentication config, username/password or application credentials
+	// Retrieve authentication config, username/password or application credentials.
 	err = p.getConfigAuth(&cfg, rawConfig)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to retrieve authentication credentials, error = %w", err)
 	}
 
-	// Ignore Region not found as Region might not be found and we can default it later
+	// Ignore Region not found as Region might not be found and we can default it later.
 	cfg.Region, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Region, "OS_REGION_NAME")
 	if err != nil {
 		klog.V(6).Infof("Region from configuration or environment variable not found")
@@ -223,7 +223,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckTimeout" field, error = %w`, err)
 	}
 
-	// We ignore errors here because the OS domain is only required when using Identity API V3
+	// We ignore errors here because the OS domain is only required when using Identity API V3.
 	cfg.DomainName, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
 	cfg.TokenID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TokenID)
 	if err != nil {
@@ -328,7 +328,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		Username:         c.Username,
 		Password:         c.Password,
 		DomainName:       c.DomainName,
-		// gophercloud internally store projectName/projectID under tenantName/TenantID. We store it under projectName
+		// gophercloud internally store projectName/projectID under tenantName/TenantID. We store it under projectName.
 		// to be coherent with KPP code
 		TenantName:                  c.ProjectName,
 		TenantID:                    c.ProjectID,
@@ -342,7 +342,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 		return nil, err
 	}
 	if pc != nil {
-		// use the util's HTTP client to benefit, among other things, from its CA bundle
+		// use the util's HTTP client to benefit, among other things, from its CA bundle.
 		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
 	}
 
@@ -480,7 +480,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get a openstack client: %w", err)
 	}
 
-	// Required fields
+	// Required fields.
 	if !strings.Contains(c.IdentityEndpoint, ovhAuthURL) {
 		if _, err := getRegion(client, c.Region); err != nil {
 			return fmt.Errorf("failed to get region %q: %w", c.Region, err)
@@ -493,7 +493,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get compute client: %w", err)
 	}
 
-	// Get OS Image Client
+	// Get OS Image Client.
 	imageClient, err := goopenstack.NewImageServiceV2(client, gophercloud.EndpointOpts{Region: c.Region})
 	if err != nil {
 		return fmt.Errorf("failed to get image client: %w", err)
@@ -539,7 +539,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
-	// Optional fields
+	// Optional fields.
 	if len(c.SecurityGroups) != 0 {
 		for _, s := range c.SecurityGroups {
 			if _, err := getSecurityGroup(client, c.Region, s); err != nil {
@@ -548,7 +548,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		}
 	}
 
-	// validate reserved tags
+	// validate reserved tags.
 	if _, ok := c.Tags[machineUIDMetaKey]; ok {
 		return fmt.Errorf("the tag with the given name =%s is reserved, choose a different one", machineUIDMetaKey)
 	}
@@ -580,7 +580,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, osErrorToTerminalError(err, fmt.Sprintf("failed to get flavor %s", cfg.Flavor))
 	}
 
-	// Get OS Image Client
+	// Get OS Image Client.
 	imageClient, err := goopenstack.NewImageServiceV2(client, gophercloud.EndpointOpts{Region: cfg.Region})
 	if err != nil {
 		return nil, osErrorToTerminalError(err, "failed to get a image client")
@@ -611,7 +611,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		securityGroups = append(securityGroups, securityGroupName)
 	}
 
-	// we check against reserved tags in Validation method
+	// we check against reserved tags in Validation method.
 	allTags := cfg.Tags
 	allTags[machineUIDMetaKey] = string(machine.UID)
 
@@ -661,7 +661,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	} else {
 		// Image ID should only be set in server options when block device
 		// mapping is not used. Otherwish an error may occur with some
-		// OpenStack providers/versions .e.g. OpenTelekom Cloud
+		// OpenStack providers/versions .e.g. OpenTelekom Cloud.
 		serverOpts.ImageRef = image.ID
 
 		if err := osservers.Create(computeClient, createOpts).ExtractInto(&server); err != nil {
@@ -674,7 +674,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 			klog.V(2).Infof("port for instance %q did not became active due to: %v", server.ID, err)
 		}
 
-		// Find a free FloatingIP or allocate a new one
+		// Find a free FloatingIP or allocate a new one.
 		if err := assignFloatingIPToInstance(data.Update, machine, netClient, server.ID, cfg.FloatingIPPool, cfg.Region, network); err != nil {
 			defer deleteInstanceDueToFatalLogged(computeClient, server.ID)
 			return nil, fmt.Errorf("failed to assign a floating ip to instance %s: %w", server.ID, err)
@@ -695,7 +695,7 @@ func waitForPort(netClient *gophercloud.ServiceClient, serverID string, networkI
 			if isTerminalErr, _, _ := cloudprovidererrors.IsTerminalError(tErr); isTerminalErr {
 				return true, tErr
 			}
-			// Only log the error but don't exit. in case of a network failure we want to retry
+			// Only log the error but don't exit. in case of a network failure we want to retry.
 			klog.V(2).Infof("failed to get current instance port %s: %v", serverID, err)
 			return false, nil
 		}
@@ -959,7 +959,7 @@ func (d *osInstance) Status() instance.Status {
 // osErrorToTerminalError judges if the given error
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 //
-// if the given error doesn't qualify the error passed as an argument will be returned
+// if the given error doesn't qualify the error passed as an argument will be returned.
 func osErrorToTerminalError(err error, msg string) error {
 	var errUnauthorized gophercloud.ErrDefault401
 	if errors.As(err, &errUnauthorized) {
@@ -998,7 +998,7 @@ func osErrorToTerminalError(err error, msg string) error {
 	return fmt.Errorf("%s, due to %w", msg, err)
 }
 
-// forbiddenResponse is a potential response body from the OpenStack API when the request is forbidden (code: 403)
+// forbiddenResponse is a potential response body from the OpenStack API when the request is forbidden (code: 403).
 type forbiddenResponse struct {
 	Forbidden struct {
 		Message string `json:"message"`

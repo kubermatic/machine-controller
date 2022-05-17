@@ -501,7 +501,7 @@ storage:
           runtime-endpoint: unix:///run/containerd/containerd.sock
 `
 
-// Coreos cloud-config template
+// Coreos cloud-config template.
 const userDataCloudInitTemplate = `#cloud-config
 
 users:

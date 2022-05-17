@@ -407,7 +407,7 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new ktypes.UID) 
 	return nil
 }
 
-// GetCloudConfig returns an empty cloud configuration for Nutanix as no CCM exists
+// GetCloudConfig returns an empty cloud configuration for Nutanix as no CCM exists.
 func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }

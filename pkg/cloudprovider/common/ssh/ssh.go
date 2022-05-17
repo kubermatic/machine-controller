@@ -30,7 +30,7 @@ const privateRSAKeyBitSize = 4096
 // Pubkey is only used to create temporary key pairs, thus we
 // do not need the Private key
 // The reason for not hardcoding a random public key is that
-// it would look like a backdoor
+// it would look like a backdoor.
 type Pubkey struct {
 	Name           string
 	PublicKey      string

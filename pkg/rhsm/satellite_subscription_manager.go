@@ -28,7 +28,7 @@ import (
 	"k8s.io/klog"
 )
 
-// SatelliteSubscriptionManager manages the communications between machine-controller and redhat satellite server
+// SatelliteSubscriptionManager manages the communications between machine-controller and redhat satellite server.
 type SatelliteSubscriptionManager interface {
 	DeleteSatelliteHost(machineName, username, password, serverURL string) error
 }

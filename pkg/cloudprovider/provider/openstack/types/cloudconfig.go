@@ -117,7 +117,7 @@ type GlobalOpts struct {
 	Region     string
 }
 
-// CloudConfig is used to read and store information from the cloud configuration file
+// CloudConfig is used to read and store information from the cloud configuration file.
 type CloudConfig struct {
 	Global       GlobalOpts
 	LoadBalancer LoadBalancerOpts

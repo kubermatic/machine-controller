@@ -192,7 +192,7 @@ var dataDiskSKUs = map[compute.StorageAccountTypes]string{
 
 var (
 	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
-	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data
+	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data.
 	cacheLock = &sync.Mutex{}
 	cache     = gocache.New(10*time.Minute, 10*time.Minute)
 )
@@ -221,7 +221,7 @@ func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*co
 	return &ref, nil
 }
 
-// New returns a digitalocean provider
+// New returns a digitalocean provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }

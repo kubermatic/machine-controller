@@ -102,12 +102,12 @@ var (
 	}
 )
 
-// DNSConfig contains a machine's DNS configuration
+// DNSConfig contains a machine's DNS configuration.
 type DNSConfig struct {
 	Servers []string `json:"servers"`
 }
 
-// NetworkConfig contains a machine's static network configuration
+// NetworkConfig contains a machine's static network configuration.
 type NetworkConfig struct {
 	CIDR     string        `json:"cidr"`
 	Gateway  string        `json:"gateway"`
@@ -149,7 +149,7 @@ type Config struct {
 }
 
 // GlobalObjectKeySelector is needed as we can not use v1.SecretKeySelector
-// because it is not cross namespace
+// because it is not cross namespace.
 type GlobalObjectKeySelector struct {
 	corev1.ObjectReference `json:",inline"`
 	Key                    string `json:"key,omitempty"`
@@ -166,13 +166,13 @@ type ConfigVarString struct {
 
 // This type only exists to have the same fields as ConfigVarString but
 // not its funcs, so it can be used as target for json.Unmarshal without
-// causing a recursion
+// causing a recursion.
 type configVarStringWithoutUnmarshaller ConfigVarString
 
 // MarshalJSON converts a configVarString to its JSON form, omitting empty strings.
 // This is done to not have the json object cluttered with empty strings
 // This will eventually hopefully be resolved within golang itself
-// https://github.com/golang/go/issues/11939
+// https://github.com/golang/go/issues/11939.
 func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
 	var secretKeyRefEmpty, configMapKeyRefEmpty bool
 	if configVarString.SecretKeyRef.ObjectReference.Namespace == "" &&

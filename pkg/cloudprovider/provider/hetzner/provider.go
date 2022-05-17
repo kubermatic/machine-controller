@@ -50,7 +50,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-// New returns a Hetzner provider
+// New returns a Hetzner provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -567,7 +567,7 @@ func (s *hetznerServer) Status() instance.Status {
 // hzErrorToTerminalError judges if the given error
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 //
-// if the given error doesn't qualify the error passed as an argument will be returned
+// if the given error doesn't qualify the error passed as an argument will be returned.
 func hzErrorToTerminalError(err error, msg string) error {
 	prepareAndReturnError := func() error {
 		return fmt.Errorf("%s, due to %w", msg, err)

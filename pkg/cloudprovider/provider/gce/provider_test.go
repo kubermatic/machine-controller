@@ -82,7 +82,7 @@ func testServiceAccount() string {
 
 type testMap map[string]interface{}
 
-// with patches value of m at keypath with val e.g. keypath=x.y val=z then m[x][y] = z
+// with patches value of m at keypath with val e.g. keypath=x.y val=z then m[x][y] = z.
 func (m testMap) with(keypath, val string) testMap {
 	parts := strings.Split(keypath, ".")
 	var curr interface{} = m

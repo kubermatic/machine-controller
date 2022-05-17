@@ -41,12 +41,12 @@ const (
 	envGoogleServiceAccount = "GOOGLE_SERVICE_ACCOUNT"
 )
 
-// imageProjects maps the OS to the Google Cloud image projects
+// imageProjects maps the OS to the Google Cloud image projects.
 var imageProjects = map[providerconfigtypes.OperatingSystem]string{
 	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-os-cloud",
 }
 
-// imageFamilies maps the OS to the Google Cloud image projects
+// imageFamilies maps the OS to the Google Cloud image projects.
 var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
 	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-2004-lts",
 }

@@ -127,7 +127,7 @@ func (a *and) Match(tc scenario) bool {
 	return a.s1.Match(tc) && a.s2.Match(tc)
 }
 
-// NameSelector is used to match against a test case name
+// NameSelector is used to match against a test case name.
 func NameSelector(tcName string) Selector {
 	return &name{tcName}
 }

@@ -88,7 +88,7 @@ type VirtualCenterConfig struct {
 	Datacenters string `gcfg:"datacenters"`
 }
 
-// CloudConfig is used to read and store information from the cloud configuration file
+// CloudConfig is used to read and store information from the cloud configuration file.
 type CloudConfig struct {
 	Global    GlobalOpts
 	Disk      DiskOpts

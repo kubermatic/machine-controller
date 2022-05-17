@@ -45,7 +45,7 @@ type Cluster struct {
 /// [Cluster]
 
 /// [ClusterSpec]
-// ClusterSpec defines the desired state of Cluster
+// ClusterSpec defines the desired state of Cluster.
 type ClusterSpec struct {
 	// Cluster network configuration
 	ClusterNetwork ClusterNetworkingConfig `json:"clusterNetwork"`
@@ -85,7 +85,7 @@ type NetworkRanges struct {
 /// [NetworkRanges]
 
 /// [ClusterStatus]
-// ClusterStatus defines the observed state of Cluster
+// ClusterStatus defines the observed state of Cluster.
 type ClusterStatus struct {
 	// APIEndpoint represents the endpoint to communicate with the IP.
 	// +optional
@@ -154,7 +154,7 @@ func (o *Cluster) Validate() field.ErrorList {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ClusterList contains a list of Cluster
+// ClusterList contains a list of Cluster.
 type ClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -107,7 +107,7 @@ WantedBy=multi-user.target`
 const cpFlags = `--cloud-provider=%s \
 --cloud-config=/etc/kubernetes/cloud-config`
 
-// List of allowed TLS cipher suites for kubelet
+// List of allowed TLS cipher suites for kubelet.
 var kubeletTLSCipherSuites = []string{
 	// TLS 1.3 cipher suites
 	"TLS_AES_128_GCM_SHA256",
@@ -122,7 +122,7 @@ var kubeletTLSCipherSuites = []string{
 	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 }
 
-// CloudProviderFlags returns --cloud-provider and --cloud-config flags
+// CloudProviderFlags returns --cloud-provider and --cloud-config flags.
 func CloudProviderFlags(cpName string, external bool) (string, error) {
 	if cpName == "" && !external {
 		return "", nil
@@ -134,7 +134,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 	return fmt.Sprintf(cpFlags, cpName), nil
 }
 
-// KubeletSystemdUnit returns the systemd unit for the kubelet
+// KubeletSystemdUnit returns the systemd unit for the kubelet.
 func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
@@ -173,7 +173,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 	return buf.String(), nil
 }
 
-// kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration
+// kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration.
 func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string, containerRuntime string) (string, error) {
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
@@ -267,7 +267,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 	return string(buf), err
 }
 
-// KubeletFlags returns the kubelet flags
+// KubeletFlags returns the kubelet flags.
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
 	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl)
 	if err != nil {
@@ -339,7 +339,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 	return buf.String(), nil
 }
 
-// KubeletHealthCheckSystemdUnit kubelet health checking systemd unit
+// KubeletHealthCheckSystemdUnit kubelet health checking systemd unit.
 func KubeletHealthCheckSystemdUnit() string {
 	return `[Unit]
 Requires=kubelet.service
@@ -353,7 +353,7 @@ WantedBy=multi-user.target
 `
 }
 
-// ContainerRuntimeHealthCheckSystemdUnit container-runtime health checking systemd unit
+// ContainerRuntimeHealthCheckSystemdUnit container-runtime health checking systemd unit.
 func ContainerRuntimeHealthCheckSystemdUnit(containerRuntime string) (string, error) {
 	tmpl, err := template.New("container-runtime-healthcheck-systemd-unit").Funcs(TxtFuncMap()).Parse(containerRuntimeHealthCheckSystemdUnitTpl)
 	if err != nil {

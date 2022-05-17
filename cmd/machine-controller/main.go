@@ -89,35 +89,35 @@ const (
 	defaultLeaderElectionNamespace = "kube-system"
 )
 
-// controllerRunOptions holds data that are required to create and run machine controller
+// controllerRunOptions holds data that are required to create and run machine controller.
 type controllerRunOptions struct {
-	// kubeClient a client that knows how to consume kubernetes API
+	// kubeClient a client that knows how to consume kubernetes API.
 	kubeClient *kubernetes.Clientset
 
-	// metrics a struct that holds all metrics we want to collect
+	// metrics a struct that holds all metrics we want to collect.
 	metrics *machinecontroller.MetricsCollection
 
-	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap
+	// kubeconfigProvider knows how to get cluster information stored under a ConfigMap.
 	kubeconfigProvider machinecontroller.KubeconfigProvider
 
-	// name of the controller. When set the controller will only process machines with the label "machine.k8s.io/controller": name
+	// name of the controller. When set the controller will only process machines with the label "machine.k8s.io/controller": name.
 	name string
 
-	// Name of the ServiceAccount from which the bootstrap token secret will be fetched. A bootstrap token will be created
+	// Name of the ServiceAccount from which the bootstrap token secret will be fetched. A bootstrap token will be created.
 	// if this is nil
 	bootstrapTokenServiceAccountName *types.NamespacedName
 
-	// prometheusRegisterer is used by the MachineController instance to register its metrics
+	// prometheusRegisterer is used by the MachineController instance to register its metrics.
 	prometheusRegisterer prometheus.Registerer
 
-	// The cfg is used by the migration to conditionally spawn additional clients
+	// The cfg is used by the migration to conditionally spawn additional clients.
 	cfg *restclient.Config
 
-	// The timeout in which machines owned by a MachineSet must join the cluster to avoid being
+	// The timeout in which machines owned by a MachineSet must join the cluster to avoid being.
 	// deleted by the machine-controller
 	joinClusterTimeout *time.Duration
 
-	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter
+	// Will instruct the machine-controller to skip the eviction if the machine deletion is older than skipEvictionAfter.
 	skipEvictionAfter time.Duration
 
 	// Enable NodeCSRApprover controller to automatically approve node serving certificate requests.
@@ -127,7 +127,7 @@ type controllerRunOptions struct {
 
 	useOSM bool
 
-	// A port range to reserve for services with NodePort visibility
+	// A port range to reserve for services with NodePort visibility.
 	nodePortRange string
 }
 
@@ -136,7 +136,7 @@ func main() {
 
 	klog.InitFlags(nil)
 	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
-	// we have to guard it
+	// we have to guard it.
 	// TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
 	if flag.Lookup("kubeconfig") == nil {
 		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
@@ -354,7 +354,7 @@ type controllerBootstrap struct {
 	opt controllerRunOptions
 }
 
-// NeedLeaderElection implements manager.LeaderElectionRunnable
+// NeedLeaderElection implements manager.LeaderElectionRunnable.
 func (bs *controllerBootstrap) NeedLeaderElection() bool {
 	return true
 }
@@ -371,12 +371,12 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		Client: client,
 	}
 
-	// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine
+	// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine.
 	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, client, bs.opt.kubeClient, providerData); err != nil {
 		return fmt.Errorf("migration to clusterv1alpha1 failed: %w", err)
 	}
 
-	// Migrate providerConfig field to providerSpec field
+	// Migrate providerConfig field to providerSpec field.
 	if err := migrations.MigrateProviderConfigToProviderSpecIfNecesary(ctx, bs.opt.cfg, client); err != nil {
 		return fmt.Errorf("migration of providerConfig field to providerSpec field failed: %w", err)
 	}

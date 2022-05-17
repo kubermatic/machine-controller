@@ -29,12 +29,12 @@ type RawConfig struct {
 	Affinity       Affinity       `json:"affinity,omitempty"`
 }
 
-// Auth
+// Auth.
 type Auth struct {
 	Kubeconfig providerconfigtypes.ConfigVarString `json:"kubeconfig,omitempty"`
 }
 
-// VirtualMachine
+// VirtualMachine.
 type VirtualMachine struct {
 	Flavor    Flavor                              `json:"flavor,omitempty"`
 	Template  Template                            `json:"template,omitempty"`
@@ -42,13 +42,13 @@ type VirtualMachine struct {
 	DNSConfig *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
 }
 
-// Flavor
+// Flavor.
 type Flavor struct {
 	Name    providerconfigtypes.ConfigVarString `json:"name,omitempty"`
 	Profile providerconfigtypes.ConfigVarString `json:"profile,omitempty"`
 }
 
-// Template
+// Template.
 type Template struct {
 	CPUs           providerconfigtypes.ConfigVarString `json:"cpus,omitempty"`
 	Memory         providerconfigtypes.ConfigVarString `json:"memory,omitempty"`
@@ -56,31 +56,31 @@ type Template struct {
 	SecondaryDisks []SecondaryDisks                    `json:"secondaryDisks,omitempty"`
 }
 
-// PrimaryDisk
+// PrimaryDisk.
 type PrimaryDisk struct {
 	Disk
 	OsImage providerconfigtypes.ConfigVarString `json:"osImage,omitempty"`
 }
 
-// SecondaryDisks
+// SecondaryDisks.
 type SecondaryDisks struct {
 	Disk
 }
 
-// Disk
+// Disk.
 type Disk struct {
 	Size             providerconfigtypes.ConfigVarString `json:"size,omitempty"`
 	StorageClassName providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
 }
 
-// Affinity
+// Affinity.
 type Affinity struct {
 	PodAffinityPreset     providerconfigtypes.ConfigVarString `json:"podAffinityPreset,omitempty"`
 	PodAntiAffinityPreset providerconfigtypes.ConfigVarString `json:"podAntiAffinityPreset,omitempty"`
 	NodeAffinityPreset    NodeAffinityPreset                  `json:"nodeAffinityPreset,omitempty"`
 }
 
-// NodeAffinityPreset
+// NodeAffinityPreset.
 type NodeAffinityPreset struct {
 	Type   providerconfigtypes.ConfigVarString   `json:"type,omitempty"`
 	Key    providerconfigtypes.ConfigVarString   `json:"key,omitempty"`

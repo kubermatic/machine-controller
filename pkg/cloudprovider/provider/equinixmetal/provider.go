@@ -45,7 +45,7 @@ const (
 	defaultBillingCycle = "hourly"
 )
 
-// New returns a Equinix Metal provider
+// New returns a Equinix Metal provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -60,7 +60,7 @@ type Config struct {
 }
 
 // because we have both Config and RawConfig, we need to have func for each
-// ideally, these would be merged into one
+// ideally, these would be merged into one.
 func (c *Config) populateDefaults() {
 	if c.BillingCycle == "" {
 		c.BillingCycle = defaultBillingCycle
@@ -397,9 +397,7 @@ func (s *metalDevice) Status() instance.Status {
 	}
 }
 
-/******
-CONVENIENCE INTERNAL FUNCTIONS
-******/
+// CONVENIENCE INTERNAL FUNCTIONS.
 func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
@@ -438,7 +436,7 @@ func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Dev
 	return nil, nil
 }
 
-// given a defined Kubermatic constant for an operating system, return the canonical slug for Equinix Metal
+// given a defined Kubermatic constant for an operating system, return the canonical slug for Equinix Metal.
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
@@ -470,7 +468,7 @@ func getTagUID(tag string) (string, error) {
 // metalErrorToTerminalError judges if the given error
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 //
-// if the given error doesn't qualify the error passed as an argument will be returned
+// if the given error doesn't qualify the error passed as an argument will be returned.
 func metalErrorToTerminalError(err error, response *packngo.Response, msg string) error {
 	prepareAndReturnError := func() error {
 		return fmt.Errorf("%s, due to %w", msg, err)

@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	// ControllerName is name of the NodeCSRApprover controller
+	// ControllerName is name of the NodeCSRApprover controller.
 	ControllerName = "node_csr_autoapprover"
 
 	nodeUser       = "system:node"
@@ -161,9 +161,9 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	return nil
 }
 
-// validateCSRObject valides the CSR object and returns name of the node that requested the certificate
+// validateCSRObject valides the CSR object and returns name of the node that requested the certificate.
 func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningRequest) (string, error) {
-	// Get and validate the node name
+	// Get and validate the node name.
 	if !strings.HasPrefix(csr.Spec.Username, nodeUserPrefix) {
 		return "", fmt.Errorf("username must have the '%s' prefix", nodeUserPrefix)
 	}
@@ -172,7 +172,7 @@ func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningReq
 		return "", fmt.Errorf("node name is empty")
 	}
 
-	// Ensure system:nodes and system:authenticated are in groups
+	// Ensure system:nodes and system:authenticated are in groups.
 	if len(csr.Spec.Groups) < 2 {
 		return "", fmt.Errorf("there are less than 2 groups")
 	}
@@ -196,12 +196,12 @@ func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningReq
 // validateX509CSR validates the certificate request by comparing CN with username,
 // and organization with groups.
 func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningRequest, certReq *x509.CertificateRequest, machine v1alpha1.Machine) error {
-	// Validate Subject CommonName
+	// Validate Subject CommonName.
 	if certReq.Subject.CommonName != csr.Spec.Username {
 		return fmt.Errorf("commonName '%s' is different then CSR username '%s'", certReq.Subject.CommonName, csr.Spec.Username)
 	}
 
-	// Validate Subject Organization
+	// Validate Subject Organization.
 	if len(certReq.Subject.Organization) != 1 {
 		return fmt.Errorf("expected only one organization but got %d instead", len(certReq.Subject.Organization))
 	}
@@ -214,7 +214,7 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningReque
 		machineAddressSet.Insert(addr.Address)
 	}
 
-	// Validate SAN DNS names
+	// Validate SAN DNS names.
 	for _, dns := range certReq.DNSNames {
 		if len(dns) == 0 {
 			continue
@@ -238,7 +238,7 @@ func (r *reconciler) validateX509CSR(csr *certificatesv1.CertificateSigningReque
 }
 
 func (r *reconciler) getMachineForNode(ctx context.Context, nodeName string) (v1alpha1.Machine, bool, error) {
-	// List all Machines in all namespaces
+	// List all Machines in all namespaces.
 	machines := &v1alpha1.MachineList{}
 	if err := r.Client.List(ctx, machines); err != nil {
 		return v1alpha1.Machine{}, false, fmt.Errorf("failed to list all machine objects: %w", err)

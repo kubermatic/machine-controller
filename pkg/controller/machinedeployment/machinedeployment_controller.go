@@ -41,7 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// controllerName is the name of this controller
+// controllerName is the name of this controller.
 const controllerName = "machinedeployment-controller"
 
 var (

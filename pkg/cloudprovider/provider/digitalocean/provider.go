@@ -48,7 +48,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-// New returns a digitalocean provider
+// New returns a digitalocean provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -242,7 +242,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 // uploadRandomSSHPublicKey generates a random key pair and uploads the public part of the key to
 // digital ocean because it is not possible to create a droplet without ssh key assigned
-// this method returns an error if the key already exists
+// this method returns an error if the key already exists.
 func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (string, error) {
 	sshkey, err := ssh.NewKey()
 	if err != nil {
@@ -532,7 +532,7 @@ func (d *doInstance) Status() instance.Status {
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 
 // if the given error doesn't qualify the error passed as
-// an argument will be returned
+// an argument will be returned.
 func doStatusAndErrToTerminalError(status int, err error) error {
 	switch status {
 	case http.StatusUnauthorized:

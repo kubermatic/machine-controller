@@ -37,7 +37,7 @@ import (
 
 // BypassSpecNoModificationRequirementAnnotation is used to bypass the "no machine.spec modification" allowed
 // restriction from the webhook in order to change the spec in some special cases, e.G. for the migration of
-// the `providerConfig` field to `providerSpec`
+// the `providerConfig` field to `providerSpec`.
 const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requirement"
 
 func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
@@ -53,7 +53,7 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 	// Only hidden exception: the machine-controller may set the .Spec.Name to .Metadata.Name
 	// because otherwise it can never add the delete finalizer as it internally defaults the Name
 	// as well, since on the CREATE request for machines, there is only Metadata.GenerateName set
-	// so we can't default it initially
+	// so we can't default it initially.
 	if ar.Operation == admissionv1.Update {
 		oldMachine := clusterv1alpha1.Machine{}
 		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachine); err != nil {
@@ -71,7 +71,7 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 			}
 		}
 	}
-	// Delete the `BypassSpecNoModificationRequirementAnnotation` annotation, it should be valid only once
+	// Delete the `BypassSpecNoModificationRequirementAnnotation` annotation, it should be valid only once.
 	delete(machine.Annotations, BypassSpecNoModificationRequirementAnnotation)
 
 	// Default name
@@ -80,7 +80,7 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 	}
 
 	// Default and verify .Spec on CREATE only, its expensive and not required to do it on UPDATE
-	// as we disallow .Spec changes anyways
+	// as we disallow .Spec changes anyways.
 	if ar.Operation == admissionv1.Create {
 		if err := ad.defaultAndValidateMachineSpec(ctx, &machine.Spec); err != nil {
 			return nil, err

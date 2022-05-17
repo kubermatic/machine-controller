@@ -50,7 +50,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-// New returns a linode provider
+// New returns a linode provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -438,7 +438,7 @@ func (d *linodeInstance) Status() instance.Status {
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 
 // if the given error doesn't qualify the error passed as
-// an argument will be returned
+// an argument will be returned.
 func linodeStatusAndErrToTerminalError(err error) error {
 	status := 0
 	var apiErr *linodego.Error

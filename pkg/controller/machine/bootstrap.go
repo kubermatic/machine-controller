@@ -64,11 +64,11 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 		return getOSMBootstrapUserDataForIgnition(req, pconfig.SSHPublicKeys, token, secretName, clusterName, bootstrapKubeconfig)
 	}
 
-	// cloud-init is used for all other operating systems
+	// cloud-init is used for all other operating systems.
 	return getOSMBootstrapUserDataForCloudInit(req, pconfig, token, secretName, clusterName, bootstrapKubeconfig)
 }
 
-// getOSMBootstrapUserDataForIgnition returns the userdata for the ignition bootstrap config
+// getOSMBootstrapUserDataForIgnition returns the userdata for the ignition bootstrap config.
 func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName, bootstrapKfg string) (string, error) {
 	data := struct {
 		Token      string
@@ -114,7 +114,7 @@ func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKey
 	return convert.ToIgnition(ignitionConfig.String())
 }
 
-// getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
+// getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script.
 func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName, bootstrapKfg string) (string, error) {
 	data := struct {
 		Token           string

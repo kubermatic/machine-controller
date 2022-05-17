@@ -43,7 +43,7 @@ const (
 	tokenSecretKey           string            = "token-secret"
 	expirationKey            string            = "expiration"
 	tokenFormatter           string            = "%s.%s"
-	// Keep this short, userdata is limited
+	// Keep this short, userdata is limited.
 	contextIdentifier string = "c"
 )
 

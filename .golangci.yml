@@ -20,6 +20,7 @@ linters:
     - exportloopref
     - goconst
     - gocyclo
+    - godot
     - gofmt
     - gosimple
     - govet

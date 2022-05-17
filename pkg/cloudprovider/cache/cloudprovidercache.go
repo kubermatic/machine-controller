@@ -31,13 +31,13 @@ type CloudproviderCache struct {
 	cache *gocache.Cache
 }
 
-// New returns a new cloudproviderCache
+// New returns a new cloudproviderCache.
 func New() *CloudproviderCache {
 	return &CloudproviderCache{cache: gocache.New(5*time.Minute, 5*time.Minute)}
 }
 
 // Get returns an error indicating the result of the validation and a boolean indicating if
-// it got a cache hit or miss
+// it got a cache hit or miss.
 func (c *CloudproviderCache) Get(machineSpec clusterv1alpha1.MachineSpec) (error, bool, error) {
 	id, err := getID(machineSpec)
 	if err != nil {
@@ -60,7 +60,7 @@ func (c *CloudproviderCache) Get(machineSpec clusterv1alpha1.MachineSpec) (error
 	return errVal, true, nil
 }
 
-// Set sets the passed value for the given machineSpec
+// Set sets the passed value for the given machineSpec.
 func (c *CloudproviderCache) Set(machineSpec clusterv1alpha1.MachineSpec, val error) error {
 	id, err := getID(machineSpec)
 	if err != nil {

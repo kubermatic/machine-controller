@@ -79,7 +79,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-// New returns a Kubevirt provider
+// New returns a Kubevirt provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: configVarResolver}
 }
@@ -106,11 +106,11 @@ type AffinityType string
 
 const (
 	// Facade for podAffinity, podAntiAffinity, nodeAffinity, nodeAntiAffinity
-	// HardAffinityType: affinity will include requiredDuringSchedulingIgnoredDuringExecution
+	// HardAffinityType: affinity will include requiredDuringSchedulingIgnoredDuringExecution.
 	hardAffinityType = "hard"
-	// SoftAffinityType: affinity will include preferredDuringSchedulingIgnoredDuringExecution
+	// SoftAffinityType: affinity will include preferredDuringSchedulingIgnoredDuringExecution.
 	softAffinityType = "soft"
-	// NoAffinityType: affinity section will not be preset
+	// NoAffinityType: affinity section will not be preset.
 	noAffinityType = ""
 )
 
@@ -131,7 +131,7 @@ func (p *provider) affinityType(affinityType providerconfigtypes.ConfigVarString
 	return "", fmt.Errorf("unknown affinityType: %s", affinityType)
 }
 
-// NodeAffinityPreset
+// NodeAffinityPreset.
 type NodeAffinityPreset struct {
 	Type   AffinityType
 	Key    string
@@ -384,7 +384,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 
 // We don't use the UID for kubevirt because the name of a VMI must stay stable
 // in order for the node name to stay stable. The operator is responsible for ensuring
-// there are no conflicts, e.G. by using one Namespace per Kubevirt user cluster
+// there are no conflicts, e.G. by using one Namespace per Kubevirt user cluster.
 func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
 	return nil
 }
@@ -394,7 +394,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
-	// If VMIPreset is specified, skip CPU and Memory validation
+	// If VMIPreset is specified, skip CPU and Memory validation.
 	if c.FlavorName == "" {
 		if _, err := parseResources(c.CPUs, c.Memory); err != nil {
 			return err
@@ -413,7 +413,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 			return fmt.Errorf("dns config must be specified when dns policy is None")
 		}
 	}
-	// Check if we can reach the API of the target cluster
+	// Check if we can reach the API of the target cluster.
 	vmi := &kubevirtv1.VirtualMachineInstance{}
 	if err := sigClient.Get(context.Background(), types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
 		return fmt.Errorf("failed to request VirtualMachineInstances: %w", err)
@@ -463,13 +463,13 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
-	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up
+	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up.
 	terminationGracePeriodSeconds := int64(30)
 	userDataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
 
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
 	labels := map[string]string{"kubevirt.io/vm": machine.Name}
-	// Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name)
+	// Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name).
 	if mdName, err := controllerutil.GetMachineDeploymentNameForMachine(context.Background(), machine, data.Client); err == nil {
 		labels[machineDeploymentLabelKey] = mdName
 	}
@@ -741,7 +741,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 	return dataVolumeTemplates
 }
 
-// getDataVolumeSource returns DataVolumeSource, HTTP or PVC
+// getDataVolumeSource returns DataVolumeSource, HTTP or PVC.
 func getDataVolumeSource(osImage OSImage) *cdiv1beta1.DataVolumeSource {
 	dataVolumeSource := &cdiv1beta1.DataVolumeSource{}
 	if osImage.URL != "" {

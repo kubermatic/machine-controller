@@ -855,7 +855,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 // note that tests require the following environment variable:
 // - SCW_ACCESS_KEY -> the Scaleway Access Key
 // - SCW_SECRET_KEY -> the Scaleway Secret Key
-// - SCW_DEFAULT_PROJECT_ID -> the Scaleway Project ID
+// - SCW_DEFAULT_PROJECT_ID -> the Scaleway Project ID.
 func TestScalewayProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
@@ -916,19 +916,19 @@ func getNutanixTestParams(t *testing.T) []string {
 	return params
 }
 
-// TestNutanixProvisioningE2E tests provisioning on Nutanix as cloud provider
+// TestNutanixProvisioningE2E tests provisioning on Nutanix as cloud provider.
 func TestNutanixProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// exclude migrateUID test case because it's a no-op for Nutanix and runs from a different
-	// location, thus possibly blocking access a HTTP proxy if it is configured
+	// location, thus possibly blocking access a HTTP proxy if it is configured.
 	selector := And(OsSelector("ubuntu", "centos"), Not(NameSelector("migrateUID")))
 	params := getNutanixTestParams(t)
 	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
-// image and upgrade it prior to joining the cluster
+// image and upgrade it prior to joining the cluster.
 func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 	t.Parallel()
 
@@ -966,7 +966,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 }
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
-// rolls over machines on changes in the machineDeployment
+// rolls over machines on changes in the machineDeployment.
 func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 	t.Parallel()
 
