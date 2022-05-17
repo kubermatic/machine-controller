@@ -31,6 +31,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
 
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -122,6 +123,7 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 		MachineName     string
 		EnterpriseLinux bool
 		ProviderSpec    *providerconfigtypes.Config
+		RHELConfig      rhel.Config
 	}{
 		Token:        token,
 		SecretName:   secretName,
@@ -131,8 +133,9 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 	}
 
 	var (
-		bsScript *template.Template
-		err      error
+		rhelConfig *rhel.Config
+		bsScript   *template.Template
+		err        error
 	)
 
 	switch pconfig.OperatingSystem {
@@ -158,6 +161,10 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 			return "", fmt.Errorf("failed to parse bootstrapZypperBinContentTemplate template: %w", err)
 		}
 	case providerconfigtypes.OperatingSystemRHEL:
+		rhelConfig, err = rhel.LoadConfig(pconfig.OperatingSystemSpec)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse OperatingSystemSpec: %w", err)
+		}
 		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %w", err)
@@ -181,12 +188,14 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 		plugin.UserDataRequest
 		ProviderSpec        *providerconfigtypes.Config
 		BootstrapKubeconfig string
+		RHELConfig          *rhel.Config
 	}{
 		Script:              base64.StdEncoding.EncodeToString(script.Bytes()),
 		Service:             base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
 		UserDataRequest:     req,
 		ProviderSpec:        pconfig,
 		BootstrapKubeconfig: base64.StdEncoding.EncodeToString([]byte(bootstrapKfg)),
+		RHELConfig:          rhelConfig,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %w", err)
@@ -237,7 +246,9 @@ fi
 {{- if .EnterpriseLinux }}
 yum install epel-release -y
 {{- end }}
+
 yum install -y curl jq
+
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
@@ -304,7 +315,7 @@ write_files:
   encoding: b64
   content: |
     {{ .BootstrapKubeconfig }}
-{{- if and (eq .ProviderSpec.CloudProvider "openstack") (eq .ProviderSpec.OperatingSystem "centos") }}
+{{- if and (eq .ProviderSpec.CloudProvider "openstack") (or (eq .ProviderSpec.OperatingSystem "centos") (eq .ProviderSpec.OperatingSystem "rhel")) }}
 {{- /*  The normal way of setting it via cloud-init is broken, see */}}
 {{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
 - path: /etc/hostname
@@ -327,6 +338,19 @@ write_files:
 runcmd:
 - systemctl restart bootstrap.service
 - systemctl daemon-reload
+{{- if .RHELConfig }}
+rh_subscription:
+{{- if .RHELConfig.RHELUseSatelliteServer }}
+  org: "{{.RHELConfig.RHELOrganizationName}}"
+  activation-key: "{{.RHELConfig.RHELActivationKey}}"
+  server-hostname: {{ .RHELConfig.RHELSatelliteServer }}
+  rhsm-baseurl: https://{{ .RHELConfig.RHELSatelliteServer }}/pulp/repos
+{{- else }}
+  username: "{{.RHELConfig.RHELSubscriptionManagerUser}}"
+  password: "{{.RHELConfig.RHELSubscriptionManagerPassword}}"
+  auto-attach: {{.RHELConfig.AttachSubscription}}
+{{- end }}
+{{- end }}
 `
 
 	ignitionBootstrapBinContentTemplate = `#!/bin/bash
