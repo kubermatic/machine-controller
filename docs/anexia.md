@@ -13,7 +13,7 @@ An example machine deployment can be found here: [examples/anexia-machinedeploym
 To retrieve all available templates against a given location:
 
 ```
-https://engine.anexia-it.com/api/vsphere/v1/provisioning/templates.json/<location identifier>/templates?page=1&limit=50
+https://engine.anexia-it.com/api/vsphere/v1/provisioning/templates.json/<location identifier>/templates?page=1&limit=50&api_key=<API Key>
 ```
 
 Templates are rotated pretty often, to include updates and latest security patches. Outdated versions of templates are not retained as a result and they get removed after some time.
