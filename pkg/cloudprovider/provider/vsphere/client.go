@@ -78,8 +78,8 @@ func NewSession(ctx context.Context, config *Config) (*Session, error) {
 }
 
 // Logout closes the idling vCenter connections.
-func (s *Session) Logout() {
-	if err := s.Client.Logout(context.Background()); err != nil {
+func (s *Session) Logout(ctx context.Context) {
+	if err := s.Client.Logout(ctx); err != nil {
 		utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %w", err))
 	}
 }

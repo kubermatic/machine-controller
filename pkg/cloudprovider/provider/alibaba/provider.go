@@ -17,6 +17,7 @@ limitations under the License.
 package alibaba
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -107,7 +108,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Validate(machineSpec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, machineSpec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(machineSpec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -148,7 +149,7 @@ func (p *provider) Validate(machineSpec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -197,7 +198,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 	return "", "", nil
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -257,8 +258,8 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return &alibabaInstance{instance: foundInstance}, nil
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	foundInstance, err := p.Get(machine, data)
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	foundInstance, err := p.Get(ctx, machine, data)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return util.RemoveFinalizerOnInstanceNotFound(finalizerInstance, machine, data)
@@ -302,7 +303,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %w", err)

@@ -184,7 +184,7 @@ func (p *provider) getServerPlacementGroup(ctx context.Context, client *hcloud.C
 	return createdPg.PlacementGroup, nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -199,7 +199,6 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
-	ctx := context.TODO()
 	client := getClient(c.Token)
 
 	if c.Location != "" && c.Datacenter != "" {
@@ -247,7 +246,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -256,7 +255,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}
 	}
 
-	ctx := context.TODO()
 	client := getClient(c.Token)
 
 	if c.Image == "" {
@@ -388,8 +386,8 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.Get(machine, data)
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.Get(ctx, machine, data)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
@@ -405,7 +403,6 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 		}
 	}
 
-	ctx := context.TODO()
 	client := getClient(c.Token)
 	hzServer := instance.(*hetznerServer).server
 
@@ -443,7 +440,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -452,7 +449,6 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 		}
 	}
 
-	ctx := context.TODO()
 	client := getClient(c.Token)
 
 	servers, _, err := client.Server.List(ctx, hcloud.ServerListOpts{ListOpts: hcloud.ListOpts{
@@ -471,10 +467,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{

@@ -87,10 +87,12 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	}
 	machine.Spec = defaultedSpec
 
+	ctx := context.Background()
+
 	// Step 0: Create instance with old UID
 	maxTries := 15
 	for i := 0; i < maxTries; i++ {
-		_, err := prov.Get(machine, providerData)
+		_, err := prov.Get(ctx, machine, providerData)
 		if err != nil {
 			if !errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 				if i < maxTries-1 {
@@ -100,7 +102,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 				}
 				return fmt.Errorf("failed to get machine %s before creating it: %w", machine.Name, err)
 			}
-			_, err := prov.Create(machine, providerData, "#cloud-config\n")
+			_, err := prov.Create(ctx, machine, providerData, "#cloud-config\n")
 			if err != nil {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
@@ -115,7 +117,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 1: Verify we can successfully get the instance
 	for i := 0; i < maxTries; i++ {
-		if _, err := prov.Get(machine, providerData); err != nil {
+		if _, err := prov.Get(ctx, machine, providerData); err != nil {
 			if i < maxTries-1 {
 				klog.V(4).Infof("failed to get instance for machine %s before migrating on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
@@ -128,7 +130,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 2: Migrate UID
 	for i := 0; i < maxTries; i++ {
-		if err := prov.MigrateUID(machine, newUID); err != nil {
+		if err := prov.MigrateUID(ctx, machine, newUID); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
 				klog.V(4).Infof("failed to migrate UID for machine %s  on try %v with err=%v, will retry", machine.Name, i, err)
@@ -142,7 +144,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 3: Verify we can successfully get the instance with the new UID
 	for i := 0; i < maxTries; i++ {
-		if _, err := prov.Get(machine, providerData); err != nil {
+		if _, err := prov.Get(ctx, machine, providerData); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
 				klog.V(4).Infof("failed to get instance for machine %s after migrating on try %v with err=%v, will retry", machine.Name, i, err)
@@ -156,7 +158,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	// Step 4: Delete the instance and then verify instance is gone
 	for i := 0; i < maxTries; i++ {
 		// Deletion part 0: Delete and continue on err if there are tries left
-		done, err := prov.Cleanup(machine, providerData)
+		done, err := prov.Cleanup(ctx, machine, providerData)
 		if err != nil {
 			if i < maxTries-1 {
 				klog.V(4).Infof("Failed to delete machine %s on try %v with err=%v, will retry", machine.Name, i, err)
@@ -172,7 +174,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 		}
 
 		// Deletion part 1: Get and continue if err != cloudprovidererrors.ErrInstanceNotFound if there are tries left
-		_, err = prov.Get(machine, providerData)
+		_, err = prov.Get(ctx, machine, providerData)
 		if err != nil && errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			break
 		}

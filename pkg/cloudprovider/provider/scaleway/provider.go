@@ -139,7 +139,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -172,7 +172,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (cloudInstance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (cloudInstance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -181,7 +181,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}
 	}
 
-	ctx := context.TODO()
 	api, err := c.getInstanceAPI()
 	if err != nil {
 		return nil, err
@@ -221,7 +220,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return &scwServer{server: serverResp.Server}, err
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	i, err := p.get(machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
@@ -237,7 +236,6 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	ctx := context.TODO()
 	api, err := c.getInstanceAPI()
 	if err != nil {
 		return false, err
@@ -254,7 +252,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 	return false, nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (cloudInstance.Instance, error) {
+func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (cloudInstance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -319,7 +317,7 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*scwServer, error) {
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %w", err)

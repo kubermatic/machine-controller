@@ -165,7 +165,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 	}
 	spec = &defaultedSpec
 
-	if err := prov.Validate(*spec); err != nil {
+	if err := prov.Validate(ctx, *spec); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 

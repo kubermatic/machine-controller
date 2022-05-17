@@ -98,7 +98,7 @@ func TestResolveDatastoreRef(t *testing.T) {
 			tt.config.Datacenter = "DC0"
 
 			session, err := NewSession(ctx, tt.config)
-			defer session.Logout()
+			defer session.Logout(ctx)
 			if err != nil {
 				t.Fatalf("error creating session: %v", err)
 			}
@@ -216,7 +216,7 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			tt.config.Datacenter = "DC0"
 
 			session, err := NewSession(ctx, tt.config)
-			defer session.Logout()
+			defer session.Logout(ctx)
 			if err != nil {
 				t.Fatalf("error creating session: %v", err)
 			}

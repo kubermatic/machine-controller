@@ -178,7 +178,7 @@ func TestValidate(t *testing.T) {
 			tt.args.URL = vSphereURL
 			m := cloudprovidertesting.Creator{Name: "test", Namespace: "vsphere", ProviderSpecGetter: tt.args.rawProviderSpec}.
 				CreateMachine(t)
-			if err := p.Validate(m.Spec); (err != nil) != tt.wantErr {
+			if err := p.Validate(context.Background(), m.Spec); (err != nil) != tt.wantErr {
 				t.Errorf("provider.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

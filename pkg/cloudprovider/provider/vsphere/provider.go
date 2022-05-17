@@ -199,9 +199,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &c, pconfig, rawConfig, nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
@@ -211,7 +209,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	if err != nil {
 		return fmt.Errorf("failed to create vCenter session: %w", err)
 	}
-	defer session.Logout()
+	defer session.Logout(ctx)
 
 	if config.Tags != nil {
 		restAPISession, err := NewRESTSession(ctx, config)
@@ -294,10 +292,10 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	vm, err := p.create(machine, userdata)
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+	vm, err := p.create(ctx, machine, userdata)
 	if err != nil {
-		_, cleanupErr := p.Cleanup(machine, data)
+		_, cleanupErr := p.Cleanup(ctx, machine, data)
 		if cleanupErr != nil {
 			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %w", cleanupErr, err)
 		}
@@ -306,9 +304,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return vm, nil
 }
 
-func (p *provider) create(machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
-	ctx := context.Background()
-
+func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
@@ -318,7 +314,7 @@ func (p *provider) create(machine *clusterv1alpha1.Machine, userdata string) (in
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vCenter session: %w", err)
 	}
-	defer session.Logout()
+	defer session.Logout(ctx)
 
 	var containerLinuxUserdata string
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
@@ -378,10 +374,7 @@ func (p *provider) create(machine *clusterv1alpha1.Machine, userdata string) (in
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse config: %w", err)
@@ -391,7 +384,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	if err != nil {
 		return false, fmt.Errorf("failed to create vCenter session: %w", err)
 	}
-	defer session.Logout()
+	defer session.Logout(ctx)
 
 	virtualMachine, err := p.get(ctx, config.Folder, machine.Spec, session.Finder)
 	if err != nil {
@@ -475,9 +468,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	return true, nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	ctx := context.Background()
-
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
@@ -487,7 +478,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertype
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vCenter session: %w", err)
 	}
-	defer session.Logout()
+	defer session.Logout(ctx)
 
 	virtualMachine, err := p.get(ctx, config.Folder, machine.Spec, session.Finder)
 	if err != nil {
@@ -541,7 +532,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertype
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid ktypes.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {
 	return nil
 }
 

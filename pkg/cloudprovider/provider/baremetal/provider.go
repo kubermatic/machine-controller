@@ -166,7 +166,7 @@ func (p provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1
 	return spec, err
 }
 
-func (p provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec) error {
 	c, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -183,7 +183,7 @@ func (p provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -192,7 +192,7 @@ func (p provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.Pr
 		}
 	}
 
-	server, err := c.driver.GetServer(context.Background(), machine.UID, c.driverSpec)
+	server, err := c.driver.GetServer(ctx, machine.UID, c.driverSpec)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return nil, cloudprovidererrors.ErrInstanceNotFound
@@ -206,11 +206,11 @@ func (p provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.Pr
 	}, nil
 }
 
-func (p provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
-func (p provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -219,7 +219,6 @@ func (p provider) Create(machine *clusterv1alpha1.Machine, data *cloudproviderty
 		}
 	}
 
-	ctx := context.Background()
 	if err := util.CreateMachineCloudInitSecret(ctx, userdata, machine.Name, data.Client); err != nil {
 		return nil, fmt.Errorf("failed to create cloud-init secret for machine %s: %w", machine.Name, err)
 	}
@@ -246,7 +245,7 @@ func (p provider) Create(machine *clusterv1alpha1.Machine, data *cloudproviderty
 	}, nil
 }
 
-func (p provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
@@ -255,7 +254,6 @@ func (p provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}
 	}
 
-	ctx := context.Background()
 	if err := c.driver.DeprovisionServer(ctx, machine.UID); err != nil {
 		return false, fmt.Errorf("failed to de-provision server: %w", err)
 	}
@@ -276,14 +274,14 @@ func (p provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return true, nil
 }
 
-func (p provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
+func (p provider) MachineMetricsLabels(_ *clusterv1alpha1.Machine) (map[string]string, error) {
 	return nil, nil
 }
 
-func (p provider) MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error {
+func (p provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ types.UID) error {
 	return nil
 }
 
-func (p provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }

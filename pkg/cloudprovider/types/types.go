@@ -37,7 +37,7 @@ type Provider interface {
 	//
 	// In case of any error a "terminal" error should be set,
 	// See v1alpha1.MachineStatus for more info
-	Validate(machinespec clusterv1alpha1.MachineSpec) error
+	Validate(ctx context.Context, machinespec clusterv1alpha1.MachineSpec) error
 
 	// Get gets a node that is associated with the given machine.
 	//
@@ -46,19 +46,19 @@ type Provider interface {
 	// See v1alpha1.MachineStatus for more info and TerminalError type
 	//
 	// In case the instance cannot be found, github.com/kubermatic/machine-controller/pkg/cloudprovider/errors/ErrInstanceNotFound will be returned
-	Get(machine *clusterv1alpha1.Machine, data *ProviderData) (instance.Instance, error)
+	Get(ctx context.Context, machine *clusterv1alpha1.Machine, data *ProviderData) (instance.Instance, error)
 
 	// GetCloudConfig will return the cloud provider specific cloud-config, which gets consumed by the kubelet
 	GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error)
 
 	// Create creates a cloud instance according to the given machine
-	Create(machine *clusterv1alpha1.Machine, data *ProviderData, userdata string) (instance.Instance, error)
+	Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *ProviderData, userdata string) (instance.Instance, error)
 
 	// Cleanup will delete the instance associated with the machine and all associated resources.
 	// If all resources have been cleaned up, true will be returned.
 	// In case the cleanup involves asynchronous deletion of resources & those resources are not gone yet,
 	// false should be returned. This is to indicate that the cleanup is not done, but needs to be called again at a later point
-	Cleanup(machine *clusterv1alpha1.Machine, data *ProviderData) (bool, error)
+	Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *ProviderData) (bool, error)
 
 	// MachineMetricsLabels returns labels used for the Prometheus metrics
 	// about created machines, e.g. instance type, instance size, region
@@ -69,7 +69,7 @@ type Provider interface {
 
 	// MigrateUID is called when the controller migrates types and the UID of the machine object changes
 	// All cloud providers that use Machine.UID to uniquely identify resources must implement this
-	MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error
+	MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error
 
 	// SetMetricsForMachines allows providers to provide provider-specific metrics. This may be implemented
 	// as no-op

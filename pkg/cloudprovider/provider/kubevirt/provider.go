@@ -327,7 +327,7 @@ func getNamespace() string {
 	return ns
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -339,7 +339,6 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
-	ctx := context.Background()
 
 	virtualMachine := &kubevirtv1.VirtualMachine{}
 	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, virtualMachine); err != nil {
@@ -384,11 +383,11 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 // We don't use the UID for kubevirt because the name of a VMI must stay stable
 // in order for the node name to stay stable. The operator is responsible for ensuring
 // there are no conflicts, e.G. by using one Namespace per Kubevirt user cluster.
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ types.UID) error {
 	return nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -414,7 +413,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	}
 	// Check if we can reach the API of the target cluster.
 	vmi := &kubevirtv1.VirtualMachineInstance{}
-	if err := sigClient.Get(context.Background(), types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
+	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: "not-expected-to-exist"}, vmi); err != nil && !kerrors.IsNotFound(err) {
 		return fmt.Errorf("failed to request VirtualMachineInstances: %w", err)
 	}
 
@@ -451,7 +450,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -469,7 +468,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
 	labels := map[string]string{"kubevirt.io/vm": machine.Name}
 	// Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name).
-	if mdName, err := controllerutil.GetMachineDeploymentNameForMachine(context.Background(), machine, data.Client); err == nil {
+	if mdName, err := controllerutil.GetMachineDeploymentNameForMachine(ctx, machine, data.Client); err == nil {
 		labels[machineDeploymentLabelKey] = mdName
 	}
 
@@ -477,7 +476,6 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
-	ctx := context.Background()
 
 	// Add VMIPreset label if specified
 	if c.FlavorName != "" {
@@ -572,7 +570,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return &kubeVirtServer{}, nil
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
@@ -584,7 +582,6 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 	if err != nil {
 		return false, fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
-	ctx := context.Background()
 
 	vm := &kubevirtv1.VirtualMachine{}
 	if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: machine.Name}, vm); err != nil {
