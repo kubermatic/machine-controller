@@ -35,6 +35,7 @@ linters:
     - revive
     - staticcheck
     - structcheck
+    - tenv
     - unconvert
     - unused
     - varcheck

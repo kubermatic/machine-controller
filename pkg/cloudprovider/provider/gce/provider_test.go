@@ -103,7 +103,7 @@ func (m testMap) with(keypath, val string) testMap {
 }
 
 func TestValidate(t *testing.T) {
-	os.Setenv(envGoogleServiceAccount, testServiceAccount())
+	t.Setenv(envGoogleServiceAccount, testServiceAccount())
 	defer os.Unsetenv(envGoogleServiceAccount)
 
 	rawBytes := func(m map[string]interface{}) []byte {
