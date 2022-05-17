@@ -1081,7 +1081,7 @@ func awsErrorToTerminalError(err error, msg string) error {
 
 	if err != nil {
 		var aerr awserr.Error
-		if errors.As(err, &aerr) {
+		if !errors.As(err, &aerr) {
 			return prepareAndReturnError()
 		}
 		switch aerr.Code() {

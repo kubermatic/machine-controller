@@ -92,7 +92,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	for i := 0; i < maxTries; i++ {
 		_, err := prov.Get(machine, providerData)
 		if err != nil {
-			if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
+			if !errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
 					klog.V(4).Infof("failed to get machine %s before creating it on try %v with err=%v, will retry", machine.Name, i, err)

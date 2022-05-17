@@ -45,7 +45,7 @@ func (te TerminalError) Error() string {
 // IsTerminalError is a helper function that helps to determine if a given error is terminal.
 func IsTerminalError(err error) (bool, common.MachineStatusError, string) {
 	var tError TerminalError
-	if errors.As(err, &tError) {
+	if !errors.As(err, &tError) {
 		return false, "", ""
 	}
 	return true, tError.Reason, tError.Message
