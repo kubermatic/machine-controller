@@ -626,8 +626,8 @@ func (r *Reconciler) retrieveNodesRelatedToMachine(ctx context.Context, machine 
 			klog.V(3).Infof("No node found for the machine %s", machine.Spec.Name)
 		}
 
-		for _, node := range nodeList.Items {
-			nodes = append(nodes, &node)
+		for i := range nodeList.Items {
+			nodes = append(nodes, &nodeList.Items[i])
 		}
 	}
 

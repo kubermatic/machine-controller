@@ -282,14 +282,14 @@ func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
 
 	for skuPages.NotDone() && sku == nil {
 		skus := skuPages.Values()
-		for _, skuResult := range skus {
+		for i, skuResult := range skus {
 			// skip invalid SKU results so we don't trigger a nil pointer exception
 			if skuResult.ResourceType == nil || skuResult.Name == nil {
 				continue
 			}
 
 			if *skuResult.ResourceType == "virtualMachines" && *skuResult.Name == c.VMSize {
-				sku = &skuResult
+				sku = &skus[i]
 				break
 			}
 		}

@@ -17,12 +17,13 @@ linters:
     - errcheck
     - errname
     - errorlint
-    - ineffassign
+    - exportloopref
     - goconst
     - gocyclo
     - gofmt
     - gosimple
     - govet
+    - ineffassign
     - misspell
     - revive
     - structcheck
