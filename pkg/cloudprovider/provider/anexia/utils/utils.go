@@ -36,8 +36,8 @@ type ReconcileContext struct {
 	ProviderData *cloudprovidertypes.ProviderData
 }
 
-func CreateReconcileContext(cc ReconcileContext) context.Context {
-	return context.WithValue(context.Background(), MachineReconcileContextKey, cc)
+func CreateReconcileContext(ctx context.Context, cc ReconcileContext) context.Context {
+	return context.WithValue(ctx, MachineReconcileContextKey, cc)
 }
 
 func GetReconcileContext(ctx context.Context) ReconcileContext {

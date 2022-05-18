@@ -161,7 +161,7 @@ func TestValidate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := p.Validate(test.mspec)
+			err := p.Validate(context.Background(), test.mspec)
 			if (err != nil) != test.expectErr {
 				t.Fatalf("expectedErr: %t, got: %v", test.expectErr, err)
 			}

@@ -338,13 +338,13 @@ func (r *Reconciler) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 	return fmt.Errorf("%s, due to %w", errMsg, err)
 }
 
-func (r *Reconciler) createProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (r *Reconciler) createProviderInstance(ctx context.Context, prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	// Ensure finalizer is there.
 	_, err := r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %w", FinalizerDeleteInstance, err)
 	}
-	i, err := prov.Create(machine, r.providerData, userdata)
+	i, err := prov.Create(ctx, machine, r.providerData, userdata)
 	if err != nil {
 		return nil, err
 	}
@@ -573,7 +573,7 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 		return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	if result, err := r.deleteCloudProviderInstance(prov, machine); result != nil || err != nil {
+	if result, err := r.deleteCloudProviderInstance(ctx, prov, machine); result != nil || err != nil {
 		return result, err
 	}
 
@@ -634,14 +634,14 @@ func (r *Reconciler) retrieveNodesRelatedToMachine(ctx context.Context, machine 
 	return nodes, nil
 }
 
-func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
+func (r *Reconciler) deleteCloudProviderInstance(ctx context.Context, prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
 	finalizers := sets.NewString(machine.Finalizers...)
 	if !finalizers.Has(FinalizerDeleteInstance) {
 		return nil, nil
 	}
 
 	// Delete the instance
-	completelyGone, err := prov.Cleanup(machine, r.providerData)
+	completelyGone, err := prov.Cleanup(ctx, machine, r.providerData)
 	if err != nil {
 		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, FinalizerDeleteInstance)
 		return nil, r.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
@@ -673,7 +673,7 @@ func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provide
 		}
 
 		if rhelConfig.RHSMOfflineToken != "" {
-			if err := r.redhatSubscriptionManager.UnregisterInstance(rhelConfig.RHSMOfflineToken, machineName); err != nil {
+			if err := r.redhatSubscriptionManager.UnregisterInstance(ctx, rhelConfig.RHSMOfflineToken, machineName); err != nil {
 				return nil, fmt.Errorf("failed to delete subscription for machine name %s: %w", machine.Name, err)
 			}
 		}
@@ -733,7 +733,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 ) (*reconcile.Result, error) {
 	klog.V(6).Infof("Requesting instance for machine '%s' from cloudprovider because no associated node with status ready found...", machine.Name)
 
-	providerInstance, err := prov.Get(machine, r.providerData)
+	providerInstance, err := prov.Get(ctx, machine, r.providerData)
 
 	// case 2: retrieving instance from provider was not successful
 	if err != nil {
@@ -840,7 +840,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			}
 
 			// Create the instance
-			if _, err = r.createProviderInstance(prov, machine, userdata); err != nil {
+			if _, err = r.createProviderInstance(ctx, prov, machine, userdata); err != nil {
 				message := fmt.Sprintf("%v. Unable to create a machine.", err)
 				return nil, r.updateMachineErrorIfTerminalError(machine, common.CreateMachineError, message, err, "failed to create machine at cloudprovider")
 			}

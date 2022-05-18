@@ -93,12 +93,12 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	return "", providerconfigtypes.ErrOSNotSupported
 }
 
-func getClient(token string) *godo.Client {
+func getClient(ctx context.Context, token string) *godo.Client {
 	tokenSource := &TokenSource{
 		AccessToken: token,
 	}
 
-	oauthClient := oauth2.NewClient(context.Background(), tokenSource)
+	oauthClient := oauth2.NewClient(ctx, tokenSource)
 	return godo.NewClient(oauthClient)
 }
 
@@ -165,7 +165,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -188,8 +188,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("invalid operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	regions, _, err := client.Regions.List(ctx, &godo.ListOptions{PerPage: 1000})
 	if err != nil {
@@ -265,7 +264,7 @@ func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (st
 	return newDoKey.Fingerprint, nil
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -274,8 +273,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	fingerprint, err := uploadRandomSSHPublicKey(ctx, client.Keys)
 	if err != nil {
@@ -337,8 +335,8 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return &doInstance{droplet: droplet}, err
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.get(machine)
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.get(ctx, machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
@@ -353,8 +351,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	doID, err := strconv.Atoi(instance.ID())
 	if err != nil {
@@ -369,11 +366,11 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 	return false, nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return p.get(machine)
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return p.get(ctx, machine)
 }
 
-func (p *provider) get(machine *clusterv1alpha1.Machine) (*doInstance, error) {
+func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*doInstance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -382,7 +379,7 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*doInstance, error) {
 		}
 	}
 
-	droplets, err := p.listDroplets(c.Token)
+	droplets, err := p.listDroplets(ctx, c.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -396,9 +393,8 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*doInstance, error) {
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) listDroplets(token string) ([]godo.Droplet, error) {
-	ctx := context.TODO()
-	client := getClient(token)
+func (p *provider) listDroplets(ctx context.Context, token string) ([]godo.Droplet, error) {
+	client := getClient(ctx, token)
 	result := make([]godo.Droplet, 0)
 
 	opt := &godo.ListOptions{
@@ -428,15 +424,12 @@ func (p *provider) listDroplets(token string) ([]godo.Droplet, error) {
 	return result, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newUID types.UID) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %w", err)
 	}
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 	droplets, _, err := client.Droplets.List(ctx, &godo.ListOptions{PerPage: 1000})
 	if err != nil {
 		return fmt.Errorf("failed to list droplets: %w", err)

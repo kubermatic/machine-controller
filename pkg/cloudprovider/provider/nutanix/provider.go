@@ -17,6 +17,7 @@ limitations under the License.
 package nutanix
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -195,7 +196,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec) error {
 	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse machineSpec: %w", err)
@@ -241,10 +242,10 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	vm, err := p.create(machine, userdata)
 	if err != nil {
-		_, cleanupErr := p.Cleanup(machine, data)
+		_, cleanupErr := p.Cleanup(ctx, machine, data)
 		if cleanupErr != nil {
 			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %w", cleanupErr, err)
 		}
@@ -273,7 +274,7 @@ func (p *provider) create(machine *clusterv1alpha1.Machine, userdata string) (in
 	return createVM(client, machine.Name, *config, pc.OperatingSystem, userdata)
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	return p.cleanup(machine, data)
 }
 
@@ -338,7 +339,7 @@ func (p *provider) cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	return true, nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -403,7 +404,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertype
 	}, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, uid ktypes.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {
 	return nil
 }
 

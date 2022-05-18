@@ -34,8 +34,7 @@ const defaultTimeout = 10 * time.Second
 
 // RedHatSubscriptionManager is responsible for removing redhat subscriptions.
 type RedHatSubscriptionManager interface {
-	//TODO(irozzo) add context in input to give more control to the caller
-	UnregisterInstance(offlineToken, machineName string) error
+	UnregisterInstance(ctx context.Context, offlineToken, machineName string) error
 }
 
 type pagination struct {
@@ -70,8 +69,7 @@ func NewRedHatSubscriptionManager() RedHatSubscriptionManager {
 	}
 }
 
-func newOAuthClientWithRefreshToken(refreshToken string, tokenURL string) *http.Client {
-	ctx := context.Background()
+func newOAuthClientWithRefreshToken(ctx context.Context, refreshToken string, tokenURL string) *http.Client {
 	// Use the custom HTTP client when requesting an access token in order to
 	// set a timeout value.
 	// See: https://github.com/golang/oauth2/blob/c85d3e98c914e3a33234ad863dcbff5dbc425bb8/internal/token.go#L232
@@ -92,9 +90,7 @@ func newOAuthClientWithRefreshToken(refreshToken string, tokenURL string) *http.
 	return c
 }
 
-func (d *defaultRedHatSubscriptionManager) UnregisterInstance(offlineToken, machineName string) error {
-	ctx := context.Background()
-
+func (d *defaultRedHatSubscriptionManager) UnregisterInstance(ctx context.Context, offlineToken, machineName string) error {
 	var (
 		retries    = 0
 		maxRetries = 15
@@ -151,7 +147,7 @@ func (d *defaultRedHatSubscriptionManager) findSystemsProfile(ctx context.Contex
 }
 
 func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Context, uuid, offlineToken string) error {
-	client := newOAuthClientWithRefreshToken(offlineToken, d.authURL)
+	client := newOAuthClientWithRefreshToken(ctx, offlineToken, d.authURL)
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/%s", d.apiURL, uuid), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete system request: %w", err)
@@ -180,7 +176,7 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Contex
 }
 
 func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context.Context, offlineToken string, offset int) (*systemsResponse, error) {
-	client := newOAuthClientWithRefreshToken(offlineToken, d.authURL)
+	client := newOAuthClientWithRefreshToken(ctx, offlineToken, d.authURL)
 	req, err := http.NewRequest("GET", fmt.Sprintf(d.apiURL+"?limit=%v&offset=%v", d.requestsLimiter, offset), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetch systems request: %w", err)

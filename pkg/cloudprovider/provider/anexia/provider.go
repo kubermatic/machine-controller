@@ -58,7 +58,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
 	status := getProviderStatus(machine)
 	klog.V(3).Infof(fmt.Sprintf("'%s' has status %#v", machine.Name, status))
 
@@ -70,7 +70,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		return nil, fmt.Errorf("unable to get provider config: %w", err)
 	}
 
-	ctx := utils.CreateReconcileContext(utils.ReconcileContext{
+	ctx = utils.CreateReconcileContext(ctx, utils.ReconcileContext{
 		Status:       &status,
 		UserData:     userdata,
 		Config:       config,
@@ -96,7 +96,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		if err != nil {
 			return nil, err
 		}
-		return p.Get(machine, data)
+		return p.Get(ctx, machine, data)
 	}
 
 	// provision machine
@@ -104,7 +104,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	if err != nil {
 		return nil, err
 	}
-	return p.Get(machine, data)
+	return p.Get(ctx, machine, data)
 }
 
 func waitForVM(ctx context.Context, client anxclient.Client) error {
@@ -335,7 +335,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 }
 
 // Validate returns success or failure based according to its ProviderSpec.
-func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, machinespec clusterv1alpha1.MachineSpec) error {
 	config, _, err := p.getConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -372,7 +372,7 @@ func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
@@ -392,10 +392,10 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.GetRequestTimeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, anxtypes.GetRequestTimeout)
 	defer cancel()
 
-	info, err := vsphereAPI.Info().Get(ctx, status.InstanceID)
+	info, err := vsphereAPI.Info().Get(timeoutCtx, status.InstanceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed get machine info: %w", err)
 	}
@@ -409,7 +409,7 @@ func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string
 	return "", "", nil
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
 	status := getProviderStatus(machine)
 	// make sure status is reflected in Machine Object
 	defer func() {
@@ -433,12 +433,12 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 		return false, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.DeleteRequestTimeout)
+	deleteCtx, cancel := context.WithTimeout(ctx, anxtypes.DeleteRequestTimeout)
 	defer cancel()
 
 	// first check whether there is an provisioning ongoing
 	if status.DeprovisioningID == "" {
-		response, err := vsphereAPI.Provisioning().VM().Deprovision(ctx, status.InstanceID, false)
+		response, err := vsphereAPI.Provisioning().VM().Deprovision(deleteCtx, status.InstanceID, false)
 		if err != nil {
 			var respErr *anxclient.ResponseError
 			// Only error if the error was not "not found"
@@ -449,7 +449,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 		status.DeprovisioningID = response.Identifier
 	}
 
-	return isTaskDone(ctx, cli, status.DeprovisioningID)
+	return isTaskDone(deleteCtx, cli, status.DeprovisioningID)
 }
 
 func isTaskDone(ctx context.Context, cli anxclient.Client, progressIdentifier string) (bool, error) {
@@ -470,7 +470,7 @@ func isTaskDone(ctx context.Context, cli anxclient.Client, progressIdentifier st
 	return false, nil
 }
 
-func (p *provider) MigrateUID(_ *clusterv1alpha1.Machine, _ k8stypes.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ k8stypes.UID) error {
 	return nil
 }
 

@@ -41,7 +41,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/health"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
-	"github.com/kubermatic/machine-controller/pkg/signals"
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -53,6 +52,7 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
@@ -282,13 +282,10 @@ func main() {
 		runOptions.bootstrapTokenServiceAccountName = &types.NamespacedName{Namespace: flagParts[0], Name: flagParts[1]}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	signalCh := signals.SetupSignalHandler()
+	ctx := signals.SetupSignalHandler()
 	go func() {
-		<-signalCh
+		<-ctx.Done()
 		klog.Info("caught signal, shutting down...")
-		cancel()
 	}()
 
 	mgr, err := createManager(5*time.Minute, runOptions)
