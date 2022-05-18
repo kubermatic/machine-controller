@@ -90,6 +90,21 @@ type Config struct {
 	ContainerLogMaxSize  string                `json:",omitempty"`
 }
 
+// AuthConfig is a COPY of github.com/containerd/containerd/pkg/cri/config.AuthConfig.
+// AuthConfig contains the config related to authentication to a specific registry.
+type AuthConfig struct {
+	// Username is the username to login the registry.
+	Username string `toml:"username,omitempty" json:"username,omitempty"`
+	// Password is the password to login the registry.
+	Password string `toml:"password,omitempty" json:"password,omitempty"`
+	// Auth is a base64 encoded string from the concatenation of the username,
+	// a colon, and the password.
+	Auth string `toml:"auth,omitempty" json:"auth,omitempty"`
+	// IdentityToken is used to authenticate the user and get
+	// an access token for the registry.
+	IdentityToken string `toml:"identitytoken,omitempty" json:"identitytoken,omitempty"`
+}
+
 func (cfg Config) String() string {
 	switch {
 	case cfg.Containerd != nil:

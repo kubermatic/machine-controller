@@ -40,6 +40,10 @@ type Docker struct {
 	registryCredentials  map[string]AuthConfig
 }
 
+type DockerCfgJSON struct {
+	Auths map[string]AuthConfig `json:"auths,omitempty"`
+}
+
 func (eng *Docker) Config() (string, error) {
 	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors, eng.containerLogMaxFiles, eng.containerLogMaxSize)
 }
@@ -49,12 +53,10 @@ func (eng *Docker) ConfigFileName() string {
 }
 
 func (eng *Docker) AuthConfig() (string, error) {
-	config := struct {
-		Auths map[string]AuthConfig `json:"auths,omitempty"`
-	}{
+	cfg := DockerCfgJSON{
 		Auths: eng.registryCredentials,
 	}
-	b, err := json.MarshalIndent(config, "", "  ")
+	b, err := json.MarshalIndent(cfg, "", "  ")
 	return string(b), err
 }
 
