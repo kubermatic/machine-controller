@@ -205,6 +205,10 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("failed to get config: %w", err)
 	}
 
+	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
+		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
+	}
+
 	session, err := NewSession(ctx, config)
 	if err != nil {
 		return fmt.Errorf("failed to create vCenter session: %w", err)
@@ -278,9 +282,6 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		if err := validateDiskResizing(disks, *config.DiskSizeGB); err != nil {
 			return err
 		}
-	}
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
 	return nil
 }

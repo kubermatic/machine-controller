@@ -207,7 +207,7 @@ write_files:
       nfs-common \
       socat \
       util-linux \
-      {{- if eq .CloudProviderName "vsphere" }}
+      {{- if or (eq .CloudProviderName "vsphere") (eq .CloudProviderName "vmware-cloud-director") }}
       open-vm-tools \
       {{- end }}
       {{- if eq .CloudProviderName "nutanix" }}

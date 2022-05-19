@@ -1,28 +1,40 @@
 # Kubermatic machine-controller
 
-# Table of Contents
+## Table of Contents
 
-- [Features](#features)
-- [Quickstart](#Quickstart)
-  - [Deployment](#Deploy-the-machine-controller)
-  - [Creating a machineDeployment](#Creating-a-machineDeployment)
-  - [Special network restrictions](/docs/network-restrictions.md)
-- [Cloud provider](/docs/cloud-provider.md)
-- [Operating system](/docs/operating-system.md)
-  - [OpenStack images](/docs/openstack-images.md)
-- [Development](#development)
-- [How to add a new provider](docs/howto-provider.md)
-- [E2E Infra](/docs/e2e-infra.md)
-- [TroubleShooting](#troubleshooting)
-- [Contributing](#contributing)
-- [Changelog](#changelog)
+- [Kubermatic machine-controller](#kubermatic-machine-controller)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+    - [What works](#what-works)
+    - [Supported Kubernetes versions](#supported-kubernetes-versions)
+  - [What does not work](#what-does-not-work)
+  - [Quickstart](#quickstart)
+    - [Deploy the machine-controller](#deploy-the-machine-controller)
+    - [Creating a machineDeployment](#creating-a-machinedeployment)
+  - [Advanced usage](#advanced-usage)
+    - [Specifying the apiserver endpoint](#specifying-the-apiserver-endpoint)
+    - [CA-data](#ca-data)
+    - [Apiserver endpoint](#apiserver-endpoint)
+      - [Example cluster-info ConfigMap](#example-cluster-info-configmap)
+  - [Development](#development)
+    - [Testing](#testing)
+      - [Unittests](#unittests)
+      - [End-to-End](#end-to-end)
+  - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
+    - [Before you start](#before-you-start)
+    - [Pull requests](#pull-requests)
+  - [Changelog](#changelog)
 
-# Features
-## What works
-- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, VMWare Vsphere, Linode, Hetzner cloud and Kubevirt (experimental)
+## Features
+
+### What works
+
+- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, Nutanix, VMWare Cloud Director, VMWare Vsphere, Linode, Hetzner cloud and Kubevirt (experimental)
 - Using Ubuntu, Flatcar or CentOS 7 distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
-## Supported Kubernetes versions
+### Supported Kubernetes versions
+
 machine-controller tries to follow the Kubernetes version
 [support policy](https://kubernetes.io/docs/setup/release/version-skew-policy/) as close as possible.
 
@@ -34,15 +46,17 @@ Currently supported K8S versions are:
 - 1.21
 
 ## What does not work
+
 - Master creation (Not planned at the moment)
 
-# Quickstart
+## Quickstart
 
-## Deploy the machine-controller
+### Deploy the machine-controller
 
 `make deploy`
 
-## Creating a machineDeployment
+### Creating a machineDeployment
+
 ```bash
 # edit examples/$cloudprovider-machinedeployment.yaml & create the machineDeployment
 kubectl create -f examples/$cloudprovider-machinedeployment.yaml
@@ -51,23 +65,26 @@ kubectl create -f examples/$cloudprovider-machinedeployment.yaml
 ## Advanced usage
 
 ### Specifying the apiserver endpoint
+
 By default the controller looks for a `cluster-info` ConfigMap within the `kube-public` Namespace.
 If one is found which contains a minimal kubeconfig (kubeadm cluster have them by default), this kubeconfig will be used for the node bootstrapping.
 The kubeconfig only needs to contain two things:
+
 - CA-Data
 - The public endpoint for the Apiserver
 
 If no ConfigMap can be found:
 
-**CA-data**
+### CA-data
 
 The CA will be loaded from the passed kubeconfig when running outside the cluster or from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` when running inside the cluster.
 
-**Apiserver endpoint**
+### Apiserver endpoint
 
 The first endpoint from the kubernetes endpoints will be taken. `kubectl get endpoints kubernetes -o yaml`
 
 #### Example cluster-info ConfigMap
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -89,22 +106,22 @@ data:
     users: []
 ```
 
-# Development
+## Development
 
-## Testing
+### Testing
 
-### Unittests
+#### Unittests
 
 Simply run `make test-unit`
 
-### End-to-End
+#### End-to-End
 
 This project provides easy to use e2e testing using Hetzner cloud. To run the e2e tests
 locally, the following steps are required:
 
-* Populate the environment variable `HZ_E2E_TOKEN` with a valid Hetzner cloud token
-* Run `make e2e-cluster` to get a simple kubeadm cluster on Hetzner
-* Run `hack/run-machine-controller.sh` to locally run the machine-controller for your freshly created cluster
+- Populate the environment variable `HZ_E2E_TOKEN` with a valid Hetzner cloud token
+- Run `make e2e-cluster` to get a simple kubeadm cluster on Hetzner
+- Run `hack/run-machine-controller.sh` to locally run the machine-controller for your freshly created cluster
 
 If you want to use an existing cluster to test against, you can simply set the `KUBECONFIG` environment variable.
 In this case, first make sure that a kubeconfig created by `make e2e-cluster` at `$(go env GOPATH)/src/github.com/kubermatic/machine-controller/.kubeconfig`
@@ -112,41 +129,41 @@ doesn't exist, since the tests will default to this hardcoded path and only use 
 
 Now you can either
 
-* Run the tests for all providers via
+- Run the tests for all providers via
   `go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier $USER`
-* Check `test/e2e/provisioning/all_e2e_test.go` for the available tests, then run only a specific one via
+- Check `test/e2e/provisioning/all_e2e_test.go` for the available tests, then run only a specific one via
   `go test -race -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER -run $TESTNAME`
 
-__Note:__ All e2e tests require corresponding credentials to be present, check
+**Note:** All e2e tests require corresponding credentials to be present, check
  [`test/e2e/provisioning/all_e2e_test.go`](test/e2e/provisioning/all_e2e_test.go) for details
 
-__Note:__ After finishing testing, please clean up after yourself:
+**Note:** After finishing testing, please clean up after yourself:
 
-* Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
-* Execute `make e2e-destroy` to clean up the test control plane
+- Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
+- Execute `make e2e-destroy` to clean up the test control plane
 
 You can also insert your ssh key into the created instances by editing the manifests in
 [`test/e2e/provisioning/testdata/`](test/e2e/provisioning/testdata)
 
-# Troubleshooting
+## Troubleshooting
 
 If you encounter issues [file an issue][1] or talk to us on the [#kubermatic channel][2] on the [Kubermatic Slack][3].
 
-# Contributing
+## Contributing
 
 Thanks for taking the time to join our community and start contributing!
 
 ### Before you start
 
-* Please familiarize yourself with the [Code of Conduct][4] before contributing.
-* See [CONTRIBUTING.md][5] for instructions on the developer certificate of origin that we require.
-* Read how [we're using ZenHub][6] for project and roadmap planning
+- Please familiarize yourself with the [Code of Conduct][4] before contributing.
+- See [CONTRIBUTING.md][5] for instructions on the developer certificate of origin that we require.
+- Read how [we're using ZenHub][6] for project and roadmap planning
 
 ### Pull requests
 
-* We welcome pull requests. Feel free to dig through the [issues][1] and jump in.
+- We welcome pull requests. Feel free to dig through the [issues][1] and jump in.
 
-# Changelog
+## Changelog
 
 See [the list of releases][7] to find out about feature changes.
 

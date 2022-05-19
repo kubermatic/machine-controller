@@ -213,7 +213,7 @@ write_files:
       socat \
       wget \
       curl \
-      {{- if eq .CloudProviderName "vsphere" }}
+      {{- if or (eq .CloudProviderName "vsphere") (eq .CloudProviderName "vmware-cloud-director") }}
       open-vm-tools \
       {{- end }}
       ipvsadm

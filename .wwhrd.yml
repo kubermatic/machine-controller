@@ -31,3 +31,4 @@ exceptions:
   - github.com/embik/nutanix-client-go/pkg/client/v3 # MPL-2.0
   - github.com/embik/nutanix-client-go/internal/utils # MPL-2.0
   - github.com/ajeddeloh/go-json # Since it's a fork, https://github.com/golang/go/blob/master/LICENSE
+  - github.com/hashicorp/go-version # MPL-2.0

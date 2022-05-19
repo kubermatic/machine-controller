@@ -13,11 +13,13 @@
 | Hetzner | ✓ | ✓ | x | x | x | x | ✓ |
 | Equinix Metal | ✓ | ✓ | x | x | x | x | x |
 | Openstack | ✓ | ✓ | ✓ | ✓ | x | x | ✓ |
+| VMware Cloud Director | ✓ | x | x | x | x | x | x |
 
 ## Configuring a operating system
 
 The operating system to use can be set via `machine.spec.providerConfig.operatingSystem`.
 Allowed values:
+
 - `amzn2`
 - `centos`
 - `rhel`

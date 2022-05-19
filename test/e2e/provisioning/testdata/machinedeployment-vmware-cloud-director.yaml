@@ -1,0 +1,58 @@
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: << MACHINE_NAME >>
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      name: << MACHINE_NAME >>
+  template:
+    metadata:
+      labels:
+        name: << MACHINE_NAME >>
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "vmware-cloud-director"
+          cloudProviderSpec:
+            username: "<< VCD_USER >>"
+            url: "<< VCD_URL >>"
+            password: "<< VCD_PASSWORD >>"
+            organization: "<< VCD_ORG >>"
+            vdc: "<< VCD_VDC >>"
+            allowInsecure: false
+            vapp: "machine-controller-e2e"
+            catalog: "kubermatic"
+            template: "machine-controller-<< OS_NAME >>"
+            network: "machine-controller-e2e"
+            ipAllocationMode: "DHCP"
+            cpus: 2
+            cpuCores: 1
+            memoryMB: 2048
+            diskSizeGB: << DISK_SIZE >>
+            diskBusType: "paravirtual"
+            diskIOPS: 0
+            metadata:
+              key: value
+          operatingSystem: "<< OS_NAME >>"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+            attachSubscription: false
+            # 'rhelSubscriptionManagerUser' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_USER`
+            rhelSubscriptionManagerUser: "<< RHEL_SUBSCRIPTION_MANAGER_USER >>"
+            # 'rhelSubscriptionManagerPassword' is only used for rhel os and can be set via env var `RHEL_SUBSCRIPTION_MANAGER_PASSWORD`
+            rhelSubscriptionManagerPassword: "<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>"
+            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
+      versions:
+        kubelet: "<< KUBERNETES_VERSION >>"
