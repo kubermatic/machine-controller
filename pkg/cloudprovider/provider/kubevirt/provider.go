@@ -18,6 +18,7 @@ package kubevirt
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/url"
@@ -199,10 +200,36 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	config := Config{}
-	config.Kubeconfig, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Auth.Kubeconfig, "KUBEVIRT_KUBECONFIG")
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
+
+	// Kubeconfig was specified directly in the Machine/MachineDeployment CR. In this case we need to ensure that the value is base64 encoded.
+	if rawConfig.Auth.Kubeconfig.Value != "" {
+		val, err := base64.StdEncoding.DecodeString(rawConfig.Auth.Kubeconfig.Value)
+		if err != nil {
+			// An error here means that this is not a valid base64 string
+			// We can be more explicit here with the error for visibility. Webhook will return this error if we hit this scenario.
+			return nil, nil, fmt.Errorf("failed to decode base64 encoded kubeconfig. Expected value is a base64 encoded Kubeconfig in JSON or YAML format: %w", err)
+		}
+		config.Kubeconfig = string(val)
+	} else {
+		// Environment variable or secret reference was used for providing the value of kubeconfig
+		// We have to be lenient in this case and allow unencoded values as well.
+		config.Kubeconfig, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Auth.Kubeconfig, "KUBEVIRT_KUBECONFIG")
+		if err != nil {
+			return nil, nil, fmt.Errorf(`failed to get value of "kubeconfig" field: %w`, err)
+		}
+		val, err := base64.StdEncoding.DecodeString(config.Kubeconfig)
+		// We intentionally ignore errors here with an assumption that an unencoded YAML or JSON must have been passed on
+		// in this case.
+		if err == nil {
+			config.Kubeconfig = string(val)
+		}
 	}
+
+	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %w", err)
+	}
+
 	config.CPUs, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.CPUs)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "cpus" field: %w`, err)
@@ -231,10 +258,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %w`, err)
-	}
-	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode kubeconfig: %w", err)
 	}
 	config.FlavorName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Flavor.Name)
 	if err != nil {
