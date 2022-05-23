@@ -281,7 +281,7 @@ func addCAToDeployment(ctx context.Context, client ctrlruntimeclient.Client, nam
 func TestKubevirtProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG_JSON")
+	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG")
 
 	if kubevirtKubeconfig == "" {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
