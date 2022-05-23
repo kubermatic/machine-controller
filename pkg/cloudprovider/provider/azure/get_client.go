@@ -19,8 +19,8 @@ package azure
 import (
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
@@ -76,6 +76,17 @@ func getVMClient(c *config) (*compute.VirtualMachinesClient, error) {
 	}
 
 	return &vmClient, nil
+}
+
+func getSKUClient(c *config) (*compute.ResourceSkusClient, error) {
+	var err error
+	skuClient := compute.NewResourceSkusClient(c.SubscriptionID)
+	skuClient.Authorizer, err = auth.NewClientCredentialsConfig(c.ClientID, c.ClientSecret, c.TenantID).Authorizer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authorizer: %w", err)
+	}
+
+	return &skuClient, nil
 }
 
 func getInterfacesClient(c *config) (*network.InterfacesClient, error) {

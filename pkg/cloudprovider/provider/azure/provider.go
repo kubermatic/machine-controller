@@ -23,10 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
+	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -47,6 +50,10 @@ import (
 )
 
 const (
+	CapabilityPremiumIO = "PremiumIO"
+	CapabilityUltraSSD  = "UltraSSDAvailable"
+	CapabilityValueTrue = "True"
+
 	machineUIDTag = "Machine-UID"
 
 	finalizerPublicIP = "kubermatic.io/cleanup-azure-public-ip"
@@ -89,7 +96,9 @@ type config struct {
 	ImageReference        *compute.ImageReference
 
 	OSDiskSize   int32
+	OSDiskSKU    *compute.StorageAccountTypes
 	DataDiskSize int32
+	DataDiskSKU  *compute.StorageAccountTypes
 
 	AssignPublicIP bool
 	Tags           map[string]string
@@ -156,6 +165,26 @@ var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 		Product:   pointer.StringPtr("rhel-byos"),
 	},
 }
+
+var osDiskSKUs = map[compute.StorageAccountTypes]string{
+	compute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
+	compute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
+	compute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
+}
+
+var dataDiskSKUs = map[compute.StorageAccountTypes]string{
+	compute.StorageAccountTypesStandardLRS:    "", // Standard_LRS
+	compute.StorageAccountTypesStandardSSDLRS: "", // StandardSSD_LRS
+	compute.StorageAccountTypesPremiumLRS:     "", // Premium_LRS
+	compute.StorageAccountTypesUltraSSDLRS:    "", // UltraSSD_LRS
+}
+
+var (
+	// cacheLock protects concurrent cache misses against a single key. This usually happens when multiple machines get created simultaneously
+	// We lock so the first access updates/writes the data to the cache and afterwards everyone reads the cached data
+	cacheLock = &sync.Mutex{}
+	cache     = gocache.New(10*time.Minute, 10*time.Minute)
+)
 
 func getOSImageReference(c *config, os providerconfigtypes.OperatingSystem) (*compute.ImageReference, error) {
 	if c.ImageID != "" {
@@ -292,6 +321,14 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*config, *providerconfigt
 	c.Tags = rawCfg.Tags
 	c.OSDiskSize = rawCfg.OSDiskSize
 	c.DataDiskSize = rawCfg.DataDiskSize
+
+	if rawCfg.OSDiskSKU != nil {
+		c.OSDiskSKU = storageTypePtr(*rawCfg.OSDiskSKU)
+	}
+
+	if rawCfg.DataDiskSKU != nil {
+		c.DataDiskSKU = storageTypePtr(*rawCfg.DataDiskSKU)
+	}
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
 		c.ImagePlan = &compute.Plan{
@@ -467,6 +504,12 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 			DiskSizeGB:   pointer.Int32Ptr(config.OSDiskSize),
 			CreateOption: compute.DiskCreateOptionTypesFromImage,
 		}
+
+		if config.OSDiskSKU != nil {
+			sp.OsDisk.ManagedDisk = &compute.ManagedDiskParameters{
+				StorageAccountType: *config.OSDiskSKU,
+			}
+		}
 	}
 
 	if config.DataDiskSize != 0 {
@@ -478,6 +521,13 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 				CreateOption: compute.DiskCreateOptionTypesEmpty,
 			},
 		}
+
+		if config.DataDiskSKU != nil {
+			(*sp.DataDisks)[0].ManagedDisk = &compute.ManagedDiskParameters{
+				StorageAccountType: *config.DataDiskSKU,
+			}
+		}
+
 	}
 	return sp, nil
 }
@@ -701,7 +751,7 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 		return nil, err
 	}
 
-	list, err := vmClient.ListAll(ctx)
+	list, err := vmClient.ListAll(ctx, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -892,7 +942,7 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to (create) vm client: %v", err.Error())
 	}
 
-	_, err = vmClient.ListAll(context.TODO())
+	_, err = vmClient.ListAll(context.TODO(), "", "")
 	if err != nil {
 		return fmt.Errorf("failed to list all: %v", err.Error())
 	}
@@ -905,8 +955,49 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get subnet: %v", err)
 	}
 
+	if err := validateDiskSKUs(c); err != nil {
+		return fmt.Errorf("failed to validate disk SKUs: %w", err)
+	}
+
 	_, err = getOSImageReference(c, providerCfg.OperatingSystem)
 	return err
+}
+
+func validateDiskSKUs(c *config) error {
+	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
+		sku, err := getSKU(context.TODO(), c)
+		if err != nil {
+			return fmt.Errorf("failed to get VM SKU: %w", err)
+		}
+
+		if c.OSDiskSKU != nil {
+			if _, ok := osDiskSKUs[*c.OSDiskSKU]; !ok {
+				return fmt.Errorf("invalid OS disk SKU '%s'", *c.OSDiskSKU)
+			}
+
+			if err := supportsDiskSKU(sku, *c.OSDiskSKU, c.Zones); err != nil {
+				return err
+			}
+		}
+
+		if c.DataDiskSKU != nil {
+			if _, ok := dataDiskSKUs[*c.DataDiskSKU]; !ok {
+				return fmt.Errorf("invalid data disk SKU '%s'", *c.DataDiskSKU)
+			}
+
+			// Ultra SSDs do not support availability sets, see for reference:
+			// https://docs.microsoft.com/en-us/azure/virtual-machines/disks-enable-ultra-ssd#ga-scope-and-limitations
+			if *c.DataDiskSKU == compute.StorageAccountTypesUltraSSDLRS && ((c.AssignAvailabilitySet != nil && *c.AssignAvailabilitySet) || c.AvailabilitySet != "") {
+				return fmt.Errorf("data disk SKU '%s' does not support availability sets", *c.DataDiskSKU)
+			}
+
+			if err := supportsDiskSKU(sku, *c.DataDiskSKU, c.Zones); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (p *provider) MigrateUID(machine *v1alpha1.Machine, new types.UID) error {
@@ -1009,4 +1100,79 @@ func getOSUsername(os providerconfigtypes.OperatingSystem) string {
 	default:
 		return string(os)
 	}
+}
+
+func storageTypePtr(storageType string) *compute.StorageAccountTypes {
+	storage := compute.StorageAccountTypes(storageType)
+	return &storage
+}
+
+// supportsDiskSKU validates some disk SKU types against the chosen VM SKU / VM type.
+func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTypes, zones []string) error {
+	// sanity check to make sure the Azure API did not return something bad
+	if vmSKU.Name == nil || vmSKU.Capabilities == nil {
+		return fmt.Errorf("invalid VM SKU object")
+	}
+
+	switch diskSKU {
+	case compute.StorageAccountTypesPremiumLRS:
+		found := false
+		for _, capability := range *vmSKU.Capabilities {
+			if *capability.Name == CapabilityPremiumIO && *capability.Value == CapabilityValueTrue {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
+		}
+
+	case compute.StorageAccountTypesUltraSSDLRS:
+		if vmSKU.LocationInfo == nil || len(*vmSKU.LocationInfo) == 0 || (*vmSKU.LocationInfo)[0].Zones == nil || len(*(*vmSKU.LocationInfo)[0].Zones) == 0 {
+			// no zone information found, let's check for capability
+			found := false
+			for _, capability := range *vmSKU.Capabilities {
+				if *capability.Name == CapabilityUltraSSD && *capability.Value == CapabilityValueTrue {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s'", *vmSKU.Name, diskSKU)
+			}
+		} else {
+			if (*vmSKU.LocationInfo)[0].ZoneDetails != nil {
+				for _, zone := range zones {
+					found := false
+					for _, details := range *(*vmSKU.LocationInfo)[0].ZoneDetails {
+						matchesZone := false
+						for _, zoneName := range *details.Name {
+							if zone == zoneName {
+								matchesZone = true
+								break
+							}
+						}
+
+						// we only check this zone details for capabilities if it actually includes the zone we're checking for
+						if matchesZone {
+							for _, capability := range *details.Capabilities {
+								if *capability.Name == CapabilityUltraSSD && *capability.Value == CapabilityValueTrue {
+									found = true
+									break
+								}
+							}
+						}
+					}
+
+					if !found {
+						return fmt.Errorf("VM SKU '%s' does not support disk SKU '%s' in zone '%s'", *vmSKU.Name, diskSKU, zone)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }

@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 
@@ -113,7 +113,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 		return err
 	}
 
-	list, err := vmClient.ListAll(ctx)
+	list, err := vmClient.ListAll(ctx, "", "")
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 
 	for _, vm := range allServers {
 		if vm.Tags != nil && vm.Tags[machineUIDTag] != nil && *vm.Tags[machineUIDTag] == string(machineUID) {
-			future, err := vmClient.Delete(ctx, c.ResourceGroup, *vm.Name)
+			future, err := vmClient.Delete(ctx, c.ResourceGroup, *vm.Name, nil)
 			if err != nil {
 				return err
 			}
@@ -203,8 +203,8 @@ func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, machineUI
 		Name:     to.StringPtr(ipName),
 		Location: to.StringPtr(c.Location),
 		PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-			PublicIPAddressVersion:   network.IPv4,
-			PublicIPAllocationMethod: network.Static,
+			PublicIPAddressVersion:   network.IPVersionIPv4,
+			PublicIPAllocationMethod: network.IPAllocationMethodStatic,
 		},
 		Tags:  map[string]*string{machineUIDTag: to.StringPtr(string(machineUID))},
 		Zones: &c.Zones,
@@ -250,6 +250,60 @@ func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
 	return subnetsClient.Get(ctx, c.VNetResourceGroup, c.VNetName, c.SubnetName, "")
 }
 
+func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+
+	cacheKey := fmt.Sprintf("%s-%s", c.Location, c.VMSize)
+	cacheSku, found := cache.Get(cacheKey)
+	if found {
+		klog.V(3).Info("found SKU in cache!")
+		return cacheSku.(compute.ResourceSku), nil
+	}
+
+	skuClient, err := getSKUClient(c)
+	if err != nil {
+		return compute.ResourceSku{}, fmt.Errorf("failed to (create) SKU client: %w", err)
+	}
+
+	skuPages, err := skuClient.List(ctx, fmt.Sprintf("location eq '%s'", c.Location), "false")
+	if err != nil {
+		return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
+	}
+
+	var sku *compute.ResourceSku
+
+	for skuPages.NotDone() && sku == nil {
+		skus := skuPages.Values()
+		for _, skuResult := range skus {
+			// skip invalid SKU results so we don't trigger a nil pointer exception
+			if skuResult.ResourceType == nil || skuResult.Name == nil {
+				continue
+			}
+
+			if *skuResult.ResourceType == "virtualMachines" && *skuResult.Name == c.VMSize {
+				sku = &skuResult
+				break
+			}
+		}
+
+		// only fetch the next page if we haven't found our SKU yet
+		if sku == nil {
+			if err := skuPages.NextWithContext(ctx); err != nil {
+				return compute.ResourceSku{}, fmt.Errorf("failed to list available SKUs: %w", err)
+			}
+		}
+	}
+
+	if sku == nil {
+		return compute.ResourceSku{}, fmt.Errorf("no VM SKU '%s' found for subscription '%s'", c.VMSize, c.SubscriptionID)
+	}
+
+	cache.SetDefault(cacheKey, *sku)
+
+	return *sku, nil
+}
+
 func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, error) {
 	virtualNetworksClient, err := getVirtualNetworksClient(c)
 	if err != nil {
@@ -279,7 +333,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 					Name: to.StringPtr("ip-config-1"),
 					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 						Subnet:                    &subnet,
-						PrivateIPAllocationMethod: network.Dynamic,
+						PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
 						PublicIPAddress:           publicIP,
 					},
 				},
