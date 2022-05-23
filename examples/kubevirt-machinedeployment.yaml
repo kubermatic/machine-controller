@@ -28,7 +28,9 @@ spec:
           cloudProviderSpec:
             auth:
               kubeconfig:
-                value: '<< KUBECONFIG >>'
+                # Can also be set via the env var 'KUBEVIRT_KUBECONFIG' on the machine-controller
+                # If specified directly, this value should be a base64 encoded kubeconfig in either yaml or json format.
+                value: "<< KUBECONFIG >>"
             virtualMachine:
               template:
                 cpus: "1"
@@ -44,7 +46,7 @@ spec:
                 type: "" # Allowed values: "", "soft", "hard"
                 key: "foo"
                 values:
-                - bar
+                  - bar
           # Can also be `centos`, must align with he configured registryImage above
           operatingSystem: "ubuntu"
           operatingSystemSpec:
