@@ -4,15 +4,15 @@
 
 ### Cloud provider
 
-|   | Ubuntu | CentOS | Flatcar | RHEL | SLES | Amazon Linux 2 |
-|---|---|---|---|---|---|---|
-| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Azure | ✓ | ✓ | ✓ | ✓ | x | x |
-| Digitalocean  | ✓ | ✓ | x | x | x | x |
-| Google Cloud Platform | ✓ | x | x | x | x | x |
-| Hetzner | ✓ | ✓ | x | x | x | x |
-| Equinix Metal | ✓ | ✓ | x | x | x | x |
-| Openstack | ✓ | ✓ | ✓ | ✓ | x | x |
+|   | Ubuntu | CentOS | Flatcar | RHEL | SLES | Amazon Linux 2 | Rocky Linux |
+|---|---|---|---|---|---|---|---|
+| AWS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Azure | ✓ | ✓ | ✓ | ✓ | x | x | ✓ |
+| Digitalocean  | ✓ | ✓ | x | x | x | x | ✓ |
+| Google Cloud Platform | ✓ | x | x | x | x | x | x |
+| Hetzner | ✓ | ✓ | x | x | x | x | ✓ |
+| Equinix Metal | ✓ | ✓ | x | x | x | x | x |
+| Openstack | ✓ | ✓ | ✓ | ✓ | x | x | ✓ |
 
 ## Configuring a operating system
 
@@ -21,6 +21,7 @@ Allowed values:
 - `amzn2`
 - `centos`
 - `rhel`
+- `rockylinux`
 - `sles`
 - `ubuntu`
 
@@ -36,6 +37,7 @@ Machine controller may work with other OS versions that are not listed in the ta
 | AmazonLinux2 | 2.x |
 | CentOS | 7.4.x, 7.6.x, 7.7.x |
 | RHEL | 8.0, 8.1 |
+| Rocky Linux | 8.5 |
 | SLES |  SLES 15 SP1 |
 | Ubuntu | 18.04 LTS |
 
