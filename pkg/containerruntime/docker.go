@@ -53,10 +53,15 @@ func (eng *Docker) ConfigFileName() string {
 }
 
 func (eng *Docker) AuthConfig() (string, error) {
+	if eng.registryCredentials == nil {
+		return "", nil
+	}
+
 	cfg := DockerCfgJSON{
 		Auths: eng.registryCredentials,
 	}
 	b, err := json.MarshalIndent(cfg, "", "  ")
+
 	return string(b), err
 }
 

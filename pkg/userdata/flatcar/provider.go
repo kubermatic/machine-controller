@@ -502,7 +502,7 @@ storage:
         inline: |
 {{ .ContainerRuntimeConfig | indent 10 }}
 
-{{- if and (eq .ContainerRuntimeName "docker") (ne .ContainerRuntimeAuthConfig "{}") }}
+{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
 
     - path: {{ .ContainerRuntimeAuthConfigFileName }}
       filesystem: root
@@ -777,7 +777,7 @@ write_files:
   content: |
 {{ .ContainerRuntimeConfig | indent 4 }}
 
-{{- if and (eq .ContainerRuntimeName "docker") (ne .ContainerRuntimeAuthConfig "{}") }}
+{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
 
 - path: {{ .ContainerRuntimeAuthConfigFileName }}
   permissions: "0600"
