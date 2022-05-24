@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/vmware/go-vcloud-director/v2/govcd"
@@ -76,7 +77,7 @@ func (c *Client) GetAuthenticatedClient() (*govcd.VCDClient, error) {
 	// Ensure that `/api` suffix exists in the cloud director URL.
 	href := c.Auth.URL
 	if !strings.HasSuffix(c.Auth.URL, "/api") {
-		href = fmt.Sprintf("%s/api", c.Auth.URL)
+		href = path.Join(c.Auth.URL, "api")
 	}
 
 	url, err := url.ParseRequestURI(href)

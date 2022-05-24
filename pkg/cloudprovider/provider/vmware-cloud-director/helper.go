@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/vmware/go-vcloud-director/v2/govcd"
 	"github.com/vmware/go-vcloud-director/v2/types/v56"
@@ -172,7 +173,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	if err != nil {
 		return fmt.Errorf("error getting vapp href: %w", err)
 	}
-	apiEndpoint.Path += "/action/recomposeVApp"
+	apiEndpoint.Path = path.Join(apiEndpoint.Path, "action/recomposeVApp")
 
 	task, err := client.VCDClient.Client.ExecuteTaskRequest(apiEndpoint.String(), http.MethodPost,
 		types.MimeRecomposeVappParams, "error instantiating a new VM: %s", vAppRecomposition)

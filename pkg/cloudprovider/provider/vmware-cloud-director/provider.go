@@ -369,15 +369,38 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c.IPAllocationMode = rawConfig.IPAllocationMode
-	c.CPUs = rawConfig.CPUs
-	c.CPUCores = rawConfig.CPUCores
-	c.MemoryMB = rawConfig.MemoryMB
+
+	if rawConfig.DiskSizeGB != nil && *rawConfig.DiskSizeGB < 0 {
+		return nil, nil, nil, fmt.Errorf("value for \"diskSizeGB\" should either be nil or greater than or equal to 0")
+	}
 	c.DiskSizeGB = rawConfig.DiskSizeGB
-	c.DiskBusType = rawConfig.DiskBusType
+
+	if rawConfig.DiskIOPS != nil && *rawConfig.DiskIOPS < 0 {
+		return nil, nil, nil, fmt.Errorf("value for \"diskIOPS\" should either be nil or greater than or equal to 0")
+	}
 	c.DiskIOPS = rawConfig.DiskIOPS
+
+	if rawConfig.CPUs <= 0 {
+		return nil, nil, nil, fmt.Errorf("value for \"cpus\" should be greater than 0")
+	}
+	c.CPUs = rawConfig.CPUs
+
+	if rawConfig.CPUCores <= 0 {
+		return nil, nil, nil, fmt.Errorf("value for \"cpuCores\" should be greater than 0")
+	}
+	c.CPUCores = rawConfig.CPUCores
+
+	if rawConfig.MemoryMB <= 4 {
+		return nil, nil, nil, fmt.Errorf("value for \"memoryMB\" should be greater than 0")
+	}
+	if rawConfig.MemoryMB%4 != 0 {
+		return nil, nil, nil, fmt.Errorf("value for \"memoryMB\" should be a multiple of 4")
+	}
+	c.MemoryMB = rawConfig.MemoryMB
+
+	c.DiskBusType = rawConfig.DiskBusType
 	c.StorageProfile = rawConfig.StorageProfile
 	c.Metadata = rawConfig.Metadata
-
 	return &c, pconfig, rawConfig, err
 }
 
