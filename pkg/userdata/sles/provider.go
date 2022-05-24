@@ -187,7 +187,7 @@ write_files:
       e2fsprogs \
       jq \
       socat \
-      {{- if eq .CloudProviderName "vsphere" }}
+      {{- if or (eq .CloudProviderName "vsphere") (eq .CloudProviderName "vmware-cloud-director") }}
       open-vm-tools \
       {{- end }}
       ipvsadm

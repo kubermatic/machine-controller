@@ -46,24 +46,25 @@ const (
 type CloudProvider string
 
 const (
-	CloudProviderAWS          CloudProvider = "aws"
-	CloudProviderAzure        CloudProvider = "azure"
-	CloudProviderDigitalocean CloudProvider = "digitalocean"
-	CloudProviderGoogle       CloudProvider = "gce"
-	CloudProviderEquinixMetal CloudProvider = "equinixmetal"
-	CloudProviderPacket       CloudProvider = "packet"
-	CloudProviderHetzner      CloudProvider = "hetzner"
-	CloudProviderKubeVirt     CloudProvider = "kubevirt"
-	CloudProviderLinode       CloudProvider = "linode"
-	CloudProviderNutanix      CloudProvider = "nutanix"
-	CloudProviderOpenstack    CloudProvider = "openstack"
-	CloudProviderVsphere      CloudProvider = "vsphere"
-	CloudProviderFake         CloudProvider = "fake"
-	CloudProviderAlibaba      CloudProvider = "alibaba"
-	CloudProviderAnexia       CloudProvider = "anexia"
-	CloudProviderScaleway     CloudProvider = "scaleway"
-	CloudProviderBaremetal    CloudProvider = "baremetal"
-	CloudProviderExternal     CloudProvider = "external"
+	CloudProviderAWS            CloudProvider = "aws"
+	CloudProviderAzure          CloudProvider = "azure"
+	CloudProviderDigitalocean   CloudProvider = "digitalocean"
+	CloudProviderGoogle         CloudProvider = "gce"
+	CloudProviderEquinixMetal   CloudProvider = "equinixmetal"
+	CloudProviderPacket         CloudProvider = "packet"
+	CloudProviderHetzner        CloudProvider = "hetzner"
+	CloudProviderKubeVirt       CloudProvider = "kubevirt"
+	CloudProviderLinode         CloudProvider = "linode"
+	CloudProviderNutanix        CloudProvider = "nutanix"
+	CloudProviderOpenstack      CloudProvider = "openstack"
+	CloudProviderVsphere        CloudProvider = "vsphere"
+	CloudProviderVcloudDirector CloudProvider = "vmware-cloud-director"
+	CloudProviderFake           CloudProvider = "fake"
+	CloudProviderAlibaba        CloudProvider = "alibaba"
+	CloudProviderAnexia         CloudProvider = "anexia"
+	CloudProviderScaleway       CloudProvider = "scaleway"
+	CloudProviderBaremetal      CloudProvider = "baremetal"
+	CloudProviderExternal       CloudProvider = "external"
 )
 
 var (
@@ -94,6 +95,7 @@ var (
 		CloudProviderNutanix,
 		CloudProviderOpenstack,
 		CloudProviderVsphere,
+		CloudProviderVcloudDirector,
 		CloudProviderFake,
 		CloudProviderAlibaba,
 		CloudProviderAnexia,

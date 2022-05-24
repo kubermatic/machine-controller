@@ -63,6 +63,7 @@ const (
 	GCEManifest                       = "./testdata/machinedeployment-gce.yaml"
 	HZManifest                        = "./testdata/machinedeployment-hetzner.yaml"
 	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
+	VMwareCloudDirectorManifest       = "./testdata/machinedeployment-vmware-cloud-director.yaml"
 	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
 	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	VSPhereResourcePoolManifest       = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
@@ -788,6 +789,38 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< LINODE_TOKEN >>=%s", linodeToken)}
 	runScenarios(t, selector, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
+}
+
+func getVMwareCloudDirectorTestParams(t *testing.T) []string {
+	// test data
+	password := os.Getenv("VCD_PASSWORD")
+	username := os.Getenv("VCD_USER")
+	organization := os.Getenv("VCD_ORG")
+	url := os.Getenv("VCD_URL")
+	vdc := os.Getenv("VCD_VDC")
+
+	if password == "" || username == "" || organization == "" || url == "" || vdc == "" {
+		t.Fatal("unable to run the test suite, VCD_PASSWORD, VCD_USER, VCD_ORG, " +
+			"VCD_URL, or VCD_VDC environment variables cannot be empty")
+	}
+
+	// set up parameters
+	params := []string{fmt.Sprintf("<< VCD_PASSWORD >>=%s", password),
+		fmt.Sprintf("<< VCD_USER >>=%s", username),
+		fmt.Sprintf("<< VCD_ORG >>=%s", organization),
+		fmt.Sprintf("<< VCD_URL >>=%s", url),
+		fmt.Sprintf("<< VCD_VDC >>=%s", vdc),
+	}
+	return params
+}
+
+func TestVMwareCloudDirectorProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	selector := OsSelector("ubuntu")
+	params := getVMwareCloudDirectorTestParams(t)
+
+	runScenarios(t, selector, params, VMwareCloudDirectorManifest, fmt.Sprintf("vcd-%s", *testRunIdentifier))
 }
 
 func getVSphereTestParams(t *testing.T) []string {
