@@ -75,17 +75,15 @@ func (c *Client) GetAuthenticatedClient() (*govcd.VCDClient, error) {
 	}
 
 	// Ensure that `/api` suffix exists in the cloud director URL.
-	href := c.Auth.URL
-	if !strings.HasSuffix(c.Auth.URL, "/api") {
-		href = path.Join(c.Auth.URL, "api")
-	}
-
-	url, err := url.ParseRequestURI(href)
+	apiEndpoint, err := url.Parse(c.Auth.URL)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse url '%s': %w", href, err)
+		return nil, fmt.Errorf("unable to parse url '%s': %w", c.Auth.URL, err)
+	}
+	if !strings.HasSuffix(c.Auth.URL, "/api") {
+		apiEndpoint.Path = path.Join(apiEndpoint.Path, "api")
 	}
 
-	vcdClient := govcd.NewVCDClient(*url, c.Auth.AllowInsecure)
+	vcdClient := govcd.NewVCDClient(*apiEndpoint, c.Auth.AllowInsecure)
 
 	err = vcdClient.Authenticate(c.Auth.Username, c.Auth.Password, c.Auth.Organization)
 	if err != nil {

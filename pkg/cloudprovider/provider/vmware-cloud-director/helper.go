@@ -169,9 +169,9 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 		vAppRecomposition.SourcedItem.ComputePolicy = &computePolicy
 	}
 
-	apiEndpoint, err := url.ParseRequestURI(vapp.VApp.HREF)
+	apiEndpoint, err := url.Parse(vapp.VApp.HREF)
 	if err != nil {
-		return fmt.Errorf("error getting vapp href: %w", err)
+		return fmt.Errorf("error getting vapp href '%s': %w", c.Auth.URL, err)
 	}
 	apiEndpoint.Path = path.Join(apiEndpoint.Path, "action/recomposeVApp")
 
