@@ -93,32 +93,41 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
 	}
 
+	crAuthConfig, err := crEngine.AuthConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate container runtime auth config: %w", err)
+	}
+
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec                   *providerconfigtypes.Config
-		FlatcarConfig                  *Config
-		Kubeconfig                     string
-		KubernetesCACert               string
-		KubeletVersion                 string
-		NodeIPScript                   string
-		ExtraKubeletFlags              []string
-		ContainerRuntimeScript         string
-		ContainerRuntimeConfigFileName string
-		ContainerRuntimeConfig         string
-		ContainerRuntimeName           string
+		ProviderSpec                       *providerconfigtypes.Config
+		FlatcarConfig                      *Config
+		KubeletVersion                     string
+		Kubeconfig                         string
+		KubernetesCACert                   string
+		NodeIPScript                       string
+		ExtraKubeletFlags                  []string
+		ContainerRuntimeScript             string
+		ContainerRuntimeConfigFileName     string
+		ContainerRuntimeConfig             string
+		ContainerRuntimeAuthConfigFileName string
+		ContainerRuntimeAuthConfig         string
+		ContainerRuntimeName               string
 	}{
-		UserDataRequest:                req,
-		ProviderSpec:                   pconfig,
-		FlatcarConfig:                  flatcarConfig,
-		Kubeconfig:                     kubeconfigString,
-		KubernetesCACert:               kubernetesCACert,
-		KubeletVersion:                 kubeletVersion.String(),
-		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
-		ExtraKubeletFlags:              crEngine.KubeletFlags(),
-		ContainerRuntimeScript:         crScript,
-		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
-		ContainerRuntimeConfig:         crConfig,
-		ContainerRuntimeName:           crEngine.String(),
+		UserDataRequest:                    req,
+		ProviderSpec:                       pconfig,
+		FlatcarConfig:                      flatcarConfig,
+		KubeletVersion:                     kubeletVersion.String(),
+		Kubeconfig:                         kubeconfigString,
+		KubernetesCACert:                   kubernetesCACert,
+		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(),
+		ExtraKubeletFlags:                  crEngine.KubeletFlags(),
+		ContainerRuntimeScript:             crScript,
+		ContainerRuntimeConfigFileName:     crEngine.ConfigFileName(),
+		ContainerRuntimeConfig:             crConfig,
+		ContainerRuntimeAuthConfigFileName: crEngine.AuthConfigFileName(),
+		ContainerRuntimeAuthConfig:         crAuthConfig,
+		ContainerRuntimeName:               crEngine.String(),
 	}
 
 	b := &bytes.Buffer{}
@@ -493,6 +502,16 @@ storage:
         inline: |
 {{ .ContainerRuntimeConfig | indent 10 }}
 
+{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
+
+    - path: {{ .ContainerRuntimeAuthConfigFileName }}
+      filesystem: root
+      permissions: 0600
+      content:
+        inline: |
+{{ .ContainerRuntimeAuthConfig | indent 10 }}
+{{- end }}
+
     - path: /etc/crictl.yaml
       filesystem: root
       mode: 0644
@@ -757,6 +776,14 @@ write_files:
   user: root
   content: |
 {{ .ContainerRuntimeConfig | indent 4 }}
+
+{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
+
+- path: {{ .ContainerRuntimeAuthConfigFileName }}
+  permissions: "0600"
+  content: |
+{{ .ContainerRuntimeAuthConfig | indent 4 }}
+{{- end }}
 
 - path: /etc/crictl.yaml
   permissions: "0644"

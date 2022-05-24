@@ -446,6 +446,38 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
+			name:             "docker",
+			containerruntime: "docker",
+			registryCredentials: map[string]containerruntime.AuthConfig{
+				"docker.io": {
+					Username: "login1",
+					Password: "passwd1",
+				},
+			},
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: true,
+			},
+		},
+		{
 			name: "nutanix",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "nutanix",

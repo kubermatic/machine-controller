@@ -93,12 +93,21 @@ func GetContainerdAuthConfig(ctx context.Context, client ctrlruntimeclient.Clien
 			return nil, fmt.Errorf("failed to retrieve registry credentials secret object: %w", err)
 		}
 
-		for registry, data := range credsSecret.Data {
-			var regCred AuthConfig
-			if err := json.Unmarshal(data, &regCred); err != nil {
+		switch credsSecret.Type {
+		case corev1.SecretTypeDockerConfigJson:
+			var regCred DockerCfgJSON
+			if err := json.Unmarshal(credsSecret.Data[".dockerconfigjson"], &regCred); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal registry credentials: %w", err)
 			}
-			registryCredentials[registry] = regCred
+			registryCredentials = regCred.Auths
+		default:
+			for registry, data := range credsSecret.Data {
+				var regCred AuthConfig
+				if err := json.Unmarshal(data, &regCred); err != nil {
+					return nil, fmt.Errorf("failed to unmarshal registry credentials: %w", err)
+				}
+				registryCredentials[registry] = regCred
+			}
 		}
 	}
 	return registryCredentials, nil
