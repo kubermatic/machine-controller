@@ -821,7 +821,7 @@ func getVMwareCloudDirectorTestParams(t *testing.T) []string {
 func TestVMwareCloudDirectorProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := OsSelector("ubuntu")
+	selector := OsSelector("ubuntu", "flatcar")
 	params := getVMwareCloudDirectorTestParams(t)
 
 	runScenarios(t, selector, params, VMwareCloudDirectorManifest, fmt.Sprintf("vcd-%s", *testRunIdentifier))

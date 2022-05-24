@@ -13,7 +13,7 @@
 | Hetzner | ✓ | ✓ | x | x | x | x | ✓ |
 | Equinix Metal | ✓ | ✓ | x | x | x | x | x |
 | Openstack | ✓ | ✓ | ✓ | ✓ | x | x | ✓ |
-| VMware Cloud Director | ✓ | x | x | x | x | x | x |
+| VMware Cloud Director | ✓ | x | ✓ | x | x | x | x |
 
 ## Configuring a operating system
 
