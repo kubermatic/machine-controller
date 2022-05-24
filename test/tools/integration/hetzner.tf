@@ -14,7 +14,7 @@ resource "hcloud_network" "net" {
 
 resource "hcloud_server" "machine-controller-test" {
   name        = var.hcloud_test_server_name
-  image       = "ubuntu-20.04"
+  image       = "ubuntu-22.04"
   server_type = "cx21"
   ssh_keys    = [hcloud_ssh_key.default.id]
   location    = "nbg1"

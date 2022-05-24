@@ -22,14 +22,13 @@ echo "$LC_E2E_SSH_PUBKEY" >> .ssh/authorized_keys
 echo "GatewayPorts clientspecified" >> /etc/ssh/sshd_config
 systemctl restart sshd.service
 
+export DEBIAN_FRONTEND=noninteractive
+
 # Hetzner's Ubuntu Bionic comes with swap pre-configured, so we force it off.
 systemctl mask swap.target
 swapoff -a
 
 if ! which buildah; then
-  sh -c "echo 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/testing/xUbuntu_20.04/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list"
-  wget -nv https://download.opensuse.org/repositories/devel:kubic:libcontainers:testing/xUbuntu_20.04/Release.key -O Release.key
-  apt-key add - < Release.key
   apt-get update
   apt-get -y install buildah
 fi
@@ -54,7 +53,7 @@ EOF
   EnvironmentFile=-/etc/environment
 EOF
 
-  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.4*
+  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.5*
   apt-mark hold containerd.io
 
   mkdir -p /etc/containerd/ && touch /etc/containerd/config.toml
