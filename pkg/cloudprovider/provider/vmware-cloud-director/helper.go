@@ -285,3 +285,18 @@ func addMetadata(vm *govcd.VM, metadata *map[string]string) error {
 	}
 	return nil
 }
+
+func setComputerName(vm *govcd.VM, machineName string) error {
+	customizationSection, err := vm.GetGuestCustomizationSection()
+	if err != nil {
+		return fmt.Errorf("error retrieving guest customization section for VM: %w", err)
+	}
+
+	customizationSection.ComputerName = machineName
+
+	_, err = vm.SetGuestCustomizationSection(customizationSection)
+	if err != nil {
+		return fmt.Errorf("error adding metadata for VM: %w", err)
+	}
+	return nil
+}
