@@ -263,7 +263,13 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, err
 	}
 
-	// 8. Finally power on the VM after performing all required actions.
+	// 8. Set computer name for the VM
+	err = setComputerName(vm, machine.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	// 9. Finally power on the VM after performing all required actions.
 	task, err := vm.PowerOn()
 	if err != nil {
 		return nil, fmt.Errorf("failed to turn on VM: %w", err)
