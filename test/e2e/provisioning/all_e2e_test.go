@@ -376,8 +376,14 @@ func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := OsSelector("ubuntu")
-	runScenarios(t, selector, params, OSManifestProjectAuth, fmt.Sprintf("os-%s", *testRunIdentifier))
+	scenario := scenario{
+		name:              "MachineDeploy with project auth vars",
+		osName:            "ubuntu",
+		containerRuntime:  "containerd",
+		kubernetesVersion: "1.21.2",
+		executor:          verifyCreateAndDelete,
+	}
+	testScenario(t, scenario, *testRunIdentifier, params, OSManifestProjectAuth, false)
 }
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
