@@ -140,7 +140,6 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 	}
 
 	// Do not allow 1.24+ to use config source (dynamic kubelet configuration)
-
 	constraint124, err := semver.NewConstraint(">= 1.24")
 	if err != nil {
 		return fmt.Errorf("failed to parse 1.24 constraint: %w", err)
