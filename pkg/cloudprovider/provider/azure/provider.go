@@ -365,7 +365,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	return &c, pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine) (map[string]v1.NodeAddressType, error) {
+func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine, ipFamily util.IPFamily) (map[string]v1.NodeAddressType, error) {
 	var (
 		ipAddresses = map[string]v1.NodeAddressType{}
 		err         error
@@ -390,8 +390,8 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 
 		splitIfaceID := strings.Split(*iface.ID, "/")
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
-		ipAddresses, err = getNICIPAddresses(ctx, c, ifaceName)
-		if vm.NetworkProfile.NetworkInterfaces == nil {
+		ipAddresses, err = getNICIPAddresses(ctx, c, ipFamily, ifaceName)
+		if err != nil || vm.NetworkProfile.NetworkInterfaces == nil {
 			return nil, fmt.Errorf("failed to get addresses for interface %q: %w", ifaceName, err)
 		}
 	}
@@ -399,7 +399,7 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[string]v1.NodeAddressType, error) {
+func getNICIPAddresses(ctx context.Context, c *config, ipFamily util.IPFamily, ifaceName string) (map[string]v1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
@@ -438,12 +438,14 @@ func getNICIPAddresses(ctx context.Context, c *config, ifaceName string) (map[st
 				ipAddresses[ip] = v1.NodeExternalIP
 			}
 
-			publicIP6s, err := getIPAddressStrings(ctx, c, publicIPv6Name(ifaceName))
-			if err != nil {
-				return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
-			}
-			for _, ip := range publicIP6s {
-				ipAddresses[ip] = v1.NodeExternalIP
+			if ipFamily == util.DualStack || ipFamily == util.IPv6 {
+				publicIP6s, err := getIPAddressStrings(ctx, c, publicIPv6Name(ifaceName))
+				if err != nil {
+					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
+				}
+				for _, ip := range publicIP6s {
+					ipAddresses[ip] = v1.NodeExternalIP
+				}
 			}
 		}
 
@@ -707,7 +709,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %w", machine.Name, err)
 	}
 
-	ipAddresses, err := getVMIPAddresses(ctx, config, &vm)
+	ipAddresses, err := getVMIPAddresses(ctx, config, &vm, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %w", machine.Name, err)
 	}
@@ -867,7 +869,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ 
 }
 
 func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*azureVM, error) {
-	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MachineSpec: %w", err)
 	}
@@ -881,7 +883,8 @@ func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*
 		return nil, fmt.Errorf("failed to find machine %q by its UID: %w", machine.UID, err)
 	}
 
-	ipAddresses, err := getVMIPAddresses(ctx, config, vm)
+	ipFamily := providerCfg.Network.GetIPFamily()
+	ipAddresses, err := getVMIPAddresses(ctx, config, vm, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %w", vm.Name, err)
 	}
