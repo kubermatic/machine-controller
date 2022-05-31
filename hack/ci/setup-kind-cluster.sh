@@ -140,7 +140,7 @@ echodate "Kind cluster $KIND_CLUSTER_NAME is up and running."
 
 echodate "Installing pre-requisites for user-data generation on vSphere"
 (
-  docker exec $KIND_CLUSTER_NAME-control-plane bash -c "apt-get update && apt-get install -y genisoimage && apt-get install -y mkisofs"
+  docker exec $KIND_CLUSTER_NAME-control-plane bash -c "export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get install -y genisoimage && apt-get install -y mkisofs"
 )
 
 if [ ! -f cni-plugin-deployed ]; then
