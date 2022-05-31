@@ -247,6 +247,16 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		}
 	}
 
+	if maxPods, ok := kubeletConfigs[common.MaxPodsKubeletConfig]; ok {
+		mp, err := strconv.ParseInt(maxPods, 10, 32)
+		if err != nil {
+			// Instead of breaking the workflow, just print a warning and skip the configuration
+			klog.Warningf("Skipping invalid MaxPods value %v for Kubelet configuration", maxPods)
+		} else {
+			cfg.MaxPods = int32(mp)
+		}
+	}
+
 	if containerLogMaxSize, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
 		cfg.ContainerLogMaxSize = containerLogMaxSize
 	}
