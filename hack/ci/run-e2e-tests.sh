@@ -46,6 +46,10 @@ echodate "Building machine-controller and webhook..."
 make all
 pushElapsed binary_build_duration_milliseconds $beforeBuild
 
+# Install dependencies
+echo "Installing dependencies..."
+apt update && apt install -y jq rsync unzip genisoimage
+
 # Copy userdata plugins.
 echodate "Copying machine-controller plugins..."
 cp machine-controller-userdata-* /usr/local/bin

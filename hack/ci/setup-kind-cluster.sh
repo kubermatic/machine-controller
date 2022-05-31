@@ -114,7 +114,7 @@ if [ -n "${DOCKER_REGISTRY_MIRROR_ADDR:-}" ]; then
   }
   appendTrap end_socat_process EXIT
 
-  cat << EOF | tee -a kind-config.yaml
+  cat << EOF >> kind-config.yaml
     # mount the socket
     extraMounts:
     - hostPath: /mirror
@@ -137,11 +137,6 @@ else
 fi
 
 echodate "Kind cluster $KIND_CLUSTER_NAME is up and running."
-
-echodate "Installing pre-requisites for user-data generation on vSphere"
-(
-  docker exec $KIND_CLUSTER_NAME-control-plane bash -c "export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y --no-install-recommends apt-utils && apt-get install -y genisoimage && apt-get install -y mkisofs"
-)
 
 if [ ! -f cni-plugin-deployed ]; then
   echodate "Installing CNI plugin."
