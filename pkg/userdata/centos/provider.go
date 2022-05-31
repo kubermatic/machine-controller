@@ -258,6 +258,7 @@ write_files:
     {{- if eq .CloudProviderName "kubevirt" }}
     systemctl enable --now --no-block restart-kubelet.service
     {{ end }}
+	systemctl disable setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -391,5 +392,5 @@ write_files:
 {{- end }}
 
 runcmd:
-- systemctl start setup.service
+- systemctl enable --now setup.service
 `
