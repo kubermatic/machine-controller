@@ -46,14 +46,16 @@ echodate "Building machine-controller and webhook..."
 make all
 pushElapsed binary_build_duration_milliseconds $beforeBuild
 
-# Install genisoimage, this is required for generating user-data for vSphere
-echo "Installing genisoimage..."
-apt install -y genisoimage
-
 # Copy userdata plugins.
 echodate "Copying machine-controller plugins..."
 cp machine-controller-userdata-* /usr/local/bin
 ls -l /usr/local/bin
+
+# Install genisoimage, this is required for generating user-data for vSphere
+if [[ "${JOB_NAME:-}" = *"pull-machine-controller-e2e-vsphere"* ]]; then
+  echo "Installing genisoimage..."
+  apt install -y genisoimage
+fi
 
 echodate "Creating kind cluster"
 source hack/ci/setup-kind-cluster.sh
