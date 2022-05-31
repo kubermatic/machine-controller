@@ -23,13 +23,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestDigitalOceanProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi

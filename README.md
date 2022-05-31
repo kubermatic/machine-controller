@@ -139,7 +139,7 @@ Now you can either
 
 **Note:** After finishing testing, please clean up after yourself:
 
-- Execute `./test/tools/integration/cleanup_machines.sh` while the machine-controller is still running
+- Execute `./hack/cleanup_machines.sh` while the machine-controller is still running
 - Execute `make e2e-destroy` to clean up the test control plane
 
 You can also insert your ssh key into the created instances by editing the manifests in
