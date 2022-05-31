@@ -46,9 +46,9 @@ echodate "Building machine-controller and webhook..."
 make all
 pushElapsed binary_build_duration_milliseconds $beforeBuild
 
-# Install dependencies
-echo "Installing dependencies..."
-apt update && apt install -y jq rsync unzip genisoimage
+# Install genisoimage, this is required for generating user-data for vSphere
+echo "Installing genisoimage..."
+apt install -y genisoimage
 
 # Copy userdata plugins.
 echodate "Copying machine-controller plugins..."
