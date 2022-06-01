@@ -19,7 +19,7 @@
   - [Development](#development)
     - [Testing](#testing)
       - [Unittests](#unittests)
-      - [End-to-End](#end-to-end)
+      - [End-to-End locally](#end-to-end-locally)
   - [Troubleshooting](#troubleshooting)
   - [Contributing](#contributing)
     - [Before you start](#before-you-start)
@@ -114,7 +114,7 @@ data:
 
 Simply run `make test-unit`
 
-#### End-to-End
+#### End-to-End locally
 
 **_[WIP]_**
 
