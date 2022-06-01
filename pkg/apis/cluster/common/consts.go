@@ -140,6 +140,7 @@ const (
 	EvictionHardKubeletConfig         = "EvictionHard"
 	ContainerLogMaxSizeKubeletConfig  = "ContainerLogMaxSize"
 	ContainerLogMaxFilesKubeletConfig = "ContainerLogMaxFiles"
+	MaxPodsKubeletConfig              = "MaxPods"
 )
 
 const (
