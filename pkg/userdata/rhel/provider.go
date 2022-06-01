@@ -258,8 +258,8 @@ write_files:
     {{- if eq .CloudProviderName "kubevirt" }}
     systemctl enable --now --no-block restart-kubelet.service
     {{ end }}
-	systemctl disable setup.service
-	systemctl disable disable-nm-cloud-setup.service
+    systemctl disable setup.service
+    systemctl disable disable-nm-cloud-setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"

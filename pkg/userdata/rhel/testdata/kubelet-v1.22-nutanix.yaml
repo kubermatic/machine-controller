@@ -188,8 +188,8 @@ write_files:
     systemctl disable --now firewalld || true
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
-	systemctl disable setup.service
-	systemctl disable disable-nm-cloud-setup.service
+    systemctl disable setup.service
+    systemctl disable disable-nm-cloud-setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
