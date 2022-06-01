@@ -80,7 +80,7 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: "${KIND_CLUSTER_NAME}"
 networking:
   apiServerAddress: "0.0.0.0"
-  disableDefaultCNI: true # disable kindnet
+  # disableDefaultCNI: true # disable kindnet
 kubeadmConfigPatches:
 - |
   kind: ClusterConfiguration
@@ -146,7 +146,7 @@ if [ ! -f cni-plugin-deployed ]; then
     setup_cni_in_kind=$(cat hack/ci/setup-cni-in-kind.sh)
     docker exec $KIND_CLUSTER_NAME-control-plane bash -c "$setup_cni_in_kind &"
   )
-  kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.18.0/Documentation/kube-flannel.yml
+  # kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.18.0/Documentation/kube-flannel.yml
   touch cni-plugin-deployed
 fi
 
