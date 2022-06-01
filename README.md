@@ -116,34 +116,7 @@ Simply run `make test-unit`
 
 #### End-to-End
 
-This project provides easy to use e2e testing using Hetzner cloud. To run the e2e tests
-locally, the following steps are required:
-
-- Populate the environment variable `HZ_E2E_TOKEN` with a valid Hetzner cloud token
-- Run `make e2e-cluster` to get a simple kubeadm cluster on Hetzner
-- Run `hack/run-machine-controller.sh` to locally run the machine-controller for your freshly created cluster
-
-If you want to use an existing cluster to test against, you can simply set the `KUBECONFIG` environment variable.
-In this case, first make sure that a kubeconfig created by `make e2e-cluster` at `$(go env GOPATH)/src/github.com/kubermatic/machine-controller/.kubeconfig`
-doesn't exist, since the tests will default to this hardcoded path and only use the env var as fallback.
-
-Now you can either
-
-- Run the tests for all providers via
-  `go test -race -tags=e2e -parallel 240 -v -timeout 30m  ./test/e2e/... -identifier $USER`
-- Check `test/e2e/provisioning/all_e2e_test.go` for the available tests, then run only a specific one via
-  `go test -race -tags=e2e -parallel 24 -v -timeout 20m  ./test/e2e/... -identifier $USER -run $TESTNAME`
-
-**Note:** All e2e tests require corresponding credentials to be present, check
- [`test/e2e/provisioning/all_e2e_test.go`](test/e2e/provisioning/all_e2e_test.go) for details
-
-**Note:** After finishing testing, please clean up after yourself:
-
-- Execute `./hack/cleanup_machines.sh` while the machine-controller is still running
-- Execute `make e2e-destroy` to clean up the test control plane
-
-You can also insert your ssh key into the created instances by editing the manifests in
-[`test/e2e/provisioning/testdata/`](test/e2e/provisioning/testdata)
+**_[WIP]_**
 
 ## Troubleshooting
 

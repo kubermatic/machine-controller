@@ -17,6 +17,8 @@
 set -euo pipefail
 set -x
 
+source hack/lib.sh
+
 if [ ! -f ~/.kube/config ] && [ -n "${PROW_JOB_ID:-}" ]; then
   echodate "Kubeconfig for KIND cluster was not found while running in CI, nothing to delete."
   exit 0
