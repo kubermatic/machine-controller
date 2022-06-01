@@ -117,8 +117,9 @@ type Reconciler struct {
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
-	useOSM        bool
-	nodePortRange string
+	useOSM                            bool
+	nodePortRange                     string
+	overrideBootstrapKubeletAPIServer string
 }
 
 type NodeSettings struct {
@@ -176,6 +177,7 @@ func Add(
 	nodeSettings NodeSettings,
 	useOSM bool,
 	nodePortRange string,
+	overrideBootstrapKubeletAPIServer string,
 ) error {
 	reconciler := &Reconciler{
 		kubeClient:                       kubeClient,
@@ -192,8 +194,9 @@ func Add(
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(),
 
-		useOSM:        useOSM,
-		nodePortRange: nodePortRange,
+		useOSM:                            useOSM,
+		nodePortRange:                     nodePortRange,
+		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}
 	m, err := userdatamanager.New()
 	if err != nil {

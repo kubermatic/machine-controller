@@ -30,13 +30,18 @@ presubmits:
       preset-kubevirt: "true"
       preset-alibaba: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestInvalidObjectsGetRejected"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -53,13 +58,18 @@ presubmits:
       preset-e2e-ssh: "true"
       preset-rhel: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestCustomCAsAreApplied"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -75,13 +85,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestUbuntuProvisioningWithUpgradeE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -96,14 +111,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestDeploymentControllerUpgradesMachineE2E"
-          env:
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi

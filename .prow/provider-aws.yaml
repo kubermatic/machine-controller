@@ -24,17 +24,22 @@ presubmits:
       preset-e2e-ssh: "true"
       preset-rhel: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 4Gi
+              cpu: 1
 
   - name: pull-machine-controller-e2e-aws-arm
     always_run: true
@@ -46,13 +51,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSARMProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -68,13 +78,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSEbsEncryptionEnabledProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -90,13 +105,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSFlatcarContainerdProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -113,13 +133,18 @@ presubmits:
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
       preset-rhel: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSSpotInstanceProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -135,13 +160,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSSLESProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -157,13 +187,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -179,13 +214,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSCentOS8ProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi
@@ -201,13 +241,18 @@ presubmits:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: golang:1.18.2
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
           command:
-            - "./hack/ci-e2e-test.sh"
+            - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAWSAssumeRoleProvisioningE2E"
+          securityContext:
+            privileged: true
           resources:
             requests:
               memory: 1Gi

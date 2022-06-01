@@ -240,6 +240,7 @@ spec:
             - -logtostderr
             - -v=3
             - -worker-count=5
+            - -node-csr-approver=true
             - -cluster-dns=10.10.10.10
             - -metrics-address=0.0.0.0:8080
             - -health-probe-address=0.0.0.0:8085

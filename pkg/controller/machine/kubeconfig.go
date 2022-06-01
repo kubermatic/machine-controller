@@ -90,6 +90,18 @@ func (r *Reconciler) createBootstrapKubeconfig(ctx context.Context, name string)
 		},
 	}
 
+	// This is supposed to have a length of 1. We have code further down the
+	// line that extracts the CA cert and errors out if that is not the case.
+	//
+	// This handles a very special case in which we want to override the API server
+	// address that will be used in the `bootstrap-kubelet.conf` in the worker nodes for
+	// our E2E tests that run in KIND clusters.
+	if r.overrideBootstrapKubeletAPIServer != "" {
+		for key := range outConfig.Clusters {
+			outConfig.Clusters[key].Server = r.overrideBootstrapKubeletAPIServer
+		}
+	}
+
 	outConfig.Contexts = map[string]*clientcmdapi.Context{contextIdentifier: {Cluster: contextIdentifier, AuthInfo: contextIdentifier}}
 	outConfig.CurrentContext = contextIdentifier
 

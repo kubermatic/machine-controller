@@ -32,7 +32,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-	"github.com/kubermatic/machine-controller/pkg/clusterinfo"
+	clusterinfo "github.com/kubermatic/machine-controller/pkg/clusterinfo"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	machinedeploymentcontroller "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment"
@@ -72,17 +72,18 @@ var (
 
 	useOSM bool
 
-	nodeCSRApprover               bool
-	nodeHTTPProxy                 string
-	nodeNoProxy                   string
-	nodeInsecureRegistries        string
-	nodeRegistryMirrors           string
-	nodePauseImage                string
-	nodeContainerRuntime          string
-	podCIDR                       string
-	nodePortRange                 string
-	nodeRegistryCredentialsSecret string
-	nodeContainerdRegistryMirrors = containerruntime.RegistryMirrorsFlags{}
+	nodeCSRApprover                   bool
+	nodeHTTPProxy                     string
+	nodeNoProxy                       string
+	nodeInsecureRegistries            string
+	nodeRegistryMirrors               string
+	nodePauseImage                    string
+	nodeContainerRuntime              string
+	podCIDR                           string
+	nodePortRange                     string
+	nodeRegistryCredentialsSecret     string
+	nodeContainerdRegistryMirrors     = containerruntime.RegistryMirrorsFlags{}
+	overrideBootstrapKubeletAPIServer string
 )
 
 const (
@@ -129,6 +130,8 @@ type controllerRunOptions struct {
 
 	// A port range to reserve for services with NodePort visibility.
 	nodePortRange string
+
+	overrideBootstrapKubeletAPIServer string
 }
 
 func main() {
@@ -167,6 +170,7 @@ func main() {
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that contains auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
+	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -226,7 +230,6 @@ func main() {
 	if err != nil {
 		klog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
 	}
-
 	kubeconfigProvider := clusterinfo.New(cfg, kubeClient)
 
 	ctrlMetrics := machinecontroller.NewMachineControllerMetrics()
@@ -262,8 +265,9 @@ func main() {
 			RegistryCredentialsSecretRef: nodeRegistryCredentialsSecret,
 			ContainerRuntime:             containerRuntimeConfig,
 		},
-		useOSM:        useOSM,
-		nodePortRange: nodePortRange,
+		useOSM:                            useOSM,
+		nodePortRange:                     nodePortRange,
+		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}
 
 	if err := nodeFlags.UpdateNodeSettings(&runOptions.node); err != nil {
@@ -396,6 +400,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.node,
 		bs.opt.useOSM,
 		bs.opt.nodePortRange,
+		bs.opt.overrideBootstrapKubeletAPIServer,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %w", err)
 	}
