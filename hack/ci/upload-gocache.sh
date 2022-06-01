@@ -21,7 +21,7 @@ set -euo pipefail
 # receives a SIGINT
 set -o monitor
 
-cd $(dirname $0)/..
+cd $(dirname $0)/../..
 
 if [ -z "${GOCACHE_MINIO_ADDRESS:-}" ]; then
   echo "Fatal: env var GOCACHE_MINIO_ADDRESS unset"
