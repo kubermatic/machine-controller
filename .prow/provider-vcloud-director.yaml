@@ -17,7 +17,8 @@ presubmits:
     always_run: true
     decorate: true
     error_on_eviction: true
-    clone_uri: "(pkg/cloudprovider/provider/vcloud-director/|pkg/userdata)"
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    run_if_changed: "(pkg/cloudprovider/provider/vcloud-director/|pkg/userdata)"
     labels:
       preset-vcloud-director: "true"
       preset-hetzner: "true"
