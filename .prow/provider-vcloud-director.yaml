@@ -14,7 +14,7 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-vmware-cloud-director
-    always_run: true
+    always_run: false
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
