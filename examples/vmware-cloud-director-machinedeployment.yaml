@@ -3,7 +3,7 @@ kind: Secret
 metadata:
   # If you change the namespace/name, you must also
   # adjust the rbac rules
-  name: machine-controller-vcloud-director
+  name: machine-controller-vmware-cloud-director
   namespace: kube-system
 type: Opaque
 stringData:
@@ -12,7 +12,7 @@ stringData:
 apiVersion: "cluster.k8s.io/v1alpha1"
 kind: MachineDeployment
 metadata:
-  name: vcloud-director-machinedeployment
+  name: vmware-cloud-director-machinedeployment
   namespace: kube-system
 spec:
   paused: false
@@ -46,7 +46,7 @@ spec:
             password:
               secretKeyRef:
                 namespace: kube-system
-                name: machine-controller-vcloud-director
+                name: machine-controller-vmware-cloud-director
                 key: password
             # Can also be set via the env var 'VCD_ORG' on the machine-controller
             organization: "<< VCD_ORG >>"
