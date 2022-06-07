@@ -310,7 +310,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Name:              machine.Spec.Name,
 		Region:            c.Region,
 		Size:              c.Size,
-		IPv6:              c.IPv6 || pc.Network.GetIPFamily() == util.DualStack, // since c.IPv6 is deprecated
+		IPv6:              c.IPv6 || pc.Network.GetIPFamily() == util.DualStack,
 		PrivateNetworking: c.PrivateNetworking,
 		Backups:           c.Backups,
 		Monitoring:        c.Monitoring,
