@@ -31,7 +31,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/sts"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
@@ -536,14 +535,6 @@ func getAssumeRoleCredentials(session *session.Session, assumeRoleARN, assumeRol
 	})
 }
 
-func getIAMclient(id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*iam.IAM, error) {
-	sess, err := getSession(id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
-	if err != nil {
-		return nil, awsErrorToTerminalError(err, "failed to get aws session")
-	}
-	return iam.New(sess), nil
-}
-
 func getEC2client(id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*ec2.EC2, error) {
 	sess, err := getSession(id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
 	if err != nil {
@@ -646,16 +637,8 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 		return fmt.Errorf("failed to validate security group id's: %w", err)
 	}
 
-	iamClient, err := getIAMclient(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
-	if err != nil {
-		return fmt.Errorf("failed to create iam client: %w", err)
-	}
-
 	if config.InstanceProfile == "" {
-		return fmt.Errorf("invalid instance profile specified %q: %w", config.InstanceProfile, err)
-	}
-	if _, err := iamClient.GetInstanceProfile(&iam.GetInstanceProfileInput{InstanceProfileName: aws.String(config.InstanceProfile)}); err != nil {
-		return fmt.Errorf("failed to validate instance profile: %w", err)
+		return errors.New("no instance profile specified")
 	}
 
 	if config.IsSpotInstance != nil && *config.IsSpotInstance {
