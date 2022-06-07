@@ -34,6 +34,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	digitaloceantypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -188,6 +189,17 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("invalid operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
+	switch f := pc.Network.GetIPFamily(); f {
+	case util.Unspecified, util.IPv4:
+	// noop
+	case util.IPv6:
+		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
+	case util.DualStack:
+		// noop
+	default:
+		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+	}
+
 	client := getClient(ctx, c.Token)
 
 	regions, _, err := client.Regions.List(ctx, &godo.ListOptions{PerPage: 1000})
@@ -298,7 +310,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Name:              machine.Spec.Name,
 		Region:            c.Region,
 		Size:              c.Size,
-		IPv6:              c.IPv6,
+		IPv6:              c.IPv6 || pc.Network.GetIPFamily() == util.DualStack, // since c.IPv6 is deprecated
 		PrivateNetworking: c.PrivateNetworking,
 		Backups:           c.Backups,
 		Monitoring:        c.Monitoring,
