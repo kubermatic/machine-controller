@@ -34,7 +34,8 @@ spec:
             diskSize: 50
             diskType: "gp2"
             ebsVolumeEncrypted: false
-            ami: "<< AMI >>"
+            # TODO: Revert this to "<< AMI >>" when https://github.com/kubermatic/kubermatic/issues/10022 is marked as resolved.
+            ami: "ami-07d0e9bbaa6dad756"
             securityGroupIDs:
               - "sg-a2c195ca"
             tags:
