@@ -148,8 +148,9 @@ func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment, useOSM bool) 
 }
 
 func ensureOSPAnnotation(md *v1alpha1.MachineDeployment, providerConfig providerconfigtypes.Config) error {
-	// Check for existing annotation
-	if _, ok := md.Annotations[osmresources.MachineDeploymentOSPAnnotation]; !ok {
+	// Check for existing annotation if it doesn't exist or if the value is empty
+	// inject the appropriate annotation.
+	if val, ok := md.Annotations[osmresources.MachineDeploymentOSPAnnotation]; !ok || val == "" {
 		if md.Annotations == nil {
 			md.Annotations = make(map[string]string)
 		}
