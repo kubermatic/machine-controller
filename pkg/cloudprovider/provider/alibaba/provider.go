@@ -32,7 +32,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	alibabatypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/alibaba/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -267,7 +266,11 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	foundInstance, err := p.Get(machine, data)
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			return util.RemoveFinalizerOnInstanceNotFound(finalizerInstance, machine, data)
+			if err := data.Update(machine, func(m *v1alpha1.Machine) {
+				m.Finalizers = kuberneteshelper.RemoveFinalizer(m.Finalizers, finalizerInstance)
+			}); err != nil {
+				return false, err
+			}
 		}
 		return false, err
 	}
