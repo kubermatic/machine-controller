@@ -561,8 +561,9 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 }
 
 func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
-	finalizers := sets.NewString(machine.Finalizers...)
-	if len(finalizers) == 0 {
+	// The FinalizerDeleteInstance and FinalizerDeleteNode are finalizers not related to specific cloud provider, so if there are no cloud finalizers
+	// and no FinalizerDeleteInstance we don't need to run prov.Cleanup.
+	if finalizers := sets.NewString(machine.Finalizers...); !finalizers.Has(FinalizerDeleteInstance) && finalizers.Delete(FinalizerDeleteNode).Len() == 0 {
 		return nil, nil
 	}
 
