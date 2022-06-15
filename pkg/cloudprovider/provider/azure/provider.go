@@ -35,7 +35,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	azuretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -650,50 +649,62 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	// failed but because the VM has an invalid config hence always delete except on err == cloudprovidererrors.ErrInstanceNotFound
 	if err != nil {
 		if err == cloudprovidererrors.ErrInstanceNotFound {
-			return util.RemoveFinalizerOnInstanceNotFound(finalizerVM, machine, data)
+			if err := data.Update(machine, func(m *v1alpha1.Machine) {
+				m.Finalizers = kuberneteshelper.RemoveFinalizer(m.Finalizers, finalizerVM)
+			}); err != nil {
+				return false, err
+			}
+		} else {
+			return false, err
 		}
-		return false, err
+	}
+	if kuberneteshelper.HasFinalizer(machine, finalizerVM) {
+		klog.Infof("deleting VM %q", machine.Name)
+		if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
+			return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
+		}
+
+		if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
+		}); err != nil {
+			return false, err
+		}
 	}
 
-	klog.Infof("deleting VM %q", machine.Name)
-	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
+	if kuberneteshelper.HasFinalizer(machine, finalizerDisks) {
+		klog.Infof("deleting disks of VM %q", machine.Name)
+		if err := deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
+			return false, fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
+		}
+		if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerDisks)
+		}); err != nil {
+			return false, err
+		}
 	}
 
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
-		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
-	}); err != nil {
-		return false, err
+	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
+		klog.Infof("deleting network interfaces of VM %q", machine.Name)
+		if err := deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
+			return false, fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
+		}
+		if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerNIC)
+		}); err != nil {
+			return false, err
+		}
 	}
 
-	klog.Infof("deleting disks of VM %q", machine.Name)
-	if err := deleteDisksByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return false, fmt.Errorf("failed to remove disks of machine %q: %v", machine.Name, err)
-	}
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
-		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerDisks)
-	}); err != nil {
-		return false, err
-	}
-
-	klog.Infof("deleting network interfaces of VM %q", machine.Name)
-	if err := deleteInterfacesByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return false, fmt.Errorf("failed to remove network interfaces of machine %q: %v", machine.Name, err)
-	}
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
-		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerNIC)
-	}); err != nil {
-		return false, err
-	}
-
-	klog.Infof("deleting public IP addresses of VM %q", machine.Name)
-	if err := deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
-		return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
-	}
-	if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
-		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerPublicIP)
-	}); err != nil {
-		return false, err
+	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
+		klog.Infof("deleting public IP addresses of VM %q", machine.Name)
+		if err := deleteIPAddressesByMachineUID(context.TODO(), config, machine.UID); err != nil {
+			return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %v", machine.Name, err)
+		}
+		if err := data.Update(machine, func(updatedMachine *v1alpha1.Machine) {
+			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerPublicIP)
+		}); err != nil {
+			return false, err
+		}
 	}
 
 	return true, nil

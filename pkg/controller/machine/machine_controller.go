@@ -562,7 +562,7 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 
 func (r *Reconciler) deleteCloudProviderInstance(prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
 	finalizers := sets.NewString(machine.Finalizers...)
-	if !finalizers.Has(FinalizerDeleteInstance) {
+	if len(finalizers) == 0 {
 		return nil, nil
 	}
 

@@ -19,6 +19,7 @@ package azure
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2018-06-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-06-01/network"
@@ -40,7 +41,11 @@ func deleteInterfacesByMachineUID(ctx context.Context, c *config, machineUID typ
 
 	list, err := ifClient.List(ctx, c.ResourceGroup)
 	if err != nil {
-		return fmt.Errorf("failed to list interfaces in resource group %q", c.ResourceGroup)
+		if list.Response().Response.IsHTTPStatus(http.StatusNotFound) {
+			klog.Infof("skipping interfaces deletion because List responded with 404")
+			return nil
+		}
+		return fmt.Errorf("failed to list interfaces in resource group %q: %v", c.ResourceGroup, err)
 	}
 
 	var allInterfaces []network.Interface
@@ -79,6 +84,10 @@ func deleteIPAddressesByMachineUID(ctx context.Context, c *config, machineUID ty
 
 	list, err := ipClient.List(ctx, c.ResourceGroup)
 	if err != nil {
+		if list.Response().Response.IsHTTPStatus(http.StatusNotFound) {
+			klog.Infof("skipping IP addresses deletion because List responded with 404")
+			return nil
+		}
 		return fmt.Errorf("failed to list public IP addresses in resource group %q", c.ResourceGroup)
 	}
 
@@ -115,6 +124,10 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 
 	list, err := vmClient.ListAll(ctx)
 	if err != nil {
+		if list.Response().Response.IsHTTPStatus(http.StatusNotFound) {
+			klog.Infof("skipping VM deletion because List responded with 404")
+			return nil
+		}
 		return err
 	}
 
@@ -172,6 +185,9 @@ func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient,
 
 	list, err := disksClient.List(ctx)
 	if err != nil {
+		if list.Response().Response.IsHTTPStatus(http.StatusNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to list disks: %v", err)
 	}
 
