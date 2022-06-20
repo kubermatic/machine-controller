@@ -28,7 +28,7 @@ import (
 	"strconv"
 
 	"cloud.google.com/go/logging"
-	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
+	monitoring "cloud.google.com/go/monitoring/apiv3"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
@@ -245,17 +245,6 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Scheduling: &compute.Scheduling{
 			Preemptible: cfg.preemptible,
 		},
-		ServiceAccounts: []*compute.ServiceAccount{
-			{
-				Email: cfg.jwtConfig.Email,
-				Scopes: append(
-					monitoring.DefaultAuthScopes(),
-					compute.ComputeScope,
-					compute.DevstorageReadOnlyScope,
-					logging.WriteScope,
-				),
-			},
-		},
 		Metadata: &compute.Metadata{
 			Items: []*compute.MetadataItems{
 				{
@@ -267,6 +256,20 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Tags: &compute.Tags{
 			Items: cfg.tags,
 		},
+	}
+
+	if !cfg.disableMachineServiceAccount {
+		inst.ServiceAccounts = []*compute.ServiceAccount{
+			{
+				Email: cfg.jwtConfig.Email,
+				Scopes: append(
+					monitoring.DefaultAuthScopes(),
+					compute.ComputeScope,
+					compute.DevstorageReadOnlyScope,
+					logging.WriteScope,
+				),
+			},
+		}
 	}
 
 	if cfg.automaticRestart != nil {
