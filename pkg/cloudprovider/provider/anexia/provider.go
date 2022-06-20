@@ -25,11 +25,11 @@ import (
 	"net/http"
 	"time"
 
-	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
-	anxaddr "github.com/anexia-it/go-anxcloud/pkg/ipam/address"
-	"github.com/anexia-it/go-anxcloud/pkg/vsphere"
-	"github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/progress"
-	anxvm "github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/vm"
+	anxclient "go.anx.io/go-anxcloud/pkg/client"
+	anxaddr "go.anx.io/go-anxcloud/pkg/ipam/address"
+	"go.anx.io/go-anxcloud/pkg/vsphere"
+	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
+	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"

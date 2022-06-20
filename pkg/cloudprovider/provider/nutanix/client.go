@@ -17,6 +17,7 @@ limitations under the License.
 package nutanix
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -92,18 +93,18 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 	}, nil
 }
 
-func createVM(client *ClientSet, name string, conf Config, os providerconfigtypes.OperatingSystem, userdata string) (instance.Instance, error) {
-	cluster, err := getClusterByName(client, conf.ClusterName)
+func createVM(ctx context.Context, client *ClientSet, name string, conf Config, os providerconfigtypes.OperatingSystem, userdata string) (instance.Instance, error) {
+	cluster, err := getClusterByName(ctx, client, conf.ClusterName)
 	if err != nil {
 		return nil, err
 	}
 
-	subnet, err := getSubnetByName(client, conf.SubnetName, *cluster.Metadata.UUID)
+	subnet, err := getSubnetByName(ctx, client, conf.SubnetName, *cluster.Metadata.UUID)
 	if err != nil {
 		return nil, err
 	}
 
-	image, err := getImageByName(client, conf.ImageName)
+	image, err := getImageByName(ctx, client, conf.ImageName)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}
 
 	if conf.ProjectName != "" {
-		project, err := getProjectByName(client, conf.ProjectName)
+		project, err := getProjectByName(ctx, client, conf.ProjectName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get project: %w", err)
 		}
@@ -182,14 +183,14 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	request.Spec.Resources = resources
 
-	resp, err := client.Prism.V3.CreateVM(request)
+	resp, err := client.Prism.V3.CreateVM(ctx, request)
 	if err != nil {
 		return nil, wrapNutanixError(err)
 	}
 
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
 
-	if err := waitForCompletion(client, taskUUID, time.Second*10, time.Minute*15); err != nil {
+	if err := waitForCompletion(ctx, client, taskUUID, time.Second*10, time.Minute*15); err != nil {
 		return nil, fmt.Errorf("failed to wait for task: %w", err)
 	}
 
@@ -197,11 +198,11 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		return nil, errors.New("did not get response with UUID")
 	}
 
-	if err := waitForPowerState(client, *resp.Metadata.UUID, time.Second*10, time.Minute*10); err != nil {
+	if err := waitForPowerState(ctx, client, *resp.Metadata.UUID, time.Second*10, time.Minute*10); err != nil {
 		return nil, fmt.Errorf("failed to wait for power state: %w", err)
 	}
 
-	vm, err := client.Prism.V3.GetVM(*resp.Metadata.UUID)
+	vm, err := client.Prism.V3.GetVM(ctx, *resp.Metadata.UUID)
 	if err != nil {
 		return nil, wrapNutanixError(err)
 	}
@@ -210,7 +211,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		return nil, fmt.Errorf("request for VM UUID '%s' did not return name", *resp.Metadata.UUID)
 	}
 
-	addresses, err := getIPs(client, *vm.Metadata.UUID, time.Second*5, time.Minute*10)
+	addresses, err := getIPs(ctx, client, *vm.Metadata.UUID, time.Second*5, time.Minute*10)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get addresses: %w", err)
 	}
@@ -223,9 +224,9 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}, nil
 }
 
-func getSubnetByName(client *ClientSet, name, clusterID string) (*nutanixv3.SubnetIntentResponse, error) {
+func getSubnetByName(ctx context.Context, client *ClientSet, name, clusterID string) (*nutanixv3.SubnetIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	subnets, err := client.Prism.V3.ListAllSubnet(filter)
+	subnets, err := client.Prism.V3.ListAllSubnet(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -246,9 +247,9 @@ func getSubnetByName(client *ClientSet, name, clusterID string) (*nutanixv3.Subn
 	}
 }
 
-func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error) {
+func getProjectByName(ctx context.Context, client *ClientSet, name string) (*nutanixv3.Project, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	projects, err := client.Prism.V3.ListAllProject(filter)
+	projects, err := client.Prism.V3.ListAllProject(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -273,9 +274,9 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 	}
 }
 
-func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentResponse, error) {
+func getClusterByName(ctx context.Context, client *ClientSet, name string) (*nutanixv3.ClusterIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	clusters, err := client.Prism.V3.ListAllCluster(filter)
+	clusters, err := client.Prism.V3.ListAllCluster(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -300,9 +301,9 @@ func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentR
 	}
 }
 
-func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentResponse, error) {
+func getImageByName(ctx context.Context, client *ClientSet, name string) (*nutanixv3.ImageIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	images, err := client.Prism.V3.ListAllImage(filter)
+	images, err := client.Prism.V3.ListAllImage(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -327,9 +328,9 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 	}
 }
 
-func getVMByName(client *ClientSet, name string, projectID *string) (*nutanixv3.VMIntentResource, error) {
+func getVMByName(ctx context.Context, client *ClientSet, name string, projectID *string) (*nutanixv3.VMIntentResource, error) {
 	filter := fmt.Sprintf("vm_name==%s", name)
-	vms, err := client.Prism.V3.ListAllVM(filter)
+	vms, err := client.Prism.V3.ListAllVM(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -348,11 +349,11 @@ func getVMByName(client *ClientSet, name string, projectID *string) (*nutanixv3.
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]corev1.NodeAddressType, error) {
+func getIPs(ctx context.Context, client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]corev1.NodeAddressType, error) {
 	addresses := make(map[string]corev1.NodeAddressType)
 
 	if err := wait.Poll(interval, timeout, func() (bool, error) {
-		vm, err := client.Prism.V3.GetVM(vmID)
+		vm, err := client.Prism.V3.GetVM(ctx, vmID)
 		if err != nil {
 			return false, wrapNutanixError(err)
 		}
@@ -372,9 +373,9 @@ func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time
 	return addresses, nil
 }
 
-func waitForCompletion(client *ClientSet, taskID string, interval time.Duration, timeout time.Duration) error {
+func waitForCompletion(ctx context.Context, client *ClientSet, taskID string, interval time.Duration, timeout time.Duration) error {
 	return wait.Poll(interval, timeout, func() (bool, error) {
-		task, err := client.Prism.V3.GetTask(taskID)
+		task, err := client.Prism.V3.GetTask(ctx, taskID)
 		if err != nil {
 			return false, wrapNutanixError(err)
 		}
@@ -396,9 +397,9 @@ func waitForCompletion(client *ClientSet, taskID string, interval time.Duration,
 	})
 }
 
-func waitForPowerState(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) error {
+func waitForPowerState(ctx context.Context, client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) error {
 	return wait.Poll(interval, timeout, func() (bool, error) {
-		vm, err := client.Prism.V3.GetVM(vmID)
+		vm, err := client.Prism.V3.GetVM(ctx, vmID)
 		if err != nil {
 			return false, wrapNutanixError(err)
 		}
