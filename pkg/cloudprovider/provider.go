@@ -34,6 +34,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/proxmox"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway"
 	vcd "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vmwareclouddirector"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
@@ -104,6 +105,9 @@ var (
 		},
 		providerconfigtypes.CloudProviderNutanix: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return nutanix.New(cvr)
+		},
+		providerconfigtypes.CloudProviderProxmox: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return proxmox.New(cvr)
 		},
 		providerconfigtypes.CloudProviderVMwareCloudDirector: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vcd.New(cvr)

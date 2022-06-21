@@ -216,11 +216,19 @@ write_files:
       {{- if eq .CloudProviderName "nutanix" }}
       open-iscsi \
       {{- end }}
+      {{- if eq .CloudProviderName "proxmox" }}
+      qemu-guest-agent \
+      {{ end }}
       ipvsadm
 
     {{- /* iscsid service is required on Nutanix machines for CSI driver to attach volumes. */}}
     {{- if eq .CloudProviderName "nutanix" }}
     systemctl enable --now iscsid
+    {{ end }}
+
+    {{- /* qemu-guest-agent is required for proxmox VMs to obtain their IP addresses */}}
+    {{- if eq .CloudProviderName "proxmox" }}
+    systemctl enable --now qemu-guest-agent
     {{ end }}
 
     # Update grub to include kernel command options to enable swap accounting.

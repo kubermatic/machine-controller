@@ -11,6 +11,7 @@ require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/Telmate/proxmox-api-go v0.0.0-20220605094644-df18575a84d9
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1645
 	github.com/aws/aws-sdk-go-v2 v1.16.12
 	github.com/aws/aws-sdk-go-v2/config v1.17.3
@@ -60,6 +61,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.12.1
 	sigs.k8s.io/yaml v1.3.0
 )
+
+require github.com/pkg/sftp v1.13.5
 
 require (
 	cloud.google.com/go v0.100.2 // indirect
@@ -118,6 +121,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
