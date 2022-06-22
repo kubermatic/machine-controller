@@ -218,8 +218,13 @@ const (
 set -xeuo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
-apt update && apt install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+
+curl_installed=$(which curl)
+if [ -z $curl_installed ]; then
+	apt update && apt install -y curl
+fi
+
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | sed -n 's|.*"cloud-config": "\([^"]*\)".*|\1|p' | base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
@@ -247,9 +252,12 @@ fi
 yum install epel-release -y
 {{- end }}
 
-yum install -y curl jq
+curl_installed=$(which curl)
+if [ -z $curl_installed ]; then
+	yum install -y curl
+fi
 
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | sed -n 's|.*"cloud-config": "\([^"]*\)".*|\1|p' | base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
@@ -264,12 +272,14 @@ set -xeuo pipefail
 # Install JQ
 zypper -n --quiet addrepo -C https://download.opensuse.org/repositories/utilities/openSUSE_Leap_15.3/utilities.repo
 zypper -n --no-gpg-checks refresh
-zypper -n install jq
 
 # Install CURL
-zypper -n install curl
+curl_installed=$(which curl)
+if [ -z $curl_installed ]; then
+	zypper -n install curl
+fi
 
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | sed -n 's|.*"cloud-config": "\([^"]*\)".*|\1|p' | base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
