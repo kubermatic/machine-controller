@@ -47,6 +47,8 @@ import (
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
+	"k8c.io/operating-system-manager/pkg/controllers/osc"
+	osmresources "k8c.io/operating-system-manager/pkg/controllers/osc/resources"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -95,7 +97,7 @@ const (
 	// cluster-api provider to match Nodes to Machines.
 	AnnotationAutoscalerIdentifier = "cluster.k8s.io/machine"
 
-	provisioningSuffix = "osc-provisioning"
+	CloudInitNotReadyError = "cloud-init configuration to %s machine: %v is not ready yet"
 )
 
 // Reconciler is the controller implementation for machine resources.
@@ -744,9 +746,14 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			klog.V(3).Infof("Validated machine spec of %s", machine.Name)
 
-			kubeconfig, err := r.createBootstrapKubeconfig(ctx, machine.Name)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %w", err)
+			var kubeconfig *clientcmdapi.Config
+
+			// OSM will take care of the bootstrap kubeconfig and token by itself.
+			if !r.useOSM {
+				kubeconfig, err = r.createBootstrapKubeconfig(ctx, machine.Name)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %w", err)
+				}
 			}
 
 			cloudConfig, kubeletCloudProviderName, err := prov.GetCloudConfig(machine.Spec)
@@ -808,33 +815,51 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			var userdata string
 
 			if r.useOSM {
-				referencedMachineDeployment, err := controllerutil.GetMachineDeploymentNameForMachine(ctx, machine, r.client)
+				referencedMachineDeployment, machineDeploymentRevision, err := controllerutil.GetMachineDeploymentNameAndRevisionForMachine(ctx, machine, r.client)
 				if err != nil {
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %w", err)
 				}
 
-				cloudConfigSecretName := fmt.Sprintf("%s-%s-%s",
+				// We need to ensure that both provisoning and bootstrapping secrets have been created. And that the revision
+				// matches with the machine deployment revision
+				provisioningSecretName := fmt.Sprintf(osmresources.CloudConfigSecretNamePattern,
 					referencedMachineDeployment,
 					machine.Namespace,
-					provisioningSuffix)
+					osmresources.ProvisioningCloudConfig)
 
-				// It is important to check if the secret holding cloud-config exists
+				// Ensure that the provisioning secret exists
+				provisioningSecret := &corev1.Secret{}
 				if err := r.client.Get(ctx,
-					types.NamespacedName{Name: cloudConfigSecretName, Namespace: util.CloudInitNamespace},
-					&corev1.Secret{}); err != nil {
-					klog.Errorf("Cloud init configurations for machine: %v is not ready yet", machine.Name)
+					types.NamespacedName{Name: provisioningSecretName, Namespace: util.CloudInitNamespace},
+					provisioningSecret); err != nil {
+					klog.Errorf(CloudInitNotReadyError, osmresources.ProvisioningCloudConfig, machine.Name)
 					return nil, err
 				}
 
-				userdata, err = getOSMBootstrapUserdata(ctx, r.client, req, cloudConfigSecretName)
-				if err != nil {
-					return nil, fmt.Errorf("failed get OSM userdata: %w", err)
+				provisioningSecretRevision := provisioningSecret.Annotations[osc.MachineDeploymentRevision]
+				if provisioningSecretRevision != machineDeploymentRevision {
+					return nil, fmt.Errorf(CloudInitNotReadyError, osmresources.ProvisioningCloudConfig, machine.Name)
 				}
 
-				userdata, err = cleanupTemplateOutput(userdata)
-				if err != nil {
-					return nil, fmt.Errorf("failed to cleanup user-data template: %w", err)
+				bootstrapSecretName := fmt.Sprintf(osmresources.CloudConfigSecretNamePattern,
+					referencedMachineDeployment,
+					machine.Namespace,
+					osmresources.BootstrapCloudConfig)
+
+				bootstrapSecret := &corev1.Secret{}
+				if err := r.client.Get(ctx,
+					types.NamespacedName{Name: bootstrapSecretName, Namespace: util.CloudInitNamespace},
+					bootstrapSecret); err != nil {
+					klog.Errorf(CloudInitNotReadyError, osmresources.BootstrapCloudConfig, machine.Name)
+					return nil, err
 				}
+
+				bootstrapSecretRevision := bootstrapSecret.Annotations[osc.MachineDeploymentRevision]
+				if bootstrapSecretRevision != machineDeploymentRevision {
+					return nil, fmt.Errorf(CloudInitNotReadyError, osmresources.BootstrapCloudConfig, machine.Name)
+				}
+
+				userdata = getOSMBootstrapUserdata(req.MachineSpec.Name, *bootstrapSecret)
 			} else {
 				userdata, err = userdataPlugin.UserData(req)
 				if err != nil {
