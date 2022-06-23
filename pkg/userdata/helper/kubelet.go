@@ -39,8 +39,9 @@ const (
 	defaultKubeletContainerLogMaxSize = "100Mi"
 )
 
-const (
-	kubeletFlagsTpl = `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+func kubeletFlagsTpl(withNodeIP bool) string {
+	if withNodeIP {
+		return `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
 --cert-dir=/etc/kubernetes/pki \
@@ -65,6 +66,34 @@ const (
 {{- end }}
 --node-ip ${KUBELET_NODE_IP}`
 
+	}
+
+	return `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+--kubeconfig=/var/lib/kubelet/kubeconfig \
+--config=/etc/kubernetes/kubelet.conf \
+--cert-dir=/etc/kubernetes/pki \
+{{- if or (.CloudProvider) (.IsExternal) }}
+{{ cloudProviderFlags .CloudProvider .IsExternal }} \
+{{- end }}
+{{- if and (.Hostname) (ne .CloudProvider "aws") }}
+--hostname-override={{ .Hostname }} \
+{{- else if and (eq .CloudProvider "aws") (.IsExternal) }}
+--hostname-override=${KUBELET_HOSTNAME} \
+{{- end }}
+--exit-on-lock-contention \
+--lock-file=/tmp/kubelet.lock \
+{{- if .PauseImage }}
+--pod-infra-container-image={{ .PauseImage }} \
+{{- end }}
+{{- if .InitialTaints }}
+--register-with-taints={{- .InitialTaints }} \
+{{- end }}
+{{- range .ExtraKubeletFlags }}
+{{ . }} \
+{{- end }}`
+}
+
+const (
 	kubeletSystemdUnitTpl = `[Unit]
 After={{ .ContainerRuntime }}.service
 Requires={{ .ContainerRuntime }}.service
@@ -280,7 +309,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 
 // KubeletFlags returns the kubelet flags.
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
-	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl)
+	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl(true))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
 	}
