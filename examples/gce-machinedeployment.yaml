@@ -63,6 +63,7 @@ spec:
             # Whether to assign a public IP Address. Required for Internet access
             assignPublicIPAddress: true
             customImage: "myCustomImage"
+            disableMachineServiceAccount: false
           # Can be 'ubuntu' or 'rhel'
           operatingSystem: "ubuntu"
           operatingSystemSpec:

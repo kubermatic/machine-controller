@@ -170,6 +170,8 @@ network: "my-cool-network"
 subnetwork: "my-cool-subnetwork"
 # assign a public IP Address. Required for Internet access
 assignPublicIPAddress: true
+# if true, does not inject the Service Account from the controller in the machine, leaving it empty
+disableMachineServiceAccount: false
 # set node labels
 labels:
     "kubernetesCluster": "my-cluster"
