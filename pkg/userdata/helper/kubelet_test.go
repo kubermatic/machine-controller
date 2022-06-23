@@ -23,6 +23,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ type kubeletFlagTestCase struct {
 	hostname         string
 	cloudProvider    string
 	external         bool
+	ipFamily         util.IPFamily
 	pauseImage       string
 	initialTaints    []corev1.Taint
 	extraFlags       []string
@@ -117,6 +119,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 				test.hostname,
 				test.dnsIPs,
 				test.external,
+				test.ipFamily,
 				test.pauseImage,
 				test.initialTaints,
 				test.extraFlags,

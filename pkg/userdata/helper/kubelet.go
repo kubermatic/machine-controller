@@ -26,6 +26,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -118,7 +120,7 @@ ExecStartPre=/bin/bash /opt/disable-swap.sh
 {{ end }}
 ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
-{{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .PauseImage .InitialTaints .ExtraKubeletFlags | indent 2 }}
+{{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .IPFamily .PauseImage .InitialTaints .ExtraKubeletFlags | indent 2 }}
 
 [Install]
 WantedBy=multi-user.target`
@@ -165,7 +167,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet.
-func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
+func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %w", err)
@@ -178,6 +180,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		Hostname          string
 		ClusterDNSIPs     []net.IP
 		IsExternal        bool
+		IPFamily          util.IPFamily
 		PauseImage        string
 		InitialTaints     []corev1.Taint
 		ExtraKubeletFlags []string
@@ -189,6 +192,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		Hostname:          hostname,
 		ClusterDNSIPs:     dnsIPs,
 		IsExternal:        external,
+		IPFamily:          ipFamily,
 		PauseImage:        pauseImage,
 		InitialTaints:     initialTaints,
 		ExtraKubeletFlags: extraKubeletFlags,
@@ -308,8 +312,16 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 }
 
 // KubeletFlags returns the kubelet flags.
-func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
-	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl(true))
+func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+
+	withNodeIP := true
+	if external || cloudProvider == string(providerconfigtypes.CloudProviderExternal) {
+		if ipFamily == util.DualStack {
+			withNodeIP = false
+		}
+	}
+
+	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl(withNodeIP))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
 	}
