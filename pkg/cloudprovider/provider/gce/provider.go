@@ -28,7 +28,7 @@ import (
 	"strconv"
 
 	"cloud.google.com/go/logging"
-	monitoring "cloud.google.com/go/monitoring/apiv3"
+	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
