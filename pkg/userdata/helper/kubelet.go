@@ -27,7 +27,6 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -315,7 +314,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
 
 	withNodeIP := true
-	if external || cloudProvider == string(providerconfigtypes.CloudProviderExternal) {
+	if external || cloudProvider != "" {
 		if ipFamily == util.DualStack {
 			withNodeIP = false
 		}

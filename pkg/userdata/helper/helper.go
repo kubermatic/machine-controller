@@ -158,11 +158,9 @@ func SetupNodeIPEnvScript(ipFamily util.IPFamily) string {
 	case util.IPv6:
 		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")`
 	case util.DualStack:
-		defaultIfcIP = `
-		DEFAULT_IFC_IP=$(ip -o route get  1 | grep -oP "src \K\S+")
-		DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
-		DEFAULT_IFC_IP=$DEFAULT_IFC_IP,$DEFAULT_IFC_IP6
-		`
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o route get  1 | grep -oP "src \K\S+")
+DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
+DEFAULT_IFC_IP=$DEFAULT_IFC_IP,$DEFAULT_IFC_IP6`
 	default:
 		defaultIfcIP = defaultIfcIPv4
 	}
