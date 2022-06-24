@@ -90,7 +90,7 @@ write_files:
 
     yum install -y \
         containerd-1.4* \
-        docker-19.03* \
+        docker-20.10* \
         yum-plugin-versionlock
     yum versionlock add docker containerd
 
