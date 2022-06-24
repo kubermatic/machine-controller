@@ -41,13 +41,14 @@ const (
 )
 
 func kubeletFlagsTpl(withNodeIP bool) string {
+
 	if withNodeIP {
 		return `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
 --cert-dir=/etc/kubernetes/pki \
-{{- if or (.CloudProvider) (.IsExternal) }}
-{{ cloudProviderFlags .CloudProvider .IsExternal }} \
+{{- if (and (or (.CloudProvider) (.IsExternal)) (ne .IPFamily "IPv4+IPv6")) }}
+{{ cloudProviderFlags .CloudProvider .IsExternal .IPFamily }} \
 {{- end }}
 {{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
@@ -66,7 +67,6 @@ func kubeletFlagsTpl(withNodeIP bool) string {
 {{ . }} \
 {{- end }}
 --node-ip ${KUBELET_NODE_IP}`
-
 	}
 
 	return `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
@@ -74,7 +74,7 @@ func kubeletFlagsTpl(withNodeIP bool) string {
 --config=/etc/kubernetes/kubelet.conf \
 --cert-dir=/etc/kubernetes/pki \
 {{- if or (.CloudProvider) (.IsExternal) }}
-{{ cloudProviderFlags .CloudProvider .IsExternal }} \
+{{ cloudProviderFlags .CloudProvider .IsExternal .IPFamily }} \
 {{- end }}
 {{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
@@ -154,14 +154,24 @@ var kubeletTLSCipherSuites = []string{
 }
 
 // CloudProviderFlags returns --cloud-provider and --cloud-config flags.
-func CloudProviderFlags(cpName string, external bool) (string, error) {
+func CloudProviderFlags(cpName string, external bool, ipFamily util.IPFamily) (string, error) {
 	if cpName == "" && !external {
 		return "", nil
 	}
 
 	if external {
-		return "--cloud-provider=external", nil
+		return `--cloud-provider=external`, nil
 	}
+
+	if ipFamily == util.DualStack {
+		switch {
+		case cpName == "digitalocean":
+			return "", nil
+		case cpName == "openstack":
+			// noop
+		}
+	}
+
 	return fmt.Sprintf(cpFlags, cpName), nil
 }
 
@@ -314,7 +324,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
 
 	withNodeIP := true
-	if external || cloudProvider != "" {
+	if external {
 		if ipFamily == util.DualStack {
 			withNodeIP = false
 		}
@@ -368,6 +378,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		ClusterDNSIPs     []net.IP
 		KubeletVersion    string
 		IsExternal        bool
+		IPFamily          util.IPFamily
 		PauseImage        string
 		InitialTaints     string
 		ExtraKubeletFlags []string
@@ -377,6 +388,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		ClusterDNSIPs:     dnsIPs,
 		KubeletVersion:    version,
 		IsExternal:        external,
+		IPFamily:          ipFamily,
 		PauseImage:        pauseImage,
 		InitialTaints:     strings.Join(initialTaintsArgs, ","),
 		ExtraKubeletFlags: kubeletFlags,

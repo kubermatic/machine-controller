@@ -225,7 +225,6 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=external \
       --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
@@ -234,6 +233,7 @@ write_files:
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --feature-gates=DynamicKubeletConfig=true \
       --network-plugin=cni \
+      --node-ip ${KUBELET_NODE_IP}
 
     [Install]
     WantedBy=multi-user.target
@@ -246,7 +246,7 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-    {openstack-config:true}
+    {digitalocean-config:true}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"

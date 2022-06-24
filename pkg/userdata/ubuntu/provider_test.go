@@ -325,6 +325,35 @@ func TestUserDataGeneration(t *testing.T) {
 			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
+			externalCloudProvider: true,
+		},
+		{
+			name: "digitalocean-dualstack",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "digitalocean",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+				Network: &providerconfigtypes.NetworkConfig{
+					IPFamily: util.DualStack,
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "digitalocean",
+				config: "{digitalocean-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
 		},
 		{
 			name: "openstack-overwrite-cloud-config",
