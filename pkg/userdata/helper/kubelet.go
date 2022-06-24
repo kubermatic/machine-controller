@@ -27,6 +27,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,43 +41,20 @@ const (
 	defaultKubeletContainerLogMaxSize = "100Mi"
 )
 
-func kubeletFlagsTpl(withNodeIP bool) string {
-
-	if withNodeIP {
-		return `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+func kubeletFlagsTpl(withNodeIP, withCloudProvider bool) string {
+	x := `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
---cert-dir=/etc/kubernetes/pki \
-{{- if (and (or (.CloudProvider) (.IsExternal)) (ne .IPFamily "IPv4+IPv6")) }}
-{{ cloudProviderFlags .CloudProvider .IsExternal .IPFamily }} \
-{{- end }}
-{{- if and (.Hostname) (ne .CloudProvider "aws") }}
---hostname-override={{ .Hostname }} \
-{{- else if and (eq .CloudProvider "aws") (.IsExternal) }}
---hostname-override=${KUBELET_HOSTNAME} \
-{{- end }}
---exit-on-lock-contention \
---lock-file=/tmp/kubelet.lock \
-{{- if .PauseImage }}
---pod-infra-container-image={{ .PauseImage }} \
-{{- end }}
-{{- if .InitialTaints }}
---register-with-taints={{- .InitialTaints }} \
-{{- end }}
-{{- range .ExtraKubeletFlags }}
-{{ . }} \
-{{- end }}
---node-ip ${KUBELET_NODE_IP}`
+--cert-dir=/etc/kubernetes/pki \`
+
+	if withCloudProvider {
+		x += `
+{{- if or (.CloudProvider) (.IsExternal) }}
+{{ cloudProviderFlags .CloudProvider .IsExternal }} \
+{{- end }}`
 	}
 
-	return `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
---kubeconfig=/var/lib/kubelet/kubeconfig \
---config=/etc/kubernetes/kubelet.conf \
---cert-dir=/etc/kubernetes/pki \
-{{- if or (.CloudProvider) (.IsExternal) }}
-{{ cloudProviderFlags .CloudProvider .IsExternal .IPFamily }} \
-{{- end }}
-{{- if and (.Hostname) (ne .CloudProvider "aws") }}
+	x += `{{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
 {{- else if and (eq .CloudProvider "aws") (.IsExternal) }}
 --hostname-override=${KUBELET_HOSTNAME} \
@@ -92,6 +70,13 @@ func kubeletFlagsTpl(withNodeIP bool) string {
 {{- range .ExtraKubeletFlags }}
 {{ . }} \
 {{- end }}`
+
+	if withNodeIP {
+		x += `
+--node-ip ${KUBELET_NODE_IP}`
+	}
+
+	return x
 }
 
 const (
@@ -154,25 +139,16 @@ var kubeletTLSCipherSuites = []string{
 }
 
 // CloudProviderFlags returns --cloud-provider and --cloud-config flags.
-func CloudProviderFlags(cpName string, external bool, ipFamily util.IPFamily) (string, error) {
+func CloudProviderFlags(cpName string, external bool) string {
 	if cpName == "" && !external {
-		return "", nil
+		return ""
 	}
 
 	if external {
-		return `--cloud-provider=external`, nil
+		return `--cloud-provider=external`
 	}
 
-	if ipFamily == util.DualStack {
-		switch {
-		case cpName == "digitalocean":
-			return "", nil
-		case cpName == "openstack":
-			// noop
-		}
-	}
-
-	return fmt.Sprintf(cpFlags, cpName), nil
+	return fmt.Sprintf(cpFlags, cpName)
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet.
@@ -323,6 +299,13 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 // KubeletFlags returns the kubelet flags.
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
 
+	withCloudProvider := true
+	if ipFamily == util.DualStack {
+		if cloudProvider == string(types.CloudProviderDigitalocean) {
+			withCloudProvider = false
+		}
+	}
+
 	withNodeIP := true
 	if external {
 		if ipFamily == util.DualStack {
@@ -330,7 +313,8 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		}
 	}
 
-	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl(withNodeIP))
+	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).
+		Parse(kubeletFlagsTpl(withNodeIP, withCloudProvider))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
 	}
