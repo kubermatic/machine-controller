@@ -10,6 +10,8 @@ An example machine deployment can be found here: [examples/anexia-machinedeploym
 
 ## Templates
 
+This provider supports both named templates (via `template`) and templates by identifier (via `templateID`). When using named templates an optional template build identifier (`templateBuild`) can be specified. Omitting `templateBuild` will yield the currently latest available build for the specified named template. Template builds might get replaced by newer builds. Therefore it is recommended to only specify the `template` by name if a pinned build is not required.
+
 To retrieve all available templates against a given location:
 
 ```
