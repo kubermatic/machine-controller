@@ -152,8 +152,6 @@ require (
 )
 
 replace (
-	github.com/packethost/packngo => github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
-
 	k8s.io/client-go => k8s.io/client-go v0.24.0
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.24.0
 )

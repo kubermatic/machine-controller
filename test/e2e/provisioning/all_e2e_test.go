@@ -738,7 +738,7 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "amzn2"))
+	selector := And(OsSelector("ubuntu", "centos", "rockylinux", "flatcar"), Not(NameSelector("migrateUID")))
 
 	// act
 	params := []string{
