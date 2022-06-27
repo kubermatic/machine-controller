@@ -26,7 +26,7 @@ spec:
           cloudProviderSpec:
             token: << METAL_AUTH_TOKEN >>
             projectID: << METAL_PROJECT_ID >>
-            instanceType: "m3.small.x86"
+            instanceType: "c3.small.x86"
             facilities:
             - "am6"
           operatingSystem: "<< OS_NAME >>"
