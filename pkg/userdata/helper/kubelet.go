@@ -298,7 +298,6 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 
 // KubeletFlags returns the kubelet flags.
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
-
 	withCloudProvider := true
 	if ipFamily == util.DualStack {
 		if cloudProvider == string(types.CloudProviderDigitalocean) {
