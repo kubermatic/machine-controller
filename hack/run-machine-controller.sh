@@ -29,7 +29,7 @@ $(dirname $0)/../machine-controller \
   -worker-count=50 \
   -logtostderr \
   -v=6 \
-  -cluster-dns=172.16.0.10 \
+  -cluster-dns=169.254.20.10 \
   -enable-profiling \
   -metrics-address=0.0.0.0:8080 \
   -health-probe-address=0.0.0.0:8085 \

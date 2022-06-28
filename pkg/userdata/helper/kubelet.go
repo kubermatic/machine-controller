@@ -298,8 +298,16 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 
 // KubeletFlags returns the kubelet flags.
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+	// --node-ip and --cloud-provider kubelet flags conflict in the dualstack setup.
+	// In general, it is not expected to need to use --node-ip with external CCMs,
+	// as the cloud provider is expected to know the correct IPs to return.
+
+	// For details read kubernetes/sig-networking channel discussion
+	// https://kubernetes.slack.com/archives/C09QYUH5W/p1654003958331739
+
 	withCloudProvider := true
 	if ipFamily == util.DualStack {
+		// External CCM is not supported by KKP for DigitalOcean
 		if cloudProvider == string(types.CloudProviderDigitalocean) {
 			withCloudProvider = false
 		}
@@ -307,6 +315,8 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 
 	withNodeIP := true
 	if external {
+		// If external CCM is in use we don't need to set --node-ip
+		// as the cloud provider will know what IPs to return.
 		if ipFamily == util.DualStack {
 			withNodeIP = false
 		}
