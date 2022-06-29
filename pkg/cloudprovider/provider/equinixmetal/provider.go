@@ -56,6 +56,7 @@ type Config struct {
 	ProjectID    string
 	BillingCycle string
 	InstanceType string
+	Metro        string
 	Facilities   []string
 	Tags         []string
 }
@@ -140,6 +141,10 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 		}
 		c.Facilities = append(c.Facilities, facilityValue)
 	}
+	c.Metro, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Metro)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"metro\" field, error = %w", err)
+	}
 
 	// ensure we have defaults
 	c.populateDefaults()
@@ -187,18 +192,38 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 
 	client := getClient(c.Token)
 
-	if len(c.Facilities) == 0 || c.Facilities[0] == "" {
-		return fmt.Errorf("must have at least one non-blank facility")
+	if c.Metro == "" && (len(c.Facilities) == 0 || c.Facilities[0] == "") {
+		return fmt.Errorf("must have at least one non-blank facility or a metro")
 	}
 
-	// get all valid facilities
-	facilities, _, err := client.Facilities.List(nil)
-	if err != nil {
-		return fmt.Errorf("failed to list facilities: %w", err)
+	if c.Facilities != nil && (len(c.Facilities) > 0 || c.Facilities[0] != "") {
+		// get all valid facilities
+		facilities, _, err := client.Facilities.List(nil)
+		if err != nil {
+			return fmt.Errorf("failed to list facilities: %w", err)
+		}
+		// ensure our requested facilities are in those facilities
+		if missingFacilities := itemsNotInList(facilityProp(facilities, "Code"), c.Facilities); len(missingFacilities) > 0 {
+			return fmt.Errorf("unknown facilities: %s", strings.Join(missingFacilities, ","))
+		}
 	}
-	// ensure our requested facilities are in those facilities
-	if missingFacilities := itemsNotInList(facilityProp(facilities, "Code"), c.Facilities); len(missingFacilities) > 0 {
-		return fmt.Errorf("unknown facilities: %s", strings.Join(missingFacilities, ","))
+
+	if c.Metro != "" {
+		metros, _, err := client.Metros.List(nil)
+		if err != nil {
+			return fmt.Errorf("failed to list metros: %w", err)
+		}
+
+		var metroExists bool
+		for _, metro := range metros {
+			if strings.EqualFold(metro.Code, c.Metro) {
+				metroExists = true
+			}
+		}
+
+		if !metroExists {
+			return fmt.Errorf("unknown metro: %s", c.Metro)
+		}
 	}
 
 	// get all valid plans a.k.a. instance types
@@ -239,6 +264,7 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 		UserData:     userdata,
 		ProjectID:    c.ProjectID,
 		Facility:     c.Facilities,
+		Metro:        c.Metro,
 		BillingCycle: c.BillingCycle,
 		Plan:         c.InstanceType,
 		OS:           imageName,
@@ -273,7 +299,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	}
 
 	client := getClient(c.Token)
-	res, err := client.Devices.Delete(instance.(*metalDevice).device.ID)
+	res, err := client.Devices.Delete(instance.(*metalDevice).device.ID, false)
 	if err != nil {
 		return false, metalErrorToTerminalError(err, res, "failed to delete the server")
 	}
