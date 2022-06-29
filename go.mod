@@ -43,7 +43,7 @@ require (
 	google.golang.org/grpc v1.45.0
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/yaml.v3 v3.0.1
-	k8c.io/operating-system-manager v0.4.5-0.20220628074909-3d9712f46bae
+	k8c.io/operating-system-manager v0.5.0
 	k8s.io/api v0.24.2
 	k8s.io/apiextensions-apiserver v0.24.2
 	k8s.io/apimachinery v0.24.2
