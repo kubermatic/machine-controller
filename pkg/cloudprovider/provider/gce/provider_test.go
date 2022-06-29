@@ -53,7 +53,8 @@ func testProviderSpec() map[string]interface{} {
 				"system-cluster-kdlj8sn58d",
 				"system-project-sszxpzjcnm",
 			},
-			"zone": "europe-west2-a",
+			"zone":                         "europe-west2-a",
+			"disableMachineServiceAccount": false,
 		},
 		"operatingSystem": "ubuntu",
 		"operatingSystemSpec": map[string]interface{}{

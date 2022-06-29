@@ -92,25 +92,26 @@ func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProvid
 
 // config contains the configuration of the Provider.
 type config struct {
-	serviceAccount        string
-	projectID             string
-	zone                  string
-	machineType           string
-	diskSize              int64
-	diskType              string
-	network               string
-	subnetwork            string
-	preemptible           bool
-	automaticRestart      *bool
-	provisioningModel     *string
-	labels                map[string]string
-	tags                  []string
-	jwtConfig             *jwt.Config
-	providerConfig        *providerconfigtypes.Config
-	assignPublicIPAddress bool
-	multizone             bool
-	regional              bool
-	customImage           string
+	serviceAccount               string
+	projectID                    string
+	zone                         string
+	machineType                  string
+	diskSize                     int64
+	diskType                     string
+	network                      string
+	subnetwork                   string
+	preemptible                  bool
+	automaticRestart             *bool
+	provisioningModel            *string
+	labels                       map[string]string
+	tags                         []string
+	jwtConfig                    *jwt.Config
+	providerConfig               *providerconfigtypes.Config
+	assignPublicIPAddress        bool
+	multizone                    bool
+	regional                     bool
+	customImage                  string
+	disableMachineServiceAccount bool
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -212,6 +213,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.customImage, err = resolver.GetConfigVarStringValue(cpSpec.CustomImage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve gce custom image: %w", err)
+	}
+
+	cfg.disableMachineServiceAccount, _, err = resolver.GetConfigVarBoolValue(cpSpec.DisableMachineServiceAccount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve disable machine service account: %w", err)
 	}
 
 	return cfg, nil

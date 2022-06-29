@@ -245,17 +245,6 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Scheduling: &compute.Scheduling{
 			Preemptible: cfg.preemptible,
 		},
-		ServiceAccounts: []*compute.ServiceAccount{
-			{
-				Email: cfg.jwtConfig.Email,
-				Scopes: append(
-					monitoring.DefaultAuthScopes(),
-					compute.ComputeScope,
-					compute.DevstorageReadOnlyScope,
-					logging.WriteScope,
-				),
-			},
-		},
 		Metadata: &compute.Metadata{
 			Items: []*compute.MetadataItems{
 				{
@@ -267,6 +256,20 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Tags: &compute.Tags{
 			Items: cfg.tags,
 		},
+	}
+
+	if !cfg.disableMachineServiceAccount {
+		inst.ServiceAccounts = []*compute.ServiceAccount{
+			{
+				Email: cfg.jwtConfig.Email,
+				Scopes: append(
+					monitoring.DefaultAuthScopes(),
+					compute.ComputeScope,
+					compute.DevstorageReadOnlyScope,
+					logging.WriteScope,
+				),
+			},
+		}
 	}
 
 	if cfg.automaticRestart != nil {
