@@ -39,7 +39,7 @@ var testData = []struct {
 		userdata: "./testdata/userdata.yaml",
 		secret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      jwtTokenNamePrefix,
+				Name:      cloudInitGetterSecret,
 				Namespace: CloudInitNamespace,
 			},
 			Data: map[string][]byte{
