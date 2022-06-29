@@ -66,11 +66,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("failed to parse OperatingSystemSpec: %w", err)
 	}
 
-	serverAddr, err := userdatahelper.GetServerAddressFromKubeconfig(req.Kubeconfig)
-	if err != nil {
-		return "", fmt.Errorf("error extracting server address from kubeconfig: %w", err)
-	}
-
 	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
 	if err != nil {
 		return "", err
@@ -102,7 +97,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ProviderSpec                       *providerconfigtypes.Config
 		OSConfig                           *Config
 		KubeletVersion                     string
-		ServerAddr                         string
 		Kubeconfig                         string
 		KubernetesCACert                   string
 		NodeIPScript                       string
@@ -118,7 +112,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ProviderSpec:                       pconfig,
 		OSConfig:                           rockyLinuxConfig,
 		KubeletVersion:                     kubeletVersion.String(),
-		ServerAddr:                         serverAddr,
 		Kubeconfig:                         kubeconfigString,
 		KubernetesCACert:                   kubernetesCACert,
 		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(),

@@ -30,17 +30,6 @@ const (
 	DefaultDockerContainerLogMaxSize  = "100m"
 )
 
-func GetServerAddressFromKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
-	if len(kubeconfig.Clusters) != 1 {
-		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address")
-	}
-	// Clusters is a map so we have to use range here
-	for _, clusterConfig := range kubeconfig.Clusters {
-		return strings.Replace(clusterConfig.Server, "https://", "", -1), nil
-	}
-	return "", fmt.Errorf("no server address found")
-}
-
 func GetCACert(kubeconfig *clientcmdapi.Config) (string, error) {
 	if len(kubeconfig.Clusters) != 1 {
 		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address")

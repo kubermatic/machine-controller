@@ -491,7 +491,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
 	labels := map[string]string{"kubevirt.io/vm": machine.Name}
 	// Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name).
-	if mdName, err := controllerutil.GetMachineDeploymentNameForMachine(ctx, machine, data.Client); err == nil {
+	if mdName, _, err := controllerutil.GetMachineDeploymentNameAndRevisionForMachine(ctx, machine, data.Client); err == nil {
 		labels[machineDeploymentLabelKey] = mdName
 	}
 
