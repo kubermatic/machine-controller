@@ -25,7 +25,7 @@ require (
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.33.1
 	github.com/linode/linodego v0.24.0
-	github.com/packethost/packngo v0.5.1
+	github.com/packethost/packngo v0.25.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.1
 	github.com/pkg/errors v0.9.1
@@ -149,8 +149,6 @@ require (
 )
 
 replace (
-	github.com/packethost/packngo => github.com/packethost/packngo v0.1.1-0.20190410075950-a02c426e4888
-
 	k8s.io/client-go => k8s.io/client-go v0.22.2
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.22.2
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd

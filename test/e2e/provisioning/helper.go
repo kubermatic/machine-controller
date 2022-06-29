@@ -199,10 +199,24 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< AMI >>=%s", ""))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 25))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< CUSTOM-IMAGE >>=%v", ""))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_USER >>=%s", ""))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< RHEL_SUBSCRIPTION_MANAGER_PASSWORD >>=%s", ""))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>=%s", ""))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.03"))
+	}
+
+	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderEquinixMetal)) {
+		switch testCase.osName {
+		case string(providerconfigtypes.OperatingSystemCentOS):
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "c3.small.x86"))
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "AM"))
+		case string(providerconfigtypes.OperatingSystemFlatcar):
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "c3.small.x86"))
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "NY"))
+		case string(providerconfigtypes.OperatingSystemRockyLinux):
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "AM"))
+		case string(providerconfigtypes.OperatingSystemUbuntu):
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "TY"))
+		}
 	}
 
 	// only used by assume role scenario, otherwise empty (disabled)
@@ -258,6 +272,5 @@ func buildScenarios() []scenario {
 		osName:           "ubuntu",
 		executor:         verifyMigrateUID,
 	})
-
 	return all
 }
