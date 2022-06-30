@@ -101,8 +101,8 @@ write_files:
 
     apt-get install --allow-downgrades -y \
         containerd.io=1.4* \
-        docker-ce-cli=5:19.03* \
-        docker-ce=5:19.03*
+        docker-ce-cli=5:20.10* \
+        docker-ce=5:20.10*
     apt-mark hold docker-ce* containerd.io
 
     systemctl daemon-reload
