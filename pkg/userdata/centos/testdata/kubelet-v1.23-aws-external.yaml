@@ -66,6 +66,12 @@ write_files:
     sysctl --system
 
 
+    source /etc/os-release
+    if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
+      sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+      sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    fi
+
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
@@ -79,6 +85,9 @@ write_files:
       curl \
       ipvsadm
 
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
     mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
 
@@ -89,10 +98,11 @@ write_files:
     EOF
 
     yum install -y \
-        containerd-1.4* \
-        docker-19.03* \
+        docker-ce-cli-19.03* \
+        containerd.io-1.4* \
+        docker-ce-19.03* \
         yum-plugin-versionlock
-    yum versionlock add docker containerd
+    yum versionlock add docker-ce* containerd.io
 
     systemctl daemon-reload
     systemctl enable --now docker
@@ -139,7 +149,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.8}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.23.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -225,8 +235,6 @@ write_files:
       --lock-file=/tmp/kubelet.lock \
       --container-runtime=docker \
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
-      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-      --feature-gates=DynamicKubeletConfig=true \
       --network-plugin=cni \
       --node-ip ${KUBELET_NODE_IP}
 

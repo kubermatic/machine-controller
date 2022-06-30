@@ -100,15 +100,6 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "kubelet-v1.21-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.10",
-				},
-			},
-		},
-		{
 			name: "kubelet-v1.22-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -132,25 +123,6 @@ func TestUserDataGeneration(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.23.5",
-				},
-			},
-			externalCloudProvider: true,
-		},
-		{
-			name: "kubelet-v1.24-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.24.0",
-				},
-			},
-		},
-		{
-			name: "kubelet-v1.24-aws-external",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.24.0",
 				},
 			},
 			externalCloudProvider: true,
@@ -192,6 +164,25 @@ func TestUserDataGeneration(t *testing.T) {
 			noProxy:           "192.168.1.0",
 			registryMirrors:   "https://registry.docker-cn.com",
 			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
+		},
+		{
+			name: "kubelet-v1.24-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.24.0",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.24-aws-external",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.24.0",
+				},
+			},
+			externalCloudProvider: true,
 		},
 		{
 			name: "kubelet-v1.22-nutanix",

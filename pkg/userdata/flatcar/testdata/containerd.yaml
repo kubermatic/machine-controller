@@ -110,9 +110,6 @@ coreos:
         --lock-file=/tmp/kubelet.lock \
         --container-runtime=remote \
         --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
-        --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-        --feature-gates=DynamicKubeletConfig=true \
-        --network-plugin=cni \
         --node-ip ${KUBELET_NODE_IP}
 
       [Install]
@@ -399,7 +396,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.10}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.24.0}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
