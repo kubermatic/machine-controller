@@ -42,19 +42,19 @@ const (
 )
 
 func kubeletFlagsTpl(withNodeIP, withCloudProvider bool) string {
-	x := `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+	flagsTemplate := `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
 --cert-dir=/etc/kubernetes/pki \`
 
 	if withCloudProvider {
-		x += `
+		flagsTemplate += `
 {{- if or (.CloudProvider) (.IsExternal) }}
 {{ cloudProviderFlags .CloudProvider .IsExternal }} \
 {{- end }}`
 	}
 
-	x += `{{- if and (.Hostname) (ne .CloudProvider "aws") }}
+	flagsTemplate += `{{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
 {{- else if and (eq .CloudProvider "aws") (.IsExternal) }}
 --hostname-override=${KUBELET_HOSTNAME} \
@@ -72,11 +72,11 @@ func kubeletFlagsTpl(withNodeIP, withCloudProvider bool) string {
 {{- end }}`
 
 	if withNodeIP {
-		x += `
+		flagsTemplate += `
 --node-ip ${KUBELET_NODE_IP}`
 	}
 
-	return x
+	return flagsTemplate
 }
 
 const (
@@ -305,25 +305,25 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 	// For details read kubernetes/sig-networking channel discussion
 	// https://kubernetes.slack.com/archives/C09QYUH5W/p1654003958331739
 
-	withCloudProvider := true
+	withCloudProviderFlag := true
 	if ipFamily == util.DualStack {
 		// External CCM is not supported by KKP for DigitalOcean
 		if cloudProvider == string(types.CloudProviderDigitalocean) {
-			withCloudProvider = false
+			withCloudProviderFlag = false
 		}
 	}
 
-	withNodeIP := true
+	withNodeIPFlag := true
 	if external {
 		// If external CCM is in use we don't need to set --node-ip
 		// as the cloud provider will know what IPs to return.
 		if ipFamily == util.DualStack {
-			withNodeIP = false
+			withNodeIPFlag = false
 		}
 	}
 
 	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).
-		Parse(kubeletFlagsTpl(withNodeIP, withCloudProvider))
+		Parse(kubeletFlagsTpl(withNodeIPFlag, withCloudProviderFlag))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
 	}
