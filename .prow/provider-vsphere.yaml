@@ -16,7 +16,6 @@ presubmits:
   - name: pull-machine-controller-e2e-vsphere
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-hetzner: "true"
@@ -44,7 +43,6 @@ presubmits:
   - name: pull-machine-controller-e2e-vsphere-datastore-cluster
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-vsphere: "true"
@@ -72,7 +70,6 @@ presubmits:
   - name: pull-machine-controller-e2e-vsphere-resource-pool
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-vsphere: "true"

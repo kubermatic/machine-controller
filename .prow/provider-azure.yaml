@@ -16,7 +16,6 @@ presubmits:
   - name: pull-machine-controller-e2e-azure
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-azure: "true"
@@ -44,7 +43,6 @@ presubmits:
   - name: pull-machine-controller-e2e-azure-custom-image-reference
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-azure: "true"
@@ -73,7 +71,6 @@ presubmits:
     optional: true
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-azure: "true"

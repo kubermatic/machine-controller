@@ -19,7 +19,6 @@ presubmits:
     # TODO uncomment this when Nutanix is in a working condition
     #run_if_changed: "(pkg/cloudprovider/provider/nutanix/)"
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-hetzner: "true"

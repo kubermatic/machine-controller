@@ -16,7 +16,6 @@ presubmits:
   - name: pull-machine-controller-e2e-invalid-objects-get-rejected
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -44,13 +43,14 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 4Gi
+              cpu: 2
+            limits:
+              memory: 4Gi
 
   - name: pull-machine-controller-e2e-custom-ca
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-openstack: "true"
@@ -78,7 +78,6 @@ presubmits:
   - name: pull-machine-controller-e2e-ubuntu-upgrade
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-openstack: "true"
@@ -105,7 +104,6 @@ presubmits:
   - name: pull-machine-controller-e2e-deployment-upgrade
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-hetzner: "true"

@@ -17,7 +17,6 @@ presubmits:
     optional: true
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     max_concurrency: 1
     labels:

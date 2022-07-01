@@ -16,7 +16,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -44,7 +43,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-arm
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -71,7 +69,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -98,7 +95,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-flatcar-containerd
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -125,7 +121,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-spot-instance
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -153,7 +148,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-sles
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -180,7 +174,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-flatcar-coreos-cloud-init
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -207,7 +200,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-centos8
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws: "true"
@@ -234,7 +226,6 @@ presubmits:
   - name: pull-machine-controller-e2e-aws-assume-role
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-aws-assume-role: "true"

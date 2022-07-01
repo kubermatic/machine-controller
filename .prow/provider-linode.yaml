@@ -17,7 +17,6 @@ presubmits:
     always_run: false
     optional: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-hetzner: "true"

@@ -16,7 +16,6 @@ presubmits:
   - name: pull-machine-controller-e2e-hetzner
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-hetzner: "true"

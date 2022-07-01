@@ -30,6 +30,10 @@ presubmits:
           resources:
             requests:
               cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 1
+              memory: 2Gi
 
   - name: pull-machine-controller-dependencies
     always_run: true
@@ -46,7 +50,11 @@ presubmits:
             - check-dependencies
           resources:
             requests:
-              cpu: 800m
+              memory: 32Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 250m
 
   - name: pull-machine-controller-lint
     always_run: true
@@ -65,6 +73,8 @@ presubmits:
             requests:
               cpu: 800m
               memory: 6Gi
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-yamllint
     always_run: true
@@ -81,7 +91,11 @@ presubmits:
             - "yamllint -c .yamllint.conf ."
           resources:
             requests:
-              cpu: 200m
+              memory: 32Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 250m
 
   - name: pre-machine-controller-verify-shfmt
     run_if_changed: "^hack/"
@@ -122,8 +136,11 @@ presubmits:
             - "./hack/verify-boilerplate.sh"
           resources:
             requests:
-              memory: 64Mi
-              cpu: 100m
+              memory: 32Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 250m
 
   - name: pull-machine-controller-license-validation
     run_if_changed: "^go.(mod|sum)$"
@@ -138,8 +155,11 @@ presubmits:
             - ./hack/verify-licenses.sh
           resources:
             requests:
-              memory: 512Mi
-              cpu: 1
+              memory: 32Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 250m
 
   - name: pull-machine-controller-test
     always_run: true
@@ -157,4 +177,8 @@ presubmits:
             - test-unit
           resources:
             requests:
-              cpu: 800m
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 1Gi
+              cpu: 500m
