@@ -297,13 +297,12 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 }
 
 // KubeletFlags returns the kubelet flags.
+// --node-ip and --cloud-provider kubelet flags conflict in the dualstack setup.
+// In general, it is not expected to need to use --node-ip with external CCMs,
+// as the cloud provider is expected to know the correct IPs to return.
+// For details read kubernetes/sig-networking channel discussion
+// https://kubernetes.slack.com/archives/C09QYUH5W/p1654003958331739
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
-	// --node-ip and --cloud-provider kubelet flags conflict in the dualstack setup.
-	// In general, it is not expected to need to use --node-ip with external CCMs,
-	// as the cloud provider is expected to know the correct IPs to return.
-
-	// For details read kubernetes/sig-networking channel discussion
-	// https://kubernetes.slack.com/archives/C09QYUH5W/p1654003958331739
 
 	withCloudProviderFlag := true
 	if ipFamily == util.DualStack {
