@@ -18,7 +18,7 @@ WORKDIR /go/src/github.com/kubermatic/machine-controller
 COPY . .
 RUN make all
 
-FROM alpine:3.12
+FROM alpine:3.16
 
 RUN apk add --no-cache ca-certificates cdrkit
 
