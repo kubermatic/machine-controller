@@ -29,7 +29,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -38,8 +38,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 3Gi
+              cpu: 1
+            limits:
+              memory: 3Gi
 
   - name: pull-machine-controller-e2e-vsphere-datastore-cluster
     always_run: false
@@ -57,7 +59,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -66,8 +68,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 3Gi
+              cpu: 1
+            limits:
+              memory: 3Gi
 
   - name: pull-machine-controller-e2e-vsphere-resource-pool
     always_run: false
@@ -85,7 +89,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -94,5 +98,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 3Gi
+              cpu: 1
+            limits:
+              memory: 3Gi
