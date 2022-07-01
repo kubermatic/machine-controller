@@ -49,9 +49,10 @@ import (
 )
 
 const (
-	CapabilityPremiumIO = "PremiumIO"
-	CapabilityUltraSSD  = "UltraSSDAvailable"
-	CapabilityValueTrue = "True"
+	CapabilityPremiumIO             = "PremiumIO"
+	CapabilityUltraSSD              = "UltraSSDAvailable"
+	CapabilityValueTrue             = "True"
+	capabilityAcceleratedNetworking = "AcceleratedNetworkingEnabled"
 
 	machineUIDTag = "Machine-UID"
 
@@ -100,8 +101,9 @@ type config struct {
 	DataDiskSize int32
 	DataDiskSKU  *compute.StorageAccountTypes
 
-	AssignPublicIP bool
-	Tags           map[string]string
+	AssignPublicIP              bool
+	EnableAcceleratedNetworking *bool
+	Tags                        map[string]string
 }
 
 type azureVM struct {
@@ -316,6 +318,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	}
 
 	c.AssignAvailabilitySet = rawCfg.AssignAvailabilitySet
+	c.EnableAcceleratedNetworking = rawCfg.EnableAcceleratedNetworking
 
 	c.AvailabilitySet, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.AvailabilitySet)
 	if err != nil {
@@ -612,7 +615,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, err
 	}
 
-	iface, err := createOrUpdateNetworkInterface(ctx, ifaceName(machine), machine.UID, config, publicIP, publicIPv6, ipFamily)
+	iface, err := createOrUpdateNetworkInterface(ctx, ifaceName(machine), machine.UID, config, publicIP, publicIPv6, ipFamily, config.EnableAcceleratedNetworking)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate main network interface: %w", err)
 	}
@@ -935,13 +938,8 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 	return s, "azure", nil
 }
 
-func validateDiskSKUs(ctx context.Context, c *config) error {
+func validateDiskSKUs(ctx context.Context, c *config, sku compute.ResourceSku) error {
 	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
-		sku, err := getSKU(ctx, c)
-		if err != nil {
-			return fmt.Errorf("failed to get VM SKU: %w", err)
-		}
-
 		if c.OSDiskSKU != nil {
 			if _, ok := osDiskSKUs[*c.OSDiskSKU]; !ok {
 				return fmt.Errorf("invalid OS disk SKU '%s'", *c.OSDiskSKU)
@@ -969,6 +967,15 @@ func validateDiskSKUs(ctx context.Context, c *config) error {
 		}
 	}
 
+	return nil
+}
+
+func validateSKUCapabilities(ctx context.Context, c *config, sku compute.ResourceSku) error {
+	if c.EnableAcceleratedNetworking != nil && *c.EnableAcceleratedNetworking {
+		if !SKUHasCapability(sku, capabilityAcceleratedNetworking) {
+			return fmt.Errorf("VM size %q does not support accelerated networking", c.VMSize)
+		}
+	}
 	return nil
 }
 
@@ -1039,8 +1046,17 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("failed to get subnet: %w", err)
 	}
 
-	if err := validateDiskSKUs(ctx, c); err != nil {
+	sku, err := getSKU(ctx, c)
+	if err != nil {
+		return fmt.Errorf("failed to get VM SKU: %w", err)
+	}
+
+	if err := validateDiskSKUs(ctx, c, sku); err != nil {
 		return fmt.Errorf("failed to validate disk SKUs: %w", err)
+	}
+
+	if err := validateSKUCapabilities(ctx, c, sku); err != nil {
+		return fmt.Errorf("failed to validate SKU capabilities: %w", err)
 	}
 
 	_, err = getOSImageReference(c, providerConfig.OperatingSystem)
@@ -1092,7 +1108,7 @@ func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Mach
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
-		_, err = createOrUpdateNetworkInterface(ctx, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.Unspecified)
+		_, err = createOrUpdateNetworkInterface(ctx, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.Unspecified, config.EnableAcceleratedNetworking)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on main network interface: %w", err)
 		}
@@ -1238,4 +1254,15 @@ func supportsDiskSKU(vmSKU compute.ResourceSku, diskSKU compute.StorageAccountTy
 	}
 
 	return nil
+}
+
+func SKUHasCapability(sku compute.ResourceSku, name string) bool {
+	if sku.Capabilities != nil {
+		for _, capability := range *sku.Capabilities {
+			if capability.Name != nil && *capability.Name == name && *capability.Value == CapabilityValueTrue {
+				return true
+			}
+		}
+	}
+	return false
 }
