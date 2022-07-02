@@ -28,20 +28,21 @@ type RawConfig struct {
 	ClientID       providerconfigtypes.ConfigVarString `json:"clientID,omitempty"`
 	ClientSecret   providerconfigtypes.ConfigVarString `json:"clientSecret,omitempty"`
 
-	Location              providerconfigtypes.ConfigVarString `json:"location"`
-	ResourceGroup         providerconfigtypes.ConfigVarString `json:"resourceGroup"`
-	VNetResourceGroup     providerconfigtypes.ConfigVarString `json:"vnetResourceGroup"`
-	VMSize                providerconfigtypes.ConfigVarString `json:"vmSize"`
-	VNetName              providerconfigtypes.ConfigVarString `json:"vnetName"`
-	SubnetName            providerconfigtypes.ConfigVarString `json:"subnetName"`
-	LoadBalancerSku       providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
-	RouteTableName        providerconfigtypes.ConfigVarString `json:"routeTableName"`
-	AvailabilitySet       providerconfigtypes.ConfigVarString `json:"availabilitySet"`
-	AssignAvailabilitySet *bool                               `json:"assignAvailabilitySet"`
-	SecurityGroupName     providerconfigtypes.ConfigVarString `json:"securityGroupName"`
-	Zones                 []string                            `json:"zones"`
-	ImagePlan             *ImagePlan                          `json:"imagePlan,omitempty"`
-	ImageReference        *ImageReference                     `json:"imageReference,omitempty"`
+	Location                    providerconfigtypes.ConfigVarString `json:"location"`
+	ResourceGroup               providerconfigtypes.ConfigVarString `json:"resourceGroup"`
+	VNetResourceGroup           providerconfigtypes.ConfigVarString `json:"vnetResourceGroup"`
+	VMSize                      providerconfigtypes.ConfigVarString `json:"vmSize"`
+	VNetName                    providerconfigtypes.ConfigVarString `json:"vnetName"`
+	SubnetName                  providerconfigtypes.ConfigVarString `json:"subnetName"`
+	LoadBalancerSku             providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
+	RouteTableName              providerconfigtypes.ConfigVarString `json:"routeTableName"`
+	AvailabilitySet             providerconfigtypes.ConfigVarString `json:"availabilitySet"`
+	AssignAvailabilitySet       *bool                               `json:"assignAvailabilitySet"`
+	SecurityGroupName           providerconfigtypes.ConfigVarString `json:"securityGroupName"`
+	Zones                       []string                            `json:"zones"`
+	ImagePlan                   *ImagePlan                          `json:"imagePlan,omitempty"`
+	ImageReference              *ImageReference                     `json:"imageReference,omitempty"`
+	EnableAcceleratedNetworking *bool                               `json:"enableAcceleratedNetworking"`
 
 	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`
