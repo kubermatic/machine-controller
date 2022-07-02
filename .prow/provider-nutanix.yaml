@@ -39,5 +39,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi

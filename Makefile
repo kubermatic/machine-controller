@@ -95,8 +95,7 @@ test-unit-docker:
 
 .PHONY: test-unit
 test-unit:
-	@#The `-race` flag requires CGO
-	CGO_ENABLED=1 go test -v -race ./...
+	go test -v ./...
 
 .PHONY: build-tests
 build-tests:

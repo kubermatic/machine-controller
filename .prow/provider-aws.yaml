@@ -37,8 +37,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 4Gi
-              cpu: 1
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-arm
     always_run: true
@@ -63,8 +65,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
     always_run: true
@@ -89,8 +93,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-flatcar-containerd
     always_run: true
@@ -115,8 +121,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-spot-instance
     always_run: true
@@ -142,8 +150,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-sles
     always_run: false
@@ -168,8 +178,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-flatcar-coreos-cloud-init
     always_run: false
@@ -194,8 +206,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-centos8
     always_run: false
@@ -220,8 +234,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-assume-role
     always_run: false
@@ -246,5 +262,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi

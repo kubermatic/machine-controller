@@ -37,8 +37,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-azure-custom-image-reference
     always_run: true
@@ -64,8 +66,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-azure-redhat-satellite
     optional: true
@@ -92,5 +96,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi

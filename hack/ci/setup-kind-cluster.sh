@@ -191,7 +191,7 @@ if [ -z "${DISABLE_CLUSTER_EXPOSER:-}" ]; then
   TEST_NAME="Wait for cluster exposer"
   echodate "Waiting for cluster exposer to be running"
 
-  retry 5 curl -s --fail http://127.0.0.1:2047/metrics -o /dev/null
+  retry 10 curl -s --fail http://127.0.0.1:2047/metrics -o /dev/null
   echodate "Cluster exposer is running"
 
   echodate "Setting up iptables rules to make nodeports available"

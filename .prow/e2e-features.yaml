@@ -43,10 +43,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 4Gi
+              memory: 6Gi
               cpu: 2
             limits:
-              memory: 4Gi
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-custom-ca
     always_run: true
@@ -72,8 +72,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-ubuntu-upgrade
     always_run: true
@@ -98,8 +100,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-deployment-upgrade
     always_run: true
@@ -123,5 +127,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi

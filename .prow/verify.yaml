@@ -29,11 +29,10 @@ presubmits:
             - all
           resources:
             requests:
-              cpu: 1
-              memory: 2Gi
+              memory: 6Gi
+              cpu: 2
             limits:
-              cpu: 1
-              memory: 2Gi
+              memory: 6Gi
 
   - name: pull-machine-controller-dependencies
     always_run: true
@@ -177,8 +176,7 @@ presubmits:
             - test-unit
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              cpu: 3
+              memory: 6Gi
             limits:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
