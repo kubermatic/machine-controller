@@ -1,5 +1,7 @@
 #cloud-config
 
+hostname: node1
+
 
 ssh_pwauth: false
 
@@ -65,6 +67,8 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
+    hostnamectl set-hostname node1
+
 
     yum install -y \
       device-mapper-persistent-data \
@@ -77,6 +81,7 @@ write_files:
       socat \
       wget \
       curl \
+      open-vm-tools \
       ipvsadm
 
 
@@ -139,7 +144,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.8}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.23.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -168,6 +173,8 @@ write_files:
     /opt/bin/setup_net_env.sh
 
     systemctl disable --now firewalld || true
+
+    systemctl enable --now vmtoolsd.service
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl disable setup.service
@@ -219,14 +226,13 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=aws \
+      --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
       --container-runtime=docker \
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
-      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-      --feature-gates=DynamicKubeletConfig=true \
       --network-plugin=cni \
       --node-ip ${KUBELET_NODE_IP}
 
@@ -236,7 +242,7 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-    {aws-config:true}
+    {config:true}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"

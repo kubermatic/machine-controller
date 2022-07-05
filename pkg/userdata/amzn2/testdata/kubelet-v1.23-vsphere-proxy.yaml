@@ -1,9 +1,19 @@
 #cloud-config
 
+hostname: node1
+
 
 ssh_pwauth: false
 
 write_files:
+- path: "/etc/environment"
+  content: |
+    HTTP_PROXY=http://192.168.100.100:3128
+    http_proxy=http://192.168.100.100:3128
+    HTTPS_PROXY=http://192.168.100.100:3128
+    https_proxy=http://192.168.100.100:3128
+    NO_PROXY=192.168.1.0
+    no_proxy=192.168.1.0
 
 - path: "/etc/systemd/journald.conf.d/max_disk_use.conf"
   content: |
@@ -65,12 +75,8 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
+    hostnamectl set-hostname node1
 
-    source /etc/os-release
-    if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
-      sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
-      sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-    fi
 
     yum install -y \
       device-mapper-persistent-data \
@@ -83,11 +89,9 @@ write_files:
       socat \
       wget \
       curl \
+      open-vm-tools \
       ipvsadm
 
-    yum install -y yum-utils
-    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
     mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
 
@@ -98,11 +102,10 @@ write_files:
     EOF
 
     yum install -y \
-        docker-ce-cli-20.10* \
-        containerd.io-1.4* \
-        docker-ce-20.10* \
+        containerd-1.4* \
+        docker-20.10* \
         yum-plugin-versionlock
-    yum versionlock add docker-ce* containerd.io
+    yum versionlock add docker containerd
 
     systemctl daemon-reload
     systemctl enable --now docker
@@ -149,7 +152,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.10}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.23.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -178,6 +181,8 @@ write_files:
     /opt/bin/setup_net_env.sh
 
     systemctl disable --now firewalld || true
+
+    systemctl enable --now vmtoolsd.service
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl disable setup.service
@@ -229,14 +234,14 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=aws \
+      --cloud-provider=vsphere \
       --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
+      --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
       --container-runtime=docker \
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
-      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-      --feature-gates=DynamicKubeletConfig=true \
       --network-plugin=cni \
       --node-ip ${KUBELET_NODE_IP}
 
@@ -246,7 +251,7 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-    {aws-config:true}
+    {config:true}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"
@@ -426,7 +431,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"}}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"},"insecure-registries":["192.168.100.100:5000","10.0.0.1:5000"]}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
