@@ -1,11 +1,9 @@
 #cloud-config
-
-hostname: node1
+bootcmd:
+- modprobe ip_tables
 
 
 ssh_pwauth: false
-ssh_authorized_keys:
-- "ssh-rsa AAABBB"
 
 write_files:
 
@@ -45,20 +43,65 @@ write_files:
     fs.inotify.max_user_instances = 8192
 
 
+- path: /etc/selinux/config
+  content: |
+    # This file controls the state of SELinux on the system.
+    # SELINUX= can take one of these three values:
+    #     enforcing - SELinux security policy is enforced.
+    #     permissive - SELinux prints warnings instead of enforcing.
+    #     disabled - No SELinux policy is loaded.
+    SELINUX=permissive
+    # SELINUXTYPE= can take one of three two values:
+    #     targeted - Targeted processes are protected,
+    #     minimum - Modification of targeted policy. Only selected processes are protected.
+    #     mls - Multi Level Security protection.
+    SELINUXTYPE=targeted
+
 - path: "/opt/bin/setup"
   permissions: "0755"
   content: |
     #!/bin/bash
     set -xeuo pipefail
+
+    setenforce 0 || true
     systemctl restart systemd-modules-load.service
     sysctl --system
 
-    zypper --non-interactive --quiet --color install ebtables \
-      ceph-common \
-      e2fsprogs \
-      jq \
+    yum install -y \
+      device-mapper-persistent-data \
+      lvm2 \
+      ebtables \
+      ethtool \
+      nfs-utils \
+      bash-completion \
+      sudo \
       socat \
+      wget \
+      curl \
+      tar \
       ipvsadm
+
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
+
+    mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
+
+    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
+    [Service]
+    Restart=always
+    EnvironmentFile=-/etc/environment
+    EOF
+
+    yum install -y \
+        docker-ce-cli-20.10* \
+        containerd.io-1.4* \
+        docker-ce-20.10* \
+        yum-plugin-versionlock
+    yum versionlock add docker-ce* containerd.io
+
+    systemctl daemon-reload
+    systemctl enable --now docker
 
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
@@ -101,7 +144,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.10}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.23.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -125,14 +168,14 @@ write_files:
         chmod +x /opt/bin/health-monitor.sh
     fi
 
-
     # set kubelet nodeip environment variable
+    mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
-    systemctl enable --now docker
+    systemctl disable --now firewalld || true
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
-    systemctl enable --now --no-block docker-healthcheck.service
+    systemctl disable setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -148,9 +191,7 @@ write_files:
   content: |
     # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
     # providers swap gets enabled on reboot or after the setup script has finished executing.
-    cp /etc/fstab /etc/fstab.orig
-    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
-    mv /etc/fstab.noswap /etc/fstab
+    sed -i.orig '/.*swap.*/d' /etc/fstab
     swapoff -a
 
 - path: "/etc/systemd/system/kubelet.service"
@@ -183,28 +224,22 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --hostname-override=node1 \
+      --cloud-provider=external \
+      --hostname-override=${KUBELET_HOSTNAME} \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
       --container-runtime=docker \
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
-      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-      --feature-gates=DynamicKubeletConfig=true \
       --network-plugin=cni \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]
     WantedBy=multi-user.target
 
-- path: "/etc/systemd/system/kubelet.service.d/extras.conf"
-  content: |
-    [Service]
-    Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/var/run/netconfig/resolv.conf"
-
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-
+    {aws-config:true}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"
@@ -259,51 +294,6 @@ write_files:
         token: my-token
 
 
-- path: "/etc/kubernetes/pki/ca.crt"
-  content: |
-    -----BEGIN CERTIFICATE-----
-    MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
-    BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
-    A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
-    DQEJARYOYnJhZEBkYW5nYS5jb20wHhcNMTQwNzE1MjA0NjA1WhcNMTcwNTA0MjA0
-    NjA1WjB7MQswCQYDVQQGEwJVUzELMAkGA1UECBMCQ0ExFjAUBgNVBAcTDVNhbiBG
-    cmFuY2lzY28xFDASBgNVBAoTC0JyYWRmaXR6aW5jMRIwEAYDVQQDEwlsb2NhbGhv
-    c3QxHTAbBgkqhkiG9w0BCQEWDmJyYWRAZGFuZ2EuY29tMIIBIjANBgkqhkiG9w0B
-    AQEFAAOCAQ8AMIIBCgKCAQEAt5fAjp4fTcekWUTfzsp0kyih1OYbsGL0KX1eRbSS
-    R8Od0+9Q62Hyny+GFwMTb4A/KU8mssoHvcceSAAbwfbxFK/+s51TobqUnORZrOoT
-    ZjkUygbyXDSK99YBbcR1Pip8vwMTm4XKuLtCigeBBdjjAQdgUO28LENGlsMnmeYk
-    JfODVGnVmr5Ltb9ANA8IKyTfsnHJ4iOCS/PlPbUj2q7YnoVLposUBMlgUb/CykX3
-    mOoLb4yJJQyA/iST6ZxiIEj36D4yWZ5lg7YJl+UiiBQHGCnPdGyipqV06ex0heYW
-    caiW8LWZSUQ93jQ+WVCH8hT7DQO1dmsvUmXlq/JeAlwQ/QIDAQABo4HgMIHdMB0G
-    A1UdDgQWBBRcAROthS4P4U7vTfjByC569R7E6DCBrQYDVR0jBIGlMIGigBRcAROt
-    hS4P4U7vTfjByC569R7E6KF/pH0wezELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNB
-    MRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRQwEgYDVQQKEwtCcmFkZml0emluYzES
-    MBAGA1UEAxMJbG9jYWxob3N0MR0wGwYJKoZIhvcNAQkBFg5icmFkQGRhbmdhLmNv
-    bYIJALfRlWsI8YQHMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBAG6h
-    U9f9sNH0/6oBbGGy2EVU0UgITUQIrFWo9rFkrW5k/XkDjQm+3lzjT0iGR4IxE/Ao
-    eU6sQhua7wrWeFEn47GL98lnCsJdD7oZNhFmQ95Tb/LnDUjs5Yj9brP0NWzXfYU4
-    UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
-    58SNVEUsztzQyXmJEhCpwVI0A6QCjzXj+qvpmw3ZZHi8JwXei8ZZBLTSFBki8Z7n
-    sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
-    kPe6XoSbiLm/kxk32T0=
-    -----END CERTIFICATE-----
-
-- path: "/etc/systemd/system/setup.service"
-  permissions: "0644"
-  content: |
-    [Install]
-    WantedBy=multi-user.target
-
-    [Unit]
-    Requires=network-online.target
-    After=network-online.target
-
-    [Service]
-    Type=oneshot
-    RemainAfterExit=true
-    EnvironmentFile=-/etc/environment
-    ExecStart=/opt/bin/supervise.sh /opt/bin/setup
-
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
     apiVersion: kubelet.config.k8s.io/v1beta1
@@ -321,8 +311,6 @@ write_files:
         cacheAuthorizedTTL: 0s
         cacheUnauthorizedTTL: 0s
     cgroupDriver: systemd
-    clusterDNS:
-    - 10.10.10.10
     clusterDomain: cluster.local
     containerLogMaxSize: 100Mi
     cpuManagerReconcilePeriod: 0s
@@ -378,6 +366,51 @@ write_files:
     volumeStatsAggPeriod: 0s
 
 
+- path: "/etc/kubernetes/pki/ca.crt"
+  content: |
+    -----BEGIN CERTIFICATE-----
+    MIIEWjCCA0KgAwIBAgIJALfRlWsI8YQHMA0GCSqGSIb3DQEBBQUAMHsxCzAJBgNV
+    BAYTAlVTMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEUMBIG
+    A1UEChMLQnJhZGZpdHppbmMxEjAQBgNVBAMTCWxvY2FsaG9zdDEdMBsGCSqGSIb3
+    DQEJARYOYnJhZEBkYW5nYS5jb20wHhcNMTQwNzE1MjA0NjA1WhcNMTcwNTA0MjA0
+    NjA1WjB7MQswCQYDVQQGEwJVUzELMAkGA1UECBMCQ0ExFjAUBgNVBAcTDVNhbiBG
+    cmFuY2lzY28xFDASBgNVBAoTC0JyYWRmaXR6aW5jMRIwEAYDVQQDEwlsb2NhbGhv
+    c3QxHTAbBgkqhkiG9w0BCQEWDmJyYWRAZGFuZ2EuY29tMIIBIjANBgkqhkiG9w0B
+    AQEFAAOCAQ8AMIIBCgKCAQEAt5fAjp4fTcekWUTfzsp0kyih1OYbsGL0KX1eRbSS
+    R8Od0+9Q62Hyny+GFwMTb4A/KU8mssoHvcceSAAbwfbxFK/+s51TobqUnORZrOoT
+    ZjkUygbyXDSK99YBbcR1Pip8vwMTm4XKuLtCigeBBdjjAQdgUO28LENGlsMnmeYk
+    JfODVGnVmr5Ltb9ANA8IKyTfsnHJ4iOCS/PlPbUj2q7YnoVLposUBMlgUb/CykX3
+    mOoLb4yJJQyA/iST6ZxiIEj36D4yWZ5lg7YJl+UiiBQHGCnPdGyipqV06ex0heYW
+    caiW8LWZSUQ93jQ+WVCH8hT7DQO1dmsvUmXlq/JeAlwQ/QIDAQABo4HgMIHdMB0G
+    A1UdDgQWBBRcAROthS4P4U7vTfjByC569R7E6DCBrQYDVR0jBIGlMIGigBRcAROt
+    hS4P4U7vTfjByC569R7E6KF/pH0wezELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNB
+    MRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRQwEgYDVQQKEwtCcmFkZml0emluYzES
+    MBAGA1UEAxMJbG9jYWxob3N0MR0wGwYJKoZIhvcNAQkBFg5icmFkQGRhbmdhLmNv
+    bYIJALfRlWsI8YQHMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADggEBAG6h
+    U9f9sNH0/6oBbGGy2EVU0UgITUQIrFWo9rFkrW5k/XkDjQm+3lzjT0iGR4IxE/Ao
+    eU6sQhua7wrWeFEn47GL98lnCsJdD7oZNhFmQ95Tb/LnDUjs5Yj9brP0NWzXfYU4
+    UK2ZnINJRcJpB8iRCaCxE8DdcUF0XqIEq6pA272snoLmiXLMvNl3kYEdm+je6voD
+    58SNVEUsztzQyXmJEhCpwVI0A6QCjzXj+qvpmw3ZZHi8JwXei8ZZBLTSFBki8Z7n
+    sH9BBH38/SzUmAN4QHSPy1gjqm00OAE8NaYDkh/bzE4d7mLGGMWp/WE3KPSu82HF
+    kPe6XoSbiLm/kxk32T0=
+    -----END CERTIFICATE-----
+
+- path: "/etc/systemd/system/setup.service"
+  permissions: "0644"
+  content: |
+    [Install]
+    WantedBy=multi-user.target
+
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
+    ExecStart=/opt/bin/supervise.sh /opt/bin/setup
+
 - path: "/etc/profile.d/opt-bin-path.sh"
   permissions: "0644"
   content: |
@@ -402,24 +435,5 @@ write_files:
     WantedBy=multi-user.target
 
 
-- path: /etc/systemd/system/docker-healthcheck.service
-  permissions: "0644"
-  content: |
-    [Unit]
-    Requires=docker.service
-    After=docker.service
-
-    [Service]
-    ExecStart=/opt/bin/health-monitor.sh container-runtime
-
-    [Install]
-    WantedBy=multi-user.target
-
-- path: /etc/systemd/system/docker.service.d/environment.conf
-  permissions: "0644"
-  content: |
-    [Service]
-    EnvironmentFile=-/etc/environment
-
 runcmd:
-- systemctl start setup.service
+- systemctl enable --now setup.service

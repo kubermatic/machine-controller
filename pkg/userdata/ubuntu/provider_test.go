@@ -127,7 +127,6 @@ type userDataTestCase struct {
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.21.10"),
 		semver.MustParse("v1.22.7"),
 		semver.MustParse("v1.23.5"),
 		semver.MustParse("v1.24.0"),
@@ -489,7 +488,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.10",
+					Kubelet: "1.23.5",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
