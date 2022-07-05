@@ -21,6 +21,8 @@ set -euo pipefail
 # receives a SIGINT
 set -o monitor
 
+source $(dirname $0)/../lib.sh
+
 # The gocache needs a matching go version to work, so append that to the name
 GO_VERSION="$(go version | awk '{ print $3 }' | sed 's/go//g')"
 
@@ -34,7 +36,7 @@ exit_gracefully() {
 trap exit_gracefully EXIT
 
 if [ -z "${GOCACHE_MINIO_ADDRESS:-}" ]; then
-  echo "env var GOCACHE_MINIO_ADDRESS unset, can not download gocache"
+  echodate "env var GOCACHE_MINIO_ADDRESS unset, cannot download gocache"
   exit 0
 fi
 
@@ -53,25 +55,40 @@ if [[ -z "${CACHE_VERSION}" ]]; then
   GIT_BRANCH="master"
 fi
 
-if [ -z "${PULL_NUMBER:-}" ]; then
-  # Special case: This is called in a Postubmit. Go one revision back,
-  # as there can't be a cache for the current revision
-  CACHE_VERSION="$(git rev-parse ${CACHE_VERSION}~1)"
-fi
-
 # normalize branch name to prevent accidental directories being created
 GIT_BRANCH="$(echo "$GIT_BRANCH" | sed 's#/#-#g')"
 
 ARCHIVE_NAME="${CACHE_VERSION}-${GO_VERSION}.tar"
 URL="${GOCACHE_MINIO_ADDRESS}/machine-controller/${GIT_BRANCH}/${ARCHIVE_NAME}"
 
-# Do not go through the retry loop when there is nothing
-if ! curl --head --silent --fail "${URL}" > /dev/null; then
-  echo "Remote has no gocache ${ARCHIVE_NAME}, exiting"
+# Do not go through the retry loop when there is nothing, but do try the
+# first few parents if no cache was found. This is helpful for retests happening
+# quickly after something got merged to master and no gocache for the most
+# recent commit exists yet. In this case, taking the previous commit's
+# cache is better than nothing. This also helps for postsubmits, where the current
+# commit (the one that got merged) cannot have a cache yet.
+HAS_CACHE=false
+for i in $(seq 1 5); do
+  # check if we have a cache for the given git revision
+  if curl --head --silent --fail "${URL}" > /dev/null; then
+    HAS_CACHE=true
+    break
+  fi
+  echodate "No gocache machine-controller/${GIT_BRANCH}/${ARCHIVE_NAME} available, trying previous commit as a fallback..."
+
+  CACHE_VERSION="$(git rev-parse ${CACHE_VERSION}~1)"
+  ARCHIVE_NAME="${CACHE_VERSION}-${GO_VERSION}.tar"
+  URL="${GOCACHE_MINIO_ADDRESS}/machine-controller/${GIT_BRANCH}/${ARCHIVE_NAME}"
+done
+if ! $HAS_CACHE; then
+  echodate "Could not find any suitable gocaches, giving up."
   exit 0
 fi
 
-echo "Downloading and extracting gocache"
-curl --fail --header "Content-Type: application/octet-stream" "${URL}" | tar -C $GOCACHE -xf -
-
-echo "Successfully fetched gocache into $GOCACHE"
+echodate "Downloading and extracting gocache"
+TEST_NAME="Download and extract gocache"
+# Passing the Headers as space-separated literals doesn't seem to work
+# in conjunction with the retry func, so we just put them in a file instead
+echo 'Content-Type: application/octet-stream' > /tmp/headers
+retry 5 curl --fail -H @/tmp/headers "${URL}" | tar -C $GOCACHE -xf -
+echodate "Successfully fetched gocache into $GOCACHE"

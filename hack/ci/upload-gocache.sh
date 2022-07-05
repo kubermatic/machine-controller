@@ -55,7 +55,7 @@ ARCHIVE_FILE="/tmp/${GIT_HEAD_HASH}.tar"
 # No compression because that needs quite a bit of CPU
 tar -C "$GOCACHE" -cf "$ARCHIVE_FILE" .
 
-echo "Uploading gocache archive"
+echo "Uploading gocache archive machine-controller/${GIT_BRANCH}/${GIT_HEAD_HASH}-${GO_VERSION}.tar"
 curl \
   --fail \
   --upload-file "${ARCHIVE_FILE}" \

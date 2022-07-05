@@ -16,7 +16,6 @@ presubmits:
   - name: pull-machine-controller-e2e-azure
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-azure: "true"
@@ -29,7 +28,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -38,13 +37,14 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-azure-custom-image-reference
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-azure: "true"
@@ -57,7 +57,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -66,14 +66,15 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
 
   - name: pull-machine-controller-e2e-azure-redhat-satellite
     optional: true
     always_run: false
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-azure: "true"
@@ -86,7 +87,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -95,5 +96,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi

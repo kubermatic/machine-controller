@@ -16,7 +16,6 @@ presubmits:
   - name: pull-machine-controller-e2e-digitalocean
     always_run: true
     decorate: true
-    error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
       preset-digitalocean: "true"
@@ -28,7 +27,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-5
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -37,5 +36,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 1Gi
-              cpu: 500m
+              memory: 6Gi
+              cpu: 2
+            limits:
+              memory: 6Gi
