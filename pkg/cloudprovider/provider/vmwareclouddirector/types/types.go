@@ -46,7 +46,7 @@ type RawConfig struct {
 
 	// Network configuration.
 	Network          providerconfigtypes.ConfigVarString `json:"network"`
-	IPAllocationMode IPAllocationMode                    `json:"ipAllocationMode"`
+	IPAllocationMode IPAllocationMode                    `json:"ipAllocationMode,omitempty"`
 
 	// Compute configuration.
 	CPUs         int64   `json:"cpus"`
