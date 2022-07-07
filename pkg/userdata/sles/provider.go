@@ -199,6 +199,7 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl enable --now --no-block docker-healthcheck.service
+	systemctl disable setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -296,5 +297,5 @@ write_files:
 {{- end }}
 
 runcmd:
-- systemctl start setup.service
+- systemctl enable --now setup.service
 `
