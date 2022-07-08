@@ -1065,19 +1065,13 @@ func (r *Reconciler) getNode(ctx context.Context, instance instance.Instance, pr
 		return nil, false, err
 	}
 
-	// We trim leading slashes in raw ID, since we always want three slashes in full ID
-	providerID := fmt.Sprintf("%s:///%s", provider, strings.TrimLeft(instance.ID(), "/"))
 	for _, node := range nodes.Items {
-		if provider == providerconfigtypes.CloudProviderAzure {
-			// Azure IDs are case-insensitive
-			if strings.EqualFold(node.Spec.ProviderID, providerID) {
-				return node.DeepCopy(), true, nil
-			}
-		} else {
-			if node.Spec.ProviderID == providerID {
-				return node.DeepCopy(), true, nil
-			}
+		// Try to find Node by providerID. Should work if CCM is deployed.
+		if node := findNodeByProviderID(instance, provider, nodes.Items); node != nil {
+			klog.V(4).Infof("Found node %q by providerID", node.Name)
+			return node, true, nil
 		}
+
 		// If we were unable to find Node by ProviderID, fallback to IP address matching.
 		// This usually happens if there's no CCM deployed in the cluster.
 		//
@@ -1104,12 +1098,39 @@ func (r *Reconciler) getNode(ctx context.Context, instance instance.Instance, pr
 					continue
 				}
 				if nodeAddress.Address == instanceAddress {
+					klog.V(4).Infof("Found node %q by IP address", node.Name)
 					return node.DeepCopy(), true, nil
 				}
 			}
 		}
 	}
 	return nil, false, nil
+}
+
+func findNodeByProviderID(instance instance.Instance, provider providerconfigtypes.CloudProvider, nodes []corev1.Node) *corev1.Node {
+	providerID := instance.ProviderID()
+	if providerID == "" {
+		return nil
+	}
+
+	for _, node := range nodes {
+		if strings.EqualFold(node.Spec.ProviderID, providerID) {
+			return node.DeepCopy()
+		}
+
+		// AWS has two different providerID notations:
+		//   * aws:///<availability-zone>/<instance-id>
+		//   * aws:///<instance-id>
+		// The first case is handled above, while the second here is handled here.
+		if provider == providerconfigtypes.CloudProviderAWS {
+			pid := strings.Split(node.Spec.ProviderID, "aws:///")
+			if len(pid) == 2 && pid[1] == instance.ID() {
+				return node.DeepCopy()
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r *Reconciler) ReadinessChecks(ctx context.Context) map[string]healthcheck.Check {
