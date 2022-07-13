@@ -345,7 +345,6 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "digitalocean",
 				config: "{digitalocean-config:true}",
 				err:    nil,
 			},

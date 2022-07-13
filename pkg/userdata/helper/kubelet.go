@@ -27,7 +27,6 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,18 +40,16 @@ const (
 	defaultKubeletContainerLogMaxSize = "100Mi"
 )
 
-func kubeletFlagsTpl(withNodeIP, withCloudProvider bool) string {
+func kubeletFlagsTpl(withNodeIP bool) string {
 	flagsTemplate := `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
 --cert-dir=/etc/kubernetes/pki \`
 
-	if withCloudProvider {
-		flagsTemplate += `
+	flagsTemplate += `
 {{- if or (.CloudProvider) (.IsExternal) }}
 {{ cloudProviderFlags .CloudProvider .IsExternal }} \
 {{- end }}`
-	}
 
 	flagsTemplate += `{{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
@@ -303,14 +300,6 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 // For details read kubernetes/sig-networking channel discussion
 // https://kubernetes.slack.com/archives/C09QYUH5W/p1654003958331739
 func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
-	withCloudProviderFlag := true
-	if ipFamily == util.DualStack {
-		// External CCM is not supported by KKP for DigitalOcean
-		if cloudProvider == string(types.CloudProviderDigitalocean) {
-			withCloudProviderFlag = false
-		}
-	}
-
 	withNodeIPFlag := true
 	if external {
 		// If external CCM is in use we don't need to set --node-ip
@@ -321,7 +310,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 	}
 
 	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).
-		Parse(kubeletFlagsTpl(withNodeIPFlag, withCloudProviderFlag))
+		Parse(kubeletFlagsTpl(withNodeIPFlag))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
 	}
