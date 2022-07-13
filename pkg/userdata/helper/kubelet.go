@@ -136,14 +136,10 @@ var kubeletTLSCipherSuites = []string{
 }
 
 func withNodeIPFlag(ipFamily util.IPFamily, cloudProvider string, external bool) bool {
-	// If external CCM is in use we don't need to set --node-ip
+	// If external or in-tree CCM is in use we don't need to set --node-ip
 	// as the cloud provider will know what IPs to return.
 	if ipFamily == util.DualStack {
-		if external {
-			return false
-		}
-
-		if cloudProvider != "" {
+		if external || cloudProvider != "" {
 			return false
 		}
 	}
