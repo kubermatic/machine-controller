@@ -135,6 +135,21 @@ var kubeletTLSCipherSuites = []string{
 	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 }
 
+func withNodeIPFlag(ipFamily util.IPFamily, cloudProvider string, external bool) bool {
+	// If external CCM is in use we don't need to set --node-ip
+	// as the cloud provider will know what IPs to return.
+	if ipFamily == util.DualStack {
+		if external {
+			return false
+		}
+
+		if cloudProvider != "" {
+			return false
+		}
+	}
+	return true
+}
+
 // CloudProviderFlags returns --cloud-provider and --cloud-config flags.
 func CloudProviderFlags(cpName string, external bool) string {
 	if cpName == "" && !external {
@@ -291,21 +306,6 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 
 	buf, err := kyaml.Marshal(cfg)
 	return string(buf), err
-}
-
-func withNodeIPFlag(ipFamily util.IPFamily, cloudProvider string, external bool) bool {
-	// If external CCM is in use we don't need to set --node-ip
-	// as the cloud provider will know what IPs to return.
-	if ipFamily == util.DualStack {
-		if external {
-			return false
-		}
-
-		if cloudProvider != "" {
-			return false
-		}
-	}
-	return true
 }
 
 // KubeletFlags returns the kubelet flags.
