@@ -120,7 +120,7 @@ func (s Server) ID() string {
 	return s.id
 }
 
-// TODO: Implement once we start supporting vCloud Director CCM
+// TODO: Implement once we start supporting vCloud Director CCM.
 func (s Server) ProviderID() string {
 	return ""
 }
