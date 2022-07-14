@@ -120,7 +120,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubeletVersion:                     kubeletVersion.String(),
 		Kubeconfig:                         kubeconfigString,
 		KubernetesCACert:                   kubernetesCACert,
-		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(),
+		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(pconfig.Network.GetIPFamily()),
 		ExtraKubeletFlags:                  crEngine.KubeletFlags(),
 		ContainerRuntimeScript:             crScript,
 		ContainerRuntimeConfigFileName:     crEngine.ConfigFileName(),
@@ -301,7 +301,7 @@ systemd:
           Requires=download-script.service
           After=download-script.service
       contents: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 8 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .ProviderSpec.Network.GetIPFamily .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 8 }}
 
 storage:
   files:
@@ -623,7 +623,7 @@ coreos:
         Requires=download-script.service
         After=download-script.service
     content: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 6 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .ProviderSpec.Network.GetIPFamily .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 6 }}
 
   - name: apply-sysctl-settings.service
     enable: true

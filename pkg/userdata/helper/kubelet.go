@@ -26,6 +26,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,15 +40,18 @@ const (
 	defaultKubeletContainerLogMaxSize = "100Mi"
 )
 
-const (
-	kubeletFlagsTpl = `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+func kubeletFlagsTpl(withNodeIP bool) string {
+	flagsTemplate := `--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
 --kubeconfig=/var/lib/kubelet/kubeconfig \
 --config=/etc/kubernetes/kubelet.conf \
---cert-dir=/etc/kubernetes/pki \
+--cert-dir=/etc/kubernetes/pki \`
+
+	flagsTemplate += `
 {{- if or (.CloudProvider) (.IsExternal) }}
 {{ cloudProviderFlags .CloudProvider .IsExternal }} \
-{{- end }}
-{{- if and (.Hostname) (ne .CloudProvider "aws") }}
+{{- end }}`
+
+	flagsTemplate += `{{- if and (.Hostname) (ne .CloudProvider "aws") }}
 --hostname-override={{ .Hostname }} \
 {{- else if and (eq .CloudProvider "aws") (.IsExternal) }}
 --hostname-override=${KUBELET_HOSTNAME} \
@@ -62,9 +66,17 @@ const (
 {{- end }}
 {{- range .ExtraKubeletFlags }}
 {{ . }} \
-{{- end }}
---node-ip ${KUBELET_NODE_IP}`
+{{- end }}`
 
+	if withNodeIP {
+		flagsTemplate += `
+--node-ip ${KUBELET_NODE_IP}`
+	}
+
+	return flagsTemplate
+}
+
+const (
 	kubeletSystemdUnitTpl = `[Unit]
 After={{ .ContainerRuntime }}.service
 Requires={{ .ContainerRuntime }}.service
@@ -89,7 +101,7 @@ ExecStartPre=/bin/bash /opt/disable-swap.sh
 {{ end }}
 ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
-{{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .PauseImage .InitialTaints .ExtraKubeletFlags | indent 2 }}
+{{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .IPFamily .PauseImage .InitialTaints .ExtraKubeletFlags | indent 2 }}
 
 [Install]
 WantedBy=multi-user.target`
@@ -123,20 +135,32 @@ var kubeletTLSCipherSuites = []string{
 	"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
 }
 
+func withNodeIPFlag(ipFamily util.IPFamily, cloudProvider string, external bool) bool {
+	// If external or in-tree CCM is in use we don't need to set --node-ip
+	// as the cloud provider will know what IPs to return.
+	if ipFamily == util.DualStack {
+		if external || cloudProvider != "" {
+			return false
+		}
+	}
+	return true
+}
+
 // CloudProviderFlags returns --cloud-provider and --cloud-config flags.
-func CloudProviderFlags(cpName string, external bool) (string, error) {
+func CloudProviderFlags(cpName string, external bool) string {
 	if cpName == "" && !external {
-		return "", nil
+		return ""
 	}
 
 	if external {
-		return "--cloud-provider=external", nil
+		return `--cloud-provider=external`
 	}
-	return fmt.Sprintf(cpFlags, cpName), nil
+
+	return fmt.Sprintf(cpFlags, cpName)
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet.
-func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
+func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %w", err)
@@ -149,6 +173,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		Hostname          string
 		ClusterDNSIPs     []net.IP
 		IsExternal        bool
+		IPFamily          util.IPFamily
 		PauseImage        string
 		InitialTaints     []corev1.Taint
 		ExtraKubeletFlags []string
@@ -160,6 +185,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		Hostname:          hostname,
 		ClusterDNSIPs:     dnsIPs,
 		IsExternal:        external,
+		IPFamily:          ipFamily,
 		PauseImage:        pauseImage,
 		InitialTaints:     initialTaints,
 		ExtraKubeletFlags: extraKubeletFlags,
@@ -279,8 +305,16 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 }
 
 // KubeletFlags returns the kubelet flags.
-func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
-	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).Parse(kubeletFlagsTpl)
+// --node-ip and --cloud-provider kubelet flags conflict in the dualstack setup.
+// In general, it is not expected to need to use --node-ip with external CCMs,
+// as the cloud provider is expected to know the correct IPs to return.
+// For details read kubernetes/sig-networking channel discussion
+// https://kubernetes.slack.com/archives/C09QYUH5W/p1654003958331739
+func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+	withNodeIPFlag := withNodeIPFlag(ipFamily, cloudProvider, external)
+
+	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).
+		Parse(kubeletFlagsTpl(withNodeIPFlag))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
 	}
@@ -328,6 +362,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		ClusterDNSIPs     []net.IP
 		KubeletVersion    string
 		IsExternal        bool
+		IPFamily          util.IPFamily
 		PauseImage        string
 		InitialTaints     string
 		ExtraKubeletFlags []string
@@ -337,6 +372,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		ClusterDNSIPs:     dnsIPs,
 		KubeletVersion:    version,
 		IsExternal:        external,
+		IPFamily:          ipFamily,
 		PauseImage:        pauseImage,
 		InitialTaints:     strings.Join(initialTaintsArgs, ","),
 		ExtraKubeletFlags: kubeletFlags,
