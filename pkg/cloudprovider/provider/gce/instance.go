@@ -61,7 +61,7 @@ func (gi *googleInstance) ID() string {
 }
 
 func (gi *googleInstance) ProviderID() string {
-	return ""
+	return fmt.Sprintf("gce://%s/%s/%s", gi.projectID, gi.zone, gi.ci.Name)
 }
 
 // Addresses implements instance.Instance.

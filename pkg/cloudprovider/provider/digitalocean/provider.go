@@ -504,7 +504,7 @@ func (d *doInstance) ID() string {
 }
 
 func (d *doInstance) ProviderID() string {
-	return ""
+	return fmt.Sprintf("digitalocean://%d", d.droplet.ID)
 }
 
 func (d *doInstance) Addresses() map[string]v1.NodeAddressType {

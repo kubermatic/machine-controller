@@ -53,6 +53,7 @@ func (b bareMetalServer) ID() string {
 	return b.server.GetID()
 }
 
+// TODO: Implement once we start supporting vCloud Director CCM
 func (b bareMetalServer) ProviderID() string {
 	return ""
 }

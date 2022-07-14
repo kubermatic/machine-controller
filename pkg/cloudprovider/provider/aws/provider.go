@@ -1005,7 +1005,14 @@ func (d *awsInstance) ID() string {
 }
 
 func (d *awsInstance) ProviderID() string {
-	return ""
+	if d.instance.InstanceId == nil {
+		return ""
+	}
+	if d.instance.Placement.AvailabilityZone == nil {
+		return "aws:///" + *d.instance.InstanceId
+	}
+
+	return "aws:///" + *d.instance.Placement.AvailabilityZone + "/" + *d.instance.InstanceId
 }
 
 func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {

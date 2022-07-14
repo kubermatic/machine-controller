@@ -162,7 +162,7 @@ func (k *kubeVirtServer) ID() string {
 }
 
 func (k *kubeVirtServer) ProviderID() string {
-	return ""
+	return "kubevirt://" + k.vmi.Name
 }
 
 func (k *kubeVirtServer) Addresses() map[string]corev1.NodeAddressType {

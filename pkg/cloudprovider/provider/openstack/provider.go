@@ -935,7 +935,7 @@ func (d *osInstance) ID() string {
 }
 
 func (d *osInstance) ProviderID() string {
-	return ""
+	return "openstack:///" + d.server.ID
 }
 
 func (d *osInstance) Addresses() map[string]corev1.NodeAddressType {

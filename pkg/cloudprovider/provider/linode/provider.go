@@ -403,6 +403,7 @@ func (d *linodeInstance) ID() string {
 	return strconv.Itoa(d.linode.ID)
 }
 
+// TODO: Implement once we start supporting Linode CCM
 func (d *linodeInstance) ProviderID() string {
 	return ""
 }

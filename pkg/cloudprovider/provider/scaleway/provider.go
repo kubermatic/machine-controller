@@ -379,6 +379,7 @@ func (s *scwServer) ID() string {
 	return s.server.ID
 }
 
+// TODO: Implement once we start supporting Scaleway CCM
 func (s *scwServer) ProviderID() string {
 	return ""
 }

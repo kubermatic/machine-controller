@@ -125,7 +125,11 @@ func (vm *azureVM) Name() string {
 }
 
 func (vm *azureVM) ProviderID() string {
-	return ""
+	if vm.vm.ID == nil {
+		return ""
+	}
+
+	return "azure://" + *vm.vm.ID
 }
 
 func (vm *azureVM) Status() instance.Status {

@@ -534,7 +534,7 @@ func (s *hetznerServer) ID() string {
 }
 
 func (s *hetznerServer) ProviderID() string {
-	return ""
+	return fmt.Sprintf("hcloud://%d", s.server.ID)
 }
 
 func (s *hetznerServer) Addresses() map[string]v1.NodeAddressType {

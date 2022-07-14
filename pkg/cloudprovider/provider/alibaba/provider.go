@@ -86,6 +86,7 @@ func (a *alibabaInstance) ID() string {
 	return a.instance.InstanceId
 }
 
+// TODO: Implement once we start supporting Alibaba CCM
 func (a *alibabaInstance) ProviderID() string {
 	return ""
 }

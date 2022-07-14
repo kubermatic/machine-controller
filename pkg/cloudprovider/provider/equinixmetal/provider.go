@@ -400,7 +400,7 @@ func (s *metalDevice) ID() string {
 }
 
 func (s *metalDevice) ProviderID() string {
-	return ""
+	return "equinixmetal://" + s.device.ID
 }
 
 func (s *metalDevice) Addresses() map[string]v1.NodeAddressType {
