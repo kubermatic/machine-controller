@@ -86,6 +86,10 @@ func (a *alibabaInstance) ID() string {
 	return a.instance.InstanceId
 }
 
+func (a *alibabaInstance) ProviderID() string {
+	return ""
+}
+
 func (a *alibabaInstance) Addresses() map[string]v1.NodeAddressType {
 	primaryIPAddresses := map[string]v1.NodeAddressType{}
 	for _, networkInterface := range a.instance.NetworkInterfaces.NetworkInterface {

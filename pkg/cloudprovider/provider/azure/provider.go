@@ -124,6 +124,10 @@ func (vm *azureVM) Name() string {
 	return *vm.vm.Name
 }
 
+func (vm *azureVM) ProviderID() string {
+	return ""
+}
+
 func (vm *azureVM) Status() instance.Status {
 	return vm.status
 }

@@ -24,6 +24,8 @@ type Instance interface {
 	Name() string
 	// ID returns the instance identifier.
 	ID() string
+	// ProviderID returns the expected providerID for the instance
+	ProviderID() string
 	// Addresses returns a list of addresses associated with the instance.
 	Addresses() map[string]v1.NodeAddressType
 	// Status returns the instance status.

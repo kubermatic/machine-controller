@@ -48,6 +48,10 @@ func (f CloudProviderInstance) ID() string {
 	return ""
 }
 
+func (f CloudProviderInstance) ProviderID() string {
+	return ""
+}
+
 func (f CloudProviderInstance) Addresses() map[string]corev1.NodeAddressType {
 	return nil
 }

@@ -403,6 +403,10 @@ func (d *linodeInstance) ID() string {
 	return strconv.Itoa(d.linode.ID)
 }
 
+func (d *linodeInstance) ProviderID() string {
+	return ""
+}
+
 func (d *linodeInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 	for _, n := range d.linode.IPv4 {

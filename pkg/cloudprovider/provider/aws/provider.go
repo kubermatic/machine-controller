@@ -1004,6 +1004,10 @@ func (d *awsInstance) ID() string {
 	return aws.StringValue(d.instance.InstanceId)
 }
 
+func (d *awsInstance) ProviderID() string {
+	return ""
+}
+
 func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{
 		aws.StringValue(d.instance.PublicIpAddress):  v1.NodeExternalIP,

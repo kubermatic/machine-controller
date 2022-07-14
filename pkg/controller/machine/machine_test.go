@@ -62,6 +62,10 @@ func (i *fakeInstance) ID() string {
 	return i.id
 }
 
+func (i *fakeInstance) ProviderID() string {
+	return ""
+}
+
 func (i *fakeInstance) Status() instance.Status {
 	return i.status
 }

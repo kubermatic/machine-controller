@@ -85,6 +85,10 @@ func (nutanixServer Server) ID() string {
 	return nutanixServer.id
 }
 
+func (nutanixServer Server) ProviderID() string {
+	return ""
+}
+
 func (nutanixServer Server) Addresses() map[string]corev1.NodeAddressType {
 	return nutanixServer.addresses
 }

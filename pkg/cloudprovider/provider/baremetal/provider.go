@@ -53,6 +53,10 @@ func (b bareMetalServer) ID() string {
 	return b.server.GetID()
 }
 
+func (b bareMetalServer) ProviderID() string {
+	return ""
+}
+
 func (b bareMetalServer) Addresses() map[string]corev1.NodeAddressType {
 	return map[string]corev1.NodeAddressType{
 		b.server.GetIPAddress(): corev1.NodeInternalIP,
