@@ -57,11 +57,11 @@ var (
 	}
 
 	vSphereOSImageTemplates = map[string]string{
-		string(providerconfigtypes.OperatingSystemCentOS):     "centos-7",
-		string(providerconfigtypes.OperatingSystemFlatcar):    "flatcar-stable",
-		string(providerconfigtypes.OperatingSystemRHEL):       "rhel-8.6",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "rocky-8",
-		string(providerconfigtypes.OperatingSystemUbuntu):     "ubuntu-20.04",
+		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar",
+		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
+		string(providerconfigtypes.OperatingSystemUbuntu):     "machine-controller-e2e-ubuntu",
 	}
 )
 
