@@ -24,13 +24,12 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "vsphere"
           cloudProviderSpec:
-            templateVMName: 'machine-controller-e2e-<< OS_NAME >>'
+            templateVMName: '<< OS_Image_Template >>'
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
             datacenter: 'dc-1'
             folder: '/dc-1/vm/e2e-tests'
             password: << VSPHERE_PASSWORD >>
-            # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
             datastoreCluster: 'dsc-1'
             resourcePool: 'e2e-resource-pool'
             cpus: 2

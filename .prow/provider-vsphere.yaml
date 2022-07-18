@@ -20,7 +20,7 @@ presubmits:
     labels:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
-      preset-vsphere: "true"
+      preset-vsphere-legacy: "true"
       preset-rhel: "true"
       preset-goproxy: "true"
       preset-kind-volume-mounts: "true"

@@ -55,6 +55,14 @@ var (
 		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar-stable-2983",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
 	}
+
+	vSphereOSImageTemplates = map[string]string{
+		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar",
+		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
+		string(providerconfigtypes.OperatingSystemUbuntu):     "machine-controller-e2e-ubuntu",
+	}
 )
 
 type scenario struct {
@@ -225,6 +233,9 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
+
+	// only use by vSphere scenarios
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_Image_Template >>=%s", vSphereOSImageTemplates[testCase.osName]))
 
 	// default kubeconfig to the hardcoded path at which `make e2e-cluster` creates its new kubeconfig
 	gopath := os.Getenv("GOPATH")

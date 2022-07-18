@@ -24,14 +24,14 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "vsphere"
           cloudProviderSpec:
-            templateVMName: '<< OS_NAME >>-template'
+            templateVMName: '<< OS_Image_Template >>'
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
-            datacenter: 'Customer-A'
-            folder: '/Customer-A/vm/e2e-tests'
+            datacenter: 'dc-1'
+            folder: '/dc-1/vm/e2e-tests'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            datastore: datastore1
+            datastore: HS-FreeNAS
             allowInsecure: true
             cpus: 2
             MemoryMB: 2048
