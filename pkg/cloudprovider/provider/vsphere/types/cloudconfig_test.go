@@ -87,6 +87,36 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "3-dual-stack",
+			config: &CloudConfig{
+				Global: GlobalOpts{
+					User:         "admin",
+					Password:     "password",
+					InsecureFlag: true,
+					IPFamily:     "ipv4,ipv6",
+				},
+				Workspace: WorkspaceOpts{
+					VCenterIP:        "https://127.0.0.1:8443",
+					ResourcePoolPath: "/some-resource-pool",
+					DefaultDatastore: "Datastore",
+					Folder:           "some-folder",
+					Datacenter:       "Datacenter",
+				},
+				Disk: DiskOpts{
+					SCSIControllerType: "pvscsi",
+				},
+				VirtualCenter: map[string]*VirtualCenterConfig{
+					"vc1": {
+						User:        "1-some-user",
+						Password:    "1-some-password",
+						VCenterPort: "443",
+						Datacenters: "1-foo",
+						IPFamily:    "ipv4,ipv6",
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {

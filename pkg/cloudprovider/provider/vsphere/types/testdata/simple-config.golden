@@ -7,6 +7,7 @@ working-dir       = ""
 datacenter        = ""
 datastore         = ""
 server            = ""
+ip-family         = ""
 
 [Disk]
 scsicontrollertype = "pvscsi"
