@@ -7,7 +7,6 @@ working-dir       = ""
 datacenter        = ""
 datastore         = ""
 server            = ""
-ip-family         = ""
 
 [Disk]
 scsicontrollertype = "pvscsi"
@@ -25,12 +24,10 @@ user = "1-some-user"
 password = "1-some-password"
 port = 443
 datacenters = "1-foo"
-ip-family = ""
 
 [VirtualCenter "vc2"]
 user = "2-some-user"
 password = "2-some-password"
 port = 443
 datacenters = "2-foo"
-ip-family = ""
 
