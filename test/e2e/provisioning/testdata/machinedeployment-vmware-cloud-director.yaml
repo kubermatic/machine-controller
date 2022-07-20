@@ -27,7 +27,7 @@ spec:
           cloudProviderSpec:
             username: "<< VCD_USER >>"
             url: "<< VCD_URL >>"
-            password: "<< VCD_PASSWORD >>"
+            password: '<< VCD_PASSWORD >>'
             organization: "<< VCD_ORG >>"
             vdc: "<< VCD_VDC >>"
             allowInsecure: false
