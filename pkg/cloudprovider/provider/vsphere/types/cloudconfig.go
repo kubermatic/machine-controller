@@ -36,6 +36,9 @@ working-dir       = {{ .Global.WorkingDir | iniEscape }}
 datacenter        = {{ .Global.Datacenter | iniEscape }}
 datastore         = {{ .Global.DefaultDatastore | iniEscape }}
 server            = {{ .Global.VCenterIP | iniEscape }}
+{{- if .Global.IPFamily }}
+ip-family         = {{ .Global.IPFamily | iniEscape }}
+{{- end }}
 
 [Disk]
 scsicontrollertype = {{ .Disk.SCSIControllerType | iniEscape }}
@@ -53,6 +56,9 @@ user = {{ $vc.User | iniEscape }}
 password = {{ $vc.Password | iniEscape }}
 port = {{ $vc.VCenterPort }}
 datacenters = {{ $vc.Datacenters | iniEscape }}
+{{- if $vc.IPFamily }}
+ip-family = {{ $vc.IPFamily | iniEscape }}
+{{- end }}
 {{ end }}
 `
 )
@@ -79,6 +85,7 @@ type GlobalOpts struct {
 	DefaultDatastore string `gcfg:"datastore"`
 	VCenterIP        string `gcfg:"server"`
 	ClusterID        string `gcfg:"cluster-id"`
+	IPFamily         string `gcfg:"ip-family"` // NOTE: supported only in case of out-of-tree CCM
 }
 
 type VirtualCenterConfig struct {
@@ -86,6 +93,7 @@ type VirtualCenterConfig struct {
 	Password    string `gcfg:"password"`
 	VCenterPort string `gcfg:"port"`
 	Datacenters string `gcfg:"datacenters"`
+	IPFamily    string `gcfg:"ip-family"` // NOTE: supported only in case of out-of-tree CCM
 }
 
 // CloudConfig is used to read and store information from the cloud configuration file.
