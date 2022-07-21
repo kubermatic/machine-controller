@@ -903,6 +903,23 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	addresses := providerInstance.Addresses()
 	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", addresses)
 	r.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", eventMessage)
+	// It might happen that we got here, but we still don't have IP addresses
+	// for the instance. In that case it doesn't make sense to proceed because:
+	//   * if we match Node by ProviderID, Machine will get NodeOwnerRef, but
+	//     there will be no IP address on that Machine object. Since we
+	//     successfully set NodeOwnerRef, Machine will not be reconciled again,
+	//     so it will never get IP addresses. This breaks the NodeCSRApprover
+	//     workflow because NodeCSRApprover cannot validate certificates without
+	//     IP addresses, resulting in a broken Node
+	//   * if we can't match Node by ProviderID, fallback to matching by IP
+	//     address will not have any result because we still don't have IP
+	//     addresses for that instance
+	// Considering that, we just retry after 15 seconds, hoping that we'll
+	// get IP addresses by then.
+	if len(addresses) == 0 {
+		return &reconcile.Result{RequeueAfter: 15 * time.Second}, nil
+	}
+
 	machineAddresses := []corev1.NodeAddress{}
 	for address, addressType := range addresses {
 		machineAddresses = append(machineAddresses, corev1.NodeAddress{Address: address, Type: addressType})
