@@ -838,7 +838,6 @@ func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
 			},
 		}
 	}
-
 	return affinity
 }
 
