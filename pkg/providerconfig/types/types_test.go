@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 )
 
@@ -160,6 +160,7 @@ func TestConfigVarBoolMarshalling(t *testing.T) {
 func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 	testCases := []ConfigVarString{
 		{Value: "val"},
+		{Value: "spe<ialv&lue"},
 		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 		{Value: "val", SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
@@ -169,6 +170,11 @@ func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 		},
 		{
 			Value:           "val",
+			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
+		},
+		{
+			Value:           "spe<ialv&lue",
 			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},

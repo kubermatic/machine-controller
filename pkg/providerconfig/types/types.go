@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
@@ -226,7 +227,16 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
 		b = bytes.TrimPrefix(b, []byte(`"`))
 		b = bytes.TrimSuffix(b, []byte(`"`))
-		configVarString.Value = string(b)
+
+		// `Unquote` expects the input string to be inside quotation marks.
+		//  Since we can have a string without any quotations, in which case `TrimPrefix` and
+		// `TrimSuffix` will be noop. We explicitly add quotation marks to the input string
+		// to make sure that `Unquote` never fails.
+		s, err := strconv.Unquote("\"" + string(b) + "\"")
+		if err != nil {
+			return err
+		}
+		configVarString.Value = s
 		return nil
 	}
 	// This type must have the same fields as ConfigVarString but not
