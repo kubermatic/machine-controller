@@ -33,6 +33,7 @@ trap cleanup EXIT
 
 export GIT_HEAD_HASH="$(git rev-parse HEAD)"
 export MC_VERSION="${GIT_HEAD_HASH}"
+export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
 
 TEST_NAME="Pre-warm Go build cache"
 echodate "Attempting to pre-warm Go build cache"
