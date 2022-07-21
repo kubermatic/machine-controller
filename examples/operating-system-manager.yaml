@@ -1038,69 +1038,11 @@ subjects:
     name: cloud-init-getter
     namespace: cloud-init-settings
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: operating-system-manager
-rules:
-  - apiGroups:
-      - "cluster.k8s.io"
-    resources:
-      - "machinedeployments"
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - "apps"
-    resources:
-      - "deployments"
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - "operatingsystemmanager.k8c.io"
-    resources:
-      - "operatingsystemprofiles"
-      - "operatingsystemconfigs"
-    verbs:
-      - "*"
-  - apiGroups:
-      - ""
-    resources:
-      - "events"
-    verbs:
-      - create
-      - patch
-  - apiGroups:
-      - ""
-    resources:
-      - "configmaps"
-    verbs:
-      - create
-      - update
-      - list
-      - get
-  - apiGroups:
-      - "coordination.k8s.io"
-    resources:
-      - "leases"
-    verbs:
-      - "*"
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: operating-system-manager
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: operating-system-manager
-subjects:
-  - kind: ServiceAccount
-    name: operating-system-manager
-    namespace: kube-system
+  name: operating-system-manager-webhook
+  namespace: kube-system
 ---
 apiVersion: v1
 kind: Service
@@ -1116,39 +1058,6 @@ spec:
   selector:
     app: operating-system-manager-webhook
   type: ClusterIP
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: operating-system-manager-webhook
-  namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: operating-system-manager-webhook
-rules:
-  - apiGroups:
-      - "operatingsystemmanager.k8c.io"
-    resources:
-      - "operatingsystemprofiles"
-    verbs:
-      - get
-      - list
-      - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: operating-system-manager-webhook
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: operating-system-manager-webhook
-subjects:
-  - kind: ServiceAccount
-    name: operating-system-manager-webhook
-    namespace: kube-system
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1216,25 +1125,6 @@ metadata:
   annotations:
     cert-manager.io/inject-ca-from: kube-system/operating-system-manager-serving-cert
 webhooks:
-  - name: machinedeployments.cluster.k8s.io
-    failurePolicy: Fail
-    sideEffects: None
-    admissionReviewVersions: ["v1", "v1beta1"]
-    rules:
-      - apiGroups:
-          - "cluster.k8s.io"
-        apiVersions:
-          - v1alpha1
-        operations:
-          - CREATE
-          - UPDATE
-        resources:
-          - machinedeployments
-    clientConfig:
-      service:
-        namespace: kube-system
-        name: operating-system-manager-webhook
-        path: /machinedeployment
   - name: operatingsystemprofiles.operatingsystemmanager.k8c.io
     failurePolicy: Fail
     sideEffects: None
@@ -1280,6 +1170,193 @@ metadata:
   name: operating-system-manager
   namespace: kube-system
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: kube-system
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+    verbs:
+      - create
+      - update
+      - list
+      - get
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: cloud-init-settings
+rules:
+  # Secrets access is required for managing provisioning configurations
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - create
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: kube-public
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - cluster-info
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: default
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+    resourceNames:
+      - kubernetes
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: cloud-init-settings
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: kube-public
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:operating-system-manager
+rules:
+  - apiGroups:
+      - operatingsystemmanager.k8c.io
+    resources:
+      - operatingsystemprofiles
+      - operatingsystemconfigs
+    verbs:
+      - "*"
+  - apiGroups:
+      - cluster.k8s.io
+    resources:
+      - machinedeployments
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+  # Secrets and configmaps are needed for the bootstrap token creation and when a ref is used for a
+  # value in the machineSpec
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:operating-system-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1308,7 +1385,7 @@ spec:
           command:
             - /usr/local/bin/osm-controller
             - -logtostderr
-            - -v=3
+            - -v=5
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -metrics-address=0.0.0.0:8080
@@ -1335,166 +1412,3 @@ spec:
             limits:
               memory: 256Mi
               cpu: 100m
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: operating-system-manager
-  namespace: kube-system
-rules:
-  - apiGroups:
-      - operatingsystemmanager.k8c.io
-    resources:
-      - operatingsystemprofiles
-    verbs:
-      - "*"
-  - apiGroups:
-      - operatingsystemmanager.k8c.io
-    resources:
-      - operatingsystemprofiles/status
-    verbs:
-      - get
-  - apiGroups:
-      - operatingsystemmanager.k8c.io
-    resources:
-      - operatingsystemconfigs
-    verbs:
-      - "*"
-  - apiGroups:
-      - operatingsystemmanager.k8c.io
-    resources:
-      - operatingsystemconfigs/status
-    verbs:
-      - get
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-    verbs:
-      - watch
-      - list
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-      - secrets
-    verbs:
-      - get
-      - create
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - events
-    verbs:
-      - create
-      - patch
-  - apiGroups:
-      - "coordination.k8s.io"
-    resources:
-      - leases
-    verbs:
-      - "*"
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: operating-system-manager
-  namespace: kube-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: operating-system-manager
-subjects:
-  - kind: ServiceAccount
-    name: operating-system-manager
-    namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: operating-system-manager
-  namespace: kube-public
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    resourceNames:
-      - cluster-info
-    verbs:
-      - get
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: operating-system-manager
-  namespace: kube-public
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: operating-system-manager
-subjects:
-  - kind: ServiceAccount
-    name: operating-system-manager
-    namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: operating-system-manager
-  namespace: default
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - endpoints
-    resourceNames:
-      - kubernetes
-    verbs:
-      - get
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: operating-system-manager
-  namespace: default
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: operating-system-manager
-subjects:
-  - kind: ServiceAccount
-    name: operating-system-manager
-    namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: operating-system-manager
-  namespace: cloud-init-settings
-rules:
-  # Secrets access is required for managing provisioning configurations
-  - apiGroups:
-      - ""
-    resources:
-      - secrets
-    verbs:
-      - get
-      - list
-      - create
-      - delete
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: operating-system-manager
-  namespace: cloud-init-settings
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: operating-system-manager
-subjects:
-  - kind: ServiceAccount
-    name: operating-system-manager
-    namespace: kube-system

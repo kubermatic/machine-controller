@@ -72,6 +72,7 @@ if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
     # This is required for running e2e tests in KIND
     url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
     sed -i "s;-container-runtime=containerd;$url;g" examples/operating-system-manager.yaml
+    sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/operating-system-manager.yaml
     kubectl apply -f examples/operating-system-manager.yaml
   )
 fi
