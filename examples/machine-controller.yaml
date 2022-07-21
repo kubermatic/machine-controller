@@ -262,6 +262,7 @@ spec:
             - -logtostderr
             - -v=6
             - -use-osm=true
+            - -namespace=kube-system
             - -listen-address=0.0.0.0:9876
           volumeMounts:
             - name: machine-controller-admission-cert

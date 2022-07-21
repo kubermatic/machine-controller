@@ -58,7 +58,7 @@ fi
 
 if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
   # cert-manager is required by OSM for generating TLS Certificates
-  echodata "Installing cert-manager"
+  echodate "Installing cert-manager"
   (
     kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
     # Wait for cert-manager to be ready
@@ -67,7 +67,7 @@ if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
     kubectl -n cert-manager rollout status deploy/cert-manager-webhook
   )
 
-  echodata "Installing operating-system-manager"
+  echodate "Installing operating-system-manager"
   (
     # This is required for running e2e tests in KIND
     url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
