@@ -399,6 +399,10 @@ func (s *metalDevice) ID() string {
 	return s.device.ID
 }
 
+func (s *metalDevice) ProviderID() string {
+	return "equinixmetal://" + s.device.ID
+}
+
 func (s *metalDevice) Addresses() map[string]v1.NodeAddressType {
 	// returns addresses in CIDR format
 	addresses := map[string]v1.NodeAddressType{}

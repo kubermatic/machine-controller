@@ -503,6 +503,10 @@ func (d *doInstance) ID() string {
 	return strconv.Itoa(d.droplet.ID)
 }
 
+func (d *doInstance) ProviderID() string {
+	return fmt.Sprintf("digitalocean://%d", d.droplet.ID)
+}
+
 func (d *doInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 	for _, n := range d.droplet.Networks.V4 {

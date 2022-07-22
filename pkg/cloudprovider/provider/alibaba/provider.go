@@ -86,6 +86,11 @@ func (a *alibabaInstance) ID() string {
 	return a.instance.InstanceId
 }
 
+// TODO: Implement once we start supporting Alibaba CCM.
+func (a *alibabaInstance) ProviderID() string {
+	return ""
+}
+
 func (a *alibabaInstance) Addresses() map[string]v1.NodeAddressType {
 	primaryIPAddresses := map[string]v1.NodeAddressType{}
 	for _, networkInterface := range a.instance.NetworkInterfaces.NetworkInterface {

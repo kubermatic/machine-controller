@@ -161,6 +161,10 @@ func (k *kubeVirtServer) ID() string {
 	return string(k.vmi.UID)
 }
 
+func (k *kubeVirtServer) ProviderID() string {
+	return "kubevirt://" + k.vmi.Name
+}
+
 func (k *kubeVirtServer) Addresses() map[string]corev1.NodeAddressType {
 	addresses := map[string]corev1.NodeAddressType{}
 	for _, kvInterface := range k.vmi.Status.Interfaces {

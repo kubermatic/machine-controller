@@ -120,6 +120,11 @@ func (s Server) ID() string {
 	return s.id
 }
 
+// TODO: Implement once we start supporting vCloud Director CCM.
+func (s Server) ProviderID() string {
+	return ""
+}
+
 func (s Server) Addresses() map[string]corev1.NodeAddressType {
 	return s.addresses
 }

@@ -533,6 +533,10 @@ func (s *hetznerServer) ID() string {
 	return strconv.Itoa(s.server.ID)
 }
 
+func (s *hetznerServer) ProviderID() string {
+	return fmt.Sprintf("hcloud://%d", s.server.ID)
+}
+
 func (s *hetznerServer) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 	for _, fips := range s.server.PublicNet.FloatingIPs {

@@ -82,6 +82,7 @@ var _ instance.Instance = &Server{}
 type Server struct {
 	name      string
 	id        string
+	uuid      string
 	status    instance.Status
 	addresses map[string]corev1.NodeAddressType
 }
@@ -92,6 +93,10 @@ func (vsphereServer Server) Name() string {
 
 func (vsphereServer Server) ID() string {
 	return vsphereServer.id
+}
+
+func (vsphereServer Server) ProviderID() string {
+	return "vsphere://" + vsphereServer.uuid
 }
 
 func (vsphereServer Server) Addresses() map[string]corev1.NodeAddressType {
@@ -372,7 +377,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, fmt.Errorf("error when waiting for vm powerOn task: %w", err)
 	}
 
-	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
+	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value, uuid: virtualMachine.UUID(ctx)}, nil
 }
 
 func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
@@ -502,7 +507,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, da
 		}
 		// We must return here because the vendored code for determining if the guest
 		// utils are running yields an NPD when using with an instance that is not running
-		return Server{name: virtualMachine.Name(), status: instance.StatusUnknown}, nil
+		return Server{name: virtualMachine.Name(), status: instance.StatusUnknown, uuid: virtualMachine.UUID(ctx)}, nil
 	}
 
 	// virtualMachine.IsToolsRunning panics when executed on a VM that is not powered on
@@ -530,7 +535,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, da
 		klog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
 	}
 
-	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value}, nil
+	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value, uuid: virtualMachine.UUID(ctx)}, nil
 }
 
 func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {

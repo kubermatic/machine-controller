@@ -934,6 +934,10 @@ func (d *osInstance) ID() string {
 	return d.server.ID
 }
 
+func (d *osInstance) ProviderID() string {
+	return "openstack:///" + d.server.ID
+}
+
 func (d *osInstance) Addresses() map[string]corev1.NodeAddressType {
 	addresses := map[string]corev1.NodeAddressType{}
 	for _, networkAddresses := range d.server.Addresses {

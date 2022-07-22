@@ -1004,6 +1004,17 @@ func (d *awsInstance) ID() string {
 	return aws.StringValue(d.instance.InstanceId)
 }
 
+func (d *awsInstance) ProviderID() string {
+	if d.instance.InstanceId == nil {
+		return ""
+	}
+	if d.instance.Placement.AvailabilityZone == nil {
+		return "aws:///" + *d.instance.InstanceId
+	}
+
+	return "aws:///" + *d.instance.Placement.AvailabilityZone + "/" + *d.instance.InstanceId
+}
+
 func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{
 		aws.StringValue(d.instance.PublicIpAddress):  v1.NodeExternalIP,
