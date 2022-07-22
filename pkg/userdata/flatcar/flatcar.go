@@ -44,17 +44,27 @@ type Config struct {
 }
 
 func DefaultConfig(operatingSystemSpec runtime.RawExtension) runtime.RawExtension {
-	return DefaultConfigForCloud(operatingSystemSpec, "")
+	// Webhook has already performed the defaulting at this point. So the value for
+	// cloudProvider and operatingSystemManagerEnabled parameters are insignificant.
+	return DefaultConfigForCloud(operatingSystemSpec, "", true)
 }
 
-func DefaultConfigForCloud(operatingSystemSpec runtime.RawExtension, cloudProvider types.CloudProvider) runtime.RawExtension {
+func DefaultConfigForCloud(operatingSystemSpec runtime.RawExtension, cloudProvider types.CloudProvider, operatingSystemManagerEnabled bool) runtime.RawExtension {
+	// If userdata is being used from machine-controller and selected cloud provider is AWS then we
+	// force cloud-init. Because AWS has a very low cap for the maximum size of user-data. In case of ignition,
+	// we always exceed that limit which prevents new ec2 instances from being created.
 	osSpec := Config{}
-
 	if operatingSystemSpec.Raw != nil {
 		_ = json.Unmarshal(operatingSystemSpec.Raw, &osSpec)
 	}
-	if cloudProvider == types.CloudProviderAWS {
+	// In case of OSM this is not required.
+	if cloudProvider == types.CloudProviderAWS && !operatingSystemManagerEnabled {
 		osSpec.ProvisioningUtility = CloudInit
+	}
+
+	// Always default to ignition if no value was provided
+	if osSpec.ProvisioningUtility == "" {
+		osSpec.ProvisioningUtility = Ignition
 	}
 
 	operatingSystemSpec.Raw, _ = json.Marshal(osSpec)
