@@ -238,6 +238,12 @@ write_files:
 {{ .ContainerRuntimeScript | indent 4 }}
 
 {{ safeDownloadBinariesScript .KubeletVersion | indent 4 }}
+    DEFAULT_IFC_NAME=$(ip -o route get 1  | grep -oP "dev \K\S+")
+    echo NETWORKING_IPV6=yes >> /etc/sysconfig/network
+    echo IPV6INIT=yes >> /etc/sysconfig/network-scripts/ifcfg-$DEFAULT_IFC_NAME
+    echo DHCPV6C=yes >> /etc/sysconfig/network-scripts/ifcfg-$DEFAULT_IFC_NAME
+    ifdown $DEFAULT_IFC_NAME && ifup $DEFAULT_IFC_NAME
+
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
