@@ -48,10 +48,11 @@ func init() {
 }
 
 type fakeInstance struct {
-	name      string
-	id        string
-	addresses map[string]corev1.NodeAddressType
-	status    instance.Status
+	name       string
+	id         string
+	providerID string
+	addresses  map[string]corev1.NodeAddressType
+	status     instance.Status
 }
 
 func (i *fakeInstance) Name() string {
@@ -62,6 +63,10 @@ func (i *fakeInstance) ID() string {
 	return i.id
 }
 
+func (i *fakeInstance) ProviderID() string {
+	return i.providerID
+}
+
 func (i *fakeInstance) Status() instance.Status {
 	return i.status
 }
@@ -70,11 +75,7 @@ func (i *fakeInstance) Addresses() map[string]corev1.NodeAddressType {
 	return i.addresses
 }
 
-func getTestNode(id, provider string) corev1.Node {
-	providerID := ""
-	if provider != "" {
-		providerID = fmt.Sprintf("%s:///%s", provider, id)
-	}
+func getTestNode(id, providerID string) corev1.Node {
 	return corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("node%s", id),
@@ -98,10 +99,10 @@ func getTestNode(id, provider string) corev1.Node {
 }
 
 func TestController_GetNode(t *testing.T) {
-	node1 := getTestNode("1", "aws")
-	node2 := getTestNode("2", "openstack")
+	node1 := getTestNode("1", "aws:///i-1")
+	node2 := getTestNode("2", "openstack:///test")
 	node3 := getTestNode("3", "")
-	node4 := getTestNode("4", "hetzner")
+	node4 := getTestNode("4", "hcloud://123")
 	nodeList := []*corev1.Node{&node1, &node2, &node3, &node4}
 
 	tests := []struct {
@@ -134,7 +135,7 @@ func TestController_GetNode(t *testing.T) {
 			resNode:  &node1,
 			exists:   true,
 			err:      nil,
-			instance: &fakeInstance{id: "1", addresses: map[string]corev1.NodeAddressType{"": ""}},
+			instance: &fakeInstance{id: "1", addresses: map[string]corev1.NodeAddressType{"": ""}, providerID: "aws:///i-1"},
 		},
 		{
 			name:     "node found by internal ip",
@@ -182,7 +183,7 @@ func TestController_GetNode(t *testing.T) {
 			resNode:  &node4,
 			exists:   true,
 			err:      nil,
-			instance: &fakeInstance{id: "4", addresses: map[string]corev1.NodeAddressType{"": ""}},
+			instance: &fakeInstance{id: "4", addresses: map[string]corev1.NodeAddressType{"": ""}, providerID: "hcloud://123"},
 		},
 	}
 
@@ -630,6 +631,56 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 				if len(test.nodes) != len(nodes.Items) {
 					t.Errorf("expected %d nodes, but got %d", len(test.nodes), len(nodes.Items))
 				}
+			}
+		})
+	}
+}
+
+func TestControllerFindNodeByProviderID(t *testing.T) {
+	tests := []struct {
+		name         string
+		instance     instance.Instance
+		provider     providerconfigtypes.CloudProvider
+		nodes        []corev1.Node
+		expectedNode bool
+	}{
+		{
+			name:     "aws providerID type 1",
+			instance: &fakeInstance{id: "99", providerID: "aws:///some-zone/i-99"},
+			provider: providerconfigtypes.CloudProviderAWS,
+			nodes: []corev1.Node{
+				getTestNode("1", "random"),
+				getTestNode("2", "aws:///some-zone/i-99"),
+			},
+			expectedNode: true,
+		},
+		{
+			name:     "aws providerID type 2",
+			instance: &fakeInstance{id: "99", providerID: "aws:///i-99"},
+			provider: providerconfigtypes.CloudProviderAWS,
+			nodes: []corev1.Node{
+				getTestNode("1", "aws:///i-99"),
+				getTestNode("2", "random"),
+			},
+			expectedNode: true,
+		},
+		{
+			name:     "azure providerID",
+			instance: &fakeInstance{id: "99", providerID: "azure:///test/test"},
+			provider: providerconfigtypes.CloudProviderAWS,
+			nodes: []corev1.Node{
+				getTestNode("1", "random"),
+				getTestNode("2", "azure:///test/test"),
+			},
+			expectedNode: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			node := findNodeByProviderID(test.instance, test.provider, test.nodes)
+			if (node != nil) != test.expectedNode {
+				t.Errorf("expected %t, but got %t", test.expectedNode, (node != nil))
 			}
 		})
 	}
