@@ -238,12 +238,18 @@ func recomposeComputeAndDisk(config *Config, vm *govcd.VM) (*govcd.VM, error) {
 	return vm, nil
 }
 
-func setUserData(userdata string, vm *govcd.VM, providerConfig *providerconfigtypes.Config) error {
+func setUserData(userdata string, vm *govcd.VM, isFlatcar bool) error {
 	userdataBase64 := base64.StdEncoding.EncodeToString([]byte(userdata))
 	props := map[string]string{
-		"user-data":       userdataBase64,
 		"disk.enableUUID": "1",
 		"instance-id":     vm.VM.Name,
+	}
+
+	if isFlatcar {
+		props["guestinfo.ignition.config.data"] = userdataBase64
+		props["guestinfo.ignition.config.data.encoding"] = "base64"
+	} else {
+		props["user-data"] = userdataBase64
 	}
 
 	vmProperties := &vcdapitypes.ProductSectionList{
