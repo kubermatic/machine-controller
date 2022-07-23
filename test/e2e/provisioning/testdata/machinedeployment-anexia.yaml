@@ -25,9 +25,9 @@ spec:
           cloudProvider: anexia
           cloudProviderSpec:
             token: "<< ANEXIA_TOKEN >>"
-            vlanID: "e37d7134ab934f5683fabcc72d28e036"
-            templateID: "12c28aa7-604d-47e9-83fb-5f1d1f1837b3"
-            locationID: "52b5f6b2fd3a4a7eaaedf1a7c019e9ea"
+            vlanID: "<< ANEXIA_VLAN_ID >>"
+            templateID: "<< ANEXIA_TEMPLATE_ID >>"
+            locationID: "<< ANEXIA_LOCATION_ID >>"
             cpus: 2
             memory: 2048
             diskSize: 60

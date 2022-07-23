@@ -1037,13 +1037,20 @@ func TestAnexiaProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	token := os.Getenv("ANEXIA_TOKEN")
-	if token == "" {
-		t.Fatal("unable to run the test suite, ANEXIA_TOKEN environment variable cannot be empty")
+	vlanID := os.Getenv("ANEXIA_VLAN_ID")
+	templateID := os.Getenv("ANEXIA_TEMPLATE_ID")
+	locationID := os.Getenv("ANEXIA_LOCATION_ID")
+
+	if token == "" || vlanID == "" || templateID == "" || locationID == "" {
+		t.Fatal("unable to run test suite, all of ANEXIA_TOKEN, ANEXIA_VLAN_ID, ANEXIA_TEMPLATE_ID, and ANEXIA_LOCATION_ID must be set!")
 	}
 
 	selector := OsSelector("flatcar")
 	params := []string{
 		fmt.Sprintf("<< ANEXIA_TOKEN >>=%s", token),
+		fmt.Sprintf("<< ANEXIA_VLAN_ID >>=%s", vlanID),
+		fmt.Sprintf("<< ANEXIA_TEMPLATE_ID >>=%s", templateID),
+		fmt.Sprintf("<< ANEXIA_LOCATION_ID >>=%s", locationID),
 	}
 
 	runScenarios(t, selector, params, anexiaManifest, fmt.Sprintf("anexia-%s", *testRunIdentifier))
