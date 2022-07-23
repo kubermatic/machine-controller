@@ -29,7 +29,7 @@ func (r MultiErrors) Error() string {
 	for i, err := range r {
 		errString[i] = fmt.Sprintf("Error %d: %s", i, err)
 	}
-	return fmt.Sprintf("Multiple errors occoured:\n%s", strings.Join(errString, "\n"))
+	return fmt.Sprintf("Multiple errors occurred:\n%s", strings.Join(errString, "\n"))
 }
 
 func NewMultiError(errs ...error) error {

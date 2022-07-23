@@ -232,10 +232,10 @@ func TestUserDataGeneration(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			emtpyProviderSpec := clusterv1alpha1.ProviderSpec{
+			emptyProviderSpec := clusterv1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{},
 			}
-			test.spec.ProviderSpec = emtpyProviderSpec
+			test.spec.ProviderSpec = emptyProviderSpec
 			var cloudProvider *fakeCloudConfigProvider
 			if test.cloudProviderName != nil {
 				cloudProvider = &fakeCloudConfigProvider{

@@ -272,7 +272,7 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 		}
 
 		for _, machine := range machines {
-			// Azure doesn't seem to easely expose the private IP address, there is only a PublicIPAddressClient in the sdk
+			// Azure doesn't seem to easily expose the private IP address, there is only a PublicIPAddressClient in the sdk
 			providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 			if err != nil {
 				return fmt.Errorf("failed to get provider config: %w", err)
@@ -338,7 +338,7 @@ func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (strin
 
 // getMatchingMachines returns all machines that are owned by the passed machineDeployment.
 func getMatchingMachines(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client) ([]clusterv1alpha1.Machine, error) {
-	matchingMachineSets, err := getMachingMachineSets(machineDeployment, client)
+	matchingMachineSets, err := getMatchingMachineSets(machineDeployment, client)
 	if err != nil {
 		return nil, err
 	}
@@ -369,8 +369,8 @@ func getMatchingMachinesForMachineset(machineSet *clusterv1alpha1.MachineSet, cl
 	return matchingMachines, nil
 }
 
-// getMachingMachineSets returns all machineSets that are owned by the passed machineDeployment.
-func getMachingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Reader) ([]clusterv1alpha1.MachineSet, error) {
+// getMatchingMachineSets returns all machineSets that are owned by the passed machineDeployment.
+func getMatchingMachineSets(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Reader) ([]clusterv1alpha1.MachineSet, error) {
 	// Ensure we actually have an object from the KubeAPI and not just the result of the yaml parsing, as the latter
 	// can not be the owner of anything due to missing UID.
 	if machineDeployment.ResourceVersion == "" {

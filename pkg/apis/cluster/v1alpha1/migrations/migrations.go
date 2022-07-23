@@ -51,7 +51,7 @@ import (
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func MigrateProviderConfigToProviderSpecIfNecesary(ctx context.Context, config *restclient.Config, client ctrlruntimeclient.Client) error {
+func MigrateProviderConfigToProviderSpecIfNecessary(ctx context.Context, config *restclient.Config, client ctrlruntimeclient.Client) error {
 	klog.Infof("Starting to migrate providerConfigs to providerSpecs")
 	dynamicClient, err := dynamicclient.NewForConfig(config)
 	if err != nil {

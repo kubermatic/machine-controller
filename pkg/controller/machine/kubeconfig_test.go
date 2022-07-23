@@ -31,20 +31,20 @@ import (
 
 func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 	tests := []struct {
-		initialExperirationTime time.Time
-		shouldRenew             bool
+		initialExpirationTime time.Time
+		shouldRenew           bool
 	}{
 		{
-			initialExperirationTime: time.Now().Add(1 * time.Hour),
-			shouldRenew:             false,
+			initialExpirationTime: time.Now().Add(1 * time.Hour),
+			shouldRenew:           false,
 		},
 		{
-			initialExperirationTime: time.Now().Add(25 * time.Minute),
-			shouldRenew:             true,
+			initialExpirationTime: time.Now().Add(25 * time.Minute),
+			shouldRenew:           true,
 		},
 		{
-			initialExperirationTime: time.Now().Add(-25 * time.Minute),
-			shouldRenew:             true,
+			initialExpirationTime: time.Now().Add(-25 * time.Minute),
+			shouldRenew:           true,
 		},
 	}
 
@@ -58,7 +58,7 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		data := map[string][]byte{}
 		data[tokenSecretKey] = []byte("tokenSecret")
 		data[tokenIDKey] = []byte("tokenID")
-		data[expirationKey] = []byte(testCase.initialExperirationTime.Format(time.RFC3339))
+		data[expirationKey] = []byte(testCase.initialExpirationTime.Format(time.RFC3339))
 		secret.Data = data
 		reconciler.client = ctrlruntimefake.
 			NewClientBuilder().
@@ -79,12 +79,12 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		}
 
 		if testCase.shouldRenew &&
-			bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExperirationTime.Format(time.RFC3339))) {
+			bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExpirationTime.Format(time.RFC3339))) {
 			t.Errorf("Error, token secret did not update but was expected to!")
 		}
 
 		if !testCase.shouldRenew &&
-			!bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExperirationTime.Format(time.RFC3339))) {
+			!bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExpirationTime.Format(time.RFC3339))) {
 			t.Errorf("Error, token secret was expected to get updated, but did not happen!")
 		}
 

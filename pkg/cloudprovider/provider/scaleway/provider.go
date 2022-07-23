@@ -420,12 +420,12 @@ func (s *scwServer) Status() cloudInstance.Status {
 // if the given error doesn't qualify the error passed as
 // an argument will be returned.
 func scalewayErrToTerminalError(err error) error {
-	var deinedErr *scw.PermissionsDeniedError
+	var deniedErr *scw.PermissionsDeniedError
 	var invalidArgErr *scw.InvalidArgumentsError
 	var outOfStackErr *scw.OutOfStockError
 	var quotaErr *scw.QuotasExceededError
 
-	if errors.As(err, &deinedErr) {
+	if errors.As(err, &deniedErr) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: "A request has been rejected due to invalid credentials which were taken from the MachineSpec",

@@ -51,7 +51,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	klog.Infof("Waiting for second MachineSet to appear after updating MachineDeployment %s", machineDeployment.Name)
 	var machineSets []clusterv1alpha1.MachineSet
 	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
-		machineSets, err = getMachingMachineSets(machineDeployment, client)
+		machineSets, err = getMatchingMachineSets(machineDeployment, client)
 		if err != nil {
 			return false, err
 		}

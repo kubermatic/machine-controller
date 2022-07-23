@@ -79,7 +79,7 @@ func TestAnexiaProvider(t *testing.T) {
 		}
 
 		if providerStatus.InstanceID != TestIdentifier {
-			t.Errorf("Excpected InstanceID to be set")
+			t.Error("Expected InstanceID to be set")
 		}
 	})
 

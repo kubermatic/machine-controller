@@ -117,7 +117,7 @@ func TestCustomCAsAreApplied(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{
@@ -311,7 +311,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{
@@ -342,7 +342,7 @@ func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osProject == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{
@@ -978,7 +978,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSOWRD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{

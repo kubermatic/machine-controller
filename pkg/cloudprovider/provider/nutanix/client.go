@@ -57,7 +57,7 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 	}
 
 	if config.Password == "" {
-		return nil, errors.New("no password specificed")
+		return nil, errors.New("no password specified")
 	}
 
 	if config.Endpoint == "" {
