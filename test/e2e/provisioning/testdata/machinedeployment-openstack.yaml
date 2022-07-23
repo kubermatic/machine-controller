@@ -30,7 +30,7 @@ spec:
             tenantName: "<< TENANT_NAME >>"
             image: "<< OS_IMAGE >>"
             flavor: "m1.tiny"
-            floatingIpPool: ""
+            floatingIpPool: "ext-net"
             domainName: "<< DOMAIN_NAME >>"
             region: "<< REGION >>"
             network: "<< NETWORK_NAME >>"
