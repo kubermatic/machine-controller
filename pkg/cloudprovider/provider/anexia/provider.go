@@ -228,7 +228,7 @@ func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) 
 		klog.Info("reusing already provisioned ip", "IP", status.ReservedIP)
 		return status.ReservedIP, nil
 	}
-	klog.Info(fmt.Sprintf("Creating a new IP for machine ''%s", reconcileContext.Machine.Name))
+	klog.Info(fmt.Sprintf("Creating a new IP for machine %q", reconcileContext.Machine.Name))
 	addrAPI := anxaddr.NewAPI(client)
 	config := reconcileContext.Config
 	res, err := addrAPI.ReserveRandom(ctx, anxaddr.ReserveRandom{
