@@ -324,7 +324,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	// selector := Not(OsSelector("sles", "rhel", "amzn2"))
+	// selector := Not(OsSelector("sles", "amzn2"))
 	selector := OsSelector("rockylinux", "flatcar")
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
