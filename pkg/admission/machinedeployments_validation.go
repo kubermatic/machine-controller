@@ -157,7 +157,8 @@ func ensureOSPAnnotation(md *v1alpha1.MachineDeployment, providerConfig provider
 		// Annotation not specified, populate default OSP annotation
 		switch providerConfig.OperatingSystem {
 		case providerconfigtypes.OperatingSystemUbuntu, providerconfigtypes.OperatingSystemCentOS, providerconfigtypes.OperatingSystemFlatcar,
-			providerconfigtypes.OperatingSystemAmazonLinux2:
+			providerconfigtypes.OperatingSystemAmazonLinux2, providerconfigtypes.OperatingSystemRockyLinux, providerconfigtypes.OperatingSystemSLES,
+			providerconfigtypes.OperatingSystemRHEL:
 			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, providerConfig.OperatingSystem)
 			return nil
 
