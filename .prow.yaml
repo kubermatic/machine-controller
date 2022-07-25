@@ -159,7 +159,7 @@ presubmits:
       preset-e2e-ssh: "true"
       preset-hetzner: "true"
       preset-openstack: "true"
-      preset-vsphere: "true"
+      preset-vsphere-legacy: "true"
       preset-kubevirt: "true"
       preset-alibaba: "true"
       preset-goproxy: "true"
@@ -550,7 +550,7 @@ presubmits:
     labels:
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
-      preset-vsphere: "true"
+      preset-vsphere-legacy: "true"
       preset-rhel: "true"
       preset-goproxy: "true"
     spec:
@@ -568,7 +568,8 @@ presubmits:
   - name: pull-machine-controller-e2e-nutanix
     optional: true
     always_run: false
-    run_if_changed: "(pkg/cloudprovider/provider/nutanix/|pkg/userdata/|test/e2e/provisioning/)"
+    # TODO uncomment this when Nutanix is in a working condition
+    # run_if_changed: "(pkg/cloudprovider/provider/nutanix/|pkg/userdata/|test/e2e/provisioning/)"
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
@@ -794,7 +795,7 @@ presubmits:
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
-      preset-vsphere: "true"
+      preset-vsphere-legacy: "true"
       preset-rhel: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
@@ -817,7 +818,7 @@ presubmits:
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
-      preset-vsphere: "true"
+      preset-vsphere-legacy: "true"
       preset-rhel: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
