@@ -28,7 +28,7 @@ spec:
           cloudProviderSpec:
             storageClassName: longhorn
             pvcSize: "10Gi"
-            sourceURL: http://10.244.1.19/<< OS_NAME >>.img
+            sourceURL: http://image-repo.kube-system.svc.cluster.local/images/<< OS_NAME >>.img
             cpus: "1"
             memory: "4096M"
             dnsPolicy: "None"

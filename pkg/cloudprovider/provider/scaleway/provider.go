@@ -382,6 +382,11 @@ func (s *scwServer) ID() string {
 	return s.server.ID
 }
 
+// TODO: Implement once we start supporting Scaleway CCM.
+func (s *scwServer) ProviderID() string {
+	return ""
+}
+
 func (s *scwServer) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 	if s.server.PrivateIP != nil {
