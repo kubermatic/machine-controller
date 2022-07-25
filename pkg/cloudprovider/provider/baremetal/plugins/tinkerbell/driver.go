@@ -172,7 +172,7 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugin
 	}
 
 	if _, err := d.workflowClient.Create(ctx, workflowTemplate.Id, hw.GetID()); err != nil {
-		return nil, fmt.Errorf("failed to provisioing server id %s running template id %s: %w", workflowTemplate.Id, hw.GetID(), err)
+		return nil, fmt.Errorf("failed to provision server id %s running template id %s: %w", workflowTemplate.Id, hw.GetID(), err)
 	}
 
 	return &hw, nil

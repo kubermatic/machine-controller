@@ -129,7 +129,7 @@ spec:
             image: "Ubuntu 18.04 amd64"
             flavor: "m1.small"
             # UUID of the server group
-            # used to configure affinity or anti-affinity of the VM instaces relative to hypervisor
+            # used to configure affinity or anti-affinity of the VM instances relative to hypervisor
             serverGroup: ""
             securityGroups:
               - configMapKeyRef:
