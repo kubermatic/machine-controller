@@ -205,6 +205,20 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.03"))
 	}
 
+	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderEquinixMetal)) {
+		switch testCase.osName {
+		case string(providerconfigtypes.OperatingSystemCentOS):
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< FACILITY_CODE >>=%s", "am6"))
+		case string(providerconfigtypes.OperatingSystemFlatcar):
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "c3.small.x86"))
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< FACILITY_CODE >>=%s", "ny5"))
+		case string(providerconfigtypes.OperatingSystemUbuntu):
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
+			scenarioParams = append(scenarioParams, fmt.Sprintf("<< FACILITY_CODE >>=%s", "am6"))
+		}
+	}
+
 	// only used by assume role scenario, otherwise empty (disabled)
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< AWS_ASSUME_ROLE_ARN >>=%s", os.Getenv("AWS_ASSUME_ROLE_ARN")))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< AWS_ASSUME_ROLE_EXTERNAL_ID >>=%s", os.Getenv("AWS_ASSUME_ROLE_EXTERNAL_ID")))
