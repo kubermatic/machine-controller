@@ -210,9 +210,6 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		case string(providerconfigtypes.OperatingSystemFlatcar):
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "c3.small.x86"))
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "NY"))
-		case string(providerconfigtypes.OperatingSystemRockyLinux):
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "AM"))
 		case string(providerconfigtypes.OperatingSystemUbuntu):
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
 			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "TY"))
