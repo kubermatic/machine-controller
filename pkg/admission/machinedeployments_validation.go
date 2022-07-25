@@ -23,6 +23,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 	osmresources "k8c.io/operating-system-manager/pkg/controllers/osc/resources"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -154,17 +155,21 @@ func ensureOSPAnnotation(md *v1alpha1.MachineDeployment, providerConfig provider
 		if md.Annotations == nil {
 			md.Annotations = make(map[string]string)
 		}
-		// Annotation not specified, populate default OSP annotation
-		switch providerConfig.OperatingSystem {
-		case providerconfigtypes.OperatingSystemUbuntu, providerconfigtypes.OperatingSystemCentOS, providerconfigtypes.OperatingSystemFlatcar,
-			providerconfigtypes.OperatingSystemAmazonLinux2, providerconfigtypes.OperatingSystemRockyLinux, providerconfigtypes.OperatingSystemSLES,
-			providerconfigtypes.OperatingSystemRHEL:
-			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, providerConfig.OperatingSystem)
-			return nil
 
-		default:
-			return fmt.Errorf("failed to populate OSP annotation for machinedeployment with unsupported Operating System %s", providerConfig.OperatingSystem)
+		annotation := fmt.Sprintf(ospNamePattern, providerConfig.OperatingSystem)
+
+		if providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+			config, err := flatcar.LoadConfig(providerConfig.OperatingSystemSpec)
+			if err != nil {
+				return err
+			}
+
+			if config.ProvisioningUtility == flatcar.CloudInit {
+				annotation += "-cloud-init"
+			}
 		}
+
+		md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = annotation
 	}
 	return nil
 }
