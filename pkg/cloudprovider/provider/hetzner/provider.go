@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"net/http"
 	"strconv"
 	"strings"
@@ -274,7 +273,6 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	}
 
 	c.Labels[MachineUIDLabelKey] = string(machine.UID)
-	c.Labels[machinecontroller.NodeOwnerLabelName] = string(machine.UID)
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
 		UserData: userdata,

@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/hetzner"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -324,7 +323,7 @@ func isNodeForMachine(node *corev1.Node, machine *clusterv1alpha1.Machine) bool 
 	if string(machine.UID) == "" {
 		return false
 	}
-	return node.Labels[machinecontroller.NodeOwnerLabelName] == string(machine.UID) || node.Labels[hetzner.MachineUIDLabelKey] == string(machine.UID)
+	return node.Labels[machinecontroller.NodeOwnerLabelName] == string(machine.UID) || node.Labels["machine-uid"] == string(machine.UID)
 }
 
 func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (string, error) {
