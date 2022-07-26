@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,7 +44,7 @@ import (
 )
 
 const (
-	machineUIDLabelKey = "machine-uid"
+	MachineUIDLabelKey = "machine-uid"
 )
 
 type provider struct {
@@ -169,7 +170,7 @@ func (p *provider) getServerPlacementGroup(ctx context.Context, client *hcloud.C
 	}
 	pgLabels := map[string]string{}
 	for k, v := range c.Labels {
-		if k != machineUIDLabelKey {
+		if k != MachineUIDLabelKey {
 			pgLabels[k] = v
 		}
 	}
@@ -272,7 +273,8 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		c.Labels = map[string]string{}
 	}
 
-	c.Labels[machineUIDLabelKey] = string(machine.UID)
+	c.Labels[MachineUIDLabelKey] = string(machine.UID)
+	c.Labels[machinecontroller.NodeOwnerLabelName] = string(machine.UID)
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
 		UserData: userdata,
@@ -452,14 +454,14 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ 
 	client := getClient(c.Token)
 
 	servers, _, err := client.Server.List(ctx, hcloud.ServerListOpts{ListOpts: hcloud.ListOpts{
-		LabelSelector: machineUIDLabelKey + "==" + string(machine.UID),
+		LabelSelector: MachineUIDLabelKey + "==" + string(machine.UID),
 	}})
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to list servers")
 	}
 
 	for _, server := range servers {
-		if server.Labels[machineUIDLabelKey] == string(machine.UID) {
+		if server.Labels[MachineUIDLabelKey] == string(machine.UID) {
 			return &hetznerServer{server: server}, nil
 		}
 	}
@@ -489,7 +491,7 @@ func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Mach
 
 	klog.Infof("Setting UID label for machine %s", machine.Name)
 	_, response, err := client.Server.Update(ctx, server, hcloud.ServerUpdateOpts{
-		Labels: map[string]string{machineUIDLabelKey: string(newUID)},
+		Labels: map[string]string{MachineUIDLabelKey: string(newUID)},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update UID label: %w", err)
