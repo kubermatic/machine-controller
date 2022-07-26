@@ -172,6 +172,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		if pollErr == nil {
 			return true, nil
 		}
+		klog.Infoln(pollErr)
 		return false, nil
 	})
 	if err != nil {

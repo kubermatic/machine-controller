@@ -717,7 +717,8 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "rockylinux")
+	//selector := OsSelector("ubuntu", "centos", "rockylinux")
+	selector := OsSelector("centos")
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
