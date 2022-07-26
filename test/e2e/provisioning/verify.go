@@ -18,6 +18,7 @@ package provisioning
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -295,6 +296,13 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 
 	nodeForMachineExists := false
 	for _, machine := range machines {
+		klog.Infoln(machine.Name)
+		klog.Infoln(machine.UID)
+		data, err := json.MarshalIndent(machine, "", " ")
+		if err != nil {
+			klog.Infoln("failed to json marshall ", err)
+		}
+		klog.Infoln(string(data))
 		for _, node := range nodes.Items {
 			if isNodeForMachine(&node, &machine) {
 				nodeForMachineExists = true
@@ -311,7 +319,7 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 
 func isNodeForMachine(node *corev1.Node, machine *clusterv1alpha1.Machine) bool {
 	// This gets called before the Objects are persisted in the API
-	// which means UI will be emppy for machine
+	// which means UI will be empty for machine
 	if string(machine.UID) == "" {
 		return false
 	}
