@@ -184,6 +184,7 @@ func DefaultOperatingSystemSpec(
 	osys providerconfigtypes.OperatingSystem,
 	cloudProvider providerconfigtypes.CloudProvider,
 	operatingSystemSpec runtime.RawExtension,
+	operatingSystemManagerEnabled bool,
 ) (runtime.RawExtension, error) {
 	switch osys {
 	case providerconfigtypes.OperatingSystemAmazonLinux2:
@@ -191,7 +192,7 @@ func DefaultOperatingSystemSpec(
 	case providerconfigtypes.OperatingSystemCentOS:
 		return centos.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return flatcar.DefaultConfigForCloud(operatingSystemSpec, cloudProvider), nil
+		return flatcar.DefaultConfigForCloud(operatingSystemSpec, cloudProvider, operatingSystemManagerEnabled), nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rhel.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemSLES:

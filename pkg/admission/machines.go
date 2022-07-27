@@ -160,6 +160,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		providerConfig.OperatingSystem,
 		providerConfig.CloudProvider,
 		providerConfig.OperatingSystemSpec,
+		ad.useOSM,
 	)
 	if err != nil {
 		return err

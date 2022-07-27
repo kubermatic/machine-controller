@@ -1,0 +1,1415 @@
+# Source: https://github.com/kubermatic/operating-system-manager/tree/v0.5.0/deploy
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.0
+  creationTimestamp: null
+  name: operatingsystemconfigs.operatingsystemmanager.k8c.io
+spec:
+  group: operatingsystemmanager.k8c.io
+  names:
+    kind: OperatingSystemConfig
+    listKind: OperatingSystemConfigList
+    plural: operatingsystemconfigs
+    shortNames:
+      - osc
+    singular: operatingsystemconfig
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: OperatingSystemConfig is the object that represents the OperatingSystemConfig
+          properties:
+            apiVersion:
+              description:
+                "APIVersion defines the versioned schema of this representation
+                of an object. Servers should convert recognized schemas to the latest
+                internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources"
+              type: string
+            kind:
+              description:
+                "Kind is a string value representing the REST resource this
+                object represents. Servers may infer this from the endpoint the client
+                submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
+              type: string
+            metadata:
+              type: object
+            spec:
+              description:
+                OperatingSystemConfigSpec represents the operating system
+                configuration spec.
+              properties:
+                bootstrapConfig:
+                  description:
+                    BootstrapConfig is used for initial configuration of
+                    machine and to fetch the kubernetes secret that contains the provisioning
+                    config.
+                  properties:
+                    files:
+                      description:
+                        Files is a list of files that should exist in the
+                        instance
+                      items:
+                        description:
+                          File is a file that should get written to the host's
+                          file system. The content can either be inlined or referenced
+                          from a secret in the same namespace.
+                        properties:
+                          content:
+                            description: Content describe the file's content.
+                            properties:
+                              inline:
+                                description:
+                                  Inline is a struct that contains information
+                                  about the inlined data.
+                                properties:
+                                  data:
+                                    description: Data is the file's data.
+                                    type: string
+                                  encoding:
+                                    description:
+                                      Encoding is the file's encoding (e.g.
+                                      base64).
+                                    type: string
+                                required:
+                                  - data
+                                type: object
+                            type: object
+                          path:
+                            description:
+                              Path is the path of the file system where the
+                              file should get written to.
+                            type: string
+                          permissions:
+                            default: 644
+                            description:
+                              Permissions describes with which permissions
+                              the file should get written to the file system. Should
+                              be in decimal base and without any leading zeroes.
+                            format: int32
+                            type: integer
+                        required:
+                          - content
+                          - path
+                        type: object
+                      type: array
+                    modules:
+                      description:
+                        CloudInitModules contains the supported cloud-init
+                        modules
+                      properties:
+                        bootcmd:
+                          description:
+                            BootCMD module runs arbitrary commands very early
+                            in the boot process, only slightly after a boothook would
+                            run.
+                          items:
+                            type: string
+                          type: array
+                        rh_subscription:
+                          additionalProperties:
+                            type: string
+                          description:
+                            RHSubscription registers a Red Hat system either
+                            by username and password or activation and org
+                          type: object
+                        runcmd:
+                          description:
+                            RunCMD Run arbitrary commands at a rc.local like
+                            level with output to the console.
+                          items:
+                            type: string
+                          type: array
+                        yum_repo_dir:
+                          description:
+                            "YumRepoDir the repo parts directory where individual
+                            yum repo config files will be written. Default: /etc/yum.repos.d"
+                          type: string
+                        yum_repos:
+                          additionalProperties:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          description:
+                            YumRepos adds yum repository configuration to
+                            the system.
+                          type: object
+                      type: object
+                    units:
+                      description:
+                        Units a list of the systemd unit files which will
+                        run on the instance
+                      items:
+                        description:
+                          Unit is a systemd unit used for the operating system
+                          config.
+                        properties:
+                          content:
+                            description: Content is the unit's content.
+                            type: string
+                          dropIns:
+                            description: DropIns is a list of drop-ins for this unit.
+                            items:
+                              description:
+                                DropIn is a drop-in configuration for a systemd
+                                unit.
+                              properties:
+                                content:
+                                  description: Content is the content of the drop-in.
+                                  type: string
+                                name:
+                                  description: Name is the name of the drop-in.
+                                  type: string
+                              required:
+                                - content
+                                - name
+                              type: object
+                            type: array
+                          enable:
+                            description:
+                              Enable describes whether the unit is enabled
+                              or not.
+                            type: boolean
+                          mask:
+                            description:
+                              Mask describes whether the unit is masked or
+                              not.
+                            type: boolean
+                          name:
+                            description: Name is the name of a unit.
+                            type: string
+                        required:
+                          - name
+                        type: object
+                      type: array
+                    userSSHKeys:
+                      description: UserSSHKeys is a list of attached user ssh keys
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                cloudProvider:
+                  description:
+                    CloudProvider represent the cloud provider that support
+                    the given operating system version
+                  properties:
+                    name:
+                      description: Name represents the name of the supported cloud provider
+                      enum:
+                        - aws
+                        - azure
+                        - digitalocean
+                        - gce
+                        - hetzner
+                        - kubevirt
+                        - linode
+                        - nutanix
+                        - openstack
+                        - equinixmetal
+                        - vsphere
+                        - fake
+                        - alibaba
+                        - anexia
+                        - scaleway
+                        - baremetal
+                        - external
+                        - vmware-cloud-director
+                      type: string
+                    spec:
+                      description:
+                        Spec represents the os/image reference in the supported
+                        cloud provider
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  required:
+                    - name
+                  type: object
+                osName:
+                  description: "OSType represent the operating system name e.g: ubuntu"
+                  enum:
+                    - flatcar
+                    - rhel
+                    - centos
+                    - ubuntu
+                    - sles
+                    - amzn2
+                    - rockylinux
+                  type: string
+                osVersion:
+                  description: OSVersion the version of the operating system
+                  type: string
+                provisioningConfig:
+                  description:
+                    ProvisioningConfig is used for provisioning the worker
+                    node.
+                  properties:
+                    files:
+                      description:
+                        Files is a list of files that should exist in the
+                        instance
+                      items:
+                        description:
+                          File is a file that should get written to the host's
+                          file system. The content can either be inlined or referenced
+                          from a secret in the same namespace.
+                        properties:
+                          content:
+                            description: Content describe the file's content.
+                            properties:
+                              inline:
+                                description:
+                                  Inline is a struct that contains information
+                                  about the inlined data.
+                                properties:
+                                  data:
+                                    description: Data is the file's data.
+                                    type: string
+                                  encoding:
+                                    description:
+                                      Encoding is the file's encoding (e.g.
+                                      base64).
+                                    type: string
+                                required:
+                                  - data
+                                type: object
+                            type: object
+                          path:
+                            description:
+                              Path is the path of the file system where the
+                              file should get written to.
+                            type: string
+                          permissions:
+                            default: 644
+                            description:
+                              Permissions describes with which permissions
+                              the file should get written to the file system. Should
+                              be in decimal base and without any leading zeroes.
+                            format: int32
+                            type: integer
+                        required:
+                          - content
+                          - path
+                        type: object
+                      type: array
+                    modules:
+                      description:
+                        CloudInitModules contains the supported cloud-init
+                        modules
+                      properties:
+                        bootcmd:
+                          description:
+                            BootCMD module runs arbitrary commands very early
+                            in the boot process, only slightly after a boothook would
+                            run.
+                          items:
+                            type: string
+                          type: array
+                        rh_subscription:
+                          additionalProperties:
+                            type: string
+                          description:
+                            RHSubscription registers a Red Hat system either
+                            by username and password or activation and org
+                          type: object
+                        runcmd:
+                          description:
+                            RunCMD Run arbitrary commands at a rc.local like
+                            level with output to the console.
+                          items:
+                            type: string
+                          type: array
+                        yum_repo_dir:
+                          description:
+                            "YumRepoDir the repo parts directory where individual
+                            yum repo config files will be written. Default: /etc/yum.repos.d"
+                          type: string
+                        yum_repos:
+                          additionalProperties:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          description:
+                            YumRepos adds yum repository configuration to
+                            the system.
+                          type: object
+                      type: object
+                    units:
+                      description:
+                        Units a list of the systemd unit files which will
+                        run on the instance
+                      items:
+                        description:
+                          Unit is a systemd unit used for the operating system
+                          config.
+                        properties:
+                          content:
+                            description: Content is the unit's content.
+                            type: string
+                          dropIns:
+                            description: DropIns is a list of drop-ins for this unit.
+                            items:
+                              description:
+                                DropIn is a drop-in configuration for a systemd
+                                unit.
+                              properties:
+                                content:
+                                  description: Content is the content of the drop-in.
+                                  type: string
+                                name:
+                                  description: Name is the name of the drop-in.
+                                  type: string
+                              required:
+                                - content
+                                - name
+                              type: object
+                            type: array
+                          enable:
+                            description:
+                              Enable describes whether the unit is enabled
+                              or not.
+                            type: boolean
+                          mask:
+                            description:
+                              Mask describes whether the unit is masked or
+                              not.
+                            type: boolean
+                          name:
+                            description: Name is the name of a unit.
+                            type: string
+                        required:
+                          - name
+                        type: object
+                      type: array
+                    userSSHKeys:
+                      description: UserSSHKeys is a list of attached user ssh keys
+                      items:
+                        type: string
+                      type: array
+                  type: object
+              required:
+                - bootstrapConfig
+                - cloudProvider
+                - osName
+                - osVersion
+                - provisioningConfig
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.0
+  creationTimestamp: null
+  name: operatingsystemprofiles.operatingsystemmanager.k8c.io
+spec:
+  group: operatingsystemmanager.k8c.io
+  names:
+    kind: OperatingSystemProfile
+    listKind: OperatingSystemProfileList
+    plural: operatingsystemprofiles
+    shortNames:
+      - osp
+    singular: operatingsystemprofile
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: OperatingSystemProfile is the object that represents the OperatingSystemProfile
+          properties:
+            apiVersion:
+              description:
+                "APIVersion defines the versioned schema of this representation
+                of an object. Servers should convert recognized schemas to the latest
+                internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources"
+              type: string
+            kind:
+              description:
+                "Kind is a string value representing the REST resource this
+                object represents. Servers may infer this from the endpoint the client
+                submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
+              type: string
+            metadata:
+              type: object
+            spec:
+              description:
+                OperatingSystemProfileSpec represents the operating system
+                configuration spec.
+              properties:
+                bootstrapConfig:
+                  description:
+                    BootstrapConfig is used for initial configuration of
+                    machine and to fetch the kubernetes secret that contains the provisioning
+                    config.
+                  properties:
+                    files:
+                      description:
+                        Files is a list of files that should exist in the
+                        instance
+                      items:
+                        description:
+                          File is a file that should get written to the host's
+                          file system. The content can either be inlined or referenced
+                          from a secret in the same namespace.
+                        properties:
+                          content:
+                            description: Content describe the file's content.
+                            properties:
+                              inline:
+                                description:
+                                  Inline is a struct that contains information
+                                  about the inlined data.
+                                properties:
+                                  data:
+                                    description: Data is the file's data.
+                                    type: string
+                                  encoding:
+                                    description:
+                                      Encoding is the file's encoding (e.g.
+                                      base64).
+                                    type: string
+                                required:
+                                  - data
+                                type: object
+                            type: object
+                          path:
+                            description:
+                              Path is the path of the file system where the
+                              file should get written to.
+                            type: string
+                          permissions:
+                            default: 644
+                            description:
+                              Permissions describes with which permissions
+                              the file should get written to the file system. Should
+                              be in decimal base and without any leading zeroes.
+                            format: int32
+                            type: integer
+                        required:
+                          - content
+                          - path
+                        type: object
+                      type: array
+                    modules:
+                      description:
+                        CloudInitModules field contains the optional cloud-init
+                        modules which are supported by OSM
+                      properties:
+                        bootcmd:
+                          description:
+                            BootCMD module runs arbitrary commands very early
+                            in the boot process, only slightly after a boothook would
+                            run.
+                          items:
+                            type: string
+                          type: array
+                        rh_subscription:
+                          additionalProperties:
+                            type: string
+                          description:
+                            RHSubscription registers a Red Hat system either
+                            by username and password or activation and org
+                          type: object
+                        runcmd:
+                          description:
+                            RunCMD Run arbitrary commands at a rc.local like
+                            level with output to the console.
+                          items:
+                            type: string
+                          type: array
+                        yum_repo_dir:
+                          description:
+                            "YumRepoDir the repo parts directory where individual
+                            yum repo config files will be written. Default: /etc/yum.repos.d"
+                          type: string
+                        yum_repos:
+                          additionalProperties:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          description:
+                            YumRepos adds yum repository configuration to
+                            the system.
+                          type: object
+                      type: object
+                    supportedContainerRuntimes:
+                      description:
+                        SupportedContainerRuntimes represents the container
+                        runtimes supported by the given OS
+                      items:
+                        description:
+                          ContainerRuntimeSpec aggregates information about
+                          a specific container runtime
+                        properties:
+                          files:
+                            description:
+                              Files to add to the main files list when the
+                              containerRuntime is selected
+                            items:
+                              description:
+                                File is a file that should get written to
+                                the host's file system. The content can either be inlined
+                                or referenced from a secret in the same namespace.
+                              properties:
+                                content:
+                                  description: Content describe the file's content.
+                                  properties:
+                                    inline:
+                                      description:
+                                        Inline is a struct that contains
+                                        information about the inlined data.
+                                      properties:
+                                        data:
+                                          description: Data is the file's data.
+                                          type: string
+                                        encoding:
+                                          description:
+                                            Encoding is the file's encoding
+                                            (e.g. base64).
+                                          type: string
+                                      required:
+                                        - data
+                                      type: object
+                                  type: object
+                                path:
+                                  description:
+                                    Path is the path of the file system where
+                                    the file should get written to.
+                                  type: string
+                                permissions:
+                                  default: 644
+                                  description:
+                                    Permissions describes with which permissions
+                                    the file should get written to the file system.
+                                    Should be in decimal base and without any leading
+                                    zeroes.
+                                  format: int32
+                                  type: integer
+                              required:
+                                - content
+                                - path
+                              type: object
+                            type: array
+                          name:
+                            description: Name of the Container runtime
+                            enum:
+                              - docker
+                              - containerd
+                            type: string
+                          templates:
+                            additionalProperties:
+                              type: string
+                            description:
+                              Templates to add to the available templates
+                              when the containerRuntime is selected
+                            type: object
+                        required:
+                          - files
+                          - name
+                        type: object
+                      type: array
+                    templates:
+                      additionalProperties:
+                        type: string
+                      description: Templates to be included in units and files
+                      type: object
+                    units:
+                      description:
+                        Units a list of the systemd unit files which will
+                        run on the instance
+                      items:
+                        description:
+                          Unit is a systemd unit used for the operating system
+                          config.
+                        properties:
+                          content:
+                            description: Content is the unit's content.
+                            type: string
+                          dropIns:
+                            description: DropIns is a list of drop-ins for this unit.
+                            items:
+                              description:
+                                DropIn is a drop-in configuration for a systemd
+                                unit.
+                              properties:
+                                content:
+                                  description: Content is the content of the drop-in.
+                                  type: string
+                                name:
+                                  description: Name is the name of the drop-in.
+                                  type: string
+                              required:
+                                - content
+                                - name
+                              type: object
+                            type: array
+                          enable:
+                            description:
+                              Enable describes whether the unit is enabled
+                              or not.
+                            type: boolean
+                          mask:
+                            description:
+                              Mask describes whether the unit is masked or
+                              not.
+                            type: boolean
+                          name:
+                            description: Name is the name of a unit.
+                            type: string
+                        required:
+                          - name
+                        type: object
+                      type: array
+                  type: object
+                osName:
+                  description: "OSType represent the operating system name e.g: ubuntu"
+                  enum:
+                    - flatcar
+                    - rhel
+                    - centos
+                    - ubuntu
+                    - sles
+                    - amzn2
+                    - rockylinux
+                  type: string
+                osVersion:
+                  description: OSVersion the version of the operating system
+                  type: string
+                provisioningConfig:
+                  description:
+                    ProvisioningConfig is used for provisioning the worker
+                    node.
+                  properties:
+                    files:
+                      description:
+                        Files is a list of files that should exist in the
+                        instance
+                      items:
+                        description:
+                          File is a file that should get written to the host's
+                          file system. The content can either be inlined or referenced
+                          from a secret in the same namespace.
+                        properties:
+                          content:
+                            description: Content describe the file's content.
+                            properties:
+                              inline:
+                                description:
+                                  Inline is a struct that contains information
+                                  about the inlined data.
+                                properties:
+                                  data:
+                                    description: Data is the file's data.
+                                    type: string
+                                  encoding:
+                                    description:
+                                      Encoding is the file's encoding (e.g.
+                                      base64).
+                                    type: string
+                                required:
+                                  - data
+                                type: object
+                            type: object
+                          path:
+                            description:
+                              Path is the path of the file system where the
+                              file should get written to.
+                            type: string
+                          permissions:
+                            default: 644
+                            description:
+                              Permissions describes with which permissions
+                              the file should get written to the file system. Should
+                              be in decimal base and without any leading zeroes.
+                            format: int32
+                            type: integer
+                        required:
+                          - content
+                          - path
+                        type: object
+                      type: array
+                    modules:
+                      description:
+                        CloudInitModules field contains the optional cloud-init
+                        modules which are supported by OSM
+                      properties:
+                        bootcmd:
+                          description:
+                            BootCMD module runs arbitrary commands very early
+                            in the boot process, only slightly after a boothook would
+                            run.
+                          items:
+                            type: string
+                          type: array
+                        rh_subscription:
+                          additionalProperties:
+                            type: string
+                          description:
+                            RHSubscription registers a Red Hat system either
+                            by username and password or activation and org
+                          type: object
+                        runcmd:
+                          description:
+                            RunCMD Run arbitrary commands at a rc.local like
+                            level with output to the console.
+                          items:
+                            type: string
+                          type: array
+                        yum_repo_dir:
+                          description:
+                            "YumRepoDir the repo parts directory where individual
+                            yum repo config files will be written. Default: /etc/yum.repos.d"
+                          type: string
+                        yum_repos:
+                          additionalProperties:
+                            additionalProperties:
+                              type: string
+                            type: object
+                          description:
+                            YumRepos adds yum repository configuration to
+                            the system.
+                          type: object
+                      type: object
+                    supportedContainerRuntimes:
+                      description:
+                        SupportedContainerRuntimes represents the container
+                        runtimes supported by the given OS
+                      items:
+                        description:
+                          ContainerRuntimeSpec aggregates information about
+                          a specific container runtime
+                        properties:
+                          files:
+                            description:
+                              Files to add to the main files list when the
+                              containerRuntime is selected
+                            items:
+                              description:
+                                File is a file that should get written to
+                                the host's file system. The content can either be inlined
+                                or referenced from a secret in the same namespace.
+                              properties:
+                                content:
+                                  description: Content describe the file's content.
+                                  properties:
+                                    inline:
+                                      description:
+                                        Inline is a struct that contains
+                                        information about the inlined data.
+                                      properties:
+                                        data:
+                                          description: Data is the file's data.
+                                          type: string
+                                        encoding:
+                                          description:
+                                            Encoding is the file's encoding
+                                            (e.g. base64).
+                                          type: string
+                                      required:
+                                        - data
+                                      type: object
+                                  type: object
+                                path:
+                                  description:
+                                    Path is the path of the file system where
+                                    the file should get written to.
+                                  type: string
+                                permissions:
+                                  default: 644
+                                  description:
+                                    Permissions describes with which permissions
+                                    the file should get written to the file system.
+                                    Should be in decimal base and without any leading
+                                    zeroes.
+                                  format: int32
+                                  type: integer
+                              required:
+                                - content
+                                - path
+                              type: object
+                            type: array
+                          name:
+                            description: Name of the Container runtime
+                            enum:
+                              - docker
+                              - containerd
+                            type: string
+                          templates:
+                            additionalProperties:
+                              type: string
+                            description:
+                              Templates to add to the available templates
+                              when the containerRuntime is selected
+                            type: object
+                        required:
+                          - files
+                          - name
+                        type: object
+                      type: array
+                    templates:
+                      additionalProperties:
+                        type: string
+                      description: Templates to be included in units and files
+                      type: object
+                    units:
+                      description:
+                        Units a list of the systemd unit files which will
+                        run on the instance
+                      items:
+                        description:
+                          Unit is a systemd unit used for the operating system
+                          config.
+                        properties:
+                          content:
+                            description: Content is the unit's content.
+                            type: string
+                          dropIns:
+                            description: DropIns is a list of drop-ins for this unit.
+                            items:
+                              description:
+                                DropIn is a drop-in configuration for a systemd
+                                unit.
+                              properties:
+                                content:
+                                  description: Content is the content of the drop-in.
+                                  type: string
+                                name:
+                                  description: Name is the name of the drop-in.
+                                  type: string
+                              required:
+                                - content
+                                - name
+                              type: object
+                            type: array
+                          enable:
+                            description:
+                              Enable describes whether the unit is enabled
+                              or not.
+                            type: boolean
+                          mask:
+                            description:
+                              Mask describes whether the unit is masked or
+                              not.
+                            type: boolean
+                          name:
+                            description: Name is the name of a unit.
+                            type: string
+                        required:
+                          - name
+                        type: object
+                      type: array
+                  type: object
+                supportedCloudProviders:
+                  description:
+                    SupportedCloudProviders represent the cloud providers
+                    that support the given operating system version
+                  items:
+                    description:
+                      CloudProviderSpec contains the os/image reference for
+                      a specific supported cloud provider
+                    properties:
+                      name:
+                        description:
+                          Name represents the name of the supported cloud
+                          provider
+                        enum:
+                          - aws
+                          - azure
+                          - digitalocean
+                          - gce
+                          - hetzner
+                          - kubevirt
+                          - linode
+                          - nutanix
+                          - openstack
+                          - equinixmetal
+                          - vsphere
+                          - fake
+                          - alibaba
+                          - anexia
+                          - scaleway
+                          - baremetal
+                          - external
+                          - vmware-cloud-director
+                        type: string
+                      spec:
+                        description:
+                          Spec represents the os/image reference in the supported
+                          cloud provider
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                    required:
+                      - name
+                    type: object
+                  type: array
+                version:
+                  description: Version is the version of the operating System Profile
+                  pattern: v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
+                  type: string
+              required:
+                - bootstrapConfig
+                - osName
+                - osVersion
+                - provisioningConfig
+                - supportedCloudProviders
+                - version
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: operating-system-manager-selfsigned-issuer
+  namespace: kube-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: operating-system-manager-serving-cert
+  namespace: kube-system
+spec:
+  dnsNames:
+    - "operating-system-manager-webhook.kube-system.svc"
+    - "operating-system-manager-webhook.kube-system.svc.cluster.local"
+  issuerRef:
+    kind: Issuer
+    name: operating-system-manager-selfsigned-issuer
+  secretName: webhook-server-cert
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloud-init-settings
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-init-getter
+  namespace: cloud-init-settings
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: cloud-init-getter-token
+  namespace: cloud-init-settings
+  annotations:
+    kubernetes.io/service-account.name: "cloud-init-getter"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cloud-init-getter
+  namespace: cloud-init-settings
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cloud-init-getter
+  namespace: cloud-init-settings
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cloud-init-getter
+subjects:
+  - kind: ServiceAccount
+    name: cloud-init-getter
+    namespace: cloud-init-settings
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operating-system-manager-webhook
+  namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: operating-system-manager-webhook
+  namespace: kube-system
+spec:
+  ports:
+    - name: 443-9443
+      port: 443
+      protocol: TCP
+      targetPort: 9443
+  selector:
+    app: operating-system-manager-webhook
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operating-system-manager-webhook
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operating-system-manager-webhook
+  template:
+    metadata:
+      labels:
+        app: operating-system-manager-webhook
+    spec:
+      serviceAccountName: operating-system-manager-webhook
+      containers:
+        # TODO: Update this to a semver tag before release.
+        # - image: quay.io/kubermatic/operating-system-manager:952f1cd42007d6770b8e2805b0e18247377b14bb # Ref: https://github.com/kubermatic/operating-system-manager/commit/952f1cd42007d6770b8e2805b0e18247377b14bb
+        - image: quay.io/kubermatic/operating-system-manager:952f1cd42007d6770b8e2805b0e18247377b14bb
+          imagePullPolicy: IfNotPresent
+          name: webhook
+          command:
+            - /usr/local/bin/webhook
+            - -logtostderr
+            - -v=6
+            - -namespace=kube-system
+          volumeMounts:
+            - name: operating-system-manager-admission-cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+          ports:
+            - containerPort: 9443
+              name: webhook-server
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 256Mi
+              cpu: 100m
+      volumes:
+        - name: operating-system-manager-admission-cert
+          secret:
+            defaultMode: 420
+            secretName: webhook-server-cert
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: operatingsystemmanager.k8c.io
+  annotations:
+    cert-manager.io/inject-ca-from: kube-system/operating-system-manager-serving-cert
+webhooks:
+  - name: operatingsystemprofiles.operatingsystemmanager.k8c.io
+    failurePolicy: Fail
+    sideEffects: None
+    admissionReviewVersions: ["v1", "v1beta1"]
+    rules:
+      - apiGroups:
+          - "operatingsystemmanager.k8c.io"
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - operatingsystemprofiles
+    clientConfig:
+      service:
+        namespace: kube-system
+        name: operating-system-manager-webhook
+        path: /operatingsystemprofile
+  - name: operatingsystemconfigs.operatingsystemmanager.k8c.io
+    failurePolicy: Fail
+    sideEffects: None
+    admissionReviewVersions: ["v1", "v1beta1"]
+    rules:
+      - apiGroups:
+          - "operatingsystemmanager.k8c.io"
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - operatingsystemconfigs
+    clientConfig:
+      service:
+        namespace: kube-system
+        name: operating-system-manager-webhook
+        path: /operatingsystemconfig
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operating-system-manager
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: kube-system
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+    verbs:
+      - create
+      - update
+      - list
+      - get
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: cloud-init-settings
+rules:
+  # Secrets access is required for managing provisioning configurations
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - create
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: kube-public
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - cluster-info
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operating-system-manager
+  namespace: default
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+    resourceNames:
+      - kubernetes
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: cloud-init-settings
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: kube-public
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operating-system-manager
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:operating-system-manager
+rules:
+  - apiGroups:
+      - operatingsystemmanager.k8c.io
+    resources:
+      - operatingsystemprofiles
+      - operatingsystemconfigs
+    verbs:
+      - "*"
+  - apiGroups:
+      - cluster.k8s.io
+    resources:
+      - machinedeployments
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+  # Secrets and configmaps are needed for the bootstrap token creation and when a ref is used for a
+  # value in the machineSpec
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - list
+      - get
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:operating-system-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:operating-system-manager
+subjects:
+  - kind: ServiceAccount
+    name: operating-system-manager
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operating-system-manager
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operating-system-manager
+  template:
+    metadata:
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "8080"
+        "prometheus.io/path": "/metrics"
+      labels:
+        app: operating-system-manager
+    spec:
+      serviceAccountName: operating-system-manager
+      containers:
+        # - image: quay.io/kubermatic/operating-system-manager:952f1cd42007d6770b8e2805b0e18247377b14bb # Ref: https://github.com/kubermatic/operating-system-manager/commit/952f1cd42007d6770b8e2805b0e18247377b14bb
+        - image: quay.io/kubermatic/operating-system-manager:952f1cd42007d6770b8e2805b0e18247377b14bb
+          imagePullPolicy: IfNotPresent
+          name: operating-system-manager
+          command:
+            - /usr/local/bin/osm-controller
+            - -logtostderr
+            - -v=5
+            - -worker-count=5
+            - -cluster-dns=10.10.10.10
+            - -metrics-address=0.0.0.0:8080
+            - -health-probe-address=0.0.0.0:8085
+            - -namespace=kube-system
+            - -container-runtime=containerd
+          ports:
+            - containerPort: 8085
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: 8085
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8085
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 256Mi
+              cpu: 100m

@@ -22,6 +22,7 @@ if [ -z "${KIND_CLUSTER_NAME:-}" ]; then
 fi
 
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
+export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
 
 # Build the Docker image for machine-controller
 beforeDockerBuild=$(nowms)
@@ -45,8 +46,35 @@ if [ ! -f machine-controller-deployed ]; then
   # This is required for running e2e tests in KIND
   url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
   sed -i "s;-node-csr-approver=true;$url;g" examples/machine-controller.yaml
+
+  # Ensure that we update `use-osm` flag if OSM is disabled
+  if [[ "$OPERATING_SYSTEM_MANAGER" == "false" ]]; then
+    sed -i "s;-use-osm=true;-use-osm=false;g" examples/machine-controller.yaml
+  fi
+
   make deploy
   touch machine-controller-deployed
+fi
+
+if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
+  # cert-manager is required by OSM for generating TLS Certificates
+  echodate "Installing cert-manager"
+  (
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
+    # Wait for cert-manager to be ready
+    kubectl -n cert-manager rollout status deploy/cert-manager
+    kubectl -n cert-manager rollout status deploy/cert-manager-cainjector
+    kubectl -n cert-manager rollout status deploy/cert-manager-webhook
+  )
+
+  echodate "Installing operating-system-manager"
+  (
+    # This is required for running e2e tests in KIND
+    url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
+    sed -i "s;-container-runtime=containerd;$url;g" examples/operating-system-manager.yaml
+    sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/operating-system-manager.yaml
+    kubectl apply -f examples/operating-system-manager.yaml
+  )
 fi
 
 sleep 10

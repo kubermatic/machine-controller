@@ -324,7 +324,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "amzn2"))
+	selector := Not(OsSelector("sles", "amzn2"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -390,6 +390,12 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 func TestAWSProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
+	provisioningUtility := flatcar.Ignition
+	// `OPERATING_SYSTEM_MANAGER` will be false when legacy machine-controller userdata should be used for E2E tests.
+	if v := os.Getenv("OPERATING_SYSTEM_MANAGER"); v == "false" {
+		provisioningUtility = flatcar.CloudInit
+	}
+
 	// test data
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
 	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
@@ -402,8 +408,9 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.CloudInit),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", provisioningUtility),
 	}
+
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
@@ -424,7 +431,7 @@ func TestAWSAssumeRoleProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.CloudInit),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
 	}
 
 	scenario := scenario{
@@ -452,7 +459,7 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.CloudInit),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
 	}
 	runScenarios(t, selector, params, AWSSpotInstanceManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
@@ -533,7 +540,7 @@ func TestAWSFlatcarContainerdProvisioningE2E(t *testing.T) {
 	params := []string{
 		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.CloudInit),
+		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
 	}
 
 	scenario := scenario{
@@ -1030,13 +1037,20 @@ func TestAnexiaProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	token := os.Getenv("ANEXIA_TOKEN")
-	if token == "" {
-		t.Fatal("unable to run the test suite, ANEXIA_TOKEN environment variable cannot be empty")
+	vlanID := os.Getenv("ANEXIA_VLAN_ID")
+	templateID := os.Getenv("ANEXIA_TEMPLATE_ID")
+	locationID := os.Getenv("ANEXIA_LOCATION_ID")
+
+	if token == "" || vlanID == "" || templateID == "" || locationID == "" {
+		t.Fatal("unable to run test suite, all of ANEXIA_TOKEN, ANEXIA_VLAN_ID, ANEXIA_TEMPLATE_ID, and ANEXIA_LOCATION_ID must be set!")
 	}
 
 	selector := OsSelector("flatcar")
 	params := []string{
 		fmt.Sprintf("<< ANEXIA_TOKEN >>=%s", token),
+		fmt.Sprintf("<< ANEXIA_VLAN_ID >>=%s", vlanID),
+		fmt.Sprintf("<< ANEXIA_TEMPLATE_ID >>=%s", templateID),
+		fmt.Sprintf("<< ANEXIA_LOCATION_ID >>=%s", locationID),
 	}
 
 	runScenarios(t, selector, params, anexiaManifest, fmt.Sprintf("anexia-%s", *testRunIdentifier))

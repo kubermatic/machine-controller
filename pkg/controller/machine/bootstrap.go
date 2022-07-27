@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -30,7 +31,8 @@ func getOSMBootstrapUserdata(machineName string, bootstrapSecret corev1.Secret) 
 
 	// We have to inject the hostname i.e. machine name.
 	bootstrapConfig = strings.ReplaceAll(bootstrapConfig, hostnamePlaceholder, machineName)
-
+	// Data is HTML Encoded for ignition.
+	bootstrapConfig = strings.ReplaceAll(bootstrapConfig, url.QueryEscape(hostnamePlaceholder), url.QueryEscape(machineName))
 	return cleanupTemplateOutput(bootstrapConfig)
 }
 

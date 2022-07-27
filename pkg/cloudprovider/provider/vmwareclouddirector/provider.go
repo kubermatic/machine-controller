@@ -251,7 +251,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 
 	// 5. Before powering on the VM, configure customization to attach userdata with the VM
 	// update guest properties.
-	err = setUserData(userdata, vm, providerConfig)
+	err = setUserData(userdata, vm, providerConfig.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar)
 	if err != nil {
 		return nil, err
 	}
