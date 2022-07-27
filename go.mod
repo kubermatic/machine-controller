@@ -44,9 +44,9 @@ require (
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/yaml.v3 v3.0.1
 	// TODO: Update this to a semver tag before release.
-	// Ref: https://github.com/kubermatic/operating-system-manager/commit/45600227d69e6a105c34ba70ba641e5cd071887e
+	// Ref: https://github.com/kubermatic/operating-system-manager/commit/952f1cd42007d6770b8e2805b0e18247377b14bb
 	// Please ensure that you update the image tags in `examples/operating-system-manager.yaml` as well.
-	k8c.io/operating-system-manager v0.5.1-0.20220721170406-45600227d69e
+	k8c.io/operating-system-manager v0.5.1-0.20220727101546-952f1cd42007
 	k8s.io/api v0.24.2
 	k8s.io/apiextensions-apiserver v0.24.2
 	k8s.io/apimachinery v0.24.2
