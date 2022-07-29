@@ -26,6 +26,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// LegacyMachineControllerUserDataLabel is set to true when machine-controller is used for managing machine configuration.
+const LegacyMachineControllerUserDataLabel = "machine.clusters.k8s.io/legacy-machine-controller-user-data"
+
 func GetMachineDeploymentNameAndRevisionForMachine(ctx context.Context, machine *clusterv1alpha1.Machine, c client.Client) (string, string, error) {
 	var (
 		machineSetName        string
