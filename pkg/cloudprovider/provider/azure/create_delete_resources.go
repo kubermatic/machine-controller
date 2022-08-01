@@ -113,7 +113,7 @@ func deleteVMsByMachineUID(ctx context.Context, c *config, machineUID types.UID)
 		return err
 	}
 
-	list, err := vmClient.ListAll(ctx, "", "")
+	list, err := vmClient.List(ctx, c.ResourceGroup, "")
 	if err != nil {
 		return err
 	}
