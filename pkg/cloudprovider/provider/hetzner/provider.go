@@ -546,7 +546,12 @@ func (s *hetznerServer) Addresses() map[string]v1.NodeAddressType {
 		addresses[privateNetwork.IP.String()] = v1.NodeInternalIP
 	}
 	addresses[s.server.PublicNet.IPv4.IP.String()] = v1.NodeExternalIP
-	addresses[s.server.PublicNet.IPv6.IP.String()] = v1.NodeExternalIP
+	// For a given IPv6 network of 2001:db8:1234::/64, the instance address is 2001:db8:1234::1
+	// Reference: https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.12.1/hcloud/instances.go#L165-167
+	if !s.server.PublicNet.IPv6.IP.IsUnspecified() {
+		s.server.PublicNet.IPv6.IP[len(s.server.PublicNet.IPv6.IP)-1] |= 0x01
+		addresses[s.server.PublicNet.IPv6.IP.String()] = v1.NodeExternalIP
+	}
 	return addresses
 }
 
