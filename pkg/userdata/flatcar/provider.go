@@ -246,6 +246,10 @@ systemd:
         contents: |
           [Service]
           EnvironmentFile=/etc/kubernetes/nodeip.conf
+      - name: resolv.conf
+        contents: |
+          [Service]
+          Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
       - name: 40-download.conf
         contents: |
           [Unit]
@@ -516,6 +520,10 @@ coreos:
       content: |
         [Service]
         EnvironmentFile=/etc/kubernetes/nodeip.conf
+    - name: resolv.conf
+      content: |
+        [Service]
+        Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
     - name: 40-download.conf
       content: |
         [Unit]
