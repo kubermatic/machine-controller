@@ -45,9 +45,8 @@ func (ai *anexiaInstance) ID() string {
 	return ai.info.Identifier
 }
 
-// TODO(xmudrii): Implement this.
 func (ai *anexiaInstance) ProviderID() string {
-	return ""
+	return ai.ID()
 }
 
 func (ai *anexiaInstance) Addresses() map[string]v1.NodeAddressType {
