@@ -148,6 +148,12 @@ NO_PROXY=%s
 no_proxy=%s`, proxy, proxy, proxy, proxy, noProxy, noProxy)
 }
 
+func IPv6RouterRA() string {
+	// for /etc/systemd/network/zz-default.network.d/ipv6-fix.conf
+	return `[Network]
+IPv6AcceptRA=true`
+}
+
 func SetupNodeIPEnvScript(ipFamily util.IPFamily) string {
 	const defaultIfcIPv4 = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
 

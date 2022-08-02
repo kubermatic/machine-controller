@@ -299,6 +299,12 @@ write_files:
     fi
 
 
+- path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+  permissions: "0755"
+  content: |
+    [Network]
+    IPv6AcceptRA=true
+
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: "0400"
   content: |

@@ -106,6 +106,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig                         string
 		KubernetesCACert                   string
 		NodeIPScript                       string
+		IPv6RouterRA                       string
 		ExtraKubeletFlags                  []string
 		ContainerRuntimeScript             string
 		ContainerRuntimeConfigFileName     string
@@ -121,6 +122,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig:                         kubeconfigString,
 		KubernetesCACert:                   kubernetesCACert,
 		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(pconfig.Network.GetIPFamily()),
+		IPv6RouterRA:                       userdatahelper.IPv6RouterRA(),
 		ExtraKubeletFlags:                  crEngine.KubeletFlags(),
 		ContainerRuntimeScript:             crScript,
 		ContainerRuntimeConfigFileName:     crEngine.ConfigFileName(),
@@ -373,6 +375,13 @@ storage:
       contents:
         inline: |
 {{ .NodeIPScript | indent 10 }}
+
+    - path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+{{ .IPv6RouterRA | indent 10 }}
 
     - path: /etc/kubernetes/bootstrap-kubelet.conf
       filesystem: root
@@ -697,6 +706,11 @@ write_files:
   permissions: "0755"
   content: |
 {{ .NodeIPScript | indent 4 }}
+
+- path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+  permissions: "0755"
+  content: |
+{{ .IPv6RouterRA | indent 4 }}
 
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: "0400"
