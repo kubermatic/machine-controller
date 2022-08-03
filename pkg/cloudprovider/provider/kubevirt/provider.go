@@ -140,6 +140,7 @@ type NodeAffinityPreset struct {
 }
 
 type SecondaryDisks struct {
+	Name             string
 	Size             resource.Quantity
 	StorageClassName string
 }
@@ -282,7 +283,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		config.DNSConfig = rawConfig.VirtualMachine.DNSConfig
 	}
 	config.SecondaryDisks = make([]SecondaryDisks, 0, len(rawConfig.VirtualMachine.Template.SecondaryDisks))
-	for _, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
+	for i, sd := range rawConfig.VirtualMachine.Template.SecondaryDisks {
 		sdSizeString, err := p.configVarResolver.GetConfigVarStringValue(sd.Size)
 		if err != nil {
 			return nil, nil, fmt.Errorf(`failed to parse "secondaryDisks.size" field: %w`, err)
@@ -297,6 +298,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
 		}
 		config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
+			Name:             fmt.Sprintf("secondarydisk%d", i),
 			Size:             pvc,
 			StorageClassName: scString,
 		})
@@ -526,17 +528,13 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		dataVolumeName = machine.Name
 		annotations    map[string]string
 	)
+	// Add machineName as prefix to secondaryDisks.
+	addPrefixToSecondaryDisk(c.SecondaryDisks, dataVolumeName)
 
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
 		annotations = map[string]string{
 			"kubevirt.io/ignitiondata": userdata,
 		}
-	}
-
-	// we need this check until this issue is resolved:
-	// https://github.com/kubevirt/containerized-data-importer/issues/895
-	if len(dataVolumeName) > 63 {
-		return nil, fmt.Errorf("dataVolumeName size %v, is bigger than 63 characters", len(dataVolumeName))
 	}
 
 	defaultBridgeNetwork, err := defaultBridgeNetwork()
@@ -667,9 +665,9 @@ func getVMDisks(config *Config) []kubevirtv1.Disk {
 			DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
 		},
 	}
-	for i := range config.SecondaryDisks {
+	for _, sd := range config.SecondaryDisks {
 		disks = append(disks, kubevirtv1.Disk{
-			Name:       "secondarydisk" + strconv.Itoa(i),
+			Name:       sd.Name,
 			DiskDevice: kubevirtv1.DiskDevice{Disk: &kubevirtv1.DiskTarget{Bus: "virtio"}},
 		})
 	}
@@ -707,12 +705,12 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 			},
 		},
 	}
-	for i := range config.SecondaryDisks {
+	for _, sd := range config.SecondaryDisks {
 		volumes = append(volumes, kubevirtv1.Volume{
-			Name: "secondarydisk" + strconv.Itoa(i),
+			Name: sd.Name,
 			VolumeSource: kubevirtv1.VolumeSource{
 				DataVolume: &kubevirtv1.DataVolumeSource{
-					Name: "secondarydisk" + strconv.Itoa(i),
+					Name: sd.Name,
 				}},
 		})
 	}
@@ -741,10 +739,10 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 			},
 		},
 	}
-	for i, sd := range config.SecondaryDisks {
+	for _, sd := range config.SecondaryDisks {
 		dataVolumeTemplates = append(dataVolumeTemplates, kubevirtv1.DataVolumeTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "secondarydisk" + strconv.Itoa(i),
+				Name: sd.Name,
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
@@ -872,5 +870,11 @@ func hostnameAffinityTerm(matchKey, matchValue string) []corev1.PodAffinityTerm 
 			},
 			TopologyKey: topologyKeyHostname,
 		},
+	}
+}
+
+func addPrefixToSecondaryDisk(secondaryDisks []SecondaryDisks, prefix string) {
+	for i := range secondaryDisks {
+		secondaryDisks[i].Name = fmt.Sprintf("%s-%s", prefix, secondaryDisks[i].Name)
 	}
 }
