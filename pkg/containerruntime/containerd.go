@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	DefaultContainerdVersion = "1.4"
+	LegacyContainerdVersion  = "1.4"
+	DefaultContainerdVersion = "1.5"
 )
 
 type Containerd struct {
@@ -59,6 +60,8 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 
 	switch os {
 	case types.OperatingSystemAmazonLinux2:
+		// Amazon Linux 2 does not have containerd 1.5
+		args.ContainerdVersion = LegacyContainerdVersion
 		err := containerdAmzn2Template.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL:
