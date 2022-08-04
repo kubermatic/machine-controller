@@ -50,6 +50,7 @@ type RawConfig struct {
 	DataDiskSize   int32                               `json:"dataDiskSize"`
 	DataDiskSKU    *string                             `json:"dataDiskSKU,omitempty"`
 	AssignPublicIP providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
+	PublicIPSKU    *string                             `json:"publicIPSKU,omitempty"`
 	Tags           map[string]string                   `json:"tags,omitempty"`
 }
 

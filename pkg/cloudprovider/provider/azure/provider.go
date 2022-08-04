@@ -24,6 +24,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
@@ -102,6 +104,7 @@ type config struct {
 	DataDiskSKU  *compute.StorageAccountTypes
 
 	AssignPublicIP              bool
+	PublicIPSKU                 *network.PublicIPAddressSkuName
 	EnableAcceleratedNetworking *bool
 	Tags                        map[string]string
 }
@@ -323,6 +326,10 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	c.AssignPublicIP, _, err = p.configVarResolver.GetConfigVarBoolValue(rawCfg.AssignPublicIP)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get the value of \"assignPublicIP\" field, error = %w", err)
+	}
+
+	if rawCfg.PublicIPSKU != nil {
+		c.PublicIPSKU = ipSkuPtr(*rawCfg.PublicIPSKU)
 	}
 
 	c.AssignAvailabilitySet = rawCfg.AssignAvailabilitySet
@@ -583,7 +590,10 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 
 	ipFamily := providerCfg.Network.GetIPFamily()
 	sku := network.PublicIPAddressSkuNameBasic
-	if ipFamily == util.DualStack {
+
+	if config.PublicIPSKU != nil {
+		sku = *config.PublicIPSKU
+	} else if ipFamily == util.DualStack {
 		// 1. Cannot specify basic sku PublicIp for an IPv6 network interface ipConfiguration.
 		// 2. Different basic sku and standard sku public Ip resources in availability set is not allowed.
 		// 1 & 2 means we have to use standard sku in dual-stack configuration.
@@ -593,6 +603,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		// basic sku.
 		sku = network.PublicIPAddressSkuNameStandard
 	}
+
 	var publicIP, publicIPv6 *network.PublicIPAddress
 	if config.AssignPublicIP {
 		if err = data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
@@ -1036,6 +1047,23 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
 	}
 
+	if c.PublicIPSKU != nil {
+		valid := false
+		for _, sku := range network.PossiblePublicIPAddressSkuNameValues() {
+			if sku == *c.PublicIPSKU {
+				valid = true
+			}
+		}
+
+		if !valid {
+			return fmt.Errorf("unknown public IP address SKU: %s", *c.PublicIPSKU)
+		}
+
+		if providerConfig.Network.GetIPFamily() == util.DualStack && *c.PublicIPSKU == network.PublicIPAddressSkuNameBasic {
+			return fmt.Errorf("cannot use %s public IP address SKU with dualstack", network.PublicIPAddressSkuNameBasic)
+		}
+	}
+
 	vmClient, err := getVMClient(c)
 	if err != nil {
 		return fmt.Errorf("failed to (create) vm client: %w", err)
@@ -1192,6 +1220,21 @@ func getOSUsername(os providerconfigtypes.OperatingSystem) string {
 func storageTypePtr(storageType string) *compute.StorageAccountTypes {
 	storage := compute.StorageAccountTypes(storageType)
 	return &storage
+}
+
+func ipSkuPtr(ipSKU string) *network.PublicIPAddressSkuName {
+	// the correct Azure API representation is capitalized, so we do that even if the original input was all lowercase
+	sku := network.PublicIPAddressSkuName(upperFirst(ipSKU))
+	return &sku
+}
+
+func upperFirst(str string) string {
+	if str == "" {
+		return ""
+	}
+
+	r, n := utf8.DecodeRuneInString(str)
+	return string(unicode.ToUpper(r)) + str[n:]
 }
 
 // supportsDiskSKU validates some disk SKU types against the chosen VM SKU / VM type.
