@@ -153,13 +153,13 @@ var (
 		providerconfigtypes.OperatingSystemSLES: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				description: "SUSE Linux Enterprise Server 15 SP3 (HVM, 64-bit, SSD-Backed)",
 				// The AWS marketplace ID from SLES
 				owner: "013907871322",
 			},
 			awstypes.CPUArchitectureARM64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "SUSE Linux Enterprise Server 15 SP1 (HVM, 64-bit, SSD-Backed)",
+				description: "SUSE Linux Enterprise Server 15 SP3 (HVM, 64-bit, SSD-Backed)",
 				// The AWS marketplace ID from SLES
 				owner: "013907871322",
 			},
