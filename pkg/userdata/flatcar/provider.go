@@ -106,7 +106,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig                         string
 		KubernetesCACert                   string
 		NodeIPScript                       string
-		IPv6RouterRA                       string
 		ExtraKubeletFlags                  []string
 		ContainerRuntimeScript             string
 		ContainerRuntimeConfigFileName     string
@@ -122,7 +121,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		Kubeconfig:                         kubeconfigString,
 		KubernetesCACert:                   kubernetesCACert,
 		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(pconfig.Network.GetIPFamily()),
-		IPv6RouterRA:                       userdatahelper.IPv6RouterRA(),
 		ExtraKubeletFlags:                  crEngine.KubeletFlags(),
 		ContainerRuntimeScript:             crScript,
 		ContainerRuntimeConfigFileName:     crEngine.ConfigFileName(),
@@ -381,8 +379,8 @@ storage:
       mode: 0755
       contents:
         inline: |
-{{ .IPv6RouterRA | indent 10 }}
-
+          [Network]
+          IPv6AcceptRA=true
     - path: /etc/kubernetes/bootstrap-kubelet.conf
       filesystem: root
       mode: 0400
@@ -710,7 +708,11 @@ write_files:
 - path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
   permissions: "0755"
   content: |
-{{ .IPv6RouterRA | indent 4 }}
+    # IPv6 autoconfiguration doesn't work out of the box on some versions of Flatcar
+    # so we enable IPv6 Router Advertisement here.
+    # See for details https://github.com/flatcar-linux/Flatcar/issues/384
+    [Network]
+    IPv6AcceptRA=true
 
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: "0400"
