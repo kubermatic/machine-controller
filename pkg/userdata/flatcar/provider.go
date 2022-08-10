@@ -374,6 +374,13 @@ storage:
         inline: |
 {{ .NodeIPScript | indent 10 }}
 
+    - path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+          [Network]
+          IPv6AcceptRA=true
     - path: /etc/kubernetes/bootstrap-kubelet.conf
       filesystem: root
       mode: 0400
@@ -697,6 +704,15 @@ write_files:
   permissions: "0755"
   content: |
 {{ .NodeIPScript | indent 4 }}
+
+- path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+  permissions: "0755"
+  content: |
+    # IPv6 autoconfiguration doesn't work out of the box on some versions of Flatcar
+    # so we enable IPv6 Router Advertisement here.
+    # See for details https://github.com/flatcar-linux/Flatcar/issues/384
+    [Network]
+    IPv6AcceptRA=true
 
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: "0400"
