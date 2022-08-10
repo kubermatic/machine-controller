@@ -458,8 +458,9 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %w", err)
 	}
+
 	cc := kubevirttypes.CloudConfig{
-		Kubeconfig: c.Kubeconfig,
+		Namespace: c.Namespace,
 	}
 	ccs, err := cc.String()
 
