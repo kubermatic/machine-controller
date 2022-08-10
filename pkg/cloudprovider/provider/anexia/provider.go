@@ -53,8 +53,23 @@ const (
 	ProvisionedType = "Provisioned"
 )
 
+var (
+	// ErrConfigDiskSizeAndDisks is returned when the config has both DiskSize and Disks set, which is unsupported.
+	ErrConfigDiskSizeAndDisks = errors.New("both the deprecated DiskSize and new Disks attribute are set")
+
+	// ErrMultipleDisksNotYetImplemented is returned when multiple disks are configured.
+	ErrMultipleDisksNotYetImplemented = errors.New("multiple disks configured, but this feature is not yet implemented")
+)
+
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
+}
+
+// resolvedDisk contains the resolved values from types.RawDisk.
+type resolvedDisk struct {
+	anxtypes.RawDisk
+
+	PerformanceType string
 }
 
 // resolvedConfig contains the resolved values from types.RawConfig.
@@ -65,6 +80,8 @@ type resolvedConfig struct {
 	VlanID     string
 	LocationID string
 	TemplateID string
+
+	Disks []resolvedDisk
 }
 
 func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
@@ -173,9 +190,11 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 			reconcileContext.Machine.Name,
 			config.CPUs,
 			config.Memory,
-			config.DiskSize,
+			config.Disks[0].Size,
 			networkInterfaces,
 		)
+
+		vm.DiskType = config.Disks[0].PerformanceType
 
 		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
 
@@ -315,6 +334,32 @@ func (p *provider) resolveConfig(config anxtypes.RawConfig) (*resolvedConfig, er
 		return nil, fmt.Errorf("failed to get 'vlanID': %w", err)
 	}
 
+	if config.DiskSize != 0 {
+		if len(config.Disks) != 0 {
+			return nil, ErrConfigDiskSizeAndDisks
+		}
+
+		klog.Warningf("Configuration uses the deprecated DiskSize attribute, please migrate to the Disks array instead.")
+
+		config.Disks = []anxtypes.RawDisk{
+			{
+				Size: config.DiskSize,
+			},
+		}
+		config.DiskSize = 0
+	}
+
+	ret.Disks = make([]resolvedDisk, len(config.Disks))
+
+	for idx, disk := range config.Disks {
+		ret.Disks[idx].RawDisk = disk
+
+		ret.Disks[idx].PerformanceType, err = p.configVarResolver.GetConfigVarStringValue(disk.PerformanceType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get 'performanceType' of disk %v: %w", idx, err)
+		}
+	}
+
 	return &ret, nil
 }
 
@@ -369,8 +414,18 @@ func (p *provider) Validate(_ context.Context, machinespec clusterv1alpha1.Machi
 		return errors.New("cpu count is missing")
 	}
 
-	if config.DiskSize == 0 {
-		return errors.New("disk size is missing")
+	if len(config.Disks) == 0 {
+		return errors.New("no disks configured")
+	}
+
+	if len(config.Disks) > 1 {
+		return ErrMultipleDisksNotYetImplemented
+	}
+
+	for _, disk := range config.Disks {
+		if disk.Size == 0 {
+			return errors.New("disk size is missing")
+		}
 	}
 
 	if config.Memory == 0 {

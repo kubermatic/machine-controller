@@ -46,6 +46,12 @@ var StatusUpdateFailed = cloudprovidererrors.TerminalError{
 	Message: "Unable to update the machine status",
 }
 
+// RawDisk specifies a single disk, with some values maybe being fetched from secrets.
+type RawDisk struct {
+	Size            int                                 `json:"size"`
+	PerformanceType providerconfigtypes.ConfigVarString `json:"performanceType"`
+}
+
 // RawConfig contains all the configuration values for VMs to create, with some values maybe being fetched from secrets.
 type RawConfig struct {
 	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
@@ -53,9 +59,13 @@ type RawConfig struct {
 	LocationID providerconfigtypes.ConfigVarString `json:"locationID"`
 	TemplateID providerconfigtypes.ConfigVarString `json:"templateID"`
 
-	CPUs     int `json:"cpus"`
-	Memory   int `json:"memory"`
+	CPUs   int `json:"cpus"`
+	Memory int `json:"memory"`
+
+	// Deprecated, use Disks instead.
 	DiskSize int `json:"diskSize"`
+
+	Disks []RawDisk `json:"disks"`
 }
 
 type ProviderStatus struct {

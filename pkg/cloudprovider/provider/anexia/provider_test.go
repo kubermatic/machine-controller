@@ -159,10 +159,16 @@ func TestAnexiaProvider(t *testing.T) {
 				VlanID:     "VLAN-ID",
 				LocationID: "LOCATION-ID",
 				TemplateID: "TEMPLATE-ID",
+				Disks: []resolvedDisk{
+					{
+						RawDisk: anxtypes.RawDisk{
+							Size: 5,
+						},
+					},
+				},
 				RawConfig: anxtypes.RawConfig{
-					CPUs:     5,
-					Memory:   5,
-					DiskSize: 5,
+					CPUs:   5,
+					Memory: 5,
 				},
 			},
 			ProviderData: &cloudprovidertypes.ProviderData{
@@ -236,9 +242,11 @@ func TestValidate(t *testing.T) {
 		config := anxtypes.RawConfig{
 			CPUs: 1,
 
-			// let's assume those are gigabytes, the actual values don't actually matter
-			Memory:   2,
-			DiskSize: 20,
+			Memory: 2,
+
+			Disks: []anxtypes.RawDisk{
+				{Size: 5, PerformanceType: newConfigVarString("ENT6")},
+			},
 
 			Token:      newConfigVarString("test-token"),
 			VlanID:     newConfigVarString("test-vlan"),
@@ -264,7 +272,19 @@ func TestValidate(t *testing.T) {
 			Error:  errors.New("cpu count is missing"),
 		},
 		ConfigTestCase{
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 0 }),
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks = []anxtypes.RawDisk{} }),
+			Error:  errors.New("no disks configured"),
+		},
+		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10 }),
+			Error:  ErrConfigDiskSizeAndDisks,
+		},
+		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks = append(c.Disks, anxtypes.RawDisk{Size: 10}) }),
+			Error:  ErrMultipleDisksNotYetImplemented,
+		},
+		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks[0].Size = 0 }),
 			Error:  errors.New("disk size is missing"),
 		},
 		ConfigTestCase{
@@ -284,6 +304,10 @@ func TestValidate(t *testing.T) {
 			Error:  errors.New("vlan id is missing"),
 		},
 		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10; c.Disks = []anxtypes.RawDisk{} }),
+			Error:  nil,
+		},
+		ConfigTestCase{
 			Config: hookableConfig(nil),
 			Error:  nil,
 		},
@@ -293,7 +317,9 @@ func TestValidate(t *testing.T) {
 	for _, testCase := range getSpecsForValidationTest(t, configCases) {
 		err := provider.Validate(context.Background(), testCase.Spec)
 		if testCase.ExpectedError != nil {
-			testhelper.AssertEquals(t, testCase.ExpectedError.Error(), err.Error())
+			if !errors.Is(err, testCase.ExpectedError) {
+				testhelper.AssertEquals(t, testCase.ExpectedError.Error(), err.Error())
+			}
 		} else {
 			testhelper.AssertEquals(t, testCase.ExpectedError, err)
 		}
