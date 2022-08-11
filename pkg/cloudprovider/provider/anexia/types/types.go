@@ -46,14 +46,16 @@ var StatusUpdateFailed = cloudprovidererrors.TerminalError{
 	Message: "Unable to update the machine status",
 }
 
+// RawConfig contains all the configuration values for VMs to create, with some values maybe being fetched from secrets.
 type RawConfig struct {
 	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
 	VlanID     providerconfigtypes.ConfigVarString `json:"vlanID"`
 	LocationID providerconfigtypes.ConfigVarString `json:"locationID"`
 	TemplateID providerconfigtypes.ConfigVarString `json:"templateID"`
-	CPUs       int                                 `json:"cpus"`
-	Memory     int                                 `json:"memory"`
-	DiskSize   int                                 `json:"diskSize"`
+
+	CPUs     int `json:"cpus"`
+	Memory   int `json:"memory"`
+	DiskSize int `json:"diskSize"`
 }
 
 type ProviderStatus struct {
@@ -63,16 +65,6 @@ type ProviderStatus struct {
 	ReservedIP       string         `json:"reservedIP"`
 	IPState          string         `json:"ipState"`
 	Conditions       []v1.Condition `json:"conditions,omitempty"`
-}
-
-type Config struct {
-	Token      string
-	VlanID     string
-	LocationID string
-	TemplateID string
-	CPUs       int
-	Memory     int
-	DiskSize   int
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {

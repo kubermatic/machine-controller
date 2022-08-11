@@ -37,7 +37,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/utils"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -58,6 +57,16 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
 }
 
+// resolvedConfig contains the resolved values from types.RawConfig.
+type resolvedConfig struct {
+	anxtypes.RawConfig
+
+	Token      string
+	VlanID     string
+	LocationID string
+	TemplateID string
+}
+
 func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
 	status := getProviderStatus(machine)
 	klog.V(3).Infof(fmt.Sprintf("'%s' has status %#v", machine.Name, status))
@@ -70,10 +79,10 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, fmt.Errorf("unable to get provider config: %w", err)
 	}
 
-	ctx = utils.CreateReconcileContext(ctx, utils.ReconcileContext{
+	ctx = createReconcileContext(ctx, reconcileContext{
 		Status:       &status,
 		UserData:     userdata,
-		Config:       config,
+		Config:       *config,
 		ProviderData: data,
 		Machine:      machine,
 	})
@@ -108,7 +117,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 }
 
 func waitForVM(ctx context.Context, client anxclient.Client) error {
-	reconcileContext := utils.GetReconcileContext(ctx)
+	reconcileContext := getReconcileContext(ctx)
 	api := vsphere.NewAPI(client)
 	var identifier string
 	err := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
@@ -135,7 +144,7 @@ func waitForVM(ctx context.Context, client anxclient.Client) error {
 }
 
 func provisionVM(ctx context.Context, client anxclient.Client) error {
-	reconcileContext := utils.GetReconcileContext(ctx)
+	reconcileContext := getReconcileContext(ctx)
 	vmAPI := vsphere.NewAPI(client)
 
 	ctx, cancel := context.WithTimeout(ctx, anxtypes.CreateRequestTimeout)
@@ -170,6 +179,7 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 
 		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
 
+		// We generate a fresh SSH key but will never actually use it - we just want a valid public key to disable password authentication for our fresh VM.
 		sshKey, err := ssh.NewKey()
 		if err != nil {
 			return newError(common.CreateMachineError, "failed to generate ssh key: %v", err)
@@ -220,7 +230,7 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 }
 
 func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) {
-	reconcileContext := utils.GetReconcileContext(ctx)
+	reconcileContext := getReconcileContext(ctx)
 	status := reconcileContext.Status
 
 	// only use IP if it is still unbound
@@ -228,6 +238,7 @@ func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) 
 		klog.Info("reusing already provisioned ip", "IP", status.ReservedIP)
 		return status.ReservedIP, nil
 	}
+
 	klog.Info(fmt.Sprintf("Creating a new IP for machine %q", reconcileContext.Machine.Name))
 	addrAPI := anxaddr.NewAPI(client)
 	config := reconcileContext.Config
@@ -251,7 +262,7 @@ func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) 
 }
 
 func isAlreadyProvisioning(ctx context.Context) bool {
-	status := utils.GetReconcileContext(ctx).Status
+	status := getReconcileContext(ctx).Status
 	condition := meta.FindStatusCondition(status.Conditions, ProvisionedType)
 	lastChange := condition.LastTransitionTime.Time
 	const reasonInProvisioning = "InProvisioning"
@@ -278,7 +289,36 @@ func ensureConditions(status *anxtypes.ProviderStatus) {
 	}
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*anxtypes.Config, *providerconfigtypes.Config, error) {
+func (p *provider) resolveConfig(config anxtypes.RawConfig) (*resolvedConfig, error) {
+	var err error
+	ret := resolvedConfig{
+		RawConfig: config,
+	}
+
+	ret.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(config.Token, anxtypes.AnxTokenEnv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get 'token': %w", err)
+	}
+
+	ret.LocationID, err = p.configVarResolver.GetConfigVarStringValue(config.LocationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get 'locationID': %w", err)
+	}
+
+	ret.TemplateID, err = p.configVarResolver.GetConfigVarStringValue(config.TemplateID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get 'templateID': %w", err)
+	}
+
+	ret.VlanID, err = p.configVarResolver.GetConfigVarStringValue(config.VlanID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get 'vlanID': %w", err)
+	}
+
+	return &ret, nil
+}
+
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
 	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
@@ -293,35 +333,15 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*anxtypes.C
 
 	rawConfig, err := anxtypes.GetConfig(*pconfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("error parsing provider config: %w", err)
 	}
 
-	c := anxtypes.Config{}
-	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, anxtypes.AnxTokenEnv)
+	resolvedConfig, err := p.resolveConfig(*rawConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'token': %w", err)
+		return nil, nil, fmt.Errorf("error resolving config: %w", err)
 	}
 
-	c.CPUs = rawConfig.CPUs
-	c.Memory = rawConfig.Memory
-	c.DiskSize = rawConfig.DiskSize
-
-	c.LocationID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.LocationID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'locationID': %w", err)
-	}
-
-	c.TemplateID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TemplateID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'templateID': %w", err)
-	}
-
-	c.VlanID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VlanID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get 'vlanID': %w", err)
-	}
-
-	return &c, pconfig, nil
+	return resolvedConfig, pconfig, nil
 }
 
 // New returns an Anexia provider.
