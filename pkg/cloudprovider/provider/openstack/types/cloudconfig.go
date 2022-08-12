@@ -27,9 +27,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
-//  use-octavia is enabled by default in CCM since v1.17.0, and disabled by
-//  default with the in-tree cloud provider.
-//  https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
+// use-octavia is enabled by default in CCM since v1.17.0, and disabled by
+// default with the in-tree cloud provider.
+// https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
 const (
 	cloudConfigTpl = `[Global]
 auth-url    = {{ .Global.AuthURL | iniEscape }}
@@ -53,6 +53,12 @@ lb-method = {{ default "ROUND_ROBIN" .LoadBalancer.LBMethod | iniEscape }}
 lb-provider = {{ .LoadBalancer.LBProvider | iniEscape }}
 {{- if .LoadBalancer.UseOctavia }}
 use-octavia = {{ .LoadBalancer.UseOctavia | boolPtr }}
+{{- end }}
+{{- if .LoadBalancer.EnableIngressHostname }}
+enable-ingress-hostname = {{ .LoadBalancer.EnableIngressHostname | boolPtr }}
+{{- if .LoadBalancer.IngressHostnameSuffix }}
+ingress-hostname-suffix = {{ .LoadBalancer.IngressHostnameSuffix | strPtr | iniEscape }}
+{{- end }}
 {{- end }}
 
 {{- if .LoadBalancer.CreateMonitor }}
@@ -89,6 +95,9 @@ type LoadBalancerOpts struct {
 	MonitorMaxRetries    uint         `gcfg:"monitor-max-retries"`
 	ManageSecurityGroups bool         `gcfg:"manage-security-groups"`
 	UseOctavia           *bool        `gcfg:"use-octavia"`
+
+	EnableIngressHostname *bool   `gcfg:"enable-ingress-hostname"`
+	IngressHostnameSuffix *string `gcfg:"ingress-hostname-suffix"`
 }
 
 type BlockStorageOpts struct {
@@ -129,6 +138,7 @@ func CloudConfigToString(c *CloudConfig) (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
 	funcMap["boolPtr"] = func(b *bool) string { return strconv.FormatBool(*b) }
+	funcMap["strPtr"] = func(s *string) string { return *s }
 
 	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
 	if err != nil {
