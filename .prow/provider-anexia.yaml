@@ -32,6 +32,10 @@ presubmits:
             - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestAnexiaProvisioningE2E"
+          env:
+            # OperatingSystemManager does not yet support Anexia
+            - name: OPERATING_SYSTEM_MANAGER
+              value: "false"
           securityContext:
             privileged: true
           resources:
