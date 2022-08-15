@@ -36,7 +36,15 @@ spec:
             locationID: "<< ANEXIA_LOCATION_ID >>"
             cpus: 2
             memory: 2048
-            diskSize: 60
+
+            # only a single disk is currently supported, but support for multiple disks is planned already
+            disks:
+            - size: 60
+              performanceType: ENT6
+
+            # You may have this old disk config attribute in your config - please migrate to the disks attribute.
+            # For now it is still recognized though.
+            #diskSize: 60
           # Flatcar is the only supported operating system
           operatingSystem: "flatcar"
           operatingSystemSpec:
