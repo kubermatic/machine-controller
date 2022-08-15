@@ -6,8 +6,13 @@ metadata:
   name: machine-controller-gce
   namespace: kube-system
 type: Opaque
-stringData:
-  serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
+data:
+  # The base64 encoding here is only to satisfy Kubernetes'
+  # Secret storage and to prevent multiline string replacement
+  # issues if we used stringData here (because the GCP SA is
+  # a multiline JSON string).
+  serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>"
+
 ---
 apiVersion: "cluster.k8s.io/v1alpha1"
 kind: MachineDeployment

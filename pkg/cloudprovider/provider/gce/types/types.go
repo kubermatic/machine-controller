@@ -30,6 +30,7 @@ import (
 // CloudProviderSpec contains the specification of the cloud provider taken
 // from the provider configuration.
 type CloudProviderSpec struct {
+	// ServiceAccount must be base64-encoded.
 	ServiceAccount               providerconfigtypes.ConfigVarString  `json:"serviceAccount,omitempty"`
 	Zone                         providerconfigtypes.ConfigVarString  `json:"zone"`
 	MachineType                  providerconfigtypes.ConfigVarString  `json:"machineType"`

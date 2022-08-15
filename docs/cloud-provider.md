@@ -152,7 +152,8 @@ tags:
 ### machine.spec.providerConfig.cloudProviderSpec
 
 ```yaml
-serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
+# The service account needs to be base64-encoded.
+serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>"
 # See https://cloud.google.com/compute/docs/regions-zones/
 zone: "europe-west3-a"
 # See https://cloud.google.com/compute/docs/machine-types
@@ -302,8 +303,8 @@ tags:
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
-# kubeconfig to access KubeVirt cluster
-kubeconfig: '<< KUBECONFIG >>'
+# base64-encoded kubeconfig to access KubeVirt cluster
+kubeconfig: '<< KUBECONFIG_BASE64 >>'
 # KubeVirt namespace
 namespace: kube-system
 # kubernetes storage class
