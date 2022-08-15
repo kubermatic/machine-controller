@@ -20,6 +20,7 @@ package provisioning
 
 import (
 	"context"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"os"
@@ -290,10 +291,21 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 	selector := OsSelector("ubuntu", "centos", "flatcar")
 
 	params := []string{
-		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
+		fmt.Sprintf("<< KUBECONFIG_BASE64 >>=%s", safeBase64Encoding(kubevirtKubeconfig)),
 	}
 
 	runScenarios(t, selector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
+}
+
+// safeBase64Encoding takes a value and encodes it with base64
+// if it is not already encoded.
+func safeBase64Encoding(value string) string {
+	// If there was no error, the original value was already encoded.
+	if _, err := base64.StdEncoding.DecodeString(value); err == nil {
+		return value
+	}
+
+	return base64.StdEncoding.EncodeToString([]byte(value))
 }
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
@@ -690,8 +702,9 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	// Act. GCE does not support CentOS.
 	selector := OsSelector("ubuntu")
 	params := []string{
-		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
+		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>=%s", safeBase64Encoding(googleServiceAccount)),
 	}
+
 	runScenarios(t, selector, params, GCEManifest, fmt.Sprintf("gce-%s", *testRunIdentifier))
 }
 
