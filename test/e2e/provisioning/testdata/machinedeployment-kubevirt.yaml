@@ -28,7 +28,7 @@ spec:
           cloudProviderSpec:
             auth:
               kubeconfig:
-                value: '<< KUBECONFIG >>'
+                value: '<< KUBECONFIG_BASE64 >>'
             virtualMachine:
               template:
                 cpus: "1"

@@ -302,8 +302,8 @@ tags:
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
-# kubeconfig to access KubeVirt cluster
-kubeconfig: '<< KUBECONFIG >>'
+# base64-encoded kubeconfig to access KubeVirt cluster
+kubeconfig: '<< KUBECONFIG_BASE64 >>'
 # KubeVirt namespace
 namespace: kube-system
 # kubernetes storage class

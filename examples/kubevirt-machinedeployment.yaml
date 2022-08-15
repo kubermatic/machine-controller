@@ -28,9 +28,9 @@ spec:
           cloudProviderSpec:
             auth:
               kubeconfig:
-                # Can also be set via the env var 'KUBEVIRT_KUBECONFIG' on the machine-controller
-                # If specified directly, this value should be a base64 encoded kubeconfig in either yaml or json format.
-                value: "<< KUBECONFIG >>"
+                # Can also be set via the env var 'KUBEVIRT_KUBECONFIG' on the machine-controller.
+                # If instead specified directly, this value should be a base64 encoded kubeconfig.
+                value: "<< KUBECONFIG_BASE64 >>"
             virtualMachine:
               template:
                 cpus: "1"
