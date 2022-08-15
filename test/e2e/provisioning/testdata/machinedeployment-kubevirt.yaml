@@ -36,7 +36,7 @@ spec:
               nameservers:
                 - 8.8.8.8
             kubeconfig:
-              value: '<< KUBECONFIG >>'
+              value: '<< KUBECONFIG_BASE64 >>'
             namespace: kube-system
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
