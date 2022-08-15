@@ -237,7 +237,7 @@ func (cfg *config) postprocessServiceAccount() error {
 	}
 
 	sam := map[string]string{}
-	err = json.Unmarshal(sa, &sam)
+	err = json.Unmarshal([]byte(sa), &sam)
 	if err != nil {
 		return fmt.Errorf("failed unmarshalling service account: %w", err)
 	}
