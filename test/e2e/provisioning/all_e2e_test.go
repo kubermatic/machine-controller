@@ -311,16 +311,6 @@ func safeBase64Encoding(value string) string {
 	return base64.StdEncoding.EncodeToString([]byte(value))
 }
 
-// safeBase64Decoding takes a value and decodes it with base64 if it was encoded.
-func safeBase64Decoding(value string) string {
-	// If there was no error, the original value was already encoded.
-	if decoded, err := base64.StdEncoding.DecodeString(value); err == nil {
-		return string(decoded)
-	}
-
-	return value
-}
-
 func TestOpenstackProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
@@ -730,7 +720,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	// Act. GCE does not support CentOS.
 	selector := OsSelector("ubuntu")
 	params := []string{
-		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", safeBase64Decoding(googleServiceAccount)),
+		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>=%s", safeBase64Encoding(googleServiceAccount)),
 	}
 
