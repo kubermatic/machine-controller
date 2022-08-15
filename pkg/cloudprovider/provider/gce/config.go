@@ -242,7 +242,7 @@ func (cfg *config) postprocessServiceAccount() error {
 		return fmt.Errorf("failed unmarshalling service account: %w", err)
 	}
 	cfg.projectID = sam["project_id"]
-	cfg.jwtConfig, err = google.JWTConfigFromJSON(sa, compute.ComputeScope)
+	cfg.jwtConfig, err = google.JWTConfigFromJSON([]byte(sa), compute.ComputeScope)
 	if err != nil {
 		return fmt.Errorf("failed preparing JWT: %w", err)
 	}
