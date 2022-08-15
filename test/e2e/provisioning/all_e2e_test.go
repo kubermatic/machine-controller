@@ -720,7 +720,6 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	// Act. GCE does not support CentOS.
 	selector := OsSelector("ubuntu")
 	params := []string{
-		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT >>=%s", googleServiceAccount),
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>=%s", safeBase64Encoding(googleServiceAccount)),
 	}
 
