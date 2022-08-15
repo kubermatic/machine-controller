@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package anexia
 
 import (
 	"context"
@@ -26,24 +26,25 @@ import (
 
 type contextKey byte
 
-const MachineReconcileContextKey contextKey = 0
+const machineReconcileContextKey contextKey = 0
 
-type ReconcileContext struct {
+type reconcileContext struct {
 	Machine      *v1alpha1.Machine
 	Status       *anxtypes.ProviderStatus
 	UserData     string
-	Config       *anxtypes.Config
+	Config       resolvedConfig
 	ProviderData *cloudprovidertypes.ProviderData
 }
 
-func CreateReconcileContext(cc ReconcileContext) context.Context {
-	return context.WithValue(context.Background(), MachineReconcileContextKey, cc)
+func createReconcileContext(cc reconcileContext) context.Context {
+	return context.WithValue(context.Background(), machineReconcileContextKey, cc)
 }
 
-func GetReconcileContext(ctx context.Context) ReconcileContext {
-	rawContext := ctx.Value(MachineReconcileContextKey)
-	if recContext, ok := rawContext.(ReconcileContext); ok {
+func getReconcileContext(ctx context.Context) reconcileContext {
+	rawContext := ctx.Value(machineReconcileContextKey)
+	if recContext, ok := rawContext.(reconcileContext); ok {
 		return recContext
 	}
-	return ReconcileContext{}
+
+	return reconcileContext{}
 }

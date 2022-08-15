@@ -31,7 +31,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/utils"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,13 +54,13 @@ func TestAnexiaProvider(t *testing.T) {
 		testhelper.Mux.HandleFunc("/api/vsphere/v1/search/by_name.json", createSearchHandler(t, waitUntilVMIsFound))
 
 		providerStatus := anxtypes.ProviderStatus{}
-		ctx := utils.CreateReconcileContext(utils.ReconcileContext{
+		ctx := createReconcileContext(reconcileContext{
 			Machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
 			},
 			Status:   &providerStatus,
 			UserData: "",
-			Config:   &anxtypes.Config{},
+			Config:   resolvedConfig{},
 
 			ProviderData: &cloudprovidertypes.ProviderData{
 				Update: func(m *clusterv1alpha1.Machine, mod ...cloudprovidertypes.MachineModifier) error {
@@ -148,19 +147,27 @@ func TestAnexiaProvider(t *testing.T) {
 		})
 
 		providerStatus := anxtypes.ProviderStatus{}
-		ctx := utils.CreateReconcileContext(utils.ReconcileContext{
+		ctx := createReconcileContext(reconcileContext{
 			Machine: &v1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
 			},
 			Status:   &providerStatus,
 			UserData: "",
-			Config: &anxtypes.Config{
+			Config: resolvedConfig{
 				VlanID:     "VLAN-ID",
 				LocationID: "LOCATION-ID",
 				TemplateID: "TEMPLATE-ID",
-				CPUs:       5,
-				Memory:     5,
-				DiskSize:   5,
+				Disks: []resolvedDisk{
+					{
+						RawDisk: anxtypes.RawDisk{
+							Size: 5,
+						},
+					},
+				},
+				RawConfig: anxtypes.RawConfig{
+					CPUs:   5,
+					Memory: 5,
+				},
 			},
 			ProviderData: &cloudprovidertypes.ProviderData{
 				Update: func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
@@ -184,10 +191,10 @@ func TestAnexiaProvider(t *testing.T) {
 				},
 			},
 		}
-		ctx := utils.CreateReconcileContext(utils.ReconcileContext{
+		ctx := createReconcileContext(reconcileContext{
 			Status:       &providerStatus,
 			UserData:     "",
-			Config:       nil,
+			Config:       resolvedConfig{},
 			ProviderData: nil,
 		})
 
@@ -212,7 +219,7 @@ func TestAnexiaProvider(t *testing.T) {
 			ReservedIP: "",
 			IPState:    "",
 		}
-		ctx := utils.CreateReconcileContext(utils.ReconcileContext{Status: providerStatus})
+		ctx := createReconcileContext(reconcileContext{Status: providerStatus})
 
 		t.Run("with unbound reserved IP", func(t *testing.T) {
 			expectedIP := "8.8.8.8"
@@ -228,42 +235,79 @@ func TestAnexiaProvider(t *testing.T) {
 func TestValidate(t *testing.T) {
 	t.Parallel()
 
+	// this generates a full config and allows hooking into it to e.g. remove a value
+	hookableConfig := func(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
+		config := anxtypes.RawConfig{
+			CPUs: 1,
+
+			Memory: 2,
+
+			Disks: []anxtypes.RawDisk{
+				{Size: 5, PerformanceType: newConfigVarString("ENT6")},
+			},
+
+			Token:      newConfigVarString("test-token"),
+			VlanID:     newConfigVarString("test-vlan"),
+			LocationID: newConfigVarString("test-location"),
+			TemplateID: newConfigVarString("test-template"),
+		}
+
+		if hook != nil {
+			hook(&config)
+		}
+
+		return config
+	}
+
 	var configCases []ConfigTestCase
 	configCases = append(configCases,
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{},
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Token.Value = "" }),
 			Error:  errors.New("token is missing"),
 		},
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{Token: newConfigVarString("TEST-TOKEN")},
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.CPUs = 0 }),
 			Error:  errors.New("cpu count is missing"),
 		},
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{Token: newConfigVarString("TEST-TOKEN"), CPUs: 1},
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks = []anxtypes.RawDisk{} }),
+			Error:  errors.New("no disks configured"),
+		},
+		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10 }),
+			Error:  ErrConfigDiskSizeAndDisks,
+		},
+		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks = append(c.Disks, anxtypes.RawDisk{Size: 10}) }),
+			Error:  ErrMultipleDisksNotYetImplemented,
+		},
+		ConfigTestCase{
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks[0].Size = 0 }),
 			Error:  errors.New("disk size is missing"),
 		},
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{Token: newConfigVarString("TEST-TOKEN"), CPUs: 1, DiskSize: 5},
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Memory = 0 }),
 			Error:  errors.New("memory size is missing"),
 		},
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{Token: newConfigVarString("TEST-TOKEN"), CPUs: 1, DiskSize: 5, Memory: 5},
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.LocationID.Value = "" }),
 			Error:  errors.New("location id is missing"),
 		},
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{Token: newConfigVarString("TEST-TOKEN"), CPUs: 1, DiskSize: 5, Memory: 5,
-				LocationID: newConfigVarString("TLID")},
-			Error: errors.New("template id is missing"),
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.TemplateID.Value = "" }),
+			Error:  errors.New("template id is missing"),
 		},
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{Token: newConfigVarString("TEST-TOKEN"), CPUs: 1, DiskSize: 5, Memory: 5,
-				LocationID: newConfigVarString("LID"), TemplateID: newConfigVarString("TID")},
-			Error: errors.New("vlan id is missing"),
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.VlanID.Value = "" }),
+			Error:  errors.New("vlan id is missing"),
 		},
 		ConfigTestCase{
-			Config: anxtypes.RawConfig{Token: newConfigVarString("TEST-TOKEN"), CPUs: 1, DiskSize: 5, Memory: 5,
-				LocationID: newConfigVarString("LID"), TemplateID: newConfigVarString("TID"), VlanID: newConfigVarString("VLAN")},
-			Error: nil,
+			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10; c.Disks = []anxtypes.RawDisk{} }),
+			Error:  nil,
+		},
+		ConfigTestCase{
+			Config: hookableConfig(nil),
+			Error:  nil,
 		},
 	)
 
@@ -271,7 +315,9 @@ func TestValidate(t *testing.T) {
 	for _, testCase := range getSpecsForValidationTest(t, configCases) {
 		err := provider.Validate(testCase.Spec)
 		if testCase.ExpectedError != nil {
-			testhelper.AssertEquals(t, testCase.ExpectedError.Error(), err.Error())
+			if !errors.Is(err, testCase.ExpectedError) {
+				testhelper.AssertEquals(t, testCase.ExpectedError.Error(), err.Error())
+			}
 		} else {
 			testhelper.AssertEquals(t, testCase.ExpectedError, err)
 		}
