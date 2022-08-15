@@ -197,19 +197,25 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 // postprocessServiceAccount processes the service account and creates a JWT configuration
 // out of it.
 func (cfg *config) postprocessServiceAccount() error {
-	sa, err := base64.StdEncoding.DecodeString(cfg.serviceAccount)
-	if err != nil {
-		return fmt.Errorf("failed to decode base64 service account: %v", err)
+	sa := cfg.serviceAccount
+
+	// safely decode the service account, in case we did not read the value
+	// from a "known-safe" location (like the MachineDeployment), but from
+	// an environment variable.
+	decoded, err := base64.StdEncoding.DecodeString(cfg.serviceAccount)
+	if err == nil {
+		sa = string(decoded)
 	}
+
 	sam := map[string]string{}
-	err = json.Unmarshal(sa, &sam)
+	err = json.Unmarshal([]byte(sa), &sam)
 	if err != nil {
-		return fmt.Errorf("failed unmarshalling service account: %v", err)
+		return fmt.Errorf("failed unmarshalling service account: %w", err)
 	}
 	cfg.projectID = sam["project_id"]
-	cfg.jwtConfig, err = google.JWTConfigFromJSON(sa, compute.ComputeScope)
+	cfg.jwtConfig, err = google.JWTConfigFromJSON([]byte(sa), compute.ComputeScope)
 	if err != nil {
-		return fmt.Errorf("failed preparing JWT: %v", err)
+		return fmt.Errorf("failed preparing JWT: %w", err)
 	}
 	return nil
 }

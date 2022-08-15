@@ -32,7 +32,9 @@ spec:
             cpus: "1"
             memory: "2048M"
             kubeconfig:
-              value: '<< KUBECONFIG >>'
+              # Can also be set via the env var 'KUBEVIRT_KUBECONFIG' on the machine-controller.
+              # If instead specified directly, this value should be a base64 encoded kubeconfig.
+              value: "<< KUBECONFIG_BASE64 >>"
             namespace: kube-system
           # Can also be `centos`, must align with he configured registryImage above
           operatingSystem: "ubuntu"
