@@ -21,8 +21,9 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/BurntSushi/toml"
+
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
 
 const (
@@ -30,13 +31,10 @@ const (
 )
 
 type Containerd struct {
-	insecureRegistries []string
-	registryMirrors    []string
-	sandboxImage       string
-}
-
-func (eng *Containerd) Config() (string, error) {
-	return helper.ContainerdConfig(eng.insecureRegistries, eng.registryMirrors, eng.sandboxImage)
+	insecureRegistries  []string
+	registryMirrors     map[string][]string
+	sandboxImage        string
+	registryCredentials map[string]AuthConfig
 }
 
 func (eng *Containerd) ConfigFileName() string {
@@ -171,4 +169,133 @@ systemctl enable --now containerd
 
 func (eng *Containerd) String() string {
 	return containerdName
+}
+
+type containerdConfigManifest struct {
+	Version int                    `toml:"version"`
+	Metrics *containerdMetrics     `toml:"metrics"`
+	Plugins map[string]interface{} `toml:"plugins"`
+}
+
+type containerdMetrics struct {
+	Address string `toml:"address"`
+}
+
+type containerdCRIPlugin struct {
+	Containerd   *containerdCRISettings `toml:"containerd"`
+	Registry     *containerdCRIRegistry `toml:"registry"`
+	SandboxImage string                 `toml:"sandbox_image,omitempty"`
+}
+
+type containerdCRISettings struct {
+	Runtimes map[string]containerdCRIRuntime `toml:"runtimes"`
+}
+
+type containerdCRIRuntime struct {
+	RuntimeType string      `toml:"runtime_type"`
+	Options     interface{} `toml:"options"`
+}
+
+type containerdCRIRuncOptions struct {
+	SystemdCgroup bool
+}
+
+type containerdCRIRegistry struct {
+	Mirrors map[string]containerdRegistryMirror `toml:"mirrors"`
+	Configs map[string]containerdRegistryConfig `toml:"configs"`
+}
+
+type containerdRegistryMirror struct {
+	Endpoint []string `toml:"endpoint"`
+}
+
+type containerdRegistryConfig struct {
+	TLS  *containerdRegistryTLSConfig `toml:"tls"`
+	Auth *AuthConfig                  `toml:"auth"`
+}
+
+type containerdRegistryTLSConfig struct {
+	InsecureSkipVerify bool `toml:"insecure_skip_verify"`
+}
+
+// AuthConfig is a COPY of github.com/containerd/containerd/pkg/cri/config.AuthConfig.
+// AuthConfig contains the config related to authentication to a specific registry
+type AuthConfig struct {
+	// Username is the username to login the registry.
+	Username string `toml:"username,omitempty" json:"username,omitempty"`
+	// Password is the password to login the registry.
+	Password string `toml:"password,omitempty" json:"password,omitempty"`
+	// Auth is a base64 encoded string from the concatenation of the username,
+	// a colon, and the password.
+	Auth string `toml:"auth,omitempty" json:"auth,omitempty"`
+	// IdentityToken is used to authenticate the user and get
+	// an access token for the registry.
+	IdentityToken string `toml:"identitytoken,omitempty" json:"identitytoken,omitempty"`
+}
+
+func (eng *Containerd) Config() (string, error) {
+	criPlugin := containerdCRIPlugin{
+		SandboxImage: eng.sandboxImage,
+		Containerd: &containerdCRISettings{
+			Runtimes: map[string]containerdCRIRuntime{
+				"runc": {
+					RuntimeType: "io.containerd.runc.v2",
+					Options: containerdCRIRuncOptions{
+						SystemdCgroup: true,
+					},
+				},
+			},
+		},
+		Registry: &containerdCRIRegistry{
+			Mirrors: map[string]containerdRegistryMirror{
+				"docker.io": {
+					Endpoint: []string{"https://registry-1.docker.io"},
+				},
+			},
+		},
+	}
+
+	for registryName := range eng.registryMirrors {
+		registry := criPlugin.Registry.Mirrors[registryName]
+		registry.Endpoint = eng.registryMirrors[registryName]
+		criPlugin.Registry.Mirrors[registryName] = registry
+	}
+
+	if len(eng.insecureRegistries) != 0 || len(eng.registryCredentials) != 0 {
+		criPlugin.Registry.Configs = map[string]containerdRegistryConfig{}
+	}
+
+	for _, registry := range eng.insecureRegistries {
+		criPlugin.Registry.Configs[registry] = containerdRegistryConfig{
+			TLS: &containerdRegistryTLSConfig{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
+	for registry, auth := range eng.registryCredentials {
+		regConfig := criPlugin.Registry.Configs[registry]
+		auth := auth
+		regConfig.Auth = &auth
+		criPlugin.Registry.Configs[registry] = regConfig
+	}
+
+	cfg := containerdConfigManifest{
+		Version: 2,
+		Metrics: &containerdMetrics{
+			// metrics available at http://127.0.0.1:1338/v1/metrics
+			Address: "127.0.0.1:1338",
+		},
+
+		Plugins: map[string]interface{}{
+			"io.containerd.grpc.v1.cri": criPlugin,
+		},
+	}
+
+	var buf strings.Builder
+	enc := toml.NewEncoder(&buf)
+	enc.Indent = ""
+	err := enc.Encode(cfg)
+
+	return buf.String(), err
 }

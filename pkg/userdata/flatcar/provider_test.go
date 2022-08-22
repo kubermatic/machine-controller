@@ -111,11 +111,9 @@ type userDataTestCase struct {
 	httpProxy             string
 	noProxy               string
 	insecureRegistries    []string
-	registryMirrors       []string
+	registryMirrors       map[string][]string
 	nodeMaxLogSize        string
 	pauseImage            string
-	hyperkubeImage        string
-	kubeletImage          string
 	containerruntime      string
 }
 
@@ -155,8 +153,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: Ignition,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name: "ignition_v1.20.11",
@@ -188,8 +184,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: Ignition,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name: "ignition_v1.21.5",
@@ -221,8 +215,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: Ignition,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name: "ignition_v1.22.2",
@@ -254,8 +246,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: Ignition,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name: "cloud-init_v1.19.15",
@@ -287,8 +277,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: CloudInit,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name: "cloud-init_v1.20.11",
@@ -320,8 +308,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: CloudInit,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name: "cloud-init_v1.21.5",
@@ -353,8 +339,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: CloudInit,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name: "cloud-init_v1.22.2",
@@ -386,8 +370,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: CloudInit,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 		{
 			name:             "containerd",
@@ -410,8 +392,6 @@ func TestUserDataGeneration(t *testing.T) {
 				DisableAutoUpdate:   true,
 				ProvisioningUtility: CloudInit,
 			},
-			hyperkubeImage: "for-kubernetes-less-then-1.19/hyperkubeImage",
-			kubeletImage:   "for-kubernetes-more-then-1.19/kubeletImage",
 		},
 	}
 
@@ -452,8 +432,6 @@ func TestUserDataGeneration(t *testing.T) {
 				HTTPProxy:             test.httpProxy,
 				NoProxy:               test.noProxy,
 				PauseImage:            test.pauseImage,
-				HyperkubeImage:        test.hyperkubeImage,
-				KubeletRepository:     test.kubeletImage,
 				KubeletFeatureGates:   kubeletFeatureGates,
 				ContainerRuntime: containerruntime.Get(
 					test.containerruntime,

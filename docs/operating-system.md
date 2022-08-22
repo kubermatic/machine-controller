@@ -11,7 +11,7 @@
 | Digitalocean  | ✓ | ✓ | ✓ | x | x | x | x |
 | Google Cloud Platform | ✓ | ✓ | x | x | ✓ | x | x |
 | Hetzner | ✓ | x | ✓ | x | x | x | x |
-| Packet | ✓ | ✓ | ✓ | x | x | x | x |
+| Equinix Metal | ✓ | ✓ | ✓ | x | x | x | x |
 | Openstack | ✓ | ✓ | ✓ | x | ✓ | x | x |
 
 ## Configuring a operating system

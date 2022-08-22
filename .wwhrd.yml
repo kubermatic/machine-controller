@@ -27,4 +27,7 @@ allowlist:
 exceptions:
   - github.com/hashicorp/golang-lru # MPL-2.0
   - github.com/hashicorp/golang-lru/simplelru # MPL-2.0
+  - github.com/embik/nutanix-client-go/pkg/client # MPL-2.0
+  - github.com/embik/nutanix-client-go/pkg/client/v3 # MPL-2.0
+  - github.com/embik/nutanix-client-go/internal/utils # MPL-2.0
   - github.com/ajeddeloh/go-json # Since it's a fork, https://github.com/golang/go/blob/master/LICENSE

@@ -17,16 +17,18 @@ limitations under the License.
 package admission
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	osmadmission "k8c.io/operating-system-manager/pkg/admission"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 )
 
-func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
+func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 	machineDeployment := clusterv1alpha1.MachineDeployment{}
 	if err := json.Unmarshal(ar.Object.Raw, &machineDeployment); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
@@ -34,8 +36,20 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionReques
 	machineDeploymentOriginal := machineDeployment.DeepCopy()
 
 	machineDeploymentDefaultingFunction(&machineDeployment)
+
+	if err := mutationsForMachineDeployment(&machineDeployment, ad.useOSM); err != nil {
+		return nil, fmt.Errorf("mutation failed: %v", err)
+	}
+
 	if errs := validateMachineDeployment(machineDeployment); len(errs) > 0 {
 		return nil, fmt.Errorf("validation failed: %v", errs)
+	}
+
+	// If OSM is enabled then validate machine deployment against selected OSP
+	if ad.useOSM {
+		if errs := osmadmission.ValidateMachineDeployment(machineDeployment, ad.client, ad.namespace); len(errs) > 0 {
+			return nil, fmt.Errorf("validation failed: %v", errs)
+		}
 	}
 
 	// Do not validate the spec if it hasn't changed
@@ -51,7 +65,7 @@ func (ad *admissionData) mutateMachineDeployments(ar admissionv1.AdmissionReques
 	}
 
 	if machineSpecNeedsValidation {
-		if err := ad.defaultAndValidateMachineSpec(&machineDeployment.Spec.Template.Spec); err != nil {
+		if err := ad.defaultAndValidateMachineSpec(ctx, &machineDeployment.Spec.Template.Spec); err != nil {
 			return nil, err
 		}
 	}

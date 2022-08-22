@@ -31,6 +31,7 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
+	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
 
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -55,14 +56,14 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 
 	// Ignition configuration is used for flatcar
 	if useIgnition(pconfig) {
-		return getOSMBootstrapUserDataForIgnition(ctx, req, pconfig.SSHPublicKeys, token, secretName, clusterName)
+		return getOSMBootstrapUserDataForIgnition(req, pconfig.SSHPublicKeys, token, secretName, clusterName)
 	}
 	// cloud-init is used for all other operating systems
-	return getOSMBootstrapUserDataForCloudInit(ctx, req, pconfig, token, secretName, clusterName)
+	return getOSMBootstrapUserDataForCloudInit(req, pconfig, token, secretName, clusterName)
 }
 
 // getOSMBootstrapUserDataForIgnition returns the userdata for the ignition bootstrap config
-func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName string) (string, error) {
 	data := struct {
 		Token      string
 		SecretName string
@@ -106,18 +107,20 @@ func getOSMBootstrapUserDataForIgnition(ctx context.Context, req plugin.UserData
 }
 
 // getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
-func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
 	data := struct {
 		Token           string
 		SecretName      string
 		ServerURL       string
 		MachineName     string
 		EnterpriseLinux bool
+		ProviderSpec    *providerconfigtypes.Config
 	}{
-		Token:       token,
-		SecretName:  secretName,
-		ServerURL:   req.Kubeconfig.Clusters[clusterName].Server,
-		MachineName: req.MachineSpec.Name,
+		Token:        token,
+		SecretName:   secretName,
+		ServerURL:    req.Kubeconfig.Clusters[clusterName].Server,
+		MachineName:  req.MachineSpec.Name,
+		ProviderSpec: pconfig,
 	}
 
 	var (
@@ -142,6 +145,16 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 		if err != nil {
 			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
 		}
+	case providerconfigtypes.OperatingSystemSLES:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapZypperBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapZypperBinContentTemplate template: %v", err)
+		}
+	case providerconfigtypes.OperatingSystemRHEL:
+		bsScript, err = template.New("bootstrap-cloud-init").Parse(bootstrapYumBinContentTemplate)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse bootstrapYumBinContentTemplate template: %v", err)
+		}
 	}
 
 	script := &bytes.Buffer{}
@@ -154,17 +167,24 @@ func getOSMBootstrapUserDataForCloudInit(ctx context.Context, req plugin.UserDat
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
 
+	bootstrapKubeconfig, err := helper.StringifyKubeconfig(req.Kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to format bootstrap kubeconfig: %v", err)
+	}
+
 	cloudInit := &bytes.Buffer{}
 	err = bsCloudInit.Execute(cloudInit, struct {
 		Script  string
 		Service string
 		plugin.UserDataRequest
-		ProviderSpec *providerconfigtypes.Config
+		ProviderSpec        *providerconfigtypes.Config
+		BootstrapKubeconfig string
 	}{
-		Script:          base64.StdEncoding.EncodeToString(script.Bytes()),
-		Service:         base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
-		UserDataRequest: req,
-		ProviderSpec:    pconfig,
+		Script:              base64.StdEncoding.EncodeToString(script.Bytes()),
+		Service:             base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
+		UserDataRequest:     req,
+		ProviderSpec:        pconfig,
+		BootstrapKubeconfig: base64.StdEncoding.EncodeToString([]byte(bootstrapKubeconfig)),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %v", err)
@@ -201,6 +221,14 @@ curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
+
+{{- /* The default cloud-init configurations files have some bug on Digital Ocean which causes the machine to be in-accessible on 2nd cloud-init. We have to manually run the module */}}
+{{- if and (eq .ProviderSpec.CloudProvider "digitalocean") (eq .ProviderSpec.OperatingSystem "ubuntu") }}
+rm /etc/netplan/50-cloud-init.yaml
+netplan generate
+netplan apply
+{{- end }}
+
 systemctl restart setup.service
 systemctl restart kubelet.service
 systemctl restart kubelet-healthcheck.service
@@ -212,7 +240,27 @@ set -xeuo pipefail
 yum install epel-release -y
 {{- end }}
 yum install -y curl jq
-curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
+cloud-init clean
+cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
+systemctl daemon-reload
+systemctl restart setup.service
+systemctl restart kubelet.service
+systemctl restart kubelet-healthcheck.service
+  `
+
+	bootstrapZypperBinContentTemplate = `#!/bin/bash
+set -xeuo pipefail
+
+# Install JQ
+zypper -n --quiet addrepo -C https://download.opensuse.org/repositories/utilities/openSUSE_Leap_15.3/utilities.repo
+zypper -n --no-gpg-checks refresh
+zypper -n install jq
+
+# Install CURL
+zypper -n install curl
+
+curl -s -k -v --header 'Authorization: Bearer {{ .Token }}' {{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
 cloud-init --file /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg init
 systemctl daemon-reload
@@ -253,11 +301,23 @@ write_files:
   encoding: b64
   content: |
     {{ .Script }}
+- path: /etc/kubernetes/bootstrap-kubelet.conf
+  permissions: '0600'
+  encoding: b64
+  content: | 
+    {{ .BootstrapKubeconfig }}
 - path: /etc/systemd/system/bootstrap.service
   permissions: '0644'
   encoding: b64
   content: |
     {{ .Service }}
+{{- /* The default cloud-init configurations files have some bug on Digital Ocean which causes the machine to be in-accessible on 2nd cloud-init. Hence we disable network configuration */}}
+{{- if and (eq .ProviderSpec.CloudProvider "digitalocean") (eq .ProviderSpec.OperatingSystem "ubuntu") }}
+- path: /etc/cloud/cloud.cfg.d/99-custom-networking.cfg
+  permissions: '0644'
+  content: |
+    network: {config: disabled}
+{{- end }}
 runcmd:
 - systemctl restart bootstrap.service
 - systemctl daemon-reload
@@ -284,6 +344,12 @@ reboot
 {{- end }}
 storage:
   files:
+  - path: /etc/kubernetes/bootstrap-kubelet.conf
+    mode: 0600
+    filesystem: root
+    contents:
+      inline: |
+      {{ .BootstrapKubeconfig }}
   - path: /opt/bin/bootstrap
     mode: 0755
     filesystem: root

@@ -92,6 +92,7 @@ var (
 		ec2.VolumeTypeStandard,
 		ec2.VolumeTypeIo1,
 		ec2.VolumeTypeGp2,
+		ec2.VolumeTypeGp3,
 		ec2.VolumeTypeSc1,
 		ec2.VolumeTypeSt1,
 	)
@@ -424,7 +425,17 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		}
 
 		c.DiskIops = rawConfig.DiskIops
+	} else if c.DiskType == ec2.VolumeTypeGp3 && rawConfig.DiskIops != nil {
+		// gp3 disks start with 3000 IOPS by default, we _can_ pass better IOPS, but it is not a required field
+		iops := *rawConfig.DiskIops
+
+		if iops < 3000 || iops > 64000 {
+			return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 3000, max: 64000)")
+		}
+
+		c.DiskIops = rawConfig.DiskIops
 	}
+
 	c.EBSVolumeEncrypted, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.EBSVolumeEncrypted)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get ebsVolumeEncrypted value: %v", err)

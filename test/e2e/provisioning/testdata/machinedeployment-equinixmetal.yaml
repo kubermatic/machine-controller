@@ -22,10 +22,10 @@ spec:
         value:
           sshPublicKeys:
             - "<< YOUR_PUBLIC_KEY >>"
-          cloudProvider: "packet"
+          cloudProvider: "equinixmetal"
           cloudProviderSpec:
-            apiKey: << PACKET_API_KEY >>
-            projectID: << PACKET_PROJECT_ID >>
+            token: << METAL_AUTH_TOKEN >>
+            projectID: << METAL_PROJECT_ID >>
             instanceType: "c1.small.x86"
             facilities:
             - "ams1"

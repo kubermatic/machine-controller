@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -140,10 +141,6 @@ type NodeSettings struct {
 	MaxLogSize string
 	// Translates to --pod-infra-container-image on the kubelet. If not set, the kubelet will default it.
 	PauseImage string
-	// The hyperkube image to use. Currently only Container Linux and Flatcar Linux uses it.
-	HyperkubeImage string
-	// The kubelet repository to use. Currently only Flatcar Linux uses it.
-	KubeletRepository string
 	// Translates to feature gates on the kubelet.
 	// Default: RotateKubeletServerCertificate=true
 	KubeletFeatureGates map[string]bool
@@ -151,6 +148,8 @@ type NodeSettings struct {
 	ExternalCloudProvider bool
 	// container runtime to install
 	ContainerRuntime containerruntime.Config
+	// Registry credentials secret object reference
+	RegistryCredentialsSecretRef string
 }
 
 type KubeconfigProvider interface {
@@ -717,20 +716,42 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			}
 
 			// grab kubelet featureGates from the annotations
-			kubeletFeatureGates := common.GetKubeletFeatureGates(machine)
+			kubeletFeatureGates := common.GetKubeletFeatureGates(machine.GetAnnotations())
 			if len(kubeletFeatureGates) == 0 {
 				// fallback to command-line input
 				kubeletFeatureGates = r.nodeSettings.KubeletFeatureGates
 			}
 
 			// grab kubelet general options from the annotations
-			kubeletFlags := common.GetKubeletFlags(machine)
+			kubeletFlags := common.GetKubeletFlags(machine.GetAnnotations())
+			KubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
 
 			// look up for ExternalCloudProvider feature, with fallback to command-line input
 			externalCloudProvider := r.nodeSettings.ExternalCloudProvider
 			if val, ok := kubeletFlags[common.ExternalCloudProviderKubeletFlag]; ok {
 				externalCloudProvider, _ = strconv.ParseBool(val)
 			}
+
+			registryCredentials := map[string]containerruntime.AuthConfig{}
+
+			if secRef := strings.SplitN(r.nodeSettings.RegistryCredentialsSecretRef, "/", 2); len(secRef) == 2 {
+				var credsSecret corev1.Secret
+				err := r.client.Get(ctx, types.NamespacedName{Namespace: secRef[0], Name: secRef[1]}, &credsSecret)
+				if err != nil {
+					return nil, fmt.Errorf("failed to retrieve registry credentials secret object: %w", err)
+				}
+
+				for registry, data := range credsSecret.Data {
+					var regCred containerruntime.AuthConfig
+					if err := json.Unmarshal(data, &regCred); err != nil {
+						return nil, fmt.Errorf("failed to unmarshal registry credentials: %w", err)
+					}
+					registryCredentials[registry] = regCred
+				}
+			}
+
+			crRuntime := r.nodeSettings.ContainerRuntime
+			crRuntime.RegistryCredentials = registryCredentials
 
 			req := plugin.UserDataRequest{
 				MachineSpec:           machine.Spec,
@@ -740,15 +761,15 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				ExternalCloudProvider: externalCloudProvider,
 				DNSIPs:                r.nodeSettings.ClusterDNSIPs,
 				PauseImage:            r.nodeSettings.PauseImage,
-				HyperkubeImage:        r.nodeSettings.HyperkubeImage,
-				KubeletRepository:     r.nodeSettings.KubeletRepository,
 				KubeletFeatureGates:   kubeletFeatureGates,
+				KubeletConfigs:        KubeletConfigs,
 				NoProxy:               r.nodeSettings.NoProxy,
 				HTTPProxy:             r.nodeSettings.HTTPProxy,
-				ContainerRuntime:      r.nodeSettings.ContainerRuntime,
+				ContainerRuntime:      crRuntime,
 				PodCIDR:               r.podCIDR,
 				NodePortRange:         r.nodePortRange,
 			}
+
 			// Here we do stuff!
 			var userdata string
 

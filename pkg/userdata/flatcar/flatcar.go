@@ -19,6 +19,8 @@ package flatcar
 import (
 	"encoding/json"
 
+	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -37,14 +39,25 @@ type Config struct {
 	DisableUpdateEngine bool `json:"disableUpdateEngine"`
 
 	// ProvisioningUtility specifies the type of provisioning utility, allowed values are cloud-init and ignition.
-	// Defaults to ignition.
+	// Defaults to cloud-init for AWS, and ignition for other providers.
 	ProvisioningUtility `json:"provisioningUtility,omitempty"`
 }
 
 func DefaultConfig(operatingSystemSpec runtime.RawExtension) runtime.RawExtension {
-	if operatingSystemSpec.Raw == nil {
-		operatingSystemSpec.Raw, _ = json.Marshal(Config{})
+	return DefaultConfigForCloud(operatingSystemSpec, "")
+}
+
+func DefaultConfigForCloud(operatingSystemSpec runtime.RawExtension, cloudProvider types.CloudProvider) runtime.RawExtension {
+	osSpec := Config{}
+
+	if operatingSystemSpec.Raw != nil {
+		_ = json.Unmarshal(operatingSystemSpec.Raw, &osSpec)
 	}
+	if cloudProvider == types.CloudProviderAWS {
+		osSpec.ProvisioningUtility = CloudInit
+	}
+
+	operatingSystemSpec.Raw, _ = json.Marshal(osSpec)
 
 	return operatingSystemSpec
 }

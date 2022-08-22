@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/BurntSushi/toml"
-
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -103,97 +101,6 @@ SystemMaxUse=5G
 `
 }
 
-type containerdConfigManifest struct {
-	Version int                    `toml:"version"`
-	Metrics *containerdMetrics     `toml:"metrics"`
-	Plugins map[string]interface{} `toml:"plugins"`
-}
-
-type containerdMetrics struct {
-	Address string `toml:"address"`
-}
-
-type containerdCRIPlugin struct {
-	Containerd   *containerdCRISettings `toml:"containerd"`
-	Registry     *containerdCRIRegistry `toml:"registry"`
-	SandboxImage string                 `toml:"sandbox_image,omitempty"`
-}
-
-type containerdCRISettings struct {
-	Runtimes map[string]containerdCRIRuntime `toml:"runtimes"`
-}
-
-type containerdCRIRuntime struct {
-	RuntimeType string      `toml:"runtime_type"`
-	Options     interface{} `toml:"options"`
-}
-
-type containerdCRIRuncOptions struct {
-	SystemdCgroup bool
-}
-
-type containerdCRIRegistry struct {
-	Mirrors map[string]containerdMirror `toml:"mirrors"`
-}
-
-type containerdMirror struct {
-	Endpoint []string `toml:"endpoint"`
-}
-
-func ContainerdConfig(insecureRegistries, registryMirrors []string, sandboxImage string) (string, error) {
-	criPlugin := containerdCRIPlugin{
-		SandboxImage: sandboxImage,
-		Containerd: &containerdCRISettings{
-			Runtimes: map[string]containerdCRIRuntime{
-				"runc": {
-					RuntimeType: "io.containerd.runc.v2",
-					Options: containerdCRIRuncOptions{
-						SystemdCgroup: true,
-					},
-				},
-			},
-		},
-		Registry: &containerdCRIRegistry{
-			Mirrors: map[string]containerdMirror{
-				"docker.io": {
-					Endpoint: []string{"https://registry-1.docker.io"},
-				},
-			},
-		},
-	}
-
-	for _, insecureRegistry := range insecureRegistries {
-		criPlugin.Registry.Mirrors[insecureRegistry] = containerdMirror{
-			Endpoint: []string{fmt.Sprintf("http://%s", insecureRegistry)},
-		}
-	}
-
-	if len(registryMirrors) > 0 {
-		criPlugin.Registry.Mirrors["docker.io"] = containerdMirror{
-			Endpoint: registryMirrors,
-		}
-	}
-
-	cfg := containerdConfigManifest{
-		Version: 2,
-		Metrics: &containerdMetrics{
-			// metrics available at http://127.0.0.1:1338/v1/metrics
-			Address: "127.0.0.1:1338",
-		},
-
-		Plugins: map[string]interface{}{
-			"io.containerd.grpc.v1.cri": criPlugin,
-		},
-	}
-
-	var buf strings.Builder
-	enc := toml.NewEncoder(&buf)
-	enc.Indent = ""
-	err := enc.Encode(cfg)
-
-	return buf.String(), err
-}
-
 type dockerConfig struct {
 	ExecOpts           []string          `json:"exec-opts,omitempty"`
 	StorageDriver      string            `json:"storage-driver,omitempty"`
@@ -216,12 +123,6 @@ func DockerConfig(insecureRegistries, registryMirrors []string, MaxLogSize strin
 		},
 		InsecureRegistries: insecureRegistries,
 		RegistryMirrors:    registryMirrors,
-	}
-	if insecureRegistries == nil {
-		cfg.InsecureRegistries = []string{}
-	}
-	if registryMirrors == nil {
-		cfg.RegistryMirrors = []string{}
 	}
 	if MaxLogSize != "" {
 		cfg.LogOpts["max-size"] = MaxLogSize
