@@ -17,6 +17,9 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/jsonutil"
@@ -30,24 +33,47 @@ const (
 	GetRequestTimeout    = 1 * time.Minute
 	DeleteRequestTimeout = 1 * time.Minute
 
+	IPStateBound   = "Bound"
+	IPStateUnbound = "Unbound"
+
 	VmxNet3NIC       = "vmxnet3"
 	MachinePoweredOn = "poweredOn"
 )
 
+var StatusUpdateFailed = cloudprovidererrors.TerminalError{
+	Reason:  common.UpdateMachineError,
+	Message: "Unable to update the machine status",
+}
+
+// RawDisk specifies a single disk, with some values maybe being fetched from secrets.
+type RawDisk struct {
+	Size            int                                 `json:"size"`
+	PerformanceType providerconfigtypes.ConfigVarString `json:"performanceType"`
+}
+
+// RawConfig contains all the configuration values for VMs to create, with some values maybe being fetched from secrets.
 type RawConfig struct {
 	Token      providerconfigtypes.ConfigVarString `json:"token,omitempty"`
 	VlanID     providerconfigtypes.ConfigVarString `json:"vlanID"`
 	LocationID providerconfigtypes.ConfigVarString `json:"locationID"`
 	TemplateID providerconfigtypes.ConfigVarString `json:"templateID"`
-	CPUs       int                                 `json:"cpus"`
-	Memory     int                                 `json:"memory"`
-	DiskSize   int                                 `json:"diskSize"`
+
+	CPUs   int `json:"cpus"`
+	Memory int `json:"memory"`
+
+	// Deprecated, use Disks instead.
+	DiskSize int `json:"diskSize"`
+
+	Disks []RawDisk `json:"disks"`
 }
 
 type ProviderStatus struct {
-	InstanceID     string `json:"instanceID"`
-	ProvisioningID string `json:"provisioningID"`
-	// TODO: add conditions to track progress on the provider side
+	InstanceID       string         `json:"instanceID"`
+	ProvisioningID   string         `json:"provisioningID"`
+	DeprovisioningID string         `json:"deprovisioningID"`
+	ReservedIP       string         `json:"reservedIP"`
+	IPState          string         `json:"ipState"`
+	Conditions       []v1.Condition `json:"conditions,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
