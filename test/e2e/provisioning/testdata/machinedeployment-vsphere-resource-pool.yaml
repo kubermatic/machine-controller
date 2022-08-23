@@ -27,8 +27,8 @@ spec:
             templateVMName: '<< OS_Image_Template >>'
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
-            datacenter: 'dc-1'
-            folder: '/dc-1/vm/e2e-tests'
+            datacenter: 'Hamburg'
+            folder: '/Hamburg/vm/Kubermatic-dev'
             password: << VSPHERE_PASSWORD >>
             datastoreCluster: 'dsc-1'
             resourcePool: 'e2e-resource-pool'
