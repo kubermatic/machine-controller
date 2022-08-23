@@ -44,7 +44,7 @@ require (
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/yaml.v3 v3.0.1
 	// Please ensure that you update the image tags in `examples/operating-system-manager.yaml` as well.
-	k8c.io/operating-system-manager v0.6.0
+	k8c.io/operating-system-manager v1.0.0
 	k8s.io/api v0.24.2
 	k8s.io/apiextensions-apiserver v0.24.2
 	k8s.io/apimachinery v0.24.2
