@@ -254,7 +254,7 @@ func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) 
 
 	// only use IP if it is still unbound
 	if status.ReservedIP != "" && status.IPState == anxtypes.IPStateUnbound {
-		klog.Info("reusing already provisioned ip", "IP", status.ReservedIP)
+		klog.Infof("reusing already provisioned ip %q", status.ReservedIP)
 		return status.ReservedIP, nil
 	}
 
@@ -450,7 +450,7 @@ func (p *provider) Validate(_ context.Context, machinespec clusterv1alpha1.Machi
 func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
+		return nil, newError(common.InvalidConfigurationMachineError, "failed to retrieve config: %v", err)
 	}
 
 	cli, err := getClient(config.Token)
@@ -463,8 +463,15 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ 
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
 	}
+
 	if status.InstanceID == "" {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
+	}
+
+	instance := anexiaInstance{}
+
+	if status.IPState == anxtypes.IPStateBound && status.ReservedIP != "" {
+		instance.reservedAddresses = []string{status.ReservedIP}
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, anxtypes.GetRequestTimeout)
@@ -474,10 +481,9 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ 
 	if err != nil {
 		return nil, fmt.Errorf("failed get machine info: %w", err)
 	}
+	instance.info = &info
 
-	return &anexiaInstance{
-		info: &info,
-	}, nil
+	return &instance, nil
 }
 
 func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string, error) {
