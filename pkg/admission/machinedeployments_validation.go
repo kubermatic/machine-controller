@@ -23,7 +23,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-	osmresources "k8c.io/operating-system-manager/pkg/controllers/osc/resources"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -32,8 +31,6 @@ import (
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
-
-const ospNamePattern = "osp-%s"
 
 func validateMachineDeployment(md v1alpha1.MachineDeployment) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -117,17 +114,10 @@ func machineDeploymentDefaultingFunction(md *v1alpha1.MachineDeployment) {
 	v1alpha1.PopulateDefaultsMachineDeployment(md)
 }
 
-func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment, useOSM bool) error {
+func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment) error {
 	providerConfig, err := providerconfigtypes.GetConfig(md.Spec.Template.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to read MachineDeployment.Spec.Template.Spec.ProviderSpec: %w", err)
-	}
-
-	if useOSM {
-		err = ensureOSPAnnotation(md, *providerConfig)
-		if err != nil {
-			return err
-		}
 	}
 
 	// Packet has been renamed to Equinix Metal
@@ -144,27 +134,5 @@ func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment, useOSM bool) 
 		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %w", err)
 	}
 
-	return nil
-}
-
-func ensureOSPAnnotation(md *v1alpha1.MachineDeployment, providerConfig providerconfigtypes.Config) error {
-	// Check for existing annotation if it doesn't exist or if the value is empty
-	// inject the appropriate annotation.
-	if val, ok := md.Annotations[osmresources.MachineDeploymentOSPAnnotation]; !ok || val == "" {
-		if md.Annotations == nil {
-			md.Annotations = make(map[string]string)
-		}
-		// Annotation not specified, populate default OSP annotation
-		switch providerConfig.OperatingSystem {
-		case providerconfigtypes.OperatingSystemUbuntu, providerconfigtypes.OperatingSystemCentOS, providerconfigtypes.OperatingSystemFlatcar,
-			providerconfigtypes.OperatingSystemAmazonLinux2, providerconfigtypes.OperatingSystemRockyLinux, providerconfigtypes.OperatingSystemSLES,
-			providerconfigtypes.OperatingSystemRHEL:
-			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, providerConfig.OperatingSystem)
-			return nil
-
-		default:
-			return fmt.Errorf("failed to populate OSP annotation for machinedeployment with unsupported Operating System %s", providerConfig.OperatingSystem)
-		}
-	}
 	return nil
 }

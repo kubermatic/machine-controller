@@ -49,7 +49,7 @@ func DefaultConfig(operatingSystemSpec runtime.RawExtension) runtime.RawExtensio
 	return DefaultConfigForCloud(operatingSystemSpec, "", true)
 }
 
-func DefaultConfigForCloud(operatingSystemSpec runtime.RawExtension, cloudProvider types.CloudProvider, operatingSystemManagerEnabled bool) runtime.RawExtension {
+func DefaultConfigForCloud(operatingSystemSpec runtime.RawExtension, cloudProvider types.CloudProvider, externalBootstrapEnabled bool) runtime.RawExtension {
 	// If userdata is being used from machine-controller and selected cloud provider is AWS then we
 	// force cloud-init. Because AWS has a very low cap for the maximum size of user-data. In case of ignition,
 	// we always exceed that limit which prevents new ec2 instances from being created.
@@ -58,7 +58,7 @@ func DefaultConfigForCloud(operatingSystemSpec runtime.RawExtension, cloudProvid
 		_ = json.Unmarshal(operatingSystemSpec.Raw, &osSpec)
 	}
 	// In case of OSM this is not required.
-	if cloudProvider == types.CloudProviderAWS && !operatingSystemManagerEnabled {
+	if cloudProvider == types.CloudProviderAWS && !externalBootstrapEnabled {
 		osSpec.ProvisioningUtility = CloudInit
 	}
 
