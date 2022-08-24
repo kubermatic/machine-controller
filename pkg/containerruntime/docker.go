@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	DefaultDockerVersion = "19.03"
-	LegacyDockerVersion  = "18.09"
+	DefaultDockerVersion = "20.10"
+	LegacyDockerVersion  = "19.03"
 )
 
 type Docker struct {
