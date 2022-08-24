@@ -16,6 +16,13 @@ limitations under the License.
 
 package bootstrap
 
+/*
+Do not update existing consts in this file as they are used by external bootstrap providers. Instead,
+introduce new consts (e.g. `CloudConfigSecretNamePatternV2`) and ensure that machine-controller still
+supports the old "interface" (the existing consts) for a few releases, in addition to any new interfaces
+you are introducing.
+*/
+
 type CloudConfigSecret string
 
 const (
