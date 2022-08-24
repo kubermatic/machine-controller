@@ -91,7 +91,7 @@ test-unit-docker:
 		-e GOCACHE=/cache \
 		-w /go/src/github.com/kubermatic/machine-controller \
 		golang:$(GO_VERSION) \
-			make test-unit GOFLAGS=$(GOFLAGS)
+			make test-unit "GOFLAGS=$(GOFLAGS)"
 
 .PHONY: test-unit
 test-unit:
