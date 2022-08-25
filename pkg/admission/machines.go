@@ -17,6 +17,7 @@ limitations under the License.
 package admission
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -38,7 +39,7 @@ import (
 // the `providerConfig` field to `providerSpec`
 const BypassSpecNoModificationRequirementAnnotation = "kubermatic.io/bypass-no-spec-mutation-requirement"
 
-func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
+func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 	machine := clusterv1alpha1.Machine{}
 	if err := json.Unmarshal(ar.Object.Raw, &machine); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
@@ -80,7 +81,7 @@ func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admis
 	// Default and verify .Spec on CREATE only, its expensive and not required to do it on UPDATE
 	// as we disallow .Spec changes anyways
 	if ar.Operation == admissionv1.Create {
-		if err := ad.defaultAndValidateMachineSpec(&machine.Spec); err != nil {
+		if err := ad.defaultAndValidateMachineSpec(ctx, &machine.Spec); err != nil {
 			return nil, err
 		}
 
@@ -98,12 +99,21 @@ func (ad *admissionData) mutateMachines(ar admissionv1.AdmissionRequest) (*admis
 	return createAdmissionResponse(machineOriginal, &machine)
 }
 
-func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.MachineSpec) error {
+func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec *clusterv1alpha1.MachineSpec) error {
 	providerConfig, err := providerconfigtypes.GetConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %v", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(ad.ctx, ad.client)
+
+	// Packet has been renamed to Equinix Metal
+	if providerConfig.CloudProvider == cloudProviderPacket {
+		err = migrateToEquinixMetal(providerConfig)
+		if err != nil {
+			return fmt.Errorf("failed to migrate packet to equinix metal: %v", err)
+		}
+	}
+
+	skg := providerconfig.NewConfigVarResolver(ctx, ad.workerClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %v", providerConfig.CloudProvider, err)
@@ -124,7 +134,11 @@ func (ad *admissionData) defaultAndValidateMachineSpec(spec *clusterv1alpha1.Mac
 		return fmt.Errorf("Invalid public keys specified: %v", err)
 	}
 
-	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(providerConfig.OperatingSystem, providerConfig.OperatingSystemSpec)
+	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(
+		providerConfig.OperatingSystem,
+		providerConfig.CloudProvider,
+		providerConfig.OperatingSystemSpec,
+	)
 	if err != nil {
 		return err
 	}

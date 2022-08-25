@@ -119,7 +119,7 @@ type userDataTestCase struct {
 	httpProxy             string
 	noProxy               string
 	insecureRegistries    []string
-	registryMirrors       []string
+	registryMirrors       map[string][]string
 	nodeMaxLogSize        string
 	pauseImage            string
 	containerruntime      string
@@ -351,7 +351,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 			httpProxy:       "http://192.168.100.100:3128",
 			noProxy:         "192.168.1.0",
-			registryMirrors: []string{"https://registry.docker-cn.com"},
+			registryMirrors: map[string][]string{"docker.io": {"https://registry.docker-cn.com"}},
 			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{

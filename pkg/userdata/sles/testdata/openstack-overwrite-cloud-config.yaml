@@ -317,6 +317,11 @@ write_files:
     - 10.10.10.10
     clusterDomain: cluster.local
     cpuManagerReconcilePeriod: 0s
+    evictionHard:
+      imagefs.available: 15%
+      memory.available: 100Mi
+      nodefs.available: 10%
+      nodefs.inodesFree: 5%
     evictionPressureTransitionPeriod: 0s
     featureGates:
       RotateKubeletServerCertificate: true

@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-nutanix
+  namespace: kube-system
+type: Opaque
+stringData:
+  password: << NUTANIX_PASSWORD >>
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: nutanix-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "nutanix"
+          cloudProviderSpec:
+            # Can also be set via the env var 'NUTANIX_USERNAME' on the machine-controller
+            username: '<< NUTANIX_USERNAME >>'
+            # Can also be set via the env var 'NUTANIX_ENDPOINT' on the machine-controller
+            # example: 'your-nutanix-host' or '10.0.1.5'. No protocol or port should be passed.
+            endpoint: '<< NUTANIX_ENDPOINT >>'
+            # Can also be set via the env var 'NUTANIX_PORT' on the machine-controller
+            # if not set, defaults to 9440 (default Nutanix port)
+            port: '<< NUTANIX_PORT >>'
+            # Optional: Allow insecure connections to endpoint if no valid TLS certificate is presented
+            allowInsecure: true
+            # Can also be set via the env var 'NUTANIX_PASSWORD' on the machine-controller
+            password:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-nutanix
+                key: password
+            # Can also be set via the env var 'NUTANIX_CLUSTER_NAME' on the machine-controller
+            # this refers to a Nutanix cluster, not a Kubernetes cluster
+            clusterName: nutanix-cluster
+            # Optional: Sets the project that the VM is deployed into. If none is provided, the VM will be created without a project
+            projectName: project1
+            # Sets the subnet that the VM is connected to. Must exist in the given Nutanix cluster
+            subnetName: subnet1
+            # Provides the image used to create the VM
+            imageName: ubuntu-20.04
+            # Sets the vCPU count for this VM
+            cpus: 2
+            # Sets the CPU cores per vCPUs
+            cpuCores: 1
+            # Memory configuration in MiB
+            memoryMB: 2048
+            # Optional: Enable Nutanix' CPU passthrough feature
+            #cpuPassthrough: true
+            # Optional: Set up system disk size in GB. If not set, will be based on image size.
+            # Cannot be smaller than the image size.
+            diskSize: 20
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+      versions:
+        kubelet: 1.22.5

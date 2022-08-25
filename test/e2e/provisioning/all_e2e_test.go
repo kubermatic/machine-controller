@@ -59,9 +59,9 @@ const (
 	AzureManifest                     = "./testdata/machinedeployment-azure.yaml"
 	AzureRedhatSatelliteManifest      = "./testdata/machinedeployment-azure.yaml"
 	AzureCustomImageReferenceManifest = "./testdata/machinedeployment-azure-custom-image-reference.yaml"
+	EquinixMetalManifest              = "./testdata/machinedeployment-equinixmetal.yaml"
 	GCEManifest                       = "./testdata/machinedeployment-gce.yaml"
 	HZManifest                        = "./testdata/machinedeployment-hetzner.yaml"
-	PacketManifest                    = "./testdata/machinedeployment-packet.yaml"
 	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
 	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
 	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
@@ -73,7 +73,6 @@ const (
 	OSUpgradeManifest                 = "./testdata/machinedeployment-openstack-upgrade.yml"
 	invalidMachineManifest            = "./testdata/machine-invalid.yaml"
 	kubevirtManifest                  = "./testdata/machinedeployment-kubevirt.yaml"
-	kubevirtManifestDNSConfig         = "./testdata/machinedeployment-kubevirt-dns-config.yaml"
 	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
 	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
 )
@@ -294,30 +293,6 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 	}
 
 	runScenarios(t, selector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
-}
-
-func TestKubevirtDNSConfigProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG")
-
-	if kubevirtKubeconfig == "" {
-		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
-	}
-
-	params := []string{
-		fmt.Sprintf("<< KUBECONFIG >>=%s", kubevirtKubeconfig),
-	}
-
-	scenario := scenario{
-		name:              "Kubevirt with dns config",
-		osName:            "ubuntu",
-		containerRuntime:  "docker",
-		kubernetesVersion: "v1.22.2",
-		executor:          verifyCreateAndDelete,
-	}
-
-	testScenario(t, scenario, *testRunIdentifier, params, kubevirtManifestDNSConfig, false)
 }
 
 func TestOpenstackProvisioningE2E(t *testing.T) {
@@ -737,30 +712,30 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
 }
 
-// TestPacketProvisioning - a test suite that exercises Packet provider
+// TestEquinixMetalProvisioningE2E - a test suite that exercises Equinix Metal provider
 // by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-func TestPacketProvisioningE2E(t *testing.T) {
+func TestEquinixMetalProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	// test data
-	apiKey := os.Getenv("PACKET_API_KEY")
-	if len(apiKey) == 0 {
-		t.Fatal("unable to run the test suite, PACKET_API_KEY environment variable cannot be empty")
+	token := os.Getenv("METAL_AUTH_TOKEN")
+	if len(token) == 0 {
+		t.Fatal("unable to run the test suite, METAL_AUTH_TOKEN environment variable cannot be empty")
 	}
 
-	projectID := os.Getenv("PACKET_PROJECT_ID")
+	projectID := os.Getenv("METAL_PROJECT_ID")
 	if len(projectID) == 0 {
-		t.Fatal("unable to run the test suite, PACKET_PROJECT_ID environment variable cannot be empty")
+		t.Fatal("unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
 	}
 
 	selector := Not(OsSelector("sles", "rhel", "amzn2"))
 
 	// act
 	params := []string{
-		fmt.Sprintf("<< PACKET_API_KEY >>=%s", apiKey),
-		fmt.Sprintf("<< PACKET_PROJECT_ID >>=%s", projectID),
+		fmt.Sprintf("<< METAL_AUTH_TOKEN >>=%s", token),
+		fmt.Sprintf("<< METAL_PROJECT_ID >>=%s", projectID),
 	}
-	runScenarios(t, selector, params, PacketManifest, fmt.Sprintf("packet-%s", *testRunIdentifier))
+	runScenarios(t, selector, params, EquinixMetalManifest, fmt.Sprintf("equinixmetal-%s", *testRunIdentifier))
 }
 
 func TestAlibabaProvisioningE2E(t *testing.T) {

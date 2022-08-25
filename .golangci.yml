@@ -35,3 +35,4 @@ issues:
   - 'eviction\.go:221:4: the surrounding loop is unconditionally terminated'
   - 'cyclomatic complexity 31 of func `verifyMigrateUID` is high'
   - 'cyclomatic complexity 31 of func `main` is high'
+  - 'cyclomatic complexity 34 of func `\(\*provider\)\.getConfig` is high'

@@ -21,19 +21,16 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver/v3"
-
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
 
 const (
-	DefaultDockerVersion = "19.03"
-	LegacyDockerVersion  = "18.09"
+	DefaultDockerVersion = "20.10"
+	LegacyDockerVersion  = "19.03"
 )
 
 type Docker struct {
-	kubeletVersion     *semver.Version
 	insecureRegistries []string
 	registryMirrors    []string
 	nodeMaxLogSize     string

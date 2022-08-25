@@ -107,9 +107,9 @@ write_files:
     EOF
 
     yum install -y \
-        docker-ce-cli-19.03* \
+        docker-ce-cli-20.10* \
         containerd.io-1.4* \
-        docker-ce-19.03* \
+        docker-ce-20.10* \
         yum-plugin-versionlock
     yum versionlock add docker-ce* containerd.io
 
@@ -320,6 +320,11 @@ write_files:
     cgroupDriver: systemd
     clusterDomain: cluster.local
     cpuManagerReconcilePeriod: 0s
+    evictionHard:
+      imagefs.available: 15%
+      memory.available: 100Mi
+      nodefs.available: 10%
+      nodefs.inodesFree: 5%
     evictionPressureTransitionPeriod: 0s
     featureGates:
       RotateKubeletServerCertificate: true
