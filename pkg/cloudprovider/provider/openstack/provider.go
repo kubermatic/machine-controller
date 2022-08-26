@@ -446,14 +446,13 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		if c.ProjectID == "" && c.ProjectName == "" {
 			return errors.New("either projectID / tenantID or projectName / tenantName must be configured")
 		}
+		if c.DomainName == "" {
+			return errors.New("domainName must be configured")
+		}
 	} else {
 		if c.ApplicationCredentialSecret == "" {
 			return errors.New("applicationCredentialSecret must be configured in conjunction with applicationCredentialID")
 		}
-	}
-
-	if c.DomainName == "" {
-		return errors.New("domainName must be configured")
 	}
 
 	if c.Image == "" {
