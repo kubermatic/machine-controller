@@ -229,11 +229,13 @@ write_files:
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
+    systemctl disable --now firewalld || true
     {{ if eq .CloudProviderName "vsphere" }}
     systemctl enable --now vmtoolsd.service
     {{ end -}}
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
+    systemctl disable setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -315,5 +317,5 @@ write_files:
 {{- end }}
 
 runcmd:
-- systemctl start setup.service
+- systemctl enable --now setup.service
 `
