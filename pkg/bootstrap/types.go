@@ -17,7 +17,7 @@ limitations under the License.
 package bootstrap
 
 /*
-Do not update existing consts in this file as they are used by external bootstrap providers. Instead,
+Do NOT update existing consts in this file as they are used by external bootstrap providers. Instead,
 introduce new consts (e.g. `CloudConfigSecretNamePatternV2`) and ensure that machine-controller still
 supports the old "interface" (the existing consts) for a few releases, in addition to any new interfaces
 you are introducing.
@@ -26,8 +26,7 @@ you are introducing.
 type CloudConfigSecret string
 
 const (
-	ProvisioningCloudConfig CloudConfigSecret = "provisioning"
-	BootstrapCloudConfig    CloudConfigSecret = "bootstrap"
+	BootstrapCloudConfig CloudConfigSecret = "bootstrap"
 
 	CloudConfigSecretNamePattern = "%s-%s-%s-config"
 

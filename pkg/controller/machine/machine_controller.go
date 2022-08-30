@@ -820,27 +820,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 					return nil, fmt.Errorf("failed to find machine's MachineDployment: %w", err)
 				}
 
-				// We need to ensure that both provisoning and bootstrapping secrets have been created. And that the revision
-				// matches with the machine deployment revision
-				provisioningSecretName := fmt.Sprintf(bootstrap.CloudConfigSecretNamePattern,
-					referencedMachineDeployment,
-					machine.Namespace,
-					bootstrap.ProvisioningCloudConfig)
-
-				// Ensure that the provisioning secret exists
-				provisioningSecret := &corev1.Secret{}
-				if err := r.client.Get(ctx,
-					types.NamespacedName{Name: provisioningSecretName, Namespace: util.CloudInitNamespace},
-					provisioningSecret); err != nil {
-					klog.Errorf(CloudInitNotReadyError, bootstrap.ProvisioningCloudConfig, machine.Name)
-					return nil, err
-				}
-
-				provisioningSecretRevision := provisioningSecret.Annotations[bootstrap.MachineDeploymentRevision]
-				if provisioningSecretRevision != machineDeploymentRevision {
-					return nil, fmt.Errorf(CloudInitNotReadyError, bootstrap.ProvisioningCloudConfig, machine.Name)
-				}
-
 				bootstrapSecretName := fmt.Sprintf(bootstrap.CloudConfigSecretNamePattern,
 					referencedMachineDeployment,
 					machine.Namespace,

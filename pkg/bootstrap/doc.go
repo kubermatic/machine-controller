@@ -19,9 +19,21 @@ package bootstrap contains the necessary type definitions to implement the exter
 mechanism that machine-controller can use instead of generating instance user-data itself.
 
 Any external bootstrap provider needs to implement the logic as laid out in this documentation.
-This package can be imported to ensure the correct values are used.
+This package can be imported to ensure the correct values and patterns are used.
 
-machine-controller will expect two Secret objects in the namespace defined by `bootstrap.CloudInitSettingsNamespace`.
+machine-controller will expect a Secret object in the namespace defined by `CloudInitSettingsNamespace`,
+using `CloudConfigSecretNamePattern` as a pattern to determine the Secret name. This secret must provide
+valid user-data that will be passed to the cloud provider instance on creation.
+
+Example code that determines the secret name for a specific Machine:
+
+```
+bootstrapSecretName := fmt.Sprintf(bootstrap.CloudConfigSecretNamePattern,
+	referencedMachineDeployment,
+	machine.Namespace,
+	bootstrap.BootstrapCloudConfig)
+```
+
 */
 
 package bootstrap
