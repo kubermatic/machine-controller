@@ -66,6 +66,7 @@ const (
 	CloudProviderScaleway            CloudProvider = "scaleway"
 	CloudProviderBaremetal           CloudProvider = "baremetal"
 	CloudProviderExternal            CloudProvider = "external"
+	CloudProviderVultr               CloudProvider = "vultr"
 )
 
 var (

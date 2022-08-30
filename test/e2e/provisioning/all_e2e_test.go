@@ -78,6 +78,8 @@ const (
 	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
 	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
 	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
+	vultrBareMetalManifest            = "./testdata/machinedeployment-vultr-bare-metal.yaml"
+	vultrCloudInstanceManifest        = "./testdata/machinedeployment-vultr-cloud-instance.yaml"
 )
 
 const defaultKubernetesVersion = "1.23.11"
@@ -742,6 +744,42 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
 	runScenarios(t, selector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
+}
+
+// TestVultrBareMetalProvisioning - a test suite that exercises Vultr provider with a bare metal instance
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVultrBareMetalProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	vultrToken := os.Getenv("VULTR_E2E_TOKEN")
+	if len(vultrToken) == 0 {
+		t.Fatal("unable to run the test suite, VULTR_E2E_TOKEN environment variable cannot be empty")
+	}
+
+	selector := OsSelector("ubuntu")
+
+	// act
+	params := []string{fmt.Sprintf("<< VULTR_TOKEN >>=%s", vultrToken)}
+	runScenarios(t, selector, params, vultrBareMetalManifest, fmt.Sprintf("vultr-bare-metal-%s", *testRunIdentifier))
+}
+
+// TestVultrCloudInstanceProvisioning - a test suite that exercises Vultr provider with a cloud instance
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVultrCloudInstanceProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	vultrToken := os.Getenv("VULTR_E2E_TOKEN")
+	if len(vultrToken) == 0 {
+		t.Fatal("unable to run the test suite, VULTR_E2E_TOKEN environment variable cannot be empty")
+	}
+
+	selector := OsSelector("ubuntu")
+
+	// act
+	params := []string{fmt.Sprintf("<< VULTR_TOKEN >>=%s", vultrToken)}
+	runScenarios(t, selector, params, vultrCloudInstanceManifest, fmt.Sprintf("vultr-cloud-instance-%s", *testRunIdentifier))
 }
 
 // TestEquinixMetalProvisioningE2E - a test suite that exercises Equinix Metal provider

@@ -37,6 +37,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway"
 	vcd "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vmwareclouddirector"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vultr"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -107,6 +108,9 @@ var (
 		},
 		providerconfigtypes.CloudProviderVMwareCloudDirector: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vcd.New(cvr)
+		},
+		providerconfigtypes.CloudProviderVultr: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return vultr.New(cvr)
 		},
 	}
 )

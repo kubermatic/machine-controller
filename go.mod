@@ -40,6 +40,7 @@ require (
 	github.com/tinkerbell/tink v0.0.0-20210315140655-1b178daeaeda
 	github.com/vmware/go-vcloud-director/v2 v2.15.0
 	github.com/vmware/govmomi v0.28.0
+	github.com/vultr/govultr/v2 v2.17.2
 	go.anx.io/go-anxcloud v0.4.4
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
@@ -112,6 +113,8 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect

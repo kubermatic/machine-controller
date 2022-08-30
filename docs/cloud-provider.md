@@ -321,3 +321,34 @@ memory: "2048M"
 ## vSphere
 
 Refer to the [VSphere](./vsphere.md#provider-configuration) specific documentation.
+
+## Vultr
+
+### machine.spec.providerConfig.cloudProviderSpec
+
+```yaml
+token:
+  secretKeyRef:
+    namespace: kube-system
+    name: machine-controller-vultr
+    key: token
+
+# required
+# possible values: bare-metal, cloud-instance
+machineType: "cloud-instance"
+
+# required
+# https://api.vultr.com/v2/regions
+region: "ams"
+
+# required
+# https://api.vultr.com/v2/regions/{region-id}/availability for cloud-instance
+# https://www.vultr.com/api/#operation/list-metal-plans for bare-metal
+plan: "vbm-4c-32gb"
+
+# optional
+tags:
+  - your
+  - tags
+  - here
+```
