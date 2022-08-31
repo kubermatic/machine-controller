@@ -43,15 +43,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const TestIdentifier = "TestIdent"
+const (
+	TestIdentifier   = "TestIdent"
+	testTemplateName = "test-template"
+)
 
 func TestAnexiaProvider(t *testing.T) {
 	testhelper.SetupHTTP()
 	client, server := anxclient.NewTestClient(nil, testhelper.Mux)
 
 	a := mock.NewMockAPI()
-	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-OLD-BUILD", Name: "test-template", Build: "b01"})
-	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID", Name: "test-template", Build: "b02"})
+	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-OLD-BUILD", Name: testTemplateName, Build: "b01"})
+	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID", Name: testTemplateName, Build: "b02"})
 	a.FakeExisting(&vspherev1.Template{Identifier: "WRONG-TEMPLATE-NAME", Name: "Wrong Template Name", Build: "b02"})
 
 	t.Cleanup(func() {
@@ -61,9 +64,6 @@ func TestAnexiaProvider(t *testing.T) {
 
 	t.Run("Test provision VM", func(t *testing.T) {
 		t.Parallel()
-
-		var lastProvisionedTemplateID string
-
 		testhelper.Mux.HandleFunc("/api/ipam/v1/address/reserve/ip/count.json", func(writer http.ResponseWriter, request *http.Request) {
 			err := json.NewEncoder(writer).Encode(address.ReserveRandomSummary{
 				Data: []address.ReservedIP{
@@ -76,24 +76,16 @@ func TestAnexiaProvider(t *testing.T) {
 			testhelper.AssertNoErr(t, err)
 		})
 
-		vsphereProvisioningPrefix := "/api/vsphere/v1/provisioning/vm.json/test-location/templates/"
-		testhelper.Mux.HandleFunc(vsphereProvisioningPrefix, func(writer http.ResponseWriter, request *http.Request) {
-			templateID := request.URL.Path[len(vsphereProvisioningPrefix):]
-			if err := a.Get(context.TODO(), &vspherev1.Template{Identifier: templateID}); err != nil {
-				writer.WriteHeader(400)
-				return
-			}
-			lastProvisionedTemplateID = templateID
-
+		testhelper.Mux.HandleFunc("/api/vsphere/v1/provisioning/vm.json/LOCATION-ID/templates/TEMPLATE-ID", func(writer http.ResponseWriter, request *http.Request) {
 			testhelper.TestMethod(t, request, http.MethodPost)
 			type jsonObject = map[string]interface{}
 			expectedJSON := map[string]interface{}{
 				"cpu_performance_type": "performance",
 				"hostname":             "TestMachine",
-				"memory_mb":            json.Number("2"),
+				"memory_mb":            json.Number("5"),
 				"network": []jsonObject{
 					{
-						"vlan":     "test-vlan",
+						"vlan":     "VLAN-ID",
 						"nic_type": "vmxnet3",
 						"ips":      []interface{}{"8.8.8.8"},
 					},
@@ -136,21 +128,42 @@ func TestAnexiaProvider(t *testing.T) {
 			testhelper.AssertNoErr(t, err)
 		})
 
-		createReconcileContextWithConfig := func(cfg resolvedConfig) reconcileContext {
-			return reconcileContext{
-				Machine: &v1alpha1.Machine{
-					ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
-				},
-				Status:   &anxtypes.ProviderStatus{},
-				UserData: "",
-				Config:   cfg,
-				ProviderData: &cloudprovidertypes.ProviderData{
-					Update: func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
-						return nil
+		providerStatus := anxtypes.ProviderStatus{}
+		ctx := createReconcileContext(context.Background(), reconcileContext{
+			Machine: &v1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
+			},
+			Status:   &providerStatus,
+			UserData: "",
+			Config: resolvedConfig{
+				VlanID:     "VLAN-ID",
+				LocationID: "LOCATION-ID",
+				TemplateID: "TEMPLATE-ID",
+				Disks: []resolvedDisk{
+					{
+						RawDisk: anxtypes.RawDisk{
+							Size: 5,
+						},
 					},
 				},
-			}
-		}
+				RawConfig: anxtypes.RawConfig{
+					CPUs:   5,
+					Memory: 5,
+				},
+			},
+			ProviderData: &cloudprovidertypes.ProviderData{
+				Update: func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
+					return nil
+				},
+			},
+		})
+
+		err := provisionVM(ctx, client)
+		testhelper.AssertNoErr(t, err)
+	})
+
+	t.Run("Test resolve template", func(t *testing.T) {
+		t.Parallel()
 
 		type testCase struct {
 			config             anxtypes.RawConfig
@@ -162,51 +175,45 @@ func TestAnexiaProvider(t *testing.T) {
 			// fail
 			{
 				// Template name does not exist
-				config:        hookableConfig(func(c *anxtypes.RawConfig) { c.TemplateID.Value = ""; c.Template.Value = "non-existing-template-name" }),
+				config:        hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = "non-existing-template-name" }),
 				expectedError: "failed to retrieve named template",
 			},
 			{
 				// Template build does not exist
-				config:        hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = "test-template"; c.TemplateBuild.Value = "b42" }),
+				config: hookableConfig(func(c *anxtypes.RawConfig) {
+					c.Template.Value = testTemplateName
+					c.TemplateBuild.Value = "b42"
+				}),
 				expectedError: "failed to retrieve named template",
-			},
-			{
-				// Template ID does not exist
-				config:        hookableConfig(func(c *anxtypes.RawConfig) { c.TemplateID.Value = "non-existing-template-id" }),
-				expectedError: "could not execute VM provisioning request",
 			},
 			// pass
 			{
-				// With template by ID
-				config:             hookableConfig(func(c *anxtypes.RawConfig) { c.TemplateID.Value = "TEMPLATE-ID"; c.Template.Value = "" }),
-				expectedTemplateID: "TEMPLATE-ID",
-			},
-			{
 				// With named template
-				config:             hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = "test-template" }),
+				config:             hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = testTemplateName; c.TemplateID.Value = "" }),
 				expectedTemplateID: "TEMPLATE-ID",
 			},
 			{
 				// With named template and not latest build
-				config:             hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = "test-template"; c.TemplateBuild.Value = "b01" }),
+				config: hookableConfig(func(c *anxtypes.RawConfig) {
+					c.Template.Value = testTemplateName
+					c.TemplateBuild.Value = "b01"
+				}),
 				expectedTemplateID: "TEMPLATE-ID-OLD-BUILD",
 			},
 		}
 
 		provider := New(nil).(*provider)
 		for _, testCase := range testCases {
-			resolvedConfig, err := provider.resolveConfig(testCase.config)
-			testhelper.AssertNoErr(t, err)
-			t.Log("--------", resolvedConfig.Template, resolvedConfig.TemplateBuild, resolvedConfig.TemplateID)
-			ctx := createReconcileContext(context.Background(), createReconcileContextWithConfig(*resolvedConfig))
-			lastProvisionedTemplateID = ""
-			err = provisionVM(ctx, a, client)
-			if testCase.expectedError == "" {
-				testhelper.AssertNoErr(t, err)
-				testhelper.AssertEquals(t, testCase.expectedTemplateID, lastProvisionedTemplateID)
+			templateID, err := resolveTemplateID(context.TODO(), a, testCase.config, provider.configVarResolver, "foo")
+			if testCase.expectedError != "" {
+				if err != nil {
+					testhelper.AssertErr(t, err)
+					testhelper.AssertEquals(t, true, strings.Contains(err.Error(), testCase.expectedError))
+					continue
+				}
 			} else {
-				testhelper.AssertErr(t, err)
-				testhelper.AssertEquals(t, true, strings.Contains(err.Error(), testCase.expectedError))
+				testhelper.AssertNoErr(t, err)
+				testhelper.AssertEquals(t, testCase.expectedTemplateID, templateID)
 			}
 		}
 	})
@@ -263,7 +270,7 @@ func TestAnexiaProvider(t *testing.T) {
 	})
 }
 
-// this generates a full config and allows hooking into it to e.g. remove a value
+// this generates a full config and allows hooking into it to e.g. remove a value.
 func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 	config := anxtypes.RawConfig{
 		CPUs: 1,
@@ -277,7 +284,7 @@ func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
 		Token:      newConfigVarString("test-token"),
 		VlanID:     newConfigVarString("test-vlan"),
 		LocationID: newConfigVarString("test-location"),
-		Template:   newConfigVarString("test-template"),
+		TemplateID: newConfigVarString("test-template-id"),
 	}
 
 	if hook != nil {
@@ -294,7 +301,7 @@ func TestValidate(t *testing.T) {
 	configCases = append(configCases,
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Token.Value = "" }),
-			Error:  errors.New("token is missing"),
+			Error:  errors.New("token not set"),
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.CPUs = 0 }),
@@ -323,14 +330,6 @@ func TestValidate(t *testing.T) {
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.LocationID.Value = "" }),
 			Error:  errors.New("location id is missing"),
-		},
-		ConfigTestCase{
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.TemplateID.Value = "test-template-identifier" }),
-			Error:  errors.New("both 'template' and 'templateID' are set"),
-		},
-		ConfigTestCase{
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = "" }),
-			Error:  errors.New("neither 'template' nor 'templateID' are set"),
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.VlanID.Value = "" }),
