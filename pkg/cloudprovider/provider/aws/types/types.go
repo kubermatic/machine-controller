@@ -38,7 +38,7 @@ type RawConfig struct {
 	AMI                providerconfigtypes.ConfigVarString   `json:"ami,omitempty"`
 	DiskSize           int64                                 `json:"diskSize"`
 	DiskType           providerconfigtypes.ConfigVarString   `json:"diskType,omitempty"`
-	DiskIops           *int64                                `json:"diskIops,omitempty"`
+	DiskIops           *int32                                `json:"diskIops,omitempty"`
 	EBSVolumeEncrypted providerconfigtypes.ConfigVarBool     `json:"ebsVolumeEncrypted"`
 	Tags               map[string]string                     `json:"tags,omitempty"`
 	AssignPublicIP     *bool                                 `json:"assignPublicIP,omitempty"`

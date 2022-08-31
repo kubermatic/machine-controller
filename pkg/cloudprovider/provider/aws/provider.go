@@ -26,12 +26,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	awscredentials "github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -90,12 +92,12 @@ const (
 
 var (
 	volumeTypes = sets.NewString(
-		ec2.VolumeTypeStandard,
-		ec2.VolumeTypeIo1,
-		ec2.VolumeTypeGp2,
-		ec2.VolumeTypeGp3,
-		ec2.VolumeTypeSc1,
-		ec2.VolumeTypeSt1,
+		ec2types.VolumeTypeStandard,
+		ec2types.VolumeTypeIo1,
+		ec2types.VolumeTypeGp2,
+		ec2types.VolumeTypeGp3,
+		ec2types.VolumeTypeSc1,
+		ec2types.VolumeTypeSt1,
 	)
 
 	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
@@ -205,11 +207,11 @@ type Config struct {
 	SubnetID           string
 	SecurityGroupIDs   []string
 	InstanceProfile    string
-	InstanceType       string
+	InstanceType       ec2types.InstanceType
 	AMI                string
 	DiskSize           int64
 	DiskType           string
-	DiskIops           *int64
+	DiskIops           *int32
 	EBSVolumeEncrypted bool
 	Tags               map[string]string
 	AssignPublicIP     *bool
@@ -229,7 +231,7 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
+func getDefaultAMIID(ctx context.Context, client *ec2.Client, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
@@ -251,35 +253,35 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 	}
 
 	describeImagesInput := &ec2.DescribeImagesInput{
-		Owners: aws.StringSlice([]string{filter.owner}),
-		Filters: []*ec2.Filter{
+		Owners: []string{filter.owner},
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("description"),
-				Values: aws.StringSlice([]string{filter.description}),
+				Values: []string{filter.description},
 			},
 			{
 				Name:   aws.String("virtualization-type"),
-				Values: aws.StringSlice([]string{"hvm"}),
+				Values: []string{"hvm"},
 			},
 			{
 				Name:   aws.String("root-device-type"),
-				Values: aws.StringSlice([]string{"ebs"}),
+				Values: []string{"ebs"},
 			},
 			{
 				Name:   aws.String("architecture"),
-				Values: aws.StringSlice([]string{string(cpuArchitecture)}),
+				Values: []string{string(cpuArchitecture)},
 			},
 		},
 	}
 
 	if filter.productCode != "" {
-		describeImagesInput.Filters = append(describeImagesInput.Filters, &ec2.Filter{
+		describeImagesInput.Filters = append(describeImagesInput.Filters, ec2types.Filter{
 			Name:   aws.String("product-code"),
-			Values: aws.StringSlice([]string{filter.productCode}),
+			Values: []string{filter.productCode},
 		})
 	}
 
-	imagesOut, err := client.DescribeImages(describeImagesInput)
+	imagesOut, err := client.DescribeImages(ctx, describeImagesInput)
 	if err != nil {
 		return "", err
 	}
@@ -308,10 +310,10 @@ func getDefaultAMIID(client *ec2.EC2, os providerconfigtypes.OperatingSystem, re
 	return *image.ImageId, nil
 }
 
-func getCPUArchitecture(client *ec2.EC2, instanceType string) (awstypes.CPUArchitecture, error) {
+func getCPUArchitecture(ctx context.Context, client *ec2.Client, instanceType string) (awstypes.CPUArchitecture, error) {
 	// read the instance type to know which cpu architecture is needed in the AMI
-	instanceTypes, err := client.DescribeInstanceTypes(&ec2.DescribeInstanceTypesInput{
-		InstanceTypes: []*string{aws.String(instanceType)},
+	instanceTypes, err := client.DescribeInstanceTypes(ctx, &ec2.DescribeInstanceTypesInput{
+		InstanceTypes: []ec2types.InstanceType{ec2types.InstanceType(instanceType)},
 	})
 
 	if err != nil {
@@ -327,7 +329,7 @@ func getCPUArchitecture(client *ec2.EC2, instanceType string) (awstypes.CPUArchi
 		for _, v := range instanceTypes.InstanceTypes[0].ProcessorInfo.SupportedArchitectures {
 			// machine-controller currently supports x86_64 and ARM64, so only CPU architectures
 			// that are supported will be returned if found in the AWS API response
-			if arch := awstypes.CPUArchitecture(*v); arch == awstypes.CPUArchitectureX86_64 || arch == awstypes.CPUArchitectureARM64 {
+			if arch := awstypes.CPUArchitecture(v); arch == awstypes.CPUArchitectureX86_64 || arch == awstypes.CPUArchitectureARM64 {
 				return arch, nil
 			}
 		}
@@ -427,7 +429,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if c.DiskType == ec2.VolumeTypeIo1 {
+	if c.DiskType == string(ec2types.VolumeTypeIo1) {
 		if rawConfig.DiskIops == nil {
 			return nil, nil, nil, errors.New("Missing required field `diskIops`")
 		}
@@ -438,7 +440,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		}
 
 		c.DiskIops = rawConfig.DiskIops
-	} else if c.DiskType == ec2.VolumeTypeGp3 && rawConfig.DiskIops != nil {
+	} else if c.DiskType == string(ec2types.VolumeTypeGp3) && rawConfig.DiskIops != nil {
 		// gp3 disks start with 3000 IOPS by default, we _can_ pass better IOPS, but it is not a required field
 		iops := *rawConfig.DiskIops
 
@@ -489,58 +491,38 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &c, pconfig, rawConfig, err
 }
 
-func getSession(id, secret, token, region, assumeRoleARN, assumeRoleExternalID string) (*session.Session, error) {
-	config := aws.NewConfig()
-	config = config.WithRegion(region)
-	config = config.WithCredentials(credentials.NewStaticCredentials(id, secret, token))
-	config = config.WithMaxRetries(maxRetries)
-	awsSession, err := session.NewSession(config)
+func getAwsConfig(ctx context.Context, id, secret, token, region, assumeRoleARN, assumeRoleExternalID string) (aws.Config, error) {
+	cfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(region),
+		awsconfig.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(id, secret, token)),
+		awsconfig.WithRetryMaxAttempts(maxRetries),
+	)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+		return aws.Config{}, err
 	}
 
-	// Assume IAM role of e.g. external AWS account if configured
 	if assumeRoleARN != "" {
-		awsSession, err = getAssumeRoleSession(awsSession, assumeRoleARN, assumeRoleExternalID, region)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create temporary AWS session for assumed role: %w", err)
-		}
+		stsSvc := sts.NewFromConfig(cfg)
+		creds := stscreds.NewAssumeRoleProvider(stsSvc, assumeRoleARN,
+			func(o *stscreds.AssumeRoleOptions) {
+				o.ExternalID = pointer.String(assumeRoleExternalID)
+			},
+		)
+
+		cfg.Credentials = creds
 	}
 
-	return awsSession, err
+	return cfg, nil
 }
 
-func getAssumeRoleSession(awsSession *session.Session, assumeRoleARN, assumeRoleExternalID, region string) (*session.Session, error) {
-	assumeRoleOutput, err := getAssumeRoleCredentials(awsSession, assumeRoleARN, assumeRoleExternalID)
+func getEC2client(ctx context.Context, id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*ec2.Client, error) {
+	cfg, err := getAwsConfig(ctx, id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
 	if err != nil {
-		return nil, awsErrorToTerminalError(err, "unable to initialize aws external id session")
+		return nil, awsErrorToTerminalError(err, "failed to get aws configuration")
 	}
 
-	assumedRoleConfig := aws.NewConfig()
-	assumedRoleConfig = assumedRoleConfig.WithRegion(region)
-	assumedRoleConfig = assumedRoleConfig.WithCredentials(credentials.NewStaticCredentials(*assumeRoleOutput.Credentials.AccessKeyId,
-		*assumeRoleOutput.Credentials.SecretAccessKey,
-		*assumeRoleOutput.Credentials.SessionToken))
-	assumedRoleConfig = assumedRoleConfig.WithMaxRetries(maxRetries)
-	return session.NewSession(assumedRoleConfig)
-}
-
-func getAssumeRoleCredentials(session *session.Session, assumeRoleARN, assumeRoleExternalID string) (*sts.AssumeRoleOutput, error) {
-	stsSession := sts.New(session)
-	sessionName := "kubermatic-machine-controller"
-	return stsSession.AssumeRole(&sts.AssumeRoleInput{
-		ExternalId:      &assumeRoleExternalID,
-		RoleArn:         &assumeRoleARN,
-		RoleSessionName: &sessionName,
-	})
-}
-
-func getEC2client(id, secret, region, assumeRoleArn, assumeRoleExternalID string) (*ec2.EC2, error) {
-	sess, err := getSession(id, secret, "", region, assumeRoleArn, assumeRoleExternalID)
-	if err != nil {
-		return nil, awsErrorToTerminalError(err, "failed to get aws session")
-	}
-	return ec2.New(sess), nil
+	return ec2.NewFromConfig(cfg), nil
 }
 
 func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
@@ -549,7 +531,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 		return spec, err
 	}
 	if rawConfig.DiskType.Value == "" {
-		rawConfig.DiskType.Value = ec2.VolumeTypeStandard
+		rawConfig.DiskType.Value = string(ec2types.VolumeTypeStandard)
 	}
 	if rawConfig.AssignPublicIP == nil {
 		rawConfig.AssignPublicIP = aws.Bool(true)
@@ -564,7 +546,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, err
 }
 
-func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -588,20 +570,20 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 		return fmt.Errorf("diskSize must be specified and > 0")
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
+	ec2Client, err := getEC2client(ctx, config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to create ec2 client: %w", err)
 	}
 	if config.AMI != "" {
-		_, err := ec2Client.DescribeImages(&ec2.DescribeImagesInput{
-			ImageIds: aws.StringSlice([]string{config.AMI}),
+		_, err := ec2Client.DescribeImages(ctx, &ec2.DescribeImagesInput{
+			ImageIds: []string{config.AMI},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to validate ami: %w", err)
 		}
 	}
 
-	vpc, err := getVpc(ec2Client, config.VpcID)
+	vpc, err := getVpc(ctx, ec2Client, config.VpcID)
 	if err != nil {
 		return fmt.Errorf("invalid vpc %q specified: %w", config.VpcID, err)
 	}
@@ -611,18 +593,18 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 		// noop
 	case util.IPv6, util.DualStack:
 		if len(vpc.Ipv6CidrBlockAssociationSet) == 0 {
-			return fmt.Errorf("vpc %q does not have IPv6 CIDR block", aws.StringValue(vpc.VpcId))
+			return fmt.Errorf("vpc %q does not have IPv6 CIDR block", vpc.VpcId)
 		}
 	default:
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
 	}
 
-	_, err = ec2Client.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{ZoneNames: aws.StringSlice([]string{config.AvailabilityZone})})
+	_, err = ec2Client.DescribeAvailabilityZones(ctx, &ec2.DescribeAvailabilityZonesInput{ZoneNames: []string{config.AvailabilityZone}})
 	if err != nil {
 		return fmt.Errorf("invalid zone %q specified: %w", config.AvailabilityZone, err)
 	}
 
-	_, err = ec2Client.DescribeRegions(&ec2.DescribeRegionsInput{RegionNames: aws.StringSlice([]string{config.Region})})
+	_, err = ec2Client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{RegionNames: []string{config.Region}})
 	if err != nil {
 		return fmt.Errorf("invalid region %q specified: %w", config.Region, err)
 	}
@@ -630,8 +612,8 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 	if len(config.SecurityGroupIDs) == 0 {
 		return errors.New("no security groups were specified")
 	}
-	_, err = ec2Client.DescribeSecurityGroups(&ec2.DescribeSecurityGroupsInput{
-		GroupIds: aws.StringSlice(config.SecurityGroupIDs),
+	_, err = ec2Client.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
+		GroupIds: config.SecurityGroupIDs,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to validate security group id's: %w", err)
@@ -650,10 +632,10 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 	return nil
 }
 
-func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
-	vpcOut, err := client.DescribeVpcs(&ec2.DescribeVpcsInput{
-		Filters: []*ec2.Filter{
-			{Name: aws.String("vpc-id"), Values: []*string{aws.String(id)}},
+func getVpc(ctx context.Context, client *ec2.Client, id string) (*ec2types.Vpc, error) {
+	vpcOut, err := client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
+		Filters: []ec2types.Filter{
+			{Name: aws.String("vpc-id"), Values: []string{id}},
 		},
 	})
 
@@ -665,10 +647,10 @@ func getVpc(client *ec2.EC2, id string) (*ec2.Vpc, error) {
 		return nil, fmt.Errorf("unable to find specified vpc with id %q", id)
 	}
 
-	return vpcOut.Vpcs[0], nil
+	return &vpcOut.Vpcs[0], nil
 }
 
-func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -677,7 +659,7 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
+	ec2Client, err := getEC2client(ctx, config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return nil, err
 	}
@@ -690,7 +672,7 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 	amiID := config.AMI
 	if amiID == "" {
 		// read the instance type to know which cpu architecture is needed in the AMI
-		cpuArchitecture, err := getCPUArchitecture(ec2Client, config.InstanceType)
+		cpuArchitecture, err := getCPUArchitecture(ctx, ec2Client, config.InstanceType)
 
 		if err != nil {
 			return nil, cloudprovidererrors.TerminalError{
@@ -699,7 +681,7 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 			}
 		}
 
-		if amiID, err = getDefaultAMIID(ec2Client, pc.OperatingSystem, config.Region, cpuArchitecture); err != nil {
+		if amiID, err = getDefaultAMIID(ctx, ec2Client, pc.OperatingSystem, config.Region, cpuArchitecture); err != nil {
 			return nil, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
 				Message: fmt.Sprintf("Failed to get AMI-ID for operating system %s in region %s: %v", pc.OperatingSystem, config.Region, err),
@@ -715,7 +697,7 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 		}
 	}
 
-	tags := []*ec2.Tag{
+	tags := []*ec2types.Tag{
 		{
 			Key:   aws.String(nameTag),
 			Value: aws.String(machine.Spec.Name),
@@ -727,16 +709,16 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 	}
 
 	for k, v := range config.Tags {
-		tags = append(tags, &ec2.Tag{
+		tags = append(tags, &ec2types.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		})
 	}
 
-	var instanceMarketOptions *ec2.InstanceMarketOptionsRequest
+	var instanceMarketOptions *ec2types.InstanceMarketOptionsRequest
 	if config.IsSpotInstance != nil && *config.IsSpotInstance {
-		spotOpts := &ec2.SpotMarketOptions{
-			SpotInstanceType: pointer.StringPtr(ec2.SpotInstanceTypeOneTime),
+		spotOpts := &ec2types.SpotMarketOptions{
+			SpotInstanceType: ec2types.SpotInstanceTypeOneTime,
 		}
 
 		if config.SpotMaxPrice != nil && *config.SpotMaxPrice != "" {
@@ -744,16 +726,16 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 		}
 
 		if config.SpotPersistentRequest != nil && *config.SpotPersistentRequest {
-			spotOpts.SpotInstanceType = pointer.StringPtr(ec2.SpotInstanceTypePersistent)
-			spotOpts.InstanceInterruptionBehavior = pointer.StringPtr(ec2.InstanceInterruptionBehaviorStop)
+			spotOpts.SpotInstanceType = ec2types.SpotInstanceTypePersistent
+			spotOpts.InstanceInterruptionBehavior = ec2types.InstanceInterruptionBehaviorStop
 
 			if config.SpotInterruptionBehavior != nil && *config.SpotInterruptionBehavior != "" {
-				spotOpts.InstanceInterruptionBehavior = config.SpotInterruptionBehavior
+				spotOpts.InstanceInterruptionBehavior = ec2types.InstanceInterruptionBehavior(config.SpotInterruptionBehavior)
 			}
 		}
 
-		instanceMarketOptions = &ec2.InstanceMarketOptionsRequest{
-			MarketType:  aws.String(ec2.MarketTypeSpot),
+		instanceMarketOptions = &ec2types.InstanceMarketOptionsRequest{
+			MarketType:  ec2types.MarketTypeSpot,
 			SpotOptions: spotOpts,
 		}
 	}
@@ -765,21 +747,21 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 	instanceRequest := &ec2.RunInstancesInput{
 		ImageId:               aws.String(amiID),
 		InstanceMarketOptions: instanceMarketOptions,
-		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
+		BlockDeviceMappings: []ec2types.BlockDeviceMapping{
 			{
 				DeviceName: aws.String(rootDevicePath),
-				Ebs: &ec2.EbsBlockDevice{
-					VolumeSize:          aws.Int64(config.DiskSize),
+				Ebs: &ec2types.EbsBlockDevice{
+					VolumeSize:          aws.Int32(config.DiskSize),
 					DeleteOnTermination: aws.Bool(true),
-					VolumeType:          aws.String(config.DiskType),
+					VolumeType:          ec2types.VolumeType(config.DiskType),
 					Iops:                config.DiskIops,
 					Encrypted:           pointer.BoolPtr(config.EBSVolumeEncrypted),
 				},
 			},
 		},
-		MaxCount:     aws.Int64(1),
-		MinCount:     aws.Int64(1),
-		InstanceType: aws.String(config.InstanceType),
+		MaxCount:     aws.Int32(1),
+		MinCount:     aws.Int32(1),
+		InstanceType: ec2types.InstanceType(config.InstanceType),
 		UserData:     aws.String(base64.StdEncoding.EncodeToString([]byte(userdata))),
 		Placement: &ec2.Placement{
 			AvailabilityZone: aws.String(config.AvailabilityZone),
@@ -805,23 +787,23 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 	}
 
 	if pc.Network.GetIPFamily() == util.IPv6 || pc.Network.GetIPFamily() == util.DualStack {
-		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int64(1)
+		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
 	}
 
-	runOut, err := ec2Client.RunInstances(instanceRequest)
+	runOut, err := ec2Client.RunInstances(ctx, instanceRequest)
 	if err != nil {
 		return nil, awsErrorToTerminalError(err, "failed create instance at aws")
 	}
 
-	if err = p.waitForInstance(machine); err != nil {
+	if err = p.waitForInstance(ctx, machine); err != nil {
 		return nil, awsErrorToTerminalError(err, "failed provision instance at aws")
 	}
 
 	return &awsInstance{instance: runOut.Instances[0]}, nil
 }
 
-func (p *provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	ec2instance, err := p.get(machine)
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+	ec2instance, err := p.get(ctx, machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
@@ -839,15 +821,15 @@ func (p *provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, 
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
+	ec2Client, err := getEC2client(ctx, config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return false, err
 	}
 
 	if config.IsSpotInstance != nil && *config.IsSpotInstance &&
 		config.SpotPersistentRequest != nil && *config.SpotPersistentRequest {
-		cOut, err := ec2Client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
-			SpotInstanceRequestIds: aws.StringSlice([]string{*ec2instance.instance.SpotInstanceRequestId}),
+		cOut, err := ec2Client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: []string{*ec2instance.instance.SpotInstanceRequestId},
 		})
 
 		if err != nil {
@@ -859,7 +841,7 @@ func (p *provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, 
 		}
 	}
 
-	tOut, err := ec2Client.TerminateInstances(&ec2.TerminateInstancesInput{
+	tOut, err := ec2Client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: aws.StringSlice([]string{ec2instance.ID()}),
 	})
 	if err != nil {
@@ -873,11 +855,11 @@ func (p *provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, 
 	return false, nil
 }
 
-func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return p.get(machine)
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return p.get(ctx, machine)
 }
 
-func (p *provider) get(machine *clusterv1alpha1.Machine) (*awsInstance, error) {
+func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*awsInstance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -886,16 +868,16 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*awsInstance, error) {
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
+	ec2Client, err := getEC2client(ctx, config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return nil, err
 	}
 
-	inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{
-		Filters: []*ec2.Filter{
+	inOut, err := ec2Client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("tag:" + machineUIDTag),
-				Values: aws.StringSlice([]string{string(machine.UID)}),
+				Values: []string{string(machine.UID)},
 			},
 		},
 	})
@@ -907,16 +889,12 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*awsInstance, error) {
 	// Thus we need to find the instance which is not in the terminated state
 	for _, reservation := range inOut.Reservations {
 		for _, i := range reservation.Instances {
-			if i.State == nil || i.State.Name == nil {
-				continue
-			}
-
-			if *i.State.Name == ec2.InstanceStateNameTerminated {
+			if i.State == nil || i.State.Name == ec2types.InstanceStateNameTerminated {
 				continue
 			}
 
 			return &awsInstance{
-				instance: i,
+				instance: &i,
 			}, nil
 		}
 	}
@@ -960,8 +938,8 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
-	machineInstance, err := p.get(machine)
+func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
+	machineInstance, err := p.get(ctx, machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return nil
@@ -977,14 +955,14 @@ func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machin
 		}
 	}
 
-	ec2Client, err := getEC2client(config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
+	ec2Client, err := getEC2client(ctx, config.AccessKeyID, config.SecretAccessKey, config.Region, config.AssumeRoleARN, config.AssumeRoleExternalID)
 	if err != nil {
 		return fmt.Errorf("failed to get EC2 client: %w", err)
 	}
 
-	_, err = ec2Client.CreateTags(&ec2.CreateTagsInput{
-		Resources: aws.StringSlice([]string{machineInstance.ID()}),
-		Tags:      []*ec2.Tag{{Key: aws.String(machineUIDTag), Value: aws.String(string(newUID))}}})
+	_, err = ec2Client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: []string{machineInstance.ID()},
+		Tags:      []ec2types.Tag{{Key: aws.String(machineUIDTag), Value: aws.String(string(newUID))}}})
 	if err != nil {
 		return fmt.Errorf("failed to update instance with new machineUIDTag: %w", err)
 	}
@@ -993,7 +971,7 @@ func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machin
 }
 
 type awsInstance struct {
-	instance *ec2.Instance
+	instance *ec2types.Instance
 }
 
 func (d *awsInstance) Name() string {
@@ -1001,7 +979,7 @@ func (d *awsInstance) Name() string {
 }
 
 func (d *awsInstance) ID() string {
-	return aws.StringValue(d.instance.InstanceId)
+	return pointer.StringDeref(d.instance.InstanceId, "")
 }
 
 func (d *awsInstance) ProviderID() string {
@@ -1017,15 +995,15 @@ func (d *awsInstance) ProviderID() string {
 
 func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{
-		aws.StringValue(d.instance.PublicIpAddress):  v1.NodeExternalIP,
-		aws.StringValue(d.instance.PublicDnsName):    v1.NodeExternalDNS,
-		aws.StringValue(d.instance.PrivateIpAddress): v1.NodeInternalIP,
-		aws.StringValue(d.instance.PrivateDnsName):   v1.NodeInternalDNS,
+		pointer.StringDeref(d.instance.PublicIpAddress, ""):  v1.NodeExternalIP,
+		pointer.StringDeref(d.instance.PublicDnsName, ""):    v1.NodeExternalDNS,
+		pointer.StringDeref(d.instance.PrivateIpAddress, ""): v1.NodeInternalIP,
+		pointer.StringDeref(d.instance.PrivateDnsName, ""):   v1.NodeInternalDNS,
 	}
 
 	for _, netInterface := range d.instance.NetworkInterfaces {
 		for _, addr := range netInterface.Ipv6Addresses {
-			ipAddr := aws.StringValue(addr.Ipv6Address)
+			ipAddr := pointer.StringDeref(addr.Ipv6Address, "")
 
 			// link-local addresses not very useful in machine status
 			// filter them out
@@ -1041,21 +1019,21 @@ func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 }
 
 func (d *awsInstance) Status() instance.Status {
-	switch *d.instance.State.Name {
-	case ec2.InstanceStateNameRunning:
+	switch d.instance.State.Name {
+	case ec2types.InstanceStateNameRunning:
 		return instance.StatusRunning
-	case ec2.InstanceStateNamePending:
+	case ec2types.InstanceStateNamePending:
 		return instance.StatusCreating
-	case ec2.InstanceStateNameTerminated:
+	case ec2types.InstanceStateNameTerminated:
 		return instance.StatusDeleted
-	case ec2.InstanceStateNameShuttingDown:
+	case ec2types.InstanceStateNameShuttingDown:
 		return instance.StatusDeleting
 	default:
 		return instance.StatusUnknown
 	}
 }
 
-func getTagValue(name string, tags []*ec2.Tag) string {
+func getTagValue(name string, tags []ec2types.Tag) string {
 	for _, t := range tags {
 		if *t.Key == name {
 			return *t.Value
@@ -1130,6 +1108,8 @@ func setProviderSpec(rawConfig awstypes.RawConfig, provSpec clusterv1alpha1.Prov
 }
 
 func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+	ctx := context.Background()
+
 	metricInstancesForMachines.Reset()
 
 	if len(machines.Items) < 1 {
@@ -1163,14 +1143,14 @@ func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) e
 		}
 	}
 
-	allReservations := []*ec2.Reservation{}
+	allReservations := []ec2types.Reservation{}
 	for _, cred := range machineEc2Credentials {
-		ec2Client, err := getEC2client(cred.accessKeyID, cred.secretAccessKey, cred.region, cred.assumeRoleARN, cred.assumeRoleExternalID)
+		ec2Client, err := getEC2client(ctx, cred.accessKeyID, cred.secretAccessKey, cred.region, cred.assumeRoleARN, cred.assumeRoleExternalID)
 		if err != nil {
 			machineErrors = append(machineErrors, fmt.Errorf("failed to get EC2 client: %w", err))
 			continue
 		}
-		inOut, err := ec2Client.DescribeInstances(&ec2.DescribeInstancesInput{})
+		inOut, err := ec2Client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{})
 		if err != nil {
 			machineErrors = append(machineErrors, fmt.Errorf("failed to get EC2 instances: %w", err))
 			continue
@@ -1190,13 +1170,11 @@ func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) e
 	return nil
 }
 
-func getInstanceCountForMachine(machine clusterv1alpha1.Machine, reservations []*ec2.Reservation) float64 {
+func getInstanceCountForMachine(machine clusterv1alpha1.Machine, reservations []ec2types.Reservation) float64 {
 	var count float64
 	for _, reservation := range reservations {
 		for _, i := range reservation.Instances {
-			if i.State == nil ||
-				i.State.Name == nil ||
-				*i.State.Name == ec2.InstanceStateNameTerminated {
+			if i.State == nil || i.State.Name == ec2types.InstanceStateNameTerminated {
 				continue
 			}
 
@@ -1215,8 +1193,8 @@ func getInstanceCountForMachine(machine clusterv1alpha1.Machine, reservations []
 	return count
 }
 
-func filterSupportedRHELImages(images []*ec2.Image) ([]*ec2.Image, error) {
-	var filteredImages []*ec2.Image
+func filterSupportedRHELImages(images []*ec2types.Image) ([]*ec2types.Image, error) {
+	var filteredImages []*ec2types.Image
 	for _, image := range images {
 		if strings.HasPrefix(*image.Name, "RHEL-8") {
 			filteredImages = append(filteredImages, image)
@@ -1237,9 +1215,9 @@ func filterSupportedRHELImages(images []*ec2.Image) ([]*ec2.Image, error) {
 // That could result in two or more instances created for one Machine object.
 // This happens more often in some AWS regions because some regions have
 // slower instance creation (e.g. us-east-1 and us-west-2).
-func (p *provider) waitForInstance(machine *clusterv1alpha1.Machine) error {
+func (p *provider) waitForInstance(ctx context.Context, machine *clusterv1alpha1.Machine) error {
 	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		_, err := p.get(machine)
+		_, err := p.get(ctx, machine)
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			// Retry if instance is not found
 			return false, nil
