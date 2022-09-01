@@ -599,7 +599,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		// noop
 	case util.IPv6, util.DualStack:
 		if len(vpc.Ipv6CidrBlockAssociationSet) == 0 {
-			return fmt.Errorf("vpc %q does not have IPv6 CIDR block", vpc.VpcId)
+			return fmt.Errorf("vpc %s does not have IPv6 CIDR block", pointer.StringDeref(vpc.VpcId, ""))
 		}
 	default:
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
@@ -759,7 +759,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 				Ebs: &ec2types.EbsBlockDevice{
 					VolumeSize:          aws.Int32(config.DiskSize),
 					DeleteOnTermination: aws.Bool(true),
-					VolumeType:          ec2types.VolumeType(config.DiskType),
+					VolumeType:          config.DiskType,
 					Iops:                config.DiskIops,
 					Encrypted:           pointer.BoolPtr(config.EBSVolumeEncrypted),
 				},
@@ -767,7 +767,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		},
 		MaxCount:     aws.Int32(1),
 		MinCount:     aws.Int32(1),
-		InstanceType: ec2types.InstanceType(config.InstanceType),
+		InstanceType: config.InstanceType,
 		UserData:     aws.String(base64.StdEncoding.EncodeToString([]byte(userdata))),
 		Placement: &ec2types.Placement{
 			AvailabilityZone: aws.String(config.AvailabilityZone),
