@@ -33,6 +33,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go"
 
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,7 +52,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
@@ -91,14 +91,14 @@ const (
 )
 
 var (
-	volumeTypes = sets.NewString(
-		ec2types.VolumeTypeStandard,
-		ec2types.VolumeTypeIo1,
-		ec2types.VolumeTypeGp2,
-		ec2types.VolumeTypeGp3,
-		ec2types.VolumeTypeSc1,
-		ec2types.VolumeTypeSt1,
-	)
+	volumeTypes = map[ec2types.VolumeType]interface{}{
+		ec2types.VolumeTypeStandard: nil,
+		ec2types.VolumeTypeIo1:      nil,
+		ec2types.VolumeTypeGp2:      nil,
+		ec2types.VolumeTypeGp3:      nil,
+		ec2types.VolumeTypeSc1:      nil,
+		ec2types.VolumeTypeSt1:      nil,
+	}
 
 	amiFilters = map[providerconfigtypes.OperatingSystem]map[awstypes.CPUArchitecture]amiFilter{
 		// Source: https://wiki.centos.org/Cloud/AWS
@@ -209,8 +209,8 @@ type Config struct {
 	InstanceProfile    string
 	InstanceType       ec2types.InstanceType
 	AMI                string
-	DiskSize           int64
-	DiskType           string
+	DiskSize           int32
+	DiskType           ec2types.VolumeType
 	DiskIops           *int32
 	EBSVolumeEncrypted bool
 	Tags               map[string]string
@@ -310,10 +310,10 @@ func getDefaultAMIID(ctx context.Context, client *ec2.Client, os providerconfigt
 	return *image.ImageId, nil
 }
 
-func getCPUArchitecture(ctx context.Context, client *ec2.Client, instanceType string) (awstypes.CPUArchitecture, error) {
+func getCPUArchitecture(ctx context.Context, client *ec2.Client, instanceType ec2types.InstanceType) (awstypes.CPUArchitecture, error) {
 	// read the instance type to know which cpu architecture is needed in the AMI
 	instanceTypes, err := client.DescribeInstanceTypes(ctx, &ec2.DescribeInstanceTypesInput{
-		InstanceTypes: []ec2types.InstanceType{ec2types.InstanceType(instanceType)},
+		InstanceTypes: []ec2types.InstanceType{instanceType},
 	})
 
 	if err != nil {
@@ -416,20 +416,26 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
+
+	instanceTypeStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	c.InstanceType = ec2types.InstanceType(instanceTypeStr)
+
 	c.AMI, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.AMI)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	c.DiskSize = rawConfig.DiskSize
-	c.DiskType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
+	diskTypeStr, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.DiskType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if c.DiskType == string(ec2types.VolumeTypeIo1) {
+	c.DiskType = ec2types.VolumeType(diskTypeStr)
+
+	if c.DiskType == ec2types.VolumeTypeIo1 {
 		if rawConfig.DiskIops == nil {
 			return nil, nil, nil, errors.New("Missing required field `diskIops`")
 		}
@@ -440,7 +446,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		}
 
 		c.DiskIops = rawConfig.DiskIops
-	} else if c.DiskType == string(ec2types.VolumeTypeGp3) && rawConfig.DiskIops != nil {
+	} else if c.DiskType == ec2types.VolumeTypeGp3 && rawConfig.DiskIops != nil {
 		// gp3 disks start with 3000 IOPS by default, we _can_ pass better IOPS, but it is not a required field
 		iops := *rawConfig.DiskIops
 
@@ -556,7 +562,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("unsupported os %s", pc.OperatingSystem)
 	}
 
-	if !volumeTypes.Has(config.DiskType) {
+	if _, ok := volumeTypes[config.DiskType]; !ok {
 		return fmt.Errorf("invalid volume type %s specified. Supported: %s", config.DiskType, volumeTypes)
 	}
 
@@ -697,7 +703,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		}
 	}
 
-	tags := []*ec2types.Tag{
+	tags := []ec2types.Tag{
 		{
 			Key:   aws.String(nameTag),
 			Value: aws.String(machine.Spec.Name),
@@ -709,7 +715,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	}
 
 	for k, v := range config.Tags {
-		tags = append(tags, &ec2types.Tag{
+		tags = append(tags, ec2types.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		})
@@ -730,7 +736,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 			spotOpts.InstanceInterruptionBehavior = ec2types.InstanceInterruptionBehaviorStop
 
 			if config.SpotInterruptionBehavior != nil && *config.SpotInterruptionBehavior != "" {
-				spotOpts.InstanceInterruptionBehavior = ec2types.InstanceInterruptionBehavior(config.SpotInterruptionBehavior)
+				spotOpts.InstanceInterruptionBehavior = ec2types.InstanceInterruptionBehavior(*config.SpotInterruptionBehavior)
 			}
 		}
 
@@ -763,24 +769,24 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		MinCount:     aws.Int32(1),
 		InstanceType: ec2types.InstanceType(config.InstanceType),
 		UserData:     aws.String(base64.StdEncoding.EncodeToString([]byte(userdata))),
-		Placement: &ec2.Placement{
+		Placement: &ec2types.Placement{
 			AvailabilityZone: aws.String(config.AvailabilityZone),
 		},
-		NetworkInterfaces: []*ec2.InstanceNetworkInterfaceSpecification{
+		NetworkInterfaces: []ec2types.InstanceNetworkInterfaceSpecification{
 			{
-				DeviceIndex:              aws.Int64(0), // eth0
+				DeviceIndex:              aws.Int32(0), // eth0
 				AssociatePublicIpAddress: aws.Bool(assignPublicIP),
 				DeleteOnTermination:      aws.Bool(true),
 				SubnetId:                 aws.String(config.SubnetID),
-				Groups:                   aws.StringSlice(config.SecurityGroupIDs),
+				Groups:                   config.SecurityGroupIDs,
 			},
 		},
-		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
+		IamInstanceProfile: &ec2types.IamInstanceProfileSpecification{
 			Name: aws.String(config.InstanceProfile),
 		},
-		TagSpecifications: []*ec2.TagSpecification{
+		TagSpecifications: []ec2types.TagSpecification{
 			{
-				ResourceType: aws.String(ec2.ResourceTypeInstance),
+				ResourceType: ec2types.ResourceTypeInstance,
 				Tags:         tags,
 			},
 		},
@@ -799,7 +805,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, awsErrorToTerminalError(err, "failed provision instance at aws")
 	}
 
-	return &awsInstance{instance: runOut.Instances[0]}, nil
+	return &awsInstance{instance: &runOut.Instances[0]}, nil
 }
 
 func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
@@ -836,19 +842,19 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 			return false, awsErrorToTerminalError(err, "failed to cancel spot instance request")
 		}
 
-		if *cOut.CancelledSpotInstanceRequests[0].State == ec2.CancelSpotInstanceRequestStateCancelled {
+		if cOut.CancelledSpotInstanceRequests[0].State == ec2types.CancelSpotInstanceRequestStateCancelled {
 			klog.V(3).Infof("successfully canceled spot instance request %s at aws", *ec2instance.instance.SpotInstanceRequestId)
 		}
 	}
 
 	tOut, err := ec2Client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
-		InstanceIds: aws.StringSlice([]string{ec2instance.ID()}),
+		InstanceIds: []string{ec2instance.ID()},
 	})
 	if err != nil {
 		return false, awsErrorToTerminalError(err, "failed to terminate instance")
 	}
 
-	if *tOut.TerminatingInstances[0].PreviousState.Name != *tOut.TerminatingInstances[0].CurrentState.Name {
+	if tOut.TerminatingInstances[0].PreviousState.Name != tOut.TerminatingInstances[0].CurrentState.Name {
 		klog.V(3).Infof("successfully triggered termination of instance %s at aws", ec2instance.ID())
 	}
 
@@ -929,7 +935,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err == nil {
-		labels["size"] = c.InstanceType
+		labels["size"] = string(c.InstanceType)
 		labels["region"] = c.Region
 		labels["az"] = c.AvailabilityZone
 		labels["ami"] = c.AMI
@@ -1053,11 +1059,11 @@ func awsErrorToTerminalError(err error, msg string) error {
 	}
 
 	if err != nil {
-		var aerr awserr.Error
+		var aerr smithy.APIError
 		if !errors.As(err, &aerr) {
 			return prepareAndReturnError()
 		}
-		switch aerr.Code() {
+		switch aerr.ErrorCode() {
 		case "InstanceLimitExceeded":
 			return cloudprovidererrors.TerminalError{
 				Reason:  common.InsufficientResourcesMachineError,
@@ -1193,8 +1199,8 @@ func getInstanceCountForMachine(machine clusterv1alpha1.Machine, reservations []
 	return count
 }
 
-func filterSupportedRHELImages(images []*ec2types.Image) ([]*ec2types.Image, error) {
-	var filteredImages []*ec2types.Image
+func filterSupportedRHELImages(images []ec2types.Image) ([]ec2types.Image, error) {
+	var filteredImages []ec2types.Image
 	for _, image := range images {
 		if strings.HasPrefix(*image.Name, "RHEL-8") {
 			filteredImages = append(filteredImages, image)

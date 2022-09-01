@@ -36,7 +36,7 @@ type RawConfig struct {
 	InstanceProfile    providerconfigtypes.ConfigVarString   `json:"instanceProfile,omitempty"`
 	InstanceType       providerconfigtypes.ConfigVarString   `json:"instanceType,omitempty"`
 	AMI                providerconfigtypes.ConfigVarString   `json:"ami,omitempty"`
-	DiskSize           int64                                 `json:"diskSize"`
+	DiskSize           int32                                 `json:"diskSize"`
 	DiskType           providerconfigtypes.ConfigVarString   `json:"diskType,omitempty"`
 	DiskIops           *int32                                `json:"diskIops,omitempty"`
 	EBSVolumeEncrypted providerconfigtypes.ConfigVarBool     `json:"ebsVolumeEncrypted"`
