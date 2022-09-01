@@ -17,10 +17,11 @@ limitations under the License.
 package metadata
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -54,7 +55,7 @@ type AuthConfig struct {
 }
 
 type Client interface {
-	GetMachineMetadata() (*MachineMetadata, error)
+	GetMachineMetadata(ctx context.Context) (*MachineMetadata, error)
 }
 
 type defaultClient struct {
@@ -78,8 +79,10 @@ func NewMetadataClient(cfg *Config) (Client, error) {
 	}, nil
 }
 
-func (d *defaultClient) GetMachineMetadata() (*MachineMetadata, error) {
+func (d *defaultClient) GetMachineMetadata(ctx context.Context) (*MachineMetadata, error) {
 	req, err := http.NewRequest(http.MethodGet, d.metadataEndpoint, nil)
+	req = req.WithContext(ctx)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a get metadata request: %w", err)
 	}
@@ -92,10 +95,12 @@ func (d *defaultClient) GetMachineMetadata() (*MachineMetadata, error) {
 		return nil, fmt.Errorf("failed to execute get metadata request: %w", err)
 	}
 
+	defer res.Body.Close()
+
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to execute get metadata request with status code: %v", res.StatusCode)
 	}
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}

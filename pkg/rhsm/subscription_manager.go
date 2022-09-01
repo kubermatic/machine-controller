@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -159,7 +159,7 @@ func (d *defaultRedHatSubscriptionManager) deleteSubscription(ctx context.Contex
 	}
 	defer res.Body.Close()
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return fmt.Errorf("failed while reading response: %w", err)
 	}
@@ -187,7 +187,7 @@ func (d *defaultRedHatSubscriptionManager) executeFindSystemsRequest(ctx context
 	}
 	defer res.Body.Close()
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed while reading response: %w", err)
 	}

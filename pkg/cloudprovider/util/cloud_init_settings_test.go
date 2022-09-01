@@ -18,7 +18,7 @@ package util
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -60,7 +60,7 @@ func TestCloudInitGeneration(t *testing.T) {
 				WithObjects(test.secret).
 				Build()
 
-			userdata, err := ioutil.ReadFile(test.userdata)
+			userdata, err := os.ReadFile(test.userdata)
 			if err != nil {
 				t.Fatalf("failed to read userdata testing file: %v", err)
 			}

@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
@@ -320,7 +319,7 @@ func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.Vir
 func generateLocalUserdataISO(userdata, name string) (string, error) {
 	// We must create a directory, because the iso-generation commands
 	// take a directory as input
-	userdataDir, err := ioutil.TempDir(localTempDir, name)
+	userdataDir, err := os.MkdirTemp(localTempDir, name)
 	if err != nil {
 		return "", fmt.Errorf("failed to create local temp directory for userdata at %s: %w", userdataDir, err)
 	}
@@ -350,11 +349,11 @@ func generateLocalUserdataISO(userdata, name string) (string, error) {
 		return "", fmt.Errorf("failed to render metadata: %w", err)
 	}
 
-	if err := ioutil.WriteFile(userdataFilePath, []byte(userdata), 0644); err != nil {
+	if err := os.WriteFile(userdataFilePath, []byte(userdata), 0644); err != nil {
 		return "", fmt.Errorf("failed to locally write userdata file to %s: %w", userdataFilePath, err)
 	}
 
-	if err := ioutil.WriteFile(metadataFilePath, metadata.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(metadataFilePath, metadata.Bytes(), 0644); err != nil {
 		return "", fmt.Errorf("failed to locally write metadata file to %s: %w", userdataFilePath, err)
 	}
 
@@ -431,7 +430,7 @@ func validateDiskResizing(disks []*types.VirtualDisk, requestedSize int64) error
 	return nil
 }
 
-//getDatastoreFromVM gets the datastore where the VM files are located.
+// getDatastoreFromVM gets the datastore where the VM files are located.
 func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.VirtualMachine) (*object.Datastore, error) {
 	var props mo.VirtualMachine
 	// Obtain VM properties
