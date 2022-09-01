@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-proxmox
+  namespace: kube-system
+type: Opaque
+stringData:
+  token: << PM_API_TOKEN >>
+  sshPrivateKey: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    ...
+    -----END OPENSSH PRIVATE KEY-----
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: proxmox-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "proxmox"
+          cloudProviderSpec:
+            # Can also be set via the env var 'PM_API_ENDPOINT' on the machine-controller
+            # example: 'https://10.0.1.5/api2/json'
+            endpoint: '<< PM_API_ENDPOINT >>'
+            # Can also be set via the env var 'PM_API_USER_ID' on the machine-controller
+            userID: '<< PM_API_USER_ID >>'
+            # Can also be set via the env var 'PM_API_TOKEN' on the machine-controller
+            token:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-proxmox
+                key: token
+            # Optional: Allow insecure connections to endpoint if no valid TLS certificate is
+            # presented. Can also be set via the env var 'PM_TLS_INSECURE' on the machine-controller
+            allowInsecure: true
+            # Optional: Connect through a proxy
+            # Can also be set via the env var 'PM_PROXY_URL' on the machine-controller
+            # proxyURL: '<< PM_PROXY_URL >>'
+            # SSH private key of a user that has write access to local storage on all nodes. this
+            # is needed to push cloud-init userdata.
+            ciStorageSSHPrivateKey:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-proxmox
+                key: sshPrivateKey
+            ciStorageName: local
+            ciStoragePath: /var/lib/vz
+            # Can also be set via the env
+            # ID of the VM template
+            vmTemplateID: 9000
+            # Sets the CPU count for this VM
+            cpuSockets: 2
+            # Sets the CPU cores per CPU
+            cpuCores: 1
+            # Memory configuration in MiB
+            memoryMB: 2048
+            # Optional: Set up system disk size in GB. If not set, will be based on disk size in vm
+            # template. Cannot be smaller than the initial disk size in vm template.
+            diskSizeGB: 20
+            # Optional: Name of the disk used in the vm template.
+            diskName: scsi0
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+            disableAutoUpdate: true
+      versions:
+        kubelet: 1.22.5
