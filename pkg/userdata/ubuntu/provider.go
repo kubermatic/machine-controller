@@ -218,7 +218,7 @@ write_files:
       {{- end }}
       {{- if eq .CloudProviderName "proxmox" }}
       qemu-guest-agent \
-      {{ end }}
+      {{- end }}
       ipvsadm
 
     {{- /* iscsid service is required on Nutanix machines for CSI driver to attach volumes. */}}
