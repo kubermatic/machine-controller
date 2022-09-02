@@ -686,6 +686,7 @@ func (r *Reconciler) deleteCloudProviderInstance(ctx context.Context, prov cloud
 		if rhelConfig.RHELUseSatelliteServer {
 			if kuberneteshelper.HasFinalizer(machine, rhsm.RedhatSubscriptionFinalizer) {
 				err = r.satelliteSubscriptionManager.DeleteSatelliteHost(
+					ctx,
 					machineName,
 					rhelConfig.RHELSubscriptionManagerUser,
 					rhelConfig.RHELSubscriptionManagerPassword,

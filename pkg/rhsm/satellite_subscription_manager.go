@@ -17,6 +17,7 @@ limitations under the License.
 package rhsm
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -30,7 +31,7 @@ import (
 
 // SatelliteSubscriptionManager manages the communications between machine-controller and redhat satellite server.
 type SatelliteSubscriptionManager interface {
-	DeleteSatelliteHost(machineName, username, password, serverURL string) error
+	DeleteSatelliteHost(ctx context.Context, machineName, username, password, serverURL string) error
 }
 
 // DefaultSatelliteSubscriptionManager default manager for redhat satellite server.
@@ -57,7 +58,7 @@ func NewSatelliteSubscriptionManager() SatelliteSubscriptionManager {
 	}
 }
 
-func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(machineName, username, password, serverURL string) error {
+func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(ctx context.Context, machineName, username, password, serverURL string) error {
 	if machineName == "" || username == "" || password == "" || serverURL == "" {
 		return errors.New("satellite server url, username or password cannot be empty")
 	}
@@ -68,7 +69,7 @@ func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(machineName, u
 	)
 
 	for retries < maxRetries {
-		if err := s.executeDeleteRequest(machineName, username, password, serverURL); err != nil {
+		if err := s.executeDeleteRequest(ctx, machineName, username, password, serverURL); err != nil {
 			klog.Errorf("failed to execute satellite subscription deletion: %v", err)
 			retries++
 			time.Sleep(500 * time.Second)
@@ -82,7 +83,7 @@ func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(machineName, u
 	return errors.New("failed to delete system profile after max retires number has been reached")
 }
 
-func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(machineName, username, password, serverURL string) error {
+func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(ctx context.Context, machineName, username, password, serverURL string) error {
 	var requestURL url.URL
 	requestURL.Scheme = "http"
 	if !s.useHTTP {
@@ -92,6 +93,7 @@ func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(machineName, 
 	requestURL.Path = path.Join("api", "v2", "hosts", machineName)
 
 	deleteHostRequest, err := http.NewRequest(http.MethodDelete, requestURL.String(), nil)
+	deleteHostRequest = deleteHostRequest.WithContext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create a delete host request: %w", err)
 	}

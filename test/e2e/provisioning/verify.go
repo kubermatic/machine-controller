@@ -19,7 +19,7 @@ package provisioning
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -318,7 +318,7 @@ func isNodeForMachine(node *corev1.Node, machine *clusterv1alpha1.Machine) bool 
 }
 
 func readAndModifyManifest(pathToManifest string, keyValuePairs []string) (string, error) {
-	contentRaw, err := ioutil.ReadFile(pathToManifest)
+	contentRaw, err := os.ReadFile(pathToManifest)
 	if err != nil {
 		return "", err
 	}

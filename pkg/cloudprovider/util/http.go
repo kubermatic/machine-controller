@@ -22,9 +22,9 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,7 +45,7 @@ var (
 // global CABundle with a new one. The file must contain at least one
 // valid certificate.
 func SetCABundleFile(filename string) error {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}

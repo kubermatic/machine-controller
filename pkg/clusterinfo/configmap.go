@@ -20,8 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
@@ -134,7 +134,7 @@ func getCAData(config *rest.Config) ([]byte, error) {
 		return config.TLSClientConfig.CAData, nil
 	}
 
-	return ioutil.ReadFile(config.TLSClientConfig.CAFile)
+	return os.ReadFile(config.TLSClientConfig.CAFile)
 }
 
 func (p *KubeconfigProvider) GetBearerToken() string {

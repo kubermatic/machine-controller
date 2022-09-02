@@ -27,9 +27,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
-//  use-octavia is enabled by default in CCM since v1.17.0, and disabled by
-//  default with the in-tree cloud provider.
-//  https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
+// use-octavia is enabled by default in CCM since v1.17.0, and disabled by
+// default with the in-tree cloud provider.
+// https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
 const (
 	cloudConfigTpl = `[Global]
 auth-url    = {{ .Global.AuthURL | iniEscape }}

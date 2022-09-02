@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"time"
@@ -181,7 +181,7 @@ func readReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 	if r.Body == nil {
 		return nil, fmt.Errorf("request has no body")
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading data from request body: %w", err)
 	}

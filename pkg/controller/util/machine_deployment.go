@@ -166,7 +166,8 @@ var annotationsToSkip = map[string]bool{
 
 // skipCopyAnnotation returns true if we should skip copying the annotation with the given annotation key
 // TODO: How to decide which annotations should / should not be copied?
-//       See https://github.com/kubernetes/kubernetes/pull/20035#issuecomment-179558615
+//
+//	See https://github.com/kubernetes/kubernetes/pull/20035#issuecomment-179558615
 func skipCopyAnnotation(key string) bool {
 	return annotationsToSkip[key]
 }
@@ -399,9 +400,9 @@ func getMachineSetFraction(ms v1alpha1.MachineSet, d v1alpha1.MachineDeployment)
 
 // EqualIgnoreHash returns true if two given machineTemplateSpec are equal, ignoring the diff in value of Labels[machine-template-hash]
 // We ignore machine-template-hash because:
-// 1. The hash result would be different upon machineTemplateSpec API changes
-//    (e.g. the addition of a new field will cause the hash code to change)
-// 2. The deployment template won't have hash labels.
+//  1. The hash result would be different upon machineTemplateSpec API changes
+//     (e.g. the addition of a new field will cause the hash code to change)
+//  2. The deployment template won't have hash labels.
 func EqualIgnoreHash(template1, template2 *v1alpha1.MachineTemplateSpec) bool {
 	t1Copy := template1.DeepCopy()
 	t2Copy := template2.DeepCopy()
@@ -429,8 +430,8 @@ func FindNewMachineSet(deployment *v1alpha1.MachineDeployment, msList []*v1alpha
 
 // FindOldMachineSets returns the old machine sets targeted by the given Deployment, with the given slice of MSes.
 // Returns two list of machine sets
-//  - the first contains all old machine sets with all non-zero replicas
-//  - the second contains all old machine sets
+//   - the first contains all old machine sets with all non-zero replicas
+//   - the second contains all old machine sets
 func FindOldMachineSets(deployment *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet) ([]*v1alpha1.MachineSet, []*v1alpha1.MachineSet) {
 	var requiredMSs []*v1alpha1.MachineSet
 	allMSs := make([]*v1alpha1.MachineSet, 0, len(msList))

@@ -21,7 +21,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.18.3
+        - image: golang:1.19.0
           command:
             - make
           args:
@@ -42,7 +42,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.18.3
+        - image: golang:1.19.0
           command:
             - make
           args:
@@ -63,7 +63,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golangci/golangci-lint:v1.46.1
+        - image: golangci/golangci-lint:v1.49.0
           command:
             - make
           args:
@@ -149,16 +149,13 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/wwhrd:0.4.0-1
+        - image: quay.io/kubermatic/build:go-1.19-node-18-kind-0.14-0
           command:
             - ./hack/verify-licenses.sh
           resources:
             requests:
-              memory: 32Mi
-              cpu: 50m
-            limits:
-              memory: 256Mi
-              cpu: 250m
+              memory: 2Gi
+              cpu: 2
 
   - name: pull-machine-controller-test
     always_run: true
@@ -168,7 +165,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.18.3
+        - image: golang:1.19.0
           command:
             - make
           args:
