@@ -37,10 +37,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 6Gi
+              memory: 7Gi
               cpu: 2
             limits:
-              memory: 6Gi
+              memory: 7Gi
 
   - name: pull-machine-controller-e2e-openstack-project-auth
     always_run: true
@@ -66,7 +66,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 6Gi
+              memory: 7Gi
               cpu: 2
             limits:
-              memory: 6Gi
+              memory: 7Gi

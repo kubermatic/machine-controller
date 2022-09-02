@@ -37,10 +37,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 6Gi
+              memory: 7Gi
               cpu: 2
             limits:
-              memory: 6Gi
+              memory: 7Gi
 
   - name: pull-machine-controller-e2e-vsphere-datastore-cluster
     always_run: false
@@ -66,10 +66,10 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 6Gi
+              memory: 7Gi
               cpu: 2
             limits:
-              memory: 6Gi
+              memory: 7Gi
 
   - name: pull-machine-controller-e2e-vsphere-resource-pool
     always_run: false
@@ -95,7 +95,7 @@ presubmits:
             privileged: true
           resources:
             requests:
-              memory: 6Gi
+              memory: 7Gi
               cpu: 2
             limits:
-              memory: 6Gi
+              memory: 7Gi

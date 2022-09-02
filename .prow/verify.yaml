@@ -29,10 +29,10 @@ presubmits:
             - all
           resources:
             requests:
-              memory: 6Gi
+              memory: 7Gi
               cpu: 2
             limits:
-              memory: 6Gi
+              memory: 7Gi
 
   - name: pull-machine-controller-dependencies
     always_run: true
@@ -71,9 +71,9 @@ presubmits:
           resources:
             requests:
               cpu: 800m
-              memory: 6Gi
+              memory: 7Gi
             limits:
-              memory: 6Gi
+              memory: 7Gi
 
   - name: pull-machine-controller-yamllint
     always_run: true
@@ -177,6 +177,6 @@ presubmits:
           resources:
             requests:
               cpu: 3
-              memory: 6Gi
+              memory: 7Gi
             limits:
-              memory: 6Gi
+              memory: 7Gi

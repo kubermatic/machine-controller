@@ -12,7 +12,12 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1645
-	github.com/aws/aws-sdk-go v1.44.37
+	github.com/aws/aws-sdk-go-v2 v1.16.12
+	github.com/aws/aws-sdk-go-v2/config v1.17.3
+	github.com/aws/aws-sdk-go-v2/credentials v1.12.16
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.54.2
+	github.com/aws/aws-sdk-go-v2/service/sts v1.16.15
+	github.com/aws/smithy-go v1.13.0
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.81.0
@@ -74,6 +79,13 @@ require (
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/araddon/dateparse v0.0.0-20190622164848-0fb0a474d195 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.13 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.19 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.13 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.20 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.13 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.11.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
