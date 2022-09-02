@@ -55,7 +55,7 @@ type AuthConfig struct {
 }
 
 type Client interface {
-	GetMachineMetadata(ctx context.Context) (*MachineMetadata, error)
+	GetMachineMetadata() (*MachineMetadata, error)
 }
 
 type defaultClient struct {
@@ -79,10 +79,10 @@ func NewMetadataClient(cfg *Config) (Client, error) {
 	}, nil
 }
 
-func (d *defaultClient) GetMachineMetadata(ctx context.Context) (*MachineMetadata, error) {
+func (d *defaultClient) GetMachineMetadata() (*MachineMetadata, error) {
 	req, err := http.NewRequest(http.MethodGet, d.metadataEndpoint, nil)
-	req = req.WithContext(ctx)
-
+	// TODO: Fix this
+	req = req.WithContext(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a get metadata request: %w", err)
 	}

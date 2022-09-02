@@ -211,7 +211,7 @@ func TestDriver_ProvisionServer(t *testing.T) {
 
 type fakeMetadataClient struct{}
 
-func (f *fakeMetadataClient) GetMachineMetadata(ctx context.Context) (*metadata.MachineMetadata, error) {
+func (f *fakeMetadataClient) GetMachineMetadata() (*metadata.MachineMetadata, error) {
 	return &metadata.MachineMetadata{
 		CIDR:       "10.129.8.90/30",
 		MACAddress: "18:C0:4D:B1:18:E3",

@@ -125,7 +125,7 @@ func (d *driver) ProvisionServer(ctx context.Context, uid types.UID, cfg *plugin
 	_, err := d.hardwareClient.Get(ctx, hw.Hardware.Id, "", "")
 	if err != nil {
 		if resourceNotFoundErr(err) {
-			cfg, err := d.metadataClient.GetMachineMetadata(ctx)
+			cfg, err := d.metadataClient.GetMachineMetadata()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get metadata configs: %w", err)
 			}
