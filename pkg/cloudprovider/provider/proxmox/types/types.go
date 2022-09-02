@@ -64,33 +64,6 @@ type Node struct {
 	Uptime          int     `json:"uptime"`
 }
 
-// VMList represents the response body of GET /api2/json/resources?type=vm.
-type VMList struct {
-	Data []VM `json:"data"`
-}
-
-// VM is one single vm in the response of GET /api2/json/resources?type=vm.
-type VM struct {
-	CPUCount           int     `json:"maxcpu"`
-	CPUUtilization     float64 `json:"cpu"`
-	Diskread           int     `json:"diskread"`
-	DiskspaceAvailable int     `json:"maxdisk"`
-	DiskspaceUsed      int     `json:"disk"`
-	Diskwrite          int     `json:"diskwrite"`
-	ID                 string  `json:"id"`
-	MemoryAvailable    int64   `json:"maxmem"`
-	MemoryUsed         int     `json:"mem"`
-	Name               string  `json:"name"`
-	Netin              int     `json:"netin"`
-	Netout             int     `json:"netout"`
-	Node               string  `json:"node"`
-	Status             string  `json:"status"`
-	Template           int     `json:"template"`
-	Type               string  `json:"type"`
-	Uptime             int     `json:"uptime"`
-	VMid               int     `json:"vmid"`
-}
-
 // NodeNetworkDeviceList represents the response body of GET /api2/json/nodes/<node>/network.
 type NodeNetworkDeviceList struct {
 	Data []NodeNetworkDevice `json:"data"`

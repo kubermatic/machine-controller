@@ -105,41 +105,6 @@ func (c ClientSet) getNodeList() (*proxmoxtypes.NodeList, error) {
 	return nl, nil
 }
 
-func (c ClientSet) checkNodeExists(name string) (bool, error) {
-	nodeList, err := c.getNodeList()
-	if err != nil {
-		return false, fmt.Errorf("failed to check node existence: %w", err)
-	}
-
-	for _, node := range nodeList.Data {
-		if node.Name == name {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-func (c ClientSet) getVMList() (*proxmoxtypes.VMList, error) {
-	vmList, err := c.GetVmList()
-	if err != nil {
-		return nil, fmt.Errorf("cannot fetch nodes from cluster: %w", err)
-	}
-
-	var vms *proxmoxtypes.VMList
-
-	nodeListJSON, err := json.Marshal(vmList)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling vmList to JSON: %w", err)
-	}
-	err = json.Unmarshal(nodeListJSON, &vms)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshalling JSON to VMList: %w", err)
-	}
-
-	return vms, nil
-}
-
 func (c ClientSet) checkTemplateExists(vmID int) (bool, error) {
 	vmInfo, err := c.GetVmInfo(proxmox.NewVmRef(vmID))
 	if err != nil {

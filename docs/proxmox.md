@@ -1,5 +1,12 @@
 # Proxmox Virtual Environment
 
+## State of the implementation
+
+Support for Proxmox as a provider in the machine-controller is currently just a technical demo. It
+is possible to create MachineDeployments using manually created VM templates as demonstrated below.
+In this example the VM template is using local storage, which is why this template can only be
+cloned on the same node it is located at.
+
 ## Prerequisites
 
 ### Authentication
@@ -38,12 +45,12 @@ For the provider to properly function the user needs an API token with the follo
 ### Cloud-Init enabled VM Templates
 
 Although it is possible to upload Cloud-Init images in Proxmox VE and create VM disks directly from
-these imgages via CLI tools on the nodes directly, there is no API endpoint yet to provide this
+these images via CLI tools on the nodes directly, there is no API endpoint yet to provide this
 functionality externally. That's why the `proxmox` provider assumes there are VM templates in place
 to clone new machines from.
 
-Proxmox recommends to use either ready-to-use Cloud-Init images provided by many Linux distributions
-(mostly designed for OpenStack) or to prepare the images yourself as you have full controll over
+Proxmox recommends using either ready-to-use Cloud-Init images provided by many Linux distributions
+(mostly designed for OpenStack) or to prepare the images yourself as you have full control over
 what's in these images.
 
 For VM templates to be available on all nodes, they need to be added to the `ha-manager`.
@@ -59,7 +66,7 @@ qm create $INSTANCE_ID -name ubuntu-18.04-LTS
 qm importdisk $INSTANCE_ID bionic-server-cloudimg-amd64.img local-lvm
 # Set the imported Disk as SCSI drive.
 qm set $INSTANCE_ID -scsihw virtio-scsi-pci -scsi0 local-lvm:vm-$INSTANCE_ID-disk-0
-# Create the cloud-init drive where the userdata is read from.
+# Create the cloud-init drive where the user-data is read from.
 qm set $INSTANCE_ID -ide2 local-lvm:cloudinit
 # Boot from the imported disk.
 qm set $INSTANCE_ID -boot c -bootdisk scsi0
@@ -75,13 +82,13 @@ qm template $INSTANCE_ID
 ha-manager add vm:$INSTANCE_ID -state stopped
 ```
 
-### Cloud-Init userdata
+### Cloud-Init user-data
 
 Proxmox currently does not support the upload of "snippets" via API, but these snippets are used for
-cloud-init userdata which are required for the machine-controller to function. This provider
-implementation needs to copy the generated userdata yaml file to every proxmox node where a VM is
+cloud-init user-data which are required for the machine-controller to function. This provider
+implementation needs to copy the generated user-data yaml file to every proxmox node where a VM is
 created or migrated to.
 
-* A storage needs to ne enabled for content `snippets` (e.g. `local`)
-* SSH private key of a user that exists on all nodes and has write permission to the path were
+* A storage needs to be enabled for content `snippets` (e.g. `local`)
+* SSH private key of a user that exists on all nodes and has write permission to the path where
 snippets are stored (e.g. `/var/lib/vz/snippets`)
