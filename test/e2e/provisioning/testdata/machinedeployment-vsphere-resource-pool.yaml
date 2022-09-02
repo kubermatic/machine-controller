@@ -28,7 +28,7 @@ spec:
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
             datacenter: 'Hamburg'
-            folder: '/Hamburg/vm/Kubermatic-dev'
+            folder: '/Hamburg/vm/Kubermatic-ci'
             password: << VSPHERE_PASSWORD >>
             datastoreCluster: 'dsc-1'
             resourcePool: 'e2e-resource-pool'
