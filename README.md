@@ -1,5 +1,7 @@
 # Kubermatic machine-controller
 
+.
+
 ## Table of Contents
 
 - [Kubermatic machine-controller](#kubermatic-machine-controller)
