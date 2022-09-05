@@ -115,7 +115,7 @@ func getClient(token string) *govultr.Client {
 
 // getOdIs, vultr works with OS IDs (instead of names)
 // The IDs hardcoded here come from https://api.vultr.com/v2/os
-func getOsId(os providerconfigtypes.OperatingSystem) (int, error) {
+func getOsID(os providerconfigtypes.OperatingSystem) (int, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return 387, nil
@@ -138,7 +138,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("invalid machineType %q, valid values are %q, %q", c.MachineType, vultrtypes.BareMetal, vultrtypes.CloudInstance)
 	}
 
-	osId, err := getOsId(pc.OperatingSystem)
+	osID, err := getOsID(pc.OperatingSystem)
 	if err != nil {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, err)
 	}
@@ -203,13 +203,13 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	}
 
 	for _, os := range oss {
-		if os.ID == osId {
+		if os.ID == osID {
 			foundOperatingSystem = true
 			break
 		}
 	}
 	if !foundOperatingSystem {
-		return fmt.Errorf("operating system with ID %q not found", osId)
+		return fmt.Errorf("operating system with ID %q not found", osID)
 	}
 
 	return nil
@@ -226,7 +226,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 
 	client := getClient(c.Token)
 
-	osId, _ := getOsId(pc.OperatingSystem)
+	osID, _ := getOsID(pc.OperatingSystem)
 
 	c.Tags = append(c.Tags, fmt.Sprintf("machineUid=%s", machine.UID))
 
@@ -235,14 +235,14 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 			Label:    machine.Spec.Name,
 			Region:   c.Region,
 			Plan:     c.Plan,
-			OsID:     osId,
+			OsID:     osID,
 			Tags:     c.Tags,
 			UserData: base64.StdEncoding.EncodeToString([]byte(userData)),
 		}
 
 		instance, err := client.BareMetalServer.Create(ctx, &instanceOpts)
 		if err != nil {
-			return nil, fmt.Errorf("could not create bare-metal instance: %q", err)
+			return nil, fmt.Errorf("could not create bare-metal instance: %w", err)
 		}
 
 		return &vultrBareMetalInstance{instance: instance}, nil
@@ -251,20 +251,20 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 			Label:    machine.Spec.Name,
 			Region:   c.Region,
 			Plan:     c.Plan,
-			OsID:     osId,
+			OsID:     osID,
 			Tags:     c.Tags,
 			UserData: base64.StdEncoding.EncodeToString([]byte(userData)),
 		}
 
 		instance, err := client.Instance.Create(ctx, &instanceOpts)
 		if err != nil {
-			return nil, fmt.Errorf("could not create cloud-instance instance: %q", err)
+			return nil, fmt.Errorf("could not create cloud-instance instance: %w", err)
 		}
 
 		return &vultrCloudInstance{instance: instance}, nil
 	}
 
-	return nil, fmt.Errorf("could not create instance: %q", err)
+	return nil, fmt.Errorf("could not create instance: %w", err)
 }
 
 func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
@@ -300,7 +300,6 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		}
 
 		return false, nil
-
 	} else if c.MachineType == string(vultrtypes.CloudInstance) {
 		err := client.Instance.Delete(ctx, instance.ID())
 		if err != nil {
@@ -456,7 +455,7 @@ type vultrBareMetalInstance struct {
 }
 
 func (v *vultrBareMetalInstance) Name() string {
-	return string(v.instance.Label)
+	return v.instance.Label
 }
 
 func (v *vultrBareMetalInstance) ID() string {
@@ -490,7 +489,7 @@ type vultrCloudInstance struct {
 }
 
 func (v *vultrCloudInstance) Name() string {
-	return string(v.instance.Label)
+	return v.instance.Label
 }
 
 func (v *vultrCloudInstance) ID() string {
