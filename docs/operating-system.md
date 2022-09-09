@@ -45,4 +45,4 @@ Machine controller may work with other OS versions that are not listed in the ta
 | RHEL | 8.x |
 | Rocky Linux | 8.5 |
 | SLES |  SLES 15 SP3 |
-| Ubuntu | 20.04 LTS |
+| Ubuntu | 20.04 LTS, 22.04 LTS |

@@ -44,7 +44,7 @@ import (
 const (
 	machineUIDTag   = "machine_uid"
 	centosImageName = "CentOS  7.9 64 bit"
-	ubuntuImageName = "Ubuntu  20.04 64 bit"
+	ubuntuImageName = "Ubuntu  22.04 64 bit"
 
 	finalizerInstance = "kubermatic.io/cleanup-alibaba-instance"
 )
