@@ -42,14 +42,14 @@ For the provider to properly function the user needs an API token with the follo
 * `Sys.Audit`
 * `Sys.Console`
 
-### Cloud-Init enabled VM Templates
+### Cloud-init enabled VM Templates
 
-Although it is possible to upload Cloud-Init images in Proxmox VE and create VM disks directly from
+Although it is possible to upload cloud-init images in Proxmox VE and create VM disks directly from
 these images via CLI tools on the nodes directly, there is no API endpoint yet to provide this
 functionality externally. That's why the `proxmox` provider assumes there are VM templates in place
 to clone new machines from.
 
-Proxmox recommends using either ready-to-use Cloud-Init images provided by many Linux distributions
+Proxmox recommends using either ready-to-use cloud-init images provided by many Linux distributions
 (mostly designed for OpenStack) or to prepare the images yourself as you have full control over
 what's in these images.
 
@@ -82,13 +82,13 @@ qm template $INSTANCE_ID
 ha-manager add vm:$INSTANCE_ID -state stopped
 ```
 
-### Cloud-Init user-data
+### Cloud-init user-data
 
 Proxmox currently does not support the upload of "snippets" via API, but these snippets are used for
 cloud-init user-data which are required for the machine-controller to function. This provider
-implementation needs to copy the generated user-data yaml file to every proxmox node where a VM is
-created or migrated to.
+implementation needs to copy the generated user-data yaml file via SFTP to every proxmox node where
+a VM is created or migrated to. For this to work, make sure that:
 
-* A storage needs to be enabled for content `snippets` (e.g. `local`)
-* SSH private key of a user that exists on all nodes and has write permission to the path where
-snippets are stored (e.g. `/var/lib/vz/snippets`)
+* A storage is enabled for content `snippets` (e.g. `local`)
+* You have the SSH private key of a user that exists on all nodes which has write permission to the
+path where snippets are stored (e.g. `/var/lib/vz/snippets`)

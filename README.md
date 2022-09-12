@@ -30,7 +30,7 @@
 
 ### What works
 
-- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, Nutanix, VMWare Cloud Director, VMWare Vsphere, Linode, Hetzner cloud and Kubevirt (experimental)
+- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, Nutanix, VMWare Cloud Director, VMWare Vsphere, Linode, Hetzner cloud, Kubevirt (technology preview) and Proxmox (technology preview)
 - Using Ubuntu, Flatcar or CentOS 7 distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
 ### Supported Kubernetes versions
