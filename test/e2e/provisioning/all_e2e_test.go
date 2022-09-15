@@ -80,7 +80,7 @@ const (
 	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
 )
 
-const defaultKubernetesVersion = "1.23.5"
+const defaultKubernetesVersion = "1.23.11"
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
 

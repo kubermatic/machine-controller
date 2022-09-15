@@ -33,9 +33,9 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.22.7"),
-		semver.MustParse("v1.23.5"),
-		semver.MustParse("v1.24.0"),
+		semver.MustParse("v1.22.14"),
+		semver.MustParse("v1.23.11"),
+		semver.MustParse("v1.24.5"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
