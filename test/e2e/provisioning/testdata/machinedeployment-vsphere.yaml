@@ -35,6 +35,7 @@ spec:
             cpus: 2
             MemoryMB: 4096
             diskSizeGB: << DISK_SIZE >>
+            allowInsecure: true
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
