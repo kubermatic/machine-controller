@@ -69,6 +69,8 @@ var (
 	bootstrapTokenServiceAccountName string
 	skipEvictionAfter                time.Duration
 	caBundleFile                     string
+	enableLeaderElection             bool
+	leaderElectionNamespace          string
 
 	useOSM bool
 
@@ -88,6 +90,7 @@ var (
 
 const (
 	defaultLeaderElectionNamespace = "kube-system"
+	defaultLeaderElectionID        = "machine-controller"
 )
 
 // controllerRunOptions holds data that are required to create and run machine controller.
@@ -152,6 +155,9 @@ func main() {
 	flag.StringVar(&healthProbeAddress, "health-probe-address", "127.0.0.1:8085", "The address on which the liveness check on /healthz and readiness check on /readyz will be available")
 	flag.StringVar(&metricsAddress, "metrics-address", "127.0.0.1:8080", "The address on which Prometheus metrics will be available under /metrics")
 	flag.StringVar(&name, "name", "", "When set, the controller will only process machines with the label \"machine.k8s.io/controller\": name")
+	flag.BoolVar(&enableLeaderElection, "enable-leader-election", true, "Enable leader election for machine-controller. Enabling this will ensure there is only one active instance.")
+	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "kube-system", "Namespace to use for leader election.")
+
 	flag.StringVar(&joinClusterTimeout, "join-cluster-timeout", "", "when set, machines that have an owner and do not join the cluster within the configured duration will be deleted, so the owner re-creates them")
 	flag.StringVar(&bootstrapTokenServiceAccountName, "bootstrap-token-service-account-name", "", "When set use the service account token from this SA as bootstrap token instead of creating a temporary one. Passed in namespace/name format")
 	flag.BoolVar(&profiling, "enable-profiling", false, "when set, enables the endpoints on the http server under /debug/pprof/")
@@ -303,11 +309,16 @@ func main() {
 }
 
 func createManager(syncPeriod time.Duration, options controllerRunOptions) (manager.Manager, error) {
+	namespace := leaderElectionNamespace
+	if namespace == "" {
+		namespace = defaultLeaderElectionNamespace
+	}
+
 	mgr, err := manager.New(options.cfg, manager.Options{
 		SyncPeriod:              &syncPeriod,
-		LeaderElection:          true,
-		LeaderElectionID:        "machine-controller",
-		LeaderElectionNamespace: defaultLeaderElectionNamespace,
+		LeaderElection:          enableLeaderElection,
+		LeaderElectionID:        defaultLeaderElectionID,
+		LeaderElectionNamespace: namespace,
 		HealthProbeBindAddress:  healthProbeAddress,
 		MetricsBindAddress:      metricsAddress,
 	})
