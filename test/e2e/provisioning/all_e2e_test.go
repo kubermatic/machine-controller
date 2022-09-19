@@ -956,11 +956,6 @@ func getNutanixTestParams(t *testing.T) []string {
 			"NUTANIX_E2E_ENDPOINT, NUTANIX_E2E_PROJECT_NAME or NUTANIX_E2E_SUBNET_NAME environment variables cannot be empty")
 	}
 
-	// a proxy URL will be passed in our e2e test environment so
-	// a HTTP proxy can be used to access the Nutanix API in a different
-	// network segment.
-	proxyURL := os.Getenv("NUTANIX_E2E_PROXY_URL")
-
 	// set up parameters
 	params := []string{fmt.Sprintf("<< NUTANIX_PASSWORD >>=%s", password),
 		fmt.Sprintf("<< NUTANIX_USERNAME >>=%s", username),
@@ -968,7 +963,6 @@ func getNutanixTestParams(t *testing.T) []string {
 		fmt.Sprintf("<< NUTANIX_CLUSTER >>=%s", cluster),
 		fmt.Sprintf("<< NUTANIX_PROJECT >>=%s", project),
 		fmt.Sprintf("<< NUTANIX_SUBNET >>=%s", subnet),
-		fmt.Sprintf("<< NUTANIX_PROXY_URL >>=%s", proxyURL),
 	}
 	return params
 }
