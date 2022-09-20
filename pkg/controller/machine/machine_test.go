@@ -478,7 +478,7 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 	tests := []struct {
 		name             string
 		machine          *clusterv1alpha1.Machine
-		nodes            []runtime.Object
+		nodes            []*corev1.Node
 		err              error
 		shouldDeleteNode string
 	}{
@@ -493,13 +493,17 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 					NodeRef: &corev1.ObjectReference{Name: "node-1"},
 				},
 			},
-			nodes: []runtime.Object{&corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node-0",
-				}}, &corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node-1",
-				}},
+			nodes: []*corev1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-0",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-1",
+					},
+				},
 			},
 			err:              nil,
 			shouldDeleteNode: "node-1",
@@ -514,8 +518,8 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 				},
 				Status: clusterv1alpha1.MachineStatus{},
 			},
-			nodes: []runtime.Object{
-				&corev1.Node{
+			nodes: []*corev1.Node{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "node-0",
 						Labels: map[string]string{
@@ -523,7 +527,7 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 						},
 					},
 				},
-				&corev1.Node{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "node-1",
 					},
@@ -542,13 +546,13 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 				},
 				Status: clusterv1alpha1.MachineStatus{},
 			},
-			nodes: []runtime.Object{
-				&corev1.Node{
+			nodes: []*corev1.Node{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "node-0",
 					},
 				},
-				&corev1.Node{
+				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "node-1",
 					},
@@ -568,10 +572,12 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 					NodeRef: &corev1.ObjectReference{Name: "node-1"},
 				},
 			},
-			nodes: []runtime.Object{&corev1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node-0",
-				}},
+			nodes: []*corev1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "node-0",
+					},
+				},
 			},
 			err:              nil,
 			shouldDeleteNode: "",
@@ -583,7 +589,9 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 			ctx := context.Background()
 
 			objects := []runtime.Object{test.machine}
-			objects = append(objects, test.nodes...)
+			for _, n := range test.nodes {
+				objects = append(objects, n)
+			}
 
 			client := ctrlruntimefake.NewFakeClient(objects...)
 
@@ -599,7 +607,12 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 				providerData: providerData,
 			}
 
-			err := reconciler.deleteNodeForMachine(ctx, test.machine)
+			nodes, err := reconciler.retrieveNodesRelatedToMachine(ctx, test.machine)
+			if err != nil {
+				return
+			}
+
+			err = reconciler.deleteNodeForMachine(ctx, nodes, test.machine)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}

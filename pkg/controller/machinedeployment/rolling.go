@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	dutil "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment/util"
+	dutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"

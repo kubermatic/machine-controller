@@ -40,6 +40,7 @@ write_files:
     net.ipv4.ip_forward = 1
     vm.overcommit_memory = 1
     fs.inotify.max_user_watches = 1048576
+    fs.inotify.max_user_instances = 8192
 
 
 - path: /etc/selinux/config
@@ -65,11 +66,15 @@ write_files:
     setenforce 0 || true
     systemctl restart systemd-modules-load.service
     sysctl --system
-    sed -i.orig '/.*swap.*/d' /etc/fstab
-    swapoff -a
+
 
     hostnamectl set-hostname node1
 
+    source /etc/os-release
+    if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
+      sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+      sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    fi
 
     yum install -y \
       device-mapper-persistent-data \
@@ -84,7 +89,6 @@ write_files:
       curl \
       open-vm-tools \
       ipvsadm
-
 
     yum install -y yum-utils
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
@@ -150,7 +154,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.5}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.21.8}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -178,6 +182,7 @@ write_files:
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
 
+    systemctl disable --now firewalld || true
 
     systemctl enable --now vmtoolsd.service
     systemctl enable --now kubelet
@@ -191,6 +196,14 @@ write_files:
     while ! "$@"; do
       sleep 1
     done
+
+- path: "/opt/disable-swap.sh"
+  permissions: "0755"
+  content: |
+    # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
+    # providers swap gets enabled on reboot or after the setup script has finished executing.
+    sed -i.orig '/.*swap.*/d' /etc/fstab
+    swapoff -a
 
 - path: "/etc/systemd/system/kubelet.service"
   content: |
@@ -212,6 +225,9 @@ write_files:
     EnvironmentFile=-/etc/environment
 
     ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
+    ExecStartPre=/bin/bash /opt/disable-swap.sh
+
     ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
@@ -310,6 +326,7 @@ write_files:
         cacheUnauthorizedTTL: 0s
     cgroupDriver: systemd
     clusterDomain: cluster.local
+    containerLogMaxSize: 100Mi
     cpuManagerReconcilePeriod: 0s
     evictionHard:
       imagefs.available: 15%
@@ -411,7 +428,7 @@ write_files:
 - path: /etc/docker/daemon.json
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"10m"}}
+    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"}}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"

@@ -21,9 +21,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,6 +40,7 @@ const (
 	OperatingSystemSLES         OperatingSystem = "sles"
 	OperatingSystemRHEL         OperatingSystem = "rhel"
 	OperatingSystemFlatcar      OperatingSystem = "flatcar"
+	OperatingSystemRockyLinux   OperatingSystem = "rockylinux"
 )
 
 type CloudProvider string
@@ -75,6 +77,7 @@ var (
 		OperatingSystemSLES,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
+		OperatingSystemRockyLinux,
 	}
 
 	// AllCloudProviders is a slice containing all supported cloud providers.
@@ -106,14 +109,31 @@ type DNSConfig struct {
 
 // NetworkConfig contains a machine's static network configuration
 type NetworkConfig struct {
-	CIDR    string    `json:"cidr"`
-	Gateway string    `json:"gateway"`
-	DNS     DNSConfig `json:"dns"`
+	CIDR     string        `json:"cidr"`
+	Gateway  string        `json:"gateway"`
+	DNS      DNSConfig     `json:"dns"`
+	IPFamily util.IPFamily `json:"ipFamily,omitempty"`
+}
+
+func (n *NetworkConfig) IsStaticIPConfig() bool {
+	if n == nil {
+		return false
+	}
+	return n.CIDR != "" ||
+		n.Gateway != "" ||
+		len(n.DNS.Servers) != 0
+}
+
+func (n *NetworkConfig) GetIPFamily() util.IPFamily {
+	if n == nil {
+		return util.Unspecified
+	}
+	return n.IPFamily
 }
 
 type Config struct {
 	SSHPublicKeys []string `json:"sshPublicKeys"`
-	CAPublicKey   *string   `json:"caPublicKey,omitempty"`
+	CAPublicKey   *string  `json:"caPublicKey,omitempty"`
 
 	CloudProvider     CloudProvider        `json:"cloudProvider"`
 	CloudProviderSpec runtime.RawExtension `json:"cloudProviderSpec"`
@@ -229,9 +249,9 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 }
 
 type ConfigVarBool struct {
-	Value           bool
-	SecretKeyRef    GlobalSecretKeySelector
-	ConfigMapKeyRef GlobalConfigMapKeySelector
+	Value           *bool                      `json:"value,omitempty"`
+	SecretKeyRef    GlobalSecretKeySelector    `json:"secretKeyRef,omitempty"`
+	ConfigMapKeyRef GlobalConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
 }
 
 func (c *ConfigVarBool) Empty() bool {
@@ -263,7 +283,11 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 	}
 
 	if secretKeyRefEmpty && configMapKeyRefEmpty {
-		return []byte(fmt.Sprintf("%v", configVarBool.Value)), nil
+		jsonVal, err := json.Marshal(configVarBool.Value)
+		if err != nil {
+			return []byte{}, err
+		}
+		return jsonVal, nil
 	}
 
 	buffer := bytes.NewBufferString("{")
@@ -287,41 +311,59 @@ func (configVarBool ConfigVarBool) MarshalJSON() ([]byte, error) {
 		buffer.WriteString(fmt.Sprintf(`%s"configMapKeyRef":%s`, leadingComma, jsonVal))
 	}
 
-	buffer.WriteString(fmt.Sprintf(`,"value":%v}`, configVarBool.Value))
+	if configVarBool.Value != nil {
+		jsonVal, err := json.Marshal(configVarBool.Value)
+		if err != nil {
+			return []byte{}, err
+		}
+
+		buffer.WriteString(fmt.Sprintf(`,"value":%v`, string(jsonVal)))
+	}
+
+	buffer.WriteString("}")
 
 	return buffer.Bytes(), nil
 }
 
 func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
-		value, err := strconv.ParseBool(string(b))
-		if err != nil {
-			return fmt.Errorf("Error converting string to bool: '%v'", err)
+		var val *bool
+		if err := json.Unmarshal(b, &val); err != nil {
+			return fmt.Errorf("Error parsing value: '%v'", err)
 		}
-		configVarBool.Value = value
+		configVarBool.Value = val
+
 		return nil
 	}
+
 	var cvbDummy configVarBoolWithoutUnmarshaller
+
 	err := json.Unmarshal(b, &cvbDummy)
 	if err != nil {
 		return err
 	}
+
 	configVarBool.Value = cvbDummy.Value
 	configVarBool.SecretKeyRef = cvbDummy.SecretKeyRef
 	configVarBool.ConfigMapKeyRef = cvbDummy.ConfigMapKeyRef
+
 	return nil
 }
 
-func GetConfig(r clusterv1alpha1.ProviderSpec) (*Config, error) {
-	if r.Value == nil {
+func GetConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, error) {
+	if provSpec.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
-	p := new(Config)
-	if len(r.Value.Raw) == 0 {
-		return p, nil
+
+	var cfg Config
+
+	if len(provSpec.Value.Raw) == 0 {
+		return &cfg, nil
 	}
-	if err := json.Unmarshal(r.Value.Raw, p); err != nil {
+
+	if err := jsonutil.StrictUnmarshal(provSpec.Value.Raw, &cfg); err != nil {
 		return nil, err
 	}
-	return p, nil
+
+	return &cfg, nil
 }

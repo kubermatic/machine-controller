@@ -61,7 +61,7 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 	case types.OperatingSystemAmazonLinux2:
 		err := containerdAmzn2Template.Execute(&buf, args)
 		return buf.String(), err
-	case types.OperatingSystemCentOS, types.OperatingSystemRHEL:
+	case types.OperatingSystemCentOS, types.OperatingSystemRHEL, types.OperatingSystemRockyLinux:
 		err := containerdYumTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemUbuntu:

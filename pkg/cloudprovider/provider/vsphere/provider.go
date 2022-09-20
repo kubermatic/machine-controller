@@ -18,7 +18,6 @@ package vsphere
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -28,11 +27,12 @@ import (
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
+	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	vspheretypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere/types"
@@ -64,7 +64,6 @@ type Config struct {
 	Password         string
 	VSphereURL       string
 	Datacenter       string
-	Cluster          string
 	Folder           string
 	ResourcePool     string
 	Datastore        string
@@ -73,6 +72,7 @@ type Config struct {
 	CPUs             int32
 	MemoryMB         int64
 	DiskSizeGB       *int64
+	Tags             []tags.Tag
 }
 
 // Ensures that Server implements Instance interface.
@@ -109,16 +109,16 @@ func (vsphereServer Server) Status() instance.Status {
 // Ensures that provider implements Provider interface.
 var _ cloudprovidertypes.Provider = &provider{}
 
-func (p *provider) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error) {
-	if s.Value == nil {
+func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, *vspheretypes.RawConfig, error) {
+	if provSpec.Value == nil {
 		return nil, nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
 	}
-	pconfig := providerconfigtypes.Config{}
-	err := json.Unmarshal(s.Value.Raw, &pconfig)
+
+	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -127,8 +127,7 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, errors.New("operatingSystemSpec in the MachineDeployment cannot be empty")
 	}
 
-	rawConfig := vspheretypes.RawConfig{}
-	err = json.Unmarshal(pconfig.CloudProviderSpec.Raw, &rawConfig)
+	rawConfig, err := vspheretypes.GetConfig(*pconfig)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -164,11 +163,6 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 		return nil, nil, nil, err
 	}
 
-	c.Cluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Cluster)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	c.Folder, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Folder)
 	if err != nil {
 		return nil, nil, nil, err
@@ -198,10 +192,18 @@ func (p *provider) getConfig(s v1alpha1.ProviderSpec) (*Config, *providerconfigt
 	c.MemoryMB = rawConfig.MemoryMB
 	c.DiskSizeGB = rawConfig.DiskSizeGB
 
-	return &c, &pconfig, &rawConfig, nil
+	for _, tag := range rawConfig.Tags {
+		c.Tags = append(c.Tags, tags.Tag{
+			Description: tag.Description,
+			Name:        tag.Name,
+			CategoryID:  tag.CategoryID,
+		})
+	}
+
+	return &c, pconfig, rawConfig, nil
 }
 
-func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
+func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
@@ -215,6 +217,28 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 	}
 	defer session.Logout()
 
+	if config.Tags != nil {
+		restAPISession, err := NewRESTSession(ctx, config)
+		if err != nil {
+			return fmt.Errorf("failed to create REST API session: %v", err)
+		}
+		defer restAPISession.Logout(ctx)
+		tagManager := tags.NewManager(restAPISession.Client)
+		klog.V(3).Info("Found tags")
+		for _, tag := range config.Tags {
+			if tag.Name == "" {
+				return fmt.Errorf("one of the tags name is empty")
+			}
+			if tag.CategoryID == "" {
+				return fmt.Errorf("one of the tags category is empty")
+			}
+			if _, err := tagManager.GetCategory(ctx, tag.CategoryID); err != nil {
+				return fmt.Errorf("can't get the category with ID %s, %w", tag.CategoryID, err)
+			}
+		}
+		klog.V(3).Info("Tag validation passed")
+	}
+
 	// Only and only one between datastore and datastre cluster should be
 	// present, otherwise an error is raised.
 	if config.DatastoreCluster != "" && config.Datastore == "" {
@@ -227,10 +251,6 @@ func (p *provider) Validate(spec v1alpha1.MachineSpec) error {
 		}
 	} else {
 		return fmt.Errorf("one between datastore and datastore cluster should be specified: %v", err)
-	}
-
-	if _, err := session.Finder.ClusterComputeResource(ctx, config.Cluster); err != nil {
-		return fmt.Errorf("failed to get cluster: %s: %v", config.Cluster, err)
 	}
 
 	if _, err := session.Finder.Folder(ctx, config.Folder); err != nil {
@@ -278,7 +298,7 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	vm, err := p.create(machine, userdata)
 	if err != nil {
 		_, cleanupErr := p.Cleanup(machine, data)
@@ -290,7 +310,7 @@ func (p *provider) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.Pr
 	return vm, nil
 }
 
-func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (p *provider) create(machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -318,6 +338,10 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 	)
 	if err != nil {
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%v'", err))
+	}
+
+	if err := createAndAttachTags(ctx, config, virtualMachine); err != nil {
+		return nil, fmt.Errorf("failed create and attach tags: %v", err)
 	}
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
@@ -358,7 +382,7 @@ func (p *provider) create(machine *v1alpha1.Machine, userdata string) (instance.
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -379,6 +403,10 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 			return true, nil
 		}
 		return false, fmt.Errorf("failed to get instance from vSphere: %v", err)
+	}
+
+	if err := deleteTags(ctx, config, virtualMachine); err != nil {
+		return false, fmt.Errorf("failed to delete tags: %v", err)
 	}
 
 	powerState, err := virtualMachine.PowerState(ctx)
@@ -451,7 +479,7 @@ func (p *provider) Cleanup(machine *v1alpha1.Machine, data *cloudprovidertypes.P
 	return true, nil
 }
 
-func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	ctx := context.Background()
 
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
@@ -517,11 +545,11 @@ func (p *provider) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.Provi
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value}, nil
 }
 
-func (p *provider) MigrateUID(machine *v1alpha1.Machine, new ktypes.UID) error {
+func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new ktypes.UID) error {
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse config: %v", err)
@@ -550,7 +578,6 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 			Password:     c.Password,
 			InsecureFlag: c.AllowInsecure,
 			VCenterPort:  u.Port(),
-			ClusterID:    c.Cluster,
 		},
 		Disk: vspheretypes.DiskOpts{
 			SCSIControllerType: "pvscsi",
@@ -579,24 +606,23 @@ func (p *provider) GetCloudConfig(spec v1alpha1.MachineSpec) (config string, nam
 	return s, "vsphere", nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
 	labels := make(map[string]string)
 
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err == nil {
 		labels["size"] = fmt.Sprintf("%d-cpus-%d-mb", c.CPUs, c.MemoryMB)
 		labels["dc"] = c.Datacenter
-		labels["cluster"] = c.Cluster
 	}
 
 	return labels, err
 }
 
-func (p *provider) SetMetricsForMachines(machines v1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func (p *provider) get(ctx context.Context, folder string, spec v1alpha1.MachineSpec, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
+func (p *provider) get(ctx context.Context, folder string, spec clusterv1alpha1.MachineSpec, datacenterFinder *find.Finder) (*object.VirtualMachine, error) {
 	path := fmt.Sprintf("%s/%s", folder, spec.Name)
 	virtualMachineList, err := datacenterFinder.VirtualMachineList(ctx, path)
 	if err != nil {

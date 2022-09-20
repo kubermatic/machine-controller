@@ -128,7 +128,9 @@ spec:
             computeAPIVersion: "2.67"
             image: "Ubuntu 18.04 amd64"
             flavor: "m1.small"
-            rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
+            # UUID of the server group
+            # used to configure affinity or anti-affinity of the VM instaces relative to hypervisor
+            serverGroup: ""
             securityGroups:
               - configMapKeyRef:
                   namespace: kube-system
@@ -164,4 +166,4 @@ spec:
             # provided the rhsm will be disabled and any created subscription won't be removed automatically
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
       versions:
-        kubelet: 1.9.6
+        kubelet: 1.22.5

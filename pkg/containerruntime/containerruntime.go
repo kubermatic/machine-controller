@@ -37,37 +37,25 @@ type Engine interface {
 
 type Opt func(*Config)
 
-func WithInsecureRegistries(registries []string) Opt {
+func withInsecureRegistries(registries []string) Opt {
 	return func(cfg *Config) {
 		cfg.InsecureRegistries = registries
 	}
 }
 
-func WithRegistryMirrors(mirrors map[string][]string) Opt {
+func withRegistryMirrors(mirrors map[string][]string) Opt {
 	return func(cfg *Config) {
 		cfg.RegistryMirrors = mirrors
 	}
 }
 
-func WithRegistryCredentials(auth map[string]AuthConfig) Opt {
-	return func(cfg *Config) {
-		cfg.RegistryCredentials = auth
-	}
-}
-
-func WithSandboxImage(image string) Opt {
+func withSandboxImage(image string) Opt {
 	return func(cfg *Config) {
 		cfg.SandboxImage = image
 	}
 }
 
-func WithNodeMaxLogSize(nodeMaxLogSize string) Opt {
-	return func(cfg *Config) {
-
-	}
-}
-
-func Get(containerRuntimeName string, opts ...Opt) Config {
+func get(containerRuntimeName string, opts ...Opt) Config {
 	cfg := Config{}
 
 	switch containerRuntimeName {
@@ -90,13 +78,14 @@ func Get(containerRuntimeName string, opts ...Opt) Config {
 }
 
 type Config struct {
-	Docker              *Docker               `json:",omitempty"`
-	Containerd          *Containerd           `json:",omitempty"`
-	InsecureRegistries  []string              `json:",omitempty"`
-	RegistryMirrors     map[string][]string   `json:",omitempty"`
-	RegistryCredentials map[string]AuthConfig `json:",omitempty"`
-	NodeMaxLogSize     string      `json:",omitempty"`
-	SandboxImage        string                `json:",omitempty"`
+	Docker               *Docker               `json:",omitempty"`
+	Containerd           *Containerd           `json:",omitempty"`
+	InsecureRegistries   []string              `json:",omitempty"`
+	RegistryMirrors      map[string][]string   `json:",omitempty"`
+	RegistryCredentials  map[string]AuthConfig `json:",omitempty"`
+	SandboxImage         string                `json:",omitempty"`
+	ContainerLogMaxFiles string                `json:",omitempty"`
+	ContainerLogMaxSize  string                `json:",omitempty"`
 }
 
 func (cfg Config) String() string {
@@ -112,9 +101,10 @@ func (cfg Config) String() string {
 
 func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 	docker := &Docker{
-		insecureRegistries: cfg.InsecureRegistries,
-		registryMirrors:    cfg.RegistryMirrors["docker.io"],
-		nodeMaxLogSize:     cfg.NodeMaxLogSize,
+		insecureRegistries:   cfg.InsecureRegistries,
+		registryMirrors:      cfg.RegistryMirrors["docker.io"],
+		containerLogMaxFiles: cfg.ContainerLogMaxFiles,
+		containerLogMaxSize:  cfg.ContainerLogMaxSize,
 	}
 
 	containerd := &Containerd{

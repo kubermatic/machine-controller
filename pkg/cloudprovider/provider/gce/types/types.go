@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,14 +33,16 @@ type CloudProviderSpec struct {
 	ServiceAccount        *providerconfigtypes.ConfigVarString `json:"serviceAccount,omitempty"`
 	Zone                  *providerconfigtypes.ConfigVarString `json:"zone"`
 	MachineType           *providerconfigtypes.ConfigVarString `json:"machineType"`
-	DiskSize              int64                               `json:"diskSize"`
+	DiskSize              int64                                `json:"diskSize"`
 	DiskType              *providerconfigtypes.ConfigVarString `json:"diskType"`
 	Network               *providerconfigtypes.ConfigVarString `json:"network"`
 	Subnetwork            *providerconfigtypes.ConfigVarString `json:"subnetwork"`
 	Preemptible           *providerconfigtypes.ConfigVarBool   `json:"preemptible"`
-	Labels                map[string]string                   `json:"labels,omitempty"`
-	Tags                  []string                            `json:"tags,omitempty"`
-	AssignPublicIPAddress *providerconfigtypes.ConfigVarBool  `json:"assignPublicIPAddress,omitempty"`
+	AutomaticRestart      *providerconfigtypes.ConfigVarBool   `json:"automaticRestart,omitempty"`
+	ProvisioningModel     *providerconfigtypes.ConfigVarString `json:"provisioningModel,omitempty"`
+	Labels                map[string]string                    `json:"labels,omitempty"`
+	Tags                  []string                             `json:"tags,omitempty"`
+	AssignPublicIPAddress *providerconfigtypes.ConfigVarBool   `json:"assignPublicIPAddress,omitempty"`
 	MultiZone             *providerconfigtypes.ConfigVarBool   `json:"multizone"`
 	Regional              *providerconfigtypes.ConfigVarBool   `json:"regional"`
 	CustomImage           *providerconfigtypes.ConfigVarString `json:"customImage,omitempty"`
@@ -66,4 +69,12 @@ func (cpSpec *CloudProviderSpec) UpdateProviderSpec(spec v1alpha1.ProviderSpec) 
 		return nil, err
 	}
 	return &runtime.RawExtension{Raw: rawProviderConfig}, nil
+}
+
+type RawConfig = CloudProviderSpec
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

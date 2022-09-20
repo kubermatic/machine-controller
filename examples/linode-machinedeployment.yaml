@@ -53,4 +53,4 @@ spec:
           operatingSystemSpec:
             disableAutoUpdate: true
       versions:
-        kubelet: 1.9.6
+        kubelet: 1.22.5

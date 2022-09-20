@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
@@ -36,17 +37,19 @@ type RawConfig struct {
 	LoadBalancerSku       *providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
 	RouteTableName        *providerconfigtypes.ConfigVarString `json:"routeTableName"`
 	AvailabilitySet       *providerconfigtypes.ConfigVarString `json:"availabilitySet"`
-	AssignAvailabilitySet *bool                               `json:"assignAvailabilitySet"`
+	AssignAvailabilitySet *bool                                `json:"assignAvailabilitySet"`
 	SecurityGroupName     *providerconfigtypes.ConfigVarString `json:"securityGroupName"`
-	Zones                 []string                            `json:"zones"`
-	ImagePlan             *ImagePlan                          `json:"imagePlan,omitempty"`
-	ImageReference        *ImageReference                     `json:"imageReference,omitempty"`
+	Zones                 []string                             `json:"zones"`
+	ImagePlan             *ImagePlan                           `json:"imagePlan,omitempty"`
+	ImageReference        *ImageReference                      `json:"imageReference,omitempty"`
 
 	ImageID        *providerconfigtypes.ConfigVarString `json:"imageID"`
-	OSDiskSize     int32                               `json:"osDiskSize"`
-	DataDiskSize   int32                               `json:"dataDiskSize"`
+	OSDiskSize     int32                                `json:"osDiskSize"`
+	OSDiskSKU      *string                              `json:"osDiskSKU,omitempty"`
+	DataDiskSize   int32                                `json:"dataDiskSize"`
+	DataDiskSKU    *string                              `json:"dataDiskSKU,omitempty"`
 	AssignPublicIP *providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
-	Tags           map[string]string                   `json:"tags,omitempty"`
+	Tags           map[string]string                    `json:"tags,omitempty"`
 }
 
 // ImagePlan contains azure OS Plan fields for the marketplace images
@@ -62,4 +65,10 @@ type ImageReference struct {
 	Offer     string `json:"offer,omitempty"`
 	Sku       string `json:"sku,omitempty"`
 	Version   string `json:"version,omitempty"`
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

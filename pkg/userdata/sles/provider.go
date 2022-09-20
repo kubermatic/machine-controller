@@ -58,7 +58,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		req.CloudConfig = *pconfig.OverwriteCloudConfig
 	}
 
-	if pconfig.Network != nil {
+	if pconfig.Network.IsStaticIPConfig() {
 		return "", errors.New("static IP config is not supported with SLES")
 	}
 
@@ -82,31 +82,38 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("error extracting cacert: %v", err)
 	}
 
+	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crConfig, err := crEngine.Config()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
+	}
+
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec       *providerconfigtypes.Config
-		OSConfig           *Config
-		ServerAddr         string
-		KubeletVersion     string
-		Kubeconfig         string
-		KubernetesCACert   string
-		NodeIPScript       string
-		ExtraKubeletFlags  []string
-		InsecureRegistries []string
-		RegistryMirrors    []string
-		MaxLogSize         string
+		ProviderSpec                   *providerconfigtypes.Config
+		OSConfig                       *Config
+		ServerAddr                     string
+		KubeletVersion                 string
+		Kubeconfig                     string
+		KubernetesCACert               string
+		NodeIPScript                   string
+		ExtraKubeletFlags              []string
+		ContainerRuntimeConfigFileName string
+		ContainerRuntimeConfig         string
+		ContainerRuntimeName           string
 	}{
-		UserDataRequest:    req,
-		ProviderSpec:       pconfig,
-		OSConfig:           slesConfig,
-		ServerAddr:         serverAddr,
-		KubeletVersion:     kubeletVersion.String(),
-		Kubeconfig:         kubeconfigString,
-		KubernetesCACert:   kubernetesCACert,
-		NodeIPScript:       userdatahelper.SetupNodeIPEnvScript(),
-		InsecureRegistries: req.ContainerRuntime.InsecureRegistries,
-		RegistryMirrors:    req.ContainerRuntime.RegistryMirrors["docker.io"],
-		MaxLogSize:         req.ContainerRuntime.NodeMaxLogSize,
+		UserDataRequest:                req,
+		ProviderSpec:                   pconfig,
+		OSConfig:                       slesConfig,
+		ServerAddr:                     serverAddr,
+		KubeletVersion:                 kubeletVersion.String(),
+		Kubeconfig:                     kubeconfigString,
+		KubernetesCACert:               kubernetesCACert,
+		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
+		ExtraKubeletFlags:              crEngine.KubeletFlags(),
+		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
+		ContainerRuntimeConfig:         crConfig,
+		ContainerRuntimeName:           crEngine.String(),
 	}
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
@@ -167,12 +174,6 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
-{{- /* Make sure we always disable swap - Otherwise the kubelet won't start'. */}}
-    cp /etc/fstab /etc/fstab.orig
-    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
-    mv /etc/fstab.noswap /etc/fstab
-    swapoff -a
-
     zypper --non-interactive --quiet --color install ebtables \
       ceph-common \
       e2fsprogs \
@@ -202,9 +203,19 @@ write_files:
       sleep 1
     done
 
+- path: "/opt/disable-swap.sh"
+  permissions: "0755"
+  content: |
+    # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
+    # providers swap gets enabled on reboot or after the setup script has finished executing.
+    cp /etc/fstab /etc/fstab.orig
+    cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
+    mv /etc/fstab.noswap /etc/fstab
+    swapoff -a
+
 - path: "/etc/systemd/system/kubelet.service"
   content: |
-{{ kubeletSystemdUnit .ContainerRuntime.String .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 4 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags true | indent 4 }}
 
 - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
   content: |
@@ -248,17 +259,17 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
 
 - path: "/etc/profile.d/opt-bin-path.sh"
   permissions: "0644"
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/docker/daemon.json
+- path: {{ .ContainerRuntimeConfigFileName }}
   permissions: "0644"
   content: |
-{{ dockerConfig .InsecureRegistries .RegistryMirrors .MaxLogSize | indent 4 }}
+{{ .ContainerRuntimeConfig | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -268,7 +279,7 @@ write_files:
 - path: /etc/systemd/system/docker-healthcheck.service
   permissions: "0644"
   content: |
-{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntime.String | indent 4 }}
+{{ containerRuntimeHealthCheckSystemdUnit .ContainerRuntimeName | indent 4 }}
 
 - path: /etc/systemd/system/docker.service.d/environment.conf
   permissions: "0644"

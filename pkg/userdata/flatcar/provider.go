@@ -104,7 +104,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ExtraKubeletFlags              []string
 		InsecureRegistries             []string
 		RegistryMirrors                map[string][]string
-		MaxLogSize                     string
 		ContainerRuntimeScript         string
 		ContainerRuntimeConfigFileName string
 		ContainerRuntimeConfig         string
@@ -120,7 +119,6 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		ExtraKubeletFlags:              crEngine.KubeletFlags(),
 		InsecureRegistries:             req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:                req.ContainerRuntime.RegistryMirrors,
-		MaxLogSize:                     req.ContainerRuntime.NodeMaxLogSize,
 		ContainerRuntimeScript:         crScript,
 		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
 		ContainerRuntimeConfig:         crConfig,
@@ -245,6 +243,24 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
+{{- if eq .CloudProviderName "kubevirt" }}
+    - name: restart-kubelet.service
+      enabled: true
+      contents: |
+        [Unit]
+        Requires=kubelet.service
+        After=kubelet.service
+
+        Description=Service responsible for restarting kubelet when the machine is rebooted
+
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/bin/restart-kubelet.sh
+
+        [Install]
+        WantedBy=multi-user.target
+{{- end }}
+
     - name: kubelet.service
       enabled: true
       dropins:
@@ -258,7 +274,7 @@ systemd:
           Requires=download-script.service
           After=download-script.service
       contents: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 8 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 8 }}
 
 storage:
   files:
@@ -274,7 +290,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root
@@ -344,6 +360,28 @@ storage:
       mode: 0600
       contents:
         inline: '{{ .MachineSpec.Name }}'
+{{- end }}
+
+{{- if eq .CloudProviderName "kubevirt" }}
+    - path: /opt/bin/restart-kubelet.sh
+      filesystem: root
+      mode: 0744
+      contents:
+        inline: |
+          #!/bin/bash
+          # Needed for Kubevirt provider because if the virt-launcher pod is deleted,
+          # the VM and DataVolume states are kept and VM is rebooted. We need to restart the kubelet
+          # with the new config (new IP) and run this at every boot.
+          set -xeuo pipefail
+
+          # This helps us avoid an unnecessary restart for kubelet on the first boot
+          if [ -f /etc/kubelet_needs_restart ]; then
+            # restart kubelet since it's not the first boot
+            systemctl daemon-reload
+            systemctl restart kubelet.service
+          else
+            touch /etc/kubelet_needs_restart
+          fi
 {{- end }}
 
     - path: /etc/ssh/sshd_config
@@ -447,10 +485,12 @@ coreos:
 {{- end }}
 {{- if .FlatcarConfig.DisableUpdateEngine }}
   - name: update-engine.service
+    command: stop
     mask: true
 {{- end }}
 {{- if .FlatcarConfig.DisableLocksmithD }}
   - name: locksmithd.service
+    command: stop
     mask: true
 {{- end }}
 {{- if .HTTPProxy }}
@@ -517,7 +557,7 @@ coreos:
         Requires=download-script.service
         After=download-script.service
     content: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .CloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags | indent 6 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 6 }}
 
   - name: apply-sysctl-settings.service
     enable: true
@@ -531,6 +571,25 @@ coreos:
       ExecStart=/opt/bin/apply_sysctl_settings.sh
       [Install]
       WantedBy=multi-user.target
+
+{{- if eq .CloudProviderName "kubevirt" }}
+  - name: restart-kubelet.service
+      enable: true
+      command: start
+      content: |
+        [Unit]
+        Requires=kubelet.service
+        After=kubelet.service
+
+        Description=Service responsible for restarting kubelet when the machine is rebooted
+
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/bin/restart-kubelet.sh
+
+        [Install]
+        WantedBy=multi-user.target
+{{- end }}
 
 write_files:
 {{- if .HTTPProxy }}
@@ -548,7 +607,7 @@ write_files:
 - path: "/etc/kubernetes/kubelet.conf"
   permissions: "0644"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
 
 - path: /opt/load-kernel-modules.sh
   permissions: "0755"
@@ -657,4 +716,24 @@ write_files:
   user: root
   content: |
     runtime-endpoint: unix:///run/containerd/containerd.sock
+
+{{- if eq .CloudProviderName "kubevirt" }}
+- path: "/opt/bin/restart-kubelet.sh"
+  permissions: "0744"
+  content: |
+    #!/bin/bash
+    # Needed for Kubevirt provider because if the virt-launcher pod is deleted,
+    # the VM and DataVolume states are kept and VM is rebooted. We need to restart the kubelet
+    # with the new config (new IP) and run this at every boot.
+    set -xeuo pipefail
+
+    # This helps us avoid an unnecessary restart for kubelet on the first boot
+    if [ -f /etc/kubelet_needs_restart ]; then
+      # restart kubelet since it's not the first boot
+      systemctl daemon-reload
+      systemctl restart kubelet.service
+    else
+      touch /etc/kubelet_needs_restart
+    fi
+{{- end }}
 `

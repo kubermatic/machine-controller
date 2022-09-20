@@ -17,6 +17,7 @@ limitations under the License.
 package types
 
 import (
+	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
@@ -39,19 +40,25 @@ type RawConfig struct {
 	ComputeAPIVersion           *providerconfigtypes.ConfigVarString `json:"computeAPIVersion,omitempty"`
 
 	// Machine details
-	Image                 *providerconfigtypes.ConfigVarString   `json:"image"`
-	Flavor                *providerconfigtypes.ConfigVarString   `json:"flavor"`
+	Image                 *providerconfigtypes.ConfigVarString  `json:"image"`
+	Flavor                *providerconfigtypes.ConfigVarString  `json:"flavor"`
 	SecurityGroups        []providerconfigtypes.ConfigVarString `json:"securityGroups,omitempty"`
-	Network               *providerconfigtypes.ConfigVarString   `json:"network,omitempty"`
-	Subnet                *providerconfigtypes.ConfigVarString   `json:"subnet,omitempty"`
-	FloatingIPPool        *providerconfigtypes.ConfigVarString   `json:"floatingIpPool,omitempty"`
-	AvailabilityZone      *providerconfigtypes.ConfigVarString   `json:"availabilityZone,omitempty"`
-	TrustDevicePath       *providerconfigtypes.ConfigVarBool     `json:"trustDevicePath"`
+	Network               *providerconfigtypes.ConfigVarString  `json:"network,omitempty"`
+	Subnet                *providerconfigtypes.ConfigVarString  `json:"subnet,omitempty"`
+	FloatingIPPool        *providerconfigtypes.ConfigVarString  `json:"floatingIpPool,omitempty"`
+	AvailabilityZone      *providerconfigtypes.ConfigVarString  `json:"availabilityZone,omitempty"`
+	TrustDevicePath       *providerconfigtypes.ConfigVarBool    `json:"trustDevicePath"`
 	RootDiskSizeGB        *int                                  `json:"rootDiskSizeGB"`
-	RootDiskVolumeType    *providerconfigtypes.ConfigVarString   `json:"rootDiskVolumeType,omitempty"`
+	RootDiskVolumeType    *providerconfigtypes.ConfigVarString  `json:"rootDiskVolumeType,omitempty"`
 	NodeVolumeAttachLimit *uint                                 `json:"nodeVolumeAttachLimit"`
 
 	ServerGroupID *providerconfigtypes.ConfigVarString `json:"serverGroupID"`
 	// This tag is related to server metadata, not compute server's tag
 	Tags map[string]string `json:"tags,omitempty"`
+}
+
+func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
+	rawConfig := &RawConfig{}
+
+	return rawConfig, jsonutil.StrictUnmarshal(pconfig.CloudProviderSpec.Raw, rawConfig)
 }

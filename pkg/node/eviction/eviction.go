@@ -20,44 +20,41 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
+	"github.com/kubermatic/machine-controller/pkg/node/nodemanager"
 
 	corev1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NodeEviction struct {
-	ctx        context.Context
-	nodeName   string
-	client     ctrlruntimeclient.Client
-	kubeClient kubernetes.Interface
+	nodeManager *nodemanager.NodeManager
+	ctx         context.Context
+	nodeName    string
+	kubeClient  kubernetes.Interface
 }
 
 // New returns a new NodeEviction
 func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeEviction {
 	return &NodeEviction{
-		ctx:        ctx,
-		nodeName:   nodeName,
-		client:     client,
-		kubeClient: kubeClient,
+		nodeManager: nodemanager.New(ctx, client, nodeName),
+		ctx:         ctx,
+		nodeName:    nodeName,
+		kubeClient:  kubeClient,
 	}
 }
 
 // Run executes the eviction
 func (ne *NodeEviction) Run() (bool, error) {
-	node := &corev1.Node{}
-	if err := ne.client.Get(ne.ctx, types.NamespacedName{Name: ne.nodeName}, node); err != nil {
+	node, err := ne.nodeManager.GetNode()
+	if err != nil {
 		return false, fmt.Errorf("failed to get node from lister: %v", err)
 	}
 	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
@@ -66,7 +63,7 @@ func (ne *NodeEviction) Run() (bool, error) {
 	}
 	klog.V(3).Infof("Starting to evict node %s", ne.nodeName)
 
-	if err := ne.cordonNode(node); err != nil {
+	if err := ne.nodeManager.CordonNode(node); err != nil {
 		return false, fmt.Errorf("failed to cordon node %s: %v", ne.nodeName, err)
 	}
 	klog.V(6).Infof("Successfully cordoned node %s", ne.nodeName)
@@ -88,34 +85,6 @@ func (ne *NodeEviction) Run() (bool, error) {
 	klog.V(6).Infof("Successfully created evictions for all pods on node %s!", ne.nodeName)
 
 	return true, nil
-}
-
-func (ne *NodeEviction) cordonNode(node *corev1.Node) error {
-	if !node.Spec.Unschedulable {
-		_, err := ne.updateNode(func(n *corev1.Node) {
-			n.Spec.Unschedulable = true
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	// Be paranoid and wait until the change got propagated to the lister
-	// This assumes that the delay between our lister and the APIserver
-	// is smaller or equal to the delay the schedulers lister has - If
-	// that is not the case, there is a small chance the scheduler schedules
-	// pods in between, those will then get deleted upon node deletion and
-	// not evicted
-	return wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
-		node := &corev1.Node{}
-		if err := ne.client.Get(ne.ctx, types.NamespacedName{Name: ne.nodeName}, node); err != nil {
-			return false, err
-		}
-		if node.Spec.Unschedulable {
-			return true, nil
-		}
-		return false, nil
-	})
 }
 
 func (ne *NodeEviction) getFilteredPods() ([]corev1.Pod, error) {
@@ -201,19 +170,4 @@ func (ne *NodeEviction) evictPod(pod *corev1.Pod) error {
 		},
 	}
 	return ne.kubeClient.PolicyV1beta1().Evictions(eviction.Namespace).Evict(ne.ctx, eviction)
-}
-
-func (ne *NodeEviction) updateNode(modify func(*corev1.Node)) (*corev1.Node, error) {
-	node := &corev1.Node{}
-	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		if err := ne.client.Get(ne.ctx, types.NamespacedName{Name: ne.nodeName}, node); err != nil {
-			return err
-		}
-		// Apply modifications
-		modify(node)
-		// Update the node
-		return ne.client.Update(ne.ctx, node)
-	})
-
-	return node, err
 }

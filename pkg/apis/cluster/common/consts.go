@@ -135,9 +135,11 @@ const (
 )
 
 const (
-	SystemReservedKubeletConfig = "SystemReserved"
-	KubeReservedKubeletConfig   = "KubeReserved"
-	EvictionHardKubeletConfig   = "EvictionHard"
+	SystemReservedKubeletConfig       = "SystemReserved"
+	KubeReservedKubeletConfig         = "KubeReserved"
+	EvictionHardKubeletConfig         = "EvictionHard"
+	ContainerLogMaxSizeKubeletConfig  = "ContainerLogMaxSize"
+	ContainerLogMaxFilesKubeletConfig = "ContainerLogMaxFiles"
 )
 
 const (

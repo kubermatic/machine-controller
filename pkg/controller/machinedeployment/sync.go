@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	dutil "github.com/kubermatic/machine-controller/pkg/controller/machinedeployment/util"
+	dutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

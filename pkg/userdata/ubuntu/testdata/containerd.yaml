@@ -44,6 +44,7 @@ write_files:
     net.ipv4.ip_forward = 1
     vm.overcommit_memory = 1
     fs.inotify.max_user_watches = 1048576
+    fs.inotify.max_user_instances = 8192
 
 
 - path: "/etc/default/grub.d/60-swap-accounting.cfg"
@@ -61,9 +62,6 @@ write_files:
     systemctl mask ufw
     systemctl restart systemd-modules-load.service
     sysctl --system
-    sed -i.orig '/.*swap.*/d' /etc/fstab
-    swapoff -a
-
     apt-get update
 
     DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
@@ -153,7 +151,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.21.5}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.22.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -192,6 +190,12 @@ write_files:
       sleep 1
     done
 
+- path: "/opt/disable-swap.sh"
+  permissions: "0755"
+  content: |
+    sed -i.orig '/.*swap.*/d' /etc/fstab
+    swapoff -a
+
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
@@ -212,6 +216,9 @@ write_files:
     EnvironmentFile=-/etc/environment
 
     ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
+    ExecStartPre=/bin/bash /opt/disable-swap.sh
+
     ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
     ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
@@ -397,6 +404,7 @@ write_files:
     clusterDNS:
     - 10.10.10.10
     clusterDomain: cluster.local
+    containerLogMaxSize: 100Mi
     cpuManagerReconcilePeriod: 0s
     evictionHard:
       imagefs.available: 15%
