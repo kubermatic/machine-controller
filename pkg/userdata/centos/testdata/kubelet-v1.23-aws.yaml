@@ -98,9 +98,9 @@ write_files:
     EOF
 
     yum install -y \
-        docker-ce-cli-19.03* \
+        docker-ce-cli-20.10* \
         containerd.io-1.4* \
-        docker-ce-19.03* \
+        docker-ce-20.10* \
         yum-plugin-versionlock
     yum versionlock add docker-ce* containerd.io
 
@@ -332,7 +332,7 @@ write_files:
     kubeReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 300Mi
     logging: {}
     memorySwap: {}
     nodeStatusReportFrequency: 0s
@@ -349,7 +349,7 @@ write_files:
     systemReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 500Mi
     tlsCipherSuites:
     - TLS_AES_128_GCM_SHA256
     - TLS_AES_256_GCM_SHA384

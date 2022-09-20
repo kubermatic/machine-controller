@@ -9,6 +9,37 @@ fqdn: node1
 ssh_pwauth: false
 
 write_files:
+- path: "/opt/restart-kubelet.sh"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+
+    while true; do
+    	output=$(journalctl -u kubelet -n 1 | grep "use of closed network connection")
+    	if [[ $? != 0 ]]; then
+    	  echo "Error not found in logs"
+    	elif [[ $output ]]; then
+    	  echo "Restart kubelet"
+    	  systemctl restart kubelet
+    	fi
+
+    	# Runs every 10 minutes
+    	sleep 600
+    done
+
+- path: "/etc/systemd/system/kubelet-restart.service"
+  permissions: "0644"
+  content: |
+    [Unit]
+    Description=Restarts kubelet on use of closed network connection error
+    Requires=kubelet.service
+    After=kubelet.service
+
+    [Service]
+    ExecStart=/opt/kubelet-restart.sh
+
+    [Install]
+    WantedBy=multi-user.target
 - path: "/etc/environment"
   content: |
     HTTP_PROXY=http://192.168.100.100:3128
@@ -108,9 +139,9 @@ write_files:
     EOF
 
     yum install -y \
-        docker-ce-cli-19.03* \
+        docker-ce-cli-20.10* \
         containerd.io-1.4* \
-        docker-ce-19.03* \
+        docker-ce-20.10* \
         yum-plugin-versionlock
     yum versionlock add docker-ce* containerd.io
 
@@ -345,7 +376,7 @@ write_files:
     kubeReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 300Mi
     logging: {}
     memorySwap: {}
     nodeStatusReportFrequency: 0s
@@ -362,7 +393,7 @@ write_files:
     systemReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 500Mi
     tlsCipherSuites:
     - TLS_AES_128_GCM_SHA256
     - TLS_AES_256_GCM_SHA384

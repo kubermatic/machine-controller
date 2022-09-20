@@ -305,7 +305,6 @@ write_files:
     users:
     - name: ""
       user:
-        as-user-extra: null
         token: my-token
 
 

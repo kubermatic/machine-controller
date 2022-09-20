@@ -141,7 +141,6 @@ func simpleVersionTests() []userDataTestCase {
 				CloudProvider: "",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 			},
-			maxLogSize: "",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node1",
@@ -381,8 +380,7 @@ func TestUserDataGeneration(t *testing.T) {
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
-			name:       "vsphere-mirrors",
-			maxLogSize: "500M",
+			name: "vsphere-mirrors",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
