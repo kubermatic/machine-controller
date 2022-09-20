@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	DefaultDockerContainerdVersion = "1.4"
+	LegacyDockerContainerdVersion  = "1.4"
+	DefaultDockerContainerdVersion = "1.5"
 	DefaultDockerVersion           = "20.10"
 	LegacyDockerVersion            = "19.03"
 )
@@ -89,6 +90,7 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 
 	switch os {
 	case types.OperatingSystemAmazonLinux2:
+		args.ContainerdVersion = LegacyDockerContainerdVersion
 		err := dockerAmazonTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL, types.OperatingSystemRockyLinux:

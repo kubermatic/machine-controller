@@ -48,7 +48,7 @@ var imageProjects = map[providerconfigtypes.OperatingSystem]string{
 
 // imageFamilies maps the OS to the Google Cloud image projects.
 var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-2004-lts",
+	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-2204-lts",
 }
 
 // diskTypes are the disk types of the Google Cloud. Map is used for

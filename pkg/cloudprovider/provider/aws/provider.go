@@ -141,13 +141,13 @@ var (
 		providerconfigtypes.OperatingSystemUbuntu: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on ????-??-??",
+				description: "Canonical, Ubuntu, 22.04 LTS, amd64 jammy image build on ????-??-??",
 				// The AWS marketplace ID from Canonical
 				owner: "099720109477",
 			},
 			awstypes.CPUArchitectureARM64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "Canonical, Ubuntu, 20.04 LTS, arm64 focal image build on ????-??-??",
+				description: "Canonical, Ubuntu, 22.04 LTS, arm64 jammy image build on ????-??-??",
 				// The AWS marketplace ID from Canonical
 				owner: "099720109477",
 			},
