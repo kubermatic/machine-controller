@@ -114,7 +114,7 @@ type config struct {
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
-func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.ProviderSpec) (*config, error) {
+func newConfig(resolver *providerconfig.ConfigPointerVarResolver, spec v1alpha1.ProviderSpec) (*config, error) {
 	// Create cloud provider spec.
 	cpSpec, providerConfig, err := newCloudProviderSpec(spec)
 	if err != nil {

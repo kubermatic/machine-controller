@@ -55,7 +55,7 @@ const (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver *providerconfig.ConfigPointerVarResolver
 }
 
 type Config struct {
@@ -103,7 +103,7 @@ func (a *alibabaInstance) Status() instance.Status {
 
 // New returns an Alibaba cloud provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	return &provider{configVarResolver: configVarResolver}
+	return &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 }
 
 func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {

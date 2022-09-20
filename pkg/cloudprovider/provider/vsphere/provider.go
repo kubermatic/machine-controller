@@ -47,12 +47,12 @@ import (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver *providerconfig.ConfigPointerVarResolver
 }
 
 // New returns a VSphere provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	provider := &provider{configVarResolver: configVarResolver}
+	provider := &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 	return provider
 }
 

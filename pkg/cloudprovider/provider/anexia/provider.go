@@ -55,7 +55,7 @@ const (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver *providerconfig.ConfigPointerVarResolver
 }
 
 func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
@@ -326,7 +326,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*anxtypes.C
 
 // New returns an Anexia provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	return &provider{configVarResolver: configVarResolver}
+	return &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 }
 
 // AddDefaults adds omitted optional values to the given MachineSpec

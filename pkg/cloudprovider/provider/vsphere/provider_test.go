@@ -169,7 +169,7 @@ func TestValidate(t *testing.T) {
 			password, _ := simulator.DefaultLogin.Password()
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient())},
 			}
 			tt.args.User = username
 			tt.args.Password = password

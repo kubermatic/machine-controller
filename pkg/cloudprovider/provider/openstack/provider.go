@@ -68,7 +68,7 @@ type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 type portReadinessWaiterFunc func(netClient *gophercloud.ServiceClient, serverID string, networkID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
 
 type provider struct {
-	configVarResolver   *providerconfig.ConfigVarResolver
+	configVarResolver   *providerconfig.ConfigPointerVarResolver
 	clientGetter        clientGetterFunc
 	portReadinessWaiter portReadinessWaiterFunc
 }
@@ -76,7 +76,9 @@ type provider struct {
 // New returns a openstack provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{
-		configVarResolver:   configVarResolver,
+		configVarResolver: &providerconfig.ConfigPointerVarResolver{
+			Cvr: configVarResolver,
+		},
 		clientGetter:        getClient,
 		portReadinessWaiter: waitForPort,
 	}

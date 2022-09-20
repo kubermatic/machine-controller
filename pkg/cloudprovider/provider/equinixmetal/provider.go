@@ -47,7 +47,7 @@ const (
 
 // New returns a Equinix Metal provider
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	return &provider{configVarResolver: configVarResolver}
+	return &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 }
 
 type Config struct {
@@ -74,7 +74,7 @@ func populateDefaults(c *equinixmetaltypes.RawConfig) {
 }
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver *providerconfig.ConfigPointerVarResolver
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *equinixmetaltypes.RawConfig, *providerconfigtypes.Config, error) {
@@ -401,9 +401,11 @@ func (s *metalDevice) Status() instance.Status {
 	}
 }
 
-/******
+/*
+*****
 CONVENIENCE INTERNAL FUNCTIONS
-******/
+*****
+*/
 func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")

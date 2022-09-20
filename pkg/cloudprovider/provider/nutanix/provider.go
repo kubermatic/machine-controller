@@ -59,7 +59,7 @@ type Config struct {
 }
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver *providerconfig.ConfigPointerVarResolver
 }
 
 // Server holds Nutanix server information.
@@ -98,7 +98,7 @@ func (nutanixServer Server) Status() instance.Status {
 
 // New returns a nutanix provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	provider := &provider{configVarResolver: configVarResolver}
+	provider := &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 	return provider
 }
 

@@ -270,7 +270,7 @@ func TestCreateServer(t *testing.T) {
 			ExpectServerCreated(t, tt.wantServerReq)
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient())},
 				// mock client config getter
 				clientGetter: func(c *Config) (*gophercloud.ProviderClient, error) {
 					pc := client.ServiceClient()
@@ -334,7 +334,7 @@ func TestProjectAuthVarsAreCorrectlyLoaded(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient()),
+				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient())},
 			}
 			conf, _, _, _ := p.getConfig(v1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{

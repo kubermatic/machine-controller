@@ -73,13 +73,15 @@ var _ cloudprovidertypes.Provider = New(nil)
 
 // Provider implements the cloud.Provider interface for the Google Cloud Platform.
 type Provider struct {
-	resolver *providerconfig.ConfigVarResolver
+	resolver *providerconfig.ConfigPointerVarResolver
 }
 
 // New creates a cloud provider instance for the Google Cloud Platform.
 func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 	return &Provider{
-		resolver: configVarResolver,
+		resolver: &providerconfig.ConfigPointerVarResolver{
+			Cvr: configVarResolver,
+		},
 	}
 }
 

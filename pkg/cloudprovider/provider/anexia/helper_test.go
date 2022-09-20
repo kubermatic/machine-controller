@@ -86,8 +86,8 @@ func createSearchHandler(t *testing.T, iterations int) http.HandlerFunc {
 	}
 }
 
-func newConfigVarString(str string) types.ConfigVarString {
-	return types.ConfigVarString{
+func newConfigVarString(str string) *types.ConfigVarString {
+	return &types.ConfigVarString{
 		Value: str,
 	}
 }
