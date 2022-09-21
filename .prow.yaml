@@ -475,7 +475,6 @@ presubmits:
 
   - name: pull-machine-controller-e2e-linode
     always_run: false
-    run_if_changed: pkg\/cloudprovider\/provider\/linode\/.*
     optional: true
     decorate: true
     error_on_eviction: true
@@ -561,6 +560,30 @@ presubmits:
             - "./hack/ci-e2e-test.sh"
           args:
             - "TestVsphereProvisioningE2E"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+
+  - name: pull-machine-controller-e2e-nutanix
+    optional: true
+    always_run: false
+    run_if_changed: "(pkg/cloudprovider/provider/nutanix/)"
+    decorate: true
+    error_on_eviction: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-nutanix: "true"
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: golang:1.17.1
+          command:
+            - "./hack/ci-e2e-test.sh"
+          args:
+            - "TestNutanixProvisioningE2E"
           resources:
             requests:
               memory: 1Gi
@@ -812,7 +835,7 @@ presubmits:
               cpu: 500m
 
   - name: pull-machine-controller-e2e-vsphere-resource-pool
-    always_run: true
+    always_run: false
     decorate: true
     error_on_eviction: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"

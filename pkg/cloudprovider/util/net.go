@@ -17,9 +17,15 @@ limitations under the License.
 package util
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"net"
+)
+
+const (
+	ErrIPv6OnlyUnsupported  = "IPv6 only network family not supported yet"
+	ErrUnknownNetworkFamily = "Unknown IP family %q only IPv4,IPv6,IPv4+IPv6 are valid values"
 )
 
 func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
@@ -35,4 +41,37 @@ func CIDRToIPAndNetMask(ipv4 string) (string, string, int, error) {
 
 	netmask := fmt.Sprintf("%d.%d.%d.%d", ipNet.Mask[0], ipNet.Mask[1], ipNet.Mask[2], ipNet.Mask[3])
 	return ip.String(), netmask, size, nil
+}
+
+// GenerateRandMAC generates a random unicast and locally administered MAC address.
+func GenerateRandMAC() (net.HardwareAddr, error) {
+	buf := make([]byte, 6)
+	var mac net.HardwareAddr
+
+	_, err := rand.Read(buf)
+	if err != nil {
+		return mac, err
+	}
+
+	// Set locally administered addresses bit and reset multicast bit
+	buf[0] = (buf[0] | 0x02) & 0xfe
+	mac = append(mac, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+
+	return mac, nil
+}
+
+// IPFamily IPv4 | IPv6 | IPv4+IPv6
+type IPFamily string
+
+const (
+	Unspecified IPFamily = "" // interpreted as IPv4
+	IPv4        IPFamily = "IPv4"
+	IPv6        IPFamily = "IPv6"
+	DualStack   IPFamily = "IPv4+IPv6"
+)
+
+// IsLinkLocal checks if given ip address is link local
+func IsLinkLocal(ipAddr string) bool {
+	addr := net.ParseIP(ipAddr)
+	return addr.IsLinkLocalMulticast() || addr.IsLinkLocalUnicast()
 }

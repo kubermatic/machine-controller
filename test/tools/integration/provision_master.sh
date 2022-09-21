@@ -25,6 +25,7 @@ MC_ROOT="$(cd ./../../.. && pwd -P)"
 # 'AcceptEnv LANG LC_*'.
 export LC_DEPLOY_MACHINE="${1:-}"
 export LC_ADDR=$(terraform output -json|jq '.ip.value' -r)
+export LC_PRIV_ADDR=$(terraform output -json|jq '.private_ip.value' -r)
 export LC_E2E_SSH_PUBKEY="${E2E_SSH_PUBKEY:-$(cat ~/.ssh/id_rsa.pub)}"
 export LC_JOB_NAME="${JOB_NAME:-}"
 
@@ -59,3 +60,11 @@ scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
   if [[ $? == 0 ]]; then break; fi
   sleep ${try}s
 done
+
+# set up SSH port-forwarding if necessary
+if [[ ! -z "${NUTANIX_E2E_PROXY_HOST:-}" ]]; then
+  echo -n "${LC_PRIV_ADDR}" > ${MC_ROOT}/./priv_addr
+
+  ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=5 -fNT -R ${LC_PRIV_ADDR}:${NUTANIX_E2E_PROXY_PORT}:${NUTANIX_E2E_PROXY_HOST}:${NUTANIX_E2E_PROXY_PORT} root@${LC_ADDR}
+fi
+

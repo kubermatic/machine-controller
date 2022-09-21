@@ -31,13 +31,14 @@ const (
 )
 
 type Docker struct {
-	insecureRegistries []string
-	registryMirrors    []string
-	nodeMaxLogSize     string
+	insecureRegistries   []string
+	registryMirrors      []string
+	containerLogMaxFiles string
+	containerLogMaxSize  string
 }
 
 func (eng *Docker) Config() (string, error) {
-	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors, eng.nodeMaxLogSize)
+	return helper.DockerConfig(eng.insecureRegistries, eng.registryMirrors, eng.containerLogMaxFiles, eng.containerLogMaxSize)
 }
 
 func (eng *Docker) ConfigFileName() string {
@@ -66,7 +67,7 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 	case types.OperatingSystemAmazonLinux2:
 		err := dockerAmazonTemplate.Execute(&buf, args)
 		return buf.String(), err
-	case types.OperatingSystemCentOS, types.OperatingSystemRHEL:
+	case types.OperatingSystemCentOS, types.OperatingSystemRHEL, types.OperatingSystemRockyLinux:
 		err := dockerYumTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemUbuntu:

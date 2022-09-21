@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Masterminds/semver/v3"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
@@ -127,6 +128,15 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 	// Check kubelet version
 	if spec.Versions.Kubelet == "" {
 		return fmt.Errorf("Kubelet version must be set")
+	}
+
+	kubeletVer, err := semver.NewVersion(spec.Versions.Kubelet)
+	if err != nil {
+		return fmt.Errorf("failed to parse kubelet version: %w", err)
+	}
+
+	if !ad.constraints.Check(kubeletVer) {
+		return fmt.Errorf("kubernetes version constraint didn't allow %q kubelet version", kubeletVer)
 	}
 
 	// Validate SSH keys

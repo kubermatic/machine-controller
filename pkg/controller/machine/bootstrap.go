@@ -30,7 +30,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/userdata/convert"
-	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 	"github.com/kubermatic/machine-controller/pkg/userdata/helper"
 
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,16 +53,23 @@ func getOSMBootstrapUserdata(ctx context.Context, client ctrlruntimeclient.Clien
 		return "", fmt.Errorf("failed to get providerSpec: %v", err)
 	}
 
-	// Ignition configuration is used for flatcar
-	if useIgnition(pconfig) {
-		return getOSMBootstrapUserDataForIgnition(req, pconfig.SSHPublicKeys, token, secretName, clusterName)
+	bootstrapKubeconfig, err := helper.StringifyKubeconfig(req.Kubeconfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to format bootstrap kubeconfig: %v", err)
 	}
+
+	// Regardless if the provisioningUtility is set to use cloud-init, we only allow using ignition to provision flatcar
+	// machines with osm.
+	if pconfig.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
+		return getOSMBootstrapUserDataForIgnition(req, pconfig.SSHPublicKeys, token, secretName, clusterName, bootstrapKubeconfig)
+	}
+
 	// cloud-init is used for all other operating systems
-	return getOSMBootstrapUserDataForCloudInit(req, pconfig, token, secretName, clusterName)
+	return getOSMBootstrapUserDataForCloudInit(req, pconfig, token, secretName, clusterName, bootstrapKubeconfig)
 }
 
 // getOSMBootstrapUserDataForIgnition returns the userdata for the ignition bootstrap config
-func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKeys []string, token, secretName, clusterName, bootstrapKfg string) (string, error) {
 	data := struct {
 		Token      string
 		SecretName string
@@ -89,15 +95,17 @@ func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKey
 
 	ignitionConfig := &bytes.Buffer{}
 	err = bsIgnitionConfig.Execute(ignitionConfig, struct {
-		Script        string
-		Service       string
-		SSHPublicKeys []string
 		plugin.UserDataRequest
+		Script              string
+		Service             string
+		SSHPublicKeys       []string
+		BootstrapKubeconfig string
 	}{
-		Script:          script.String(),
-		Service:         bootstrapServiceContentTemplate,
-		SSHPublicKeys:   sshPublicKeys,
-		UserDataRequest: req,
+		UserDataRequest:     req,
+		Script:              script.String(),
+		Service:             bootstrapServiceContentTemplate,
+		SSHPublicKeys:       sshPublicKeys,
+		BootstrapKubeconfig: bootstrapKfg,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute ignitionTemplate template: %v", err)
@@ -107,7 +115,7 @@ func getOSMBootstrapUserDataForIgnition(req plugin.UserDataRequest, sshPublicKey
 }
 
 // getOSMBootstrapUserDataForCloudInit returns the userdata for the cloud-init bootstrap script
-func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName string) (string, error) {
+func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *providerconfigtypes.Config, token, secretName, clusterName, bootstrapKfg string) (string, error) {
 	data := struct {
 		Token           string
 		SecretName      string
@@ -167,11 +175,6 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
 	}
 
-	bootstrapKubeconfig, err := helper.StringifyKubeconfig(req.Kubeconfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to format bootstrap kubeconfig: %v", err)
-	}
-
 	cloudInit := &bytes.Buffer{}
 	err = bsCloudInit.Execute(cloudInit, struct {
 		Script  string
@@ -184,7 +187,7 @@ func getOSMBootstrapUserDataForCloudInit(req plugin.UserDataRequest, pconfig *pr
 		Service:             base64.StdEncoding.EncodeToString([]byte(bootstrapServiceContentTemplate)),
 		UserDataRequest:     req,
 		ProviderSpec:        pconfig,
-		BootstrapKubeconfig: base64.StdEncoding.EncodeToString([]byte(bootstrapKubeconfig)),
+		BootstrapKubeconfig: base64.StdEncoding.EncodeToString([]byte(bootstrapKfg)),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to execute cloudInitTemplate template: %v", err)
@@ -202,20 +205,11 @@ func cleanupTemplateOutput(output string) (string, error) {
 	return woBlankLines, nil
 }
 
-func useIgnition(p *providerconfigtypes.Config) bool {
-	if p.OperatingSystem == providerconfigtypes.OperatingSystemFlatcar {
-		config, err := flatcar.LoadConfig(p.OperatingSystemSpec)
-		if err != nil {
-			return false
-		}
-		return config.ProvisioningUtility == flatcar.Ignition
-	}
-	return false
-}
-
 const (
 	bootstrapAptBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
 apt update && apt install -y curl jq
 curl -s -k -v --header 'Authorization: Bearer {{ .Token }}'	{{ .ServerURL }}/api/v1/namespaces/cloud-init-settings/secrets/{{ .SecretName }} | jq '.data["cloud-config"]' -r| base64 -d > /etc/cloud/cloud.cfg.d/{{ .SecretName }}.cfg
 cloud-init clean
@@ -236,6 +230,11 @@ systemctl restart kubelet-healthcheck.service
 
 	bootstrapYumBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
+source /etc/os-release
+if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
+  sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+  sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+fi
 {{- if .EnterpriseLinux }}
 yum install epel-release -y
 {{- end }}
@@ -247,7 +246,7 @@ systemctl daemon-reload
 systemctl restart setup.service
 systemctl restart kubelet.service
 systemctl restart kubelet-healthcheck.service
-  `
+	`
 
 	bootstrapZypperBinContentTemplate = `#!/bin/bash
 set -xeuo pipefail
@@ -304,8 +303,16 @@ write_files:
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: '0600'
   encoding: b64
-  content: | 
+  content: |
     {{ .BootstrapKubeconfig }}
+{{- if and (eq .ProviderSpec.CloudProvider "openstack") (eq .ProviderSpec.OperatingSystem "centos") }}
+{{- /*  The normal way of setting it via cloud-init is broken, see */}}
+{{- /*  https://bugs.launchpad.net/cloud-init/+bug/1662542 */}}
+- path: /etc/hostname
+  permissions: '0600'
+  content: |
+    {{ .MachineSpec.Name }}
+{{ end }}
 - path: /etc/systemd/system/bootstrap.service
   permissions: '0644'
   encoding: b64
@@ -349,7 +356,7 @@ storage:
     filesystem: root
     contents:
       inline: |
-      {{ .BootstrapKubeconfig }}
+{{ .BootstrapKubeconfig | indent 10 }}
   - path: /opt/bin/bootstrap
     mode: 0755
     filesystem: root

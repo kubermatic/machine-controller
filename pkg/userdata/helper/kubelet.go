@@ -19,6 +19,7 @@ package helper
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -28,9 +29,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 	kubeletv1b1 "k8s.io/kubelet/config/v1beta1"
 	"k8s.io/utils/pointer"
 	kyaml "sigs.k8s.io/yaml"
+)
+
+const (
+	defaultKubeletContainerLogMaxSize = "100Mi"
 )
 
 const (
@@ -78,6 +84,9 @@ Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bi
 EnvironmentFile=-/etc/environment
 
 ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+{{ if .DisableSwap }}
+ExecStartPre=/bin/bash /opt/disable-swap.sh
+{{ end }}
 ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
 ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
 {{ kubeletFlags .KubeletVersion .CloudProvider .Hostname .ClusterDNSIPs .IsExternal .PauseImage .InitialTaints .ExtraKubeletFlags | indent 2 }}
@@ -127,7 +136,7 @@ func CloudProviderFlags(cpName string, external bool) (string, error) {
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet
-func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
 	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %v", err)
@@ -143,6 +152,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		PauseImage        string
 		InitialTaints     []corev1.Taint
 		ExtraKubeletFlags []string
+		DisableSwap       bool
 	}{
 		ContainerRuntime:  containerRuntime,
 		KubeletVersion:    kubeletVersion,
@@ -153,6 +163,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 		PauseImage:        pauseImage,
 		InitialTaints:     initialTaints,
 		ExtraKubeletFlags: extraKubeletFlags,
+		DisableSwap:       disableSwap,
 	}
 
 	var buf strings.Builder
@@ -164,7 +175,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 }
 
 // kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration
-func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string) (string, error) {
+func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string, containerRuntime string) (string, error) {
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
 		clusterDNSstr = append(clusterDNSstr, ip.String())
@@ -203,6 +214,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		EvictionHard:          map[string]string{"memory.available": "100Mi", "nodefs.available": "10%", "nodefs.inodesFree": "5%", "imagefs.available": "15%"},
 		VolumePluginDir:       "/var/lib/kubelet/volumeplugins",
 		TLSCipherSuites:       kubeletTLSCipherSuites,
+		ContainerLogMaxSize:   defaultKubeletContainerLogMaxSize,
 	}
 
 	if kubeReserved, ok := kubeletConfigs[common.KubeReservedKubeletConfig]; ok {
@@ -233,6 +245,23 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 			}
 			cfg.EvictionHard[ehKV[0]] = ehKV[1]
 		}
+	}
+
+	if containerLogMaxSize, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
+		cfg.ContainerLogMaxSize = containerLogMaxSize
+	}
+	if containerLogMaxFiles, ok := kubeletConfigs[common.ContainerLogMaxFilesKubeletConfig]; ok {
+		maxFiles, err := strconv.Atoi(containerLogMaxFiles)
+		if err != nil || maxFiles < 0 {
+			// Instead of breaking the workflow, just print a warning and skip the configuration
+			klog.Warningf("Skipping invalid ContainerLogMaxSize value %v for Kubelet configuration", containerLogMaxFiles)
+		} else {
+			cfg.ContainerLogMaxFiles = pointer.Int32Ptr(int32(maxFiles))
+		}
+	}
+
+	if enabled, ok := featureGates["SeccompDefault"]; ok && enabled {
+		cfg.SeccompDefault = pointer.Bool(true)
 	}
 
 	buf, err := kyaml.Marshal(cfg)

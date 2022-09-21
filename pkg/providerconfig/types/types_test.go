@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 )
 
 func TestConfigVarStringUnmarshalling(t *testing.T) {
@@ -45,21 +46,50 @@ func TestConfigVarStringUnmarshalling(t *testing.T) {
 }
 
 func TestConfigVarBoolUnmarshalling(t *testing.T) {
-	jsonBool := []byte("true")
-	jsonMapBool := []byte(`{"value":true}`)
-
-	expectedResult := ConfigVarBool{Value: true}
-
-	var jsonBoolTarget ConfigVarBool
-	var jsonMapBoolTarget ConfigVarBool
-
-	err := json.Unmarshal(jsonBool, &jsonBoolTarget)
-	if err != nil || !reflect.DeepEqual(expectedResult, jsonBoolTarget) {
-		t.Fatalf("Decoding raw bool into configVarBool failed! Error: '%v'", err)
+	testCases := []struct {
+		jsonString string
+		expected   ConfigVarBool
+	}{
+		{
+			jsonString: "true",
+			expected:   ConfigVarBool{Value: pointer.Bool(true)},
+		},
+		{
+			jsonString: `{"value":true}`,
+			expected:   ConfigVarBool{Value: pointer.Bool(true)},
+		},
+		{
+			jsonString: "null",
+			expected:   ConfigVarBool{},
+		},
+		{
+			jsonString: `{"value":null}`,
+			expected:   ConfigVarBool{},
+		},
+		{
+			jsonString: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
+			expected:   ConfigVarBool{Value: nil, SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		},
+		{
+			jsonString: `{"value": null, "secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
+			expected:   ConfigVarBool{Value: nil, SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		},
+		{
+			jsonString: `{"value":false, "secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
+			expected:   ConfigVarBool{Value: pointer.Bool(false), SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		},
+		{
+			jsonString: `{"value":true, "secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
+			expected:   ConfigVarBool{Value: pointer.Bool(true), SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		},
 	}
-	err = json.Unmarshal(jsonMapBool, &jsonMapBoolTarget)
-	if err != nil || !reflect.DeepEqual(expectedResult, jsonMapBoolTarget) {
-		t.Fatalf("Decoding map bool into configVarBool failed! Error: '%v'", err)
+
+	for _, testCase := range testCases {
+		var cvb ConfigVarBool
+		err := json.Unmarshal([]byte(testCase.jsonString), &cvb)
+		if err != nil || !reflect.DeepEqual(testCase.expected, cvb) {
+			t.Fatalf("Decoding '%s' into configVarBool failed! Error: '%v'", testCase.jsonString, err)
+		}
 	}
 }
 
@@ -97,11 +127,23 @@ func TestConfigVarBoolMarshalling(t *testing.T) {
 		expected string
 	}{
 		{
-			cvb:      ConfigVarBool{Value: true},
+			cvb:      ConfigVarBool{},
+			expected: `null`,
+		},
+		{
+			cvb:      ConfigVarBool{Value: pointer.Bool(true)},
 			expected: `true`,
 		},
 		{
 			cvb:      ConfigVarBool{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+			expected: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"}}`,
+		},
+		{
+			cvb:      ConfigVarBool{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}, Value: pointer.Bool(true)},
+			expected: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"},"value":true}`,
+		},
+		{
+			cvb:      ConfigVarBool{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}, Value: pointer.Bool(false)},
 			expected: `{"secretKeyRef":{"namespace":"ns","name":"name","key":"key"},"value":false}`,
 		},
 	}
@@ -155,17 +197,19 @@ func TestConfigVarStringMarshallingAndUnmarshalling(t *testing.T) {
 func TestConfigVarBoolMarshallingAndUnmarshalling(t *testing.T) {
 
 	testCases := []ConfigVarBool{
-		{Value: true},
+		{},
+		{Value: pointer.Bool(false)},
+		{Value: pointer.Bool(true)},
 		{SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		{Value: true, SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: pointer.Bool(true), SecretKeyRef: GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 		{ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
-		{Value: true, ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
+		{Value: pointer.Bool(true), ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"}},
 		{
 			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},
 		{
-			Value:           true,
+			Value:           pointer.Bool(true),
 			ConfigMapKeyRef: GlobalConfigMapKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 			SecretKeyRef:    GlobalSecretKeySelector{ObjectReference: v1.ObjectReference{Namespace: "ns", Name: "name"}, Key: "key"},
 		},

@@ -156,13 +156,10 @@ func ensureOSPAnnotation(md *v1alpha1.MachineDeployment, providerConfig provider
 		// Annotation not specified, populate default OSP annotation
 		switch providerConfig.OperatingSystem {
 		case providerconfigtypes.OperatingSystemUbuntu, providerconfigtypes.OperatingSystemCentOS, providerconfigtypes.OperatingSystemFlatcar,
-			providerconfigtypes.OperatingSystemRHEL, providerconfigtypes.OperatingSystemSLES:
+			providerconfigtypes.OperatingSystemAmazonLinux2:
 			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, providerConfig.OperatingSystem)
 			return nil
-		case providerconfigtypes.OperatingSystemAmazonLinux2:
-			// This is a special case where the OS name suffix in OSP is different then the actual OS name
-			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, "amazon-linux")
-			return nil
+
 		default:
 			return fmt.Errorf("failed to populate OSP annotation for machinedeployment with unsupported Operating System %s", providerConfig.OperatingSystem)
 		}

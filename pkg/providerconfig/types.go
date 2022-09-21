@@ -29,6 +29,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
 	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
 	"github.com/kubermatic/machine-controller/pkg/userdata/sles"
 	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 
@@ -43,7 +44,7 @@ type ConfigVarResolver struct {
 	client ctrlruntimeclient.Client
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar *providerconfigtypes.ConfigVarString) (time.Duration, error) {
+func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar providerconfigtypes.ConfigVarString) (time.Duration, error) {
 	durStr, err := cvr.GetConfigVarStringValue(configVar)
 	if err != nil {
 		return 0, err
@@ -52,7 +53,7 @@ func (cvr *ConfigVarResolver) GetConfigVarDurationValue(configVar *providerconfi
 	return time.ParseDuration(durStr)
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar *providerconfigtypes.ConfigVarString, defaultDuration time.Duration) (time.Duration, error) {
+func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar providerconfigtypes.ConfigVarString, defaultDuration time.Duration) (time.Duration, error) {
 	durStr, err := cvr.GetConfigVarStringValue(configVar)
 	if err != nil {
 		return 0, err
@@ -74,10 +75,7 @@ func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrDefault(configVar *prov
 	return duration, nil
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar *providerconfigtypes.ConfigVarString) (string, error) {
-	if configVar == nil {
-		return "", nil
-	}
+func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar providerconfigtypes.ConfigVarString) (string, error) {
 	// We need all three of these to fetch and use a secret
 	if configVar.SecretKeyRef.Name != "" && configVar.SecretKeyRef.Namespace != "" && configVar.SecretKeyRef.Key != "" {
 		secret := &corev1.Secret{}
@@ -109,48 +107,70 @@ func (cvr *ConfigVarResolver) GetConfigVarStringValue(configVar *providerconfigt
 
 // GetConfigVarStringValueOrEnv tries to get the value from ConfigVarString, when it fails, it falls back to
 // getting the value from an environment variable specified by envVarName parameter
-func (cvr *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar *providerconfigtypes.ConfigVarString, envVarName string) (string, error) {
-	if configVar != nil {
-		cfgVar, err := cvr.GetConfigVarStringValue(configVar)
-		if err == nil && len(cfgVar) > 0 {
-			return cfgVar, err
-		}
+func (cvr *ConfigVarResolver) GetConfigVarStringValueOrEnv(configVar providerconfigtypes.ConfigVarString, envVarName string) (string, error) {
+	cfgVar, err := cvr.GetConfigVarStringValue(configVar)
+	if err == nil && len(cfgVar) > 0 {
+		return cfgVar, err
 	}
 
 	envVal, _ := os.LookupEnv(envVarName)
 	return envVal, nil
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar *providerconfigtypes.ConfigVarBool) (bool, error) {
-	if configVar == nil {
-		return false, nil
+// GetConfigVarBoolValue returns a boolean from a ConfigVarBool. If there is no valid source for the boolean,
+// the second bool returned will be false (to be able to differentiate between "false" and "unset")
+func (cvr *ConfigVarResolver) GetConfigVarBoolValue(configVar providerconfigtypes.ConfigVarBool) (bool, bool, error) {
+	// We need all three of these to fetch and use a secret
+	if configVar.SecretKeyRef.Name != "" && configVar.SecretKeyRef.Namespace != "" && configVar.SecretKeyRef.Key != "" {
+		secret := &corev1.Secret{}
+		name := types.NamespacedName{Namespace: configVar.SecretKeyRef.Namespace, Name: configVar.SecretKeyRef.Name}
+		if err := cvr.client.Get(cvr.ctx, name, secret); err != nil {
+			return false, false, fmt.Errorf("error retrieving secret '%s' from namespace '%s': '%v'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, err)
+		}
+		if val, ok := secret.Data[configVar.SecretKeyRef.Key]; ok {
+			boolVal, err := strconv.ParseBool(string(val))
+			return boolVal, (err == nil), err
+		}
+		return false, false, fmt.Errorf("secret '%s' in namespace '%s' has no key '%s'", configVar.SecretKeyRef.Name, configVar.SecretKeyRef.Namespace, configVar.SecretKeyRef.Key)
 	}
-	cvs := &providerconfigtypes.ConfigVarString{Value: strconv.FormatBool(configVar.Value), SecretKeyRef: configVar.SecretKeyRef}
-	stringVal, err := cvr.GetConfigVarStringValue(cvs)
-	if err != nil {
-		return false, err
+
+	// We need all three of these to fetch and use a configmap
+	if configVar.ConfigMapKeyRef.Name != "" && configVar.ConfigMapKeyRef.Namespace != "" && configVar.ConfigMapKeyRef.Key != "" {
+		configMap := &corev1.ConfigMap{}
+		name := types.NamespacedName{Namespace: configVar.ConfigMapKeyRef.Namespace, Name: configVar.ConfigMapKeyRef.Name}
+		if err := cvr.client.Get(cvr.ctx, name, configMap); err != nil {
+			return false, false, fmt.Errorf("error retrieving configmap '%s' from namespace '%s': '%v'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, err)
+		}
+		if val, ok := configMap.Data[configVar.ConfigMapKeyRef.Key]; ok {
+			boolVal, err := strconv.ParseBool(val)
+			return boolVal, (err == nil), err
+		}
+		return false, false, fmt.Errorf("configmap '%s' in namespace '%s' has no key '%s'", configVar.ConfigMapKeyRef.Name, configVar.ConfigMapKeyRef.Namespace, configVar.ConfigMapKeyRef.Key)
 	}
-	boolVal, err := strconv.ParseBool(stringVal)
-	if err != nil {
-		return false, err
+
+	if configVar.Value == nil {
+		return false, false, nil
 	}
-	return boolVal, nil
+
+	return configVar.Value != nil && *configVar.Value, true, nil
 }
 
-func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar *providerconfigtypes.ConfigVarBool, envVarName string) (bool, error) {
-	if configVar == nil {
-		cvs := &providerconfigtypes.ConfigVarString{Value: strconv.FormatBool(configVar.Value), SecretKeyRef: configVar.SecretKeyRef}
-		stringVal, err := cvr.GetConfigVarStringValue(cvs)
+func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfigtypes.ConfigVarBool, envVarName string) (bool, error) {
+	boolVal, valid, err := cvr.GetConfigVarBoolValue(configVar)
+	if valid && err == nil {
+		return boolVal, nil
+	}
+
+	envVal, envValFound := os.LookupEnv(envVarName)
+	if envValFound {
+		envValBool, err := strconv.ParseBool(envVal)
 		if err != nil {
 			return false, err
 		}
-		return strconv.ParseBool(stringVal)
+		return envValBool, nil
 	}
-	val, envValFound := os.LookupEnv(envVarName)
-	if !envValFound {
-		return false, fmt.Errorf("all mechanisms(value, secret, configMap) of getting the value failed, including reading from environment variable = %s which was not set", envVarName)
-	}
-	return strconv.ParseBool(val)
+
+	return false, nil
 }
 
 func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) *ConfigVarResolver {
@@ -179,7 +199,53 @@ func DefaultOperatingSystemSpec(
 		return sles.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemUbuntu:
 		return ubuntu.DefaultConfig(operatingSystemSpec), nil
+	case providerconfigtypes.OperatingSystemRockyLinux:
+		return rockylinux.DefaultConfig(operatingSystemSpec), nil
 	}
 
 	return operatingSystemSpec, errors.New("unknown OperatingSystem")
+}
+
+type ConfigPointerVarResolver struct {
+	Cvr *ConfigVarResolver
+}
+
+func (cpvr *ConfigPointerVarResolver) GetConfigVarStringValueOrEnv(configVar *providerconfigtypes.ConfigVarString, envVarName string) (string, error) {
+	c := &providerconfigtypes.ConfigVarString{}
+	if configVar == nil {
+		return cpvr.Cvr.GetConfigVarStringValueOrEnv(*c, envVarName)
+	}
+	return cpvr.Cvr.GetConfigVarStringValueOrEnv(*configVar, envVarName)
+}
+
+func (cpvr *ConfigPointerVarResolver) GetConfigVarStringValue(configVar *providerconfigtypes.ConfigVarString) (string, error) {
+	c := &providerconfigtypes.ConfigVarString{}
+	if configVar == nil {
+		return cpvr.Cvr.GetConfigVarStringValue(*c)
+	}
+	return cpvr.Cvr.GetConfigVarStringValue(*configVar)
+}
+
+func (cpvr *ConfigPointerVarResolver) GetConfigVarBoolValue(configVar *providerconfigtypes.ConfigVarBool) (bool, bool, error) {
+	c := &providerconfigtypes.ConfigVarBool{}
+	if configVar == nil {
+		return cpvr.Cvr.GetConfigVarBoolValue(*c)
+	}
+	return cpvr.Cvr.GetConfigVarBoolValue(*configVar)
+}
+
+func (cpvr *ConfigPointerVarResolver) GetConfigVarBoolValueOrEnv(configVar *providerconfigtypes.ConfigVarBool, envVarName string) (bool, error) {
+	c := &providerconfigtypes.ConfigVarBool{}
+	if configVar == nil {
+		return cpvr.Cvr.GetConfigVarBoolValueOrEnv(*c, envVarName)
+	}
+	return cpvr.Cvr.GetConfigVarBoolValueOrEnv(*configVar, envVarName)
+}
+
+func (cpvr *ConfigPointerVarResolver) GetConfigVarDurationValueOrDefault(configVar *providerconfigtypes.ConfigVarString, defaultDuration time.Duration) (time.Duration, error) {
+	c := &providerconfigtypes.ConfigVarString{}
+	if configVar == nil {
+		return cpvr.Cvr.GetConfigVarDurationValueOrDefault(*c, defaultDuration)
+	}
+	return cpvr.Cvr.GetConfigVarDurationValueOrDefault(*configVar, defaultDuration)
 }

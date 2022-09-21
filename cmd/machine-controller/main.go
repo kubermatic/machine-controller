@@ -23,7 +23,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"net/url"
 	"strings"
 	"time"
 
@@ -43,7 +42,6 @@ import (
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	"github.com/kubermatic/machine-controller/pkg/signals"
-
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -79,13 +77,12 @@ var (
 	nodeNoProxy                   string
 	nodeInsecureRegistries        string
 	nodeRegistryMirrors           string
-	nodeMaxLogSize         string
 	nodePauseImage                string
 	nodeContainerRuntime          string
-	podCidr                       string
+	podCIDR                       string
 	nodePortRange                 string
 	nodeRegistryCredentialsSecret string
-	nodeContainerdRegistryMirrors = registryMirrorsFlags{}
+	nodeContainerdRegistryMirrors = containerruntime.RegistryMirrorsFlags{}
 )
 
 const (
@@ -130,9 +127,6 @@ type controllerRunOptions struct {
 
 	useOSM bool
 
-	// Assigns the POD networks that will be allocated.
-	podCidr string
-
 	// A port range to reserve for services with NodePort visibility
 	nodePortRange string
 }
@@ -143,7 +137,7 @@ func main() {
 	klog.InitFlags(nil)
 	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
 	// we have to guard it
-	//TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
+	// TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
 	if flag.Lookup("kubeconfig") == nil {
 		flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	}
@@ -163,14 +157,13 @@ func main() {
 	flag.StringVar(&nodeNoProxy, "node-no-proxy", ".svc,.cluster.local,localhost,127.0.0.1", "If set, it configures the 'NO_PROXY' environment variable on the nodes.")
 	flag.StringVar(&nodeInsecureRegistries, "node-insecure-registries", "", "Comma separated list of registries which should be configured as insecure on the container runtime")
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
-	flag.StringVar(&nodeMaxLogSize, "node-max-log-size", "", "Maximum size for docker logfile")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.String("node-kubelet-repository", "quay.io/kubermatic/kubelet", "[NO-OP] Repository for the kubelet container. Has no effects.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
 	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
-	flag.StringVar(&podCidr, "pod-cidr", "172.25.0.0/16", "The network ranges from which POD networks are allocated")
+	flag.StringVar(&podCIDR, "pod-cidr", "172.25.0.0/16", "WARNING: flag is unused, kept only for backwards compatibility")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that containt auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
@@ -239,37 +232,17 @@ func main() {
 	ctrlMetrics := machinecontroller.NewMachineControllerMetrics()
 	ctrlMetrics.MustRegister(metrics.Registry)
 
-	var insecureRegistries []string
-	for _, registry := range strings.Split(nodeInsecureRegistries, ",") {
-		if trimmedRegistry := strings.TrimSpace(registry); trimmedRegistry != "" {
-			insecureRegistries = append(insecureRegistries, trimmedRegistry)
-		}
+	containerRuntimeOpts := containerruntime.Opts{
+		ContainerRuntime:          nodeContainerRuntime,
+		ContainerdRegistryMirrors: nodeContainerdRegistryMirrors,
+		InsecureRegistries:        nodeInsecureRegistries,
+		PauseImage:                nodePauseImage,
+		RegistryMirrors:           nodeRegistryMirrors,
+		RegistryCredentialsSecret: nodeRegistryCredentialsSecret,
 	}
-
-	var registryMirrors []string
-	for _, mirror := range strings.Split(nodeRegistryMirrors, ",") {
-		if trimmedMirror := strings.TrimSpace(mirror); trimmedMirror != "" {
-			if !strings.HasPrefix(mirror, "http") {
-				trimmedMirror = "https://" + mirror
-			}
-
-			_, err := url.Parse(trimmedMirror)
-			if err != nil {
-				klog.Fatalf("incorrect mirror provided: %v", err)
-			}
-
-			registryMirrors = append(registryMirrors, trimmedMirror)
-		}
-	}
-
-	if len(registryMirrors) > 0 {
-		nodeContainerdRegistryMirrors["docker.io"] = registryMirrors
-	}
-
-	if nodeRegistryCredentialsSecret != "" {
-		if secRef := strings.Split(nodeRegistryCredentialsSecret, "/"); len(secRef) != 2 {
-			klog.Fatalf("-node-registry-credentials-secret is in incorrect format %q, should be in 'namespace/secretname'", nodeRegistryCredentialsSecret)
-		}
+	containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
+	if err != nil {
+		klog.Fatalf("failed to generate container runtime config: %v", err)
 	}
 
 	runOptions := controllerRunOptions{
@@ -287,16 +260,9 @@ func main() {
 			NoProxy:                      nodeNoProxy,
 			PauseImage:                   nodePauseImage,
 			RegistryCredentialsSecretRef: nodeRegistryCredentialsSecret,
-			ContainerRuntime: containerruntime.Get(
-				nodeContainerRuntime,
-				containerruntime.WithInsecureRegistries(insecureRegistries),
-				containerruntime.WithRegistryMirrors(nodeContainerdRegistryMirrors),
-				containerruntime.WithSandboxImage(nodePauseImage),
-				containerruntime.WithNodeMaxLogSize(nodeMaxLogSize),
-			),
+			ContainerRuntime:             containerRuntimeConfig,
 		},
 		useOSM:        useOSM,
-		podCidr:       podCidr,
 		nodePortRange: nodePortRange,
 	}
 
@@ -432,7 +398,6 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
 		bs.opt.useOSM,
-		bs.opt.podCidr,
 		bs.opt.nodePortRange,
 	); err != nil {
 		return fmt.Errorf("failed to add Machine controller to manager: %v", err)

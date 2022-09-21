@@ -33,10 +33,10 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.19.15"),
-		semver.MustParse("v1.20.11"),
-		semver.MustParse("v1.21.5"),
-		semver.MustParse("v1.22.2"),
+		semver.MustParse("v1.20.14"),
+		semver.MustParse("v1.21.8"),
+		semver.MustParse("v1.22.5"),
+		semver.MustParse("v1.23.0"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
@@ -46,13 +46,15 @@ var (
 		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemFlatcar,
+		providerconfigtypes.OperatingSystemRockyLinux,
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemUbuntu):  "machine-controller-e2e-ubuntu-20-04",
-		string(providerconfigtypes.OperatingSystemCentOS):  "machine-controller-e2e-centos",
-		string(providerconfigtypes.OperatingSystemRHEL):    "machine-controller-e2e-rhel",
-		string(providerconfigtypes.OperatingSystemFlatcar): "machine-controller-e2e-flatcar-stable-2983",
+		string(providerconfigtypes.OperatingSystemUbuntu):     "machine-controller-e2e-ubuntu-20-04",
+		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
+		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-8-5",
+		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar-stable-2983",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
 	}
 )
 
@@ -107,6 +109,37 @@ func (os *osSelector) Match(testCase scenario) bool {
 		}
 	}
 	return false
+}
+
+// And is used to match against two selectors.
+func And(s1 Selector, s2 Selector) Selector {
+	return &and{s1, s2}
+}
+
+type and struct {
+	s1 Selector
+	s2 Selector
+}
+
+var _ Selector = &and{}
+
+func (a *and) Match(tc scenario) bool {
+	return a.s1.Match(tc) && a.s2.Match(tc)
+}
+
+// NameSelector is used to match against a test case name
+func NameSelector(tcName string) Selector {
+	return &name{tcName}
+}
+
+type name struct {
+	name string
+}
+
+var _ Selector = &name{}
+
+func (n *name) Match(tc scenario) bool {
+	return tc.name == n.name
 }
 
 func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {

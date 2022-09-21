@@ -41,20 +41,20 @@ const (
 
 // UserDataRequest requests user data with the given arguments.
 type UserDataRequest struct {
-	MachineSpec           clusterv1alpha1.MachineSpec
-	Kubeconfig            *clientcmdapi.Config
-	CloudProviderName     string
-	CloudConfig           string
-	DNSIPs                []net.IP
-	ExternalCloudProvider bool
-	HTTPProxy             string
-	NoProxy               string
-	PauseImage            string
-	KubeletFeatureGates   map[string]bool
-	KubeletConfigs        map[string]string
-	ContainerRuntime      containerruntime.Config
-	PodCIDR               string
-	NodePortRange         string
+	MachineSpec              clusterv1alpha1.MachineSpec
+	Kubeconfig               *clientcmdapi.Config
+	CloudProviderName        string
+	CloudConfig              string
+	DNSIPs                   []net.IP
+	ExternalCloudProvider    bool
+	HTTPProxy                string
+	NoProxy                  string
+	PauseImage               string
+	KubeletCloudProviderName string
+	KubeletFeatureGates      map[string]bool
+	KubeletConfigs           map[string]string
+	ContainerRuntime         containerruntime.Config
+	NodePortRange            string
 }
 
 // UserDataResponse contains the responded user data.

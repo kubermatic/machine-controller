@@ -19,6 +19,8 @@ package main
 import (
 	"flag"
 
+	"github.com/Masterminds/semver/v3"
+
 	"github.com/kubermatic/machine-controller/pkg/admission"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/node"
@@ -41,6 +43,7 @@ type options struct {
 	useOSM                  bool
 	namespace               string
 	workerClusterKubeconfig string
+	versionConstraint       string
 }
 
 func main() {
@@ -60,6 +63,7 @@ func main() {
 	flag.StringVar(&opt.caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.StringVar(&opt.namespace, "namespace", "kubermatic", "The namespace where the webhooks will run")
 	flag.StringVar(&opt.workerClusterKubeconfig, "worker-cluster-kubeconfig", "", "Path to kubeconfig of worker/user cluster where machines and machinedeployments exist. If not specified, value from --kubeconfig or in-cluster config will be used")
+	flag.StringVar(&opt.versionConstraint, "kubernetes-version-constraints", ">=0.0.0", "")
 
 	// OSM specific flags
 	flag.BoolVar(&opt.useOSM, "use-osm", false, "osm controller is enabled for node bootstrap")
@@ -89,6 +93,11 @@ func main() {
 		klog.Fatalf("failed to build client: %v", err)
 	}
 
+	constraint, err := semver.NewConstraint(opt.versionConstraint)
+	if err != nil {
+		klog.Fatalf("failed to validate kubernetes-version-constraints: %v", err)
+	}
+
 	// Start with assuming that current cluster will be used as worker cluster
 	workerClient := client
 	// Handing for worker client
@@ -112,7 +121,16 @@ func main() {
 		klog.Fatalf("error initialising userdata plugins: %v", err)
 	}
 
-	srv, err := admission.New(opt.admissionListenAddress, client, workerClient, um, nodeFlags, opt.useOSM, opt.namespace)
+	srv, err := admission.Builder{
+		ListenAddress:      opt.admissionListenAddress,
+		Client:             client,
+		WorkerClient:       workerClient,
+		UserdataManager:    um,
+		NodeFlags:          nodeFlags,
+		UseOSM:             opt.useOSM,
+		Namespace:          opt.namespace,
+		VersionConstraints: constraint,
+	}.Build()
 	if err != nil {
 		klog.Fatalf("failed to create admission hook: %v", err)
 	}

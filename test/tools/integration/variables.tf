@@ -6,3 +6,9 @@ variable "hcloud_sshkey_name" {
 }
 
 variable "hcloud_test_server_name" {}
+
+variable "hcloud_network_zone" {
+  default     = "eu-central"
+  description = "network zone to use for private network"
+  type        = string
+}

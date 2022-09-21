@@ -87,8 +87,8 @@ type userDataTestCase struct {
 	externalCloudProvider bool
 	httpProxy             string
 	noProxy               string
-	insecureRegistries    []string
-	registryMirrors       map[string][]string
+	insecureRegistries    string
+	registryMirrors       string
 	pauseImage            string
 	containerruntime      string
 }
@@ -100,20 +100,11 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "kubelet-v1.19-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.19.15",
-				},
-			},
-		},
-		{
 			name: "kubelet-v1.20-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.11",
+					Kubelet: "1.20.14",
 				},
 			},
 		},
@@ -122,7 +113,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.11",
+					Kubelet: "1.20.14",
 				},
 			},
 			containerruntime: "containerd",
@@ -132,7 +123,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.21.8",
 				},
 			},
 		},
@@ -141,7 +132,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.21.8",
 				},
 			},
 			externalCloudProvider: true,
@@ -151,7 +142,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.21.8",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
@@ -161,13 +152,13 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.21.8",
 				},
 			},
 			cloudProviderName:  stringPtr("vsphere"),
 			httpProxy:          "http://192.168.100.100:3128",
 			noProxy:            "192.168.1.0",
-			insecureRegistries: []string{"192.168.100.100:5000", "10.0.0.1:5000"},
+			insecureRegistries: "192.168.100.100:5000, 10.0.0.1:5000",
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -175,13 +166,13 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.5",
+					Kubelet: "1.21.8",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
 			httpProxy:         "http://192.168.100.100:3128",
 			noProxy:           "192.168.1.0",
-			registryMirrors:   map[string][]string{"docker.io": {"https://registry.docker-cn.com"}},
+			registryMirrors:   "https://registry.docker-cn.com",
 			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
@@ -189,7 +180,16 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.22.2",
+					Kubelet: "1.22.5",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.23-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.23.0",
 				},
 			},
 		},
@@ -240,22 +240,29 @@ func TestUserDataGeneration(t *testing.T) {
 				t.Fatalf("failed to get cloud config: %v", err)
 			}
 
+			containerRuntimeOpts := containerruntime.Opts{
+				ContainerRuntime:   test.containerruntime,
+				InsecureRegistries: test.insecureRegistries,
+				RegistryMirrors:    test.registryMirrors,
+			}
+			containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
+			if err != nil {
+				t.Fatalf("failed to generate container runtime config: %v", err)
+			}
+
 			req := plugin.UserDataRequest{
-				MachineSpec:           test.spec,
-				Kubeconfig:            kubeconfig,
-				CloudConfig:           cloudConfig,
-				CloudProviderName:     cloudProviderName,
-				DNSIPs:                test.clusterDNSIPs,
-				ExternalCloudProvider: test.externalCloudProvider,
-				HTTPProxy:             test.httpProxy,
-				NoProxy:               test.noProxy,
-				PauseImage:            test.pauseImage,
-				KubeletFeatureGates:   kubeletFeatureGates,
-				ContainerRuntime: containerruntime.Get(
-					test.containerruntime,
-					containerruntime.WithInsecureRegistries(test.insecureRegistries),
-					containerruntime.WithRegistryMirrors(test.registryMirrors),
-				),
+				MachineSpec:              test.spec,
+				Kubeconfig:               kubeconfig,
+				CloudConfig:              cloudConfig,
+				CloudProviderName:        cloudProviderName,
+				KubeletCloudProviderName: cloudProviderName,
+				DNSIPs:                   test.clusterDNSIPs,
+				ExternalCloudProvider:    test.externalCloudProvider,
+				HTTPProxy:                test.httpProxy,
+				NoProxy:                  test.noProxy,
+				PauseImage:               test.pauseImage,
+				KubeletFeatureGates:      kubeletFeatureGates,
+				ContainerRuntime:         containerRuntimeConfig,
 			}
 
 			s, err := provider.UserData(req)
