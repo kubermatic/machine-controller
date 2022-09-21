@@ -43,6 +43,7 @@ type RawConfig struct {
 	ImagePlan                   *ImagePlan                          `json:"imagePlan,omitempty"`
 	ImageReference              *ImageReference                     `json:"imageReference,omitempty"`
 	EnableAcceleratedNetworking *bool                               `json:"enableAcceleratedNetworking"`
+	EnableBootDiagnostics       *bool                               `json:"enableBootDiagnostics,omitempty"`
 
 	ImageID        providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                               `json:"osDiskSize"`

@@ -106,6 +106,7 @@ type config struct {
 	AssignPublicIP              bool
 	PublicIPSKU                 *network.PublicIPAddressSkuName
 	EnableAcceleratedNetworking *bool
+	EnableBootDiagnostics       bool
 	Tags                        map[string]string
 }
 
@@ -378,6 +379,10 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	c.ImageID, err = p.configVarResolver.GetConfigVarStringValue(rawCfg.ImageID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get image id: %w", err)
+	}
+
+	if rawCfg.EnableBootDiagnostics != nil {
+		c.EnableBootDiagnostics = *rawCfg.EnableBootDiagnostics
 	}
 
 	return &c, pconfig, nil
@@ -696,6 +701,14 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		// Azure expects the full path to the resource
 		asURI := fmt.Sprintf("/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s", config.SubscriptionID, config.ResourceGroup, config.AvailabilitySet)
 		vmSpec.VirtualMachineProperties.AvailabilitySet = &compute.SubResource{ID: to.StringPtr(asURI)}
+	}
+
+	if config.EnableBootDiagnostics {
+		vmSpec.DiagnosticsProfile = &compute.DiagnosticsProfile{
+			BootDiagnostics: &compute.BootDiagnostics{
+				Enabled: pointer.Bool(config.EnableBootDiagnostics),
+			},
+		}
 	}
 
 	klog.Infof("Creating machine %q", machine.Name)
