@@ -101,7 +101,7 @@ write_files:
     EnvironmentFile=-/etc/environment
     EOF
 
-    apt-get install -y --allow-downgrades containerd.io=1.5*
+    apt-get install -y --allow-downgrades containerd.io=1.6*
     apt-mark hold containerd.io
 
     systemctl daemon-reload

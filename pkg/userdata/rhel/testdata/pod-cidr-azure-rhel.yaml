@@ -99,7 +99,7 @@ write_files:
 
     yum install -y \
         docker-ce-cli-20.10* \
-        containerd.io-1.5* \
+        containerd.io-1.6* \
         docker-ce-20.10* \
         yum-plugin-versionlock
     yum versionlock add docker-ce* containerd.io
