@@ -28,7 +28,7 @@ import (
 
 const (
 	LegacyDockerContainerdVersion  = "1.4"
-	DefaultDockerContainerdVersion = "1.5"
+	DefaultDockerContainerdVersion = "1.6"
 	DefaultDockerVersion           = "20.10"
 	LegacyDockerVersion            = "19.03"
 )
