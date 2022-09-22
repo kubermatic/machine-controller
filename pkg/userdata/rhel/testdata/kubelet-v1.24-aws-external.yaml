@@ -95,7 +95,7 @@ write_files:
     EnvironmentFile=-/etc/environment
     EOF
 
-    yum install -y containerd.io-1.5* yum-plugin-versionlock
+    yum install -y containerd.io-1.6* yum-plugin-versionlock
     yum versionlock add containerd.io
 
     systemctl daemon-reload

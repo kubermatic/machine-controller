@@ -28,7 +28,7 @@ import (
 
 const (
 	LegacyContainerdVersion  = "1.4"
-	DefaultContainerdVersion = "1.5"
+	DefaultContainerdVersion = "1.6"
 )
 
 type Containerd struct {
