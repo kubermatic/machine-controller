@@ -608,6 +608,10 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 		resourceRequirements.Limits = *requestsAndLimits
 	}
 
+	// Add cluster labels
+	labels["cluster.x-k8s.io/cluster-name"] = c.Namespace
+	labels["cluster.x-k8s.io/role"] = "worker"
+
 	var (
 		dataVolumeName = machine.Name
 		annotations    map[string]string
