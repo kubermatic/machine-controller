@@ -30,7 +30,7 @@ const (
 
 	CloudConfigSecretNamePattern = "%s-%s-%s-config"
 
-	// CloudInitSettingsNamespace is the namespace in which bootstrap secrets are created by an external mechanism
+	// CloudInitSettingsNamespace is the namespace in which bootstrap secrets are created by an external mechanism.
 	CloudInitSettingsNamespace = "cloud-init-settings"
 	// MachineDeploymentRevision is the revision for Machine Deployment.
 	MachineDeploymentRevision = "k8c.io/machine-deployment-revision"
