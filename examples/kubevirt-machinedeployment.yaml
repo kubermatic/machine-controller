@@ -40,13 +40,20 @@ spec:
                   size: "10Gi"
                   storageClassName: kubermatic-fast
             affinity:
+              # Deprecated: Use topologySpreadConstraints instead.
               podAffinityPreset: "" # Allowed values: "", "soft", "hard"
+              # Deprecated: Use topologySpreadConstraints instead.
               podAntiAffinityPreset: "" # Allowed values: "", "soft", "hard"
               nodeAffinityPreset:
                 type: "" # Allowed values: "", "soft", "hard"
                 key: "foo"
                 values:
                   - bar
+            topologySpreadConstraints:
+              - maxSkew: "1"
+                topologyKey: "kubernetes.io/hostname"
+                whenUnsatisfiable: "" # Allowed values: "DoNotSchedule", "ScheduleAnyway"
+
           # Can also be `centos`, must align with he configured registryImage above
           operatingSystem: "ubuntu"
           operatingSystemSpec:

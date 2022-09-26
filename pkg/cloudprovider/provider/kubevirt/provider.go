@@ -86,21 +86,22 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 }
 
 type Config struct {
-	Kubeconfig            string
-	RestConfig            *rest.Config
-	DNSConfig             *corev1.PodDNSConfig
-	DNSPolicy             corev1.DNSPolicy
-	CPUs                  string
-	Memory                string
-	Namespace             string
-	OsImage               OSImage
-	StorageClassName      string
-	PVCSize               resource.Quantity
-	FlavorName            string
-	SecondaryDisks        []SecondaryDisks
-	PodAffinityPreset     AffinityType
-	PodAntiAffinityPreset AffinityType
-	NodeAffinityPreset    NodeAffinityPreset
+	Kubeconfig                string
+	RestConfig                *rest.Config
+	DNSConfig                 *corev1.PodDNSConfig
+	DNSPolicy                 corev1.DNSPolicy
+	CPUs                      string
+	Memory                    string
+	Namespace                 string
+	OsImage                   OSImage
+	StorageClassName          string
+	PVCSize                   resource.Quantity
+	FlavorName                string
+	SecondaryDisks            []SecondaryDisks
+	PodAffinityPreset         AffinityType
+	PodAntiAffinityPreset     AffinityType
+	NodeAffinityPreset        NodeAffinityPreset
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 }
 
 type AffinityType string
@@ -304,18 +305,13 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		})
 	}
 
-	// Affinity/AntiAffinity
-	config.PodAffinityPreset, err = p.affinityType(rawConfig.Affinity.PodAffinityPreset)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "podAffinityPreset" field: %w`, err)
-	}
-	config.PodAntiAffinityPreset, err = p.affinityType(rawConfig.Affinity.PodAntiAffinityPreset)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "podAntiAffinityPreset" field: %w`, err)
-	}
 	config.NodeAffinityPreset, err = p.parseNodeAffinityPreset(rawConfig.Affinity.NodeAffinityPreset)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to parse "nodeAffinityPreset" field: %w`, err)
+	}
+	config.TopologySpreadConstraints, err = p.parseTopologySpreadConstraint(rawConfig.TopologySpreadConstraints)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to parse "topologySpreadConstraints" field: %w`, err)
 	}
 
 	return &config, pconfig, nil
@@ -341,6 +337,34 @@ func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.Node
 		nodeAffinity.Values = append(nodeAffinity.Values, valueString)
 	}
 	return nodeAffinity, nil
+}
+
+func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirttypes.TopologySpreadConstraint) ([]corev1.TopologySpreadConstraint, error) {
+	parsedTopologyConstraints := make([]corev1.TopologySpreadConstraint, 0, len(topologyConstraints))
+	for _, constraint := range topologyConstraints {
+		maxSkewString, err := p.configVarResolver.GetConfigVarStringValue(constraint.MaxSkew)
+		if err != nil {
+			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.maxSkew" field: %w`, err)
+		}
+		maxSkew, err := strconv.ParseInt(maxSkewString, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.maxSkew" field: %w`, err)
+		}
+		topologyKey, err := p.configVarResolver.GetConfigVarStringValue(constraint.TopologyKey)
+		if err != nil {
+			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.topologyKey" field: %w`, err)
+		}
+		whenUnsatisfiable, err := p.configVarResolver.GetConfigVarStringValue(constraint.WhenUnsatisfiable)
+		if err != nil {
+			return nil, fmt.Errorf(`failed to parse "topologySpreadConstraint.whenUnsatisfiable" field: %w`, err)
+		}
+		parsedTopologyConstraints = append(parsedTopologyConstraints, corev1.TopologySpreadConstraint{
+			MaxSkew:           int32(maxSkew),
+			TopologyKey:       topologyKey,
+			WhenUnsatisfiable: corev1.UnsatisfiableConstraintAction(whenUnsatisfiable),
+		})
+	}
+	return parsedTopologyConstraints, nil
 }
 
 // getNamespace returns the namespace where the VM is created.
@@ -572,6 +596,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 					Volumes:                       getVMVolumes(c, dataVolumeName, userDataSecretName),
 					DNSPolicy:                     c.DNSPolicy,
 					DNSConfig:                     c.DNSConfig,
+					TopologySpreadConstraints:     getTopologySpreadConstraints(c, map[string]string{machineDeploymentLabelKey: labels[machineDeploymentLabelKey]}),
 				},
 			},
 			DataVolumeTemplates: getDataVolumeTemplates(c, dataVolumeName),
@@ -781,30 +806,6 @@ func getDataVolumeSource(osImage OSImage) *cdiv1beta1.DataVolumeSource {
 func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
 	affinity := &corev1.Affinity{}
 
-	// PodAffinity
-	switch config.PodAffinityPreset {
-	case softAffinityType:
-		affinity.PodAffinity = &corev1.PodAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: hostnameWeightedAffinityTerm(matchKey, matchValue),
-		}
-	case hardAffinityType:
-		affinity.PodAffinity = &corev1.PodAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: hostnameAffinityTerm(matchKey, matchValue),
-		}
-	}
-
-	// PodAntiAffinity
-	switch config.PodAntiAffinityPreset {
-	case softAffinityType:
-		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: hostnameWeightedAffinityTerm(matchKey, matchValue),
-		}
-	case hardAffinityType:
-		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: hostnameAffinityTerm(matchKey, matchValue),
-		}
-	}
-
 	// NodeAffinity
 	switch config.NodeAffinityPreset.Type {
 	case softAffinityType:
@@ -845,37 +846,26 @@ func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
 	return affinity
 }
 
-func hostnameWeightedAffinityTerm(matchKey, matchValue string) []corev1.WeightedPodAffinityTerm {
-	return []corev1.WeightedPodAffinityTerm{
-		{
-			Weight: 1,
-			PodAffinityTerm: corev1.PodAffinityTerm{
-				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						matchKey: matchValue,
-					},
-				},
-				TopologyKey: topologyKeyHostname,
-			},
-		},
-	}
-}
-
-func hostnameAffinityTerm(matchKey, matchValue string) []corev1.PodAffinityTerm {
-	return []corev1.PodAffinityTerm{
-		{
-			LabelSelector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					matchKey: matchValue,
-				},
-			},
-			TopologyKey: topologyKeyHostname,
-		},
-	}
-}
-
 func addPrefixToSecondaryDisk(secondaryDisks []SecondaryDisks, prefix string) {
 	for i := range secondaryDisks {
 		secondaryDisks[i].Name = fmt.Sprintf("%s-%s", prefix, secondaryDisks[i].Name)
+	}
+}
+
+func getTopologySpreadConstraints(config *Config, matchLabels map[string]string) []corev1.TopologySpreadConstraint {
+	if len(config.TopologySpreadConstraints) != 0 {
+		for i := range config.TopologySpreadConstraints {
+			config.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{MatchLabels: matchLabels}
+		}
+		return config.TopologySpreadConstraints
+	}
+	// Return default TopologySpreadConstraint
+	return []corev1.TopologySpreadConstraint{
+		{
+			MaxSkew:           1,
+			TopologyKey:       topologyKeyHostname,
+			WhenUnsatisfiable: corev1.ScheduleAnyway,
+			LabelSelector:     &metav1.LabelSelector{MatchLabels: matchLabels},
+		},
 	}
 }
