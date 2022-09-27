@@ -21,7 +21,6 @@ limitations under the License.
 package manager
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -77,15 +76,5 @@ func (p *Plugin) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("FAILED TO PROVIDE USERDATA: %w", err)
 	}
 
-	fmt.Println(string(out))
-
-	var resp plugin.UserDataResponse
-	err = json.Unmarshal([]byte(out), &resp)
-	if err != nil {
-		return "", fmt.Errorf("FAILED TO UNMARSHALL: %w", err)
-	}
-	if resp.Err != "" {
-		return "", fmt.Errorf("%s", resp.Err)
-	}
-	return resp.UserData, nil
+	return out, nil
 }
