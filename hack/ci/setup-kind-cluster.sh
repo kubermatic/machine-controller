@@ -146,7 +146,7 @@ if [ ! -f cni-plugin-deployed ]; then
     setup_cni_in_kind=$(cat hack/ci/setup-cni-in-kind.sh)
     docker exec $KIND_CLUSTER_NAME-control-plane bash -c "$setup_cni_in_kind &"
   )
-  kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.18.0/Documentation/kube-flannel.yml
+  kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.19.2/Documentation/kube-flannel.yml
   touch cni-plugin-deployed
 fi
 
