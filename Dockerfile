@@ -24,7 +24,6 @@ RUN apk add --no-cache ca-certificates cdrkit
 
 COPY --from=builder \
     /go/src/github.com/kubermatic/machine-controller/machine-controller \
-    /go/src/github.com/kubermatic/machine-controller/machine-controller-userdata-* \
     /go/src/github.com/kubermatic/machine-controller/webhook \
     /usr/local/bin/
 USER nobody

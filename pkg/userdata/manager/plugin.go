@@ -23,119 +23,69 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-
-	"k8s.io/klog"
-)
-
-const (
-	// pluginPrefix has to be the prefix of all plugin filenames.
-	pluginPrefix = "machine-controller-userdata-"
+	"github.com/kubermatic/machine-controller/pkg/userdata/amzn2"
+	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
+	"github.com/kubermatic/machine-controller/pkg/userdata/flatcar"
+	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
+	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
+	"github.com/kubermatic/machine-controller/pkg/userdata/sles"
+	"github.com/kubermatic/machine-controller/pkg/userdata/ubuntu"
 )
 
 // Plugin looks for the plugin executable and calls it for
 // each request.
 type Plugin struct {
-	debug   bool
-	command string
+	provider userdataplugin.Provider
 }
 
 // newPlugin creates a new plugin manager. It starts the named
 // binary and connects to it via net/rpc.
 func newPlugin(os providerconfigtypes.OperatingSystem, debug bool) (*Plugin, error) {
+	var provider userdataplugin.Provider
+	switch os {
+	case providerconfigtypes.OperatingSystemUbuntu:
+		provider = new(ubuntu.Provider)
+	case providerconfigtypes.OperatingSystemCentOS:
+		provider = new(centos.Provider)
+	case providerconfigtypes.OperatingSystemAmazonLinux2:
+		provider = new(amzn2.Provider)
+	case providerconfigtypes.OperatingSystemSLES:
+		provider = new(sles.Provider)
+	case providerconfigtypes.OperatingSystemRHEL:
+		provider = new(rhel.Provider)
+	case providerconfigtypes.OperatingSystemFlatcar:
+		provider = new(flatcar.Provider)
+	case providerconfigtypes.OperatingSystemRockyLinux:
+		provider = new(rockylinux.Provider)
+	}
+
 	p := &Plugin{
-		debug: debug,
+		provider: provider,
 	}
-	if err := p.findPlugin(string(os)); err != nil {
-		return nil, err
-	}
+
 	return p, nil
 }
 
 // UserData retrieves the user data of the given resource via
 // plugin handling the communication.
 func (p *Plugin) UserData(req plugin.UserDataRequest) (string, error) {
-	// Prepare command.
-	var argv []string
-	if p.debug {
-		argv = append(argv, "-debug")
-	}
-	cmd := exec.Command(p.command, argv...)
-	// Set environment.
-	reqj, err := json.Marshal(req)
+	out, err := p.provider.UserData(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("FAILED TO PROVIDE USERDATA: %w", err)
 	}
-	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", plugin.EnvUserDataRequest, string(reqj)))
-	// Execute command.
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to execute command %q: output: %q error: %w", p.command, string(out), err)
-	}
+
+	fmt.Println(string(out))
+
 	var resp plugin.UserDataResponse
-	err = json.Unmarshal(out, &resp)
+	err = json.Unmarshal([]byte(out), &resp)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("FAILED TO UNMARSHALL: %w", err)
 	}
 	if resp.Err != "" {
 		return "", fmt.Errorf("%s", resp.Err)
 	}
 	return resp.UserData, nil
-}
-
-// findPlugin tries to find the executable of the plugin.
-func (p *Plugin) findPlugin(name string) error {
-	filename := pluginPrefix + name
-	klog.Infof("looking for plugin %q", filename)
-	// Create list to search in.
-	var dirs []string
-	envDir := os.Getenv(plugin.EnvPluginDir)
-	if envDir != "" {
-		dirs = append(dirs, envDir)
-	}
-	executable, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	ownDir, _ := filepath.Split(executable)
-	ownDir, err = filepath.Abs(ownDir)
-	if err != nil {
-		return err
-	}
-	dirs = append(dirs, ownDir)
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	dirs = append(dirs, workingDir)
-	path := os.Getenv("PATH")
-	pathDirs := strings.Split(path, string(os.PathListSeparator))
-	dirs = append(dirs, pathDirs...)
-	// Now take a look.
-	for _, dir := range dirs {
-		command := dir + string(os.PathSeparator) + filename
-		klog.V(3).Infof("checking %q", command)
-		fi, err := os.Stat(command)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return fmt.Errorf("error when looking for %q: %w", command, err)
-		}
-		if fi.IsDir() || (fi.Mode()&0111 == 0) {
-			klog.Infof("found '%s', but is no executable", command)
-			continue
-		}
-		p.command = command
-		klog.Infof("found '%s'", command)
-		return nil
-	}
-	klog.Errorf("did not find '%s'", filename)
-	return ErrPluginNotFound
 }

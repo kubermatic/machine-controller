@@ -24,10 +24,6 @@ limitations under the License.
 package plugin
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 )
 
@@ -35,54 +31,4 @@ import (
 // for the retrieval of the userdata based on the given arguments.
 type Provider interface {
 	UserData(req plugin.UserDataRequest) (string, error)
-}
-
-// Plugin implements a convenient helper to map the request to the given
-// provider and return the response.
-type Plugin struct {
-	provider Provider
-	debug    bool
-}
-
-// New creates a new plugin.
-func New(provider Provider, debug bool) *Plugin {
-	return &Plugin{
-		provider: provider,
-		debug:    debug,
-	}
-}
-
-// Run looks for the given request and executes it.
-func (p *Plugin) Run() error {
-	reqEnv := os.Getenv(plugin.EnvUserDataRequest)
-	if reqEnv == "" {
-		resp := plugin.ErrorResponse{
-			Err: fmt.Sprintf("environment variable '%s' not set", plugin.EnvUserDataRequest),
-		}
-		return p.printResponse(resp)
-	}
-	// Handle the request for user data.
-	var req plugin.UserDataRequest
-	err := json.Unmarshal([]byte(reqEnv), &req)
-	if err != nil {
-		return err
-	}
-	userData, err := p.provider.UserData(req)
-	var resp plugin.UserDataResponse
-	if err != nil {
-		resp.Err = err.Error()
-	} else {
-		resp.UserData = userData
-	}
-	return p.printResponse(resp)
-}
-
-// printResponse marshals the response and prints it to stdout.
-func (p *Plugin) printResponse(resp interface{}) error {
-	bs, err := json.Marshal(resp)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Printf("%s", string(bs))
-	return err
 }
