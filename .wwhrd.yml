@@ -23,6 +23,7 @@ allowlist:
   - BSD-2-Clause-FreeBSD
   - BSD-3-Clause
   - ISC
+  - MPL-2.0
 
 exceptions:
   - github.com/hashicorp/golang-lru # MPL-2.0
