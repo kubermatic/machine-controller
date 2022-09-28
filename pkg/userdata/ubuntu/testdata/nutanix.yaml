@@ -102,7 +102,7 @@ write_files:
     EOF
 
     apt-get install --allow-downgrades -y \
-        containerd.io=1.5* \
+        containerd.io=1.6* \
         docker-ce-cli=5:20.10* \
         docker-ce=5:20.10*
     apt-mark hold docker-ce* containerd.io
