@@ -112,6 +112,8 @@ type config struct {
 	regional                     bool
 	customImage                  string
 	disableMachineServiceAccount bool
+	enableNestedVirtualization   bool
+	minCpuPlatform               string
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -218,6 +220,16 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.disableMachineServiceAccount, _, err = resolver.GetConfigVarBoolValue(cpSpec.DisableMachineServiceAccount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve disable machine service account: %w", err)
+	}
+
+	cfg.enableNestedVirtualization, _, err = resolver.GetConfigVarBoolValue(cpSpec.EnableNestedVirtualization)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve enable nested virtualization: %w", err)
+	}
+
+	cfg.minCpuPlatform, err = resolver.GetConfigVarStringValue(cpSpec.MinCpuPlatform)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve min cpu platform: %w", err)
 	}
 
 	return cfg, nil
