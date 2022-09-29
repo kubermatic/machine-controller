@@ -49,7 +49,7 @@ type CloudProviderSpec struct {
 	CustomImage                  providerconfigtypes.ConfigVarString  `json:"customImage,omitempty"`
 	DisableMachineServiceAccount providerconfigtypes.ConfigVarBool    `json:"disableMachineServiceAccount,omitempty"`
 	EnableNestedVirtualization   providerconfigtypes.ConfigVarBool    `json:"enableNestedVirtualization,omitempty"`
-	MinCpuPlatform               providerconfigtypes.ConfigVarString  `json:"MinCpuPlatform,omitempty"`
+	MinCPUPlatform               providerconfigtypes.ConfigVarString  `json:"MinCPUPlatform,omitempty"`
 }
 
 // UpdateProviderSpec updates the given provider spec with changed

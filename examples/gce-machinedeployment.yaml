@@ -70,7 +70,7 @@ spec:
             customImage: "myCustomImage"
             disableMachineServiceAccount: false
             enableNestedVirtualization: false
-            minCpuPlatform: "Intel Haswell"
+            minCPUPlatform: "Intel Haswell"
           # Can be 'ubuntu' or 'rhel'
           operatingSystem: "ubuntu"
           operatingSystemSpec:

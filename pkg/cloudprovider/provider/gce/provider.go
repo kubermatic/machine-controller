@@ -286,8 +286,8 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		}
 	}
 
-	if cfg.minCpuPlatform != "" {
-		inst.MinCpuPlatform = cfg.minCpuPlatform
+	if cfg.minCPUPlatform != "" {
+		inst.MinCpuPlatform = cfg.minCPUPlatform
 	}
 
 	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
