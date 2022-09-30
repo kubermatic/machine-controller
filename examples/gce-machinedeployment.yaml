@@ -71,6 +71,9 @@ spec:
             disableMachineServiceAccount: false
             enableNestedVirtualization: false
             minCPUPlatform: "Intel Haswell"
+            guestOSFeatures:
+              - "VIRTIO_SCSI_MULTIQUEUE"
+              - "GVNIC"
           # Can be 'ubuntu' or 'rhel'
           operatingSystem: "ubuntu"
           operatingSystemSpec:

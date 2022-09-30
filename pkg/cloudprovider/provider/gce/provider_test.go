@@ -57,6 +57,10 @@ func testProviderSpec() map[string]interface{} {
 			"disableMachineServiceAccount": false,
 			"enableNestedVirtualization":   true,
 			"minCPUPlatform":               "Intel Haswell",
+			"guestOSFeatures": []string{
+				"VIRTIO_SCSI_MULTIQUEUE",
+				"GVNIC",
+			},
 		},
 		"operatingSystem": "ubuntu",
 		"operatingSystemSpec": map[string]interface{}{
