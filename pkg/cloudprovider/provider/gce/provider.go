@@ -280,6 +280,16 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		inst.Scheduling.ProvisioningModel = *cfg.provisioningModel
 	}
 
+	if cfg.enableNestedVirtualization {
+		inst.AdvancedMachineFeatures = &compute.AdvancedMachineFeatures{
+			EnableNestedVirtualization: true,
+		}
+	}
+
+	if cfg.minCPUPlatform != "" {
+		inst.MinCpuPlatform = cfg.minCPUPlatform
+	}
+
 	op, err := svc.Instances.Insert(cfg.projectID, cfg.zone, inst).Do()
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)

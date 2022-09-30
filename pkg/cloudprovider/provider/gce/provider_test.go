@@ -55,6 +55,8 @@ func testProviderSpec() map[string]interface{} {
 			},
 			"zone":                         "europe-west2-a",
 			"disableMachineServiceAccount": false,
+			"enableNestedVirtualization":   true,
+			"minCPUPlatform":               "Intel Haswell",
 		},
 		"operatingSystem": "ubuntu",
 		"operatingSystemSpec": map[string]interface{}{

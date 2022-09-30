@@ -69,6 +69,8 @@ spec:
             assignPublicIPAddress: true
             customImage: "myCustomImage"
             disableMachineServiceAccount: false
+            enableNestedVirtualization: false
+            minCPUPlatform: "Intel Haswell"
           # Can be 'ubuntu' or 'rhel'
           operatingSystem: "ubuntu"
           operatingSystemSpec:
