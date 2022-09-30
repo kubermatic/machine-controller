@@ -17,6 +17,8 @@ limitations under the License.
 package types
 
 import (
+	kubevirtv1 "kubevirt.io/api/core/v1"
+
 	"github.com/kubermatic/machine-controller/pkg/jsonutil"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -37,10 +39,14 @@ type Auth struct {
 
 // VirtualMachine.
 type VirtualMachine struct {
-	Flavor    Flavor                              `json:"flavor,omitempty"`
-	Template  Template                            `json:"template,omitempty"`
-	DNSPolicy providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
-	DNSConfig *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
+	Flavor Flavor `json:"flavor,omitempty"`
+	// Instancetype is optional.
+	Instancetype *kubevirtv1.InstancetypeMatcher `json:"instancetype,omitempty"`
+	// Preference is optional.
+	Preference *kubevirtv1.PreferenceMatcher       `json:"preference,omitempty"`
+	Template   Template                            `json:"template,omitempty"`
+	DNSPolicy  providerconfigtypes.ConfigVarString `json:"dnsPolicy,omitempty"`
+	DNSConfig  *corev1.PodDNSConfig                `json:"dnsConfig,omitempty"`
 }
 
 // Flavor.
