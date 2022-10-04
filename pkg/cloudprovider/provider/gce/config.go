@@ -114,6 +114,7 @@ type config struct {
 	disableMachineServiceAccount bool
 	enableNestedVirtualization   bool
 	minCPUPlatform               string
+	guestOSFeatures              []string
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -126,10 +127,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 
 	// Setup configuration.
 	cfg := &config{
-		providerConfig: providerConfig,
-		labels:         cpSpec.Labels,
-		tags:           cpSpec.Tags,
-		diskSize:       cpSpec.DiskSize,
+		providerConfig:  providerConfig,
+		labels:          cpSpec.Labels,
+		tags:            cpSpec.Tags,
+		diskSize:        cpSpec.DiskSize,
+		guestOSFeatures: cpSpec.GuestOSFeatures,
 	}
 
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)

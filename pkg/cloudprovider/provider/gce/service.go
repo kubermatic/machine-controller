@@ -125,6 +125,11 @@ func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) 
 			SourceImage: sourceImage,
 		},
 	}
+	for _, v := range cfg.guestOSFeatures {
+		bootDisk.GuestOsFeatures = append(bootDisk.GuestOsFeatures, &compute.GuestOsFeature{
+			Type: v,
+		})
+	}
 	return []*compute.AttachedDisk{bootDisk}, nil
 }
 
