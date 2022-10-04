@@ -41,7 +41,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/health"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
-	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -72,7 +71,8 @@ var (
 	enableLeaderElection             bool
 	leaderElectionNamespace          string
 
-	useOSM bool
+	useOSM               bool
+	useExternalBootstrap bool
 
 	nodeCSRApprover                   bool
 	nodeHTTPProxy                     string
@@ -129,7 +129,8 @@ type controllerRunOptions struct {
 
 	node machinecontroller.NodeSettings
 
-	useOSM bool
+	// Enable external bootstrap management by consuming secrets that are used to configure an instance's user-data.
+	useExternalBootstrap bool
 
 	// A port range to reserve for services with NodePort visibility.
 	nodePortRange string
@@ -175,7 +176,8 @@ func main() {
 	flag.StringVar(&podCIDR, "pod-cidr", "172.25.0.0/16", "WARNING: flag is unused, kept only for backwards compatibility")
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that contains auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/master/docs/registry-authentication.md")
-	flag.BoolVar(&useOSM, "use-osm", false, "use osm controller for node bootstrap")
+	flag.BoolVar(&useOSM, "use-osm", false, "DEPRECATED: use osm controller for node bootstrap [use use-external-bootstrap instead]")
+	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", false, "use an external bootstrap provider for instance user-data (e.g. operating-system-manager, also known as OSM)")
 	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
 
 	flag.Parse()
@@ -205,11 +207,6 @@ func main() {
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
-	}
-
-	// needed for OSM
-	if err := osmv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
@@ -271,7 +268,7 @@ func main() {
 			RegistryCredentialsSecretRef: nodeRegistryCredentialsSecret,
 			ContainerRuntime:             containerRuntimeConfig,
 		},
-		useOSM:                            useOSM,
+		useExternalBootstrap:              useExternalBootstrap || useOSM,
 		nodePortRange:                     nodePortRange,
 		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}
@@ -409,7 +406,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
-		bs.opt.useOSM,
+		bs.opt.useExternalBootstrap,
 		bs.opt.nodePortRange,
 		bs.opt.overrideBootstrapKubeletAPIServer,
 	); err != nil {

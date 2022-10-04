@@ -48,8 +48,6 @@ require (
 	google.golang.org/grpc v1.45.0
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/yaml.v3 v3.0.1
-	// Please ensure that you update the image tags in `examples/operating-system-manager.yaml` as well.
-	k8c.io/operating-system-manager v1.0.0
 	k8s.io/api v0.25.0
 	k8s.io/apiextensions-apiserver v0.24.2
 	k8s.io/apimachinery v0.25.0
@@ -95,10 +93,9 @@ require (
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
-	github.com/flatcar-linux/container-linux-config-transpiler v0.9.3 // indirect
-	github.com/flatcar-linux/ignition v0.36.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/zapr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect

@@ -25,9 +25,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
-	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,6 +39,7 @@ type options struct {
 	admissionTLSKeyPath     string
 	caBundleFile            string
 	useOSM                  bool
+	useExternalBootstrap    bool
 	namespace               string
 	workerClusterKubeconfig string
 	versionConstraint       string
@@ -66,7 +65,8 @@ func main() {
 	flag.StringVar(&opt.versionConstraint, "kubernetes-version-constraints", ">=0.0.0", "")
 
 	// OSM specific flags
-	flag.BoolVar(&opt.useOSM, "use-osm", false, "osm controller is enabled for node bootstrap")
+	flag.BoolVar(&opt.useOSM, "use-osm", false, "DEPRECATED: osm controller is enabled for node bootstrap [use use-external-bootstrap instead]")
+	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", false, "user-data is provided by external bootstrap mechanism (e.g. operating-system-manager, also known as OSM)")
 
 	flag.Parse()
 	opt.kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
@@ -76,11 +76,6 @@ func main() {
 		if err := util.SetCABundleFile(opt.caBundleFile); err != nil {
 			klog.Fatalf("-ca-bundle is invalid: %v", err)
 		}
-	}
-
-	// Add osmv1alpha1 to scheme
-	if err := osmv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add osmv1alpha1 api to scheme: %v", err)
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(opt.masterURL, opt.kubeconfig)
@@ -122,14 +117,14 @@ func main() {
 	}
 
 	srv, err := admission.Builder{
-		ListenAddress:      opt.admissionListenAddress,
-		Client:             client,
-		WorkerClient:       workerClient,
-		UserdataManager:    um,
-		NodeFlags:          nodeFlags,
-		UseOSM:             opt.useOSM,
-		Namespace:          opt.namespace,
-		VersionConstraints: constraint,
+		ListenAddress:        opt.admissionListenAddress,
+		Client:               client,
+		WorkerClient:         workerClient,
+		UserdataManager:      um,
+		UseExternalBootstrap: opt.useExternalBootstrap || opt.useOSM,
+		NodeFlags:            nodeFlags,
+		Namespace:            opt.namespace,
+		VersionConstraints:   constraint,
 	}.Build()
 	if err != nil {
 		klog.Fatalf("failed to create admission hook: %v", err)

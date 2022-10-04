@@ -3,6 +3,8 @@ kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
+  annotations:
+    k8c.io/operating-system-profile: osp-<< OS_NAME >>
 spec:
   replicas: 1
   strategy:
@@ -35,7 +37,7 @@ spec:
             diskType: "gp2"
             ebsVolumeEncrypted: true
             securityGroupIDs:
-            - "sg-a2c195ca"
+              - "sg-a2c195ca"
             tags:
               # you have to set this flag to real clusterID when running against our dev or prod
               # otherwise you might have issues with your nodes not joining the cluster

@@ -3,6 +3,8 @@ kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
+  annotations:
+    k8c.io/operating-system-profile: osp-<< OS_NAME >>
 spec:
   replicas: 1
   strategy:
@@ -36,7 +38,7 @@ spec:
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-                "kubernetes_cluster": "gce-test-cluster"
+              "kubernetes_cluster": "gce-test-cluster"
             assignPublicIPAddress: true
             customImage: "<< CUSTOM-IMAGE >>"
             disableMachineServiceAccount: false

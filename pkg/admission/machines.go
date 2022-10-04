@@ -98,12 +98,15 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 		common.SetOSLabel(&machine.Spec, string(providerConfig.OperatingSystem))
 	}
 
-	// Set LegacyMachineControllerUserDataLabel to false if OSM was used for managing the machine configuration.
-	if ad.useOSM {
-		if machine.Labels == nil {
-			machine.Labels = make(map[string]string)
-		}
+	if machine.Labels == nil {
+		machine.Labels = make(map[string]string)
+	}
+
+	// Set LegacyMachineControllerUserDataLabel to false if external bootstrapping is expected for managing the machine configuration.
+	if ad.useExternalBootstrap {
 		machine.Labels[controllerutil.LegacyMachineControllerUserDataLabel] = "false"
+	} else {
+		machine.Labels[controllerutil.LegacyMachineControllerUserDataLabel] = "true"
 	}
 
 	return createAdmissionResponse(machineOriginal, &machine)
@@ -169,7 +172,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		providerConfig.OperatingSystem,
 		providerConfig.CloudProvider,
 		providerConfig.OperatingSystemSpec,
-		ad.useOSM,
+		ad.useExternalBootstrap,
 	)
 	if err != nil {
 		return err

@@ -3,6 +3,8 @@ kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
+  annotations:
+    k8c.io/operating-system-profile: osp-<< OS_NAME >>
 spec:
   replicas: 1
   strategy:
@@ -21,7 +23,7 @@ spec:
       providerSpec:
         value:
           sshPublicKeys:
-          - "<< YOUR_PUBLIC_KEY >>"
+            - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: anexia
           cloudProviderSpec:
             token: "<< ANEXIA_TOKEN >>"

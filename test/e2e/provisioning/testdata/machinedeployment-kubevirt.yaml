@@ -3,6 +3,8 @@ kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
+  annotations:
+    k8c.io/operating-system-profile: osp-<< OS_NAME >>
 spec:
   paused: false
   replicas: 1
@@ -48,7 +50,7 @@ spec:
                 type: "" # Allowed values: "", "soft", "hard"
                 key: "foo"
                 values:
-                - bar
+                  - bar
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
