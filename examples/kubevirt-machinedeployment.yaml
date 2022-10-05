@@ -34,10 +34,10 @@ spec:
             virtualMachine:
               instancetype:
                 name: "standard-2"
-                category: "standard" # Allowed values: "standard" (namespaced), "custom" (cluster-wide)
+                kind: "VirtualMachineInstancetype" # Allowed values: "VirtualMachineInstancetype"/"VirtualMachineClusterInstancetype"
               preference:
                 name: "sockets-advantage"
-                category: "standard" # Allowed values: "standard" (namespaced), "custom" (cluster-wide)
+                category: "VirtualMachinePreference" # Allowed values: "VirtualMachinePreference"/"VirtualMachineClusterPreference"
               # will be deprecated: in favor instancetype and preference
               flavor:
                 name: "kubermatic-standard"
