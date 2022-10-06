@@ -32,6 +32,15 @@ spec:
                 # If instead specified directly, this value should be a base64 encoded kubeconfig.
                 value: "<< KUBECONFIG_BASE64 >>"
             virtualMachine:
+              instancetype:
+                name: "standard-2"
+                kind: "VirtualMachineInstancetype" # Allowed values: "VirtualMachineInstancetype"/"VirtualMachineClusterInstancetype"
+              preference:
+                name: "sockets-advantage"
+                category: "VirtualMachinePreference" # Allowed values: "VirtualMachinePreference"/"VirtualMachineClusterPreference"
+              # will be deprecated: in favor instancetype and preference
+              flavor:
+                name: "kubermatic-standard"
               template:
                 cpus: "1"
                 memory: "2048M"
