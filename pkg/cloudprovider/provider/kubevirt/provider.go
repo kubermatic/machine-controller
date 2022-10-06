@@ -455,14 +455,9 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
-	// If instancetype is specified, skip CPU and Memory validation.
+	// If instancetype is specified (or flavor until deprecation), skip CPU and Memory validation.
 	// Values will come from instancetype.
-	if c.Instancetype == nil {
-		if _, err := parseResources(c.CPUs, c.Memory); err != nil {
-			return err
-		}
-	} else if c.FlavorName == "" {
-		// If VMIPreset is specified, skip CPU and Memory validation.
+	if c.Instancetype == nil && c.FlavorName == "" {
 		if _, err := parseResources(c.CPUs, c.Memory); err != nil {
 			return err
 		}
@@ -593,8 +588,8 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 		resourceRequirements.Requests = *requestsAndLimits
 		resourceRequirements.Limits = *requestsAndLimits
 	} else if c.FlavorName != "" && c.Instancetype == nil {
-		// if flavor is specified, then take it from flavor (if instancetype is not set!)
-		// Add VMIPreset label if specified
+		// if flavor is specified, then take it from flavor (if instancetype is not set!).
+		// Add VMIPreset label if specified.
 		vmiPreset := kubevirtv1.VirtualMachineInstancePreset{}
 		if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: c.FlavorName}, &vmiPreset); err != nil {
 			return nil, err
