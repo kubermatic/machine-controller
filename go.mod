@@ -21,7 +21,6 @@ require (
 	github.com/coreos/container-linux-config-transpiler v0.9.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.81.0
-	github.com/embik/nutanix-client-go v0.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-test/deep v1.0.8
 	github.com/google/uuid v1.3.0
@@ -29,6 +28,7 @@ require (
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.34.0
 	github.com/linode/linodego v1.8.0
+	github.com/nutanix-cloud-native/prism-go-client v0.3.0
 	github.com/packethost/packngo v0.25.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pborman/uuid v1.2.1
@@ -41,7 +41,7 @@ require (
 	github.com/vmware/go-vcloud-director/v2 v2.15.0
 	github.com/vmware/govmomi v0.28.0
 	go.anx.io/go-anxcloud v0.4.4
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	google.golang.org/api v0.74.0
@@ -73,6 +73,8 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
+	github.com/PaesslerAG/gval v1.0.0 // indirect
+	github.com/PaesslerAG/jsonpath v0.1.1 // indirect
 	github.com/ajeddeloh/go-json v0.0.0-20200220154158-5ae607161559 // indirect
 	github.com/ajeddeloh/yaml v0.0.0-20170912190910-6b94386aeefd // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
@@ -133,7 +135,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.35.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/rogpeppe/go-internal v1.6.1 // indirect
+	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

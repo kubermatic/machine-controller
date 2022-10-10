@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	nutanixclient "github.com/embik/nutanix-client-go/pkg/client"
-	nutanixv3 "github.com/embik/nutanix-client-go/pkg/client/v3"
+	nutanixclient "github.com/nutanix-cloud-native/prism-go-client"
+	nutanixv3 "github.com/nutanix-cloud-native/prism-go-client/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -226,7 +226,7 @@ func createVM(ctx context.Context, client *ClientSet, name string, conf Config, 
 
 func getSubnetByName(ctx context.Context, client *ClientSet, name, clusterID string) (*nutanixv3.SubnetIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	subnets, err := client.Prism.V3.ListAllSubnet(ctx, filter)
+	subnets, err := client.Prism.V3.ListAllSubnet(ctx, filter, nil)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
