@@ -140,13 +140,11 @@ echodate "Kind cluster $KIND_CLUSTER_NAME is up and running."
 
 if [ ! -f cni-plugin-deployed ]; then
   echodate "Installing CNI plugin."
-  (
-    # Install CNI plugins since they are not installed by default in KIND. Also, kube-flannel doesn't install
-    # CNI plugins unlike other plugins so we have to do it manually.
-    setup_cni_in_kind=$(cat hack/ci/setup-cni-in-kind.sh)
-    docker exec $KIND_CLUSTER_NAME-control-plane bash -c "$setup_cni_in_kind &"
-  )
-  kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.19.2/Documentation/kube-flannel.yml
+  helm repo add cilium https://helm.cilium.io/
+  helm install cilium cilium/cilium --version 1.12.2 \
+   --namespace kube-system \
+   --set image.pullPolicy=IfNotPresent \
+   --set ipam.mode=kubernetes
   touch cni-plugin-deployed
 fi
 
