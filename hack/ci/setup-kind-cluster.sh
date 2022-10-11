@@ -140,12 +140,7 @@ echodate "Kind cluster $KIND_CLUSTER_NAME is up and running."
 
 if [ ! -f cni-plugin-deployed ]; then
   echodate "Installing CNI plugin."
-  helm repo add cilium https://helm.cilium.io/
-  helm install cilium cilium/cilium --version 1.12.2 \
-    --namespace kube-system \
-    --set image.pullPolicy=IfNotPresent \
-    --set ipam.mode=kubernetes \
-    --set operator.replicas=1
+  kubectl apply -f hack/ci/calico.yaml
   touch cni-plugin-deployed
 fi
 
