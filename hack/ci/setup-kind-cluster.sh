@@ -80,6 +80,7 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: "${KIND_CLUSTER_NAME}"
 networking:
   apiServerAddress: "0.0.0.0"
+  disableDefaultCNI: true # disable kindnet
 kubeadmConfigPatches:
 - |
   kind: ClusterConfiguration
@@ -136,6 +137,18 @@ else
 fi
 
 echodate "Kind cluster $KIND_CLUSTER_NAME is up and running."
+
+if [ ! -f cni-plugin-deployed ]; then
+  echodate "Installing CNI plugin."
+  (
+    # Install CNI plugins since they are not installed by default in KIND. Also, kube-flannel doesn't install
+    # CNI plugins unlike other plugins so we have to do it manually.
+    setup_cni_in_kind=$(cat hack/ci/setup-cni-in-kind.sh)
+    docker exec $KIND_CLUSTER_NAME-control-plane bash -c "$setup_cni_in_kind &"
+  )
+  kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.19.2/Documentation/kube-flannel.yml
+  touch cni-plugin-deployed
+fi
 
 if [ -z "${DISABLE_CLUSTER_EXPOSER:-}" ]; then
   # Annotate kube-apiserver service so that the cluster exposer can expose it
