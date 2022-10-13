@@ -291,7 +291,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
-	selector := OsSelector("ubuntu", "flatcar", "rockylinux")
+	selector := OsSelector("ubuntu", "centos", "flatcar", "rockylinux")
 
 	params := []string{
 		fmt.Sprintf("<< KUBECONFIG_BASE64 >>=%s", safeBase64Encoding(kubevirtKubeconfig)),
@@ -390,7 +390,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "rockylinux")
+	selector := OsSelector("ubuntu", "centos", "rockylinux")
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
@@ -737,7 +737,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "rockylinux")
+	selector := OsSelector("ubuntu", "centos", "rockylinux")
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
@@ -760,7 +760,7 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := And(OsSelector("ubuntu", "rockylinux", "flatcar"), Not(NameSelector("migrateUID")))
+	selector := And(OsSelector("ubuntu", "centos", "rockylinux", "flatcar"), Not(NameSelector("migrateUID")))
 
 	// act
 	params := []string{
@@ -882,7 +882,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := OsSelector("ubuntu", "rhel", "flatcar")
+	selector := OsSelector("ubuntu", "centos", "rhel", "flatcar")
 
 	params := getVSphereTestParams(t)
 	runScenarios(t, selector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
@@ -973,7 +973,7 @@ func TestNutanixProvisioningE2E(t *testing.T) {
 
 	// exclude migrateUID test case because it's a no-op for Nutanix and runs from a different
 	// location, thus possibly blocking access a HTTP proxy if it is configured.
-	selector := And(OsSelector("ubuntu"), Not(NameSelector("migrateUID")))
+	selector := And(OsSelector("ubuntu", "centos"), Not(NameSelector("migrateUID")))
 	params := getNutanixTestParams(t)
 	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
