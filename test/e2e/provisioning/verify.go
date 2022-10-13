@@ -223,7 +223,6 @@ func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimecli
 			return foundConditions[corev1.NodeMemoryPressure] == corev1.ConditionFalse &&
 				foundConditions[corev1.NodeDiskPressure] == corev1.ConditionFalse &&
 				foundConditions[corev1.NodePIDPressure] == corev1.ConditionFalse, nil
-
 		}
 	}
 	return false, nil
