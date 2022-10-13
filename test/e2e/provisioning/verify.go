@@ -209,11 +209,12 @@ func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimecli
 	}
 	for _, node := range nodes.Items {
 		if isNodeForMachine(&node, machine) {
-			for _, condition := range node.Status.Conditions {
-				if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-					return true, nil
-				}
-			}
+			// TODO: re-enable this once you figure out how to properly run a CNI
+			//for _, condition := range node.Status.Conditions {
+			//	if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+			return true, nil
+			//}
+			//}
 		}
 	}
 	return false, nil
