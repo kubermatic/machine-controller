@@ -37,7 +37,7 @@ export GIT_HEAD_HASH="$(git rev-parse HEAD | tr -d '\n')"
 
 # PULL_BASE_REF is the name of the current branch in case of a post-submit
 # or the name of the base branch in case of a PR.
-GIT_BRANCH="${PULL_BASE_REF:-master}"
+GIT_BRANCH="${PULL_BASE_REF:-main}"
 
 # normalize branch name to prevent accidental directories being created
 GIT_BRANCH="$(echo "$GIT_BRANCH" | sed 's#/#-#g')"

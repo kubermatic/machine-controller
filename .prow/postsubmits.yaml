@@ -18,7 +18,7 @@ postsubmits:
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     branches:
-      - ^master$
+      - ^main$
       # Match on tags
       - ^v\d+\.\d+\.\d+.*
     labels:
@@ -49,7 +49,7 @@ postsubmits:
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     branches:
-      - ^master$
+      - ^main$
     labels:
       preset-goproxy: "true"
     spec:
