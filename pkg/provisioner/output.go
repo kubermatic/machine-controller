@@ -17,9 +17,7 @@ limitations under the License.
 package provisioner
 
 import (
-	"k8c.io/machine-controller/pkg/cloudprovider/instance"
-
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 const OutputFileName = "machines.json"
@@ -40,7 +38,7 @@ type machine struct {
 	Bastion        bool   `json:"bastion,omitempty"`
 }
 
-func getMachineProvisionerOutput(instances []instance.Instance) output {
+func getMachineProvisionerOutput(instances []MachineInstance) output {
 	var out output
 
 	for _, instance := range instances {
@@ -50,30 +48,31 @@ func getMachineProvisionerOutput(instances []instance.Instance) output {
 	return out
 }
 
-func getMachineInfo(inst instance.Instance) machine {
+func getMachineInfo(instance MachineInstance) machine {
 	var publicAddress, privateAddress, hostname, internalDNS, externalDNS string
-	for address, addressType := range inst.Addresses() {
-		if addressType == corev1.NodeExternalIP {
+	for address, addressType := range instance.inst.Addresses() {
+		if addressType == v1.NodeExternalIP {
 			publicAddress = address
-		} else if addressType == corev1.NodeInternalIP {
+		} else if addressType == v1.NodeInternalIP {
 			privateAddress = address
-		} else if addressType == corev1.NodeHostName {
+		} else if addressType == v1.NodeHostName {
 			hostname = address
-		} else if addressType == corev1.NodeInternalDNS {
+		} else if addressType == v1.NodeInternalDNS {
 			internalDNS = address
-		} else if addressType == corev1.NodeExternalDNS {
+		} else if addressType == v1.NodeExternalDNS {
 			externalDNS = address
 		}
 	}
 
 	return machine{
-		Name:           inst.Name(),
-		ID:             inst.ProviderID(),
+		Name:           instance.inst.Name(),
+		ID:             instance.inst.ProviderID(),
 		PublicAddress:  publicAddress,
 		PrivateAddress: privateAddress,
 		Hostname:       hostname,
 		InternalDNS:    internalDNS,
 		ExternalDNS:    externalDNS,
+		SSHUser:        instance.sshUser,
 	}
 }
 

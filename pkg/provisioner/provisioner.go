@@ -34,7 +34,15 @@ import (
 	providerconfigtypes "k8c.io/machine-controller/pkg/providerconfig/types"
 )
 
-const maxRetrieForMachines = 5
+const (
+	maxRetrieForMachines = 5
+	hostnameAnnotation   = "ssh-username"
+)
+
+type MachineInstance struct {
+	inst    instance.Instance
+	sshUser string
+}
 
 func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*output, error) {
 	providerData := &cloudprovidertypes.ProviderData{
@@ -45,7 +53,7 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 	rawLog := machinecontrollerlog.New(true, machinecontrollerlog.FormatConsole)
 	log := rawLog.Sugar()
 
-	var instances []instance.Instance
+	var instances []MachineInstance
 
 	// TODO: Dump all the errors in an array and do the max that is possible without early exit
 	for _, machine := range machines {
@@ -101,7 +109,20 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 		} else {
 			logrus.Infof("Machine %q already exists.", providerInstance.Name())
 		}
-		instances = append(instances, providerInstance)
+
+		sshUser := "root"
+		if machine.Annotations != nil {
+			if user := machine.Annotations[hostnameAnnotation]; sshUser != "" {
+				sshUser = user
+			}
+		}
+
+		machineInstance := MachineInstance{
+			inst:    providerInstance,
+			sshUser: sshUser,
+		}
+
+		instances = append(instances, machineInstance)
 	}
 
 	output := getMachineProvisionerOutput(instances)
