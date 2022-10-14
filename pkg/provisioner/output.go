@@ -17,8 +17,6 @@ limitations under the License.
 package provisioner
 
 import (
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
-
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -40,7 +38,7 @@ type machine struct {
 	Bastion        bool   `json:"bastion,omitempty"`
 }
 
-func getMachineProvisionerOutput(instances []instance.Instance) output {
+func getMachineProvisionerOutput(instances []MachineInstance) output {
 	var out output
 
 	for _, instance := range instances {
@@ -50,9 +48,9 @@ func getMachineProvisionerOutput(instances []instance.Instance) output {
 	return out
 }
 
-func getMachineInfo(inst instance.Instance) machine {
+func getMachineInfo(instance MachineInstance) machine {
 	var publicAddress, privateAddress, hostname, internalDNS, externalDNS string
-	for address, addressType := range inst.Addresses() {
+	for address, addressType := range instance.inst.Addresses() {
 		if addressType == v1.NodeExternalIP {
 			publicAddress = address
 		} else if addressType == v1.NodeInternalIP {
@@ -67,13 +65,14 @@ func getMachineInfo(inst instance.Instance) machine {
 	}
 
 	return machine{
-		Name:           inst.Name(),
-		ID:             inst.ProviderID(),
+		Name:           instance.inst.Name(),
+		ID:             instance.inst.ProviderID(),
 		PublicAddress:  publicAddress,
 		PrivateAddress: privateAddress,
 		Hostname:       hostname,
 		InternalDNS:    internalDNS,
 		ExternalDNS:    externalDNS,
+		SSHUser:        instance.sshUser,
 	}
 }
 
