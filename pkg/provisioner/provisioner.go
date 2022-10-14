@@ -27,6 +27,7 @@ import (
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -34,11 +35,13 @@ import (
 
 const maxRetrieForMachines = 5
 
-func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*string, error) {
+func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*output, error) {
 	providerData := &cloudprovidertypes.ProviderData{
 		Ctx:             ctx,
 		ProvisionerMode: true,
 	}
+
+	var instances []instance.Instance
 
 	// TODO: Dump all the errors in an array and do the max that is possible without early exit
 	for _, machine := range machines {
@@ -94,9 +97,11 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*s
 		} else {
 			logrus.Infof("Machine %q already exists.", providerInstance.Name())
 		}
+		instances = append(instances, providerInstance)
 	}
 
-	return nil, nil
+	output := getMachineProvisionerOutput(instances)
+	return &output, nil
 }
 
 func getProvider(ctx context.Context, machine clusterv1alpha1.Machine) (cloudprovidertypes.Provider, error) {
