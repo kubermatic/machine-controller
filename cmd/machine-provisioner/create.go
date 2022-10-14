@@ -83,7 +83,7 @@ func runCreateMachineCommand(machineConfigFile string) error {
 		return err
 	}
 
-	logrus.Info("Create task ran successfully. Output is available in %q.", provisioner.OutputFileName)
+	logrus.Infof("Create task ran successfully. Output is available in %q.", provisioner.OutputFileName)
 	return nil
 }
 

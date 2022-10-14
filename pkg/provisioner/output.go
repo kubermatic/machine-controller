@@ -76,3 +76,16 @@ func getMachineInfo(inst instance.Instance) machine {
 		ExternalDNS:    externalDNS,
 	}
 }
+
+func publicAndPrivateIPExist(addresses map[string]v1.NodeAddressType) bool {
+	var publicIPExists, privateIPExists bool
+	for _, addressType := range addresses {
+		if addressType == v1.NodeExternalIP {
+			publicIPExists = true
+		} else if addressType == v1.NodeInternalIP {
+			privateIPExists = true
+		}
+	}
+
+	return publicIPExists && privateIPExists
+}
