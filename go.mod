@@ -37,6 +37,9 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.9
 	github.com/sethvargo/go-password v0.2.0
+	github.com/sirupsen/logrus v1.8.1
+	github.com/spf13/cobra v1.4.0
+	github.com/spf13/pflag v1.0.5
 	github.com/tinkerbell/tink v0.0.0-20210315140655-1b178daeaeda
 	github.com/vmware/go-vcloud-director/v2 v2.15.0
 	github.com/vmware/govmomi v0.28.0
@@ -113,6 +116,7 @@ require (
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -136,7 +140,6 @@ require (
 	github.com/rogpeppe/go-internal v1.6.1 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/vincent-petithory/dataurl v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect

@@ -84,9 +84,10 @@ type MachineUpdater func(*clusterv1alpha1.Machine, ...MachineModifier) error
 
 // ProviderData is the struct the cloud providers get when creating or deleting an instance.
 type ProviderData struct {
-	Ctx    context.Context
-	Update MachineUpdater
-	Client ctrlruntimeclient.Client
+	Ctx             context.Context
+	Update          MachineUpdater
+	Client          ctrlruntimeclient.Client
+	ProvisionerMode bool
 }
 
 // GetMachineUpdater returns an MachineUpdater based on the passed in context and ctrlruntimeclient.Client.
