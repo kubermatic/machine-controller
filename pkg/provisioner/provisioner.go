@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"text/template"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -31,12 +33,44 @@ import (
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	userdatahelper "github.com/kubermatic/machine-controller/pkg/userdata/helper"
 )
 
 const (
 	maxRetrieForMachines = 5
 	hostnameAnnotation   = "ssh-username"
+
+	userDataTemplate = `#cloud-config
+ssh_pwauth: false
+
+{{- if .ProviderSpec.SSHPublicKeys }}
+ssh_authorized_keys:
+{{- range .ProviderSpec.SSHPublicKeys }}
+- "{{ . }}"
+{{- end }}
+{{- end }}
+`
 )
+
+func getUserData(pconfig *providerconfigtypes.Config) (string, error) {
+	data := struct {
+		ProviderSpec *providerconfigtypes.Config
+	}{
+		ProviderSpec: pconfig,
+	}
+
+	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse user-data template: %w", err)
+	}
+
+	var buf strings.Builder
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute user-data template: %w", err)
+	}
+
+	return userdatahelper.CleanupTemplateOutput(buf.String())
+}
 
 type MachineInstance struct {
 	inst    instance.Instance
@@ -63,8 +97,18 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 		if err != nil {
 			// case 1: instance was not found and we are going to create one
 			if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
+				// Get userdata (needed to inject SSH keys to instances)
+				pconfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
+				if err != nil {
+					return nil, fmt.Errorf("failed to get providerSpec: %w", err)
+				}
+				userdata, err := getUserData(pconfig)
+				if err != nil {
+					return nil, err
+				}
+
 				// Create the instance
-				_, err := prov.Create(ctx, &machine, providerData, "")
+				_, err = prov.Create(ctx, &machine, providerData, userdata)
 				if err != nil {
 					return nil, err
 				}
