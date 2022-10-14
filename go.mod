@@ -28,6 +28,7 @@ require (
 	github.com/gophercloud/gophercloud v0.25.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.34.0
+	github.com/joho/godotenv v1.4.0
 	github.com/linode/linodego v1.8.0
 	github.com/packethost/packngo v0.25.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible

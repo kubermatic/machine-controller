@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -70,6 +71,7 @@ var (
 	caBundleFile                     string
 	enableLeaderElection             bool
 	leaderElectionNamespace          string
+	dotEnvFile                       string
 
 	useOSM               bool
 	useExternalBootstrap bool
@@ -179,10 +181,15 @@ func main() {
 	flag.BoolVar(&useOSM, "use-osm", false, "DEPRECATED: use osm controller for node bootstrap [use use-external-bootstrap instead]")
 	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", false, "use an external bootstrap provider for instance user-data (e.g. operating-system-manager, also known as OSM)")
 	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
+	flag.StringVar(&dotEnvFile, "dot-env-file", "", "Read in a file with environment (.env) variables")
 
 	flag.Parse()
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
+
+	// we don't care if file doesn't exist
+	_ = godotenv.Load()
+	_ = godotenv.Load(dotEnvFile)
 
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
