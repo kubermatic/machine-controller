@@ -27,6 +27,7 @@ import (
 	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	"k8c.io/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "k8c.io/machine-controller/pkg/cloudprovider/errors"
+	"k8c.io/machine-controller/pkg/cloudprovider/instance"
 	cloudprovidertypes "k8c.io/machine-controller/pkg/cloudprovider/types"
 	machinecontrollerlog "k8c.io/machine-controller/pkg/log"
 	"k8c.io/machine-controller/pkg/providerconfig"
@@ -35,7 +36,7 @@ import (
 
 const maxRetrieForMachines = 5
 
-func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*string, error) {
+func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*output, error) {
 	providerData := &cloudprovidertypes.ProviderData{
 		Ctx:             ctx,
 		ProvisionerMode: true,
@@ -43,6 +44,8 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*s
 
 	rawLog := machinecontrollerlog.New(true, machinecontrollerlog.FormatConsole)
 	log := rawLog.Sugar()
+
+	var instances []instance.Instance
 
 	// TODO: Dump all the errors in an array and do the max that is possible without early exit
 	for _, machine := range machines {
@@ -98,9 +101,11 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*s
 		} else {
 			logrus.Infof("Machine %q already exists.", providerInstance.Name())
 		}
+		instances = append(instances, providerInstance)
 	}
 
-	return nil, nil
+	output := getMachineProvisionerOutput(instances)
+	return &output, nil
 }
 
 func getProvider(ctx context.Context, machine clusterv1alpha1.Machine) (cloudprovidertypes.Provider, error) {

@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 
@@ -67,13 +68,22 @@ func runCreateMachineCommand(machineConfigFile string) error {
 		return err
 	}
 
-	_, err = provisioner.CreateMachines(context.Background(), machines)
+	out, err := provisioner.CreateMachines(context.Background(), machines)
 	if err != nil {
 		return err
 	}
 
-	// fmt.Printf("Response %s", *resp)
+	b, err := json.MarshalIndent(out, "", "	")
+	if err != nil {
+		return err
+	}
 
+	err = os.WriteFile("machines.json", b, 0600)
+	if err != nil {
+		return err
+	}
+
+	logrus.Info("Create task ran successfully. Output is available in %q.", provisioner.OutputFileName)
 	return nil
 }
 
