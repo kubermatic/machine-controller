@@ -78,10 +78,10 @@ func CreateMachines(ctx context.Context, machines []clusterv1alpha1.Machine) (*o
 				}
 
 				addresses := providerInstance.Addresses()
-				if len(addresses) > 0 {
+				if len(addresses) > 0 && publicAndPrivateIPExist(addresses) {
 					break
 				}
-				logrus.Debug("Waiting 10 seconds for machine address assignment.")
+				logrus.Info("Waiting 10 seconds for machine address assignment.")
 				time.Sleep(10 * time.Second)
 			}
 		}
