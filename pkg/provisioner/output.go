@@ -27,12 +27,8 @@ type output struct {
 }
 
 type machine struct {
-	Name           string `json:"name"`
-	ID             string `json:"id"`
 	PublicAddress  string `json:"public_address,omitempty"`
 	PrivateAddress string `json:"private_address,omitempty"`
-	InternalDNS    string `json:"internal_dns,omitempty"`
-	ExternalDNS    string `json:"external_dns,omitempty"`
 	Hostname       string `json:"hostname,omitempty"`
 	SSHUser        string `json:"ssh_user,omitempty"`
 	Bastion        bool   `json:"bastion,omitempty"`
@@ -49,7 +45,7 @@ func getMachineProvisionerOutput(instances []MachineInstance) output {
 }
 
 func getMachineInfo(instance MachineInstance) machine {
-	var publicAddress, privateAddress, hostname, internalDNS, externalDNS string
+	var publicAddress, privateAddress, hostname string
 	for address, addressType := range instance.inst.Addresses() {
 		if addressType == v1.NodeExternalIP {
 			publicAddress = address
@@ -58,20 +54,14 @@ func getMachineInfo(instance MachineInstance) machine {
 		} else if addressType == v1.NodeHostName {
 			hostname = address
 		} else if addressType == v1.NodeInternalDNS {
-			internalDNS = address
-		} else if addressType == v1.NodeExternalDNS {
-			externalDNS = address
+			hostname = address
 		}
 	}
 
 	return machine{
-		Name:           instance.inst.Name(),
-		ID:             instance.inst.ProviderID(),
 		PublicAddress:  publicAddress,
 		PrivateAddress: privateAddress,
 		Hostname:       hostname,
-		InternalDNS:    internalDNS,
-		ExternalDNS:    externalDNS,
 		SSHUser:        instance.sshUser,
 	}
 }
