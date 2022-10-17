@@ -209,11 +209,20 @@ func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimecli
 	}
 	for _, node := range nodes.Items {
 		if isNodeForMachine(&node, machine) {
+			foundConditions := make(map[corev1.NodeConditionType]corev1.ConditionStatus)
+
 			for _, condition := range node.Status.Conditions {
-				if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-					return true, nil
-				}
+				foundConditions[condition.Type] = condition.Status
+				// TODO: re-enable this once you figure out how to properly run a CNI
+				//	if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+				//    return true, nil
+				// }
 			}
+
+			// ensure that kubelet self-reported resource health
+			return foundConditions[corev1.NodeMemoryPressure] == corev1.ConditionFalse &&
+				foundConditions[corev1.NodeDiskPressure] == corev1.ConditionFalse &&
+				foundConditions[corev1.NodePIDPressure] == corev1.ConditionFalse, nil
 		}
 	}
 	return false, nil

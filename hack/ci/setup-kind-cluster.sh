@@ -140,13 +140,7 @@ echodate "Kind cluster $KIND_CLUSTER_NAME is up and running."
 
 if [ ! -f cni-plugin-deployed ]; then
   echodate "Installing CNI plugin."
-  (
-    # Install CNI plugins since they are not installed by default in KIND. Also, kube-flannel doesn't install
-    # CNI plugins unlike other plugins so we have to do it manually.
-    setup_cni_in_kind=$(cat hack/ci/setup-cni-in-kind.sh)
-    docker exec $KIND_CLUSTER_NAME-control-plane bash -c "$setup_cni_in_kind &"
-  )
-  kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.18.0/Documentation/kube-flannel.yml
+  kubectl apply -f hack/ci/calico.yaml
   touch cni-plugin-deployed
 fi
 
