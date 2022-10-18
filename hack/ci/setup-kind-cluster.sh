@@ -163,7 +163,7 @@ if [ -z "${DISABLE_CLUSTER_EXPOSER:-}" ]; then
     cd /tmp/kubermatic
     echodate "Cloning cluster exposer"
     KKP_REPO_URL="${KKP_REPO_URL:-https://github.com/kubermatic/kubermatic.git}"
-    KKP_REPO_TAG="${KKP_REPO_BRANCH:-master}"
+    KKP_REPO_TAG="${KKP_REPO_BRANCH:-main}"
     git clone --depth 1 --branch "${KKP_REPO_TAG}" "${KKP_REPO_URL}" .
 
     echodate "Building cluster exposer"
