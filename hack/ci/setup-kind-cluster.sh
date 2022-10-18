@@ -140,13 +140,7 @@ echodate "Kind cluster $KIND_CLUSTER_NAME is up and running."
 
 if [ ! -f cni-plugin-deployed ]; then
   echodate "Installing CNI plugin."
-  (
-    # Install CNI plugins since they are not installed by default in KIND. Also, kube-flannel doesn't install
-    # CNI plugins unlike other plugins so we have to do it manually.
-    setup_cni_in_kind=$(cat hack/ci/setup-cni-in-kind.sh)
-    docker exec $KIND_CLUSTER_NAME-control-plane bash -c "$setup_cni_in_kind &"
-  )
-  kubectl create -f https://raw.githubusercontent.com/flannel-io/flannel/v0.18.0/Documentation/kube-flannel.yml
+  kubectl apply -f hack/ci/calico.yaml
   touch cni-plugin-deployed
 fi
 
@@ -163,7 +157,7 @@ if [ -z "${DISABLE_CLUSTER_EXPOSER:-}" ]; then
     cd /tmp/kubermatic
     echodate "Cloning cluster exposer"
     KKP_REPO_URL="${KKP_REPO_URL:-https://github.com/kubermatic/kubermatic.git}"
-    KKP_REPO_TAG="${KKP_REPO_BRANCH:-master}"
+    KKP_REPO_TAG="${KKP_REPO_BRANCH:-main}"
     git clone --depth 1 --branch "${KKP_REPO_TAG}" "${KKP_REPO_URL}" .
 
     echodate "Building cluster exposer"
