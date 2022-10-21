@@ -37,6 +37,9 @@ KubernetesClusterID={{ .Global.KubernetesClusterID | iniEscape }}
 DisableSecurityGroupIngress={{ .Global.DisableSecurityGroupIngress }}
 ElbSecurityGroup={{ .Global.ElbSecurityGroup | iniEscape }}
 DisableStrictZoneCheck={{ .Global.DisableStrictZoneCheck }}
+{{- range .Global.NodeIPFamilies }}
+NodeIPFamilies={{ . | iniEscape}}
+{{- end }}
 `
 )
 
@@ -55,6 +58,7 @@ type GlobalOpts struct {
 	ElbSecurityGroup            string
 	DisableSecurityGroupIngress bool
 	DisableStrictZoneCheck      bool
+	NodeIPFamilies              []string
 }
 
 func CloudConfigToString(c *CloudConfig) (string, error) {

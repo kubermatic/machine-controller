@@ -8,3 +8,5 @@ KubernetesClusterID="some-tag"
 DisableSecurityGroupIngress=true
 ElbSecurityGroup="some-sg"
 DisableStrictZoneCheck=true
+NodeIPFamilies="ipv4"
+NodeIPFamilies="ipv6"
