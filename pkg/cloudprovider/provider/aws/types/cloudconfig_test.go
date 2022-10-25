@@ -46,6 +46,7 @@ func TestCloudConfigToString(t *testing.T) {
 					KubernetesClusterTag:        "some-tag",
 					RoleARN:                     "some-arn",
 					RouteTableID:                "some-rt",
+					NodeIPFamilies:              []string{"ipv4", "ipv6"},
 				},
 			},
 		},
