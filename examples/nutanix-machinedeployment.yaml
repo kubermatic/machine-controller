@@ -60,6 +60,8 @@ spec:
             projectName: project1
             # Sets the subnet that the VM is connected to. Must exist in the given Nutanix cluster
             subnetName: subnet1
+            # Optional: Sets the storage subnet that the VM is connected to. Must exist in the given Nutanix cluster
+            # storageSubnetName: subnet2
             # Provides the image used to create the VM
             imageName: ubuntu-20.04
             # Sets the vCPU count for this VM

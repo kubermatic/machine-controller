@@ -949,6 +949,7 @@ func getNutanixTestParams(t *testing.T) []string {
 	cluster := os.Getenv("NUTANIX_E2E_CLUSTER_NAME")
 	project := os.Getenv("NUTANIX_E2E_PROJECT_NAME")
 	subnet := os.Getenv("NUTANIX_E2E_SUBNET_NAME")
+	storageSubnet := os.Getenv("NUTANIX_E2E_STORAGESUBNET_NAME")
 	endpoint := os.Getenv("NUTANIX_E2E_ENDPOINT")
 
 	if password == "" || username == "" || endpoint == "" || cluster == "" || project == "" || subnet == "" {
@@ -963,6 +964,7 @@ func getNutanixTestParams(t *testing.T) []string {
 		fmt.Sprintf("<< NUTANIX_CLUSTER >>=%s", cluster),
 		fmt.Sprintf("<< NUTANIX_PROJECT >>=%s", project),
 		fmt.Sprintf("<< NUTANIX_SUBNET >>=%s", subnet),
+		fmt.Sprintf("<< NUTANIX_STORAGESUBNET >>=%s", storageSubnet),
 	}
 	return params
 }
