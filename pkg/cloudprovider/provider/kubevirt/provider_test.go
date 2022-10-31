@@ -103,6 +103,7 @@ type kubevirtProviderSpecConf struct {
 	TopologySpreadConstraint bool
 	Affinity                 bool
 	SecondaryDisks           bool
+	OsImageSource            imageSource
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -167,7 +168,12 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 					"osImage": "http://x.y.z.t/ubuntu.img",
 					{{- end }}
 					"size": "10Gi",
+					{{- if .OsImageSource }}
+					"storageClassName": "longhorn",
+					"source": "{{ .OsImageSource }}"
+					{{- else }}
 					"storageClassName": "longhorn"
+					{{- end }}
 				}
 			}
 		}
@@ -266,6 +272,14 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name:     "custom-local-disk",
 			specConf: kubevirtProviderSpecConf{OsImageDV: "ns/dvname"},
+		},
+		{
+			name:     "http-image-source",
+			specConf: kubevirtProviderSpecConf{OsImageSource: httpSource},
+		},
+		{
+			name:     "pvc-image-source",
+			specConf: kubevirtProviderSpecConf{OsImageSource: pvcSource, OsImageDV: "ns/dvname"},
 		},
 	}
 	for _, tt := range tests {

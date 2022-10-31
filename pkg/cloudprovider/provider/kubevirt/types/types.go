@@ -67,6 +67,8 @@ type Template struct {
 type PrimaryDisk struct {
 	Disk
 	OsImage providerconfigtypes.ConfigVarString `json:"osImage,omitempty"`
+	// Source describes the VM Disk Image source.
+	Source providerconfigtypes.ConfigVarString `json:"source,omitempty"`
 }
 
 // SecondaryDisks.
