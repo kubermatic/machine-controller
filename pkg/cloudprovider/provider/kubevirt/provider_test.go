@@ -86,20 +86,20 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"affinity": {
 		  "nodeAffinityPreset": {
 		    "type": "hard",
-			"key": "key1", 
+			"key": "key1",
 			"values": [
 				"foo1", "foo2" ]
 		  }
 		},
 		{{- end }}
 		"virtualMachine": {
-			{{- if .Instancetype }}		
+			{{- if .Instancetype }}
 			"instancetype": {
 				"name": "{{ .Instancetype.Name }}",
 				"kind": "{{ .Instancetype.Kind }}"
 			},
 			{{- end }}
-			{{- if .Preference }}		
+			{{- if .Preference }}
 			"preference": {
 				"name": "{{ .Preference.Name }}",
 				"kind": "{{ .Preference.Kind }}"
