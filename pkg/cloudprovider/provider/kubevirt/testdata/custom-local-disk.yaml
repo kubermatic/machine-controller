@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   annotations:
   labels:
+    cluster.x-k8s.io/cluster-name: test-namespace
+    cluster.x-k8s.io/role: worker
     kubevirt.io/vm: custom-local-disk
     md: md-name
   name: custom-local-disk
@@ -28,6 +30,8 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
+        cluster.x-k8s.io/cluster-name: test-namespace
+        cluster.x-k8s.io/role: worker
         kubevirt.io/vm: custom-local-disk
         md: md-name
     spec:

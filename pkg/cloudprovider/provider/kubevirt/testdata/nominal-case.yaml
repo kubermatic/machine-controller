@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   annotations:
   labels:
+    cluster.x-k8s.io/cluster-name: test-namespace
+    cluster.x-k8s.io/role: worker
     kubevirt.io/vm: nominal-case
     md: md-name
   name: nominal-case
@@ -27,6 +29,8 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
+        cluster.x-k8s.io/cluster-name: test-namespace
+        cluster.x-k8s.io/role: worker
         kubevirt.io/vm: nominal-case
         md: md-name
     spec:

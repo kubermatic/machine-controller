@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   annotations:
   labels:
+    cluster.x-k8s.io/cluster-name: test-namespace
+    cluster.x-k8s.io/role: worker
     kubevirt.io/vm: topologyspreadconstraints
     md: md-name
   name: topologyspreadconstraints
@@ -27,6 +29,8 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
+        cluster.x-k8s.io/cluster-name: test-namespace
+        cluster.x-k8s.io/role: worker
         kubevirt.io/vm: topologyspreadconstraints
         md: md-name
     spec:
