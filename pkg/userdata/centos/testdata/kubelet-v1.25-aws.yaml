@@ -1,6 +1,4 @@
 #cloud-config
-bootcmd:
-- modprobe ip_tables
 
 
 ssh_pwauth: false
@@ -67,6 +65,13 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
+
+    source /etc/os-release
+    if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
+      sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+      sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    fi
+
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
@@ -84,23 +89,23 @@ write_files:
     yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
     yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
 
-    mkdir -p /etc/systemd/system/containerd.service.d /etc/systemd/system/docker.service.d
+    cat <<EOF | tee /etc/crictl.yaml
+    runtime-endpoint: unix:///run/containerd/containerd.sock
+    EOF
 
-    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf /etc/systemd/system/docker.service.d/environment.conf
+    mkdir -p /etc/systemd/system/containerd.service.d
+    cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
     [Service]
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
 
-    yum install -y \
-        docker-ce-cli-20.10* \
-        containerd.io-1.6* \
-        docker-ce-20.10* \
-        yum-plugin-versionlock
-    yum versionlock add docker-ce* containerd.io
+    yum install -y containerd.io-1.6* yum-plugin-versionlock
+    yum versionlock add containerd.io
 
     systemctl daemon-reload
-    systemctl enable --now docker
+    systemctl enable --now containerd
+
 
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
@@ -143,7 +148,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.22.7}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.25.0}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -167,18 +172,6 @@ write_files:
         chmod +x /opt/bin/health-monitor.sh
     fi
 
-    DEFAULT_IFC_NAME=$(ip -o route get 1  | grep -oP "dev \K\S+")
-    IFC_CFG_FILE=/etc/sysconfig/network-scripts/ifcfg-$DEFAULT_IFC_NAME
-    # Enable IPv6 and DHCPv6 on the default interface
-    grep IPV6INIT $IFC_CFG_FILE && sed -i '/IPV6INIT*/c IPV6INIT=yes' $IFC_CFG_FILE || echo "IPV6INIT=yes" >> $IFC_CFG_FILE
-    grep DHCPV6C $IFC_CFG_FILE && sed -i '/DHCPV6C*/c DHCPV6C=yes' $IFC_CFG_FILE || echo "DHCPV6C=yes" >> $IFC_CFG_FILE
-    grep IPV6_AUTOCONF $IFC_CFG_FILE && sed -i '/IPV6_AUTOCONF*/c IPV6_AUTOCONF=yes' $IFC_CFG_FILE || echo "IPV6_AUTOCONF=yes" >> $IFC_CFG_FILE
-
-    # Restart NetworkManager to apply for IPv6 configs
-    systemctl restart NetworkManager
-    # Let NetworkManager apply the DHCPv6 configs
-    sleep 3
-
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
@@ -187,7 +180,6 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl disable setup.service
-    systemctl disable disable-nm-cloud-setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -209,8 +201,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
-    After=docker.service
-    Requires=docker.service
+    After=containerd.service
+    Requires=containerd.service
 
     Description=kubelet: The Kubernetes Node Agent
     Documentation=https://kubernetes.io/docs/home/
@@ -240,11 +232,8 @@ write_files:
       --cloud-config=/etc/kubernetes/cloud-config \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --container-runtime=docker \
-      --container-runtime-endpoint=unix:///var/run/dockershim.sock \
-      --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-      --feature-gates=DynamicKubeletConfig=true \
-      --network-plugin=cni \
+      --container-runtime=remote \
+      --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]
@@ -430,10 +419,27 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/docker/daemon.json
+- path: /etc/containerd/config.toml
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"}}
+    version = 2
+
+    [metrics]
+    address = "127.0.0.1:1338"
+
+    [plugins]
+    [plugins."io.containerd.grpc.v1.cri"]
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    runtime_type = "io.containerd.runc.v2"
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+    SystemdCgroup = true
+    [plugins."io.containerd.grpc.v1.cri".registry]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["https://registry-1.docker.io"]
+
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -449,39 +455,5 @@ write_files:
     WantedBy=multi-user.target
 
 
-- path: "/opt/bin/disable-nm-cloud-setup"
-  permissions: "0755"
-  content: |
-    #!/bin/bash
-    set -xeuo pipefail
-    if systemctl status 'nm-cloud-setup.timer' 2> /dev/null | grep -Fq "Active:"; then
-            systemctl stop nm-cloud-setup.timer
-            systemctl disable nm-cloud-setup.service
-            systemctl disable nm-cloud-setup.timer
-            reboot
-    fi
-
-- path: "/etc/systemd/system/disable-nm-cloud-setup.service"
-  permissions: "0644"
-  content: |
-    [Install]
-    WantedBy=multi-user.target
-
-    [Unit]
-    Requires=network-online.target
-    After=network-online.target
-
-    [Service]
-    Type=oneshot
-    RemainAfterExit=true
-    EnvironmentFile=-/etc/environment
-    ExecStart=/opt/bin/supervise.sh /opt/bin/disable-nm-cloud-setup
-
-rh_subscription:
-    username: ""
-    password: ""
-    auto-attach: false
-
 runcmd:
 - systemctl enable --now setup.service
-- systemctl enable --now disable-nm-cloud-setup.service

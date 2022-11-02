@@ -40,68 +40,20 @@ write_files:
       fs.inotify.max_user_watches = 1048576
       fs.inotify.max_user_instances = 8192
 
-  - path: "/etc/default/grub.d/60-swap-accounting.cfg"
-    content: |
-      # Added by kubermatic machine-controller
-      # Enable cgroups memory and swap accounting
-      GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
-
   - path: "/opt/bin/setup"
     permissions: "0755"
     content: |
       #!/bin/bash
       set -xeuo pipefail
-      if systemctl is-active ufw; then systemctl stop ufw; fi
-      systemctl mask ufw
       systemctl restart systemd-modules-load.service
       sysctl --system
-      apt-get update
 
-      DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y \
-        curl \
-        ca-certificates \
+      zypper --non-interactive --quiet --color install ebtables \
         ceph-common \
-        cifs-utils \
-        conntrack \
         e2fsprogs \
-        ebtables \
-        ethtool \
-        glusterfs-client \
-        iptables \
         jq \
-        kmod \
-        openssh-client \
-        nfs-common \
         socat \
-        util-linux \
         ipvsadm
-
-      # Update grub to include kernel command options to enable swap accounting.
-      # Exclude alibaba cloud until this is fixed https://github.com/kubermatic/machine-controller/issues/682
-
-
-      apt-get update
-      apt-get install -y apt-transport-https ca-certificates curl software-properties-common lsb-release
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-      add-apt-repository "deb https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-      cat <<EOF | tee /etc/crictl.yaml
-      runtime-endpoint: unix:///run/containerd/containerd.sock
-      EOF
-
-      mkdir -p /etc/systemd/system/containerd.service.d
-      cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
-      [Service]
-      Restart=always
-      EnvironmentFile=-/etc/environment
-      EOF
-
-      apt-get install -y --allow-downgrades containerd.io=1.6*
-      apt-mark hold containerd.io
-
-      systemctl daemon-reload
-      systemctl enable --now containerd
-
 
       opt_bin=/opt/bin
       usr_local_bin=/usr/local/bin
@@ -144,7 +96,7 @@ write_files:
       rm -f "$cri_tools_filename"
       ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
       cd -
-      KUBE_VERSION="${KUBE_VERSION:-v1.24.0}"
+      KUBE_VERSION="${KUBE_VERSION:-v1.22.7}"
       kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
       kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
       kube_sum_file="$kube_dir/sha256"
@@ -168,12 +120,14 @@ write_files:
           chmod +x /opt/bin/health-monitor.sh
       fi
 
+
       # set kubelet nodeip environment variable
       /opt/bin/setup_net_env.sh
 
+      systemctl enable --now docker
       systemctl enable --now kubelet
       systemctl enable --now --no-block kubelet-healthcheck.service
-      systemctl disable setup.service
+      systemctl enable --now --no-block docker-healthcheck.service
 
   - path: "/opt/bin/supervise.sh"
     permissions: "0755"
@@ -187,14 +141,18 @@ write_files:
   - path: "/opt/disable-swap.sh"
     permissions: "0755"
     content: |
-      sed -i.orig '/.*swap.*/d' /etc/fstab
+      # Make sure we always disable swap - Otherwise the kubelet won't start as for some cloud
+      # providers swap gets enabled on reboot or after the setup script has finished executing.
+      cp /etc/fstab /etc/fstab.orig
+      cat /etc/fstab.orig | awk '$3 ~ /^swap$/ && $1 !~ /^#/ {$0="# commented out by cloudinit\n#"$0} 1' > /etc/fstab.noswap
+      mv /etc/fstab.noswap /etc/fstab
       swapoff -a
 
   - path: "/etc/systemd/system/kubelet.service"
     content: |
       [Unit]
-      After=containerd.service
-      Requires=containerd.service
+      After=docker.service
+      Requires=docker.service
 
       Description=kubelet: The Kubernetes Node Agent
       Documentation=https://kubernetes.io/docs/home/
@@ -223,8 +181,11 @@ write_files:
         --hostname-override=node1 \
         --exit-on-lock-contention \
         --lock-file=/tmp/kubelet.lock \
-        --container-runtime=remote \
-        --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+        --container-runtime=docker \
+        --container-runtime-endpoint=unix:///var/run/dockershim.sock \
+        --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
+        --feature-gates=DynamicKubeletConfig=true \
+        --network-plugin=cni \
         --node-ip ${KUBELET_NODE_IP}
 
       [Install]
@@ -233,7 +194,7 @@ write_files:
   - path: "/etc/systemd/system/kubelet.service.d/extras.conf"
     content: |
       [Service]
-      Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
+      Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/var/run/netconfig/resolv.conf"
 
   - path: "/etc/kubernetes/cloud-config"
     permissions: "0600"
@@ -335,32 +296,6 @@ write_files:
       EnvironmentFile=-/etc/environment
       ExecStart=/opt/bin/supervise.sh /opt/bin/setup
 
-  - path: "/etc/profile.d/opt-bin-path.sh"
-    permissions: "0644"
-    content: |
-      export PATH="/opt/bin:$PATH"
-
-  - path: /etc/containerd/config.toml
-    permissions: "0644"
-    content: |
-      version = 2
-
-      [metrics]
-      address = "127.0.0.1:1338"
-
-      [plugins]
-      [plugins."io.containerd.grpc.v1.cri"]
-      [plugins."io.containerd.grpc.v1.cri".containerd]
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-      runtime_type = "io.containerd.runc.v2"
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-      SystemdCgroup = true
-      [plugins."io.containerd.grpc.v1.cri".registry]
-      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-      endpoint = ["https://registry-1.docker.io"]
-
   - path: "/etc/kubernetes/kubelet.conf"
     content: |
       apiVersion: kubelet.config.k8s.io/v1beta1
@@ -434,6 +369,16 @@ write_files:
       volumePluginDir: /var/lib/kubelet/volumeplugins
       volumeStatsAggPeriod: 0s
 
+  - path: "/etc/profile.d/opt-bin-path.sh"
+    permissions: "0644"
+    content: |
+      export PATH="/opt/bin:$PATH"
+
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"}}
+
   - path: /etc/systemd/system/kubelet-healthcheck.service
     permissions: "0644"
     content: |
@@ -447,5 +392,24 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
+  - path: /etc/systemd/system/docker-healthcheck.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Requires=docker.service
+      After=docker.service
+
+      [Service]
+      ExecStart=/opt/bin/health-monitor.sh container-runtime
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/docker.service.d/environment.conf
+    permissions: "0644"
+    content: |
+      [Service]
+      EnvironmentFile=-/etc/environment
+
 runcmd:
-  - systemctl enable --now setup.service
+  - systemctl start setup.service
