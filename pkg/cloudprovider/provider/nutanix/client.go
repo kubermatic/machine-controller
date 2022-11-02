@@ -113,18 +113,18 @@ func createVM(ctx context.Context, client *ClientSet, name string, conf Config, 
 		},
 	}
 
-	if strings.TrimSpace(conf.StorageSubnetName) != "" {
-		storageSubnet, err := getSubnetByName(ctx, client, conf.StorageSubnetName, *cluster.Metadata.UUID)
+	for _, subnet := range conf.AdditionalSubnetNames {
+		additionalSubnet, err := getSubnetByName(ctx, client, subnet, *cluster.Metadata.UUID)
 		if err != nil {
 			return nil, err
 		}
-		storageSubnetNic := &nutanixv3.VMNic{
+		additionalSubnetNic := &nutanixv3.VMNic{
 			SubnetReference: &nutanixv3.Reference{
 				Kind: pointer.String(nutanixtypes.SubnetKind),
-				UUID: storageSubnet.Metadata.UUID,
+				UUID: additionalSubnet.Metadata.UUID,
 			},
 		}
-		nicList = append(nicList, storageSubnetNic)
+		nicList = append(nicList, additionalSubnetNic)
 	}
 
 	image, err := getImageByName(ctx, client, conf.ImageName)

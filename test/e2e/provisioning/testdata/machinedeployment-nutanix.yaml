@@ -33,7 +33,7 @@ spec:
             clusterName: '<< NUTANIX_CLUSTER >>'
             projectName: '<< NUTANIX_PROJECT >>'
             subnetName: '<< NUTANIX_SUBNET >>'
-            storageSubnetName: '<< NUTANIX_STORAGESUBNET >>'
+            additionalSubnetNames: []
             imageName: 'machine-controller-e2e-<< OS_NAME >>'
             cpus: 2
             memoryMB: 2048

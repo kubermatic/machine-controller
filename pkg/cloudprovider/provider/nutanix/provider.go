@@ -45,11 +45,11 @@ type Config struct {
 	AllowInsecure bool
 	ProxyURL      string
 
-	ClusterName       string
-	ProjectName       string
-	SubnetName        string
-	StorageSubnetName string
-	ImageName         string
+	ClusterName           string
+	ProjectName           string
+	SubnetName            string
+	AdditionalSubnetNames []string
+	ImageName             string
 
 	Categories map[string]string
 
@@ -181,12 +181,8 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if rawConfig.StorageSubnetName != nil {
-		c.StorageSubnetName, err = p.configVarResolver.GetConfigVarStringValue(*rawConfig.StorageSubnetName)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-	}
+
+	c.AdditionalSubnetNames = append(c.AdditionalSubnetNames, rawConfig.AdditionalSubnetNames...)
 
 	c.ImageName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ImageName)
 	if err != nil {
@@ -234,8 +230,8 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("failed to get subnet: %w", err)
 	}
 
-	if config.StorageSubnetName != "" {
-		if _, err := getSubnetByName(ctx, client, config.StorageSubnetName, *cluster.Metadata.UUID); err != nil {
+	for _, subnet := range config.AdditionalSubnetNames {
+		if _, err := getSubnetByName(ctx, client, subnet, *cluster.Metadata.UUID); err != nil {
 			return fmt.Errorf("failed to get subnet: %w", err)
 		}
 	}
