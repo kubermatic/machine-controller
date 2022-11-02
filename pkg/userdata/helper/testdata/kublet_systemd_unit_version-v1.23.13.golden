@@ -26,12 +26,9 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --kubeconfig=/var/lib/kubelet/kubeconfig \
   --config=/etc/kubernetes/kubelet.conf \
   --cert-dir=/etc/kubernetes/pki \
-  --cloud-provider=external \
   --hostname-override=some-test-node \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
-  --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
-  --feature-gates=DynamicKubeletConfig=true \
   --network-plugin=cni \
   --node-ip ${KUBELET_NODE_IP}
 
