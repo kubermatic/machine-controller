@@ -21,7 +21,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
+	"time"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -35,6 +37,7 @@ import (
 	"golang.org/x/oauth2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
 )
 
 type provider struct {
@@ -298,6 +301,32 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 				Message: err.Error(),
 			}
 		}
+
+		// After Delete(), Vultr API doesn't list the instance anymore, but the instance is still online for a while,
+		// causing the control-plane to reconnect with the instance, leaving the node on NotReady state
+		// This guarantees that the Node is gone
+		nodeIsOnline := true
+		var ipAddress string
+
+		switch vultrInstance := instance.(type) {
+		case *vultrBareMetalInstance:
+			ipAddress = vultrInstance.instance.MainIP
+		}
+
+		if ipAddress == "" {
+			return false, nil
+		}
+
+		for nodeIsOnline {
+			_, err := net.DialTimeout("tcp", fmt.Sprint(ipAddress, ":22"), 5*time.Second)
+			if err != nil {
+				nodeIsOnline = false
+			}
+			klog.Infof("trying to delete node %s, still responding on port 22", instance.Name())
+			time.Sleep(2 * time.Second)
+		}
+
+		klog.Infof("deleting %s, node stopped responding on port 22", instance.Name())
 
 		return false, nil
 	} else if c.MachineType == string(vultrtypes.CloudInstance) {
