@@ -104,6 +104,29 @@ func createVM(ctx context.Context, client *ClientSet, name string, conf Config, 
 		return nil, err
 	}
 
+	nicList := []*nutanixv3.VMNic{
+		{
+			SubnetReference: &nutanixv3.Reference{
+				Kind: pointer.String(nutanixtypes.SubnetKind),
+				UUID: subnet.Metadata.UUID,
+			},
+		},
+	}
+
+	for _, subnet := range conf.AdditionalSubnetNames {
+		additionalSubnet, err := getSubnetByName(ctx, client, subnet, *cluster.Metadata.UUID)
+		if err != nil {
+			return nil, err
+		}
+		additionalSubnetNic := &nutanixv3.VMNic{
+			SubnetReference: &nutanixv3.Reference{
+				Kind: pointer.String(nutanixtypes.SubnetKind),
+				UUID: additionalSubnet.Metadata.UUID,
+			},
+		}
+		nicList = append(nicList, additionalSubnetNic)
+	}
+
 	image, err := getImageByName(ctx, client, conf.ImageName)
 	if err != nil {
 		return nil, err
@@ -127,14 +150,7 @@ func createVM(ctx context.Context, client *ClientSet, name string, conf Config, 
 		PowerState:    pointer.String("ON"),
 		NumSockets:    pointer.Int64(conf.CPUs),
 		MemorySizeMib: pointer.Int64(conf.MemoryMB),
-		NicList: []*nutanixv3.VMNic{
-			{
-				SubnetReference: &nutanixv3.Reference{
-					Kind: pointer.String(nutanixtypes.SubnetKind),
-					UUID: subnet.Metadata.UUID,
-				},
-			},
-		},
+		NicList:       nicList,
 		DiskList: []*nutanixv3.VMDisk{
 			{
 				DeviceProperties: &nutanixv3.VMDiskDeviceProperties{
