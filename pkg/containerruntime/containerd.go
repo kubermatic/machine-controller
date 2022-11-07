@@ -106,7 +106,7 @@ ExecStart=/usr/bin/env PATH=\${TORCX_BINDIR}:\${PATH} \${TORCX_BINDIR}/container
 EOF
 
 systemctl daemon-reload
-systemctl enable --now containerd
+systemctl restart containerd
 `))
 
 	containerdAmzn2Template = template.Must(template.New("containerd-yum-amzn2").Parse(`
