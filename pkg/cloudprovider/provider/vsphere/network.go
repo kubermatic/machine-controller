@@ -28,7 +28,7 @@ const (
 	ethCardType = "vmxnet3"
 )
 
-// Based on https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/master/pkg/cloud/vsphere/services/govmomi/vcenter/clone.go#L158
+// Based on https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/pkg/cloud/vsphere/services/govmomi/vcenter/clone.go#L158
 func GetNetworkSpecs(ctx context.Context, session *Session, devices object.VirtualDeviceList, network string) ([]types.BaseVirtualDeviceConfigSpec, error) {
 	var deviceSpecs []types.BaseVirtualDeviceConfigSpec
 
