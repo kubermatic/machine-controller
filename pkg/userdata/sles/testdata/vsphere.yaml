@@ -201,7 +201,6 @@ write_files:
   content: |
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/var/run/netconfig/resolv.conf"
-
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
