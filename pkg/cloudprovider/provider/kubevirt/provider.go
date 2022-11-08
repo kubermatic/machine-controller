@@ -93,6 +93,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 
 type Config struct {
 	Kubeconfig                string
+	ClusterName               string
 	RestConfig                *rest.Config
 	DNSConfig                 *corev1.PodDNSConfig
 	DNSPolicy                 corev1.DNSPolicy
@@ -229,6 +230,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		if err == nil {
 			config.Kubeconfig = string(val)
 		}
+	}
+
+	config.ClusterName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.ClusterName)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`failed to get value of "clusterName" field: %w`, err)
 	}
 
 	config.RestConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(config.Kubeconfig))
@@ -609,7 +615,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 	}
 
 	// Add cluster labels
-	labels["cluster.x-k8s.io/cluster-name"] = c.Namespace
+	labels["cluster.x-k8s.io/cluster-name"] = c.ClusterName
 	labels["cluster.x-k8s.io/role"] = "worker"
 
 	var (

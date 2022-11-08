@@ -4,7 +4,7 @@ metadata:
   annotations:
   labels:
     kubevirt.io/vm: pvc-image-source
-    cluster.x-k8s.io/cluster-name: test-namespace
+    cluster.x-k8s.io/cluster-name: cluster-name
     cluster.x-k8s.io/role: worker
     md: md-name
   name: pvc-image-source
@@ -31,7 +31,7 @@ spec:
       creationTimestamp: null
       labels:
         kubevirt.io/vm: pvc-image-source
-        cluster.x-k8s.io/cluster-name: test-namespace
+        cluster.x-k8s.io/cluster-name: cluster-name
         cluster.x-k8s.io/role: worker
         md: md-name
     spec:

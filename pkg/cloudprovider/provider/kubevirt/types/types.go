@@ -26,10 +26,11 @@ import (
 )
 
 type RawConfig struct {
-	Auth                      Auth                       `json:"auth,omitempty"`
-	VirtualMachine            VirtualMachine             `json:"virtualMachine,omitempty"`
-	Affinity                  Affinity                   `json:"affinity,omitempty"`
-	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints"`
+	ClusterName               providerconfigtypes.ConfigVarString `json:"clusterName"`
+	Auth                      Auth                                `json:"auth,omitempty"`
+	VirtualMachine            VirtualMachine                      `json:"virtualMachine,omitempty"`
+	Affinity                  Affinity                            `json:"affinity,omitempty"`
+	TopologySpreadConstraints []TopologySpreadConstraint          `json:"topologySpreadConstraints"`
 }
 
 // Auth.

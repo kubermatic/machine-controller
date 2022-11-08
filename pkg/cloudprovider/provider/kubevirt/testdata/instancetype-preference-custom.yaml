@@ -3,7 +3,7 @@ kind: VirtualMachine
 metadata:
   annotations:
   labels:
-    cluster.x-k8s.io/cluster-name: test-namespace
+    cluster.x-k8s.io/cluster-name: cluster-name
     cluster.x-k8s.io/role: worker
     kubevirt.io/vm: instancetype-preference-custom
     md: md-name
@@ -35,7 +35,7 @@ spec:
   template:
     metadata:
       labels:
-        cluster.x-k8s.io/cluster-name: test-namespace
+        cluster.x-k8s.io/cluster-name: cluster-name
         cluster.x-k8s.io/role: worker
         kubevirt.io/vm: instancetype-preference-custom
         md: md-name
