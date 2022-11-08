@@ -223,10 +223,12 @@ write_files:
     [Service]
     Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/var/run/netconfig/resolv.conf"
 
+{{- if ne (len .CloudConfig) 0 }}
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
 {{ .CloudConfig | indent 4 }}
+{{- end }}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"

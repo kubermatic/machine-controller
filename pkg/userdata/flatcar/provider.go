@@ -388,12 +388,14 @@ storage:
         inline: |
 {{ .Kubeconfig | indent 10 }}
 
+{{- if ne (len .CloudConfig) 0 }}
     - path: /etc/kubernetes/cloud-config
       filesystem: root
       mode: 0400
       contents:
         inline: |
 {{ .CloudConfig | indent 10 }}
+{{- end }}
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
