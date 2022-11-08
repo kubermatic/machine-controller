@@ -257,7 +257,6 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
-
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |

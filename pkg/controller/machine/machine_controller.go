@@ -756,11 +756,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				}
 			}
 
-			cloudConfig, kubeletCloudProviderName, err := prov.GetCloudConfig(machine.Spec)
-			if err != nil {
-				return nil, fmt.Errorf("failed to render cloud config: %w", err)
-			}
-
 			// grab kubelet featureGates from the annotations
 			kubeletFeatureGates := common.GetKubeletFeatureGates(machine.GetAnnotations())
 			if len(kubeletFeatureGates) == 0 {
@@ -778,6 +773,15 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				externalCloudProvider, _ = strconv.ParseBool(val)
 			}
 
+			cloudConfig, kubeletCloudProviderName, err := prov.GetCloudConfig(machine.Spec)
+			if err != nil {
+				return nil, fmt.Errorf("failed to render cloud config: %w", err)
+			}
+
+			if providerConfig.CloudProvider == providerconfigtypes.CloudProviderVsphere && externalCloudProvider {
+				cloudConfig = ""
+			}
+
 			registryCredentials, err := containerruntime.GetContainerdAuthConfig(ctx, r.client, r.nodeSettings.RegistryCredentialsSecretRef)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get containerd auth config: %w", err)
@@ -792,23 +796,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 			if val, ok := kubeletConfigs[common.ContainerLogMaxFilesKubeletConfig]; ok {
 				crRuntime.ContainerLogMaxFiles = val
-			}
-
-			req := plugin.UserDataRequest{
-				MachineSpec:              machine.Spec,
-				Kubeconfig:               kubeconfig,
-				CloudConfig:              cloudConfig,
-				CloudProviderName:        string(providerConfig.CloudProvider),
-				ExternalCloudProvider:    externalCloudProvider,
-				DNSIPs:                   r.nodeSettings.ClusterDNSIPs,
-				PauseImage:               r.nodeSettings.PauseImage,
-				KubeletCloudProviderName: kubeletCloudProviderName,
-				KubeletFeatureGates:      kubeletFeatureGates,
-				KubeletConfigs:           kubeletConfigs,
-				NoProxy:                  r.nodeSettings.NoProxy,
-				HTTPProxy:                r.nodeSettings.HTTPProxy,
-				ContainerRuntime:         crRuntime,
-				NodePortRange:            r.nodePortRange,
 			}
 
 			// Here we do stuff!
@@ -838,8 +825,25 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 					return nil, fmt.Errorf(CloudInitNotReadyError, bootstrap.BootstrapCloudConfig, machine.Name)
 				}
 
-				userdata = getOSMBootstrapUserdata(req.MachineSpec.Name, *bootstrapSecret)
+				userdata = getOSMBootstrapUserdata(machine.Spec.Name, *bootstrapSecret)
 			} else {
+				req := plugin.UserDataRequest{
+					MachineSpec:              machine.Spec,
+					Kubeconfig:               kubeconfig,
+					CloudConfig:              cloudConfig,
+					CloudProviderName:        string(providerConfig.CloudProvider),
+					ExternalCloudProvider:    externalCloudProvider,
+					DNSIPs:                   r.nodeSettings.ClusterDNSIPs,
+					PauseImage:               r.nodeSettings.PauseImage,
+					KubeletCloudProviderName: kubeletCloudProviderName,
+					KubeletFeatureGates:      kubeletFeatureGates,
+					KubeletConfigs:           kubeletConfigs,
+					NoProxy:                  r.nodeSettings.NoProxy,
+					HTTPProxy:                r.nodeSettings.HTTPProxy,
+					ContainerRuntime:         crRuntime,
+					NodePortRange:            r.nodePortRange,
+				}
+
 				userdata, err = userdataPlugin.UserData(req)
 				if err != nil {
 					return nil, fmt.Errorf("failed get userdata: %w", err)

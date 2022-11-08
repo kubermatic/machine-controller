@@ -256,10 +256,12 @@ write_files:
   content: |
 {{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .ProviderSpec.Network.GetIPFamily .PauseImage .MachineSpec.Taints .ExtraKubeletFlags true | indent 4 }}
 
+{{- if ne (len .CloudConfig) 0 }}
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
 {{ .CloudConfig | indent 4 }}
+{{- end }}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"
