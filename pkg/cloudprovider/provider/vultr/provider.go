@@ -291,10 +291,10 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	client := getClient(c.Token)
 
 	if c.MachineType == string(vultrtypes.BareMetal) {
-		// After Delete(), Vultr API doesn't list the instance anymore, but the instance is still online for a while,
-		// causing the control-plane to reconnect with the instance, leaving the node on NotReady state
-		// This guarantees that the Node is gone
-		err = client.BareMetalServer.Halt(ctx, instance.ID())
+		// After deleting a Vultr instance, it sometimes comes back online for a moment
+		// and kubelet will try to reconnect to the control-plane, leaving a dangling node on the cluster
+		// We wipe out the machine before deletion to avoid that
+		_, err = client.BareMetalServer.Reinstall(ctx, instance.ID())
 		if err != nil {
 			return false, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
