@@ -28,6 +28,7 @@ import (
 )
 
 type anexiaInstance struct {
+	isCreating        bool
 	info              *info.Info
 	reservedAddresses []string
 }
@@ -85,6 +86,10 @@ func (ai *anexiaInstance) Addresses() map[string]v1.NodeAddressType {
 }
 
 func (ai *anexiaInstance) Status() instance.Status {
+	if ai.isCreating {
+		return instance.StatusCreating
+	}
+
 	if ai.info != nil {
 		if ai.info.Status == anxtypes.MachinePoweredOn {
 			return instance.StatusRunning
