@@ -23,13 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/anexia-it/go-anxcloud/pkg/vsphere/provisioning/progress"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
 
 	anxclient "github.com/anexia-it/go-anxcloud/pkg/client"
 	anxaddr "github.com/anexia-it/go-anxcloud/pkg/ipam/address"
@@ -48,6 +48,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
 )
 
 const (
@@ -116,49 +117,12 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		retErr = anxtypes.NewMultiError(retErr, updateMachineStatus(machine, status, data.Update))
 	}()
 
-	// check whether machine is already provisioning
-	if isAlreadyProvisioning(ctx) && status.ProvisioningID == "" {
-		klog.Info("ongoing provisioning detected")
-		err := waitForVM(ctx, client)
-		if err != nil {
-			return nil, err
-		}
-		return p.Get(machine, data)
-	}
-
 	// provision machine
 	err = provisionVM(ctx, client)
 	if err != nil {
 		return nil, err
 	}
 	return p.Get(machine, data)
-}
-
-func waitForVM(ctx context.Context, client anxclient.Client) error {
-	reconcileContext := getReconcileContext(ctx)
-	api := vsphere.NewAPI(client)
-	var identifier string
-	err := wait.PollImmediate(5*time.Second, 1*time.Minute, func() (bool, error) {
-		klog.V(2).Info("checking for VM with name ", reconcileContext.Machine.Name)
-		vms, err := api.Search().ByName(ctx, fmt.Sprintf("%%-%s", reconcileContext.Machine.Name))
-		if err != nil {
-			return false, nil
-		}
-		if len(vms) < 1 {
-			return false, nil
-		}
-		if len(vms) > 1 {
-			return false, errors.New("too many VMs returned by search")
-		}
-		identifier = vms[0].Identifier
-		return true, nil
-	})
-	if err != nil {
-		return err
-	}
-
-	reconcileContext.Status.InstanceID = identifier
-	return updateMachineStatus(reconcileContext.Machine, *reconcileContext.Status, reconcileContext.ProviderData.Update)
 }
 
 func provisionVM(ctx context.Context, client anxclient.Client) error {
@@ -230,15 +194,6 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 	klog.V(2).Info(fmt.Sprintf("Using provisionID from machine '%s' to await completion",
 		reconcileContext.Machine.Name))
 
-	instanceID, err := vmAPI.Provisioning().Progress().AwaitCompletion(ctx, status.ProvisioningID)
-	if err != nil {
-		klog.Errorf("failed to await machine completion '%s'", reconcileContext.Machine.Name)
-		// something went wrong remove provisioning ID, so we can start from scratch
-		status.ProvisioningID = ""
-		return newError(common.CreateMachineError, "instance provisioning failed: %v", err)
-	}
-
-	status.InstanceID = instanceID
 	meta.SetStatusCondition(&status.Conditions, v1.Condition{
 		Type:    ProvisionedType,
 		Status:  v1.ConditionTrue,
@@ -249,6 +204,8 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 	return updateMachineStatus(reconcileContext.Machine, *status, reconcileContext.ProviderData.Update)
 }
 
+var _engsup3404mutex sync.Mutex
+
 func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) {
 	reconcileContext := getReconcileContext(ctx)
 	status := reconcileContext.Status
@@ -258,6 +215,9 @@ func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) 
 		klog.Infof("reusing already provisioned ip %q", status.ReservedIP)
 		return status.ReservedIP, nil
 	}
+
+	_engsup3404mutex.Lock()
+	defer _engsup3404mutex.Unlock()
 
 	klog.Info(fmt.Sprintf("Creating a new IP for machine %q", reconcileContext.Machine.Name))
 	addrAPI := anxaddr.NewAPI(client)
@@ -448,7 +408,7 @@ func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(machine *clusterv1alpha1.Machine, pd *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to retrieve config: %v", err)
@@ -465,8 +425,30 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
 	}
 
-	if status.InstanceID == "" {
+	if status.InstanceID == "" && status.ProvisioningID == "" {
 		return nil, cloudprovidererrors.ErrInstanceNotFound
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.GetRequestTimeout)
+	defer cancel()
+
+	if status.InstanceID == "" {
+		progress, err := vsphereAPI.Provisioning().Progress().Get(ctx, status.ProvisioningID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get provisioning progress: %w", err)
+		}
+		if len(progress.Errors) > 0 {
+			return nil, fmt.Errorf("vm provisioning had errors: %s", strings.Join(progress.Errors, ","))
+		}
+		if progress.Progress < 100 || progress.VMIdentifier == "" {
+			return &anexiaInstance{isCreating: true}, nil
+		}
+
+		status.InstanceID = progress.VMIdentifier
+
+		if err := updateMachineStatus(machine, status, pd.Update); err != nil {
+			return nil, fmt.Errorf("failed updating machine status: %w", err)
+		}
 	}
 
 	instance := anexiaInstance{}
@@ -474,9 +456,6 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	if status.IPState == anxtypes.IPStateBound && status.ReservedIP != "" {
 		instance.reservedAddresses = []string{status.ReservedIP}
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), anxtypes.GetRequestTimeout)
-	defer cancel()
 
 	info, err := vsphereAPI.Info().Get(ctx, status.InstanceID)
 	if err != nil {

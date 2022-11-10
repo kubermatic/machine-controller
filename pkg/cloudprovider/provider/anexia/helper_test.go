@@ -18,10 +18,8 @@ package anexia
 
 import (
 	"encoding/json"
-	"net/http"
 	"testing"
 
-	"github.com/anexia-it/go-anxcloud/pkg/vsphere/search"
 	"github.com/gophercloud/gophercloud/testhelper"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
@@ -61,27 +59,6 @@ func getSpecsForValidationTest(t *testing.T, configCases []ConfigTestCase) []Val
 		})
 	}
 	return testCases
-}
-
-func createSearchHandler(t *testing.T, iterations int) http.HandlerFunc {
-	counter := 0
-	return func(writer http.ResponseWriter, request *http.Request) {
-		test := request.URL.Query().Get("name")
-		testhelper.AssertEquals(t, "%-TestMachine", test)
-		testhelper.TestMethod(t, request, http.MethodGet)
-		if iterations == counter {
-			encoder := json.NewEncoder(writer)
-			testhelper.AssertNoErr(t, encoder.Encode(map[string]interface{}{
-				"data": []search.VM{
-					{
-						Name:       "543053-TestMachine",
-						Identifier: TestIdentifier,
-					},
-				},
-			}))
-		}
-		counter++
-	}
 }
 
 func newConfigVarString(str string) types.ConfigVarString {
