@@ -293,8 +293,18 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	if c.MachineType == string(vultrtypes.BareMetal) {
 		// After deleting a Vultr instance, it sometimes comes back online for a moment
 		// and kubelet will try to reconnect to the control-plane, leaving a dangling node on the cluster
-		// We wipe out the machine before deletion to avoid that
-		_, err = client.BareMetalServer.Reinstall(ctx, instance.ID())
+		// We update the machine's cloud-init to make sure `kubelet` will no start on a possible boot after deletion
+		cloudInit := `#cloud-config
+		bootcmd:
+		- [ sh, -xc, "systemctl	disable kubelet" ]
+		- [ sh, -xc, "systemctl	stop kubelet" ]
+		- [ sh, -xc, "systemctl	disable kubelet-healthcheck.service" ]
+		- [ sh, -xc, "systemctl	stop kubelet-healthcheck.service" ]
+		`
+		instanceUpdate := govultr.BareMetalUpdate{
+			UserData: base64.StdEncoding.EncodeToString([]byte(cloudInit)),
+		}
+		_, err = client.BareMetalServer.Update(ctx, instance.ID(), &instanceUpdate)
 		if err != nil {
 			return false, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
@@ -302,7 +312,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 			}
 		}
 
-		err := client.BareMetalServer.Delete(ctx, instance.ID())
+		err = client.BareMetalServer.Delete(ctx, instance.ID())
 		if err != nil {
 			return false, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
