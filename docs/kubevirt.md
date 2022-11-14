@@ -7,13 +7,14 @@ under `examples/cdi-operator.yaml` to provision storage. It is important to have
 information regarding which types of storage can be used please refer to [KubeVirt documentation](https://github.com/kubevirt/containerized-data-importer/blob/main/doc/basic_pv_pvc_dv.md).
 
 
-Afterwards, you can use the provided `exampes/examples/kubevirt-machinedeployment.yaml` as base. There
+Afterwards, you can use the provided `examples/kubevirt-machinedeployment.yaml` as base. There
 are some things you need to keep in mind:
 
 * The machine-controller will create `VMIs` that have the same name as the underlying `machine`. To
 avoid collisions, use one namespace per cluster that runs the `machine-controller`
 * Service CIDR range: The CIDR ranges of the cluster that runs Kubevirt and the cluster that hosts the machine-controller must not overlap,
 otherwise routing of services that run in the kubevirt cluster won't work anymore. This is especially important for the DNS ClusterIP.
+* `clusterName` is used to [label VMs](https://github.com/kubevirt/cloud-provider-kubevirt#prerequisites) for LoadBalancer selection
 
 ## Serving Supported Images
 
