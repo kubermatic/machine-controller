@@ -276,9 +276,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	// Instancetype and Preference
 	config.Instancetype = rawConfig.VirtualMachine.Instancetype
 	config.Preference = rawConfig.VirtualMachine.Preference
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "preference" field: %w`, err)
-	}
 
 	dnsPolicyString, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.DNSPolicy)
 	if err != nil {
