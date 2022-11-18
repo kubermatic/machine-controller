@@ -25,9 +25,14 @@ import (
 
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/simulator"
+	"github.com/vmware/govmomi/vapi/rest"
+	"github.com/vmware/govmomi/vapi/tags"
+	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+
+	_ "github.com/vmware/govmomi/vapi/simulator"
 )
 
 func TestResolveDatastoreRef(t *testing.T) {
@@ -240,6 +245,160 @@ func TestResolveResourcePoolRef(t *testing.T) {
 					t.Errorf("expected resource pool %v but got %+v", e, a)
 				}
 			}
+		})
+	}
+}
+
+func TestMachineTagging(t *testing.T) {
+	tests := []struct {
+		name               string
+		config             *Config
+		initialMachineTags []string
+	}{
+		{
+			name:   "No tags",
+			config: &Config{},
+		},
+		{
+			name: "Only machine-controller tags",
+			config: &Config{
+				Tags: []tags.Tag{
+					{
+						Name: "tag1",
+					},
+					{
+						Name: "tag2",
+					},
+				},
+			},
+		},
+		{
+			name: "Only externally managed tags",
+			config: &Config{
+				Tags: []tags.Tag{},
+			},
+			initialMachineTags: []string{"ext-tag1", "ext-tag2"},
+		},
+		{
+			name: "Mixed tags",
+			config: &Config{
+				Tags: []tags.Tag{
+					{
+						Name: "tag1",
+					},
+					{
+						Name: "tag2",
+					},
+				},
+			},
+			initialMachineTags: []string{"ext-tag1", "ext-tag2"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			simulator.Test(func(ctx context.Context, c *vim25.Client) {
+				restClient := rest.NewClient(c)
+				if err := restClient.Login(ctx, simulator.DefaultLogin); err != nil {
+					t.Fatal(err)
+				}
+
+				tagManager := tags.NewManager(restClient)
+
+				categoryID, err := tagManager.CreateCategory(ctx, &tags.Category{
+					Name: "Test Category",
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				// Obtain a VM from the simulator
+				obj := simulator.Map.Any("VirtualMachine").(*simulator.VirtualMachine)
+				vm := object.NewVirtualMachine(c, obj.Reference())
+
+				for _, tag := range tt.initialMachineTags {
+					tagID, err := tagManager.CreateTag(ctx, &tags.Tag{
+						Name:       tag,
+						CategoryID: categoryID,
+					})
+					if err != nil {
+						t.Errorf("failed to create tag: %v %v", tag, err)
+						return
+					}
+
+					if err := tagManager.AttachTag(ctx, tagID, vm.Reference()); err != nil {
+						t.Errorf("failed to attach tag to VM: %v %v", tag, err)
+						return
+					}
+				}
+
+				tt.config.VSphereURL = strings.TrimSuffix(c.URL().String(), "/sdk")
+				tt.config.Username = simulator.DefaultLogin.Username()
+				tt.config.Password, _ = simulator.DefaultLogin.Password()
+				tt.config.Datacenter = "DC0"
+				tt.config.AllowInsecure = true
+
+				expectedTagsAfterAttach := map[string]struct{}{}
+				initialTagNames := map[string]struct{}{}
+
+				for _, tag := range tt.initialMachineTags {
+					expectedTagsAfterAttach[tag] = struct{}{}
+					initialTagNames[tag] = struct{}{}
+				}
+
+				for idx, tag := range tt.config.Tags {
+					expectedTagsAfterAttach[tag.Name] = struct{}{}
+					tt.config.Tags[idx].CategoryID = categoryID
+				}
+
+				err = createAndAttachTags(ctx, tt.config, vm)
+				if err != nil {
+					t.Errorf("createAndAttachTags returned an error: %v", err)
+					return
+				}
+
+				tags, err := tagManager.GetAttachedTags(ctx, vm.Reference())
+				if err != nil {
+					t.Errorf("failed to get attached tags for the VM: %s, %v", vm.Name(), err)
+					return
+				}
+
+				attachedTagNames := map[string]struct{}{}
+				for _, tag := range tags {
+					attachedTagNames[tag.Name] = struct{}{}
+
+					if _, ok := expectedTagsAfterAttach[tag.Name]; !ok {
+						t.Errorf("machine has unexpected tag: %v", tag.Name)
+					}
+				}
+
+				for tag := range expectedTagsAfterAttach {
+					if _, ok := attachedTagNames[tag]; !ok {
+						t.Errorf("machine is missing tag: %v", tag)
+					}
+				}
+
+				err = deleteTags(ctx, tt.config, vm)
+				if err != nil {
+					t.Errorf("deleteTags returned an error: %v", err)
+					return
+				}
+
+				tags, err = tagManager.GetAttachedTags(ctx, vm.Reference())
+				if err != nil {
+					t.Errorf("failed to get attached tags for the VM: %s, %v", vm.Name(), err)
+					return
+				}
+
+				if len(tags) != len(tt.initialMachineTags) {
+					t.Errorf("unexpected number of tags after remove: expected %v, got %v", len(tt.initialMachineTags), len(tags))
+				}
+
+				for _, tag := range tags {
+					if _, ok := initialTagNames[tag.Name]; !ok {
+						t.Errorf("tag remains after removal: %v", tag.Name)
+					}
+				}
+			})
 		})
 	}
 }

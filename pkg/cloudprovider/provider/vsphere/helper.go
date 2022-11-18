@@ -487,6 +487,10 @@ func createAndAttachTags(ctx context.Context, config *Config, vm *object.Virtual
 	return nil
 }
 
+type distinctTag struct {
+	name, categoryID string
+}
+
 func deleteTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
 	restAPISession, err := NewRESTSession(ctx, config)
 	if err != nil {
@@ -499,8 +503,30 @@ func deleteTags(ctx context.Context, config *Config, vm *object.VirtualMachine) 
 	if err != nil {
 		return fmt.Errorf("failed to get attached tags for the VM: %s, %w", vm.Name(), err)
 	}
+
+	ownedTags := map[distinctTag]struct{}{}
+
+	for _, tag := range config.Tags {
+		tagRef := distinctTag{
+			name:       tag.Name,
+			categoryID: tag.CategoryID,
+		}
+
+		ownedTags[tagRef] = struct{}{}
+	}
+
 	klog.V(3).Info("Deleting tags")
 	for _, tag := range tags {
+		tagRef := distinctTag{
+			name:       tag.Name,
+			categoryID: tag.CategoryID,
+		}
+
+		if _, found := ownedTags[tagRef]; !found {
+			klog.V(4).Infof("not removing external tag %v (category id: %v)", tag.Name, tag.CategoryID)
+			continue
+		}
+
 		err := tagManager.DeleteTag(ctx, &tag)
 		if err != nil {
 			return fmt.Errorf("failed to delete tag: %v %w", tag, err)
