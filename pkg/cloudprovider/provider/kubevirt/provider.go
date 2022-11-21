@@ -60,12 +60,18 @@ func init() {
 	}
 }
 
+type imageSource string
+
 const (
 	// topologyKeyHostname defines the topology key for the node hostname.
 	topologyKeyHostname = "kubernetes.io/hostname"
 	// machineDeploymentLabelKey defines the label key used to contains as value the MachineDeployment name
 	// which machine comes from.
 	machineDeploymentLabelKey = "md"
+	// httpSource defines the http source type for VM Disk Image.
+	httpSource imageSource = "http"
+	// pvcSource defines the pvc source type for VM Disk Image.
+	pvcSource imageSource = "pvc"
 )
 
 var supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
@@ -93,7 +99,7 @@ type Config struct {
 	CPUs                      string
 	Memory                    string
 	Namespace                 string
-	OsImage                   OSImage
+	OSImageSource             *cdiv1beta1.DataVolumeSource
 	StorageClassName          string
 	PVCSize                   resource.Quantity
 	FlavorName                string
@@ -146,11 +152,6 @@ type SecondaryDisks struct {
 	Name             string
 	Size             resource.Quantity
 	StorageClassName string
-}
-
-type OSImage struct {
-	URL            string
-	DataVolumeName string
 }
 
 type kubeVirtServer struct {
@@ -247,15 +248,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf(`failed to get value of "memory" field: %w`, err)
 	}
 	config.Namespace = getNamespace()
-	osImage, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.OsImage)
+
+	config.OSImageSource, err = p.parseOSImageSource(rawConfig.VirtualMachine.Template.PrimaryDisk, config.Namespace)
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "sourceURL" field: %w`, err)
+		return nil, nil, fmt.Errorf(`failed to get value of "osImageSource" field: %w`, err)
 	}
-	if _, err = url.ParseRequestURI(osImage); err == nil {
-		config.OsImage.URL = osImage
-	} else {
-		config.OsImage.DataVolumeName = osImage
-	}
+
 	pvcSize, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.Size)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "pvcSize" field: %w`, err)
@@ -372,6 +370,35 @@ func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirtt
 		})
 	}
 	return parsedTopologyConstraints, nil
+}
+
+func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nameSpace string) (*cdiv1beta1.DataVolumeSource, error) {
+	osImage, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.OsImage)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get value of "primaryDisk.osImage" field: %w`, err)
+	}
+	osImageSource, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.Source)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get value of "primaryDisk.source" field: %w`, err)
+	}
+	switch imageSource(osImageSource) {
+	case httpSource:
+		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
+	case pvcSource:
+		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
+			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
+		}
+		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: nameSpace}}, nil
+	default:
+		// handle old API for backward compatibility.
+		if _, err = url.ParseRequestURI(osImage); err == nil {
+			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
+		}
+		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
+			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
+		}
+		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: nameSpace}}, nil
+	}
 }
 
 // getNamespace returns the namespace where the VM is created.
@@ -506,7 +533,11 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	if err == nil {
 		labels["cpus"] = c.CPUs
 		labels["memoryMIB"] = c.Memory
-		labels["osImage"] = c.OsImage.URL
+		if c.OSImageSource.HTTP != nil {
+			labels["osImage"] = c.OSImageSource.HTTP.URL
+		} else if c.OSImageSource.PVC != nil {
+			labels["osImage"] = c.OSImageSource.PVC.Name
+		}
 	}
 
 	return labels, err
@@ -787,7 +818,6 @@ func getVMVolumes(config *Config, dataVolumeName string, userDataSecretName stri
 }
 
 func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.DataVolumeTemplateSpec {
-	dataVolumeSource := getDataVolumeSource(config.OsImage)
 	pvcRequest := corev1.ResourceList{corev1.ResourceStorage: config.PVCSize}
 	dataVolumeTemplates := []kubevirtv1.DataVolumeTemplateSpec{
 		{
@@ -804,7 +834,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 						Requests: pvcRequest,
 					},
 				},
-				Source: dataVolumeSource,
+				Source: config.OSImageSource,
 			},
 		},
 	}
@@ -823,27 +853,11 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 						Requests: corev1.ResourceList{corev1.ResourceStorage: sd.Size},
 					},
 				},
-				Source: dataVolumeSource,
+				Source: config.OSImageSource,
 			},
 		})
 	}
 	return dataVolumeTemplates
-}
-
-// getDataVolumeSource returns DataVolumeSource, HTTP or PVC.
-func getDataVolumeSource(osImage OSImage) *cdiv1beta1.DataVolumeSource {
-	dataVolumeSource := &cdiv1beta1.DataVolumeSource{}
-	if osImage.URL != "" {
-		dataVolumeSource.HTTP = &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage.URL}
-	} else if osImage.DataVolumeName != "" {
-		if nameSpaceAndName := strings.Split(osImage.DataVolumeName, "/"); len(nameSpaceAndName) >= 2 {
-			dataVolumeSource.PVC = &cdiv1beta1.DataVolumeSourcePVC{
-				Namespace: nameSpaceAndName[0],
-				Name:      nameSpaceAndName[1],
-			}
-		}
-	}
-	return dataVolumeSource
 }
 
 func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
