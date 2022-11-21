@@ -39,6 +39,7 @@ type Auth struct {
 
 // VirtualMachine.
 type VirtualMachine struct {
+	// Deprecated: use Instancetype/Preference instead.
 	Flavor Flavor `json:"flavor,omitempty"`
 	// Instancetype is optional.
 	Instancetype *kubevirtv1.InstancetypeMatcher `json:"instancetype,omitempty"`

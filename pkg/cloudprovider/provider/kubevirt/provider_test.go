@@ -32,7 +32,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -47,58 +46,18 @@ var (
 	vmDir         = "testdata"
 	fakeclient    ctrlruntimeclient.WithWatch
 	expectedVms   map[string]*kubevirtv1.VirtualMachine
-	flavorName    = "to-deprecate-flavor"
 )
 
 func init() {
-	presets := []ctrlruntimeclient.Object{getPreset("77", "77Gi", flavorName)}
-	fakeclient = fakectrlruntimeclient.NewClientBuilder().WithObjects(presets...).Build()
+	fakeclient = fakectrlruntimeclient.NewClientBuilder().Build()
 	objs := runtimeFromYaml(fakeclient, vmManifestsFS, vmDir)
 	expectedVms = toVirtualMachines(objs)
-}
-
-func getPreset(cpu, memory, presetName string) *kubevirtv1.VirtualMachineInstancePreset {
-	cpuQuantity, err := resource.ParseQuantity(cpu)
-	if err != nil {
-		return nil
-	}
-	memoryQuantity, err := resource.ParseQuantity(memory)
-	if err != nil {
-		return nil
-	}
-	resourceList := corev1.ResourceList{
-		corev1.ResourceMemory: memoryQuantity,
-		corev1.ResourceCPU:    cpuQuantity,
-	}
-
-	return &kubevirtv1.VirtualMachineInstancePreset{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       kubevirtv1.VirtualMachineInstancePresetGroupVersionKind.Kind,
-			APIVersion: kubevirtv1.GroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      presetName,
-			Namespace: testNamespace,
-		},
-		Spec: kubevirtv1.VirtualMachineInstancePresetSpec{
-			Selector: metav1.LabelSelector{
-				MatchLabels: map[string]string{"kubevirt.io/flavor": presetName},
-			},
-			Domain: &kubevirtv1.DomainSpec{
-				Resources: kubevirtv1.ResourceRequirements{
-					Requests: resourceList,
-					Limits:   resourceList,
-				},
-			},
-		},
-	}
 }
 
 type kubevirtProviderSpecConf struct {
 	OsImageDV                string // if OsImage from DV and not from http source
 	Instancetype             *kubevirtv1.InstancetypeMatcher
 	Preference               *kubevirtv1.PreferenceMatcher
-	Flavor                   string // to remove when Flavor is deprecated
 	OperatingSystem          string
 	TopologySpreadConstraint bool
 	Affinity                 bool
@@ -146,11 +105,6 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 				"kind": "{{ .Preference.Kind }}"
 			},
 			{{- end }}
-			{{- if .Flavor }}		
-			"flavor": {
-			  "name": "{{ .Flavor }}"
-			},
-			{{- end }}
 			"template": {
 				"cpus": "2",
 				"memory": "2Gi",
@@ -169,11 +123,9 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 					{{- end }}
 					"size": "10Gi",
 					{{- if .OsImageSource }}
-					"storageClassName": "longhorn",
-					"source": "{{ .OsImageSource }}"
-					{{- else }}
-					"storageClassName": "longhorn"
+					"source": "{{ .OsImageSource }}",
 					{{- end }}
+					"storageClassName": "longhorn"
 				}
 			}
 		}
@@ -233,27 +185,6 @@ func TestNewVirtualMachine(t *testing.T) {
 				Preference: &kubevirtv1.PreferenceMatcher{
 					Name: "custom-pref",
 					Kind: "VirtualMachineClusterPreference",
-				},
-			},
-		},
-		{
-			name: "flavor", // to be deprecated when UI is switched to instancetype
-			specConf: kubevirtProviderSpecConf{
-				Flavor: flavorName,
-			},
-		},
-		{
-			name: "instancetype-flavor", // to be deprecated when UI is switched to instancetype, instancetype wins
-			// no flavor labels
-			specConf: kubevirtProviderSpecConf{
-				Flavor: flavorName,
-				Instancetype: &kubevirtv1.InstancetypeMatcher{
-					Name: "standard-it",
-					Kind: "VirtualMachineInstancetype",
-				},
-				Preference: &kubevirtv1.PreferenceMatcher{
-					Name: "standard-pref",
-					Kind: "VirtualMachinePreference",
 				},
 			},
 		},
