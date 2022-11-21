@@ -35,6 +35,10 @@ import (
 	_ "github.com/vmware/govmomi/vapi/simulator"
 )
 
+const (
+	testDatacenter = "DC0"
+)
+
 func TestResolveDatastoreRef(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -100,7 +104,7 @@ func TestResolveDatastoreRef(t *testing.T) {
 			tt.config.VSphereURL = strings.TrimSuffix(s.URL.String(), "/sdk")
 			tt.config.Username = simulator.DefaultLogin.Username()
 			tt.config.Password, _ = simulator.DefaultLogin.Password()
-			tt.config.Datacenter = "DC0"
+			tt.config.Datacenter = testDatacenter
 
 			session, err := NewSession(ctx, tt.config)
 			defer session.Logout(ctx)
@@ -218,7 +222,7 @@ func TestResolveResourcePoolRef(t *testing.T) {
 			tt.config.VSphereURL = strings.TrimSuffix(s.URL.String(), "/sdk")
 			tt.config.Username = simulator.DefaultLogin.Username()
 			tt.config.Password, _ = simulator.DefaultLogin.Password()
-			tt.config.Datacenter = "DC0"
+			tt.config.Datacenter = testDatacenter
 
 			session, err := NewSession(ctx, tt.config)
 			defer session.Logout(ctx)
@@ -334,7 +338,7 @@ func TestMachineTagging(t *testing.T) {
 				tt.config.VSphereURL = strings.TrimSuffix(c.URL().String(), "/sdk")
 				tt.config.Username = simulator.DefaultLogin.Username()
 				tt.config.Password, _ = simulator.DefaultLogin.Password()
-				tt.config.Datacenter = "DC0"
+				tt.config.Datacenter = testDatacenter
 				tt.config.AllowInsecure = true
 
 				expectedTagsAfterAttach := map[string]struct{}{}
