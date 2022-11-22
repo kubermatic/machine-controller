@@ -102,12 +102,9 @@ type Config struct {
 	OSImageSource             *cdiv1beta1.DataVolumeSource
 	StorageClassName          string
 	PVCSize                   resource.Quantity
-	FlavorName                string
 	Instancetype              *kubevirtv1.InstancetypeMatcher
 	Preference                *kubevirtv1.PreferenceMatcher
 	SecondaryDisks            []SecondaryDisks
-	PodAffinityPreset         AffinityType
-	PodAntiAffinityPreset     AffinityType
 	NodeAffinityPreset        NodeAffinityPreset
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 }
@@ -264,11 +261,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	config.StorageClassName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageClassName)
 	if err != nil {
 		return nil, nil, fmt.Errorf(`failed to get value of "storageClassName" field: %w`, err)
-	}
-	// Keep Flavor during migration.
-	config.FlavorName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VirtualMachine.Flavor.Name)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to get value of "flavor.name" field: %w`, err)
 	}
 
 	// Instancetype and Preference
@@ -479,9 +471,9 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
-	// If instancetype is specified (or flavor until deprecation), skip CPU and Memory validation.
+	// If instancetype is specified, skip CPU and Memory validation.
 	// Values will come from instancetype.
-	if c.Instancetype == nil && c.FlavorName == "" {
+	if c.Instancetype == nil {
 		if _, err := parseResources(c.CPUs, c.Memory); err != nil {
 			return err
 		}
@@ -606,25 +598,14 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 		labels[machineDeploymentLabelKey] = mdName
 	}
 
-	// Priority to instancetype.
-	// if no instancetype and no flavor, resources are from config.
-	if c.Instancetype == nil && c.FlavorName == "" {
+	// if no instancetype, resources are from config.
+	if c.Instancetype == nil {
 		requestsAndLimits, err := parseResources(c.CPUs, c.Memory)
 		if err != nil {
 			return nil, err
 		}
 		resourceRequirements.Requests = *requestsAndLimits
 		resourceRequirements.Limits = *requestsAndLimits
-	} else if c.FlavorName != "" && c.Instancetype == nil {
-		// if flavor is specified, then take it from flavor (if instancetype is not set!).
-		// Add VMIPreset label if specified.
-		vmiPreset := kubevirtv1.VirtualMachineInstancePreset{}
-		if err := sigClient.Get(ctx, types.NamespacedName{Namespace: c.Namespace, Name: c.FlavorName}, &vmiPreset); err != nil {
-			return nil, err
-		}
-		for key, val := range vmiPreset.Spec.Selector.MatchLabels {
-			labels[key] = val
-		}
 	}
 
 	var (
