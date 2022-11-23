@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   annotations:
   labels:
+    cluster.x-k8s.io/cluster-name: cluster-name
+    cluster.x-k8s.io/role: worker
     kubevirt.io/vm: instancetype-preference-standard
     md: md-name
   name: instancetype-preference-standard
@@ -33,6 +35,8 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
+        cluster.x-k8s.io/cluster-name: cluster-name
+        cluster.x-k8s.io/role: worker
         kubevirt.io/vm: instancetype-preference-standard
         md: md-name
     spec:

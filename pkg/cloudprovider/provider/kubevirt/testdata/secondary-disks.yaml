@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   annotations:
   labels:
+    cluster.x-k8s.io/cluster-name: cluster-name
+    cluster.x-k8s.io/role: worker
     kubevirt.io/vm: secondary-disks
     md: md-name
   name: secondary-disks
@@ -53,6 +55,8 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
+        cluster.x-k8s.io/cluster-name: cluster-name
+        cluster.x-k8s.io/role: worker
         kubevirt.io/vm: secondary-disks
         md: md-name
     spec:

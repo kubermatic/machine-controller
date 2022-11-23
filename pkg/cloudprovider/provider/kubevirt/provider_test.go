@@ -70,6 +70,7 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 	tmpl, err := template.New("test").Parse(`{
 	"cloudProvider": "kubevirt",
 	"cloudProviderSpec": {
+		"clusterName": "cluster-name",
 		"auth": {
 			"kubeconfig": "eyJhcGlWZXJzaW9uIjoidjEiLCJjbHVzdGVycyI6W3siY2x1c3RlciI6eyJjZXJ0aWZpY2F0ZS1hdXRob3JpdHktZGF0YSI6IiIsInNlcnZlciI6Imh0dHBzOi8vOTUuMjE2LjIwLjE0Njo2NDQzIn0sIm5hbWUiOiJrdWJlcm5ldGVzIn1dLCJjb250ZXh0cyI6W3siY29udGV4dCI6eyJjbHVzdGVyIjoia3ViZXJuZXRlcyIsIm5hbWVzcGFjZSI6Imt1YmUtc3lzdGVtIiwidXNlciI6Imt1YmVybmV0ZXMtYWRtaW4ifSwibmFtZSI6Imt1YmVybmV0ZXMtYWRtaW5Aa3ViZXJuZXRlcyJ9XSwiY3VycmVudC1jb250ZXh0Ijoia3ViZXJuZXRlcy1hZG1pbkBrdWJlcm5ldGVzIiwia2luZCI6IkNvbmZpZyIsInByZWZlcmVuY2VzIjp7fSwidXNlcnMiOlt7Im5hbWUiOiJrdWJlcm5ldGVzLWFkbWluIiwidXNlciI6eyJjbGllbnQtY2VydGlmaWNhdGUtZGF0YSI6IiIsImNsaWVudC1rZXktZGF0YSI6IiJ9fV19"
 		},
@@ -86,20 +87,20 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"affinity": {
 		  "nodeAffinityPreset": {
 		    "type": "hard",
-			"key": "key1", 
+			"key": "key1",
 			"values": [
 				"foo1", "foo2" ]
 		  }
 		},
 		{{- end }}
 		"virtualMachine": {
-			{{- if .Instancetype }}		
+			{{- if .Instancetype }}
 			"instancetype": {
 				"name": "{{ .Instancetype.Name }}",
 				"kind": "{{ .Instancetype.Kind }}"
 			},
 			{{- end }}
-			{{- if .Preference }}		
+			{{- if .Preference }}
 			"preference": {
 				"name": "{{ .Preference.Name }}",
 				"kind": "{{ .Preference.Kind }}"

@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   annotations:
   labels:
+    cluster.x-k8s.io/cluster-name: cluster-name
+    cluster.x-k8s.io/role: worker
     kubevirt.io/vm: affinity
     md: md-name
   name: affinity
@@ -27,6 +29,8 @@ spec:
   template:
     metadata:
       labels:
+        cluster.x-k8s.io/cluster-name: cluster-name
+        cluster.x-k8s.io/role: worker
         kubevirt.io/vm: affinity
         md: md-name
     spec:
