@@ -38,9 +38,6 @@ spec:
               preference:
                 name: "sockets-advantage"
                 kind: "VirtualMachinePreference" # Allowed values: "VirtualMachinePreference"/"VirtualMachineClusterPreference"
-              # will be deprecated: in favor instancetype and preference
-              flavor:
-                name: "kubermatic-standard"
               template:
                 cpus: "1"
                 memory: "2048M"
@@ -49,10 +46,6 @@ spec:
                   size: "10Gi"
                   storageClassName: kubermatic-fast
             affinity:
-              # Deprecated: Use topologySpreadConstraints instead.
-              podAffinityPreset: "" # Allowed values: "", "soft", "hard"
-              # Deprecated: Use topologySpreadConstraints instead.
-              podAntiAffinityPreset: "" # Allowed values: "", "soft", "hard"
               nodeAffinityPreset:
                 type: "" # Allowed values: "", "soft", "hard"
                 key: "foo"
@@ -62,7 +55,6 @@ spec:
               - maxSkew: "1"
                 topologyKey: "kubernetes.io/hostname"
                 whenUnsatisfiable: "" # Allowed values: "DoNotSchedule", "ScheduleAnyway"
-
           # Can also be `centos`, must align with he configured registryImage above
           operatingSystem: "ubuntu"
           operatingSystemSpec:
