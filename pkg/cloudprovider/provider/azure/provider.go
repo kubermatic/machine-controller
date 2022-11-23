@@ -461,7 +461,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ipFamily util.IPFamily, i
 				ipAddresses[ip] = v1.NodeExternalIP
 			}
 
-			if ipFamily == util.IPFamilyIPv4IPv6 || ipFamily == util.IPFamilyIPv6 {
+			if ipFamily.HasIPv6() {
 				publicIP6s, err := getIPAddressStrings(ctx, c, publicIPv6Name(ifaceName))
 				if err != nil {
 					return nil, fmt.Errorf("failed to retrieve IP string for IP %q: %w", name, err)
@@ -598,7 +598,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 
 	if config.PublicIPSKU != nil {
 		sku = *config.PublicIPSKU
-	} else if ipFamily == util.IPFamilyIPv4IPv6 {
+	} else if ipFamily.IsDualstack() {
 		// 1. Cannot specify basic sku PublicIp for an IPv6 network interface ipConfiguration.
 		// 2. Different basic sku and standard sku public Ip resources in availability set is not allowed.
 		// 1 & 2 means we have to use standard sku in dual-stack configuration.
@@ -623,7 +623,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 			return nil, fmt.Errorf("failed to create public IP: %w", err)
 		}
 
-		if ipFamily == util.IPFamilyIPv4IPv6 {
+		if ipFamily.IsDualstack() {
 			publicIPv6, err = createOrUpdatePublicIPAddress(ctx, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create public IP: %w", err)
@@ -1054,7 +1054,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		//noop
 	case util.IPFamilyIPv6:
 		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
-	case util.IPFamilyIPv4IPv6:
+	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
 		// validate
 	default:
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
@@ -1072,7 +1072,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 			return fmt.Errorf("unknown public IP address SKU: %s", *c.PublicIPSKU)
 		}
 
-		if providerConfig.Network.GetIPFamily() == util.IPFamilyIPv4IPv6 && *c.PublicIPSKU == network.PublicIPAddressSkuNameBasic {
+		if providerConfig.Network.GetIPFamily().IsDualstack() && *c.PublicIPSKU == network.PublicIPAddressSkuNameBasic {
 			return fmt.Errorf("cannot use %s public IP address SKU with dualstack", network.PublicIPAddressSkuNameBasic)
 		}
 	}

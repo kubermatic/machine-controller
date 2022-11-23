@@ -121,7 +121,7 @@ func (p *Provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 		// noop
 	case util.IPFamilyIPv6:
 		return newError(common.InvalidConfigurationMachineError, util.ErrIPv6OnlyUnsupported)
-	case util.IPFamilyIPv4IPv6:
+	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
 	default:
 		return newError(common.InvalidConfigurationMachineError, util.ErrUnknownNetworkFamily, cfg.providerConfig.Network.GetIPFamily())
 	}

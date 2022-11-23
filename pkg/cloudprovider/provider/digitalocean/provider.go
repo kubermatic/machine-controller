@@ -194,7 +194,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	// noop
 	case util.IPFamilyIPv6:
 		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
-	case util.IPFamilyIPv4IPv6:
+	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
 		// noop
 	default:
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
@@ -310,7 +310,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Name:              machine.Spec.Name,
 		Region:            c.Region,
 		Size:              c.Size,
-		IPv6:              c.IPv6 || pc.Network.GetIPFamily() == util.IPFamilyIPv4IPv6,
+		IPv6:              c.IPv6 || pc.Network.GetIPFamily().IsDualstack(),
 		PrivateNetworking: c.PrivateNetworking,
 		Backups:           c.Backups,
 		Monitoring:        c.Monitoring,

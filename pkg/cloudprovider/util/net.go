@@ -71,6 +71,18 @@ const (
 	IPFamilyIPv6IPv4    IPFamily = "IPv6+IPv4" // dualstack with IPv6 as primary
 )
 
+func (f IPFamily) HasIPv6() bool {
+	return f == IPFamilyIPv6 || f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
+}
+
+func (f IPFamily) HasIPv4() bool {
+	return f == IPFamilyUnspecified || f == IPFamilyIPv4 || f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
+}
+
+func (f IPFamily) IsDualstack() bool {
+	return f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
+}
+
 // IsLinkLocal checks if given ip address is link local..
 func IsLinkLocal(ipAddr string) bool {
 	addr := net.ParseIP(ipAddr)

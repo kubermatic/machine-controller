@@ -166,6 +166,15 @@ then
   exit 1
 fi
 DEFAULT_IFC_IP=$DEFAULT_IFC_IP,$DEFAULT_IFC_IP6`
+	case util.IPFamilyIPv6IPv4:
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o route get  1 | grep -oP "src \K\S+")
+DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
+if [ -z "${DEFAULT_IFC_IP6}" ]
+then
+  echodate "Failed to get IPv6 address for the default route interface"
+  exit 1
+fi
+DEFAULT_IFC_IP=$DEFAULT_IFC_IP6,$DEFAULT_IFC_IP`
 	default:
 		defaultIfcIP = defaultIfcIPv4
 	}
