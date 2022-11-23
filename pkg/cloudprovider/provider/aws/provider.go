@@ -595,9 +595,9 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	}
 
 	switch f := pc.Network.GetIPFamily(); f {
-	case util.Unspecified, util.IPv4:
+	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
 		// noop
-	case util.IPv6, util.DualStack:
+	case util.IPFamilyIPv6, util.IPFamilyIPv4IPv6:
 		if len(vpc.Ipv6CidrBlockAssociationSet) == 0 {
 			return fmt.Errorf("vpc %s does not have IPv6 CIDR block", pointer.StringDeref(vpc.VpcId, ""))
 		}
@@ -792,7 +792,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		},
 	}
 
-	if pc.Network.GetIPFamily() == util.IPv6 || pc.Network.GetIPFamily() == util.DualStack {
+	if pc.Network.GetIPFamily() == util.IPFamilyIPv6 || pc.Network.GetIPFamily() == util.IPFamilyIPv4IPv6 {
 		instanceRequest.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
 	}
 

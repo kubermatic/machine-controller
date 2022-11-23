@@ -93,7 +93,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 	// if assigning public IP addresses is enabled.
 	if cfg.assignPublicIPAddress {
 		// GCP doesn't support IPv6 only stack
-		if cfg.providerConfig.Network.GetIPFamily() == util.DualStack {
+		if cfg.providerConfig.Network.GetIPFamily() == util.IPFamilyIPv4IPv6 {
 			ifc.StackType = "IPV4_IPV6"
 
 			ifc.Ipv6AccessConfigs = []*compute.AccessConfig{

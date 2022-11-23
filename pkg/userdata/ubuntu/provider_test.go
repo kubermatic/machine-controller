@@ -303,7 +303,7 @@ func TestUserDataGeneration(t *testing.T) {
 				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 				Network: &providerconfigtypes.NetworkConfig{
-					IPFamily: util.DualStack,
+					IPFamily: util.IPFamilyIPv4IPv6,
 				},
 			},
 			spec: clusterv1alpha1.MachineSpec{
@@ -332,7 +332,7 @@ func TestUserDataGeneration(t *testing.T) {
 				CloudProvider: "digitalocean",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
 				Network: &providerconfigtypes.NetworkConfig{
-					IPFamily: util.DualStack,
+					IPFamily: util.IPFamilyIPv4IPv6,
 				},
 			},
 			spec: clusterv1alpha1.MachineSpec{

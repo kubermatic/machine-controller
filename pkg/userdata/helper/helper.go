@@ -153,11 +153,11 @@ func SetupNodeIPEnvScript(ipFamily util.IPFamily) string {
 
 	var defaultIfcIP string
 	switch ipFamily {
-	case util.IPv4:
+	case util.IPFamilyIPv4:
 		defaultIfcIP = defaultIfcIPv4
-	case util.IPv6:
+	case util.IPFamilyIPv6:
 		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")`
-	case util.DualStack:
+	case util.IPFamilyIPv4IPv6:
 		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o route get  1 | grep -oP "src \K\S+")
 DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
 if [ -z "${DEFAULT_IFC_IP6}" ]
