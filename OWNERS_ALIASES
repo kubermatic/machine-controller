@@ -18,4 +18,5 @@ aliases:
   # This SIG is responsible for ensuring that OSM and machine-controller are in sync
   sig-osm:
     - ahmedwaleedmalik
+    - dermorz
     - moadqassem
