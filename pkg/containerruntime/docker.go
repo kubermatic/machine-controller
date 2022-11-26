@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	DefaultDockerVersion = "20.10"
-	LegacyDockerVersion  = "19.03"
+	DefaultDockerContainerdVersion = "1.4"
+	DefaultDockerVersion           = "20.10"
 )
 
 type Docker struct {
@@ -60,7 +60,7 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 		ContainerdVersion string
 	}{
 		DockerVersion:     DefaultDockerVersion,
-		ContainerdVersion: DefaultContainerdVersion,
+		ContainerdVersion: DefaultDockerContainerdVersion,
 	}
 
 	switch os {

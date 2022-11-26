@@ -232,7 +232,7 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
-        - image: kubermatic/machine-controller:latest
+        - image: quay.io/kubermatic/machine-controller:latest
           imagePullPolicy: IfNotPresent
           name: machine-controller
           command:
@@ -278,7 +278,7 @@ spec:
     spec:
       serviceAccountName: machine-controller
       containers:
-        - image: kubermatic/machine-controller:latest
+        - image: quay.io/kubermatic/machine-controller:latest
           imagePullPolicy: IfNotPresent
           name: webhook
           command:

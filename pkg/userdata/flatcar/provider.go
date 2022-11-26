@@ -204,12 +204,34 @@ systemd:
             Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
 
+    - name: setup.service
+      enabled: true
+      contents: |
+        [Install]
+        WantedBy=multi-user.target
+
+        [Unit]
+        Requires=network-online.target
+        Requires=nodeip.service
+        After=network-online.target
+        After=nodeip.service
+
+        Description=Service responsible for configuring the flatcar machine
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        EnvironmentFile=-/etc/environment
+        ExecStart=/opt/bin/setup.sh
+
     - name: download-script.service
       enabled: true
       contents: |
         [Unit]
         Requires=network-online.target
+        Requires=setup.service
         After=network-online.target
+        After=setup.service
         [Service]
         Type=oneshot
         EnvironmentFile=-/etc/environment
@@ -420,6 +442,26 @@ storage:
               }
           });
 {{- end }}
+
+    - path: /opt/bin/setup.sh
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -xeuo pipefail
+
+          # We stop these services here explicitly since masking only removes the symlinks for these services so that they can't be started.
+          # But that wouldn't "stop" the already running services on the first boot.
+
+          {{- if or .FlatcarConfig.DisableUpdateEngine .FlatcarConfig.DisableAutoUpdate }}
+          systemctl stop update-engine.service
+          {{- end }}
+
+          {{- if or .FlatcarConfig.DisableLocksmithD .FlatcarConfig.DisableAutoUpdate }}
+          systemctl stop locksmithd.service
+          {{- end }}
+          systemctl disable setup.service
 
     - path: /opt/bin/download.sh
       filesystem: root
