@@ -175,7 +175,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.23.0}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.23.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -198,6 +198,12 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
+
+    DEFAULT_IFC_NAME=$(ip -o route get 1  | grep -oP "dev \K\S+")
+    echo NETWORKING_IPV6=yes >> /etc/sysconfig/network
+    echo IPV6INIT=yes >> /etc/sysconfig/network-scripts/ifcfg-$DEFAULT_IFC_NAME
+    echo DHCPV6C=yes >> /etc/sysconfig/network-scripts/ifcfg-$DEFAULT_IFC_NAME
+    ifdown $DEFAULT_IFC_NAME && ifup $DEFAULT_IFC_NAME
 
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/
@@ -252,7 +258,6 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
       --cloud-provider=external \
       --hostname-override=${KUBELET_HOSTNAME} \
@@ -260,6 +265,7 @@ write_files:
       --lock-file=/tmp/kubelet.lock \
       --container-runtime=docker \
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
+      --network-plugin=cni \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]
@@ -359,7 +365,12 @@ write_files:
       cpu: 200m
       ephemeral-storage: 1Gi
       memory: 300Mi
-    logging: {}
+    logging:
+      flushFrequency: 0
+      options:
+        json:
+          infoBufferSize: "0"
+      verbosity: 0
     memorySwap: {}
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s

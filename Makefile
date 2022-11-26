@@ -14,7 +14,7 @@
 
 SHELL = /bin/bash -eu -o pipefail
 
-GO_VERSION ?= 1.17.1
+GO_VERSION ?= 1.18.1
 
 GOOS ?= $(shell go env GOOS)
 
@@ -26,7 +26,7 @@ export GIT_TAG ?= $(shell git tag --points-at HEAD)
 
 export GOFLAGS?=-mod=readonly -trimpath
 
-REGISTRY ?= docker.io
+REGISTRY ?= quay.io
 REGISTRY_NAMESPACE ?= kubermatic
 
 LDFLAGS ?= -ldflags '-s -w'

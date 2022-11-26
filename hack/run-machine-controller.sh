@@ -17,8 +17,11 @@
 set -e
 
 # Use a special env variable for machine-controller only
+# This kubeconfig should point to the cluster where machinedeployments, machines are installed.
 MC_KUBECONFIG=${MC_KUBECONFIG:-$(dirname $0)/../.kubeconfig}
 # If you want to use the default kubeconfig `export MC_KUBECONFIG=$KUBECONFIG`
+
+# `-use-osm` flag can be specified if https://github.com/kubermatic/operating-system-manager is used to manage user data.
 
 make -C $(dirname $0)/.. build-machine-controller
 $(dirname $0)/../machine-controller \
@@ -29,6 +32,5 @@ $(dirname $0)/../machine-controller \
   -cluster-dns=172.16.0.10 \
   -enable-profiling \
   -metrics-address=0.0.0.0:8080 \
-  -use-osm \
   -health-probe-address=0.0.0.0:8085 \
   -node-container-runtime=containerd

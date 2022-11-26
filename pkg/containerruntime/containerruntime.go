@@ -117,12 +117,11 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 	moreThan124, _ := semver.NewConstraint(">= 1.24")
 
 	switch {
-	case moreThan124.Check(kubeletVersion):
+	case moreThan124.Check(kubeletVersion) || cfg.Containerd != nil:
+		// docker support has been removed in Kubernetes 1.24
 		return containerd
 	case cfg.Docker != nil:
 		return docker
-	case cfg.Containerd != nil:
-		return containerd
 	}
 
 	return docker

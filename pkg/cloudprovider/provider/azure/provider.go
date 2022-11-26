@@ -734,31 +734,15 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 		return false, fmt.Errorf("failed to parse MachineSpec: %v", err)
 	}
 
-	_, err = p.get(machine)
-	// If a defunct VM got created, the `Get` call returns an error - But not because the request
-	// failed but because the VM has an invalid config hence always delete except on err == cloudprovidererrors.ErrInstanceNotFound
-	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
-			if err := data.Update(machine, func(m *clusterv1alpha1.Machine) {
-				m.Finalizers = kuberneteshelper.RemoveFinalizer(m.Finalizers, finalizerVM)
-			}); err != nil {
-				return false, err
-			}
-		} else {
-			return false, err
-		}
+	klog.Infof("deleting VM %q", machine.Name)
+	if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
+		return false, fmt.Errorf("failed to delete instance for machine %q: %v", machine.Name, err)
 	}
-	if kuberneteshelper.HasFinalizer(machine, finalizerVM) {
-		klog.Infof("deleting VM %q", machine.Name)
-		if err = deleteVMsByMachineUID(context.TODO(), config, machine.UID); err != nil {
-			return false, fmt.Errorf("failed to delete instance for  machine %q: %v", machine.Name, err)
-		}
 
-		if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
-			updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
-		}); err != nil {
-			return false, err
-		}
+	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
+		updatedMachine.Finalizers = kuberneteshelper.RemoveFinalizer(updatedMachine.Finalizers, finalizerVM)
+	}); err != nil {
+		return false, err
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerDisks) {

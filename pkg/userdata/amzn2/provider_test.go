@@ -100,25 +100,6 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "kubelet-v1.20-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.14",
-				},
-			},
-		},
-		{
-			name: "containerd-kubelet-v1.20-aws",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.20.14",
-				},
-			},
-			containerruntime: "containerd",
-		},
-		{
 			name: "kubelet-v1.21-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
@@ -190,6 +171,15 @@ func TestUserDataGeneration(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.23.0",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.24-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.24.0",
 				},
 			},
 		},

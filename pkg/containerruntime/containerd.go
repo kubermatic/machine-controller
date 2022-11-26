@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	DefaultContainerdVersion = "1.4"
+	LegacyContainerdVersion  = "1.4"
+	DefaultContainerdVersion = "1.5"
 )
 
 type Containerd struct {
@@ -35,6 +36,7 @@ type Containerd struct {
 	registryMirrors     map[string][]string
 	sandboxImage        string
 	registryCredentials map[string]AuthConfig
+	version             string
 }
 
 func (eng *Containerd) ConfigFileName() string {
@@ -57,8 +59,14 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 		ContainerdVersion: DefaultContainerdVersion,
 	}
 
+	if eng.version != "" {
+		args.ContainerdVersion = eng.version
+	}
+
 	switch os {
 	case types.OperatingSystemAmazonLinux2:
+		// Amazon Linux 2 does not have containerd 1.5
+		args.ContainerdVersion = LegacyContainerdVersion
 		err := containerdAmzn2Template.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL, types.OperatingSystemRockyLinux:

@@ -8,7 +8,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - make
           args:
@@ -26,7 +26,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - make
           args:
@@ -136,7 +136,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - make
           args:
@@ -165,7 +165,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -189,7 +189,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -213,7 +213,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -236,7 +236,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -259,7 +259,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -282,7 +282,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -305,7 +305,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -327,7 +327,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -349,7 +349,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -372,7 +372,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -395,7 +395,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -419,7 +419,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -442,7 +442,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -463,7 +463,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -486,7 +486,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -509,7 +509,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -532,7 +532,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -555,7 +555,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -579,7 +579,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -601,7 +601,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-      - image: golang:1.17.1
+      - image: golang:1.18.1
         command:
         - "./hack/ci-e2e-test.sh"
         args:
@@ -623,7 +623,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -644,7 +644,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -667,7 +667,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -689,7 +689,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -712,7 +712,7 @@ presubmits:
       preset-rhel: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -757,7 +757,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -779,7 +779,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -801,7 +801,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -824,7 +824,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -847,7 +847,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -869,7 +869,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -891,7 +891,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.17.1
+        - image: golang:1.18.1
           command:
             - "./hack/ci-e2e-test.sh"
           args:
@@ -915,7 +915,7 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.17-node-14-kind-0.11-0
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.12-1
           command:
             - /bin/bash
             - -c
@@ -943,7 +943,7 @@ postsubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.17-node-14-kind-0.11-0
+        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.12-1
           command:
             - "./hack/ci-upload-gocache.sh"
           resources:
