@@ -144,7 +144,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.22.5}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.22.7}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -221,7 +221,6 @@ write_files:
       --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
-      --network-plugin=cni \
       --cert-dir=/etc/kubernetes/pki \
       --cloud-provider=aws \
       --cloud-config=/etc/kubernetes/cloud-config \
@@ -231,6 +230,7 @@ write_files:
       --container-runtime-endpoint=unix:///var/run/dockershim.sock \
       --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
       --feature-gates=DynamicKubeletConfig=true \
+      --network-plugin=cni \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]
@@ -330,7 +330,12 @@ write_files:
       cpu: 200m
       ephemeral-storage: 1Gi
       memory: 300Mi
-    logging: {}
+    logging:
+      flushFrequency: 0
+      options:
+        json:
+          infoBufferSize: "0"
+      verbosity: 0
     memorySwap: {}
     nodeStatusReportFrequency: 0s
     nodeStatusUpdateFrequency: 0s
