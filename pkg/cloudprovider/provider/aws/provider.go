@@ -469,19 +469,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.SpotMaxPrice = pointer.StringPtr(maxPrice)
+		c.SpotMaxPrice = pointer.String(maxPrice)
 
 		persistentRequest, _, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.SpotInstanceConfig.PersistentRequest)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.SpotPersistentRequest = pointer.BoolPtr(persistentRequest)
+		c.SpotPersistentRequest = pointer.Bool(persistentRequest)
 
 		interruptionBehavior, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.SpotInstanceConfig.InterruptionBehavior)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.SpotInterruptionBehavior = pointer.StringPtr(interruptionBehavior)
+		c.SpotInterruptionBehavior = pointer.String(interruptionBehavior)
 	}
 	assumeRoleARN, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleARN, "AWS_ASSUME_ROLE_ARN")
 	if err != nil {
@@ -761,7 +761,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 					DeleteOnTermination: aws.Bool(true),
 					VolumeType:          config.DiskType,
 					Iops:                config.DiskIops,
-					Encrypted:           pointer.BoolPtr(config.EBSVolumeEncrypted),
+					Encrypted:           pointer.Bool(config.EBSVolumeEncrypted),
 				},
 			},
 		},

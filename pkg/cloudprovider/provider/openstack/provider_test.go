@@ -240,13 +240,13 @@ func TestCreateServer(t *testing.T) {
 		},
 		{
 			name:          "Custom disk size",
-			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10)},
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32(10)},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootRequest,
 		},
 		{
 			name:          "Custom disk type",
-			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10), RootDiskVolumeType: "ssd"},
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32(10), RootDiskVolumeType: "ssd"},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootVolumeTypeRequest,
 		},
