@@ -15,7 +15,7 @@
 presubmits:
   - name: pull-machine-controller-e2e-equinix-metal
     optional: true
-    run_if_changed: pkg\/cloudprovider\/provider\/equinixmetal\/.*
+    run_if_changed: "(pkg/cloudprovider/provider/equinixmetal/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
