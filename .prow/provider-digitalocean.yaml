@@ -14,7 +14,7 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-digitalocean
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/digitalocean/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
