@@ -28,8 +28,6 @@ import (
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
-
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
@@ -93,7 +91,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 	// if assigning public IP addresses is enabled.
 	if cfg.assignPublicIPAddress {
 		// GCP doesn't support IPv6 only stack
-		if cfg.providerConfig.Network.GetIPFamily() == util.DualStack {
+		if cfg.providerConfig.Network.GetIPFamily().IsDualstack() {
 			ifc.StackType = "IPV4_IPV6"
 
 			ifc.Ipv6AccessConfigs = []*compute.AccessConfig{

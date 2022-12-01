@@ -117,11 +117,11 @@ func (p *Provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 	}
 
 	switch cfg.providerConfig.Network.GetIPFamily() {
-	case util.Unspecified, util.IPv4:
+	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
 		// noop
-	case util.IPv6:
+	case util.IPFamilyIPv6:
 		return newError(common.InvalidConfigurationMachineError, util.ErrIPv6OnlyUnsupported)
-	case util.DualStack:
+	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
 	default:
 		return newError(common.InvalidConfigurationMachineError, util.ErrUnknownNetworkFamily, cfg.providerConfig.Network.GetIPFamily())
 	}

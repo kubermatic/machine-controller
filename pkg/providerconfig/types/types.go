@@ -129,7 +129,7 @@ func (n *NetworkConfig) IsStaticIPConfig() bool {
 
 func (n *NetworkConfig) GetIPFamily() util.IPFamily {
 	if n == nil {
-		return util.Unspecified
+		return util.IPFamilyUnspecified
 	}
 	return n.IPFamily
 }

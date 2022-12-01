@@ -64,11 +64,24 @@ func GenerateRandMAC() (net.HardwareAddr, error) {
 type IPFamily string
 
 const (
-	Unspecified IPFamily = "" // interpreted as IPv4
-	IPv4        IPFamily = "IPv4"
-	IPv6        IPFamily = "IPv6"
-	DualStack   IPFamily = "IPv4+IPv6"
+	IPFamilyUnspecified IPFamily = ""          // interpreted as IPv4
+	IPFamilyIPv4        IPFamily = "IPv4"      // IPv4 only
+	IPFamilyIPv6        IPFamily = "IPv6"      // IPv6 only
+	IPFamilyIPv4IPv6    IPFamily = "IPv4+IPv6" // dualstack with IPv4 as primary
+	IPFamilyIPv6IPv4    IPFamily = "IPv6+IPv4" // dualstack with IPv6 as primary
 )
+
+func (f IPFamily) HasIPv6() bool {
+	return f == IPFamilyIPv6 || f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
+}
+
+func (f IPFamily) HasIPv4() bool {
+	return f == IPFamilyUnspecified || f == IPFamilyIPv4 || f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
+}
+
+func (f IPFamily) IsDualstack() bool {
+	return f == IPFamilyIPv4IPv6 || f == IPFamilyIPv6IPv4
+}
 
 // IsLinkLocal checks if given ip address is link local..
 func IsLinkLocal(ipAddr string) bool {

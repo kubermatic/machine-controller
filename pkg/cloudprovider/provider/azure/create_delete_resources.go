@@ -349,7 +349,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 		},
 	})
 
-	if ipFamily == util.DualStack {
+	if ipFamily.IsDualstack() {
 		*ifSpec.InterfacePropertiesFormat.IPConfigurations = append(*ifSpec.InterfacePropertiesFormat.IPConfigurations, network.InterfaceIPConfiguration{
 			Name: to.StringPtr("ip-config-2"),
 			InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
