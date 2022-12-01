@@ -597,6 +597,8 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up.
 	terminationGracePeriodSeconds := int64(30)
 
+	evictionStrategy := kubevirtv1.EvictionStrategyExternal
+
 	resourceRequirements := kubevirtv1.ResourceRequirements{}
 	labels := map[string]string{"kubevirt.io/vm": machine.Name}
 	//Add a common label to all VirtualMachines spawned by the same MachineDeployment (= MachineDeployment name).
@@ -652,6 +654,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 					Labels:      labels,
 				},
 				Spec: kubevirtv1.VirtualMachineInstanceSpec{
+					EvictionStrategy: &evictionStrategy,
 					Networks: []kubevirtv1.Network{
 						*kubevirtv1.DefaultPodNetwork(),
 					},
