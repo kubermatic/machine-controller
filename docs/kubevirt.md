@@ -12,7 +12,7 @@ are some things you need to keep in mind:
 
 * The machine-controller will create `VMIs` that have the same name as the underlying `machine`. To
 avoid collisions, use one namespace per cluster that runs the `machine-controller`
-* EvictionStratey of `VMIs` is set to external, so VMI eviction needs to handled properly
+* EvictionStratey of `VMIs` is set to external, so VMI eviction needs to handled properly by a custom external controller or manual action
 * Service CIDR range: The CIDR ranges of the cluster that runs Kubevirt and the cluster that hosts the machine-controller must not overlap,
 otherwise routing of services that run in the kubevirt cluster won't work anymore. This is especially important for the DNS ClusterIP.
 * `clusterName` is used to [label VMs](https://github.com/kubevirt/cloud-provider-kubevirt#prerequisites) for LoadBalancer selection
