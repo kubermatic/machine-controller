@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"go.anx.io/go-anxcloud/pkg/api"
+	"go.anx.io/go-anxcloud/pkg/client"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	anxaddr "go.anx.io/go-anxcloud/pkg/ipam/address"
 	"go.anx.io/go-anxcloud/pkg/vsphere"
@@ -119,7 +121,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	// provision machine
 	err = provisionVM(ctx, client)
 	if err != nil {
-		return nil, err
+		return nil, anexiaErrorToTerminalError(err, "failed waiting for vm provisioning")
 	}
 	return p.Get(ctx, machine, data)
 }
@@ -431,7 +433,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, pd
 	if status.InstanceID == "" {
 		progress, err := vsphereAPI.Provisioning().Progress().Get(ctx, status.ProvisioningID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get provisioning progress: %w", err)
+			return nil, anexiaErrorToTerminalError(err, "failed to get provisioning progress")
 		}
 		if len(progress.Errors) > 0 {
 			return nil, fmt.Errorf("vm provisioning had errors: %s", strings.Join(progress.Errors, ","))
@@ -458,7 +460,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, pd
 
 	info, err := vsphereAPI.Info().Get(timeoutCtx, status.InstanceID)
 	if err != nil {
-		return nil, fmt.Errorf("failed get machine info: %w", err)
+		return nil, anexiaErrorToTerminalError(err, "failed getting machine info")
 	}
 	instance.info = &info
 
@@ -586,4 +588,24 @@ func updateMachineStatus(machine *clusterv1alpha1.Machine, status anxtypes.Provi
 	}
 
 	return nil
+}
+
+func anexiaErrorToTerminalError(err error, msg string) error {
+	var httpError api.HTTPError
+	if errors.As(err, &httpError) && (httpError.StatusCode() == http.StatusForbidden || httpError.StatusCode() == http.StatusUnauthorized) {
+		return cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: "Request was rejected due to invalid credentials",
+		}
+	}
+
+	var responseError *client.ResponseError
+	if errors.As(err, &responseError) && (responseError.ErrorData.Code == http.StatusForbidden || responseError.ErrorData.Code == http.StatusUnauthorized) {
+		return cloudprovidererrors.TerminalError{
+			Reason:  common.InvalidConfigurationMachineError,
+			Message: "Request was rejected due to invalid credentials",
+		}
+	}
+
+	return fmt.Errorf("%s: %w", msg, err)
 }

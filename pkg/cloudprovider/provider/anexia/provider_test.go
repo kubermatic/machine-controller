@@ -21,17 +21,24 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/gophercloud/gophercloud/testhelper"
+	"go.anx.io/go-anxcloud/pkg/api"
+	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
+	"go.anx.io/go-anxcloud/pkg/client"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
+	"go.anx.io/go-anxcloud/pkg/core"
 	"go.anx.io/go-anxcloud/pkg/ipam/address"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 
@@ -345,4 +352,89 @@ func TestUpdateStatus(t *testing.T) {
 
 	testhelper.AssertEquals(t, true, called)
 	testhelper.AssertNoErr(t, err)
+}
+
+func Test_anexiaErrorToTerminalError(t *testing.T) {
+	forbiddenMockHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, err := w.Write([]byte(`{"error": {"code": 403}}`))
+		testhelper.AssertNoErr(t, err)
+	})
+
+	unauthorizedMockHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, err := w.Write([]byte(`{"error": {"code": 401}}`))
+		testhelper.AssertNoErr(t, err)
+	})
+
+	legacyClientRun := func(url string) error {
+		client, err := client.New(client.BaseURL(url), client.IgnoreMissingToken(), client.ParseEngineErrors(true))
+		testhelper.AssertNoErr(t, err)
+		_, err = core.NewAPI(client).Location().List(context.TODO(), 1, 1, "", "")
+		return err
+	}
+
+	apiClientRun := func(url string) error {
+		client, err := api.NewAPI(api.WithClientOptions(
+			client.BaseURL(url),
+			client.IgnoreMissingToken(),
+		))
+		testhelper.AssertNoErr(t, err)
+		return client.Get(context.TODO(), &corev1.Location{Identifier: "foo"})
+	}
+
+	testCases := []struct {
+		name        string
+		mockHandler http.HandlerFunc
+		run         func(url string) error
+	}{
+		{
+			name:        "api client returns forbidden",
+			mockHandler: forbiddenMockHandler,
+			run:         apiClientRun,
+		},
+		{
+			name:        "api client returns unauthorized",
+			mockHandler: unauthorizedMockHandler,
+			run:         apiClientRun,
+		},
+		{
+			name:        "legacy client returns forbidden",
+			mockHandler: forbiddenMockHandler,
+			run:         legacyClientRun,
+		},
+		{
+			name:        "legacy client returns unauthorized",
+			mockHandler: unauthorizedMockHandler,
+			run:         legacyClientRun,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			srv := httptest.NewServer(testCase.mockHandler)
+			defer srv.Close()
+
+			err := anexiaErrorToTerminalError(testCase.run(srv.URL), "foo")
+			if ok, _, _ := cloudprovidererrors.IsTerminalError(err); !ok {
+				t.Errorf("unexpected error %#v, expected TerminalError", err)
+			}
+		})
+	}
+
+	t.Run("api client 404 HTTPError shouldn't convert to TerminalError", func(t *testing.T) {
+		err := api.NewHTTPError(http.StatusNotFound, "GET", &url.URL{}, errors.New("foo"))
+		err = anexiaErrorToTerminalError(err, "foo")
+		if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
+			t.Errorf("unexpected error %#v, expected no TerminalError", err)
+		}
+	})
+
+	t.Run("legacy api client unspecific ResponseError shouldn't convert to TerminalError", func(t *testing.T) {
+		var err error = &client.ResponseError{}
+		err = anexiaErrorToTerminalError(err, "foo")
+		if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
+			t.Errorf("unexpected error %#v, expected no TerminalError", err)
+		}
+	})
 }
