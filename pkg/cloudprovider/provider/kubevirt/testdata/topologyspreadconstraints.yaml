@@ -80,3 +80,4 @@ spec:
             secretRef:
               name: udsn
           name: cloudinitdisk
+      evictionStrategy: External

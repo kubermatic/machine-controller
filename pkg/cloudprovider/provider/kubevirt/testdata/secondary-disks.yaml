@@ -110,5 +110,6 @@ spec:
             name: secondary-disks-secondarydisk0
           name: secondary-disks-secondarydisk0
         - dataVolume:
-           name: secondary-disks-secondarydisk1
+            name: secondary-disks-secondarydisk1
           name: secondary-disks-secondarydisk1
+      evictionStrategy: External
