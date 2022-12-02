@@ -645,7 +645,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 			Labels:    labels,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			Running:      utilpointer.BoolPtr(true),
+			Running:      utilpointer.Bool(true),
 			Instancetype: c.Instancetype,
 			Preference:   c.Preference,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
@@ -820,7 +820,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
-					StorageClassName: utilpointer.StringPtr(config.StorageClassName),
+					StorageClassName: utilpointer.String(config.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
@@ -839,7 +839,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
-					StorageClassName: utilpointer.StringPtr(sd.StorageClassName),
+					StorageClassName: utilpointer.String(sd.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},

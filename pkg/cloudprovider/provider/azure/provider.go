@@ -175,19 +175,19 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 
 var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 	providerconfigtypes.OperatingSystemFlatcar: {
-		Name:      pointer.StringPtr("stable"),
-		Publisher: pointer.StringPtr("kinvolk"),
-		Product:   pointer.StringPtr("flatcar-container-linux"),
+		Name:      pointer.String("stable"),
+		Publisher: pointer.String("kinvolk"),
+		Product:   pointer.String("flatcar-container-linux"),
 	},
 	providerconfigtypes.OperatingSystemRHEL: {
-		Name:      pointer.StringPtr("rhel-lvm85"),
-		Publisher: pointer.StringPtr("redhat"),
-		Product:   pointer.StringPtr("rhel-byos"),
+		Name:      pointer.String("rhel-lvm85"),
+		Publisher: pointer.String("redhat"),
+		Product:   pointer.String("rhel-byos"),
 	},
 	providerconfigtypes.OperatingSystemRockyLinux: {
-		Name:      pointer.StringPtr("rocky-linux-8-5"),
-		Publisher: pointer.StringPtr("procomputers"),
-		Product:   pointer.StringPtr("rocky-linux-8-5"),
+		Name:      pointer.String("rocky-linux-8-5"),
+		Publisher: pointer.String("procomputers"),
+		Product:   pointer.String("rocky-linux-8-5"),
 	},
 }
 
@@ -361,18 +361,18 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
 		c.ImagePlan = &compute.Plan{
-			Name:      pointer.StringPtr(rawCfg.ImagePlan.Name),
-			Publisher: pointer.StringPtr(rawCfg.ImagePlan.Publisher),
-			Product:   pointer.StringPtr(rawCfg.ImagePlan.Product),
+			Name:      pointer.String(rawCfg.ImagePlan.Name),
+			Publisher: pointer.String(rawCfg.ImagePlan.Publisher),
+			Product:   pointer.String(rawCfg.ImagePlan.Product),
 		}
 	}
 
 	if rawCfg.ImageReference != nil {
 		c.ImageReference = &compute.ImageReference{
-			Publisher: pointer.StringPtr(rawCfg.ImageReference.Publisher),
-			Offer:     pointer.StringPtr(rawCfg.ImageReference.Offer),
-			Sku:       pointer.StringPtr(rawCfg.ImageReference.Sku),
-			Version:   pointer.StringPtr(rawCfg.ImageReference.Version),
+			Publisher: pointer.String(rawCfg.ImageReference.Publisher),
+			Offer:     pointer.String(rawCfg.ImageReference.Offer),
+			Sku:       pointer.String(rawCfg.ImageReference.Sku),
+			Version:   pointer.String(rawCfg.ImageReference.Version),
 		}
 	}
 
@@ -543,7 +543,7 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 	}
 	if config.OSDiskSize != 0 {
 		sp.OsDisk = &compute.OSDisk{
-			DiskSizeGB:   pointer.Int32Ptr(config.OSDiskSize),
+			DiskSizeGB:   pointer.Int32(config.OSDiskSize),
 			CreateOption: compute.DiskCreateOptionTypesFromImage,
 		}
 
@@ -559,7 +559,7 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 			{
 				// this should be in range 0-63 and should be unique per datadisk, since we have only one datadisk, this should be fine
 				Lun:          new(int32),
-				DiskSizeGB:   pointer.Int32Ptr(config.DataDiskSize),
+				DiskSizeGB:   pointer.Int32(config.DataDiskSize),
 				CreateOption: compute.DiskCreateOptionTypesEmpty,
 			},
 		}

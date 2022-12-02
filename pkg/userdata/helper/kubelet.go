@@ -217,10 +217,10 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 				ClientCAFile: "/etc/kubernetes/pki/ca.crt",
 			},
 			Webhook: kubeletv1b1.KubeletWebhookAuthentication{
-				Enabled: pointer.BoolPtr(true),
+				Enabled: pointer.Bool(true),
 			},
 			Anonymous: kubeletv1b1.KubeletAnonymousAuthentication{
-				Enabled: pointer.BoolPtr(false),
+				Enabled: pointer.Bool(false),
 			},
 		},
 		Authorization: kubeletv1b1.KubeletAuthorization{
@@ -292,7 +292,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 			// Instead of breaking the workflow, just print a warning and skip the configuration
 			klog.Warningf("Skipping invalid ContainerLogMaxSize value %v for Kubelet configuration", containerLogMaxFiles)
 		} else {
-			cfg.ContainerLogMaxFiles = pointer.Int32Ptr(int32(maxFiles))
+			cfg.ContainerLogMaxFiles = pointer.Int32(int32(maxFiles))
 		}
 	}
 

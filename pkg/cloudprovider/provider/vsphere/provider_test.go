@@ -92,7 +92,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid Datastore",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.StringPtr("LocalDS_0"),
+				Datastore: pointer.String("LocalDS_0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -100,8 +100,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid Datastore end empty DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				Datastore:        pointer.StringPtr("LocalDS_0"),
-				DatastoreCluster: pointer.StringPtr(""),
+				Datastore:        pointer.String("LocalDS_0"),
+				DatastoreCluster: pointer.String(""),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -109,7 +109,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				DatastoreCluster: pointer.StringPtr("DC0_POD0"),
+				DatastoreCluster: pointer.String("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -117,7 +117,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Invalid Datastore",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.StringPtr("LocalDS_10"),
+				Datastore: pointer.String("LocalDS_10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
@@ -125,7 +125,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Invalid DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.StringPtr("DC0_POD10"),
+				Datastore: pointer.String("DC0_POD10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
@@ -133,8 +133,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Both Datastore and DatastoreCluster specified",
 			args: vsphereProviderSpecConf{
-				Datastore:        pointer.StringPtr("DC0_POD10"),
-				DatastoreCluster: pointer.StringPtr("DC0_POD0"),
+				Datastore:        pointer.String("DC0_POD10"),
+				DatastoreCluster: pointer.String("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,

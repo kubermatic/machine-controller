@@ -275,7 +275,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "openstack",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: pointer.StringPtr("custom\ncloud\nconfig"),
+				OverwriteCloudConfig: pointer.String("custom\ncloud\nconfig"),
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -301,7 +301,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: pointer.StringPtr("custom\ncloud\nconfig"),
+				OverwriteCloudConfig: pointer.String("custom\ncloud\nconfig"),
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -327,7 +327,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: pointer.StringPtr("custom\ncloud\nconfig"),
+				OverwriteCloudConfig: pointer.String("custom\ncloud\nconfig"),
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -357,7 +357,7 @@ func TestUserDataGeneration(t *testing.T) {
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "vsphere",
 				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: pointer.StringPtr("custom\ncloud\nconfig"),
+				OverwriteCloudConfig: pointer.String("custom\ncloud\nconfig"),
 			},
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{
