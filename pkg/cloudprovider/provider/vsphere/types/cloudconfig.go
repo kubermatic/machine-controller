@@ -124,7 +124,7 @@ func (c *CloudConfig) String() (string, error) {
 }
 
 // CloudConfigToString converts CloudConfig into its formatted string representation
-// Deprecated: use struct receiver function instead.
+// Deprecated: use struct receiver function String() instead.
 func CloudConfigToString(c *CloudConfig) (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
