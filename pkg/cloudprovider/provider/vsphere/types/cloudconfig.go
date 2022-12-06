@@ -105,7 +105,7 @@ type CloudConfig struct {
 	VirtualCenter map[string]*VirtualCenterConfig
 }
 
-// String converts CloudConfig into its formatted string representation
+// String converts CloudConfig into its formatted string representation.
 func (c *CloudConfig) String() (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
@@ -123,7 +123,7 @@ func (c *CloudConfig) String() (string, error) {
 	return buf.String(), nil
 }
 
-// CloudConfigToString converts CloudConfig into its formatted string representation
+// CloudConfigToString converts CloudConfig into its formatted string representation.
 // Deprecated: use struct receiver function String() instead.
 func CloudConfigToString(c *CloudConfig) (string, error) {
 	funcMap := sprig.TxtFuncMap()
