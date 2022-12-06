@@ -105,6 +105,26 @@ type CloudConfig struct {
 	VirtualCenter map[string]*VirtualCenterConfig
 }
 
+// String converts CloudConfig into its formatted string representation.
+func (c *CloudConfig) String() (string, error) {
+	funcMap := sprig.TxtFuncMap()
+	funcMap["iniEscape"] = ini.Escape
+
+	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse the cloud config template: %w", err)
+	}
+
+	buf := &bytes.Buffer{}
+	if err := tpl.Execute(buf, c); err != nil {
+		return "", fmt.Errorf("failed to execute cloud config template: %w", err)
+	}
+
+	return buf.String(), nil
+}
+
+// CloudConfigToString converts CloudConfig into its formatted string representation.
+// Deprecated: use struct receiver function String() instead.
 func CloudConfigToString(c *CloudConfig) (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape

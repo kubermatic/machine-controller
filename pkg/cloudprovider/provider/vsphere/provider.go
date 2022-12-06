@@ -591,7 +591,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 		},
 	}
 
-	s, err := vspheretypes.CloudConfigToString(cc)
+	s, err := cc.String()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to convert the cloud-config to string: %w", err)
 	}

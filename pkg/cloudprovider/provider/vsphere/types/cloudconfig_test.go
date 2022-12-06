@@ -121,7 +121,7 @@ func TestCloudConfigToString(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s, err := CloudConfigToString(test.config)
+			s, err := test.config.String()
 			if err != nil {
 				t.Fatal(err)
 			}
