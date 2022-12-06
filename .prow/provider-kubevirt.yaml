@@ -19,7 +19,7 @@ presubmits:
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     max_concurrency: 1
     labels:
-      preset-kubevirt: "true"
+      preset-kubevirt-dc: "true"
       preset-hetzner: "true"
       preset-e2e-ssh: "true"
       preset-rhel: "true"
