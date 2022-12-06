@@ -38,7 +38,7 @@ spec:
                 primaryDisk:
                   osImage: http://image-repo.kube-system.svc.cluster.local/images/<< KUBEVIRT_OS_IMAGE >>.img
                   size: "25Gi"
-                  storageClassName: longhorn
+                  storageClassName: csi-rbd
               dnsPolicy: "None"
               dnsConfig:
                 nameservers:
