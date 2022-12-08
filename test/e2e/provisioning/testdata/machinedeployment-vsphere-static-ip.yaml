@@ -27,11 +27,11 @@ spec:
             templateVMName: '<< OS_NAME >>-template'
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
-            datacenter: 'dc-1'
-            folder: '/dc-1/vm/e2e-tests'
+            datacenter: 'Hamburg'
+            folder: '/Hamburg/vm/Kubermatic-ci'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            datastore: datastore1
+            datastore: ceph-vm
             allowInsecure: true
             cpus: 2
             MemoryMB: 2048

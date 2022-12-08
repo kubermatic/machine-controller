@@ -27,11 +27,11 @@ spec:
             templateVMName: 'machine-controller-e2e-<< OS_NAME >>'
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
-            datacenter: 'dc-1'
-            folder: '/dc-1/vm/e2e-tests'
+            datacenter: 'Hamburg'
+            folder: '/Hamburg/vm/Kubermatic-ci'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            datastore: HS-FreeNAS
+            datastore: ceph-vm
             cpus: 2
             MemoryMB: 4096
             diskSizeGB: << DISK_SIZE >>
