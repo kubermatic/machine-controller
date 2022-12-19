@@ -84,6 +84,7 @@ var (
 	podCIDR                           string
 	nodePortRange                     string
 	nodeRegistryCredentialsSecret     string
+	nodeContainerdVersion             string
 	nodeContainerdRegistryMirrors     = containerruntime.RegistryMirrorsFlags{}
 	overrideBootstrapKubeletAPIServer string
 )
@@ -170,6 +171,7 @@ func main() {
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.String("node-kubelet-repository", "quay.io/kubermatic/kubelet", "[NO-OP] Repository for the kubelet container. Has no effects.")
 	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
+	flag.StringVar(&nodeContainerdVersion, "node-containerd-version", "", "version of containerd to deploy")
 	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
 	flag.BoolVar(&nodeCSRApprover, "node-csr-approver", true, "Enable NodeCSRApprover controller to automatically approve node serving certificate requests")
@@ -240,6 +242,7 @@ func main() {
 
 	containerRuntimeOpts := containerruntime.Opts{
 		ContainerRuntime:          nodeContainerRuntime,
+		ContainerdVersion:         nodeContainerdVersion,
 		ContainerdRegistryMirrors: nodeContainerdRegistryMirrors,
 		InsecureRegistries:        nodeInsecureRegistries,
 		PauseImage:                nodePauseImage,

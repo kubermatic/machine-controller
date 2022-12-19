@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	LegacyContainerdVersion  = "1.4"
-	DefaultContainerdVersion = "1.6"
+	LegacyContainerdVersion  = "1.4*"
+	DefaultContainerdVersion = "1.6*"
 )
 
 type Containerd struct {
@@ -123,7 +123,7 @@ runtime-endpoint: unix:///run/containerd/containerd.sock
 EOF
 
 yum install -y \
-	containerd-{{ .ContainerdVersion }}* \
+	containerd-{{ .ContainerdVersion }} \
 	yum-plugin-versionlock
 yum versionlock add containerd
 
@@ -151,7 +151,7 @@ Restart=always
 EnvironmentFile=-/etc/environment
 EOF
 
-yum install -y containerd.io-{{ .ContainerdVersion }}* yum-plugin-versionlock
+yum install -y containerd.io-{{ .ContainerdVersion }} yum-plugin-versionlock
 yum versionlock add containerd.io
 
 systemctl daemon-reload
@@ -175,7 +175,7 @@ Restart=always
 EnvironmentFile=-/etc/environment
 EOF
 
-apt-get install -y --allow-downgrades containerd.io={{ .ContainerdVersion }}*
+apt-get install -y --allow-downgrades containerd.io={{ .ContainerdVersion }}
 apt-mark hold containerd.io
 
 systemctl daemon-reload
