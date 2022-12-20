@@ -130,6 +130,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		containerLogMaxFiles: cfg.ContainerLogMaxFiles,
 		containerLogMaxSize:  cfg.ContainerLogMaxSize,
 		registryCredentials:  cfg.RegistryCredentials,
+		containerdVersion:    cfg.ContainerdVersion,
 	}
 
 	containerd := &Containerd{

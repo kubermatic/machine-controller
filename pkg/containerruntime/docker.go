@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	LegacyDockerContainerdVersion  = "1.4"
-	DefaultDockerContainerdVersion = "1.6"
+	LegacyDockerContainerdVersion  = "1.4*"
+	DefaultDockerContainerdVersion = "1.6*"
 	DefaultDockerVersion           = "20.10"
 	LegacyDockerVersion            = "19.03"
 )
@@ -39,6 +39,7 @@ type Docker struct {
 	containerLogMaxFiles string
 	containerLogMaxSize  string
 	registryCredentials  map[string]AuthConfig
+	containerdVersion    string
 }
 
 type DockerCfgJSON struct {
@@ -88,6 +89,10 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 		ContainerdVersion: DefaultDockerContainerdVersion,
 	}
 
+	if eng.containerdVersion != "" {
+		args.ContainerdVersion = eng.containerdVersion
+	}
+
 	switch os {
 	case types.OperatingSystemAmazonLinux2:
 		args.ContainerdVersion = LegacyDockerContainerdVersion
@@ -126,7 +131,7 @@ EOF
 
 yum install -y \
 {{- if .ContainerdVersion }}
-    containerd-{{ .ContainerdVersion }}* \
+    containerd-{{ .ContainerdVersion }} \
 {{- end }}
     docker-{{ .DockerVersion }}* \
     yum-plugin-versionlock
@@ -152,7 +157,7 @@ EOF
 yum install -y \
 {{- if .ContainerdVersion }}
     docker-ce-cli-{{ .DockerVersion }}* \
-    containerd.io-{{ .ContainerdVersion }}* \
+    containerd.io-{{ .ContainerdVersion }} \
 {{- end }}
     docker-ce-{{ .DockerVersion }}* \
     yum-plugin-versionlock
@@ -178,7 +183,7 @@ EOF
 
 apt-get install --allow-downgrades -y \
 {{- if .ContainerdVersion }}
-    containerd.io={{ .ContainerdVersion }}* \
+    containerd.io={{ .ContainerdVersion }} \
     docker-ce-cli=5:{{ .DockerVersion }}* \
 {{- end }}
     docker-ce=5:{{ .DockerVersion }}*
