@@ -57,6 +57,12 @@ func withSandboxImage(image string) Opt {
 	}
 }
 
+func withContainerdVersion(version string) Opt {
+	return func(cfg *Config) {
+		cfg.ContainerdVersion = version
+	}
+}
+
 func get(containerRuntimeName string, opts ...Opt) Config {
 	cfg := Config{}
 
@@ -88,6 +94,7 @@ type Config struct {
 	SandboxImage         string                `json:",omitempty"`
 	ContainerLogMaxFiles string                `json:",omitempty"`
 	ContainerLogMaxSize  string                `json:",omitempty"`
+	ContainerdVersion    string                `json:",omitempty"`
 }
 
 // AuthConfig is a COPY of github.com/containerd/containerd/pkg/cri/config.AuthConfig.
@@ -123,6 +130,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		containerLogMaxFiles: cfg.ContainerLogMaxFiles,
 		containerLogMaxSize:  cfg.ContainerLogMaxSize,
 		registryCredentials:  cfg.RegistryCredentials,
+		containerdVersion:    cfg.ContainerdVersion,
 	}
 
 	containerd := &Containerd{
@@ -130,6 +138,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		registryMirrors:     cfg.RegistryMirrors,
 		sandboxImage:        cfg.SandboxImage,
 		registryCredentials: cfg.RegistryCredentials,
+		version:             cfg.ContainerdVersion,
 	}
 
 	moreThan124, _ := semver.NewConstraint(">= 1.24")

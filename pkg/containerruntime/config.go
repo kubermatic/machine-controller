@@ -31,6 +31,7 @@ import (
 
 type Opts struct {
 	ContainerRuntime          string
+	ContainerdVersion         string
 	InsecureRegistries        string
 	RegistryMirrors           string
 	RegistryCredentialsSecret string
@@ -92,6 +93,7 @@ func BuildConfig(opts Opts) (Config, error) {
 		withInsecureRegistries(insecureRegistries),
 		withRegistryMirrors(opts.ContainerdRegistryMirrors),
 		withSandboxImage(opts.PauseImage),
+		withContainerdVersion(opts.ContainerdVersion),
 	), nil
 }
 
