@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
@@ -279,6 +280,12 @@ func (cfg *config) diskTypeDescriptor() string {
 // for the source image of an instance boot disk.
 func (cfg *config) sourceImageDescriptor() (string, error) {
 	if cfg.customImage != "" {
+		// If a full image identifier is provided, use it
+		if strings.HasPrefix("projects/", cfg.customImage) {
+			return cfg.customImage, nil
+		}
+
+		// Otherwise, make sure to properly prefix the image identifier
 		return fmt.Sprintf("global/images/%s", cfg.customImage), nil
 	}
 	project, ok := imageProjects[cfg.providerConfig.OperatingSystem]
