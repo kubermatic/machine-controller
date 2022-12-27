@@ -40,7 +40,7 @@ func validateMachineDeployment(md v1alpha1.MachineDeployment) field.ErrorList {
 
 func validateMachineDeploymentSpec(spec *v1alpha1.MachineDeploymentSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, metav1validation.ValidateLabelSelector(&spec.Selector, fldPath.Child("selector"))...)
+	allErrs = append(allErrs, metav1validation.ValidateLabelSelector(&spec.Selector, metav1validation.LabelSelectorValidationOptions{}, fldPath.Child("selector"))...)
 	if len(spec.Selector.MatchLabels)+len(spec.Selector.MatchExpressions) == 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("selector"), spec.Selector, "empty selector is not valid for MachineDeployment."))
 	}
