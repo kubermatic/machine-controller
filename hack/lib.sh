@@ -241,3 +241,31 @@ check_all_deployments_ready() {
 
   return 0
 }
+
+provider_disabled() {
+  # e.g. "VSPHERE_E2E_DISABLED"
+  local disableEnv="${1^^}_E2E_DISABLED"
+  local labelName="test/require-$1"
+
+  # tests can be globally disabled by having a special environment
+  # variable injected via the Prow preset; if they are not disabled,
+  # we are done here.
+  if [ -z "${!disableEnv:-}" ]; then
+    return 1
+  fi
+
+  # Even if tests are disabled, they can be forcefully re-enabled
+  # (e.g. if provider X is disabled for all tests until a certain
+  # pull requests fixes some underlying issue and for that certain
+  # PR we want to run the tests regardless).
+  # Importantly, one cannot use labels to _disable_ any tests, only
+  # _re-enable_ them.
+
+  if pr_has_label "$labelName"; then
+    echodate "\$$disableEnv is set, but PR has $labelName label, so tests will not be disabled."
+    return 1
+  fi
+
+  echodate "\$$disableEnv is set, tests will be disabled. Apply the label $labelName to this PR to forcefully enable the tests."
+  return 0
+}
