@@ -100,40 +100,40 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "kubelet-v1.23-aws",
+			name: "kubelet-v1.24.9-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 		},
 		{
-			name: "kubelet-v1.23-aws-external",
+			name: "kubelet-v1.24.9-aws-external",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 			externalCloudProvider: true,
 		},
 		{
-			name: "kubelet-v1.23-vsphere",
+			name: "kubelet-v1.24.9-vsphere",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
 		},
 		{
-			name: "kubelet-v1.23-vsphere-proxy",
+			name: "kubelet-v1.24.9-vsphere-proxy",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 			cloudProviderName:  stringPtr("vsphere"),
@@ -143,11 +143,11 @@ func TestUserDataGeneration(t *testing.T) {
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
-			name: "kubelet-v1.23-vsphere-mirrors",
+			name: "kubelet-v1.24.9-vsphere-mirrors",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
@@ -171,6 +171,15 @@ func TestUserDataGeneration(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
 					Kubelet: "1.25.0",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.26-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.26.0",
 				},
 			},
 		},

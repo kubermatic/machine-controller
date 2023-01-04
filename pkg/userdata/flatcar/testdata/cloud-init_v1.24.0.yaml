@@ -131,6 +131,8 @@ coreos:
         --lock-file=/tmp/kubelet.lock \
         --container-runtime=remote \
         --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
+        --dynamic-config-dir=/etc/kubernetes/dynamic-config-dir \
+        --feature-gates=DynamicKubeletConfig=true \
         --node-ip ${KUBELET_NODE_IP}
 
       [Install]

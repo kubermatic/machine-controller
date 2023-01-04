@@ -331,7 +331,7 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 	if err != nil {
 		return "", err
 	}
-	con, err := semver.NewConstraint("< 1.23")
+	con, err := semver.NewConstraint("< v1.24.9")
 	if err != nil {
 		return "", err
 	}
@@ -340,19 +340,6 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 		kubeletFlags = append(kubeletFlags,
 			"--dynamic-config-dir=/etc/kubernetes/dynamic-config-dir",
 			"--feature-gates=DynamicKubeletConfig=true",
-		)
-	}
-
-	// --network-plugin was removed in 1.24 and can only be set for 1.23 or lower
-
-	con, err = semver.NewConstraint("< 1.24")
-	if err != nil {
-		return "", err
-	}
-
-	if con.Check(ver) {
-		kubeletFlags = append(kubeletFlags,
-			"--network-plugin=cni",
 		)
 	}
 

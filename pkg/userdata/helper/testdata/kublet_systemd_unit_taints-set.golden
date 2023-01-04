@@ -31,7 +31,6 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
   --register-with-taints=key1=value1:NoSchedule,key2=value2:NoExecute \
-  --network-plugin=cni \
   --node-ip ${KUBELET_NODE_IP}
 
 [Install]

@@ -138,7 +138,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.25.0",
+					Kubelet: "1.25.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -153,7 +153,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "ignition_v1.23.5",
+			name: "ignition_v1.24.9",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -169,7 +169,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -184,7 +184,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "ignition_v1.23.5",
+			name: "ignition_v1.24.9",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "vsphere",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -200,7 +200,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -231,7 +231,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.24.0",
+					Kubelet: "1.24.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -262,7 +262,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.25.0",
+					Kubelet: "1.25.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -277,7 +277,7 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
-			name: "cloud-init_v1.23.5",
+			name: "cloud-init_v1.24.9",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "anexia",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
@@ -293,7 +293,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.23.5",
+					Kubelet: "1.24.9",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -324,7 +324,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.24.0",
+					Kubelet: "1.24.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -351,7 +351,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "v1.24.0",
+					Kubelet: "1.24.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{},

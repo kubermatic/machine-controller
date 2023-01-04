@@ -80,7 +80,10 @@ const (
 	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
 )
 
-const defaultKubernetesVersion = "1.23.11"
+const (
+	defaultKubernetesVersion = "1.24.9"
+	defaultContainerRuntime  = "containerd"
+)
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
 
@@ -135,7 +138,7 @@ func TestCustomCAsAreApplied(t *testing.T) {
 		t,
 		scenario{
 			name:              "ca-test",
-			containerRuntime:  "docker",
+			containerRuntime:  defaultContainerRuntime,
 			kubernetesVersion: versions[0].String(),
 			osName:            string(providerconfigtypes.OperatingSystemUbuntu),
 
@@ -370,7 +373,7 @@ func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "MachineDeploy with project auth vars",
 		osName:            "ubuntu",
-		containerRuntime:  "containerd",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
@@ -449,7 +452,7 @@ func TestAWSAssumeRoleProvisioningE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "AWS with AssumeRole",
 		osName:            "ubuntu",
-		containerRuntime:  "docker",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
@@ -457,7 +460,7 @@ func TestAWSAssumeRoleProvisioningE2E(t *testing.T) {
 }
 
 // TestAWSSpotInstanceProvisioning - a test suite that exercises AWS provider
-// by requesting spot nodes with different combination of container runtime type, container runtime version and the OS flavour.
+// by requesting spot nodes with different combination of container runtime type, container runtime version.
 func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
@@ -467,7 +470,8 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := Not(OsSelector("sles"))
+	// Since we are only testing the spot instance functionality, testing it against a single OS is sufficient.
+	selector := OsSelector("ubuntu")
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -558,7 +562,7 @@ func TestAWSFlatcarContainerdProvisioningE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "flatcar with containerd in AWS",
 		osName:            "flatcar",
-		containerRuntime:  "containerd",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
@@ -608,7 +612,7 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "AWS with ebs encryption enabled",
 		osName:            "ubuntu",
-		containerRuntime:  "containerd",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
@@ -630,6 +634,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 	}
 
 	selector := Not(OsSelector("sles", "amzn2"))
+
 	// act
 	params := []string{
 		fmt.Sprintf("<< AZURE_TENANT_ID >>=%s", azureTenantID),
@@ -697,7 +702,7 @@ func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "Azure redhat satellite server subscription",
 		osName:            "rhel",
-		containerRuntime:  "docker",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
@@ -898,7 +903,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "vSphere resource pool provisioning",
 		osName:            "flatcar",
-		containerRuntime:  "docker",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
@@ -1010,7 +1015,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "Ubuntu upgrade",
 		osName:            "ubuntu",
-		containerRuntime:  "docker",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
@@ -1035,7 +1040,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 	scenario := scenario{
 		name:              "MachineDeployment upgrade",
 		osName:            "ubuntu",
-		containerRuntime:  "docker",
+		containerRuntime:  defaultContainerRuntime,
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateUpdateAndDelete,
 	}

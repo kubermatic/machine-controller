@@ -912,10 +912,10 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	}); err != nil {
 		return nil, fmt.Errorf("failed to update machine after setting .status.addresses: %w", err)
 	}
-	return r.ensureNodeOwnerRefAndConfigSource(ctx, providerInstance, machine, providerConfig)
+	return r.ensureNodeOwnerRef(ctx, providerInstance, machine, providerConfig)
 }
 
-func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(ctx context.Context, providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
+func (r *Reconciler) ensureNodeOwnerRef(ctx context.Context, providerInstance instance.Instance, machine *clusterv1alpha1.Machine, providerConfig *providerconfigtypes.Config) (*reconcile.Result, error) {
 	node, exists, err := r.getNode(ctx, providerInstance, providerConfig.CloudProvider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node for machine %s: %w", machine.Name, err)
@@ -930,14 +930,6 @@ func (r *Reconciler) ensureNodeOwnerRefAndConfigSource(ctx context.Context, prov
 			}
 		}
 
-		if node.Spec.ConfigSource == nil && machine.Spec.ConfigSource != nil {
-			if err := r.updateNode(ctx, node, func(node *corev1.Node) {
-				node.Spec.ConfigSource = machine.Spec.ConfigSource
-			}); err != nil {
-				return nil, fmt.Errorf("failed to update node %s after setting the config source: %w", node.Name, err)
-			}
-			klog.V(3).Infof("Added config source to node %s (machine %s)", node.Name, machine.Name)
-		}
 		if err := r.updateMachineStatus(machine, node); err != nil {
 			return nil, fmt.Errorf("failed to update machine status: %w", err)
 		}
