@@ -242,6 +242,22 @@ check_all_deployments_ready() {
   return 0
 }
 
+pr_has_label() {
+  if [ -z "${REPO_OWNER:-}" ] || [ -z "${REPO_NAME:-}" ] || [ -z "${PULL_NUMBER:-}" ]; then
+    echo "PR check only works on CI."
+    return 1
+  fi
+
+  matched=$(curl \
+    --header "Accept: application/vnd.github+json" \
+    --silent \
+    --fail \
+    https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/pulls/$PULL_NUMBER |
+    jq --arg labelName "$1" '.labels[] | select(.name == $labelName)')
+
+  [ -n "$matched" ]
+}
+
 provider_disabled() {
   # e.g. "VSPHERE_E2E_DISABLED"
   local disableEnv="${1^^}_E2E_DISABLED"
