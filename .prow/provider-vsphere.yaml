@@ -33,6 +33,9 @@ presubmits:
             - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestVsphereProvisioningE2E"
+          env:
+            - name: CLOUD_PROVIDER
+              value: vsphere
           securityContext:
             privileged: true
           resources:
@@ -62,6 +65,9 @@ presubmits:
             - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestVsphereDatastoreClusterProvisioningE2E"
+          env:
+            - name: CLOUD_PROVIDER
+              value: vsphere
           securityContext:
             privileged: true
           resources:
@@ -91,6 +97,9 @@ presubmits:
             - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestVsphereResourcePoolProvisioningE2E"
+          env:
+            - name: CLOUD_PROVIDER
+              value: vsphere
           securityContext:
             privileged: true
           resources:

@@ -15,7 +15,6 @@
 presubmits:
   - name: pull-machine-controller-e2e-kubevirt
     run_if_changed: "(pkg/cloudprovider/provider/kubevirt/|pkg/userdata)"
-    always_run: false
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     max_concurrency: 1
@@ -35,6 +34,9 @@ presubmits:
             - "./hack/ci/run-e2e-tests.sh"
           args:
             - "TestKubevirtProvisioningE2E"
+          env:
+            - name: CLOUD_PROVIDER
+              value: kubevirt
           securityContext:
             privileged: true
           resources:

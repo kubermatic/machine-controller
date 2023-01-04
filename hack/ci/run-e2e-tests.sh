@@ -19,6 +19,10 @@ set -euo pipefail
 cd $(dirname $0)/../..
 source hack/lib.sh
 
+if provider_disabled "${CLOUD_PROVIDER:-}"; then
+  exit 0
+fi
+
 function cleanup {
   set +e
 
