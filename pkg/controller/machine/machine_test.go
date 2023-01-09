@@ -314,8 +314,8 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 				joinClusterTimeout: test.joinTimeoutConfig,
 			}
 
-			if _, err := reconciler.ensureNodeOwnerRefAndConfigSource(ctx, instance, machine, providerConfig); err != nil {
-				t.Fatalf("failed to call ensureNodeOwnerRefAndConfigSource: %v", err)
+			if _, err := reconciler.ensureNodeOwnerRef(ctx, instance, machine, providerConfig); err != nil {
+				t.Fatalf("failed to call ensureNodeOwnerRef: %v", err)
 			}
 
 			err := client.Get(ctx, types.NamespacedName{Name: machine.Name}, &clusterv1alpha1.Machine{})

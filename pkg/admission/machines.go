@@ -151,16 +151,9 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		return fmt.Errorf("kubernetes version constraint didn't allow %q kubelet version", kubeletVer)
 	}
 
-	// Do not allow 1.24+ to use config source (dynamic kubelet configuration)
-	constraint124, err := semver.NewConstraint(">= 1.24")
-	if err != nil {
-		return fmt.Errorf("failed to parse 1.24 constraint: %w", err)
-	}
-
-	if constraint124.Check(kubeletVer) {
-		if spec.ConfigSource != nil {
-			return fmt.Errorf("setting spec.ConfigSource is not allowed for kubelet version %q", kubeletVer)
-		}
+	// Do not allow usage of config source (dynamic kubelet configuration) since has been removed in k8s v1.24.
+	if spec.ConfigSource != nil {
+		return fmt.Errorf("setting spec.ConfigSource is not allowed for kubelet version %q", kubeletVer)
 	}
 
 	// Validate SSH keys

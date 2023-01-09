@@ -30,7 +30,7 @@ usr_local_bin=/usr/local/bin
 cni_bin_dir=/opt/cni/bin
 
 {{- /* create all the necessary dirs */}}
-mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+mkdir -p /etc/cni/net.d /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
 
 {{- /* HOST_ARCH can be defined outside of machine-controller (in kubeone for example) */}}
 arch=${HOST_ARCH-}

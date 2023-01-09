@@ -40,9 +40,9 @@ machine-controller tries to follow the Kubernetes version
 
 Currently supported K8S versions are:
 
+- 1.26
 - 1.25
 - 1.24
-- 1.23
 
 ## What does not work
 

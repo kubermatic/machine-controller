@@ -64,7 +64,7 @@ write_files:
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
     cni_bin_dir=/opt/cni/bin
-    mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+    mkdir -p /etc/cni/net.d /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
     arch=${HOST_ARCH-}
     if [ -z "$arch" ]
     then
@@ -102,7 +102,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.23.13}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.25.5}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -157,8 +157,8 @@ write_files:
 - path: "/etc/systemd/system/kubelet.service"
   content: |
     [Unit]
-    After=docker.service
-    Requires=docker.service
+    After=containerd.service
+    Requires=containerd.service
 
     Description=kubelet: The Kubernetes Node Agent
     Documentation=https://kubernetes.io/docs/home/
@@ -189,9 +189,8 @@ write_files:
       --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --container-runtime=docker \
-      --container-runtime-endpoint=unix:///var/run/dockershim.sock \
-      --network-plugin=cni \
+      --container-runtime=remote \
+      --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
       --node-ip ${KUBELET_NODE_IP}
 
     [Install]
@@ -385,10 +384,27 @@ write_files:
   content: |
     export PATH="/opt/bin:$PATH"
 
-- path: /etc/docker/daemon.json
+- path: /etc/containerd/config.toml
   permissions: "0644"
   content: |
-    {"exec-opts":["native.cgroupdriver=systemd"],"storage-driver":"overlay2","log-driver":"json-file","log-opts":{"max-file":"5","max-size":"100m"}}
+    version = 2
+
+    [metrics]
+    address = "127.0.0.1:1338"
+
+    [plugins]
+    [plugins."io.containerd.grpc.v1.cri"]
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    runtime_type = "io.containerd.runc.v2"
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+    SystemdCgroup = true
+    [plugins."io.containerd.grpc.v1.cri".registry]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["https://registry-1.docker.io"]
+
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
@@ -408,8 +424,8 @@ write_files:
   permissions: "0644"
   content: |
     [Unit]
-    Requires=docker.service
-    After=docker.service
+    Requires=containerd.service
+    After=containerd.service
 
     [Service]
     ExecStart=/opt/bin/health-monitor.sh container-runtime

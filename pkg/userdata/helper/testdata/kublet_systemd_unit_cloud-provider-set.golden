@@ -30,7 +30,6 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --cloud-config=/etc/kubernetes/cloud-config \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
-  --network-plugin=cni \
   --node-ip ${KUBELET_NODE_IP}
 
 [Install]

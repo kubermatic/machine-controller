@@ -89,6 +89,7 @@ type MachineSpec struct {
 	// spec will be automatically copied to the linked NodeRef from the
 	// status. The rest of dynamic kubelet config support should then work
 	// as-is.
+	// Deprecated: This feature has been removed with k8s v1.24.
 	// +optional
 	ConfigSource *corev1.NodeConfigSource `json:"configSource,omitempty"`
 

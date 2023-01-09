@@ -31,7 +31,6 @@ ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
   --exit-on-lock-contention \
   --lock-file=/tmp/kubelet.lock \
   --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
-  --network-plugin=cni \
   --node-ip ${KUBELET_NODE_IP}
 
 [Install]

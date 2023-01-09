@@ -86,4 +86,4 @@ spec:
             # provided the rhsm will be disabled and any created subscription won't be removed automatically
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
       versions:
-        kubelet: 1.23.13
+        kubelet: 1.24.9
