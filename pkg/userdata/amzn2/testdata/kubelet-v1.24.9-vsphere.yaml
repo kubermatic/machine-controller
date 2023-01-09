@@ -98,7 +98,7 @@ write_files:
     EOF
 
     yum install -y \
-    	containerd-1.4* \
+    	containerd-1.6* \
     	yum-plugin-versionlock
     yum versionlock add containerd
 
