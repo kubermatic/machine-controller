@@ -42,7 +42,6 @@ var (
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemCentOS,
 		providerconfigtypes.OperatingSystemAmazonLinux2,
-		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemRHEL,
 		providerconfigtypes.OperatingSystemFlatcar,
 		providerconfigtypes.OperatingSystemRockyLinux,

@@ -83,8 +83,6 @@ func (eng *Containerd) ScriptFor(os types.OperatingSystem) (string, error) {
 	case types.OperatingSystemFlatcar:
 		err := containedFlatcarTemplate.Execute(&buf, args)
 		return buf.String(), err
-	case types.OperatingSystemSLES:
-		return "", nil
 	}
 
 	return "", fmt.Errorf("unknown OS: %s", os)

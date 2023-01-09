@@ -67,7 +67,6 @@ spec:
             assignPublicIP: false
             tags:
               "KubernetesCluster": "6qsm86c2d"
-          # Can be 'ubuntu', 'centos', `rhel` or 'sles'
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             disableAutoUpdate: true

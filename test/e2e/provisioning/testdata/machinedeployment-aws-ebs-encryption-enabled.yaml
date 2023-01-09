@@ -44,7 +44,6 @@ spec:
               "KubernetesCluster": "randomString"
             # Disabling the public IP assignment requires a private subnet with internet access.
             assignPublicIP: true
-          # Can be 'ubuntu', 'centos'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false
