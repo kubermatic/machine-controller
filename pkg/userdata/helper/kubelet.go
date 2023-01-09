@@ -23,8 +23,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/semver/v3"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
@@ -326,22 +324,6 @@ func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, exte
 
 	kubeletFlags := make([]string, len(extraKubeletFlags))
 	copy(kubeletFlags, extraKubeletFlags)
-
-	ver, err := semver.NewVersion(version)
-	if err != nil {
-		return "", err
-	}
-	con, err := semver.NewConstraint("< v1.24.9")
-	if err != nil {
-		return "", err
-	}
-
-	if con.Check(ver) {
-		kubeletFlags = append(kubeletFlags,
-			"--dynamic-config-dir=/etc/kubernetes/dynamic-config-dir",
-			"--feature-gates=DynamicKubeletConfig=true",
-		)
-	}
 
 	data := struct {
 		CloudProvider     string
