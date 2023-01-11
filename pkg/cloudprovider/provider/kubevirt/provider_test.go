@@ -331,14 +331,14 @@ func TestValidateOsImage(t *testing.T) {
 		WithObjects(&cdiv1beta1.DataVolume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "standardDV",
-				Namespace:   kubeVirtImagesNamespace,
-				Annotations: map[string]string{dataVolumeStandardImageAnnotation: "true"}},
+				Namespace:   KubeVirtImagesNamespace,
+				Annotations: map[string]string{DataVolumeStandardImageAnnotationKey: DataVolumeStandardImageAnnotationValue}},
 		},
 			&cdiv1beta1.DataVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "customDVByAdmin",
-					Namespace:   kubeVirtImagesNamespace,
-					Annotations: map[string]string{osAnnotationForCustomDisk: "ubuntu"}},
+					Namespace:   KubeVirtImagesNamespace,
+					Annotations: map[string]string{DataVolumeCustomDiskOsAnnotationKey: "ubuntu"}},
 			},
 		).Build()
 
@@ -353,7 +353,7 @@ func TestValidateOsImage(t *testing.T) {
 				OSImageSource: &cdiv1beta1.DataVolumeSource{
 					PVC: &cdiv1beta1.DataVolumeSourcePVC{
 						Name:      "standardDV",
-						Namespace: kubeVirtImagesNamespace,
+						Namespace: KubeVirtImagesNamespace,
 					},
 				},
 				AllowPVCClone: true,
@@ -366,7 +366,7 @@ func TestValidateOsImage(t *testing.T) {
 				OSImageSource: &cdiv1beta1.DataVolumeSource{
 					PVC: &cdiv1beta1.DataVolumeSourcePVC{
 						Name:      "standardDV",
-						Namespace: kubeVirtImagesNamespace,
+						Namespace: KubeVirtImagesNamespace,
 					},
 				},
 				AllowPVCClone: false,
@@ -379,7 +379,7 @@ func TestValidateOsImage(t *testing.T) {
 				OSImageSource: &cdiv1beta1.DataVolumeSource{
 					PVC: &cdiv1beta1.DataVolumeSourcePVC{
 						Name:      "customDVByAdmin",
-						Namespace: kubeVirtImagesNamespace,
+						Namespace: KubeVirtImagesNamespace,
 					},
 				},
 				AllowCustomImages: true,
@@ -392,7 +392,7 @@ func TestValidateOsImage(t *testing.T) {
 				OSImageSource: &cdiv1beta1.DataVolumeSource{
 					PVC: &cdiv1beta1.DataVolumeSourcePVC{
 						Name:      "customDVByAdmin",
-						Namespace: kubeVirtImagesNamespace,
+						Namespace: KubeVirtImagesNamespace,
 					},
 				},
 				AllowCustomImages: false,
@@ -419,7 +419,7 @@ func TestValidateOsImage(t *testing.T) {
 				OSImageSource: &cdiv1beta1.DataVolumeSource{
 					PVC: &cdiv1beta1.DataVolumeSourcePVC{
 						Name:      "non-existent-DV",
-						Namespace: kubeVirtImagesNamespace,
+						Namespace: KubeVirtImagesNamespace,
 					},
 				},
 				AllowPVCClone: true,

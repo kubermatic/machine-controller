@@ -75,10 +75,19 @@ const (
 	httpSource imageSource = "http"
 	// pvcSource defines the pvc source type for VM Disk Image.
 	pvcSource imageSource = "pvc"
-	// kubeVirtImagesNamespace namespace contains globally available custom images and cached standard images.
-	kubeVirtImagesNamespace           = "kubevirt-images"
-	dataVolumeStandardImageAnnotation = "kubevirt-initialization.k8c.io/standard-image"
-	osAnnotationForCustomDisk         = "cdi.kubevirt.io/os-type"
+	// DataVolumeStandardImageAnnotationKey is the annotation key for standard DataVolumes.
+	DataVolumeStandardImageAnnotationKey = "kubevirt-initialization.k8c.io/standard-image"
+	// DataVolumeStandardImageAnnotationKey is the annotation value for standard DataVolumes.
+	DataVolumeStandardImageAnnotationValue = "true"
+	// DataVolumeCustomDiskOsAnnotationKey is the annotation key for custom DataVolumes.
+	// Annotation value will be the os type.
+	DataVolumeCustomDiskOsAnnotationKey = "cdi.kubevirt.io/os-type"
+	// KubeVirtImagesNamespace namespace contains globally available custom images and cached standard images.
+	KubeVirtImagesNamespace = "kubevirt-images"
+	// EnvKubeVirtAllowPvcClone environment variable to allow image cloning.
+	EnvKubeVirtAllowPvcClone = "KUBEVIRT_ALLOW_PVC_CLONE"
+	//EnvKubeVirtAllowCustomImages environment variable to allow custom images.
+	EnvKubeVirtAllowCustomImages = "KUBEVIRT_ALLOW_CUSTOM_IMAGES"
 )
 
 var (
@@ -333,12 +342,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	config.AllowPVCClone, err = isImageCloningAllowed()
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "KUBEVIRT_ALLOW_PVC_CLONE" environment variable: %w`, err)
+		return nil, nil, fmt.Errorf(`failed to parse %s environment variable: %w`, EnvKubeVirtAllowPvcClone, err)
 	}
 
 	config.AllowCustomImages, err = isCustomImageAllowed()
 	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "KUBEVIRT_ALLOW_CUSTOM_IMAGES" environment variable: %w`, err)
+		return nil, nil, fmt.Errorf(`failed to parse %s environment variable: %w`, EnvKubeVirtAllowCustomImages, err)
 	}
 
 	return &config, pconfig, nil
@@ -439,29 +448,25 @@ func getNamespace() string {
 // isImageCloningAllowed returns whether image-cloning is allowed or not.
 // Default value is `true`.
 func isImageCloningAllowed() (bool, error) {
-	value := os.Getenv("KUBEVIRT_ALLOW_PVC_CLONE")
+	return isFeatureAllowed(EnvKubeVirtAllowPvcClone)
+}
+
+func isFeatureAllowed(envVarName string) (bool, error) {
+	value := os.Getenv(envVarName)
 	if value == "" {
 		return true, nil
 	}
-	isImageCloningEnabled, err := strconv.ParseBool(value)
+	featureAllowed, err := strconv.ParseBool(value)
 	if err != nil {
 		return false, err
 	}
-	return isImageCloningEnabled, nil
+	return featureAllowed, nil
 }
 
 // isCustomImageAllowed returns whether custom-image for cloning is allowed or not.
 // Default value is `true`.
 func isCustomImageAllowed() (bool, error) {
-	value := os.Getenv("KUBEVIRT_ALLOW_CUSTOM_IMAGES")
-	if value == "" {
-		return true, nil
-	}
-	isCustomImagesEnabled, err := strconv.ParseBool(value)
-	if err != nil {
-		return false, err
-	}
-	return isCustomImagesEnabled, nil
+	return isFeatureAllowed(EnvKubeVirtAllowCustomImages)
 }
 
 func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
@@ -984,10 +989,10 @@ func validateOsImage(ctx context.Context, c *Config, sigClient client.Client) er
 			return errCustomImage
 		}
 
-	case kubeVirtImagesNamespace:
+	case KubeVirtImagesNamespace:
 		existingDiskList := cdiv1beta1.DataVolumeList{}
 		listOption := client.ListOptions{
-			Namespace: kubeVirtImagesNamespace,
+			Namespace: KubeVirtImagesNamespace,
 		}
 		if err := sigClient.List(ctx, &existingDiskList, &listOption); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("failed to request DataVolumeList: %w", err)
@@ -1004,13 +1009,13 @@ func validateOsImage(ctx context.Context, c *Config, sigClient client.Client) er
 func validateKubeVirtImages(sourcePVC string, existingDiskList cdiv1beta1.DataVolumeList, config *Config) error {
 	for _, existingDV := range existingDiskList.Items {
 		if sourcePVC == existingDV.Name {
-			if existingDV.Annotations[dataVolumeStandardImageAnnotation] == "true" {
+			if existingDV.Annotations[DataVolumeStandardImageAnnotationKey] == DataVolumeStandardImageAnnotationValue {
 				if !config.AllowPVCClone {
 					return errStandardImage
 				}
 				return nil
 			}
-			if existingDV.Annotations[osAnnotationForCustomDisk] != "" {
+			if existingDV.Annotations[DataVolumeCustomDiskOsAnnotationKey] != "" {
 				if !config.AllowCustomImages {
 					return errCustomImage
 				}
