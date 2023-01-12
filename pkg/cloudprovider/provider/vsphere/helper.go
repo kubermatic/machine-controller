@@ -456,38 +456,24 @@ func resolveResourcePoolRef(ctx context.Context, config *Config, session *Sessio
 	return nil, nil
 }
 
-func createAndAttachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
+func attachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
 	restAPISession, err := NewRESTSession(ctx, config)
 	if err != nil {
 		return fmt.Errorf("failed to create REST API session: %w", err)
 	}
 	defer restAPISession.Logout(ctx)
 	tagManager := tags.NewManager(restAPISession.Client)
-	klog.V(3).Info("Creating tags")
+	klog.V(3).Info("Attaching tags")
 	for _, tag := range config.Tags {
-		tagID, err := tagManager.CreateTag(ctx, &tag)
-		if err != nil {
-			return fmt.Errorf("failed to create tag: %v %w", tag, err)
-		}
-
-		if err := tagManager.AttachTag(ctx, tagID, vm.Reference()); err != nil {
-			// If attaching the tag to VM failed then delete this tag. It prevents orphan tags.
-			if errDelete := tagManager.DeleteTag(ctx, &tags.Tag{
-				ID:          tagID,
-				Description: tag.Description,
-				Name:        tag.Name,
-				CategoryID:  tag.CategoryID,
-			}); errDelete != nil {
-				return fmt.Errorf("failed to attach tag to VM and delete the orphan tag: %v, attach error: %v, delete error: %w", tag, err, errDelete)
-			}
+		if err := tagManager.AttachTag(ctx, tag.ID, vm.Reference()); err != nil {
 			klog.V(3).Infof("Failed to attach tag %v. The tag was successfully deleted", tag)
-			return fmt.Errorf("failed to attach tag to VM: %v %w", tag, err)
+			return fmt.Errorf("failed to attach tag to VM: %v %w", tag.Name, err)
 		}
 	}
 	return nil
 }
 
-func deleteTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
+func detachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
 	restAPISession, err := NewRESTSession(ctx, config)
 	if err != nil {
 		return fmt.Errorf("failed to create REST API session: %w", err)
@@ -495,13 +481,13 @@ func deleteTags(ctx context.Context, config *Config, vm *object.VirtualMachine) 
 	defer restAPISession.Logout(ctx)
 	tagManager := tags.NewManager(restAPISession.Client)
 
-	tags, err := tagManager.GetAttachedTags(ctx, vm.Reference())
+	attachedTags, err := tagManager.GetAttachedTags(ctx, vm.Reference())
 	if err != nil {
 		return fmt.Errorf("failed to get attached tags for the VM: %s, %w", vm.Name(), err)
 	}
 	klog.V(3).Info("Deleting tags")
-	for _, tag := range tags {
-		err := tagManager.DeleteTag(ctx, &tag)
+	for _, tag := range attachedTags {
+		err := tagManager.DetachTag(ctx, tag.ID, vm.Reference())
 		if err != nil {
 			return fmt.Errorf("failed to delete tag: %v %w", tag, err)
 		}

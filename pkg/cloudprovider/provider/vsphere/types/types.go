@@ -50,6 +50,7 @@ type RawConfig struct {
 // Tag represents vsphere tag.
 type Tag struct {
 	Description string `json:"description,omitempty"`
+	ID          string `json:"id"`
 	Name        string `json:"name"`
 	CategoryID  string `json:"categoryID"`
 }
