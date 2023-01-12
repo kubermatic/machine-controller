@@ -20,17 +20,14 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"errors"
 	"html/template"
 	"path"
 	"reflect"
 	"testing"
 
-	kubevirtv1 "kubevirt.io/api/core/v1"
-	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
-
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
+	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -38,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/diff"
-	"k8s.io/client-go/kubernetes/scheme"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -319,126 +315,6 @@ func TestTopologySpreadConstraint(t *testing.T) {
 			result := getTopologySpreadConstraints(&test.config, map[string]string{"md": "test-md"})
 			if !reflect.DeepEqual(result, test.expected) {
 				t.Errorf("expected ToplogySpreadConstraint: %v, got: %v", test.expected, result)
-			}
-		})
-	}
-}
-
-func TestValidateOsImage(t *testing.T) {
-	testClient := fakectrlruntimeclient.
-		NewClientBuilder().
-		WithScheme(scheme.Scheme).
-		WithObjects(&cdiv1beta1.DataVolume{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        "standardDV",
-				Namespace:   kubeVirtImagesNamespace,
-				Annotations: map[string]string{dataVolumeStandardImageAnnotation: "true"}},
-		},
-			&cdiv1beta1.DataVolume{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "customDVByAdmin",
-					Namespace:   kubeVirtImagesNamespace,
-					Annotations: map[string]string{osAnnotationForCustomDisk: "ubuntu"}},
-			},
-		).Build()
-
-	tests := []struct {
-		desc        string
-		config      Config
-		expectedErr error
-	}{
-		{
-			desc: "valid osImage with cloned standard DataVolume as pvc source, cloning enabled",
-			config: Config{
-				OSImageSource: &cdiv1beta1.DataVolumeSource{
-					PVC: &cdiv1beta1.DataVolumeSourcePVC{
-						Name:      "standardDV",
-						Namespace: kubeVirtImagesNamespace,
-					},
-				},
-				AllowPVCClone: true,
-			},
-			expectedErr: nil,
-		},
-		{
-			desc: "valid osImage with cloned standard DataVolume as pvc source, cloning disabled",
-			config: Config{
-				OSImageSource: &cdiv1beta1.DataVolumeSource{
-					PVC: &cdiv1beta1.DataVolumeSourcePVC{
-						Name:      "standardDV",
-						Namespace: kubeVirtImagesNamespace,
-					},
-				},
-				AllowPVCClone: false,
-			},
-			expectedErr: errStandardImage,
-		},
-		{
-			desc: "valid osImage with custom-image-by-admin as pvc source, custom-images enabled",
-			config: Config{
-				OSImageSource: &cdiv1beta1.DataVolumeSource{
-					PVC: &cdiv1beta1.DataVolumeSourcePVC{
-						Name:      "customDVByAdmin",
-						Namespace: kubeVirtImagesNamespace,
-					},
-				},
-				AllowCustomImages: true,
-			},
-			expectedErr: nil,
-		},
-		{
-			desc: "valid osImage with custom-image-by-admin as pvc source, custom-images disabled",
-			config: Config{
-				OSImageSource: &cdiv1beta1.DataVolumeSource{
-					PVC: &cdiv1beta1.DataVolumeSourcePVC{
-						Name:      "customDVByAdmin",
-						Namespace: kubeVirtImagesNamespace,
-					},
-				},
-				AllowCustomImages: false,
-			},
-			expectedErr: errCustomImage,
-		},
-		{
-			desc: "valid osImage with custom-image-by-user as pvc source, custom-images disabled",
-			config: Config{
-				Namespace: "cluster-test",
-				OSImageSource: &cdiv1beta1.DataVolumeSource{
-					PVC: &cdiv1beta1.DataVolumeSourcePVC{
-						Name:      "customDVByUser",
-						Namespace: "cluster-test",
-					},
-				},
-				AllowCustomImages: false,
-			},
-			expectedErr: errCustomImage,
-		},
-		{
-			desc: "invalid osImage with non-existent pvc source, cloning enabled",
-			config: Config{
-				OSImageSource: &cdiv1beta1.DataVolumeSource{
-					PVC: &cdiv1beta1.DataVolumeSourcePVC{
-						Name:      "non-existent-DV",
-						Namespace: kubeVirtImagesNamespace,
-					},
-				},
-				AllowPVCClone: true,
-			},
-			expectedErr: errInvalidOsImage,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.desc, func(t *testing.T) {
-			actualErr := validateOsImage(context.Background(), &test.config, testClient)
-			if test.expectedErr != nil {
-				if !errors.Is(actualErr, test.expectedErr) {
-					t.Errorf("expected error: %q, got: %q", test.expectedErr, actualErr)
-				}
-			} else {
-				if actualErr != nil {
-					t.Errorf("expected success, but got error: %q", actualErr)
-				}
 			}
 		})
 	}
