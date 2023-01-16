@@ -339,7 +339,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("sles", "amzn2"))
+	selector := Not(OsSelector("amzn2"))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -500,28 +500,6 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AWSManifestARM, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
-// TestAWSSLESProvisioningE2E - a test suite that exercises AWS provider
-// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
-func TestAWSSLESProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	// test data
-	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
-	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
-	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
-	}
-
-	// act
-	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
-		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-	}
-
-	// We would like to test SLES image only in this test as the other images are tested in TestAWSProvisioningE2E
-	selector := OsSelector("sles")
-	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
-}
-
 func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
@@ -633,7 +611,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "amzn2"))
+	selector := Not(OsSelector("amzn2"))
 
 	// act
 	params := []string{
@@ -876,7 +854,7 @@ func getVSphereTestParams(t *testing.T) []string {
 func TestVsphereProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
-	selector := Not(OsSelector("sles", "amzn2", "rockylinux", "flatcar"))
+	selector := Not(OsSelector("amzn2", "rockylinux", "flatcar"))
 	params := getVSphereTestParams(t)
 
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
@@ -937,7 +915,7 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environment variable cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles", "rhel", "flatcar", "rockylinux"))
+	selector := Not(OsSelector("rhel", "flatcar", "rockylinux"))
 	// act
 	params := []string{
 		fmt.Sprintf("<< SCW_ACCESS_KEY >>=%s", scwAccessKey),

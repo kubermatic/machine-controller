@@ -38,7 +38,6 @@ const (
 	OperatingSystemUbuntu       OperatingSystem = "ubuntu"
 	OperatingSystemCentOS       OperatingSystem = "centos"
 	OperatingSystemAmazonLinux2 OperatingSystem = "amzn2"
-	OperatingSystemSLES         OperatingSystem = "sles"
 	OperatingSystemRHEL         OperatingSystem = "rhel"
 	OperatingSystemFlatcar      OperatingSystem = "flatcar"
 	OperatingSystemRockyLinux   OperatingSystem = "rockylinux"
@@ -76,7 +75,6 @@ var (
 		OperatingSystemUbuntu,
 		OperatingSystemCentOS,
 		OperatingSystemAmazonLinux2,
-		OperatingSystemSLES,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
 		OperatingSystemRockyLinux,

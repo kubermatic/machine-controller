@@ -205,13 +205,9 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 }
 
 func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
-	config, pc, _, err := p.getConfig(spec.ProviderSpec)
+	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
-	}
-
-	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
 
 	session, err := NewSession(ctx, config)

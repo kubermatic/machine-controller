@@ -152,20 +152,6 @@ var (
 				owner: "099720109477",
 			},
 		},
-		providerconfigtypes.OperatingSystemSLES: {
-			awstypes.CPUArchitectureX86_64: {
-				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "SUSE Linux Enterprise Server 15 SP3 (HVM, 64-bit, SSD-Backed)",
-				// The AWS marketplace ID from SLES
-				owner: "013907871322",
-			},
-			awstypes.CPUArchitectureARM64: {
-				// Be as precise as possible - otherwise we might get a nightly dev build
-				description: "SUSE Linux Enterprise Server 15 SP3 (HVM, 64-bit, SSD-Backed)",
-				// The AWS marketplace ID from SLES
-				owner: "013907871322",
-			},
-		},
 		providerconfigtypes.OperatingSystemRHEL: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
@@ -351,8 +337,6 @@ func getDefaultRootDevicePath(os providerconfigtypes.OperatingSystem) (string, e
 		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemRockyLinux:
 		return rootDevicePathSDA, nil
-	case providerconfigtypes.OperatingSystemSLES:
-		return rootDevicePathXVDA, nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rootDevicePathSDA, nil
 	case providerconfigtypes.OperatingSystemFlatcar:
