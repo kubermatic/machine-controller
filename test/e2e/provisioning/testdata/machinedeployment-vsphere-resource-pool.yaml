@@ -32,7 +32,7 @@ spec:
             datacenter: 'Hamburg'
             folder: '/Hamburg/vm/Kubermatic-ci'
             password: << VSPHERE_PASSWORD >>
-            datastoreCluster: 'dsc-1'
+            datastore: 'vsan'
             resourcePool: 'e2e-resource-pool'
             cpus: 2
             MemoryMB: 2048
