@@ -75,23 +75,6 @@ const (
 	httpSource imageSource = "http"
 	// pvcSource defines the pvc source type for VM Disk Image.
 	pvcSource imageSource = "pvc"
-	// kubeVirtImagesNamespace namespace contains globally available custom images and cached standard images.
-	kubeVirtImagesNamespace           = "kubevirt-images"
-	dataVolumeStandardImageAnnotation = "kubevirt-initialization.k8c.io/standard-image"
-	osAnnotationForCustomDisk         = "cdi.kubevirt.io/os-type"
-)
-
-var (
-	supportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
-		providerconfigtypes.OperatingSystemCentOS:     nil,
-		providerconfigtypes.OperatingSystemUbuntu:     nil,
-		providerconfigtypes.OperatingSystemRHEL:       nil,
-		providerconfigtypes.OperatingSystemFlatcar:    nil,
-		providerconfigtypes.OperatingSystemRockyLinux: nil,
-	}
-	errInvalidOsImage = fmt.Errorf("invalid primaryDisk.osImage")
-	errCustomImage    = fmt.Errorf("custom-image cloning not allowed")
-	errStandardImage  = fmt.Errorf("standard-image cloning not allowed")
 )
 
 type provider struct {
@@ -120,8 +103,6 @@ type Config struct {
 	SecondaryDisks            []SecondaryDisks
 	NodeAffinityPreset        NodeAffinityPreset
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
-	AllowPVCClone             bool
-	AllowCustomImages         bool
 }
 
 type AffinityType string
@@ -331,16 +312,6 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, fmt.Errorf(`failed to parse "topologySpreadConstraints" field: %w`, err)
 	}
 
-	config.AllowPVCClone, err = isImageCloningAllowed()
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "KUBEVIRT_ALLOW_PVC_CLONE" environment variable: %w`, err)
-	}
-
-	config.AllowCustomImages, err = isCustomImageAllowed()
-	if err != nil {
-		return nil, nil, fmt.Errorf(`failed to parse "KUBEVIRT_ALLOW_CUSTOM_IMAGES" environment variable: %w`, err)
-	}
-
 	return &config, pconfig, nil
 }
 
@@ -394,7 +365,7 @@ func (p *provider) parseTopologySpreadConstraint(topologyConstraints []kubevirtt
 	return parsedTopologyConstraints, nil
 }
 
-func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nameSpace string) (*cdiv1beta1.DataVolumeSource, error) {
+func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, namespace string) (*cdiv1beta1.DataVolumeSource, error) {
 	osImage, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.OsImage)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.osImage" field: %w`, err)
@@ -410,7 +381,7 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
 		}
-		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: nameSpace}}, nil
+		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: namespace}}, nil
 	default:
 		// handle old API for backward compatibility.
 		if _, err = url.ParseRequestURI(osImage); err == nil {
@@ -419,7 +390,7 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
 		}
-		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: nameSpace}}, nil
+		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: namespace}}, nil
 	}
 }
 
@@ -434,34 +405,6 @@ func getNamespace() string {
 		ns = metav1.NamespaceSystem
 	}
 	return ns
-}
-
-// isImageCloningAllowed returns whether image-cloning is allowed or not.
-// Default value is `true`.
-func isImageCloningAllowed() (bool, error) {
-	value := os.Getenv("KUBEVIRT_ALLOW_PVC_CLONE")
-	if value == "" {
-		return true, nil
-	}
-	isImageCloningEnabled, err := strconv.ParseBool(value)
-	if err != nil {
-		return false, err
-	}
-	return isImageCloningEnabled, nil
-}
-
-// isCustomImageAllowed returns whether custom-image for cloning is allowed or not.
-// Default value is `true`.
-func isCustomImageAllowed() (bool, error) {
-	value := os.Getenv("KUBEVIRT_ALLOW_CUSTOM_IMAGES")
-	if value == "" {
-		return true, nil
-	}
-	isCustomImagesEnabled, err := strconv.ParseBool(value)
-	if err != nil {
-		return false, err
-	}
-	return isCustomImagesEnabled, nil
 }
 
 func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
@@ -541,7 +484,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	if err != nil {
 		return fmt.Errorf("failed to get kubevirt client: %w", err)
 	}
-	if _, ok := supportedOS[pc.OperatingSystem]; !ok {
+	if _, ok := kubevirttypes.SupportedOS[pc.OperatingSystem]; !ok {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
 	if c.DNSPolicy == corev1.DNSNone {
@@ -555,9 +498,6 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("failed to request VirtualMachineInstances: %w", err)
 	}
 
-	if c.OSImageSource.PVC != nil {
-		return validateOsImage(ctx, c, sigClient)
-	}
 	return nil
 }
 
@@ -974,50 +914,4 @@ func getTopologySpreadConstraints(config *Config, matchLabels map[string]string)
 			LabelSelector:     &metav1.LabelSelector{MatchLabels: matchLabels},
 		},
 	}
-}
-
-// validateOsImage with PVC as source.
-func validateOsImage(ctx context.Context, c *Config, sigClient client.Client) error {
-	switch c.OSImageSource.PVC.Namespace {
-	case c.Namespace:
-		if !c.AllowCustomImages {
-			return errCustomImage
-		}
-
-	case kubeVirtImagesNamespace:
-		existingDiskList := cdiv1beta1.DataVolumeList{}
-		listOption := client.ListOptions{
-			Namespace: kubeVirtImagesNamespace,
-		}
-		if err := sigClient.List(ctx, &existingDiskList, &listOption); client.IgnoreNotFound(err) != nil {
-			return fmt.Errorf("failed to request DataVolumeList: %w", err)
-		}
-		return validateKubeVirtImages(c.OSImageSource.PVC.Name, existingDiskList, c)
-
-	default:
-		return errInvalidOsImage
-	}
-	return nil
-}
-
-// validateKubeVirtImages from kubeVirtImagesNamespace.
-func validateKubeVirtImages(sourcePVC string, existingDiskList cdiv1beta1.DataVolumeList, config *Config) error {
-	for _, existingDV := range existingDiskList.Items {
-		if sourcePVC == existingDV.Name {
-			if existingDV.Annotations[dataVolumeStandardImageAnnotation] == "true" {
-				if !config.AllowPVCClone {
-					return errStandardImage
-				}
-				return nil
-			}
-			if existingDV.Annotations[osAnnotationForCustomDisk] != "" {
-				if !config.AllowCustomImages {
-					return errCustomImage
-				}
-				return nil
-			}
-			break
-		}
-	}
-	return errInvalidOsImage
 }

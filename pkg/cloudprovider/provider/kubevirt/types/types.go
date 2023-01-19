@@ -25,6 +25,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var SupportedOS = map[providerconfigtypes.OperatingSystem]*struct{}{
+	providerconfigtypes.OperatingSystemCentOS:     nil,
+	providerconfigtypes.OperatingSystemUbuntu:     nil,
+	providerconfigtypes.OperatingSystemRHEL:       nil,
+	providerconfigtypes.OperatingSystemFlatcar:    nil,
+	providerconfigtypes.OperatingSystemRockyLinux: nil,
+}
+
 type RawConfig struct {
 	ClusterName               providerconfigtypes.ConfigVarString `json:"clusterName"`
 	Auth                      Auth                                `json:"auth,omitempty"`
