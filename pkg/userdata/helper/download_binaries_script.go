@@ -164,7 +164,7 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	}
 
 	const (
-		CNIVersion      = "v1.1.1"
+		CNIVersion      = "v1.2.0"
 		CRIToolsVersion = "v1.22.0"
 	)
 
