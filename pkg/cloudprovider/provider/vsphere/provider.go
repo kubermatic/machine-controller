@@ -196,6 +196,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	for _, tag := range rawConfig.Tags {
 		c.Tags = append(c.Tags, tags.Tag{
 			Description: tag.Description,
+			ID:          tag.ID,
 			Name:        tag.Name,
 			CategoryID:  tag.CategoryID,
 		})
@@ -225,6 +226,9 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		tagManager := tags.NewManager(restAPISession.Client)
 		klog.V(3).Info("Found tags")
 		for _, tag := range config.Tags {
+			if tag.ID == "" {
+				return fmt.Errorf("one of the tags id is empty")
+			}
 			if tag.Name == "" {
 				return fmt.Errorf("one of the tags name is empty")
 			}
@@ -334,8 +338,8 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%w'", err))
 	}
 
-	if err := createAndAttachTags(ctx, config, virtualMachine); err != nil {
-		return nil, fmt.Errorf("failed create and attach tags: %w", err)
+	if err := attachTags(ctx, config, virtualMachine); err != nil {
+		return nil, fmt.Errorf("failed to attach tags: %w", err)
 	}
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
@@ -396,7 +400,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		return false, fmt.Errorf("failed to get instance from vSphere: %w", err)
 	}
 
-	if err := deleteTags(ctx, config, virtualMachine); err != nil {
+	if err := detachTags(ctx, config, virtualMachine); err != nil {
 		return false, fmt.Errorf("failed to delete tags: %w", err)
 	}
 
