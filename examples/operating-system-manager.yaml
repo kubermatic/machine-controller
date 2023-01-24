@@ -975,7 +975,7 @@ spec:
       serviceAccountName: operating-system-manager-webhook
       containers:
         # TODO: Update this to a semver tag before release.
-        - image: quay.io/kubermatic/operating-system-manager:22c771f4cb686427d94df83946b292d7ff3a06f8
+        - image: quay.io/kubermatic/operating-system-manager:8688a1fde001705f4c0b394ed2f4ff4a292b20a9
           imagePullPolicy: IfNotPresent
           name: webhook
           command:
@@ -1304,7 +1304,7 @@ spec:
       serviceAccountName: operating-system-manager
       containers:
         # TODO: Update this to a semver tag before release.
-        - image: quay.io/kubermatic/operating-system-manager:22c771f4cb686427d94df83946b292d7ff3a06f8
+        - image: quay.io/kubermatic/operating-system-manager:8688a1fde001705f4c0b394ed2f4ff4a292b20a9
           imagePullPolicy: IfNotPresent
           name: operating-system-manager
           command:
