@@ -79,8 +79,9 @@ cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
 curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
 
 {{- /* download cri-tools checksum */}}
-{{- /* the cri-tools checksum file has a filename prefix that breaks sha256sum so we need to drop it with sed */}}
-cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+{{- /* the cri-tools checksum file provides only the checksum without the file name, so we need to handle it specially */}}
+cri_tools_sum_value=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256")
+cri_tools_sum="$cri_tools_sum_value $cri_tools_filename"
 cd "$opt_bin"
 
 {{- /* verify cri-tools checksum */}}
@@ -164,8 +165,8 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	}
 
 	const (
-		CNIVersion      = "v1.1.1"
-		CRIToolsVersion = "v1.22.0"
+		CNIVersion      = "v1.2.0"
+		CRIToolsVersion = "v1.26.0"
 	)
 
 	// force v in case if it's not there
