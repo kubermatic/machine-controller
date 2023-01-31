@@ -639,6 +639,12 @@ coreos:
         [Unit]
         Requires=download-script.service
         After=download-script.service
+{{- if eq .CloudProviderName "anexia" }}
+    - name: 50-rpc-statd.conf
+      content: |
+        [Unit]
+        Wants=rpc-statd.service
+{{- end }}
     content: |
 {{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .ProviderSpec.Network.GetIPFamily .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 6 }}
 
