@@ -31,8 +31,10 @@ spec:
                 name: machine-controller-anexia
                 key: token
             vlanID: "<< ANEXIA_VLAN_ID >>"
-            # Currently only the flatcar template is supported: 12c28aa7-604d-47e9-83fb-5f1d1f1837b3
-            templateID: "<< ANEXIA_TEMPLATE_ID >>"
+            # Currently only the "Flatcar Linux Stable" template is supported.
+            # Use templateBuild to specify a build. If empty => latest
+            # Alternatively use templateID for a specific template.
+            template: "<< ANEXIA_TEMPLATE_NAME >>"
             locationID: "<< ANEXIA_LOCATION_ID >>"
             cpus: 2
             memory: 2048
