@@ -52,7 +52,7 @@ EOF
   EnvironmentFile=-/etc/environment
 EOF
 
-  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.4*
+  DEBIAN_FRONTEND=noninteractive apt-get install -y  containerd.io=1.6*
   apt-mark hold containerd.io
 
   mkdir -p /etc/containerd/ && touch /etc/containerd/config.toml
