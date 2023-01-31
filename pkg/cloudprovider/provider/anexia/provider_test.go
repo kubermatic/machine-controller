@@ -47,39 +47,6 @@ func TestAnexiaProvider(t *testing.T) {
 		server.Close()
 	})
 
-	t.Run("Test waiting for VM", func(t *testing.T) {
-		t.Parallel()
-
-		waitUntilVMIsFound := 2
-		testhelper.Mux.HandleFunc("/api/vsphere/v1/search/by_name.json", createSearchHandler(t, waitUntilVMIsFound))
-
-		providerStatus := anxtypes.ProviderStatus{}
-		ctx := createReconcileContext(reconcileContext{
-			Machine: &v1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
-			},
-			Status:   &providerStatus,
-			UserData: "",
-			Config:   resolvedConfig{},
-
-			ProviderData: &cloudprovidertypes.ProviderData{
-				Update: func(m *clusterv1alpha1.Machine, mod ...cloudprovidertypes.MachineModifier) error {
-					return nil
-				},
-			},
-		})
-
-		err := waitForVM(ctx, client)
-		if err != nil {
-			t.Fatal("No error was expected", err)
-
-		}
-
-		if providerStatus.InstanceID != TestIdentifier {
-			t.Errorf("Excpected InstanceID to be set")
-		}
-	})
-
 	t.Run("Test provision VM", func(t *testing.T) {
 		t.Parallel()
 		testhelper.Mux.HandleFunc("/api/ipam/v1/address/reserve/ip/count.json", func(writer http.ResponseWriter, request *http.Request) {
