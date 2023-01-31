@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -euo pipefail
+
+cd $(dirname $0)/..
+source hack/lib.sh
+
+CONTAINERIZE_IMAGE=golang:1.17.1 containerize ./hack/update-fixtures.sh
+
 go test ./... -v -update || go test ./...
 
 if [[ $? -eq 0 ]]; then echo "Successfully updated fixtures"; else "Failed to update fixtures"; fi
