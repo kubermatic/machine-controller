@@ -465,7 +465,12 @@ func attachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) 
 	tagManager := tags.NewManager(restAPISession.Client)
 	klog.V(3).Info("Attaching tags")
 	for _, tag := range config.Tags {
-		if err := tagManager.AttachTag(ctx, tag.ID, vm.Reference()); err != nil {
+		tagID, err := determineTagID(ctx, tagManager, tag)
+		if err != nil {
+			return err
+		}
+
+		if err := tagManager.AttachTag(ctx, tagID, vm.Reference()); err != nil {
 			klog.V(3).Infof("Failed to attach tag %v. The tag was successfully deleted", tag)
 			return fmt.Errorf("failed to attach tag to VM: %v %w", tag.Name, err)
 		}
@@ -487,11 +492,28 @@ func detachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) 
 	}
 	klog.V(3).Info("Deleting tags")
 	for _, tag := range attachedTags {
-		err := tagManager.DetachTag(ctx, tag.ID, vm.Reference())
+		tagID, err := determineTagID(ctx, tagManager, tag)
+		if err != nil {
+			return err
+		}
+
+		err = tagManager.DetachTag(ctx, tagID, vm.Reference())
 		if err != nil {
 			return fmt.Errorf("failed to delete tag: %v %w", tag, err)
 		}
 	}
 
 	return nil
+}
+
+func determineTagID(ctx context.Context, tagManager *tags.Manager, tag tags.Tag) (string, error) {
+	if tag.ID != "" {
+		return tag.ID, nil
+	}
+
+	apiTag, err := tagManager.GetTagForCategory(ctx, tag.Name, tag.CategoryID)
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve tag: %v %w", tag.Name, err)
+	}
+	return apiTag.ID, nil
 }

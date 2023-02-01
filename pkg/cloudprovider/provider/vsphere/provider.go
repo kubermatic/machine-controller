@@ -226,11 +226,8 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		tagManager := tags.NewManager(restAPISession.Client)
 		klog.V(3).Info("Found tags")
 		for _, tag := range config.Tags {
-			if tag.ID == "" {
-				return fmt.Errorf("one of the tags id is empty")
-			}
-			if tag.Name == "" {
-				return fmt.Errorf("one of the tags name is empty")
+			if tag.ID == "" && tag.Name == "" {
+				return fmt.Errorf("either tag id or name must be specified")
 			}
 			if tag.CategoryID == "" {
 				return fmt.Errorf("one of the tags category is empty")
