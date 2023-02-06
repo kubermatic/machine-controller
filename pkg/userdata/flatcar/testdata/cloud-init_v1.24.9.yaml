@@ -97,6 +97,10 @@ coreos:
         [Unit]
         Requires=download-script.service
         After=download-script.service
+    - name: 50-rpc-statd.conf
+      content: |
+        [Unit]
+        Wants=rpc-statd.service
     content: |
       [Unit]
       After=containerd.service
