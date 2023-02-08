@@ -852,6 +852,19 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
 	affinity := &corev1.Affinity{}
 
+	expressions := []corev1.NodeSelectorRequirement{
+		{
+			Key:      config.NodeAffinityPreset.Key,
+			Operator: corev1.NodeSelectorOperator(metav1.LabelSelectorOpExists),
+		},
+	}
+
+	// change the operator if any values were passed for node affinity matching
+	if len(config.NodeAffinityPreset.Values) > 0 {
+		expressions[0].Operator = corev1.NodeSelectorOperator(metav1.LabelSelectorOpIn)
+		expressions[0].Values = config.NodeAffinityPreset.Values
+	}
+
 	// NodeAffinity
 	switch config.NodeAffinityPreset.Type {
 	case softAffinityType:
@@ -860,13 +873,7 @@ func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
 				{
 					Weight: 1,
 					Preference: corev1.NodeSelectorTerm{
-						MatchExpressions: []corev1.NodeSelectorRequirement{
-							{
-								Key:      config.NodeAffinityPreset.Key,
-								Values:   config.NodeAffinityPreset.Values,
-								Operator: corev1.NodeSelectorOperator(metav1.LabelSelectorOpIn),
-							},
-						},
+						MatchExpressions: expressions,
 					},
 				},
 			},
@@ -876,13 +883,7 @@ func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
 			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
 				NodeSelectorTerms: []corev1.NodeSelectorTerm{
 					{
-						MatchExpressions: []corev1.NodeSelectorRequirement{
-							{
-								Key:      config.NodeAffinityPreset.Key,
-								Values:   config.NodeAffinityPreset.Values,
-								Operator: corev1.NodeSelectorOperator(metav1.LabelSelectorOpIn),
-							},
-						},
+						MatchExpressions: expressions,
 					},
 				},
 			},
