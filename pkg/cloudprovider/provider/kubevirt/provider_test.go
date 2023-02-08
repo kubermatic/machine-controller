@@ -60,6 +60,7 @@ type kubevirtProviderSpecConf struct {
 	OperatingSystem          string
 	TopologySpreadConstraint bool
 	Affinity                 bool
+	AffinityValues           bool
 	SecondaryDisks           bool
 	OsImageSource            imageSource
 }
@@ -86,9 +87,11 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"affinity": {
 		  "nodeAffinityPreset": {
 		    "type": "hard",
-			"key": "key1",
-			"values": [
+			"key": "key1"
+            {{- if .AffinityValues }}
+			, "values": [
 				"foo1", "foo2" ]
+            {{- end }}
 		  }
 		},
 		{{- end }}
@@ -194,7 +197,11 @@ func TestNewVirtualMachine(t *testing.T) {
 		},
 		{
 			name:     "affinity",
-			specConf: kubevirtProviderSpecConf{Affinity: true},
+			specConf: kubevirtProviderSpecConf{Affinity: true, AffinityValues: true},
+		},
+		{
+			name:     "affinity-no-values",
+			specConf: kubevirtProviderSpecConf{Affinity: true, AffinityValues: false},
 		},
 		{
 			name:     "secondary-disks",
