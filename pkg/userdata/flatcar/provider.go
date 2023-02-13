@@ -170,7 +170,7 @@ const userDataIgnitionTemplate = `passwd:
         {{end}}
 {{- end }}
 
-{{- if .ProviderSpec.Network }}
+{{- if .ProviderSpec.Network.IsStaticIPConfig }}
 networkd:
   units:
     - name: static-nic.network
@@ -544,7 +544,7 @@ users:
 
 coreos:
   units:
-{{- if .ProviderSpec.Network }}
+{{- if .ProviderSpec.Network.IsStaticIPConfig }}
   - name: static-nic.network
     content: |
       [Match]
