@@ -156,12 +156,19 @@ type KubeconfigProvider interface {
 // MetricsCollection is a struct of all metrics used in
 // this controller.
 type MetricsCollection struct {
-	Workers prometheus.Gauge
-	Errors  prometheus.Counter
+	Workers        prometheus.Gauge
+	Errors         prometheus.Counter
+	Provisioning   prometheus.Histogram
+	Deprovisioning prometheus.Histogram
 }
 
 func (mc *MetricsCollection) MustRegister(registerer prometheus.Registerer) {
-	registerer.MustRegister(mc.Errors, mc.Workers)
+	registerer.MustRegister(
+		mc.Errors,
+		mc.Workers,
+		mc.Provisioning,
+		mc.Deprovisioning,
+	)
 }
 
 func Add(
@@ -459,6 +466,9 @@ func (r *Reconciler) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 			return nil
 		}
 	}
+
+	r.metrics.Provisioning.Observe(time.Until(machine.CreationTimestamp.Time).Abs().Seconds())
+
 	return r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Conditions = append(m.Status.Conditions, corev1.NodeCondition{Type: corev1.NodeReady,
 			Status: corev1.ConditionTrue,
@@ -596,7 +606,13 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 		return nil, err
 	}
 
-	return nil, r.deleteNodeForMachine(ctx, nodes, machine)
+	if err := r.deleteNodeForMachine(ctx, nodes, machine); err != nil {
+		return nil, err
+	}
+
+	r.metrics.Deprovisioning.Observe(time.Until(machine.DeletionTimestamp.Time).Abs().Seconds())
+
+	return nil, nil
 }
 
 func (r *Reconciler) retrieveNodesRelatedToMachine(ctx context.Context, machine *clusterv1alpha1.Machine) ([]*corev1.Node, error) {
