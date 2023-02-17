@@ -14,7 +14,7 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-kubevirt
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/kubevirt/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     max_concurrency: 1
