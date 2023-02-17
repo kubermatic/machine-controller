@@ -14,7 +14,7 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-aws
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -75,7 +75,7 @@ presubmits:
               memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-arm
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -103,7 +103,7 @@ presubmits:
               memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -131,7 +131,7 @@ presubmits:
               memory: 6Gi
 
   - name: pull-machine-controller-e2e-aws-flatcar-containerd
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
