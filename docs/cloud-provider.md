@@ -321,3 +321,12 @@ memory: "2048M"
 ## vSphere
 
 Refer to the [VSphere](./vsphere.md#provider-configuration) specific documentation.
+
+## Vultr
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+apiKey: "<< VULTR_API_KEY >>"
+plan: "vhf-8c-32gb"
+region: ""
+osId: 127

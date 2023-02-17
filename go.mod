@@ -40,6 +40,7 @@ require (
 	github.com/tinkerbell/tink v0.8.0
 	github.com/vmware/go-vcloud-director/v2 v2.18.0
 	github.com/vmware/govmomi v0.30.0
+	github.com/vultr/govultr/v2 v2.17.2
 	go.anx.io/go-anxcloud v0.5.0
 	golang.org/x/crypto v0.4.0
 	golang.org/x/oauth2 v0.3.0
@@ -118,6 +119,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.2.1 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
