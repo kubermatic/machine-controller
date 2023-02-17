@@ -27,6 +27,9 @@ import (
 	"sync"
 	"time"
 
+	"go.anx.io/go-anxcloud/pkg/api"
+	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
+	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	anxaddr "go.anx.io/go-anxcloud/pkg/ipam/address"
 	"go.anx.io/go-anxcloud/pkg/vsphere"
@@ -92,7 +95,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	// ensure conditions are present on machine
 	ensureConditions(&status)
 
-	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, _, err := p.getConfig(ctx, machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get provider config: %w", err)
 	}
@@ -105,7 +108,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		Machine:      machine,
 	})
 
-	client, err := getClient(config.Token)
+	_, client, err := getClient(config.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +271,26 @@ func ensureConditions(status *anxtypes.ProviderStatus) {
 	}
 }
 
-func (p *provider) resolveConfig(config anxtypes.RawConfig) (*resolvedConfig, error) {
+func resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig, configVarResolver *providerconfig.ConfigVarResolver, locationID string) (string, error) {
+	templateName, err := configVarResolver.GetConfigVarStringValue(config.Template)
+	if err != nil {
+		return "", fmt.Errorf("failed to get 'template': %w", err)
+	}
+
+	templateBuild, err := configVarResolver.GetConfigVarStringValue(config.TemplateBuild)
+	if err != nil {
+		return "", fmt.Errorf("failed to get 'templateBuild': %w", err)
+	}
+
+	template, err := vspherev1.FindNamedTemplate(ctx, a, templateName, templateBuild, corev1.Location{Identifier: locationID})
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve named template: %w", err)
+	}
+
+	return template.Identifier, nil
+}
+
+func (p *provider) resolveConfig(ctx context.Context, config anxtypes.RawConfig) (*resolvedConfig, error) {
 	var err error
 	ret := resolvedConfig{
 		RawConfig: config,
@@ -287,6 +309,21 @@ func (p *provider) resolveConfig(config anxtypes.RawConfig) (*resolvedConfig, er
 	ret.TemplateID, err = p.configVarResolver.GetConfigVarStringValue(config.TemplateID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get 'templateID': %w", err)
+	}
+
+	// when "templateID" is not set, we expect "template" to be
+	if ret.TemplateID == "" {
+		a, _, err := getClient(ret.Token)
+		if err != nil {
+			return nil, fmt.Errorf("failed initializing API clients: %w", err)
+		}
+
+		templateID, err := resolveTemplateID(ctx, a, config, p.configVarResolver, ret.LocationID)
+		if err != nil {
+			return nil, fmt.Errorf("failed retrieving template id from named template: %w", err)
+		}
+
+		ret.TemplateID = templateID
 	}
 
 	ret.VlanID, err = p.configVarResolver.GetConfigVarStringValue(config.VlanID)
@@ -323,7 +360,7 @@ func (p *provider) resolveConfig(config anxtypes.RawConfig) (*resolvedConfig, er
 	return &ret, nil
 }
 
-func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
+func (p *provider) getConfig(ctx context.Context, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
 	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
@@ -341,7 +378,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*resolvedCo
 		return nil, nil, fmt.Errorf("error parsing provider config: %w", err)
 	}
 
-	resolvedConfig, err := p.resolveConfig(*rawConfig)
+	resolvedConfig, err := p.resolveConfig(ctx, *rawConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error resolving config: %w", err)
 	}
@@ -360,14 +397,14 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 }
 
 // Validate returns success or failure based according to its ProviderSpec.
-func (p *provider) Validate(_ context.Context, machinespec clusterv1alpha1.MachineSpec) error {
-	config, _, err := p.getConfig(machinespec.ProviderSpec)
+func (p *provider) Validate(ctx context.Context, machinespec clusterv1alpha1.MachineSpec) error {
+	config, _, err := p.getConfig(ctx, machinespec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if config.Token == "" {
-		return errors.New("token is missing")
+		return errors.New("token not set")
 	}
 
 	if config.CPUs == 0 {
@@ -397,7 +434,7 @@ func (p *provider) Validate(_ context.Context, machinespec clusterv1alpha1.Machi
 	}
 
 	if config.TemplateID == "" {
-		return errors.New("template id is missing")
+		return errors.New("no valid template configured")
 	}
 
 	if config.VlanID == "" {
@@ -408,12 +445,12 @@ func (p *provider) Validate(_ context.Context, machinespec clusterv1alpha1.Machi
 }
 
 func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, pd *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, _, err := p.getConfig(ctx, machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to retrieve config: %v", err)
 	}
 
-	cli, err := getClient(config.Token)
+	_, cli, err := getClient(config.Token)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
@@ -478,12 +515,12 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	}()
 
 	ensureConditions(&status)
-	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, _, err := p.getConfig(ctx, machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
 	}
 
-	cli, err := getClient(config.Token)
+	_, cli, err := getClient(config.Token)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
@@ -542,10 +579,21 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func getClient(token string) (anxclient.Client, error) {
+func getClient(token string) (api.API, anxclient.Client, error) {
 	tokenOpt := anxclient.TokenFromString(token)
 	client := anxclient.HTTPClient(&http.Client{Timeout: 120 * time.Second})
-	return anxclient.New(tokenOpt, client)
+
+	a, err := api.NewAPI(api.WithClientOptions(client, tokenOpt))
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating generic API client: %w", err)
+	}
+
+	legacyClient, err := anxclient.New(tokenOpt, client)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating legacy client: %w", err)
+	}
+
+	return a, legacyClient, nil
 }
 
 func getProviderStatus(machine *clusterv1alpha1.Machine) anxtypes.ProviderStatus {

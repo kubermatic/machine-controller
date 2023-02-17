@@ -21,10 +21,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gophercloud/gophercloud/testhelper"
+	"go.anx.io/go-anxcloud/pkg/api/mock"
+	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	"go.anx.io/go-anxcloud/pkg/ipam/address"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
@@ -40,11 +43,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const TestIdentifier = "TestIdent"
+const (
+	TestIdentifier   = "TestIdent"
+	testTemplateName = "test-template"
+)
 
 func TestAnexiaProvider(t *testing.T) {
 	testhelper.SetupHTTP()
 	client, server := anxclient.NewTestClient(nil, testhelper.Mux)
+
+	a := mock.NewMockAPI()
+	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-OLD-BUILD", Name: testTemplateName, Build: "b01"})
+	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID", Name: testTemplateName, Build: "b02"})
+	a.FakeExisting(&vspherev1.Template{Identifier: "WRONG-TEMPLATE-NAME", Name: "Wrong Template Name", Build: "b02"})
+
 	t.Cleanup(func() {
 		testhelper.TeardownHTTP()
 		server.Close()
@@ -150,6 +162,62 @@ func TestAnexiaProvider(t *testing.T) {
 		testhelper.AssertNoErr(t, err)
 	})
 
+	t.Run("Test resolve template", func(t *testing.T) {
+		t.Parallel()
+
+		type testCase struct {
+			config             anxtypes.RawConfig
+			expectedError      string
+			expectedTemplateID string
+		}
+
+		testCases := []testCase{
+			// fail
+			{
+				// Template name does not exist
+				config:        hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = "non-existing-template-name" }),
+				expectedError: "failed to retrieve named template",
+			},
+			{
+				// Template build does not exist
+				config: hookableConfig(func(c *anxtypes.RawConfig) {
+					c.Template.Value = testTemplateName
+					c.TemplateBuild.Value = "b42"
+				}),
+				expectedError: "failed to retrieve named template",
+			},
+			// pass
+			{
+				// With named template
+				config:             hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = testTemplateName; c.TemplateID.Value = "" }),
+				expectedTemplateID: "TEMPLATE-ID",
+			},
+			{
+				// With named template and not latest build
+				config: hookableConfig(func(c *anxtypes.RawConfig) {
+					c.Template.Value = testTemplateName
+					c.TemplateBuild.Value = "b01"
+				}),
+				expectedTemplateID: "TEMPLATE-ID-OLD-BUILD",
+			},
+		}
+
+		provider := New(nil).(*provider)
+		for _, testCase := range testCases {
+			templateID, err := resolveTemplateID(context.TODO(), a, testCase.config, provider.configVarResolver, "foo")
+			if testCase.expectedError != "" {
+				if err != nil {
+					testhelper.AssertErr(t, err)
+					testhelper.AssertEquals(t, true, strings.Contains(err.Error(), testCase.expectedError))
+					continue
+				}
+			} else {
+				testhelper.AssertNoErr(t, err)
+				testhelper.AssertEquals(t, testCase.expectedTemplateID, templateID)
+			}
+		}
+	})
+
 	t.Run("Test is VM Provisioning", func(t *testing.T) {
 		t.Parallel()
 		providerStatus := anxtypes.ProviderStatus{
@@ -202,38 +270,38 @@ func TestAnexiaProvider(t *testing.T) {
 	})
 }
 
+// this generates a full config and allows hooking into it to e.g. remove a value.
+func hookableConfig(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
+	config := anxtypes.RawConfig{
+		CPUs: 1,
+
+		Memory: 2,
+
+		Disks: []anxtypes.RawDisk{
+			{Size: 5, PerformanceType: newConfigVarString("ENT6")},
+		},
+
+		Token:      newConfigVarString("test-token"),
+		VlanID:     newConfigVarString("test-vlan"),
+		LocationID: newConfigVarString("test-location"),
+		TemplateID: newConfigVarString("test-template-id"),
+	}
+
+	if hook != nil {
+		hook(&config)
+	}
+
+	return config
+}
+
 func TestValidate(t *testing.T) {
 	t.Parallel()
-
-	// this generates a full config and allows hooking into it to e.g. remove a value
-	hookableConfig := func(hook func(*anxtypes.RawConfig)) anxtypes.RawConfig {
-		config := anxtypes.RawConfig{
-			CPUs: 1,
-
-			Memory: 2,
-
-			Disks: []anxtypes.RawDisk{
-				{Size: 5, PerformanceType: newConfigVarString("ENT6")},
-			},
-
-			Token:      newConfigVarString("test-token"),
-			VlanID:     newConfigVarString("test-vlan"),
-			LocationID: newConfigVarString("test-location"),
-			TemplateID: newConfigVarString("test-template"),
-		}
-
-		if hook != nil {
-			hook(&config)
-		}
-
-		return config
-	}
 
 	var configCases []ConfigTestCase
 	configCases = append(configCases,
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Token.Value = "" }),
-			Error:  errors.New("token is missing"),
+			Error:  errors.New("token not set"),
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.CPUs = 0 }),
@@ -262,10 +330,6 @@ func TestValidate(t *testing.T) {
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.LocationID.Value = "" }),
 			Error:  errors.New("location id is missing"),
-		},
-		ConfigTestCase{
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.TemplateID.Value = "" }),
-			Error:  errors.New("template id is missing"),
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.VlanID.Value = "" }),
