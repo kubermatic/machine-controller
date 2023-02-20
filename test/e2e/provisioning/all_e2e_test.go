@@ -78,6 +78,7 @@ const (
 	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
 	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
 	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
+	vultrManifest                     = "./testdata/machinedeployment-vultr.yaml"
 )
 
 const (
@@ -1046,4 +1047,22 @@ func TestAnexiaProvisioningE2E(t *testing.T) {
 	}
 
 	runScenarios(t, selector, params, anexiaManifest, fmt.Sprintf("anexia-%s", *testRunIdentifier))
+}
+
+// TestVultrProvisioning - a test suite that exercises Vultr provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVultrProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	apiKey := os.Getenv("VULTR_API_KEY")
+	if len(apiKey) == 0 {
+		t.Fatal("unable to run the test suite, VULTR_API_KEY environment variable cannot be empty")
+	}
+
+	selector := OsSelector("ubuntu", "centos", "rockylinux")
+
+	// act
+	params := []string{fmt.Sprintf("<< VULTR_API_KEY >>=%s", apiKey)}
+	runScenarios(t, selector, params, vultrManifest, fmt.Sprintf("vlt-%s", *testRunIdentifier))
 }
