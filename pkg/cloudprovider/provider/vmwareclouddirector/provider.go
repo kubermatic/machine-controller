@@ -120,9 +120,8 @@ func (s Server) ID() string {
 	return s.id
 }
 
-// TODO: Implement once we start supporting vCloud Director CCM.
 func (s Server) ProviderID() string {
-	return ""
+	return fmt.Sprintf("vmware-cloud-director://%s", s.ID())
 }
 
 func (s Server) Addresses() map[string]corev1.NodeAddressType {
