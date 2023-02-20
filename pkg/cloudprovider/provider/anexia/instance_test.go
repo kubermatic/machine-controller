@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/gophercloud/gophercloud/testhelper"
-
 	"go.anx.io/go-anxcloud/pkg/vsphere/info"
+
 	v1 "k8s.io/api/core/v1"
 )
 

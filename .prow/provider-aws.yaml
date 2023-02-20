@@ -14,7 +14,7 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-aws
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -45,7 +45,7 @@ presubmits:
             limits:
               memory: 7Gi
 
-  - name: pull-machine-controller-e2e-aws-legacy-userdata
+  - name: pull-machine-controller-e2e-aws-spot-instance-legacy-userdata
     always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
@@ -69,7 +69,7 @@ presubmits:
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
-            - "TestAWSProvisioningE2E"
+            - "TestAWSSpotInstanceProvisioningE2E"
           securityContext:
             privileged: true
           resources:
@@ -141,39 +141,8 @@ presubmits:
             limits:
               memory: 7Gi
 
-  - name: pull-machine-controller-e2e-aws-flatcar-containerd
-    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
-    decorate: true
-    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
-    labels:
-      preset-aws: "true"
-      preset-hetzner: "true"
-      preset-e2e-ssh: "true"
-      preset-goproxy: "true"
-      preset-kind-volume-mounts: "true"
-      preset-docker-mirror: "true"
-      preset-kubeconfig-ci: "true"
-    spec:
-      containers:
-        - image: quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-5
-          command:
-            - "./hack/ci/run-e2e-tests.sh"
-          args:
-            - "TestAWSFlatcarContainerdProvisioningE2E"
-          env:
-            - name: CLOUD_PROVIDER
-              value: aws
-          securityContext:
-            privileged: true
-          resources:
-            requests:
-              memory: 7Gi
-              cpu: 2
-            limits:
-              memory: 7Gi
-
   - name: pull-machine-controller-e2e-aws-spot-instance
-    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
+    always_run: true
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
