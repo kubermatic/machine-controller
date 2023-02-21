@@ -47,12 +47,17 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 	// Do not validate the spec if it hasn't changed
 	machineSpecNeedsValidation := true
 	if ar.Operation == admissionv1.Update {
-		var oldMachineDeployment clusterv1alpha1.MachineDeployment
-		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachineDeployment); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
-		}
-		if equal := apiequality.Semantic.DeepEqual(oldMachineDeployment.Spec.Template.Spec, machineDeployment.Spec.Template.Spec); equal {
+		// Validation is not required if the MachineDeployment is marked for deletion.
+		if machineDeployment.DeletionTimestamp != nil {
 			machineSpecNeedsValidation = false
+		} else {
+			var oldMachineDeployment clusterv1alpha1.MachineDeployment
+			if err := json.Unmarshal(ar.OldObject.Raw, &oldMachineDeployment); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
+			}
+			if equal := apiequality.Semantic.DeepEqual(oldMachineDeployment.Spec.Template.Spec, machineDeployment.Spec.Template.Spec); equal {
+				machineSpecNeedsValidation = false
+			}
 		}
 	}
 

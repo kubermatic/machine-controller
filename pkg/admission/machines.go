@@ -56,6 +56,11 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 	// as well, since on the CREATE request for machines, there is only Metadata.GenerateName set
 	// so we can't default it initially.
 	if ar.Operation == admissionv1.Update {
+		// Validation is not required if the Machine is marked for deletion.
+		if machine.DeletionTimestamp != nil {
+			return nil, nil
+		}
+
 		oldMachine := clusterv1alpha1.Machine{}
 		if err := json.Unmarshal(ar.OldObject.Raw, &oldMachine); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
