@@ -22,6 +22,7 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/google/uuid v1.1.2
 	github.com/gophercloud/gophercloud v0.24.0
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/hetznercloud/hcloud-go v1.33.1
 	github.com/linode/linodego v0.24.0
@@ -99,6 +100,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.2.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
