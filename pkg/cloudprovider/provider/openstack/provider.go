@@ -57,6 +57,7 @@ import (
 const (
 	floatingIPReleaseFinalizer = "kubermatic.io/release-openstack-floating-ip"
 	floatingIPIDAnnotationKey  = "kubermatic.io/release-openstack-floating-ip"
+	clientTimeout              = 1 * time.Minute
 )
 
 // clientGetterFunc returns an OpenStack client.
@@ -344,7 +345,10 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	}
 	if pc != nil {
 		// use the util's HTTP client to benefit, among other things, from its CA bundle.
-		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
+		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{
+			LogPrefix: "[OpenStack API]",
+			Timeout:   clientTimeout,
+		}.New()
 	}
 
 	err = goopenstack.Authenticate(pc, opts)
