@@ -430,6 +430,11 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, pd
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
+	if status.DeprovisioningID != "" {
+		// info endpoint no longer available for vm -> stop here
+		return &anexiaInstance{isDeleting: true}, nil
+	}
+
 	if status.InstanceID == "" {
 		progress, err := vsphereAPI.Provisioning().Progress().Get(ctx, status.ProvisioningID)
 		if err != nil {
@@ -472,6 +477,13 @@ func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string
 }
 
 func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
+	if inst, err := p.Get(ctx, machine, data); err != nil {
+		return false, err
+	} else if inst.Status() == instance.StatusCreating {
+		klog.Warningf("Unable to cleanup machine %q. Instance is still creating", machine.Name)
+		return false, nil
+	}
+
 	status := getProviderStatus(machine)
 	// make sure status is reflected in Machine Object
 	defer func() {
@@ -489,11 +501,8 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
-	vsphereAPI := vsphere.NewAPI(cli)
 
-	if err != nil {
-		return false, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
-	}
+	vsphereAPI := vsphere.NewAPI(cli)
 
 	deleteCtx, cancel := context.WithTimeout(ctx, anxtypes.DeleteRequestTimeout)
 	defer cancel()
