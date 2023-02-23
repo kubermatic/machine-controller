@@ -24,6 +24,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/gophercloud/gophercloud"
 	goopenstack "github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
@@ -444,6 +446,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to parse config: %v", err)
 	}
 
+	// Static checks
 	if c.ApplicationCredentialID == "" {
 		if c.Username == "" {
 			return errors.New("username must be configured")
@@ -473,6 +476,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return errors.New("flavor must be configured")
 	}
 
+	// Dynamic checks
 	client, err := p.clientGetter(c)
 	if err != nil {
 		return fmt.Errorf("failed to get a openstack client: %v", err)
@@ -497,60 +501,104 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 		return fmt.Errorf("failed to get image client: %v", err)
 	}
 
-	image, err := getImageByName(imageClient, c)
-	if err != nil {
-		return fmt.Errorf("failed to get image %q: %v", c.Image, err)
-	}
-	if c.RootDiskSizeGB != nil {
-		if *c.RootDiskSizeGB < image.MinDiskGigabytes {
-			return fmt.Errorf("rootDiskSize %d is smaller than minimum disk size for image %q(%d)",
-				*c.RootDiskSizeGB, image.Name, image.MinDiskGigabytes)
-		}
-	}
-
-	if _, err := getFlavor(computeClient, c); err != nil {
-		return fmt.Errorf("failed to get flavor %q: %v", c.Flavor, err)
-	}
-
+	// Get OS Network Client
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: c.Region})
 	if err != nil {
 		return err
 	}
 
-	if _, err := getNetwork(netClient, c.Network); err != nil {
-		return fmt.Errorf("failed to get network %q: %v", c.Network, err)
-	}
+	var checks []func() error
+	checks = append(checks, func() error {
+		image, err := getImageByName(imageClient, c)
+		if err != nil {
+			return fmt.Errorf("failed to get image %q: %v", c.Image, err)
+		}
+		if c.RootDiskSizeGB != nil {
+			if *c.RootDiskSizeGB < image.MinDiskGigabytes {
+				return fmt.Errorf("rootDiskSize %d is smaller than minimum disk size for image %q(%d)",
+					*c.RootDiskSizeGB, image.Name, image.MinDiskGigabytes)
+			}
+		}
+		return nil
+	})
 
-	if _, err := getSubnet(netClient, c.Subnet); err != nil {
-		return fmt.Errorf("failed to get subnet %q: %v", c.Subnet, err)
-	}
+	checks = append(checks, func() error {
+		if _, err := getFlavor(computeClient, c); err != nil {
+			return fmt.Errorf("failed to get flavor %q: %v", c.Flavor, err)
+		}
+		return nil
+	})
+
+	checks = append(checks, func() error {
+		if _, err := getNetwork(netClient, c.Network); err != nil {
+			return fmt.Errorf("failed to get network %q: %v", c.Network, err)
+		}
+		return nil
+	})
+
+	checks = append(checks, func() error {
+		if _, err := getSubnet(netClient, c.Subnet); err != nil {
+			return fmt.Errorf("failed to get subnet %q: %v", c.Subnet, err)
+		}
+		return nil
+	})
 
 	if c.FloatingIPPool != "" {
-		if _, err := getNetwork(netClient, c.FloatingIPPool); err != nil {
-			return fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
-		}
+		checks = append(checks, func() error {
+			if _, err := getNetwork(netClient, c.FloatingIPPool); err != nil {
+				return fmt.Errorf("failed to get floating ip pool %q: %v", c.FloatingIPPool, err)
+			}
+			return nil
+		})
 	}
 
-	if _, err := getAvailabilityZone(computeClient, c); err != nil {
-		return fmt.Errorf("failed to get availability zone %q: %v", c.AvailabilityZone, err)
-	}
+	checks = append(checks, func() error {
+		if _, err := getAvailabilityZone(computeClient, c); err != nil {
+			return fmt.Errorf("failed to get availability zone %q: %v", c.AvailabilityZone, err)
+		}
+		return nil
+	})
+
 	if pc.OperatingSystem == providerconfigtypes.OperatingSystemSLES {
 		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, providerconfigtypes.ErrOSNotSupported)
 	}
+
 	// Optional fields
-	if len(c.SecurityGroups) != 0 {
-		for _, s := range c.SecurityGroups {
+	for _, s := range c.SecurityGroups {
+		checks = append(checks, func() error {
 			if _, err := getSecurityGroup(client, c.Region, s); err != nil {
 				return fmt.Errorf("failed to get security group %q: %v", s, err)
 			}
-		}
+			return nil
+		})
 	}
 
 	if c.ServerGroupID != "" {
-		_, err = getServerGroup(client, c.ServerGroupID, c.Region)
-		if err != nil {
-			return fmt.Errorf("failed to get server group with id '%s': %v", c.ServerGroupID, err)
-		}
+		checks = append(checks, func() error {
+			_, err = getServerGroup(client, c.ServerGroupID, c.Region)
+			if err != nil {
+				return fmt.Errorf("failed to get server group with id '%s': %v", c.ServerGroupID, err)
+			}
+			return nil
+		})
+	}
+
+	wg := wait.Group{}
+	mutex := sync.Mutex{}
+	var errs *multierror.Error
+	for _, check := range checks {
+		wg.Start(func() {
+			if err := check(); err != nil {
+				mutex.Lock()
+				errs = multierror.Append(errs, err)
+				mutex.Unlock()
+			}
+		})
+	}
+	wg.Wait()
+
+	if errs != nil {
+		return fmt.Errorf("encountered error(s): %v", errs)
 	}
 
 	// validate reserved tags
