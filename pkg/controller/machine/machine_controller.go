@@ -467,7 +467,7 @@ func (r *Reconciler) ensureMachineHasNodeReadyCondition(machine *clusterv1alpha1
 		}
 	}
 
-	r.metrics.Provisioning.Observe(time.Until(machine.CreationTimestamp.Time).Abs().Seconds())
+	r.metrics.Provisioning.Observe(time.Since(machine.CreationTimestamp.Time).Seconds())
 
 	return r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Conditions = append(m.Status.Conditions, corev1.NodeCondition{Type: corev1.NodeReady,
@@ -610,7 +610,7 @@ func (r *Reconciler) deleteMachine(ctx context.Context, prov cloudprovidertypes.
 		return nil, err
 	}
 
-	r.metrics.Deprovisioning.Observe(time.Until(machine.DeletionTimestamp.Time).Abs().Seconds())
+	r.metrics.Deprovisioning.Observe(time.Since(machine.DeletionTimestamp.Time).Seconds())
 
 	return nil, nil
 }
