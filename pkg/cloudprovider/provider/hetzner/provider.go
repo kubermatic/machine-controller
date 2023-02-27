@@ -65,6 +65,8 @@ type Config struct {
 	Networks             []string
 	Firewalls            []string
 	Labels               map[string]string
+	AssignIPv4           bool
+	AssignIPv6           bool
 }
 
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
@@ -148,6 +150,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		}
 		c.Firewalls = append(c.Firewalls, firewallValue)
 	}
+
+	ipv4, ipv6, err := p.publicIPsAssignment(rawConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.AssignIPv4 = ipv4
+	c.AssignIPv6 = ipv6
 
 	c.Labels = rawConfig.Labels
 
@@ -239,6 +249,10 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		}
 	}
 
+	if c.AssignIPv4 == false && c.AssignIPv6 == false && len(c.Networks) < 1 {
+		return errors.New("server should have either a public ipv4, ipv6 or dedicated network")
+	}
+
 	if _, _, err = client.ServerType.Get(ctx, c.ServerType); err != nil {
 		return fmt.Errorf("failed to get server type: %w", err)
 	}
@@ -273,10 +287,15 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	}
 
 	c.Labels[machineUIDLabelKey] = string(machine.UID)
+
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
 		UserData: userdata,
 		Labels:   c.Labels,
+		PublicNet: &hcloud.ServerCreatePublicNet{
+			EnableIPv4: c.AssignIPv4,
+			EnableIPv6: c.AssignIPv6,
+		},
 	}
 
 	if c.Datacenter != "" {
@@ -548,7 +567,7 @@ func (s *hetznerServer) Addresses() map[string]v1.NodeAddressType {
 	addresses[s.server.PublicNet.IPv4.IP.String()] = v1.NodeExternalIP
 	// For a given IPv6 network of 2001:db8:1234::/64, the instance address is 2001:db8:1234::1
 	// Reference: https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.12.1/hcloud/instances.go#L165-167
-	if !s.server.PublicNet.IPv6.IP.IsUnspecified() {
+	if s.server.PublicNet.IPv6.IP != nil && !s.server.PublicNet.IPv6.IP.IsUnspecified() {
 		s.server.PublicNet.IPv6.IP[len(s.server.PublicNet.IPv6.IP)-1] |= 0x01
 		addresses[s.server.PublicNet.IPv6.IP.String()] = v1.NodeExternalIP
 	}
@@ -589,6 +608,30 @@ func hzErrorToTerminalError(err error, msg string) error {
 	}
 
 	return err
+}
+
+func (p *provider) publicIPsAssignment(rawConfig *hetznertypes.RawConfig) (bool, bool, error) {
+	assignIPv4, ipv4Set, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.AssignPublicIPv4)
+	if err != nil {
+		return false, false, err
+	}
+
+	assignIPv6, ipv6Set, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.AssignPublicIPv6)
+	if err != nil {
+		return false, false, err
+	}
+
+	// hetzner default behaviour assigns public ips when users don't set them explicitly for the server. In order to
+	// retain this behaviour, if the field AssignPublicIPv4/AssignPublicIPv6 in MachineDeployment is not set, machine controller
+	// default them to true.
+	if !ipv4Set {
+		assignIPv4 = true
+	}
+	if !ipv6Set {
+		assignIPv6 = true
+	}
+
+	return assignIPv4, assignIPv6, nil
 }
 
 func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
