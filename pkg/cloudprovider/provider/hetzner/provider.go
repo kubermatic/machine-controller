@@ -249,7 +249,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		}
 	}
 
-	if c.AssignIPv4 == false && c.AssignIPv6 == false && len(c.Networks) < 1 {
+	if !c.AssignIPv4 && !c.AssignIPv6 && len(c.Networks) < 1 {
 		return errors.New("server should have either a public ipv4, ipv6 or dedicated network")
 	}
 
