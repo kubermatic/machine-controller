@@ -975,7 +975,7 @@ spec:
       serviceAccountName: operating-system-manager-webhook
       containers:
         - image: quay.io/kubermatic/operating-system-manager:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           name: webhook
           command:
             - /usr/local/bin/webhook
@@ -1303,7 +1303,7 @@ spec:
       serviceAccountName: operating-system-manager
       containers:
         - image: quay.io/kubermatic/operating-system-manager:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           name: operating-system-manager
           command:
             - /usr/local/bin/osm-controller
