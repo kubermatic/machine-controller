@@ -33,9 +33,6 @@ presubmits:
           args:
             - "TestAnexiaProvisioningE2E"
           env:
-            # OperatingSystemManager does not yet support Anexia
-            - name: OPERATING_SYSTEM_MANAGER
-              value: "false"
             - name: CLOUD_PROVIDER
               value: anexia
           securityContext:
