@@ -4,7 +4,7 @@ metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
   annotations:
-    k8c.io/operating-system-profile: osp-<< OS_NAME >>
+    k8c.io/operating-system-profile: osp-flatcar-cloud-init
 spec:
   replicas: 1
   strategy:

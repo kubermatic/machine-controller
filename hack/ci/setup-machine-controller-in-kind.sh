@@ -60,8 +60,6 @@ if [ ! -f machine-controller-deployed ]; then
   protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'machine-controller-*' > /dev/null 2>&1 &
 fi
 
-OSM_TAG=latest
-
 if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
   # cert-manager is required by OSM for generating TLS Certificates
   echodate "Installing cert-manager"
