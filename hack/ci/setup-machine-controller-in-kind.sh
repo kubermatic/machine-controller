@@ -60,6 +60,8 @@ if [ ! -f machine-controller-deployed ]; then
   protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'machine-controller-*' > /dev/null 2>&1 &
 fi
 
+OSM_TAG=latest
+
 if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
   # cert-manager is required by OSM for generating TLS Certificates
   echodate "Installing cert-manager"
@@ -80,7 +82,7 @@ if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
     git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
   )
 
-  echodate "Installing operating-system-manager"
+  echodate "Installing operating-system-manager with image: $OSM_TAG"
   (
     OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
     # In release branches we'll have this pinned to a specific semver instead of latest.
