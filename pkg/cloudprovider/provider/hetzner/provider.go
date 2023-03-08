@@ -425,7 +425,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	client := getClient(c.Token)
 	hzServer := instance.(*hetznerServer).server
 
-	res, err := client.Server.Delete(ctx, hzServer)
+	_, res, err := client.Server.DeleteWithResult(ctx, hzServer)
 	if err != nil {
 		return false, hzErrorToTerminalError(err, "failed to delete the server")
 	}

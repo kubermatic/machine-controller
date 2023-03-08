@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CNI_VERSION="${CNI_VERSION:-v0.8.7}"
+CNI_VERSION="${CNI_VERSION:-v1.2.0}"
 
 cni_bin_dir=/opt/cni/bin
 mkdir -p /etc/cni/net.d "$cni_bin_dir"
