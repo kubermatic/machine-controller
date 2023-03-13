@@ -80,8 +80,7 @@ ami: ""
 # When not set a 'kubernetes-v1' security group will get created
 securityGroupIDs:
 - ""
-# name of the instance profile to use.
-# When not set a 'kubernetes-v1' instance profile will get created
+# name of the instance profile to use, required.
 instanceProfile : ""
 
 # instance tags ("KubernetesCluster": "my-cluster" is a required tag.
