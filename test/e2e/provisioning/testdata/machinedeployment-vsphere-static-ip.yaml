@@ -41,11 +41,11 @@ spec:
             disableAutoUpdate: true
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
           network:
-           cidr: "192.168.44.<< IP_OCTET >>/20"
-           gateway: "192.168.32.1"
-           dns:
-             servers:
-              - "192.168.32.1"
-              - "8.8.8.8"
+            cidr: "192.168.44.<< IP_OCTET >>/20"
+            gateway: "192.168.32.1"
+            dns:
+              servers:
+                - "192.168.32.1"
+                - "8.8.8.8"
       versions:
         kubelet: "<< KUBERNETES_VERSION >>"
