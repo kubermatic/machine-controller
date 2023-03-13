@@ -588,7 +588,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
 	}
 
-	dnsHostnames, err := areVpcDnsHostnamesEnabled(ctx, ec2Client, config.VpcID)
+	dnsHostnames, err := areVpcDNSHostnamesEnabled(ctx, ec2Client, config.VpcID)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve VPC attributes: %w", err)
 	}
@@ -648,7 +648,7 @@ func getVpc(ctx context.Context, client *ec2.Client, id string) (*ec2types.Vpc, 
 	return &vpcOut.Vpcs[0], nil
 }
 
-func areVpcDnsHostnamesEnabled(ctx context.Context, client *ec2.Client, id string) (bool, error) {
+func areVpcDNSHostnamesEnabled(ctx context.Context, client *ec2.Client, id string) (bool, error) {
 	out, err := client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
 		VpcId:     &id,
 		Attribute: ec2types.VpcAttributeNameEnableDnsHostnames,
