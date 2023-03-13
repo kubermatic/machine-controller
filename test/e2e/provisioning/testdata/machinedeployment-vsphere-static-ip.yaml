@@ -31,7 +31,7 @@ spec:
             folder: '/Hamburg/vm/Kubermatic-ci'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            datastore: alpha1
+            datastore: vsan
             cpus: 2
             MemoryMB: 2048
             allowInsecure: true
