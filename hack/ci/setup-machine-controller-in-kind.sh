@@ -54,6 +54,8 @@ if [ ! -f machine-controller-deployed ]; then
 
   make deploy
   touch machine-controller-deployed
+
+  protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'machine-controller-*' > /dev/null 2>&1 &
 fi
 
 if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
@@ -75,6 +77,8 @@ if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
     sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/operating-system-manager.yaml
     kubectl apply -f examples/operating-system-manager.yaml
   )
+
+  protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'operating-system-manager-*' > /dev/null 2>&1 &
 fi
 
 sleep 10
