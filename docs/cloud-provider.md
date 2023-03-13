@@ -57,7 +57,7 @@ region: "eu-central-1"
 # avaiability zone for the instance
 availabilityZone: "eu-central-1a"
 # vpc id for the instance
-vpcId: "vpc-819f62e9"
+vpcId: "vpc-079f7648481a11e77"
 # subnet id for the instance
 subnetId: "subnet-2bff4f43"
 # enable public IP assignment, default is true
