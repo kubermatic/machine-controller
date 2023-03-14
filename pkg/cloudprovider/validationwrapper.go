@@ -18,6 +18,7 @@ package cloudprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -56,8 +57,13 @@ func (w *cachingValidationWrapper) Validate(ctx context.Context, spec v1alpha1.M
 
 	klog.V(6).Infof("Got cache miss for validation")
 	err = w.actualProvider.Validate(ctx, spec)
-	if err := cache.Set(spec, err); err != nil {
-		return fmt.Errorf("failed to set cache after validation: %w", err)
+
+	// do not cache canceled contexts (e.g. the validation request was canceled client-side)
+	// and timeouts (assumed to be temporary)
+	if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		if err := cache.Set(spec, err); err != nil {
+			return fmt.Errorf("failed to set cache after validation: %w", err)
+		}
 	}
 
 	return err
