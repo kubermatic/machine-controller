@@ -57,7 +57,7 @@ region: "eu-central-1"
 # avaiability zone for the instance
 availabilityZone: "eu-central-1a"
 # vpc id for the instance
-vpcId: "vpc-819f62e9"
+vpcId: "vpc-079f7648481a11e77"
 # subnet id for the instance
 subnetId: "subnet-2bff4f43"
 # enable public IP assignment, default is true
@@ -80,8 +80,7 @@ ami: ""
 # When not set a 'kubernetes-v1' security group will get created
 securityGroupIDs:
 - ""
-# name of the instance profile to use.
-# When not set a 'kubernetes-v1' instance profile will get created
+# name of the instance profile to use, required.
 instanceProfile : ""
 
 # instance tags ("KubernetesCluster": "my-cluster" is a required tag.
