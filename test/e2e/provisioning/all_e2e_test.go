@@ -79,6 +79,7 @@ const (
 	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
 	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
 	vultrManifest                     = "./testdata/machinedeployment-vultr.yaml"
+	openNebulaManifest                = "./testdata/machinedeployment-opennebula.yaml"
 )
 
 const (
@@ -962,6 +963,43 @@ func TestNutanixProvisioningE2E(t *testing.T) {
 	selector := And(OsSelector("ubuntu", "centos"), Not(NameSelector("migrateUID")))
 	params := getNutanixTestParams(t)
 	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
+}
+
+func TestOpenNebulaProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	oneEndpoint := os.Getenv("ONE_ENDPOINT")
+	oneUsername := os.Getenv("ONE_USERNAME")
+	onePassword := os.Getenv("ONE_PASSWORD")
+
+	// required parameters
+	if oneEndpoint == "" || oneUsername == "" || onePassword == "" {
+		t.Fatal("unable to run test suite, all of ONE_ENDPOINT, ONE_USERNAME, and ONE_PASSWORD must be set!")
+	}
+
+	// optional parameters
+	oneDatastore := os.Getenv("ONE_DATASTORE")
+	oneNetwork := os.Getenv("ONE_NETWORK")
+
+	// set defaults for minione deployments
+	if oneDatastore == "" {
+		oneDatastore = "default"
+	}
+
+	if oneNetwork == "" {
+		oneNetwork = "vnet"
+	}
+
+	params := []string{
+		fmt.Sprintf("<< ONE_ENDPOINT >>=%s", oneEndpoint),
+		fmt.Sprintf("<< ONE_USERNAME >>=%s", oneUsername),
+		fmt.Sprintf("<< ONE_PASSWORD >>=%s", onePassword),
+		fmt.Sprintf("<< YOUR_DATASTORE_NAME >>=%s", oneDatastore),
+		fmt.Sprintf("<< YOUR_NETWORK_NAME >>=%s", oneNetwork),
+	}
+
+	selector := OsSelector("rockylinux", "flatcar")
+	runScenarios(t, selector, params, openNebulaManifest, fmt.Sprintf("one-%s", *testRunIdentifier))
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604

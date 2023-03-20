@@ -146,6 +146,44 @@ tags:
   tagKey: tagValue
 ```
 
+## OpenNebula
+
+### machine.spec.providerConfig.cloudProviderSpec
+
+```yaml
+# XML-RPC endpoint of your OpenNebula installation
+endpoint: ""
+# your OpenNebula username
+username: ""
+# your OpenNebula password
+password: ""
+
+# cpu (float64)
+cpu: 1
+# vcpu
+vcpu: 2
+# memory in MB
+memory: 1024
+
+# the name of the image to use, needs to be owned by the current user
+image: "Amazon Linux 2"
+# which datastore to use for the image
+datastore: ""
+# size of the disk in MB
+diskSize: 51200
+
+# network name, needs to be owned by the current user
+network: ""
+
+# whether to enable the VNC console
+enableVNC: true
+
+# optional key/value pairs to add to the VM template
+vmTemplateExtra:
+  # useful for e.g. setting the placement attributes as defined in https://docs.opennebula.io/6.4/management_and_operations/references/template.html#template-placement-section
+  SCHED_REQUIREMENTS: 'RACK="G4"'
+```
+
 ## Google Cloud Platform
 
 ### machine.spec.providerConfig.cloudProviderSpec
