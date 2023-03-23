@@ -260,7 +260,8 @@ spec:
           command:
             - /usr/local/bin/webhook
             - -logtostderr
-            - -v=6
+            # Starting with v=6, full Machine objects with inline credentials are logged, beware!
+            - -v=4
             - -use-osm=true
             - -namespace=kube-system
             - -listen-address=0.0.0.0:9876

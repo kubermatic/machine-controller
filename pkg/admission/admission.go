@@ -125,7 +125,7 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.Adm
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal json patch: %w", err)
 		}
-		klog.V(3).Infof("Produced jsonpatch: %s", string(patchRaw))
+		klog.V(6).Infof("Produced jsonpatch: %s", string(patchRaw))
 
 		response.Patch = patchRaw
 		response.PatchType = &jsonPatch
