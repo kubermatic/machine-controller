@@ -1083,7 +1083,7 @@ spec:
           command:
             - /usr/local/bin/webhook
             - -logtostderr
-            - -v=6
+            - -v=4
             - -namespace=kube-system
           volumeMounts:
             - name: operating-system-manager-admission-cert
@@ -1385,7 +1385,7 @@ spec:
           command:
             - /usr/local/bin/osm-controller
             - -logtostderr
-            - -v=5
+            - -v=4
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -metrics-address=0.0.0.0:8080
