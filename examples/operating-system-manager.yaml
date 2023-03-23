@@ -974,7 +974,7 @@ spec:
     spec:
       serviceAccountName: operating-system-manager-webhook
       containers:
-        - image: quay.io/kubermatic/operating-system-manager:latest
+        - image: quay.io/kubermatic/operating-system-manager:v1.2.1
           imagePullPolicy: IfNotPresent
           name: webhook
           command:
@@ -1302,7 +1302,7 @@ spec:
     spec:
       serviceAccountName: operating-system-manager
       containers:
-        - image: quay.io/kubermatic/operating-system-manager:latest
+        - image: quay.io/kubermatic/operating-system-manager:v1.2.1
           imagePullPolicy: IfNotPresent
           name: operating-system-manager
           command:
