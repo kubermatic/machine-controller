@@ -22,25 +22,37 @@ package main
 
 import (
 	"flag"
+	"log"
 
+	"go.uber.org/zap"
+
+	machinecontrollerlog "github.com/kubermatic/machine-controller/pkg/log"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 	"github.com/kubermatic/machine-controller/pkg/userdata/rockylinux"
-
-	"k8s.io/klog"
 )
 
 func main() {
 	// Parse flags.
 	var debug bool
-
 	flag.BoolVar(&debug, "debug", false, "Switch for enabling the plugin debugging")
+
+	logFlags := machinecontrollerlog.NewDefaultOptions()
+	logFlags.AddFlags(flag.CommandLine)
+
 	flag.Parse()
+
+	if err := logFlags.Validate(); err != nil {
+		log.Fatalf("Invalid options: %v", err)
+	}
+
+	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
+	log := rawLog.Sugar()
 
 	// Instantiate provider and start plugin.
 	var provider = &rockylinux.Provider{}
 	var p = userdataplugin.New(provider, debug)
 
-	if err := p.Run(); err != nil {
-		klog.Fatalf("error running RockyLinux plugin: %v", err)
+	if err := p.Run(log); err != nil {
+		log.Fatalw("Failed to run RockyLinux plugin", zap.Error(err))
 	}
 }

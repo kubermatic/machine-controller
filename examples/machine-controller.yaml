@@ -211,8 +211,8 @@ spec:
           name: machine-controller
           command:
             - /usr/local/bin/machine-controller
-            - -logtostderr
-            - -v=3
+            - -log-debug=false
+            - -log-format=json # json or console
             - -worker-count=5
             - -node-csr-approver=true
             - -cluster-dns=10.10.10.10
@@ -259,9 +259,9 @@ spec:
           name: webhook
           command:
             - /usr/local/bin/webhook
-            - -logtostderr
-            # Starting with v=6, full Machine objects with inline credentials are logged, beware!
-            - -v=4
+            # on debug level, full Machine objects with inline credentials might be logged, beware!
+            - -log-debug=false
+            - -log-format=json # json or console
             - -use-osm=true
             - -namespace=kube-system
             - -listen-address=0.0.0.0:9876

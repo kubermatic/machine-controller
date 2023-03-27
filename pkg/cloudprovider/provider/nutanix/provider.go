@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -199,11 +201,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &c, pconfig, rawConfig, nil
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse machineSpec: %w", err)
@@ -255,10 +257,10 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	return nil
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	vm, err := p.create(ctx, machine, userdata)
 	if err != nil {
-		_, cleanupErr := p.Cleanup(ctx, machine, data)
+		_, cleanupErr := p.Cleanup(ctx, log, machine, data)
 		if cleanupErr != nil {
 			return nil, fmt.Errorf("cleaning up failed with err %w after creation failed with err %w", cleanupErr, err)
 		}
@@ -287,7 +289,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return createVM(ctx, client, machine.Name, *config, pc.OperatingSystem, userdata)
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	return p.cleanup(ctx, machine, data)
 }
 
@@ -352,7 +354,7 @@ func (p *provider) cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	return true, nil
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -417,7 +419,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, da
 	}, nil
 }
 
-func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {
 	return nil
 }
 

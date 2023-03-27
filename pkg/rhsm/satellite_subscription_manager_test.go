@@ -23,6 +23,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestDefaultRedHatSatelliteManager_DeleteSatelliteHost(t *testing.T) {
@@ -48,7 +50,7 @@ func TestDefaultRedHatSatelliteManager_DeleteSatelliteHost(t *testing.T) {
 				tt.testingServer.Close()
 			}()
 
-			manager := NewSatelliteSubscriptionManager()
+			manager := NewSatelliteSubscriptionManager(zap.NewNop().Sugar())
 			manager.(*DefaultSatelliteSubscriptionManager).useHTTP = true
 
 			parsedURL, err := url.Parse(tt.testingServer.URL)

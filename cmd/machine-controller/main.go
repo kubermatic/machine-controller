@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -190,6 +191,10 @@ func main() {
 
 	flag.Parse()
 
+	if err := logFlags.Validate(); err != nil {
+		log.Fatalf("Invalid options: %v", err)
+	}
+
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
 	log := rawLog.Sugar()
 
@@ -201,7 +206,7 @@ func main() {
 
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
-		log.Fatalw("invalid cluster dns specified", zap.Error(err))
+		log.Fatalw("Invalid cluster dns specified", zap.Error(err))
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
@@ -209,24 +214,24 @@ func main() {
 		parsedJoinClusterTimeoutLiteral, err := time.ParseDuration(joinClusterTimeout)
 		parsedJoinClusterTimeout = &parsedJoinClusterTimeoutLiteral
 		if err != nil {
-			log.Fatalw("failed to parse join-cluster-timeout as duration", zap.Error(err))
+			log.Fatalw("Failed to parse join-cluster-timeout as duration", zap.Error(err))
 		}
 	}
 
 	// Needed for migrations
 	if err := machinesv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		log.Fatalw("failed to add api to scheme", "api", machinesv1alpha1.SchemeGroupVersion, zap.Error(err))
+		log.Fatalw("Failed to add api to scheme", "api", machinesv1alpha1.SchemeGroupVersion, zap.Error(err))
 	}
 	if err := apiextensionsv1.AddToScheme(scheme.Scheme); err != nil {
-		log.Fatalw("failed to add api to scheme", "api", apiextensionsv1.SchemeGroupVersion, zap.Error(err))
+		log.Fatalw("Failed to add api to scheme", "api", apiextensionsv1.SchemeGroupVersion, zap.Error(err))
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		log.Fatalw("failed to add api to scheme", "api", clusterv1alpha1.SchemeGroupVersion, zap.Error(err))
+		log.Fatalw("Failed to add api to scheme", "api", clusterv1alpha1.SchemeGroupVersion, zap.Error(err))
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		log.Fatalw("error building kubeconfig", zap.Error(err))
+		log.Fatalw("Failed to build kubeconfig", zap.Error(err))
 	}
 
 	if caBundleFile != "" {
@@ -241,12 +246,12 @@ func main() {
 	// QPS and Burst config there
 	machineCfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		log.Fatalw("error building kubeconfig for machines", zap.Error(err))
+		log.Fatalw("Failed to build kubeconfig for machines", zap.Error(err))
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Fatalw("error building kubernetes clientset for kubeClient", zap.Error(err))
+		log.Fatalw("Failed to build kubernetes clientset for kubeClient", zap.Error(err))
 	}
 	kubeconfigProvider := clusterinfo.New(cfg, kubeClient)
 
@@ -264,7 +269,7 @@ func main() {
 	}
 	containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
 	if err != nil {
-		log.Fatalw("failed to generate container runtime config", zap.Error(err))
+		log.Fatalw("Failed to generate container runtime config", zap.Error(err))
 	}
 
 	runOptions := controllerRunOptions{
@@ -291,7 +296,7 @@ func main() {
 	}
 
 	if err := nodeFlags.UpdateNodeSettings(&runOptions.node); err != nil {
-		log.Fatalw("failed to update nodesettings", zap.Error(err))
+		log.Fatalw("Failed to update nodesettings", zap.Error(err))
 	}
 
 	if parsedJoinClusterTimeout != nil {
@@ -309,16 +314,16 @@ func main() {
 	ctx := signals.SetupSignalHandler()
 	go func() {
 		<-ctx.Done()
-		log.Info("caught signal, shutting down...")
+		log.Info("Caught signal, shutting down...")
 	}()
 
 	mgr, err := createManager(5*time.Minute, runOptions)
 	if err != nil {
-		log.Fatalw("failed to create runtime manager", zap.Error(err))
+		log.Fatalw("Failed to create runtime manager", zap.Error(err))
 	}
 
 	if err := mgr.Start(ctx); err != nil {
-		log.Errorw("failed to start kubebuilder manager", zap.Error(err))
+		log.Errorw("Failed to start manager", zap.Error(err))
 	}
 }
 
@@ -337,14 +342,14 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 		MetricsBindAddress:      metricsAddress,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error building ctrlruntime manager: %w", err)
+		return nil, fmt.Errorf("failed to build ctrlruntime manager: %w", err)
 	}
 
 	if err := mgr.AddReadyzCheck("alive", healthz.Ping); err != nil {
 		return nil, fmt.Errorf("failed to add readiness check: %w", err)
 	}
 
-	if err := mgr.AddHealthzCheck("kubeconfig", health.KubeconfigAvailable(options.kubeconfigProvider)); err != nil {
+	if err := mgr.AddHealthzCheck("kubeconfig", health.KubeconfigAvailable(options.kubeconfigProvider, options.log)); err != nil {
 		return nil, fmt.Errorf("failed to add health check: %w", err)
 	}
 
@@ -398,12 +403,12 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 	}
 
 	// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine.
-	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, client, bs.opt.kubeClient, providerData); err != nil {
+	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, bs.opt.log, client, bs.opt.kubeClient, providerData); err != nil {
 		return fmt.Errorf("migration to clusterv1alpha1 failed: %w", err)
 	}
 
 	// Migrate providerConfig field to providerSpec field.
-	if err := migrations.MigrateProviderConfigToProviderSpecIfNecessary(ctx, bs.opt.cfg, client); err != nil {
+	if err := migrations.MigrateProviderConfigToProviderSpecIfNecessary(ctx, bs.opt.log, bs.opt.cfg, client); err != nil {
 		return fmt.Errorf("migration of providerConfig field to providerSpec field failed: %w", err)
 	}
 
@@ -412,6 +417,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 
 	if err := machinecontroller.Add(
 		ctx,
+		bs.opt.log,
 		bs.mgr,
 		bs.opt.kubeClient,
 		workerCount,
@@ -430,21 +436,21 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to add Machine controller to manager: %w", err)
 	}
 
-	if err := machinesetcontroller.Add(bs.mgr); err != nil {
+	if err := machinesetcontroller.Add(bs.mgr, bs.opt.log); err != nil {
 		return fmt.Errorf("failed to add MachineSet controller to manager: %w", err)
 	}
 
-	if err := machinedeploymentcontroller.Add(bs.mgr); err != nil {
+	if err := machinedeploymentcontroller.Add(bs.mgr, bs.opt.log); err != nil {
 		return fmt.Errorf("failed to add MachineDeployment controller to manager: %w", err)
 	}
 
 	if bs.opt.nodeCSRApprover {
-		if err := nodecsrapprover.Add(bs.mgr); err != nil {
+		if err := nodecsrapprover.Add(bs.mgr, bs.opt.log); err != nil {
 			return fmt.Errorf("failed to add NodeCSRApprover controller to manager: %w", err)
 		}
 	}
 
-	bs.opt.log.Info("machine controller startup complete")
+	bs.opt.log.Info("Machine-controller startup complete")
 
 	return nil
 }
@@ -455,7 +461,7 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 	for _, sip := range sips {
 		ip := net.ParseIP(strings.TrimSpace(sip))
 		if ip == nil {
-			return nil, fmt.Errorf("unable to parse ip %q", sip)
+			return nil, fmt.Errorf("failed to parse IP %q", sip)
 		}
 		ips = append(ips, ip)
 	}

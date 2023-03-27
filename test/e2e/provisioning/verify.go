@@ -142,7 +142,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachineDeployment(machineDeployment, client, false)
 	if err != nil {
-		return nil, fmt.Errorf("unable to perform the verification, incorrect cluster state detected %w", err)
+		return nil, fmt.Errorf("failed to perform the verification, incorrect cluster state detected %w", err)
 	}
 
 	klog.Infof("Creating a new %q MachineDeployment", machineDeployment.Name)
@@ -256,7 +256,7 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 
 	klog.V(2).Infof("Deleting MachineDeployment %s", machineDeployment.Name)
 	if err := client.Delete(context.Background(), machineDeployment); err != nil {
-		return fmt.Errorf("unable to remove MachineDeployment %s, due to %w", machineDeployment.Name, err)
+		return fmt.Errorf("failed to remove MachineDeployment %s, due to %w", machineDeployment.Name, err)
 	}
 	return wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
 		err := client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})

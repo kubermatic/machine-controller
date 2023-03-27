@@ -24,13 +24,14 @@ import (
 	"os"
 	"strconv"
 
+	"go.uber.org/zap"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/klog"
 )
 
 const (
@@ -54,11 +55,10 @@ type KubeconfigProvider struct {
 	kubeClient kubernetes.Interface
 }
 
-func (p *KubeconfigProvider) GetKubeconfig(ctx context.Context) (*clientcmdapi.Config, error) {
+func (p *KubeconfigProvider) GetKubeconfig(ctx context.Context, log *zap.SugaredLogger) (*clientcmdapi.Config, error) {
 	cm, err := p.getKubeconfigFromConfigMap(ctx)
 	if err != nil {
-		klog.V(6).Infof("could not get cluster-info kubeconfig from configmap: %v", err)
-		klog.V(6).Info("falling back to retrieval via endpoint")
+		log.Debugw("Failed to get cluster-info kubeconfig from configmap; falling back to retrieval via endpoint", zap.Error(err))
 		return p.buildKubeconfigFromEndpoint(ctx)
 	}
 	return cm, nil

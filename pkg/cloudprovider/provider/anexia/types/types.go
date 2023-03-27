@@ -43,7 +43,7 @@ const (
 
 var StatusUpdateFailed = cloudprovidererrors.TerminalError{
 	Reason:  common.UpdateMachineError,
-	Message: "Unable to update the machine status",
+	Message: "Failed to update the machine status",
 }
 
 // RawDisk specifies a single disk, with some values maybe being fetched from secrets.

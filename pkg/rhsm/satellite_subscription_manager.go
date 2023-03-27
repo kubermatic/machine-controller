@@ -26,7 +26,7 @@ import (
 	"path"
 	"time"
 
-	"k8s.io/klog"
+	"go.uber.org/zap"
 )
 
 // SatelliteSubscriptionManager manages the communications between machine-controller and redhat satellite server.
@@ -37,12 +37,13 @@ type SatelliteSubscriptionManager interface {
 // DefaultSatelliteSubscriptionManager default manager for redhat satellite server.
 type DefaultSatelliteSubscriptionManager struct {
 	client *http.Client
+	log    *zap.SugaredLogger
 
 	useHTTP bool
 }
 
 // NewSatelliteSubscriptionManager creates a new Redhat satellite manager.
-func NewSatelliteSubscriptionManager() SatelliteSubscriptionManager {
+func NewSatelliteSubscriptionManager(log *zap.SugaredLogger) SatelliteSubscriptionManager {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -55,6 +56,7 @@ func NewSatelliteSubscriptionManager() SatelliteSubscriptionManager {
 
 	return &DefaultSatelliteSubscriptionManager{
 		client: client,
+		log:    log,
 	}
 }
 
@@ -68,15 +70,17 @@ func (s *DefaultSatelliteSubscriptionManager) DeleteSatelliteHost(ctx context.Co
 		maxRetries = 15
 	)
 
+	machineLog := s.log.With("machine", machineName)
+
 	for retries < maxRetries {
 		if err := s.executeDeleteRequest(ctx, machineName, username, password, serverURL); err != nil {
-			klog.Errorf("failed to execute satellite subscription deletion: %v", err)
+			machineLog.Errorw("Failed to execute satellite subscription deletion", zap.Error(err))
 			retries++
 			time.Sleep(500 * time.Second)
 			continue
 		}
 
-		klog.Infof("subscription for machine %s deleted successfully", machineName)
+		machineLog.Info("Subscription for machine deleted successfully")
 		return nil
 	}
 
@@ -110,7 +114,6 @@ func (s *DefaultSatelliteSubscriptionManager) executeDeleteRequest(ctx context.C
 		return fmt.Errorf("error while executing request with status code: %v", response.StatusCode)
 	}
 
-	klog.Infof("host %v has been deleted successfully", machineName)
 	return nil
 }
 

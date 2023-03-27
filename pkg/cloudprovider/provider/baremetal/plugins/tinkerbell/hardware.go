@@ -20,8 +20,6 @@ import (
 	"encoding/json"
 
 	"github.com/tinkerbell/tink/pkg"
-
-	"k8s.io/klog"
 )
 
 type HardwareSpec struct {
@@ -59,7 +57,6 @@ func (h *HardwareSpec) GetStatus() string {
 	}{}
 
 	if err := json.Unmarshal([]byte(h.Hardware.Metadata), &metadata); err != nil {
-		klog.Errorf("failed to unmarshal hardware metadata: %v", err)
 		return ""
 	}
 

@@ -28,13 +28,15 @@ import (
 	"fmt"
 	"os"
 
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 )
 
 // Provider defines the interface each plugin has to implement
 // for the retrieval of the userdata based on the given arguments.
 type Provider interface {
-	UserData(req plugin.UserDataRequest) (string, error)
+	UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (string, error)
 }
 
 // Plugin implements a convenient helper to map the request to the given
@@ -53,7 +55,7 @@ func New(provider Provider, debug bool) *Plugin {
 }
 
 // Run looks for the given request and executes it.
-func (p *Plugin) Run() error {
+func (p *Plugin) Run(log *zap.SugaredLogger) error {
 	reqEnv := os.Getenv(plugin.EnvUserDataRequest)
 	if reqEnv == "" {
 		resp := plugin.ErrorResponse{
@@ -67,7 +69,7 @@ func (p *Plugin) Run() error {
 	if err != nil {
 		return err
 	}
-	userData, err := p.provider.UserData(req)
+	userData, err := p.provider.UserData(log, req)
 	var resp plugin.UserDataResponse
 	if err != nil {
 		resp.Err = err.Error()

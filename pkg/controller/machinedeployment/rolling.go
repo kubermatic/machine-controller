@@ -21,18 +21,19 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	dutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
 	"k8s.io/utils/integer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // rolloutRolling implements the logic for rolling a new machine set.
-func (r *ReconcileMachineDeployment) rolloutRolling(ctx context.Context, d *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet, machineMap map[types.UID]*v1alpha1.MachineList) error {
-	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(ctx, d, msList, machineMap, true)
+func (r *ReconcileMachineDeployment) rolloutRolling(ctx context.Context, log *zap.SugaredLogger, d *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet, machineMap map[types.UID]*v1alpha1.MachineList) error {
+	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(ctx, log, d, msList, machineMap, true)
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (r *ReconcileMachineDeployment) rolloutRolling(ctx context.Context, d *v1al
 	}
 
 	// Scale down, if we can.
-	if err := r.reconcileOldMachineSets(ctx, allMSs, oldMSs, newMS, d); err != nil {
+	if err := r.reconcileOldMachineSets(ctx, log.With("newmachineset", client.ObjectKeyFromObject(newMS)), allMSs, oldMSs, newMS, d); err != nil {
 		return err
 	}
 
@@ -65,7 +66,7 @@ func (r *ReconcileMachineDeployment) rolloutRolling(ctx context.Context, d *v1al
 	}
 
 	if dutil.DeploymentComplete(d, &d.Status) {
-		if err := r.cleanupDeployment(ctx, oldMSs, d); err != nil {
+		if err := r.cleanupDeployment(ctx, log, oldMSs, d); err != nil {
 			return err
 		}
 	}
@@ -101,7 +102,7 @@ func (r *ReconcileMachineDeployment) reconcileNewMachineSet(ctx context.Context,
 	return err
 }
 
-func (r *ReconcileMachineDeployment) reconcileOldMachineSets(ctx context.Context, allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) error {
+func (r *ReconcileMachineDeployment) reconcileOldMachineSets(ctx context.Context, log *zap.SugaredLogger, allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) error {
 	if deployment.Spec.Replicas == nil {
 		return errors.Errorf("spec replicas for deployment set %v is nil, this is unexpected", deployment.Name)
 	}
@@ -117,7 +118,7 @@ func (r *ReconcileMachineDeployment) reconcileOldMachineSets(ctx context.Context
 	}
 
 	allMachinesCount := dutil.GetReplicaCountForMachineSets(allMSs)
-	klog.V(4).Infof("New machine set %s/%s has %d available machines.", newMS.Namespace, newMS.Name, newMS.Status.AvailableReplicas)
+	log.Debugw("New machine set status", "replicas", newMS.Status.AvailableReplicas)
 	maxUnavailable := dutil.MaxUnavailable(*deployment)
 
 	// Check if we can scale down. We can scale down in the following 2 cases:
@@ -159,26 +160,26 @@ func (r *ReconcileMachineDeployment) reconcileOldMachineSets(ctx context.Context
 
 	// Clean up unhealthy replicas first, otherwise unhealthy replicas will block deployment
 	// and cause timeout. See https://github.com/kubernetes/kubernetes/issues/16737
-	oldMSs, cleanupCount, err := r.cleanupUnhealthyReplicas(ctx, oldMSs, deployment, maxScaledDown)
+	oldMSs, cleanupCount, err := r.cleanupUnhealthyReplicas(ctx, log, oldMSs, deployment, maxScaledDown)
 	if err != nil {
 		return nil
 	}
 
-	klog.V(4).Infof("Cleaned up unhealthy replicas from old MachineSets by %d", cleanupCount)
+	log.Debugw("Cleaned up unhealthy replicas from old MachineSets", "reduction", cleanupCount)
 
 	// Scale down old machine sets, need check maxUnavailable to ensure we can scale down
 	allMSs = append(oldMSs, newMS)
-	scaledDownCount, err := r.scaleDownOldMachineSetsForRollingUpdate(ctx, allMSs, oldMSs, deployment)
+	scaledDownCount, err := r.scaleDownOldMachineSetsForRollingUpdate(ctx, log, allMSs, oldMSs, deployment)
 	if err != nil {
 		return err
 	}
 
-	klog.V(4).Infof("Scaled down old MachineSets of deployment %s by %d", deployment.Name, scaledDownCount)
+	log.Debugw("Scaled down old MachineSets", "reduction", scaledDownCount)
 	return nil
 }
 
 // cleanupUnhealthyReplicas will scale down old machine sets with unhealthy replicas, so that all unhealthy replicas will be deleted.
-func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(ctx context.Context, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment, maxCleanupCount int32) ([]*v1alpha1.MachineSet, int32, error) {
+func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(ctx context.Context, log *zap.SugaredLogger, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment, maxCleanupCount int32) ([]*v1alpha1.MachineSet, int32, error) {
 	sort.Sort(dutil.MachineSetsByCreationTimestamp(oldMSs))
 
 	// Safely scale down all old machine sets with unhealthy replicas. Replica set will sort the machines in the order
@@ -202,7 +203,7 @@ func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(ctx context.Contex
 		}
 
 		oldMSAvailableReplicas := targetMS.Status.AvailableReplicas
-		klog.V(4).Infof("Found %d available machines in old MS %s/%s", oldMSAvailableReplicas, targetMS.Namespace, targetMS.Name)
+		log.Debugw("Available machines in old MachineSet", "oldmachineset", client.ObjectKeyFromObject(targetMS), "replicas", oldMSAvailableReplicas)
 		if oldMSReplicas == oldMSAvailableReplicas {
 			// no unhealthy replicas found, no scaling required.
 			continue
@@ -229,7 +230,7 @@ func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(ctx context.Contex
 
 // scaleDownOldMachineSetsForRollingUpdate scales down old machine sets when deployment strategy is "RollingUpdate".
 // Need check maxUnavailable to ensure availability.
-func (r *ReconcileMachineDeployment) scaleDownOldMachineSetsForRollingUpdate(ctx context.Context, allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) (int32, error) {
+func (r *ReconcileMachineDeployment) scaleDownOldMachineSetsForRollingUpdate(ctx context.Context, log *zap.SugaredLogger, allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) (int32, error) {
 	if deployment.Spec.Replicas == nil {
 		return 0, errors.Errorf("spec replicas for deployment %v is nil, this is unexpected", deployment.Name)
 	}
@@ -246,7 +247,7 @@ func (r *ReconcileMachineDeployment) scaleDownOldMachineSetsForRollingUpdate(ctx
 		return 0, nil
 	}
 
-	klog.V(4).Infof("Found %d available machines in deployment %s, scaling down old MSes", availableMachineCount, deployment.Name)
+	log.Debugw("Found available machines, scaling down old MachineSets", "replicas", availableMachineCount)
 
 	sort.Sort(dutil.MachineSetsByCreationTimestamp(oldMSs))
 

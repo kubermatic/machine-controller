@@ -24,6 +24,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	dutil "github.com/kubermatic/machine-controller/pkg/controller/util"
@@ -35,19 +36,18 @@ import (
 	apirand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // sync is responsible for reconciling deployments on scaling events or when they
 // are paused.
-func (r *ReconcileMachineDeployment) sync(ctx context.Context, d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, machineMap map[types.UID]*clusterv1alpha1.MachineList) error {
-	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(ctx, d, msList, machineMap, false)
+func (r *ReconcileMachineDeployment) sync(ctx context.Context, log *zap.SugaredLogger, d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, machineMap map[types.UID]*clusterv1alpha1.MachineList) error {
+	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(ctx, log, d, msList, machineMap, false)
 	if err != nil {
 		return err
 	}
 
-	if err := r.scale(ctx, d, newMS, oldMSs); err != nil {
+	if err := r.scale(ctx, log, d, newMS, oldMSs); err != nil {
 		// If we get an error while trying to scale, the deployment will be requeued
 		// so we can abort this resync
 		return err
@@ -72,11 +72,11 @@ func (r *ReconcileMachineDeployment) sync(ctx context.Context, d *clusterv1alpha
 //
 // Note that currently the deployment controller is using caches to avoid querying the server for reads.
 // This may lead to stale reads of machine sets, thus incorrect deployment status.
-func (r *ReconcileMachineDeployment) getAllMachineSetsAndSyncRevision(ctx context.Context, d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, machineMap map[types.UID]*clusterv1alpha1.MachineList, createIfNotExisted bool) (*clusterv1alpha1.MachineSet, []*clusterv1alpha1.MachineSet, error) {
+func (r *ReconcileMachineDeployment) getAllMachineSetsAndSyncRevision(ctx context.Context, log *zap.SugaredLogger, d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, machineMap map[types.UID]*clusterv1alpha1.MachineList, createIfNotExisted bool) (*clusterv1alpha1.MachineSet, []*clusterv1alpha1.MachineSet, error) {
 	_, allOldMSs := dutil.FindOldMachineSets(d, msList)
 
 	// Get new machine set with the updated revision number
-	newMS, err := r.getNewMachineSet(ctx, d, msList, allOldMSs, createIfNotExisted)
+	newMS, err := r.getNewMachineSet(ctx, log, d, msList, allOldMSs, createIfNotExisted)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -89,11 +89,11 @@ func (r *ReconcileMachineDeployment) getAllMachineSetsAndSyncRevision(ctx contex
 // 2. If there's existing new MS, update its revision number if it's smaller than (maxOldRevision + 1), where maxOldRevision is the max revision number among all old MSes.
 // 3. If there's no existing new MS and createIfNotExisted is true, create one with appropriate revision number (maxOldRevision + 1) and replicas.
 // Note that the machine-template-hash will be added to adopted MSes and machines.
-func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, d *clusterv1alpha1.MachineDeployment, msList, oldMSs []*clusterv1alpha1.MachineSet, createIfNotExisted bool) (*clusterv1alpha1.MachineSet, error) {
+func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, log *zap.SugaredLogger, d *clusterv1alpha1.MachineDeployment, msList, oldMSs []*clusterv1alpha1.MachineSet, createIfNotExisted bool) (*clusterv1alpha1.MachineSet, error) {
 	existingNewMS := dutil.FindNewMachineSet(d, msList)
 
 	// Calculate the max revision number among all old MSes
-	maxOldRevision := dutil.MaxRevision(oldMSs)
+	maxOldRevision := dutil.MaxRevision(log, oldMSs)
 
 	// Calculate revision number for this new machine set
 	newRevision := strconv.FormatInt(maxOldRevision+1, 10)
@@ -106,7 +106,7 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, d *cl
 		msCopy := existingNewMS.DeepCopy()
 
 		// Set existing new machine set's annotation
-		annotationsUpdated := dutil.SetNewMachineSetAnnotations(d, msCopy, newRevision, true)
+		annotationsUpdated := dutil.SetNewMachineSetAnnotations(log, d, msCopy, newRevision, true)
 
 		minReadySecondsNeedsUpdate := msCopy.Spec.MinReadySeconds != *d.Spec.MinReadySeconds
 		if annotationsUpdated || minReadySecondsNeedsUpdate {
@@ -171,7 +171,7 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, d *cl
 	*(newMS.Spec.Replicas) = newReplicasCount
 
 	// Set new machine set's annotation
-	dutil.SetNewMachineSetAnnotations(d, &newMS, newRevision, false)
+	dutil.SetNewMachineSetAnnotations(log, d, &newMS, newRevision, false)
 	// Create the new MachineSet. If it already exists, then we need to check for possible
 	// hash collisions. If there is any other error, we need to report it in the status of
 	// the Deployment.
@@ -201,12 +201,12 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, d *cl
 
 		return nil, err
 	case err != nil:
-		klog.V(4).Infof("Failed to create new machine set %q: %v", newMS.Name, err)
+		log.Errorw("Failed to create new MachineSet", "machineset", client.ObjectKeyFromObject(&newMS), zap.Error(err))
 		return nil, err
 	}
 
 	if !alreadyExists {
-		klog.V(4).Infof("Created new machine set %q", createdMS.Name)
+		log.Debugw("Created new MachineSet", "machineset", client.ObjectKeyFromObject(createdMS))
 	}
 
 	err = r.updateMachineDeployment(ctx, d, func(innerDeployment *clusterv1alpha1.MachineDeployment) {
@@ -221,7 +221,7 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, d *cl
 // have the effect of hastening the rollout progress, which could produce a higher proportion of unavailable
 // replicas in the event of a problem with the rolled out template. Should run only on scaling events or
 // when a deployment is paused and not during the normal rollout process.
-func (r *ReconcileMachineDeployment) scale(ctx context.Context, deployment *clusterv1alpha1.MachineDeployment, newMS *clusterv1alpha1.MachineSet, oldMSs []*clusterv1alpha1.MachineSet) error {
+func (r *ReconcileMachineDeployment) scale(ctx context.Context, log *zap.SugaredLogger, deployment *clusterv1alpha1.MachineDeployment, newMS *clusterv1alpha1.MachineSet, oldMSs []*clusterv1alpha1.MachineSet) error {
 	if deployment.Spec.Replicas == nil {
 		return errors.Errorf("spec replicas for deployment %v is nil, this is unexpected", deployment.Name)
 	}
@@ -292,14 +292,14 @@ func (r *ReconcileMachineDeployment) scale(ctx context.Context, deployment *clus
 		for i := range allMSs {
 			ms := allMSs[i]
 			if ms.Spec.Replicas == nil {
-				klog.Errorf("spec replicas for machine set %v is nil, this is unexpected.", ms.Name)
+				log.Errorw("spec.replicas for MachineSet is nil, this is unexpected.", "machineset", client.ObjectKeyFromObject(ms))
 				continue
 			}
 
 			// Estimate proportions if we have replicas to add, otherwise simply populate
 			// nameToSize with the current sizes for each machine set.
 			if deploymentReplicasToAdd != 0 {
-				proportion := dutil.GetProportion(ms, *deployment, deploymentReplicasToAdd, deploymentReplicasAdded)
+				proportion := dutil.GetProportion(log, ms, *deployment, deploymentReplicasToAdd, deploymentReplicasAdded)
 				nameToSize[ms.Name] = *(ms.Spec.Replicas) + proportion
 				deploymentReplicasAdded += proportion
 			} else {
@@ -421,7 +421,7 @@ func (r *ReconcileMachineDeployment) scaleMachineSetOperation(ctx context.Contex
 // cleanupDeployment is responsible for cleaning up a deployment i.e. retains all but the latest N old machine sets
 // where N=d.Spec.RevisionHistoryLimit. Old machine sets are older versions of the machinetemplate of a deployment kept
 // around by default 1) for historical reasons and 2) for the ability to rollback a deployment.
-func (r *ReconcileMachineDeployment) cleanupDeployment(ctx context.Context, oldMSs []*clusterv1alpha1.MachineSet, deployment *clusterv1alpha1.MachineDeployment) error {
+func (r *ReconcileMachineDeployment) cleanupDeployment(ctx context.Context, log *zap.SugaredLogger, oldMSs []*clusterv1alpha1.MachineSet, deployment *clusterv1alpha1.MachineDeployment) error {
 	if deployment.Spec.RevisionHistoryLimit == nil {
 		return nil
 	}
@@ -439,12 +439,12 @@ func (r *ReconcileMachineDeployment) cleanupDeployment(ctx context.Context, oldM
 	}
 
 	sort.Sort(dutil.MachineSetsByCreationTimestamp(cleanableMSes))
-	klog.V(4).Infof("Looking to cleanup old machine sets for deployment %q", deployment.Name)
+	log.Debug("Looking to cleanup old MachineSets for MachineDeployment")
 
 	for i := int32(0); i < diff; i++ {
 		ms := cleanableMSes[i]
 		if ms.Spec.Replicas == nil {
-			return errors.Errorf("spec replicas for machine set %v is nil, this is unexpected", ms.Name)
+			return errors.Errorf("spec replicas for MachineSets %v is nil, this is unexpected", ms.Name)
 		}
 
 		// Avoid delete machine set with non-zero replica counts
@@ -452,7 +452,7 @@ func (r *ReconcileMachineDeployment) cleanupDeployment(ctx context.Context, oldM
 			continue
 		}
 
-		klog.V(4).Infof("Trying to cleanup machine set %q for deployment %q", ms.Name, deployment.Name)
+		log.Debugw("Trying to cleanup MachineSet for MachineDeployment", "machineset", client.ObjectKeyFromObject(ms))
 		if err := r.Delete(ctx, ms); err != nil && !apierrors.IsNotFound(err) {
 			// Return error instead of aggregating and continuing DELETEs on the theory
 			// that we may be overloading the api server.

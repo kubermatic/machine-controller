@@ -26,9 +26,9 @@ import (
 	"errors"
 	"flag"
 
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	"go.uber.org/zap"
 
-	"k8s.io/klog"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 var (
@@ -56,12 +56,14 @@ var (
 // Manager inits and manages the userdata plugins.
 type Manager struct {
 	debug   bool
+	log     *zap.SugaredLogger
 	plugins map[providerconfigtypes.OperatingSystem]*Plugin
 }
 
 // New returns an initialised plugin manager.
-func New() (*Manager, error) {
+func New(log *zap.SugaredLogger) (*Manager, error) {
 	m := &Manager{
+		log:     log,
 		plugins: make(map[providerconfigtypes.OperatingSystem]*Plugin),
 	}
 	flag.BoolVar(&m.debug, "plugin-debug", false, "Switch for enabling the plugin debugging")
@@ -84,9 +86,11 @@ func (m *Manager) ForOS(os providerconfigtypes.OperatingSystem) (p *Plugin, err 
 // locatePlugins tries to find the plugins and inits their wrapper.
 func (m *Manager) locatePlugins() {
 	for _, os := range supportedOS {
-		plugin, err := newPlugin(os, m.debug)
+		osLog := m.log.With("os", os)
+
+		plugin, err := newPlugin(osLog, os, m.debug)
 		if err != nil {
-			klog.Errorf("cannot use plugin '%v': %v", os, err)
+			osLog.Errorw("Cannot use plugin", zap.Error(err))
 			continue
 		}
 		m.plugins[os] = plugin

@@ -38,11 +38,11 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type admissionData struct {
+	log                  *zap.SugaredLogger
 	client               ctrlruntimeclient.Client
 	workerClient         ctrlruntimeclient.Client
 	userDataManager      *userdatamanager.Manager
@@ -69,6 +69,7 @@ type Builder struct {
 func (build Builder) Build() (*http.Server, error) {
 	mux := http.NewServeMux()
 	ad := &admissionData{
+		log:                  build.Log,
 		client:               build.Client,
 		workerClient:         build.WorkerClient,
 		userDataManager:      build.UserdataManager,
@@ -81,8 +82,8 @@ func (build Builder) Build() (*http.Server, error) {
 		return nil, fmt.Errorf("error updating nodeSettings, %w", err)
 	}
 
-	mux.HandleFunc("/machinedeployments", handleFuncFactory(ad.mutateMachineDeployments))
-	mux.HandleFunc("/machines", handleFuncFactory(ad.mutateMachines))
+	mux.HandleFunc("/machinedeployments", handleFuncFactory(build.Log, ad.mutateMachineDeployments))
+	mux.HandleFunc("/machines", handleFuncFactory(build.Log, ad.mutateMachines))
 	mux.HandleFunc("/healthz", healthZHandler)
 
 	return &http.Server{
@@ -105,16 +106,14 @@ func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperat
 	if err != nil {
 		return nil, err
 	}
-	klog.V(6).Infof("jsonpatch: Marshaled original: %s", string(ori))
 	cur, err := json.Marshal(current)
 	if err != nil {
 		return nil, err
 	}
-	klog.V(6).Infof("jsonpatch: Marshaled target: %s", string(cur))
 	return jsonpatch.CreatePatch(ori, cur)
 }
 
-func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.AdmissionResponse, error) {
+func createAdmissionResponse(log *zap.SugaredLogger, original, mutated runtime.Object) (*admissionv1.AdmissionResponse, error) {
 	response := &admissionv1.AdmissionResponse{}
 	response.Allowed = true
 	if !apiequality.Semantic.DeepEqual(original, mutated) {
@@ -127,7 +126,7 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.Adm
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal json patch: %w", err)
 		}
-		klog.V(6).Infof("Produced jsonpatch: %s", string(patchRaw))
+		log.Debugw("Produced jsonpatch", "patch", string(patchRaw))
 
 		response.Patch = patchRaw
 		response.PatchType = &jsonPatch
@@ -137,17 +136,17 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.Adm
 
 type mutator func(context.Context, admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error)
 
-func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) {
+func handleFuncFactory(log *zap.SugaredLogger, mutate mutator) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		review, err := readReview(r)
 		if err != nil {
-			klog.Warningf("invalid admission review: %v", err)
+			log.Errorw("Invalid admission review", zap.Error(err))
 
 			// proper AdmissionReview responses require metadata that is not available
 			// in broken requests, so we return a basic failure response
 			w.WriteHeader(http.StatusBadRequest)
 			if _, err := w.Write([]byte(fmt.Sprintf("invalid request: %v", err))); err != nil {
-				klog.Errorf("failed to write badRequest: %v", err)
+				log.Errorw("Failed to write badRequest", zap.Error(err))
 			}
 			return
 		}
@@ -168,12 +167,12 @@ func handleFuncFactory(mutate mutator) func(http.ResponseWriter, *http.Request) 
 			Response: response,
 		})
 		if err != nil {
-			klog.Errorf("failed to marshal admissionResponse: %v", err)
+			log.Errorw("Failed to marshal admissionResponse", zap.Error(err))
 			return
 		}
 
 		if _, err := w.Write(resp); err != nil {
-			klog.Errorf("failed to write admissionResponse: %v", err)
+			log.Errorw("Failed to write admissionResponse", zap.Error(err))
 		}
 	}
 }

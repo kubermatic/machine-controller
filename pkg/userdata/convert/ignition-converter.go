@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	ctconfig "github.com/coreos/container-linux-config-transpiler/config"
+	"go.uber.org/zap"
 
 	pluginapi "github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
@@ -34,8 +35,8 @@ type Ignition struct {
 	p plugin.Provider
 }
 
-func (j *Ignition) UserData(req pluginapi.UserDataRequest) (string, error) {
-	before, err := j.p.UserData(req)
+func (j *Ignition) UserData(log *zap.SugaredLogger, req pluginapi.UserDataRequest) (string, error) {
+	before, err := j.p.UserData(log, req)
 	if err != nil {
 		return "", err
 	}

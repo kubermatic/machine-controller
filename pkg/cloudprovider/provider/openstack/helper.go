@@ -36,6 +36,7 @@ import (
 	osports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	ossubnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
+	"go.uber.org/zap"
 )
 
 var (
@@ -263,7 +264,7 @@ func getSubnet(netClient *gophercloud.ServiceClient, nameOrID string) (*ossubnet
 	return nil, errNotFound
 }
 
-func ensureKubernetesSecurityGroupExist(client *gophercloud.ProviderClient, region, name string) error {
+func ensureKubernetesSecurityGroupExist(log *zap.SugaredLogger, client *gophercloud.ProviderClient, region, name string) error {
 	// We need a mutex here because otherwise if more than one machine gets created at roughly the same time
 	// we will create two security groups and subsequently not be able anymore to identify our security group
 	// by name
@@ -272,7 +273,7 @@ func ensureKubernetesSecurityGroupExist(client *gophercloud.ProviderClient, regi
 
 	netClient, err := goopenstack.NewNetworkV2(client, gophercloud.EndpointOpts{Region: region})
 	if err != nil {
-		return osErrorToTerminalError(err, "failed to get network client")
+		return osErrorToTerminalError(log, err, "failed to get network client")
 	}
 
 	_, err = getSecurityGroup(client, region, name)
@@ -280,7 +281,7 @@ func ensureKubernetesSecurityGroupExist(client *gophercloud.ProviderClient, regi
 		if errors.Is(err, errNotFound) {
 			sg, err := ossecuritygroups.Create(netClient, ossecuritygroups.CreateOpts{Name: name}).Extract()
 			if err != nil {
-				return osErrorToTerminalError(err, fmt.Sprintf("failed to create security group %s", name))
+				return osErrorToTerminalError(log, err, fmt.Sprintf("failed to create security group %s", name))
 			}
 
 			rules := []osecruritygrouprules.CreateOpts{
@@ -302,7 +303,7 @@ func ensureKubernetesSecurityGroupExist(client *gophercloud.ProviderClient, regi
 
 			for _, opts := range rules {
 				if _, err := osecruritygrouprules.Create(netClient, opts).Extract(); err != nil {
-					return osErrorToTerminalError(err, "failed to create security group rule")
+					return osErrorToTerminalError(log, err, "failed to create security group rule")
 				}
 			}
 		}

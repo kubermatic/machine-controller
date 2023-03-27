@@ -36,6 +36,7 @@ import (
 	"github.com/aws/smithy-go"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -52,7 +53,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -216,7 +216,7 @@ type amiFilter struct {
 	productCode string
 }
 
-func getDefaultAMIID(ctx context.Context, client *ec2.Client, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
+func getDefaultAMIID(ctx context.Context, log *zap.SugaredLogger, client *ec2.Client, os providerconfigtypes.OperatingSystem, region string, cpuArchitecture awstypes.CPUArchitecture) (string, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
@@ -233,7 +233,7 @@ func getDefaultAMIID(ctx context.Context, client *ec2.Client, os providerconfigt
 	cacheKey := fmt.Sprintf("ami-id-%s-%s-%s", region, os, cpuArchitecture)
 	amiID, found := cache.Get(cacheKey)
 	if found {
-		klog.V(3).Info("found AMI-ID in cache!")
+		log.Debugw("Found AMI-ID in cache", "key", cacheKey, "ami", amiID)
 		return amiID.(string), nil
 	}
 
@@ -514,7 +514,7 @@ func getEC2client(ctx context.Context, id, secret, region, assumeRoleArn, assume
 	return ec2.NewFromConfig(cfg), nil
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	_, _, rawConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, err
@@ -535,7 +535,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, err
 }
 
-func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -642,7 +642,7 @@ func getVpc(ctx context.Context, client *ec2.Client, id string) (*ec2types.Vpc, 
 	}
 
 	if len(vpcOut.Vpcs) != 1 {
-		return nil, fmt.Errorf("unable to find specified vpc with id %q", id)
+		return nil, fmt.Errorf("failed to find specified vpc with id %q", id)
 	}
 
 	return &vpcOut.Vpcs[0], nil
@@ -665,7 +665,7 @@ func areVpcDNSHostnamesEnabled(ctx context.Context, client *ec2.Client, id strin
 	return *out.EnableDnsHostnames.Value, nil
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -696,7 +696,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 			}
 		}
 
-		if amiID, err = getDefaultAMIID(ctx, ec2Client, pc.OperatingSystem, config.Region, cpuArchitecture); err != nil {
+		if amiID, err = getDefaultAMIID(ctx, log, ec2Client, pc.OperatingSystem, config.Region, cpuArchitecture); err != nil {
 			return nil, cloudprovidererrors.TerminalError{
 				Reason:  common.InvalidConfigurationMachineError,
 				Message: fmt.Sprintf("Failed to get AMI-ID for operating system %s in region %s: %v", pc.OperatingSystem, config.Region, err),
@@ -817,7 +817,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return &awsInstance{instance: &runOut.Instances[0]}, nil
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	ec2instance, err := p.get(ctx, machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
@@ -852,7 +852,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		}
 
 		if cOut.CancelledSpotInstanceRequests[0].State == ec2types.CancelSpotInstanceRequestStateCancelled {
-			klog.V(3).Infof("successfully canceled spot instance request %s at aws", *ec2instance.instance.SpotInstanceRequestId)
+			log.Infow("Successfully canceled spot instance request", "request", *ec2instance.instance.SpotInstanceRequestId)
 		}
 	}
 
@@ -864,13 +864,13 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	}
 
 	if tOut.TerminatingInstances[0].PreviousState.Name != tOut.TerminatingInstances[0].CurrentState.Name {
-		klog.V(3).Infof("successfully triggered termination of instance %s at aws", ec2instance.ID())
+		log.Infow("Successfully triggered termination of instance", "instance", ec2instance.ID())
 	}
 
 	return false, nil
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return p.get(ctx, machine)
 }
 
@@ -953,7 +953,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *provider) MigrateUID(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	machineInstance, err := p.get(ctx, machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {

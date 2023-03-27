@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-logr/zapr"
@@ -75,6 +76,10 @@ func main() {
 
 	flag.Parse()
 
+	if err := logFlags.Validate(); err != nil {
+		log.Fatalf("Invalid options: %v", err)
+	}
+
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
 	log := rawLog.Sugar()
 
@@ -92,17 +97,17 @@ func main() {
 
 	cfg, err := clientcmd.BuildConfigFromFlags(opt.masterURL, opt.kubeconfig)
 	if err != nil {
-		log.Fatalw("error building kubeconfig", zap.Error(err))
+		log.Fatalw("Failed to build kubeconfig", zap.Error(err))
 	}
 
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
-		log.Fatalw("failed to build client", zap.Error(err))
+		log.Fatalw("Failed to build client", zap.Error(err))
 	}
 
 	constraint, err := semver.NewConstraint(opt.versionConstraint)
 	if err != nil {
-		log.Fatalw("failed to validate kubernetes-version-constraints", zap.Error(err))
+		log.Fatalw("Failed to validate kubernetes-version-constraints", zap.Error(err))
 	}
 
 	// Start with assuming that current cluster will be used as worker cluster
@@ -113,19 +118,19 @@ func main() {
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: opt.workerClusterKubeconfig},
 			&clientcmd.ConfigOverrides{}).ClientConfig()
 		if err != nil {
-			log.Fatalw("failed to create worker cluster config", zap.Error(err))
+			log.Fatalw("Failed to create worker cluster config", zap.Error(err))
 		}
 
 		// Build dedicated client for worker cluster
 		workerClient, err = ctrlruntimeclient.New(workerClusterConfig, ctrlruntimeclient.Options{})
 		if err != nil {
-			log.Fatalw("failed to build worker client", zap.Error(err))
+			log.Fatalw("Failed to build worker client", zap.Error(err))
 		}
 	}
 
-	um, err := userdatamanager.New()
+	um, err := userdatamanager.New(log)
 	if err != nil {
-		log.Fatalw("error initialising userdata plugins", zap.Error(err))
+		log.Fatalw("Failed to initialise userdata plugins", zap.Error(err))
 	}
 
 	srv, err := admission.Builder{
@@ -140,8 +145,10 @@ func main() {
 		VersionConstraints:   constraint,
 	}.Build()
 	if err != nil {
-		log.Fatalw("failed to create admission hook", zap.Error(err))
+		log.Fatalw("Failed to create admission hook", zap.Error(err))
 	}
+
+	log.Infow("Listening", "address", opt.admissionListenAddress)
 
 	if err := srv.ListenAndServeTLS(opt.admissionTLSCertPath, opt.admissionTLSKeyPath); err != nil {
 		log.Fatalw("Failed to start server", zap.Error(err))
@@ -151,7 +158,4 @@ func main() {
 			log.Fatalw("Failed to shutdown server", zap.Error(err))
 		}
 	}()
-
-	log.Infow("Listening", "address", opt.admissionListenAddress)
-	select {}
 }

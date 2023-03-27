@@ -26,6 +26,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver/v3"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -37,7 +38,7 @@ import (
 type Provider struct{}
 
 // UserData renders user-data template to string.
-func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
+func (p Provider) UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (string, error) {
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
 		return "", fmt.Errorf("failed to get provider config: %w", err)
@@ -57,7 +58,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("failed to get an appropriate user-data template: %w", err)
 	}
 
-	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
+	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap(log)).Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %w", err)
 	}

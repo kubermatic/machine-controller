@@ -38,6 +38,7 @@ import (
 	"go.anx.io/go-anxcloud/pkg/ipam/address"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -58,6 +59,7 @@ const (
 func TestAnexiaProvider(t *testing.T) {
 	testhelper.SetupHTTP()
 	client, server := anxclient.NewTestClient(nil, testhelper.Mux)
+	log := zap.NewNop().Sugar()
 
 	a := mock.NewMockAPI()
 	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-OLD-BUILD", Name: testTemplateName, Build: "b01"})
@@ -165,7 +167,7 @@ func TestAnexiaProvider(t *testing.T) {
 			},
 		})
 
-		err := provisionVM(ctx, client)
+		err := provisionVM(ctx, log, client)
 		testhelper.AssertNoErr(t, err)
 	})
 
@@ -270,7 +272,7 @@ func TestAnexiaProvider(t *testing.T) {
 			expectedIP := "8.8.8.8"
 			providerStatus.ReservedIP = expectedIP
 			providerStatus.IPState = anxtypes.IPStateUnbound
-			reservedIP, err := getIPAddress(ctx, client)
+			reservedIP, err := getIPAddress(ctx, log, client)
 			testhelper.AssertNoErr(t, err)
 			testhelper.AssertEquals(t, expectedIP, reservedIP)
 		})
@@ -354,7 +356,7 @@ func TestValidate(t *testing.T) {
 
 	provider := New(nil)
 	for _, testCase := range getSpecsForValidationTest(t, configCases) {
-		err := provider.Validate(context.Background(), testCase.Spec)
+		err := provider.Validate(context.Background(), zap.NewNop().Sugar(), testCase.Spec)
 		if testCase.ExpectedError != nil {
 			if !errors.Is(err, testCase.ExpectedError) {
 				testhelper.AssertEquals(t, testCase.ExpectedError.Error(), err.Error())
@@ -390,7 +392,7 @@ func TestGetProviderStatus(t *testing.T) {
 	testhelper.AssertNoErr(t, err)
 	machine.Status.ProviderStatus = &runtime.RawExtension{Raw: providerStatusJSON}
 
-	returnedStatus := getProviderStatus(machine)
+	returnedStatus := getProviderStatus(zap.NewNop().Sugar(), machine)
 
 	testhelper.AssertEquals(t, "InstanceID", returnedStatus.InstanceID)
 }
@@ -409,7 +411,7 @@ func TestUpdateStatus(t *testing.T) {
 	err = updateMachineStatus(machine, providerStatus, func(paramMachine *v1alpha1.Machine, modifier ...cloudprovidertypes.MachineModifier) error {
 		called = true
 		testhelper.AssertEquals(t, machine, paramMachine)
-		status := getProviderStatus(machine)
+		status := getProviderStatus(zap.NewNop().Sugar(), machine)
 		testhelper.AssertEquals(t, status.InstanceID, providerStatus.InstanceID)
 		return nil
 	})

@@ -32,11 +32,11 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+	"go.uber.org/zap"
 
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/klog"
 )
 
 const (
@@ -45,7 +45,7 @@ const (
 local-hostname: {{ .Hostname }}`
 )
 
-func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, os providerconfigtypes.OperatingSystem, containerLinuxUserdata string) (*object.VirtualMachine, error) {
+func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, config *Config, session *Session, os providerconfigtypes.OperatingSystem, containerLinuxUserdata string) (*object.VirtualMachine, error) {
 	tpl, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get template vm: %w", err)
@@ -82,7 +82,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		Template: false,
 		Location: relocateSpec,
 	}
-	datastoreref, err := resolveDatastoreRef(ctx, config, session, tpl, targetVMFolder, &cloneSpec)
+	datastoreref, err := resolveDatastoreRef(ctx, log, config, session, tpl, targetVMFolder, &cloneSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve datastore: %w", err)
 	}
@@ -185,7 +185,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 			return nil, err
 		}
 
-		klog.V(4).Infof("Increasing disk size to %d GB", *config.DiskSizeGB)
+		log.Debugw("Increasing disk size", "targetgb", *config.DiskSizeGB)
 		disk := disks[0]
 		disk.CapacityInBytes = *config.DiskSizeGB * int64(math.Pow(1024, 3))
 		diskspec := &types.VirtualDeviceConfigSpec{Operation: types.VirtualDeviceConfigSpecOperationEdit, Device: disk}
@@ -227,10 +227,12 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 	return virtualMachine, nil
 }
 
-func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, vm *object.VirtualMachine, folder *object.Folder, cloneSpec *types.VirtualMachineCloneSpec) (*types.ManagedObjectReference, error) {
+func resolveDatastoreRef(ctx context.Context, log *zap.SugaredLogger, config *Config, session *Session, vm *object.VirtualMachine, folder *object.Folder, cloneSpec *types.VirtualMachineCloneSpec) (*types.ManagedObjectReference, error) {
 	// Based on https://github.com/vmware/govmomi/blob/v0.22.1/govc/vm/clone.go#L358
 	if config.DatastoreCluster != "" && config.Datastore == "" {
-		klog.Infof("Choosing initial datastore placement for vm %s from datastore cluster %s", vm.Name(), config.DatastoreCluster)
+		vmLog := log.With("vm", vm.Name(), "datastorecluster", config.DatastoreCluster)
+		vmLog.Infow("Choosing initial datastore placement for vm from datastore cluster")
+
 		storagePod, err := session.Finder.DatastoreCluster(ctx, config.DatastoreCluster)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get datastore cluster: %w", err)
@@ -273,7 +275,8 @@ func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, 
 
 		// Get the first recommendation
 		ds := recommendations[0].Action[0].(*types.StoragePlacementAction).Destination.Reference()
-		klog.Infof("The selected datastore from datastore cluster %s is: %v", config.DatastoreCluster, ds)
+		vmLog.Infow("Selected datastore from datastore cluster", "datastore", ds)
+
 		return &ds, nil
 	} else if config.DatastoreCluster == "" && config.Datastore != "" {
 		datastore, err := session.Finder.Datastore(ctx, config.Datastore)
@@ -286,7 +289,7 @@ func resolveDatastoreRef(ctx context.Context, config *Config, session *Session, 
 	}
 }
 
-func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.VirtualMachine, localIsoFilePath string) error {
+func uploadAndAttachISO(ctx context.Context, log *zap.SugaredLogger, session *Session, vmRef *object.VirtualMachine, localIsoFilePath string) error {
 	p := soap.DefaultUpload
 	remoteIsoFilePath := fmt.Sprintf("%s/%s", vmRef.Name(), "cloud-init.iso")
 	// Get the datastore where VM files are located
@@ -294,11 +297,12 @@ func uploadAndAttachISO(ctx context.Context, session *Session, vmRef *object.Vir
 	if err != nil {
 		return fmt.Errorf("error getting datastore from VM %s: %w", vmRef.Name(), err)
 	}
-	klog.V(3).Infof("Uploading userdata ISO to datastore %+v, destination iso is %s\n", datastore, remoteIsoFilePath)
+	uploadLog := log.With("datastore", datastore, "source", localIsoFilePath, "destination", remoteIsoFilePath)
+	uploadLog.Debug("Uploading userdata ISO to datastore")
 	if err := datastore.UploadFile(ctx, localIsoFilePath, remoteIsoFilePath, &p); err != nil {
 		return fmt.Errorf("failed to upload iso: %w", err)
 	}
-	klog.V(3).Infof("Uploaded ISO file %s", localIsoFilePath)
+	uploadLog.Debug("Uploaded ISO file")
 
 	// Find the cd-rom device and insert the cloud init iso file into it.
 	devices, err := vmRef.Device(ctx)
@@ -456,14 +460,14 @@ func resolveResourcePoolRef(ctx context.Context, config *Config, session *Sessio
 	return nil, nil
 }
 
-func attachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
+func attachTags(ctx context.Context, log *zap.SugaredLogger, config *Config, vm *object.VirtualMachine) error {
 	restAPISession, err := NewRESTSession(ctx, config)
 	if err != nil {
 		return fmt.Errorf("failed to create REST API session: %w", err)
 	}
 	defer restAPISession.Logout(ctx)
 	tagManager := tags.NewManager(restAPISession.Client)
-	klog.V(3).Info("Attaching tags")
+	log.Debug("Attaching tags")
 	for _, tag := range config.Tags {
 		tagID, err := determineTagID(ctx, tagManager, tag)
 		if err != nil {
@@ -471,14 +475,14 @@ func attachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) 
 		}
 
 		if err := tagManager.AttachTag(ctx, tagID, vm.Reference()); err != nil {
-			klog.V(3).Infof("Failed to attach tag %v. The tag was successfully deleted", tag)
+			log.Debugw("Failed to attach tag; it was successfully deleted", "tag", tag)
 			return fmt.Errorf("failed to attach tag to VM: %v %w", tag.Name, err)
 		}
 	}
 	return nil
 }
 
-func detachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) error {
+func detachTags(ctx context.Context, log *zap.SugaredLogger, config *Config, vm *object.VirtualMachine) error {
 	restAPISession, err := NewRESTSession(ctx, config)
 	if err != nil {
 		return fmt.Errorf("failed to create REST API session: %w", err)
@@ -490,7 +494,7 @@ func detachTags(ctx context.Context, config *Config, vm *object.VirtualMachine) 
 	if err != nil {
 		return fmt.Errorf("failed to get attached tags for the VM: %s, %w", vm.Name(), err)
 	}
-	klog.V(3).Info("Deleting tags")
+	log.Debug("Deleting tags")
 	for _, tag := range attachedTags {
 		tagID, err := determineTagID(ctx, tagManager, tag)
 		if err != nil {
