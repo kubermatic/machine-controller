@@ -23,6 +23,8 @@ fi
 
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
 export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
+OSM_REPO_URL="${OSM_REPO_URL:-https://github.com/kubermatic/operating-system-manager.git}"
+OSM_REPO_TAG="${OSM_REPO_TAG:-main}"
 
 # Build the Docker image for machine-controller
 beforeDockerBuild=$(nowms)
@@ -69,8 +71,21 @@ if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
     kubectl -n cert-manager rollout status deploy/cert-manager-webhook
   )
 
+  OSM_TMP_DIR=/tmp/osm
+  echodate "Clone OSM respository"
+  (
+    # Clone OSM repo
+    mkdir -p $OSM_TMP_DIR
+    echodate "Cloning cluster exposer"
+    git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
+  )
+
   echodate "Installing operating-system-manager"
   (
+    OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
+    # In release branches we'll have this pinned to a specific semver instead of latest.
+    sed -i "s;:latest;:$OSM_TAG;g" examples/operating-system-manager.yaml
+
     # This is required for running e2e tests in KIND
     url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
     sed -i "s;-container-runtime=containerd;$url;g" examples/operating-system-manager.yaml
