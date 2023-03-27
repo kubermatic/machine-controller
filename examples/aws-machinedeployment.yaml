@@ -52,7 +52,7 @@ spec:
                 key: secretAccessKey
             region: "eu-central-1"
             availabilityZone: "eu-central-1a"
-            vpcId: "vpc-819f62e9"
+            vpcId: "vpc-079f7648481a11e77"
             subnetId: "subnet-2bff4f43"
             instanceType: "t2.micro"
             instanceProfile: "kubernetes-v1"
