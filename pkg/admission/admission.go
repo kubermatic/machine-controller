@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
@@ -55,6 +56,7 @@ var jsonPatch = admissionv1.PatchTypeJSONPatch
 
 type Builder struct {
 	ListenAddress        string
+	Log                  *zap.SugaredLogger
 	Client               ctrlruntimeclient.Client
 	WorkerClient         ctrlruntimeclient.Client
 	UserdataManager      *userdatamanager.Manager

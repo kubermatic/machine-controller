@@ -20,15 +20,18 @@ import (
 	"flag"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/admission"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	machinecontrollerlog "github.com/kubermatic/machine-controller/pkg/log"
 	"github.com/kubermatic/machine-controller/pkg/node"
 	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type options struct {
@@ -47,9 +50,11 @@ type options struct {
 
 func main() {
 	nodeFlags := node.NewFlags(flag.CommandLine)
+	logFlags := machinecontrollerlog.NewDefaultOptions()
+	logFlags.AddFlags(flag.CommandLine)
+
 	opt := &options{}
 
-	klog.InitFlags(nil)
 	if flag.Lookup("kubeconfig") == nil {
 		flag.StringVar(&opt.kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	}
@@ -69,28 +74,35 @@ func main() {
 	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", false, "user-data is provided by external bootstrap mechanism (e.g. operating-system-manager, also known as OSM)")
 
 	flag.Parse()
+
+	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
+	log := rawLog.Sugar()
+
+	// set the logger used by controller-runtime
+	ctrlruntimelog.SetLogger(zapr.NewLogger(rawLog.WithOptions(zap.AddCallerSkip(1))))
+
 	opt.kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	opt.masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
 	if opt.caBundleFile != "" {
 		if err := util.SetCABundleFile(opt.caBundleFile); err != nil {
-			klog.Fatalf("-ca-bundle is invalid: %v", err)
+			log.Fatalw("-ca-bundle is invalid", zap.Error(err))
 		}
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(opt.masterURL, opt.kubeconfig)
 	if err != nil {
-		klog.Fatalf("error building kubeconfig: %v", err)
+		log.Fatalw("error building kubeconfig", zap.Error(err))
 	}
 
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{})
 	if err != nil {
-		klog.Fatalf("failed to build client: %v", err)
+		log.Fatalw("failed to build client", zap.Error(err))
 	}
 
 	constraint, err := semver.NewConstraint(opt.versionConstraint)
 	if err != nil {
-		klog.Fatalf("failed to validate kubernetes-version-constraints: %v", err)
+		log.Fatalw("failed to validate kubernetes-version-constraints", zap.Error(err))
 	}
 
 	// Start with assuming that current cluster will be used as worker cluster
@@ -101,23 +113,24 @@ func main() {
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: opt.workerClusterKubeconfig},
 			&clientcmd.ConfigOverrides{}).ClientConfig()
 		if err != nil {
-			klog.Fatal(err)
+			log.Fatalw("failed to create worker cluster config", zap.Error(err))
 		}
 
 		// Build dedicated client for worker cluster
 		workerClient, err = ctrlruntimeclient.New(workerClusterConfig, ctrlruntimeclient.Options{})
 		if err != nil {
-			klog.Fatalf("failed to build worker client: %v", err)
+			log.Fatalw("failed to build worker client", zap.Error(err))
 		}
 	}
 
 	um, err := userdatamanager.New()
 	if err != nil {
-		klog.Fatalf("error initialising userdata plugins: %v", err)
+		log.Fatalw("error initialising userdata plugins", zap.Error(err))
 	}
 
 	srv, err := admission.Builder{
 		ListenAddress:        opt.admissionListenAddress,
+		Log:                  log,
 		Client:               client,
 		WorkerClient:         workerClient,
 		UserdataManager:      um,
@@ -127,17 +140,18 @@ func main() {
 		VersionConstraints:   constraint,
 	}.Build()
 	if err != nil {
-		klog.Fatalf("failed to create admission hook: %v", err)
+		log.Fatalw("failed to create admission hook", zap.Error(err))
 	}
 
 	if err := srv.ListenAndServeTLS(opt.admissionTLSCertPath, opt.admissionTLSKeyPath); err != nil {
-		klog.Fatalf("Failed to start server: %v", err)
+		log.Fatalw("Failed to start server", zap.Error(err))
 	}
 	defer func() {
 		if err := srv.Close(); err != nil {
-			klog.Fatalf("Failed to shutdown server: %v", err)
+			log.Fatalw("Failed to shutdown server", zap.Error(err))
 		}
 	}()
-	klog.Infof("Listening on %s", opt.admissionListenAddress)
+
+	log.Infow("Listening", "address", opt.admissionListenAddress)
 	select {}
 }

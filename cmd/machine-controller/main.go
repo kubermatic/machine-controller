@@ -26,7 +26,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/zapr"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
@@ -39,6 +41,7 @@ import (
 	machinesetcontroller "github.com/kubermatic/machine-controller/pkg/controller/machineset"
 	"github.com/kubermatic/machine-controller/pkg/controller/nodecsrapprover"
 	"github.com/kubermatic/machine-controller/pkg/health"
+	machinecontrollerlog "github.com/kubermatic/machine-controller/pkg/log"
 	machinesv1alpha1 "github.com/kubermatic/machine-controller/pkg/machines/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/node"
 
@@ -48,8 +51,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	ctrlruntimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -137,12 +140,15 @@ type controllerRunOptions struct {
 	nodePortRange string
 
 	overrideBootstrapKubeletAPIServer string
+
+	log *zap.SugaredLogger
 }
 
 func main() {
 	nodeFlags := node.NewFlags(flag.CommandLine)
+	logFlags := machinecontrollerlog.NewDefaultOptions()
+	logFlags.AddFlags(flag.CommandLine)
 
-	klog.InitFlags(nil)
 	// This is also being registered in kubevirt.io/kubevirt/pkg/kubecli/kubecli.go so
 	// we have to guard it.
 	// TODO: Evaluate alternatives to importing the CLI. Generate our own client? Use a dynamic client?
@@ -183,12 +189,19 @@ func main() {
 	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
 
 	flag.Parse()
+
+	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
+	log := rawLog.Sugar()
+
+	// set the logger used by controller-runtime
+	ctrlruntimelog.SetLogger(zapr.NewLogger(rawLog.WithOptions(zap.AddCallerSkip(1))))
+
 	kubeconfig = flag.Lookup("kubeconfig").Value.(flag.Getter).Get().(string)
 	masterURL = flag.Lookup("master").Value.(flag.Getter).Get().(string)
 
 	clusterDNSIPs, err := parseClusterDNSIPs(clusterDNSIPs)
 	if err != nil {
-		klog.Fatalf("invalid cluster dns specified: %v", err)
+		log.Fatalw("invalid cluster dns specified", zap.Error(err))
 	}
 
 	var parsedJoinClusterTimeout *time.Duration
@@ -196,29 +209,29 @@ func main() {
 		parsedJoinClusterTimeoutLiteral, err := time.ParseDuration(joinClusterTimeout)
 		parsedJoinClusterTimeout = &parsedJoinClusterTimeoutLiteral
 		if err != nil {
-			klog.Fatalf("failed to parse join-cluster-timeout as duration: %v", err)
+			log.Fatalw("failed to parse join-cluster-timeout as duration", zap.Error(err))
 		}
 	}
 
 	// Needed for migrations
 	if err := machinesv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add machinesv1alpha1 api to scheme: %v", err)
+		log.Fatalw("failed to add api to scheme", "api", machinesv1alpha1.SchemeGroupVersion, zap.Error(err))
 	}
 	if err := apiextensionsv1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add apiextensionsv1 api to scheme: %v", err)
+		log.Fatalw("failed to add api to scheme", "api", apiextensionsv1.SchemeGroupVersion, zap.Error(err))
 	}
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+		log.Fatalw("failed to add api to scheme", "api", clusterv1alpha1.SchemeGroupVersion, zap.Error(err))
 	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		klog.Fatalf("error building kubeconfig: %v", err)
+		log.Fatalw("error building kubeconfig", zap.Error(err))
 	}
 
 	if caBundleFile != "" {
 		if err := util.SetCABundleFile(caBundleFile); err != nil {
-			klog.Fatalf("-ca-bundle is invalid: %v", err)
+			log.Fatalw("-ca-bundle is invalid", zap.Error(err))
 		}
 	}
 
@@ -228,12 +241,12 @@ func main() {
 	// QPS and Burst config there
 	machineCfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		klog.Fatalf("error building kubeconfig for machines: %v", err)
+		log.Fatalw("error building kubeconfig for machines", zap.Error(err))
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		klog.Fatalf("error building kubernetes clientset for kubeClient: %v", err)
+		log.Fatalw("error building kubernetes clientset for kubeClient", zap.Error(err))
 	}
 	kubeconfigProvider := clusterinfo.New(cfg, kubeClient)
 
@@ -251,10 +264,11 @@ func main() {
 	}
 	containerRuntimeConfig, err := containerruntime.BuildConfig(containerRuntimeOpts)
 	if err != nil {
-		klog.Fatalf("failed to generate container runtime config: %v", err)
+		log.Fatalw("failed to generate container runtime config", zap.Error(err))
 	}
 
 	runOptions := controllerRunOptions{
+		log:                  log,
 		kubeClient:           kubeClient,
 		kubeconfigProvider:   kubeconfigProvider,
 		name:                 name,
@@ -277,7 +291,7 @@ func main() {
 	}
 
 	if err := nodeFlags.UpdateNodeSettings(&runOptions.node); err != nil {
-		klog.Fatalf("failed to update nodesettings: %v", err)
+		log.Fatalw("failed to update nodesettings", zap.Error(err))
 	}
 
 	if parsedJoinClusterTimeout != nil {
@@ -287,7 +301,7 @@ func main() {
 	if bootstrapTokenServiceAccountName != "" {
 		flagParts := strings.Split(bootstrapTokenServiceAccountName, "/")
 		if flagPartsLen := len(flagParts); flagPartsLen != 2 {
-			klog.Fatalf("Splitting the bootstrap-token-service-account-name flag value in '/' returned %d parts, expected exactly two", flagPartsLen)
+			log.Fatalf("Splitting the bootstrap-token-service-account-name flag value in '/' returned %d parts, expected exactly two", flagPartsLen)
 		}
 		runOptions.bootstrapTokenServiceAccountName = &types.NamespacedName{Namespace: flagParts[0], Name: flagParts[1]}
 	}
@@ -295,16 +309,16 @@ func main() {
 	ctx := signals.SetupSignalHandler()
 	go func() {
 		<-ctx.Done()
-		klog.Info("caught signal, shutting down...")
+		log.Info("caught signal, shutting down...")
 	}()
 
 	mgr, err := createManager(5*time.Minute, runOptions)
 	if err != nil {
-		klog.Fatalf("failed to create runtime manager: %v", err)
+		log.Fatalw("failed to create runtime manager", zap.Error(err))
 	}
 
 	if err := mgr.Start(ctx); err != nil {
-		klog.Errorf("failed to start kubebuilder manager: %v", err)
+		log.Errorw("failed to start kubebuilder manager", zap.Error(err))
 	}
 }
 
@@ -430,7 +444,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		}
 	}
 
-	klog.Info("machine controller startup complete")
+	bs.opt.log.Info("machine controller startup complete")
 
 	return nil
 }
@@ -441,7 +455,7 @@ func parseClusterDNSIPs(s string) ([]net.IP, error) {
 	for _, sip := range sips {
 		ip := net.ParseIP(strings.TrimSpace(sip))
 		if ip == nil {
-			return nil, fmt.Errorf("unable to parse ip %s", sip)
+			return nil, fmt.Errorf("unable to parse ip %q", sip)
 		}
 		ips = append(ips, ip)
 	}
