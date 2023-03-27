@@ -36,7 +36,6 @@ spec:
             diskSize: 50
             diskType: "gp2"
             ebsVolumeEncrypted: false
-            ami: "<< AMI >>"
             securityGroupIDs:
               - "sg-0f1f62df28fb378b7"
             tags:
