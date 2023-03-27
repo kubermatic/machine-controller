@@ -588,6 +588,15 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
 	}
 
+	dnsHostnames, err := areVpcDNSHostnamesEnabled(ctx, ec2Client, config.VpcID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve VPC attributes: %w", err)
+	}
+
+	if !dnsHostnames {
+		return fmt.Errorf("vpc %s does not have the enableDnsHostname attribute enabled, new machines in this VPC would be incompatible with Kubernetes", config.VpcID)
+	}
+
 	_, err = ec2Client.DescribeAvailabilityZones(ctx, &ec2.DescribeAvailabilityZonesInput{ZoneNames: []string{config.AvailabilityZone}})
 	if err != nil {
 		return fmt.Errorf("invalid zone %q specified: %w", config.AvailabilityZone, err)
@@ -637,6 +646,23 @@ func getVpc(ctx context.Context, client *ec2.Client, id string) (*ec2types.Vpc, 
 	}
 
 	return &vpcOut.Vpcs[0], nil
+}
+
+func areVpcDNSHostnamesEnabled(ctx context.Context, client *ec2.Client, id string) (bool, error) {
+	out, err := client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
+		VpcId:     &id,
+		Attribute: ec2types.VpcAttributeNameEnableDnsHostnames,
+	})
+
+	if err != nil {
+		return false, awsErrorToTerminalError(err, "failed to describe vpc attributes")
+	}
+
+	if out.EnableDnsHostnames == nil {
+		return false, errors.New("API response does not include expected field enableDnsHostnames")
+	}
+
+	return *out.EnableDnsHostnames.Value, nil
 }
 
 func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
