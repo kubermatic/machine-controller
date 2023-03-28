@@ -21,7 +21,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.19.4
+        - image: golang:1.20.2
           command:
             - make
           args:
@@ -42,7 +42,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.19.4
+        - image: golang:1.20.2
           command:
             - make
           args:
@@ -149,7 +149,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-5
+        - image: quay.io/kubermatic/build:go-1.20-node-18-kind-0.17-2
           command:
             - ./hack/verify-licenses.sh
           resources:
@@ -165,7 +165,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: golang:1.19.4
+        - image: golang:1.20.2
           command:
             - make
           args:

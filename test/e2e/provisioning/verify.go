@@ -175,7 +175,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 		return false, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %w (%v)", machineDeployment.Name, err, pollErr)
+		return nil, fmt.Errorf("failed waiting for MachineDeployment %s to get a node: %w (%w)", machineDeployment.Name, err, pollErr)
 	}
 	klog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 

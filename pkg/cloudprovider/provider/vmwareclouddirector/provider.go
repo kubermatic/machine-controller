@@ -200,7 +200,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	if err != nil {
 		_, cleanupErr := p.Cleanup(ctx, machine, data)
 		if cleanupErr != nil {
-			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %w", cleanupErr, err)
+			return nil, fmt.Errorf("cleaning up failed with err %w after creation failed with err %w", cleanupErr, err)
 		}
 		return nil, err
 	}
