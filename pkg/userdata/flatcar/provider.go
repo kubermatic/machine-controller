@@ -490,6 +490,12 @@ storage:
           {{- end }}
           systemctl disable setup.service
 
+          # Creates iscsi InitiatorName on Nutanix machines for CSI driver to attach volumes.
+          {{- if eq .CloudProviderName "nutanix" }}
+          systemctl start iscsi-init.service
+          systemctl enable --now iscsid.service
+          {{- end }}
+
     - path: /opt/bin/download.sh
       filesystem: root
       mode: 0755
