@@ -514,6 +514,10 @@ func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string
 
 func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
 	if inst, err := p.Get(ctx, machine, data); err != nil {
+		if cloudprovidererrors.IsNotFound(err) {
+			return true, nil
+		}
+
 		return false, err
 	} else if inst.Status() == instance.StatusCreating {
 		klog.Warningf("Unable to cleanup machine %q. Instance is still creating", machine.Name)
