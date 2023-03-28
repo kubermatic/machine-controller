@@ -29,6 +29,7 @@ import (
 
 type anexiaInstance struct {
 	isCreating        bool
+	isDeleting        bool
 	info              *info.Info
 	reservedAddresses []string
 }
@@ -86,6 +87,9 @@ func (ai *anexiaInstance) Addresses() map[string]v1.NodeAddressType {
 }
 
 func (ai *anexiaInstance) Status() instance.Status {
+	if ai.isDeleting {
+		return instance.StatusDeleting
+	}
 	if ai.isCreating {
 		return instance.StatusCreating
 	}
