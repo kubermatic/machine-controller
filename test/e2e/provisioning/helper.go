@@ -59,7 +59,7 @@ var (
 		string(providerconfigtypes.OperatingSystemCentOS):     "kkp-centos-7",
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kkp-flatcar-3139.2.0",
 		string(providerconfigtypes.OperatingSystemRHEL):       "kkp-rhel-8.6",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-8.5",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-8",
 		string(providerconfigtypes.OperatingSystemUbuntu):     "kkp-ubuntu-22.04",
 	}
 
