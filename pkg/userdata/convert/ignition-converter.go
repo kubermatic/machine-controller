@@ -20,29 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ctconfig "github.com/coreos/container-linux-config-transpiler/config"
-	"go.uber.org/zap"
-
-	pluginapi "github.com/kubermatic/machine-controller/pkg/apis/plugin"
-	"github.com/kubermatic/machine-controller/pkg/userdata/plugin"
+	ctconfig "github.com/flatcar/container-linux-config-transpiler/config"
 )
-
-func NewIgnition(p plugin.Provider) *Ignition {
-	return &Ignition{p: p}
-}
-
-type Ignition struct {
-	p plugin.Provider
-}
-
-func (j *Ignition) UserData(log *zap.SugaredLogger, req pluginapi.UserDataRequest) (string, error) {
-	before, err := j.p.UserData(log, req)
-	if err != nil {
-		return "", err
-	}
-
-	return ToIgnition(before)
-}
 
 func ToIgnition(s string) (string, error) {
 	// Convert to ignition
