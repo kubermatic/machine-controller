@@ -48,6 +48,13 @@ spec:
                 namespace: kube-system
                 name: machine-controller-vmware-cloud-director
                 key: password
+            # Can also be set via the env var 'VCD_API_TOKEN' on the machine-controller
+            # Either username, password or apiToken should be used for authentication.
+            apiToken:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-vmware-cloud-director
+                key: apiToken
             # Can also be set via the env var 'VCD_ORG' on the machine-controller
             organization: "<< VCD_ORG >>"
             # Can also be set via the env var 'VCD_VDC' on the machine-controller

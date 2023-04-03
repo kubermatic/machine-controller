@@ -61,6 +61,7 @@ type provider struct {
 type Auth struct {
 	Username      string
 	Password      string
+	APIToken      string
 	Organization  string
 	URL           string
 	VDC           string
@@ -160,7 +161,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		return false, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return false, fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}
@@ -213,7 +214,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}
@@ -291,7 +292,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, da
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}
@@ -328,6 +329,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
+
+	c.APIToken, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.APIToken, "VCD_API_TOKEN")
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiToken\" field, error = %w", err)
+	}
+
 	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "VCD_USER")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get the value of \"username\" field, error = %w", err)
@@ -474,7 +481,11 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	if c.APIToken != "" && (c.Password != "" || c.Username != "") {
+		return fmt.Errorf("either \"apiToken\" or \"username\" and \"password\" must be specified")
+	}
+
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}

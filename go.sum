@@ -680,8 +680,8 @@ github.com/vektah/gqlparser/v2 v2.2.0 h1:bAc3slekAAJW6sZTi07aGq0OrfaCjj4jxARAaC7
 github.com/vektah/gqlparser/v2 v2.2.0/go.mod h1:i3mQIGIrbK2PD1RrCeMTlVbkF2FJ6WkU1KJlJlC+3F4=
 github.com/vincent-petithory/dataurl v1.0.0 h1:cXw+kPto8NLuJtlMsI152irrVw9fRDX8AbShPRpg2CI=
 github.com/vincent-petithory/dataurl v1.0.0/go.mod h1:FHafX5vmDzyP+1CQATJn7WFKc9CvnvxyvZy6I1MrG/U=
-github.com/vmware/go-vcloud-director/v2 v2.18.0 h1:3kXfaLyYObVBn7SsGxPPiIcqogwnHF0FpH5oY3KVSow=
-github.com/vmware/go-vcloud-director/v2 v2.18.0/go.mod h1:KjnB8t5l1bRrc+jLKDJbx0vZLRzz2RPzNQ7xzg7yI3o=
+github.com/vmware/go-vcloud-director/v2 v2.19.0 h1:A9p95VLn50dm7JbXqg5q+VmQxu3RxoMH6OD5ZeLK9EQ=
+github.com/vmware/go-vcloud-director/v2 v2.19.0/go.mod h1:QPxGFgrUcSyzy9IlpwDE4UNT3tsOy2047tJOPEJ4nlw=
 github.com/vmware/govmomi v0.30.0 h1:Fm8ugPnnlMSTSceDKY9goGvjmqc6eQLPUSUeNXdpeXA=
 github.com/vmware/govmomi v0.30.0/go.mod h1:F7adsVewLNHsW/IIm7ziFURaXDaHEwcc+ym4r3INMdY=
 github.com/vultr/govultr/v2 v2.17.2 h1:gej/rwr91Puc/tgh+j33p/BLR16UrIPnSr+AIwYWZQs=
