@@ -38,7 +38,7 @@ require (
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.10
 	github.com/sethvargo/go-password v0.2.0
 	github.com/tinkerbell/tink v0.8.0
-	github.com/vmware/go-vcloud-director/v2 v2.18.0
+	github.com/vmware/go-vcloud-director/v2 v2.19.0
 	github.com/vmware/govmomi v0.30.0
 	github.com/vultr/govultr/v2 v2.17.2
 	go.anx.io/go-anxcloud v0.5.0

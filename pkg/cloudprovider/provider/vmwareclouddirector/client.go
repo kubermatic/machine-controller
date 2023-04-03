@@ -34,11 +34,12 @@ type Client struct {
 	VCDClient *govcd.VCDClient
 }
 
-func NewClient(username, password, org, url, vdc string, allowInsecure bool) (*Client, error) {
+func NewClient(username, password, apiToken, org, url, vdc string, allowInsecure bool) (*Client, error) {
 	client := Client{
 		Auth: &Auth{
 			Username:      username,
 			Password:      password,
+			APIToken:      apiToken,
 			Organization:  org,
 			URL:           url,
 			VDC:           vdc,
@@ -61,11 +62,15 @@ func (c *Client) GetAuthenticatedClient() (*govcd.VCDClient, error) {
 	if c.Auth == nil {
 		return nil, fmt.Errorf("authentication configuration not provided")
 	}
-	if c.Auth.Username == "" {
-		return nil, fmt.Errorf("username not provided")
-	}
-	if c.Auth.Password == "" {
-		return nil, fmt.Errorf("password not provided")
+
+	// If API token is provided, use it for authentication.
+	if c.Auth.APIToken == "" {
+		if c.Auth.Username == "" {
+			return nil, fmt.Errorf("username not provided")
+		}
+		if c.Auth.Password == "" {
+			return nil, fmt.Errorf("password not provided")
+		}
 	}
 	if c.Auth.URL == "" {
 		return nil, fmt.Errorf("URL not provided")
@@ -84,6 +89,14 @@ func (c *Client) GetAuthenticatedClient() (*govcd.VCDClient, error) {
 	}
 
 	vcdClient := govcd.NewVCDClient(*apiEndpoint, c.Auth.AllowInsecure)
+
+	if c.Auth.APIToken != "" {
+		err = vcdClient.SetToken(c.Auth.Organization, govcd.ApiTokenHeader, c.Auth.APIToken)
+		if err != nil {
+			return nil, fmt.Errorf("failed to authenticate with VMware Cloud Director using API Token: %w", err)
+		}
+		return vcdClient, nil
+	}
 
 	err = vcdClient.Authenticate(c.Auth.Username, c.Auth.Password, c.Auth.Organization)
 	if err != nil {
