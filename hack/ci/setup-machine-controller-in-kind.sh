@@ -80,9 +80,10 @@ if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
     git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
   )
 
-  echodate "Installing operating-system-manager with image: $OSM_TAG"
   (
     OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
+    echodate "Installing operating-system-manager with image: $OSM_TAG"
+
     # In release branches we'll have this pinned to a specific semver instead of latest.
     sed -i "s;:latest;:$OSM_TAG;g" examples/operating-system-manager.yaml
 
