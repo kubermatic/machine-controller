@@ -14,6 +14,10 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-anexia
+    # We've made the E2E tests for Anexia optional since it doesn't support k8s v1.26 at the moment.
+    # the tests on k8s v1.26+ will fail.
+    # TODO: These tests shouldn't be marked as optional.
+    optional: true
     always_run: false
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
@@ -33,9 +37,6 @@ presubmits:
           args:
             - "TestAnexiaProvisioningE2E"
           env:
-            # OperatingSystemManager does not yet support Anexia
-            - name: OPERATING_SYSTEM_MANAGER
-              value: "false"
             - name: CLOUD_PROVIDER
               value: anexia
           securityContext:
