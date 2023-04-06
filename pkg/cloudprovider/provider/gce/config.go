@@ -21,14 +21,15 @@ limitations under the License.
 package gce
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
-	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/jwt"
+	"golang.org/x/oauth2"
+	googleoauth "golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -106,7 +107,6 @@ type config struct {
 	provisioningModel            *string
 	labels                       map[string]string
 	tags                         []string
-	jwtConfig                    *jwt.Config
 	providerConfig               *providerconfigtypes.Config
 	assignPublicIPAddress        bool
 	multizone                    bool
@@ -116,6 +116,12 @@ type config struct {
 	enableNestedVirtualization   bool
 	minCPUPlatform               string
 	guestOSFeatures              []string
+	clientConfig                 *clientConfig
+}
+
+type clientConfig struct {
+	ClientEmail string
+	TokenSource oauth2.TokenSource
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -138,6 +144,11 @@ func newConfig(resolver *providerconfig.ConfigVarResolver, spec v1alpha1.Provide
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve service account: %w", err)
+	}
+
+	cfg.projectID, err = resolver.GetConfigVarStringValue(cpSpec.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve project id: %w", err)
 	}
 
 	err = cfg.postprocessServiceAccount()
@@ -251,16 +262,28 @@ func (cfg *config) postprocessServiceAccount() error {
 		sa = string(decoded)
 	}
 
+	creds, err := googleoauth.CredentialsFromJSON(context.TODO(), []byte(sa), compute.ComputeScope)
+	if err != nil {
+		return fmt.Errorf("failed to parse credentials from google service account: %w", err)
+	}
+
+	if cfg.projectID == "" {
+		cfg.projectID = creds.ProjectID
+	}
+
 	sam := map[string]string{}
 	err = json.Unmarshal([]byte(sa), &sam)
 	if err != nil {
 		return fmt.Errorf("failed unmarshalling service account: %w", err)
 	}
-	cfg.projectID = sam["project_id"]
-	cfg.jwtConfig, err = google.JWTConfigFromJSON([]byte(sa), compute.ComputeScope)
-	if err != nil {
-		return fmt.Errorf("failed preparing JWT: %w", err)
+
+	// if the project id is not set in the machine deployment, we fallback to the project id that is embedded in the
+	// google service account json object.
+	cfg.clientConfig = &clientConfig{
+		ClientEmail: sam["client_email"],
+		TokenSource: creds.TokenSource,
 	}
+
 	return nil
 }
 

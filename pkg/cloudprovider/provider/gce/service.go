@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 
@@ -54,7 +55,7 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	client := cfg.jwtConfig.Client(context.Background())
+	client := oauth2.NewClient(context.Background(), cfg.clientConfig.TokenSource)
 	svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
