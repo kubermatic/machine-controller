@@ -19,7 +19,7 @@ set -euo pipefail
 cd $(dirname $0)/..
 source hack/lib.sh
 
-CONTAINERIZE_IMAGE=quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-5 containerize ./hack/verify-licenses.sh
+CONTAINERIZE_IMAGE=quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-9 containerize ./hack/verify-licenses.sh
 
 go mod vendor
 
