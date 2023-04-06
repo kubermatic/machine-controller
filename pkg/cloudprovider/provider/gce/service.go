@@ -22,6 +22,7 @@ package gce
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -55,12 +56,17 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	client := oauth2.NewClient(context.Background(), cfg.clientConfig.TokenSource)
-	svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
+	if cfg.clientConfig != nil &&
+		cfg.clientConfig.TokenSource != nil {
+		client := oauth2.NewClient(context.Background(), cfg.clientConfig.TokenSource)
+		svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
+		if err != nil {
+			return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
+		}
+		return &service{svc}, nil
 	}
-	return &service{svc}, nil
+
+	return nil, errors.New("gcp token source was not found")
 }
 
 // networkInterfaces returns the configured network interfaces for an instance creation.
