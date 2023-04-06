@@ -764,7 +764,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		return false, osErrorToTerminalError(err, "failed to get compute client")
 	}
 
-	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && !errors.Is(err, &gophercloud.ErrDefault404{}) {
+	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && !errors.As(err, &gophercloud.ErrDefault404{}) {
 		return false, osErrorToTerminalError(err, "failed to delete instance")
 	}
 
@@ -1035,7 +1035,7 @@ func (p *provider) cleanupFloatingIP(machine *clusterv1alpha1.Machine, updater c
 	if err != nil {
 		return fmt.Errorf("failed to create the networkv2 client for region %s: %w", c.Region, err)
 	}
-	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && !errors.Is(err, &gophercloud.ErrDefault404{}) {
+	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && !errors.As(err, &gophercloud.ErrDefault404{}) {
 		return fmt.Errorf("failed to delete floating ip %s: %w", floatingIPID, err)
 	}
 	if err := updater(machine, func(m *clusterv1alpha1.Machine) {
