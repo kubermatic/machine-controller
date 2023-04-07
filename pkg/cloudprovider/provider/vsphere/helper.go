@@ -85,7 +85,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		return nil, fmt.Errorf("failed to resolve datastore: %w", err)
 	}
 
-	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session)
+	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session, tpl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve resourcePool: %w", err)
 	}
@@ -438,12 +438,12 @@ func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.Vir
 	datastorePathObj := new(object.DatastorePath)
 	isSuccess := datastorePathObj.FromString(props.Summary.Config.VmPathName)
 	if !isSuccess {
-		return nil, fmt.Errorf("failed to parse volPath: %s", props.Summary.Config.VmPathName)
+		return nil, fmt.Errorf("Failed to parse volPath: %s", props.Summary.Config.VmPathName)
 	}
 	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
 }
 
-func resolveResourcePoolRef(ctx context.Context, config *Config, session *Session) (*types.ManagedObjectReference, error) {
+func resolveResourcePoolRef(ctx context.Context, config *Config, session *Session, _ *object.VirtualMachine) (*types.ManagedObjectReference, error) {
 	if config.ResourcePool != "" {
 		targetResourcePool, err := session.Finder.ResourcePool(ctx, config.ResourcePool)
 		if err != nil {
