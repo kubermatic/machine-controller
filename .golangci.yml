@@ -13,19 +13,26 @@ linters:
     - bodyclose
     - deadcode
     - depguard
+    - dogsled
     - durationcheck
     - errcheck
     - errname
     - errorlint
     - exportloopref
+    - funlen
     - goconst
+    - gocritic
     - gocyclo
     - godot
     - gofmt
+    - gomnd
+    - goprintffuncname
+    - gosec
     - gosimple
     - govet
     - importas
     - ineffassign
+    - lll
     - misspell
     - nakedret
     - noctx
@@ -36,8 +43,11 @@ linters:
     - revive
     - staticcheck
     - structcheck
+    - stylecheck
+    - typecheck
     - tenv
     - unconvert
+    - unparam
     - unused
     - varcheck
     - wastedassign
