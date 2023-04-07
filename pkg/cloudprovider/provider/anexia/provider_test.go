@@ -32,7 +32,6 @@ import (
 	"go.anx.io/go-anxcloud/pkg/api/mock"
 	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
 	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
-	"go.anx.io/go-anxcloud/pkg/client"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	"go.anx.io/go-anxcloud/pkg/core"
 	"go.anx.io/go-anxcloud/pkg/ipam/address"
@@ -432,7 +431,7 @@ func Test_anexiaErrorToTerminalError(t *testing.T) {
 	})
 
 	legacyClientRun := func(url string) error {
-		client, err := client.New(client.BaseURL(url), client.IgnoreMissingToken(), client.ParseEngineErrors(true))
+		client, err := anxclient.New(anxclient.BaseURL(url), anxclient.IgnoreMissingToken(), anxclient.ParseEngineErrors(true))
 		testhelper.AssertNoErr(t, err)
 		_, err = core.NewAPI(client).Location().List(context.TODO(), 1, 1, "", "")
 		return err
@@ -440,8 +439,8 @@ func Test_anexiaErrorToTerminalError(t *testing.T) {
 
 	apiClientRun := func(url string) error {
 		client, err := api.NewAPI(api.WithClientOptions(
-			client.BaseURL(url),
-			client.IgnoreMissingToken(),
+			anxclient.BaseURL(url),
+			anxclient.IgnoreMissingToken(),
 		))
 		testhelper.AssertNoErr(t, err)
 		return client.Get(context.TODO(), &corev1.Location{Identifier: "foo"})
@@ -495,7 +494,7 @@ func Test_anexiaErrorToTerminalError(t *testing.T) {
 	})
 
 	t.Run("legacy api client unspecific ResponseError shouldn't convert to TerminalError", func(t *testing.T) {
-		var err error = &client.ResponseError{}
+		var err error = &anxclient.ResponseError{}
 		err = anexiaErrorToTerminalError(err, "foo")
 		if ok, _, _ := cloudprovidererrors.IsTerminalError(err); ok {
 			t.Errorf("unexpected error %#v, expected no TerminalError", err)

@@ -37,7 +37,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -457,7 +456,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			objects = append(objects, test.existingNodes...)
 			objects = append(objects, test.additionalMachines...)
 
-			client := ctrlruntimefake.NewClientBuilder().
+			client := fakectrlruntimeclient.NewClientBuilder().
 				WithScheme(scheme.Scheme).
 				WithObjects(objects...).
 				Build()

@@ -438,7 +438,7 @@ func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.Vir
 	datastorePathObj := new(object.DatastorePath)
 	isSuccess := datastorePathObj.FromString(props.Summary.Config.VmPathName)
 	if !isSuccess {
-		return nil, fmt.Errorf("Failed to parse volPath: %s", props.Summary.Config.VmPathName)
+		return nil, fmt.Errorf("failed to parse volPath: %s", props.Summary.Config.VmPathName)
 	}
 	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
 }

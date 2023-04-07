@@ -343,7 +343,7 @@ func ensureClusterV1Alpha1NodeOwnership(ctx context.Context, machine *clusterv1a
 					machine.Namespace, machine.Name)
 				continue
 			}
-			return fmt.Errorf("Failed to get node %s for machine %s: %w",
+			return fmt.Errorf("failed to get node %s for machine %s: %w",
 				machine.Spec.Name, machine.Name, err)
 		}
 

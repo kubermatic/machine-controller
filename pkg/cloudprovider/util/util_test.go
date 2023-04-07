@@ -21,7 +21,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 
@@ -39,7 +38,7 @@ func TestRemoveFinalizerOnInstanceNotFound(t *testing.T) {
 	var fakeClient = fakectrlruntimeclient.
 		NewClientBuilder().
 		WithScheme(scheme.Scheme).
-		WithObjects(&v1alpha1.Machine{
+		WithObjects(&clusterv1alpha1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test_machine",
 				Finalizers: []string{
@@ -51,13 +50,13 @@ func TestRemoveFinalizerOnInstanceNotFound(t *testing.T) {
 
 	var testCases = []struct {
 		name            string
-		machine         *v1alpha1.Machine
-		expectedMachine *v1alpha1.Machine
+		machine         *clusterv1alpha1.Machine
+		expectedMachine *clusterv1alpha1.Machine
 		providerData    *cloudprovidertypes.ProviderData
 	}{
 		{
 			name: "Test remove machine finalizer",
-			machine: &v1alpha1.Machine{
+			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					UID:  "123456",
 					Name: "test_machine",
@@ -66,7 +65,7 @@ func TestRemoveFinalizerOnInstanceNotFound(t *testing.T) {
 						"test_finalizer_2"},
 				},
 			},
-			expectedMachine: &v1alpha1.Machine{
+			expectedMachine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					UID:  "123456",
 					Name: "test_machine",
@@ -87,7 +86,7 @@ func TestRemoveFinalizerOnInstanceNotFound(t *testing.T) {
 				t.Fatalf("failed removing finalizer: %v", err)
 			}
 
-			foundMachine := &v1alpha1.Machine{}
+			foundMachine := &clusterv1alpha1.Machine{}
 			if err := fakeClient.Get(
 				context.Background(),
 				types.NamespacedName{Name: "test_machine"},

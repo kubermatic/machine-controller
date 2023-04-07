@@ -420,12 +420,12 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	if c.DiskType == ec2types.VolumeTypeIo1 {
 		if rawConfig.DiskIops == nil {
-			return nil, nil, nil, errors.New("Missing required field `diskIops`")
+			return nil, nil, nil, errors.New("missing required field `diskIops`")
 		}
 		iops := *rawConfig.DiskIops
 
 		if iops < 100 || iops > 64000 {
-			return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 100, max: 64000)")
+			return nil, nil, nil, errors.New("invalid value for `diskIops` (min: 100, max: 64000)")
 		}
 
 		c.DiskIops = rawConfig.DiskIops
@@ -434,7 +434,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		iops := *rawConfig.DiskIops
 
 		if iops < 3000 || iops > 64000 {
-			return nil, nil, nil, errors.New("Invalid value for `diskIops` (min: 3000, max: 64000)")
+			return nil, nil, nil, errors.New("invalid value for `diskIops` (min: 3000, max: 64000)")
 		}
 
 		c.DiskIops = rawConfig.DiskIops

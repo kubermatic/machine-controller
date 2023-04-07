@@ -64,7 +64,6 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -229,7 +228,7 @@ func Add(
 
 	return c.Watch(
 		&source.Kind{Type: &corev1.Node{}},
-		handler.EnqueueRequestsFromMapFunc(func(node client.Object) (result []reconcile.Request) {
+		handler.EnqueueRequestsFromMapFunc(func(node ctrlruntimeclient.Object) (result []reconcile.Request) {
 			machinesList := &clusterv1alpha1.MachineList{}
 			if err := mgr.GetClient().List(ctx, machinesList); err != nil {
 				utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %w", err))

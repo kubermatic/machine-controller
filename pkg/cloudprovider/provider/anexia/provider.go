@@ -30,7 +30,6 @@ import (
 	"go.anx.io/go-anxcloud/pkg/api"
 	corev1 "go.anx.io/go-anxcloud/pkg/apis/core/v1"
 	vspherev1 "go.anx.io/go-anxcloud/pkg/apis/vsphere/v1"
-	"go.anx.io/go-anxcloud/pkg/client"
 	anxclient "go.anx.io/go-anxcloud/pkg/client"
 	anxaddr "go.anx.io/go-anxcloud/pkg/ipam/address"
 	"go.anx.io/go-anxcloud/pkg/vsphere"
@@ -659,7 +658,7 @@ func anexiaErrorToTerminalError(err error, msg string) error {
 		}
 	}
 
-	var responseError *client.ResponseError
+	var responseError *anxclient.ResponseError
 	if errors.As(err, &responseError) && (responseError.ErrorData.Code == http.StatusForbidden || responseError.ErrorData.Code == http.StatusUnauthorized) {
 		return cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
