@@ -43,7 +43,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	dynamicclient "k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
@@ -140,7 +139,6 @@ func MigrateProviderConfigToProviderSpecIfNecessary(ctx context.Context, config 
 
 func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	ctx context.Context, client ctrlruntimeclient.Client,
-	kubeClient kubernetes.Interface,
 	providerData *cloudprovidertypes.ProviderData) error {
 	var (
 		cachePopulatingInterval = 15 * time.Second
@@ -182,7 +180,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		return fmt.Errorf("error when checking for existence of 'machines.cluster.k8s.io' crd: %w", err)
 	}
 
-	if err := migrateMachines(ctx, client, kubeClient, providerData); err != nil {
+	if err := migrateMachines(ctx, client, providerData); err != nil {
 		return fmt.Errorf("failed to migrate machines: %w", err)
 	}
 	klog.Infof("Attempting to delete CRD %s", machines.CRDName)
@@ -193,7 +191,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	return nil
 }
 
-func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface, providerData *cloudprovidertypes.ProviderData) error {
+func migrateMachines(ctx context.Context, client ctrlruntimeclient.Client, providerData *cloudprovidertypes.ProviderData) error {
 	klog.Infof("Starting migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
 
 	// Get machinesv1Alpha1Machines

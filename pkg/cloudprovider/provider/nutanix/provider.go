@@ -268,7 +268,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 }
 
 func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
-	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -284,14 +284,14 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		}
 	}
 
-	return createVM(ctx, client, machine.Name, *config, pc.OperatingSystem, userdata)
+	return createVM(ctx, client, machine.Name, *config, userdata)
 }
 
 func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	return p.cleanup(ctx, machine, data)
 }
 
-func (p *provider) cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
@@ -352,7 +352,7 @@ func (p *provider) cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	return true, nil
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -422,7 +422,7 @@ func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ k
 }
 
 // GetCloudConfig returns an empty cloud configuration for Nutanix as no CCM exists.
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
@@ -440,6 +440,6 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, nil
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }

@@ -390,7 +390,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 
 	if c.AvailabilityZone == "" {
 		klog.V(3).Infof("Trying to default availability zone for machine '%s'...", spec.Name)
-		availabilityZones, err := getAvailabilityZones(computeClient, c)
+		availabilityZones, err := getAvailabilityZones(computeClient)
 		if err != nil {
 			return spec, osErrorToTerminalError(err, "failed to get availability zones")
 		}
@@ -1113,6 +1113,6 @@ func assignFloatingIPToInstance(machineUpdater cloudprovidertypes.MachineUpdater
 	return nil
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }

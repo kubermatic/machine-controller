@@ -89,7 +89,7 @@ func (build Builder) Build() (*http.Server, error) {
 	}, nil
 }
 
-func healthZHandler(w http.ResponseWriter, r *http.Request) {
+func healthZHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 

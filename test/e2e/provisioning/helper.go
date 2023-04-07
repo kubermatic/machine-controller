@@ -250,13 +250,13 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
 	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
 
-	if _, err := os.Stat(kubeConfig); err == nil {
-		// it exists at hardcoded path
-	} else if os.IsNotExist(err) {
-		// it doesn't exist, fall back to $KUBECONFIG
-		kubeConfig = os.Getenv("KUBECONFIG")
-	} else {
-		t.Fatal(err)
+	if _, err := os.Stat(kubeConfig); err != nil {
+		if os.IsNotExist(err) {
+			// it doesn't exist, fall back to $KUBECONFIG
+			kubeConfig = os.Getenv("KUBECONFIG")
+		} else {
+			t.Fatal(err)
+		}
 	}
 
 	// the golang test runtime waits for individual subtests to complete before reporting the status.

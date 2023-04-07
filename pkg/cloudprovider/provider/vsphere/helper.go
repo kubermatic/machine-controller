@@ -33,8 +33,6 @@ import (
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/klog"
 )
@@ -45,7 +43,7 @@ const (
 local-hostname: {{ .Hostname }}`
 )
 
-func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, os providerconfigtypes.OperatingSystem, containerLinuxUserdata string) (*object.VirtualMachine, error) {
+func createClonedVM(ctx context.Context, vmName string, config *Config, session *Session, containerLinuxUserdata string) (*object.VirtualMachine, error) {
 	tpl, err := session.Finder.VirtualMachine(ctx, config.TemplateVMName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get template vm: %w", err)
@@ -87,7 +85,7 @@ func createClonedVM(ctx context.Context, vmName string, config *Config, session 
 		return nil, fmt.Errorf("failed to resolve datastore: %w", err)
 	}
 
-	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session, tpl)
+	resourcepoolref, err := resolveResourcePoolRef(ctx, config, session)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve resourcePool: %w", err)
 	}
@@ -445,7 +443,7 @@ func getDatastoreFromVM(ctx context.Context, session *Session, vmRef *object.Vir
 	return session.Finder.Datastore(ctx, datastorePathObj.Datastore)
 }
 
-func resolveResourcePoolRef(ctx context.Context, config *Config, session *Session, vm *object.VirtualMachine) (*types.ManagedObjectReference, error) {
+func resolveResourcePoolRef(ctx context.Context, config *Config, session *Session) (*types.ManagedObjectReference, error) {
 	if config.ResourcePool != "" {
 		targetResourcePool, err := session.Finder.ResourcePool(ctx, config.ResourcePool)
 		if err != nil {

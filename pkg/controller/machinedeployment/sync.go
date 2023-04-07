@@ -72,7 +72,7 @@ func (r *ReconcileMachineDeployment) sync(ctx context.Context, d *clusterv1alpha
 //
 // Note that currently the deployment controller is using caches to avoid querying the server for reads.
 // This may lead to stale reads of machine sets, thus incorrect deployment status.
-func (r *ReconcileMachineDeployment) getAllMachineSetsAndSyncRevision(ctx context.Context, d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, machineMap map[types.UID]*clusterv1alpha1.MachineList, createIfNotExisted bool) (*clusterv1alpha1.MachineSet, []*clusterv1alpha1.MachineSet, error) {
+func (r *ReconcileMachineDeployment) getAllMachineSetsAndSyncRevision(ctx context.Context, d *clusterv1alpha1.MachineDeployment, msList []*clusterv1alpha1.MachineSet, _ map[types.UID]*clusterv1alpha1.MachineList, createIfNotExisted bool) (*clusterv1alpha1.MachineSet, []*clusterv1alpha1.MachineSet, error) {
 	_, allOldMSs := dutil.FindOldMachineSets(d, msList)
 
 	// Get new machine set with the updated revision number
@@ -387,7 +387,7 @@ func (r *ReconcileMachineDeployment) scaleMachineSet(ctx context.Context, ms *cl
 	return r.scaleMachineSetOperation(ctx, ms, newScale, deployment, scalingOperation)
 }
 
-func (r *ReconcileMachineDeployment) scaleMachineSetOperation(ctx context.Context, ms *clusterv1alpha1.MachineSet, newScale int32, deployment *clusterv1alpha1.MachineDeployment, scaleOperation string) (bool, error) {
+func (r *ReconcileMachineDeployment) scaleMachineSetOperation(ctx context.Context, ms *clusterv1alpha1.MachineSet, newScale int32, deployment *clusterv1alpha1.MachineDeployment, _ string) (bool, error) {
 	if ms.Spec.Replicas == nil {
 		return false, errors.Errorf("spec replicas for machine set %v is nil, this is unexpected", ms.Name)
 	}

@@ -970,7 +970,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 	return s, "azure", nil
 }
 
-func validateDiskSKUs(ctx context.Context, c *config, sku compute.ResourceSku) error {
+func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
 		if c.OSDiskSKU != nil {
 			if _, ok := osDiskSKUs[*c.OSDiskSKU]; !ok {
@@ -1002,7 +1002,7 @@ func validateDiskSKUs(ctx context.Context, c *config, sku compute.ResourceSku) e
 	return nil
 }
 
-func validateSKUCapabilities(ctx context.Context, c *config, sku compute.ResourceSku) error {
+func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.EnableAcceleratedNetworking != nil && *c.EnableAcceleratedNetworking {
 		if !SKUHasCapability(sku, capabilityAcceleratedNetworking) {
 			return fmt.Errorf("VM size %q does not support accelerated networking", c.VMSize)
@@ -1169,7 +1169,7 @@ func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Mach
 			return fmt.Errorf("failed to get disks client: %w", err)
 		}
 
-		disks, err := getDisksByMachineUID(ctx, disksClient, config, machine.UID)
+		disks, err := getDisksByMachineUID(ctx, disksClient, machine.UID)
 		if err != nil {
 			return fmt.Errorf("failed to get disks: %w", err)
 		}
@@ -1217,7 +1217,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 

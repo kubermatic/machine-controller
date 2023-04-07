@@ -152,7 +152,7 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 		return fmt.Errorf("failed to get disks client: %w", err)
 	}
 
-	matchingDisks, err := getDisksByMachineUID(ctx, disksClient, c, machineUID)
+	matchingDisks, err := getDisksByMachineUID(ctx, disksClient, machineUID)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func deleteDisksByMachineUID(ctx context.Context, c *config, machineUID types.UI
 	return nil
 }
 
-func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient, c *config, UID types.UID) ([]compute.Disk, error) {
+func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient, UID types.UID) ([]compute.Disk, error) {
 	list, err := disksClient.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list disks: %w", err)

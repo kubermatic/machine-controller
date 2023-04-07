@@ -303,7 +303,7 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 }
 
 // Cleanup deletes the instance associated with the machine and all associated resources.
-func (p *Provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *Provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
@@ -396,7 +396,7 @@ func (p *Provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machin
 }
 
 // SetMetricsForMachines allows providers to provide provider-specific metrics.
-func (p *Provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *Provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 

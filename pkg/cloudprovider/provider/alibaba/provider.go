@@ -154,7 +154,7 @@ func (p *provider) Validate(_ context.Context, machineSpec clusterv1alpha1.Machi
 	return nil
 }
 
-func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -199,7 +199,7 @@ func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, data
 	return nil, fmt.Errorf("instance %v is not ready", foundInstance.InstanceId)
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
@@ -341,7 +341,7 @@ func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machin
 	return nil
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 

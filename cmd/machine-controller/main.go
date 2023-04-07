@@ -384,7 +384,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 	}
 
 	// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine.
-	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, client, bs.opt.kubeClient, providerData); err != nil {
+	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, client, providerData); err != nil {
 		return fmt.Errorf("migration to clusterv1alpha1 failed: %w", err)
 	}
 

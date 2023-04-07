@@ -130,7 +130,7 @@ type CustomStorageResourceManager struct {
 }
 
 // RecommendDatastores always return a recommendation for the purposes of the test.
-func (c *CustomStorageResourceManager) RecommendDatastores(req *types.RecommendDatastores) soap.HasFault {
+func (c *CustomStorageResourceManager) RecommendDatastores() soap.HasFault {
 	body := &methods.RecommendDatastoresBody{}
 	res := &types.RecommendDatastoresResponse{}
 	ds := c.ds.Reference()
@@ -221,11 +221,7 @@ func TestResolveResourcePoolRef(t *testing.T) {
 				t.Fatalf("error creating session: %v", err)
 			}
 
-			// Obtain a VM from the simulator
-			obj := simulator.Map.Any("VirtualMachine").(*simulator.VirtualMachine)
-			vm := object.NewVirtualMachine(session.Client.Client, obj.Reference())
-
-			got, err := resolveResourcePoolRef(ctx, tt.config, session, vm)
+			got, err := resolveResourcePoolRef(ctx, tt.config, session)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 				return
