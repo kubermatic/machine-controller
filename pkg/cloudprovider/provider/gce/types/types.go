@@ -51,6 +51,7 @@ type CloudProviderSpec struct {
 	EnableNestedVirtualization   providerconfigtypes.ConfigVarBool    `json:"enableNestedVirtualization,omitempty"`
 	MinCPUPlatform               providerconfigtypes.ConfigVarString  `json:"minCPUPlatform,omitempty"`
 	GuestOSFeatures              []string                             `json:"guestOSFeatures,omitempty"`
+	ProjectID                    providerconfigtypes.ConfigVarString  `json:"projectID,omitempty"`
 }
 
 // UpdateProviderSpec updates the given provider spec with changed

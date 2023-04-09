@@ -261,7 +261,7 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	if !cfg.disableMachineServiceAccount {
 		inst.ServiceAccounts = []*compute.ServiceAccount{
 			{
-				Email: cfg.jwtConfig.Email,
+				Email: cfg.clientConfig.ClientEmail,
 				Scopes: append(
 					monitoring.DefaultAuthScopes(),
 					compute.ComputeScope,
