@@ -19,17 +19,18 @@ package machineset
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, m *v1alpha1.Machine) []*v1alpha1.MachineSet {
+func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, machineLog *zap.SugaredLogger, m *v1alpha1.Machine) []*v1alpha1.MachineSet {
 	if len(m.Labels) == 0 {
-		klog.Warningf("No machine sets found for Machine %v because it has no labels", m.Name)
+		machineLog.Infow("No MachineSets found for Machine because it has no labels")
 		return nil
 	}
 
@@ -40,14 +41,14 @@ func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, m *v
 
 	err := c.Client.List(ctx, msList, listOptions)
 	if err != nil {
-		klog.Errorf("Failed to list machine sets, %v", err)
+		machineLog.Errorw("Failed to list MachineSets", zap.Error(err))
 		return nil
 	}
 
 	var mss []*v1alpha1.MachineSet
 	for idx := range msList.Items {
 		ms := &msList.Items[idx]
-		if hasMatchingLabels(ms, m) {
+		if hasMatchingLabels(machineLog, ms, m) {
 			mss = append(mss, ms)
 		}
 	}
@@ -55,21 +56,21 @@ func (c *ReconcileMachineSet) getMachineSetsForMachine(ctx context.Context, m *v
 	return mss
 }
 
-func hasMatchingLabels(machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
+func hasMatchingLabels(machineLog *zap.SugaredLogger, machineSet *v1alpha1.MachineSet, machine *v1alpha1.Machine) bool {
 	selector, err := metav1.LabelSelectorAsSelector(&machineSet.Spec.Selector)
 	if err != nil {
-		klog.Warningf("unable to convert selector: %v", err)
+		machineLog.Errorw("Failed to convert selector", zap.Error(err))
 		return false
 	}
 
 	// If a deployment with a nil or empty selector creeps in, it should match nothing, not everything.
 	if selector.Empty() {
-		klog.V(2).Infof("%v machineset has empty selector", machineSet.Name)
+		machineLog.Info("MachineSet has empty selector")
 		return false
 	}
 
 	if !selector.Matches(labels.Set(machine.Labels)) {
-		klog.V(4).Infof("%v machine has mismatch labels", machine.Name)
+		machineLog.Debug("Machine has mismatch labels")
 		return false
 	}
 

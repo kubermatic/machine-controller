@@ -31,6 +31,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	gocache "github.com/patrickmn/go-cache"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -46,7 +47,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 )
 
@@ -388,7 +388,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 	return &c, pconfig, nil
 }
 
-func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine, ipFamily util.IPFamily) (map[string]v1.NodeAddressType, error) {
+func getVMIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, vm *compute.VirtualMachine, ipFamily util.IPFamily) (map[string]v1.NodeAddressType, error) {
 	var (
 		ipAddresses = map[string]v1.NodeAddressType{}
 		err         error
@@ -413,7 +413,7 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 
 		splitIfaceID := strings.Split(*iface.ID, "/")
 		ifaceName := splitIfaceID[len(splitIfaceID)-1]
-		ipAddresses, err = getNICIPAddresses(ctx, c, ipFamily, ifaceName)
+		ipAddresses, err = getNICIPAddresses(ctx, log, c, ipFamily, ifaceName)
 		if err != nil || vm.NetworkProfile.NetworkInterfaces == nil {
 			return nil, fmt.Errorf("failed to get addresses for interface %q: %w", ifaceName, err)
 		}
@@ -422,7 +422,7 @@ func getVMIPAddresses(ctx context.Context, c *config, vm *compute.VirtualMachine
 	return ipAddresses, nil
 }
 
-func getNICIPAddresses(ctx context.Context, c *config, ipFamily util.IPFamily, ifaceName string) (map[string]v1.NodeAddressType, error) {
+func getNICIPAddresses(ctx context.Context, log *zap.SugaredLogger, c *config, ipFamily util.IPFamily, ifaceName string) (map[string]v1.NodeAddressType, error) {
 	ifClient, err := getInterfacesClient(c)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
@@ -444,7 +444,7 @@ func getNICIPAddresses(ctx context.Context, c *config, ipFamily util.IPFamily, i
 		if conf.Name != nil {
 			name = *conf.Name
 		} else {
-			klog.Warningf("IP configuration of NIC %q was returned with no name, trying to dissect the ID.", ifaceName)
+			log.Infow("IP configuration of NIC was returned with no name, trying to dissect the ID.", "interface", ifaceName)
 			if conf.ID == nil || len(*conf.ID) == 0 {
 				return nil, fmt.Errorf("IP configuration of NIC %q was returned with no ID", ifaceName)
 			}
@@ -528,7 +528,7 @@ func getInternalIPAddresses(ctx context.Context, c *config, inetface, ipconfigNa
 	return ipAddresses, nil
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
@@ -573,7 +573,7 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 	return sp, nil
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -618,13 +618,13 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		}); err != nil {
 			return nil, err
 		}
-		publicIP, err = createOrUpdatePublicIPAddress(ctx, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, machine.UID, config)
+		publicIP, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %w", err)
 		}
 
 		if ipFamily.IsDualstack() {
-			publicIPv6, err = createOrUpdatePublicIPAddress(ctx, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
+			publicIPv6, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create public IP: %w", err)
 			}
@@ -639,7 +639,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, err
 	}
 
-	iface, err := createOrUpdateNetworkInterface(ctx, ifaceName(machine), machine.UID, config, publicIP, publicIPv6, ipFamily, config.EnableAcceleratedNetworking)
+	iface, err := createOrUpdateNetworkInterface(ctx, log, ifaceName(machine), machine.UID, config, publicIP, publicIPv6, ipFamily, config.EnableAcceleratedNetworking)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate main network interface: %w", err)
 	}
@@ -711,7 +711,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		}
 	}
 
-	klog.Infof("Creating machine %q", machine.Name)
+	log.Info("Creating machine")
 	if err := data.Update(machine, func(updatedMachine *clusterv1alpha1.Machine) {
 		if !kuberneteshelper.HasFinalizer(updatedMachine, finalizerDisks) {
 			updatedMachine.Finalizers = append(updatedMachine.Finalizers, finalizerDisks)
@@ -744,12 +744,12 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, fmt.Errorf("failed to retrieve updated data for VM %q: %w", machine.Name, err)
 	}
 
-	ipAddresses, err := getVMIPAddresses(ctx, config, &vm, ipFamily)
+	ipAddresses, err := getVMIPAddresses(ctx, log, config, &vm, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %q: %w", machine.Name, err)
 	}
 
-	status, err := getVMStatus(ctx, config, machine.Name)
+	status, err := getVMStatus(ctx, log, config, machine.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve status for VM %q: %w", machine.Name, err)
 	}
@@ -757,14 +757,14 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return &azureVM{vm: &vm, ipAddresses: ipAddresses, status: status}, nil
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse MachineSpec: %w", err)
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerVM) {
-		klog.Infof("deleting VM %q", machine.Name)
+		log.Info("Deleting VM")
 		if err = deleteVMsByMachineUID(ctx, config, machine.UID); err != nil {
 			return false, fmt.Errorf("failed to delete instance for  machine %q: %w", machine.Name, err)
 		}
@@ -777,7 +777,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerDisks) {
-		klog.Infof("deleting disks of VM %q", machine.Name)
+		log.Info("Deleting disks")
 		if err := deleteDisksByMachineUID(ctx, config, machine.UID); err != nil {
 			return false, fmt.Errorf("failed to remove disks of machine %q: %w", machine.Name, err)
 		}
@@ -789,7 +789,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
-		klog.Infof("deleting network interfaces of VM %q", machine.Name)
+		log.Info("Deleting network interfaces")
 		if err := deleteInterfacesByMachineUID(ctx, config, machine.UID); err != nil {
 			return false, fmt.Errorf("failed to remove network interfaces of machine %q: %w", machine.Name, err)
 		}
@@ -801,7 +801,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		klog.Infof("deleting public IP addresses of VM %q", machine.Name)
+		log.Infof("Deleting public IP addresses")
 		if err := deleteIPAddressesByMachineUID(ctx, config, machine.UID); err != nil {
 			return false, fmt.Errorf("failed to remove public IP addresses of machine %q: %w", machine.Name, err)
 		}
@@ -844,7 +844,7 @@ func getVMByUID(ctx context.Context, c *config, uid types.UID) (*compute.Virtual
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status, error) {
+func getVMStatus(ctx context.Context, log *zap.SugaredLogger, c *config, vmName string) (instance.Status, error) {
 	vmClient, err := getVMClient(c)
 	if err != nil {
 		return instance.StatusUnknown, err
@@ -863,7 +863,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	if len(*iv.Statuses) < 2 {
 		provisioningStatus := (*iv.Statuses)[0]
 		if provisioningStatus.Code == nil {
-			klog.Warningf("azure provisioning status has missing code")
+			log.Info("Azure provisioning status has missing code")
 			return instance.StatusUnknown, nil
 		}
 
@@ -873,7 +873,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 		case "ProvisioningState/deleting":
 			return instance.StatusDeleting, nil
 		default:
-			klog.Warningf("unknown Azure provisioning status %q", *provisioningStatus.Code)
+			log.Errorw("Unknown Azure provisioning status", "code", *provisioningStatus.Code, "level", provisioningStatus.Level)
 			return instance.StatusUnknown, nil
 		}
 	}
@@ -882,7 +882,7 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	// https://docs.microsoft.com/en-us/azure/virtual-machines/windows/tutorial-manage-vm#vm-power-states
 	powerStatus := (*iv.Statuses)[1]
 	if powerStatus.Code == nil {
-		klog.Warningf("azure power status has missing code")
+		log.Info("Azure power status has missing code")
 		return instance.StatusUnknown, nil
 	}
 
@@ -894,16 +894,16 @@ func getVMStatus(ctx context.Context, c *config, vmName string) (instance.Status
 	case "PowerState/starting":
 		return instance.StatusCreating, nil
 	default:
-		klog.Warningf("unknown Azure power status %q", *powerStatus.Code)
+		log.Errorw("Unknown Azure power status", "code", *powerStatus.Code, "level", powerStatus.Level)
 		return instance.StatusUnknown, nil
 	}
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return p.get(ctx, machine)
+func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return p.get(ctx, log, machine)
 }
 
-func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*azureVM, error) {
+func (p *provider) get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (*azureVM, error) {
 	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MachineSpec: %w", err)
@@ -919,12 +919,12 @@ func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*
 	}
 
 	ipFamily := providerCfg.Network.GetIPFamily()
-	ipAddresses, err := getVMIPAddresses(ctx, config, vm, ipFamily)
+	ipAddresses, err := getVMIPAddresses(ctx, log, config, vm, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve IP addresses for VM %v: %w", vm.Name, err)
 	}
 
-	status, err := getVMStatus(ctx, config, machine.Name)
+	status, err := getVMStatus(ctx, log, config, machine.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve status for VM %v: %w", vm.Name, err)
 	}
@@ -1011,7 +1011,7 @@ func validateSKUCapabilities(ctx context.Context, c *config, sku compute.Resourc
 	return nil
 }
 
-func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, providerConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -1095,7 +1095,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		return fmt.Errorf("failed to get subnet: %w", err)
 	}
 
-	sku, err := getSKU(ctx, c)
+	sku, err := getSKU(ctx, log, c)
 	if err != nil {
 		return fmt.Errorf("failed to get VM SKU: %w", err)
 	}
@@ -1124,7 +1124,7 @@ func publicIPv6Name(ifaceName string) string {
 	return ifaceName + "-pubipv6"
 }
 
-func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	config, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -1143,21 +1143,21 @@ func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Mach
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIPv6) {
 		sku = network.PublicIPAddressSkuNameStandard
-		_, err = createOrUpdatePublicIPAddress(ctx, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodDynamic, newUID, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodDynamic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		_, err = createOrUpdatePublicIPAddress(ctx, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, newUID, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerNIC) {
-		_, err = createOrUpdateNetworkInterface(ctx, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.IPFamilyUnspecified, config.EnableAcceleratedNetworking)
+		_, err = createOrUpdateNetworkInterface(ctx, log, ifaceName(machine), newUID, config, publicIP, publicIPv6, util.IPFamilyUnspecified, config.EnableAcceleratedNetworking)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on main network interface: %w", err)
 		}

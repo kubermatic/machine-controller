@@ -23,6 +23,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
@@ -31,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	certificatesv1client "k8s.io/client-go/kubernetes/typed/certificates/v1"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -42,7 +45,7 @@ import (
 
 const (
 	// ControllerName is name of the NodeCSRApprover controller.
-	ControllerName = "node_csr_autoapprover"
+	ControllerName = "node-csr-approver-controller"
 
 	nodeUser       = "system:node"
 	nodeUserPrefix = nodeUser + ":"
@@ -61,21 +64,32 @@ var (
 
 type reconciler struct {
 	client.Client
+	log *zap.SugaredLogger
 	// Have to use the typed client because csr approval is a subresource
 	// the dynamic client does not approve
 	certClient certificatesv1client.CertificateSigningRequestInterface
 }
 
-func Add(mgr manager.Manager) error {
+func Add(mgr manager.Manager, log *zap.SugaredLogger) error {
 	certClient, err := certificatesv1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to create certificate client: %w", err)
 	}
 
-	rec := &reconciler{Client: mgr.GetClient(), certClient: certClient.CertificateSigningRequests()}
+	rec := &reconciler{
+		Client:     mgr.GetClient(),
+		log:        log.Named(ControllerName),
+		certClient: certClient.CertificateSigningRequests(),
+	}
 	watchType := &certificatesv1.CertificateSigningRequest{}
 
-	cntrl, err := controller.New(ControllerName, mgr, controller.Options{Reconciler: rec})
+	cntrl, err := controller.New(ControllerName, mgr, controller.Options{
+		Reconciler: rec,
+		LogConstructor: func(request *reconcile.Request) logr.Logger {
+			// we log ourselves
+			return zapr.NewLogger(zap.NewNop())
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to construct controller: %w", err)
 	}
@@ -84,28 +98,32 @@ func Add(mgr manager.Manager) error {
 }
 
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	err := r.reconcile(ctx, request)
-	if err != nil {
-		klog.Errorf("Reconciliation of request %s failed: %v", request.NamespacedName.String(), err)
-	}
-	return reconcile.Result{}, err
-}
+	log := r.log.With("csr", request.NamespacedName)
+	log.Debug("Reconciling")
 
-func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) error {
 	// Get the CSR object
 	csr := &certificatesv1.CertificateSigningRequest{}
 	if err := r.Get(ctx, request.NamespacedName, csr); err != nil {
 		if kerrors.IsNotFound(err) {
-			return nil
+			return reconcile.Result{}, nil
 		}
-		return err
+		log.Errorw("Failed to get CertificateSigningRequest", zap.Error(err))
+		return reconcile.Result{}, err
 	}
-	klog.V(4).Infof("Reconciling CSR %s", csr.ObjectMeta.Name)
 
+	err := r.reconcile(ctx, log, csr)
+	if err != nil {
+		log.Errorw("Reconciling failed", zap.Error(err))
+	}
+
+	return reconcile.Result{}, err
+}
+
+func (r *reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, csr *certificatesv1.CertificateSigningRequest) error {
 	// If CSR is approved, skip it
 	for _, condition := range csr.Status.Conditions {
 		if condition.Type == certificatesv1.CertificateApproved {
-			klog.V(4).Infof("CSR %s already approved, skipping reconciling", csr.ObjectMeta.Name)
+			log.Debug("CSR already approved, skipping reconciling")
 			return nil
 		}
 	}
@@ -113,7 +131,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	// Validate the CSR object and get the node name
 	nodeName, err := r.validateCSRObject(csr)
 	if err != nil {
-		klog.V(4).Infof("Skipping reconciling CSR '%s' because CSR object is not valid: %v", csr.ObjectMeta.Name, err)
+		log.Debugw("Skipping reconciling CSR because object is invalid", zap.Error(err))
 		return nil
 	}
 
@@ -145,7 +163,8 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 	}
 
 	// Approve CSR
-	klog.V(4).Infof("Approving CSR %s", csr.ObjectMeta.Name)
+	nodeLog := log.With("node", nodeName)
+	nodeLog.Debug("Approving CSR")
 	approvalCondition := certificatesv1.CertificateSigningRequestCondition{
 		Type:   certificatesv1.CertificateApproved,
 		Reason: "machine-controller NodeCSRApprover controller approved node serving cert",
@@ -157,7 +176,7 @@ func (r *reconciler) reconcile(ctx context.Context, request reconcile.Request) e
 		return fmt.Errorf("failed to approve CSR %q: %w", csr.Name, err)
 	}
 
-	klog.Infof("Successfully approved CSR %s", csr.ObjectMeta.Name)
+	nodeLog.Info("Successfully approved CSR")
 	return nil
 }
 

@@ -26,12 +26,12 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
 )
 
 const (
@@ -70,7 +70,7 @@ func connectComputeService(cfg *config) (*service, error) {
 }
 
 // networkInterfaces returns the configured network interfaces for an instance creation.
-func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface, error) {
+func (svc *service) networkInterfaces(log *zap.SugaredLogger, cfg *config) ([]*compute.NetworkInterface, error) {
 	network := cfg.network
 
 	if cfg.network == "" && cfg.subnetwork == "" {
@@ -82,7 +82,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 		Subnetwork: cfg.subnetwork,
 	}
 
-	klog.Infof("using network:%s subnetwork: %s", cfg.network, cfg.subnetwork)
+	log.Infow("Network configuration", "network", cfg.network, "subnetwork", cfg.subnetwork)
 
 	if cfg.assignPublicIPAddress {
 		ifc.AccessConfigs = []*compute.AccessConfig{
@@ -109,7 +109,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 				},
 			}
 		} else {
-			klog.Infof("IP family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetIPFamily())
+			log.Infow("IP family doesn't specify dual stack", "family", cfg.providerConfig.Network.GetIPFamily())
 		}
 	}
 	return []*compute.NetworkInterface{ifc}, nil

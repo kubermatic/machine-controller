@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"sync"
 
+	"go.uber.org/zap"
+
 	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
 	"github.com/kubermatic/machine-controller/pkg/node/nodemanager"
 
@@ -30,68 +32,68 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NodeEviction struct {
 	nodeManager *nodemanager.NodeManager
-	ctx         context.Context
 	nodeName    string
 	kubeClient  kubernetes.Interface
 }
 
 // New returns a new NodeEviction.
-func New(ctx context.Context, nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeEviction {
+func New(nodeName string, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface) *NodeEviction {
 	return &NodeEviction{
-		nodeManager: nodemanager.New(ctx, client, nodeName),
-		ctx:         ctx,
+		nodeManager: nodemanager.New(client, nodeName),
 		nodeName:    nodeName,
 		kubeClient:  kubeClient,
 	}
 }
 
 // Run executes the eviction.
-func (ne *NodeEviction) Run() (bool, error) {
-	node, err := ne.nodeManager.GetNode()
+func (ne *NodeEviction) Run(ctx context.Context, log *zap.SugaredLogger) (bool, error) {
+	nodeLog := log.With("node", ne.nodeName)
+
+	node, err := ne.nodeManager.GetNode(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get node from lister: %w", err)
 	}
 	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
-		klog.V(3).Infof("Skipping eviction for node %s as it has a %s annotation", ne.nodeName, evictiontypes.SkipEvictionAnnotationKey)
+		nodeLog.Info("Skipping eviction for node as it has a %s annotation", evictiontypes.SkipEvictionAnnotationKey)
 		return false, nil
 	}
-	klog.V(3).Infof("Starting to evict node %s", ne.nodeName)
 
-	if err := ne.nodeManager.CordonNode(node); err != nil {
+	nodeLog.Info("Starting to evict node")
+
+	if err := ne.nodeManager.CordonNode(ctx, node); err != nil {
 		return false, fmt.Errorf("failed to cordon node %s: %w", ne.nodeName, err)
 	}
-	klog.V(6).Infof("Successfully cordoned node %s", ne.nodeName)
+	nodeLog.Debug("Successfully cordoned node")
 
-	podsToEvict, err := ne.getFilteredPods()
+	podsToEvict, err := ne.getFilteredPods(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get Pods to evict for node %s: %w", ne.nodeName, err)
 	}
-	klog.V(6).Infof("Found %v pods to evict for node %s", len(podsToEvict), ne.nodeName)
+	nodeLog.Debugf("Found %d pods to evict for node", len(podsToEvict))
 
 	if len(podsToEvict) == 0 {
 		return false, nil
 	}
 
 	// If we arrived here we have pods to evict, so tell the controller to retry later
-	if errs := ne.evictPods(podsToEvict); len(errs) > 0 {
+	if errs := ne.evictPods(ctx, nodeLog, podsToEvict); len(errs) > 0 {
 		return true, fmt.Errorf("failed to evict pods, errors encountered: %v", errs)
 	}
-	klog.V(6).Infof("Successfully created evictions for all pods on node %s!", ne.nodeName)
+	nodeLog.Debug("Successfully created evictions for all pods on node")
 
 	return true, nil
 }
 
-func (ne *NodeEviction) getFilteredPods() ([]corev1.Pod, error) {
+func (ne *NodeEviction) getFilteredPods(ctx context.Context) ([]corev1.Pod, error) {
 	// The lister-backed client from the mgr automatically creates a lister for all objects requested through it.
 	// We explicitly do not want that for pods, hence we have to use the kubernetes core client
 	// TODO @alvaroaleman: Add source code ref for this
-	pods, err := ne.kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ne.ctx, metav1.ListOptions{
+	pods, err := ne.kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{
 		FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": ne.nodeName}).String(),
 	})
 	if err != nil {
@@ -115,7 +117,7 @@ func (ne *NodeEviction) getFilteredPods() ([]corev1.Pod, error) {
 	return filteredPods, nil
 }
 
-func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
+func (ne *NodeEviction) evictPods(ctx context.Context, log *zap.SugaredLogger, pods []corev1.Pod) []error {
 	errCh := make(chan error, len(pods))
 	retErrs := []error{}
 
@@ -131,9 +133,9 @@ func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
 				if isDone {
 					return
 				}
-				err := ne.evictPod(&p)
+				err := ne.evictPod(ctx, &p)
 				if err == nil || kerrors.IsNotFound(err) {
-					klog.V(6).Infof("Successfully evicted pod %s/%s on node %s", p.Namespace, p.Name, ne.nodeName)
+					log.Debugw("Successfully evicted pod on node", "pod", ctrlruntimeclient.ObjectKeyFromObject(&p))
 					return
 				} else if kerrors.IsTooManyRequests(err) {
 					// PDB prevents eviction, return and make the controller retry later
@@ -151,22 +153,22 @@ func (ne *NodeEviction) evictPods(pods []corev1.Pod) []error {
 
 	select {
 	case <-finished:
-		klog.V(6).Infof("All goroutines for eviction pods on node %s finished", ne.nodeName)
+		log.Debug("All goroutines for eviction pods on node finished")
 		break
 	case err := <-errCh:
-		klog.V(6).Infof("Got an error from eviction goroutine for node %s: %v", ne.nodeName, err)
+		log.Debugw("Got an error from eviction goroutine for node", zap.Error(err))
 		retErrs = append(retErrs, err)
 	}
 
 	return retErrs
 }
 
-func (ne *NodeEviction) evictPod(pod *corev1.Pod) error {
+func (ne *NodeEviction) evictPod(ctx context.Context, pod *corev1.Pod) error {
 	eviction := &policy.Eviction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
 		},
 	}
-	return ne.kubeClient.PolicyV1beta1().Evictions(eviction.Namespace).Evict(ne.ctx, eviction)
+	return ne.kubeClient.PolicyV1beta1().Evictions(eviction.Namespace).Evict(ctx, eviction)
 }

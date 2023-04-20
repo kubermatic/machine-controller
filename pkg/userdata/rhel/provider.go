@@ -27,6 +27,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver/v3"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -37,8 +38,8 @@ import (
 type Provider struct{}
 
 // UserData renders user-data template to string.
-func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
-	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
+func (p Provider) UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (string, error) {
+	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap(log)).Parse(userDataTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse user-data template: %w", err)
 	}
@@ -237,7 +238,7 @@ write_files:
     grep IPV6INIT $IFC_CFG_FILE && sed -i '/IPV6INIT*/c IPV6INIT=yes' $IFC_CFG_FILE || echo "IPV6INIT=yes" >> $IFC_CFG_FILE
     grep DHCPV6C $IFC_CFG_FILE && sed -i '/DHCPV6C*/c DHCPV6C=yes' $IFC_CFG_FILE || echo "DHCPV6C=yes" >> $IFC_CFG_FILE
     grep IPV6_AUTOCONF $IFC_CFG_FILE && sed -i '/IPV6_AUTOCONF*/c IPV6_AUTOCONF=yes' $IFC_CFG_FILE || echo "IPV6_AUTOCONF=yes" >> $IFC_CFG_FILE
-              
+
     # Restart NetworkManager to apply for IPv6 configs
     systemctl restart NetworkManager
     # Let NetworkManager apply the DHCPv6 configs

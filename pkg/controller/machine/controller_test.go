@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
@@ -35,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -43,7 +43,7 @@ import (
 
 func init() {
 	if err := clusterv1alpha1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add clusterv1alpha1 api to scheme: %v", err)
+		panic(fmt.Sprintf("failed to add clusterv1alpha1 api to scheme: %v", err))
 	}
 }
 
@@ -202,7 +202,7 @@ func TestController_GetNode(t *testing.T) {
 
 			reconciler := Reconciler{client: client}
 
-			node, exists, err := reconciler.getNode(ctx, test.instance, test.provider)
+			node, exists, err := reconciler.getNode(ctx, zap.NewNop().Sugar(), test.instance, test.provider)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}
@@ -314,7 +314,7 @@ func TestControllerDeletesMachinesOnJoinTimeout(t *testing.T) {
 				joinClusterTimeout: test.joinTimeoutConfig,
 			}
 
-			if _, err := reconciler.ensureNodeOwnerRef(ctx, instance, machine, providerConfig); err != nil {
+			if _, err := reconciler.ensureNodeOwnerRef(ctx, zap.NewNop().Sugar(), instance, machine, providerConfig); err != nil {
 				t.Fatalf("failed to call ensureNodeOwnerRef: %v", err)
 			}
 
@@ -467,7 +467,7 @@ func TestControllerShouldEvict(t *testing.T) {
 				skipEvictionAfter: 2 * time.Hour,
 			}
 
-			shouldEvict, err := reconciler.shouldEvict(ctx, test.machine)
+			shouldEvict, err := reconciler.shouldEvict(ctx, zap.NewNop().Sugar(), test.machine)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -591,6 +591,8 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 		},
 	}
 
+	log := zap.NewNop().Sugar()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -617,12 +619,12 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 				providerData: providerData,
 			}
 
-			nodes, err := reconciler.retrieveNodesRelatedToMachine(ctx, test.machine)
+			nodes, err := reconciler.retrieveNodesRelatedToMachine(ctx, log, test.machine)
 			if err != nil {
 				return
 			}
 
-			err = reconciler.deleteNodeForMachine(ctx, nodes, test.machine)
+			err = reconciler.deleteNodeForMachine(ctx, log, nodes, test.machine)
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Errorf("expected to get %v instead got: %v", test.err, err)
 			}

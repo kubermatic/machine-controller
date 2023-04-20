@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/vmware/govmomi/simulator"
+	"go.uber.org/zap"
 
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -178,7 +179,7 @@ func TestValidate(t *testing.T) {
 			tt.args.URL = vSphereURL
 			m := cloudprovidertesting.Creator{Name: "test", Namespace: "vsphere", ProviderSpecGetter: tt.args.rawProviderSpec}.
 				CreateMachine(t)
-			if err := p.Validate(context.Background(), m.Spec); (err != nil) != tt.wantErr {
+			if err := p.Validate(context.Background(), zap.NewNop().Sugar(), m.Spec); (err != nil) != tt.wantErr {
 				t.Errorf("provider.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

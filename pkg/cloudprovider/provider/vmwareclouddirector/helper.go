@@ -177,12 +177,12 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	task, err := client.VCDClient.Client.ExecuteTaskRequest(apiEndpoint.String(), http.MethodPost,
 		types.MimeRecomposeVappParams, "error instantiating a new VM: %s", vAppRecomposition)
 	if err != nil {
-		return fmt.Errorf("unable to execute API call to create VM: %w", err)
+		return fmt.Errorf("failed to execute API call to create VM: %w", err)
 	}
 
 	// Wait for VM to be created this should take around 1-3 minutes
 	if err = task.WaitTaskCompletion(); err != nil {
-		return fmt.Errorf("error waiting for VM creation task to complete: %w", err)
+		return fmt.Errorf("failed to wait for VM creation task to complete: %w", err)
 	}
 	return nil
 }

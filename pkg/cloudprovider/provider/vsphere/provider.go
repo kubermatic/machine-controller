@@ -30,6 +30,7 @@ import (
 	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -43,7 +44,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/klog"
 )
 
 type provider struct {
@@ -110,7 +110,7 @@ func (vsphereServer Server) Status() instance.Status {
 // Ensures that provider implements Provider interface.
 var _ cloudprovidertypes.Provider = &provider{}
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
@@ -205,7 +205,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &c, pconfig, rawConfig, nil
 }
 
-func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	config, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to get config: %w", err)
@@ -224,7 +224,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		}
 		defer restAPISession.Logout(ctx)
 		tagManager := tags.NewManager(restAPISession.Client)
-		klog.V(3).Info("Found tags")
+		log.Debug("Found tags")
 		for _, tag := range config.Tags {
 			if tag.ID == "" && tag.Name == "" {
 				return fmt.Errorf("either tag id or name must be specified")
@@ -236,7 +236,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 				return fmt.Errorf("can't get the category with ID %s, %w", tag.CategoryID, err)
 			}
 		}
-		klog.V(3).Info("Tag validation passed")
+		log.Debug("Tag validation passed")
 	}
 
 	// Only and only one between datastore and datastre cluster should be
@@ -295,10 +295,10 @@ func machineInvalidConfigurationTerminalError(err error) error {
 	}
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	vm, err := p.create(ctx, machine, userdata)
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+	vm, err := p.create(ctx, log, machine, userdata)
 	if err != nil {
-		_, cleanupErr := p.Cleanup(ctx, machine, data)
+		_, cleanupErr := p.Cleanup(ctx, log, machine, data)
 		if cleanupErr != nil {
 			return nil, fmt.Errorf("cleaning up failed with err %w after creation failed with err %w", cleanupErr, err)
 		}
@@ -307,7 +307,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return vm, nil
 }
 
-func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
@@ -324,7 +324,9 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		containerLinuxUserdata = userdata
 	}
 
-	virtualMachine, err := createClonedVM(ctx,
+	virtualMachine, err := createClonedVM(
+		ctx,
+		log,
 		machine.Spec.Name,
 		config,
 		session,
@@ -335,7 +337,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to create cloned vm: '%w'", err))
 	}
 
-	if err := attachTags(ctx, config, virtualMachine); err != nil {
+	if err := attachTags(ctx, log, config, virtualMachine); err != nil {
 		return nil, fmt.Errorf("failed to attach tags: %w", err)
 	}
 
@@ -352,7 +354,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 			}
 		}()
 
-		if err := uploadAndAttachISO(ctx, session, virtualMachine, localUserdataIsoFilePath); err != nil {
+		if err := uploadAndAttachISO(ctx, log, session, virtualMachine, localUserdataIsoFilePath); err != nil {
 			// Destroy VM to avoid a leftover.
 			destroyTask, vmErr := virtualMachine.Destroy(ctx)
 			if vmErr != nil {
@@ -377,7 +379,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, id: virtualMachine.Reference().Value, uuid: virtualMachine.UUID(ctx)}, nil
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse config: %w", err)
@@ -397,7 +399,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		return false, fmt.Errorf("failed to get instance from vSphere: %w", err)
 	}
 
-	if err := detachTags(ctx, config, virtualMachine); err != nil {
+	if err := detachTags(ctx, log, config, virtualMachine); err != nil {
 		return false, fmt.Errorf("failed to delete tags: %w", err)
 	}
 
@@ -467,11 +469,11 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		}
 	}
 
-	klog.V(2).Infof("Successfully destroyed vm %s", virtualMachine.Name())
+	log.Infow("Successfully destroyed vm", "vm", virtualMachine.Name())
 	return true, nil
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	config, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
@@ -529,13 +531,13 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, da
 			}
 		}
 	} else {
-		klog.V(3).Infof("Can't fetch the IP addresses for machine %s, the VMware guest utils are not running yet. This might take a few minutes", machine.Spec.Name)
+		log.Debug("Can't fetch the IP addresses for machine, the VMware guest utils are not running yet. This might take a few minutes")
 	}
 
 	return Server{name: virtualMachine.Name(), status: instance.StatusRunning, addresses: addresses, id: virtualMachine.Reference().Value, uuid: virtualMachine.UUID(ctx)}, nil
 }
 
-func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ ktypes.UID) error {
 	return nil
 }
 

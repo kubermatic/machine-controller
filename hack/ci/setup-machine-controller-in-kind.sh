@@ -54,6 +54,9 @@ if [ ! -f machine-controller-deployed ]; then
     sed -i "s;-use-osm=true;-use-osm=false;g" examples/machine-controller.yaml
   fi
 
+  # e2e tests logs are primarily read by humans, if ever
+  sed -i 's/log-format=json/log-format=console/g' examples/machine-controller.yaml
+
   make deploy
   touch machine-controller-deployed
 

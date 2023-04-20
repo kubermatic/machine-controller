@@ -24,11 +24,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
 )
 
 // deleteInterfacesByMachineUID will remove all network interfaces tagged with the specific machine's UID.
@@ -194,8 +194,8 @@ func getDisksByMachineUID(ctx context.Context, disksClient *compute.DisksClient,
 	return matchingDisks, nil
 }
 
-func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, ipVersion network.IPVersion, sku network.PublicIPAddressSkuName, ipAllocationMethod network.IPAllocationMethod, machineUID types.UID, c *config) (*network.PublicIPAddress, error) {
-	klog.Infof("Creating public IP %q", ipName)
+func createOrUpdatePublicIPAddress(ctx context.Context, log *zap.SugaredLogger, ipName string, ipVersion network.IPVersion, sku network.PublicIPAddressSkuName, ipAllocationMethod network.IPAllocationMethod, machineUID types.UID, c *config) (*network.PublicIPAddress, error) {
+	log.Infow("Creating public IP", "name", ipName)
 	ipClient, err := getIPClient(c)
 	if err != nil {
 		return nil, err
@@ -229,7 +229,7 @@ func createOrUpdatePublicIPAddress(ctx context.Context, ipName string, ipVersion
 		return nil, fmt.Errorf("failed to create public IP address: %w", err)
 	}
 
-	klog.Infof("Fetching info for IP address %q", ipName)
+	log.Infow("Fetching info for IP address", "name", ipName)
 	ip, err := getPublicIPAddress(ctx, ipName, c.ResourceGroup, ipClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch info about public IP %q: %w", ipName, err)
@@ -256,14 +256,14 @@ func getSubnet(ctx context.Context, c *config) (network.Subnet, error) {
 	return subnetsClient.Get(ctx, c.VNetResourceGroup, c.VNetName, c.SubnetName, "")
 }
 
-func getSKU(ctx context.Context, c *config) (compute.ResourceSku, error) {
+func getSKU(ctx context.Context, log *zap.SugaredLogger, c *config) (compute.ResourceSku, error) {
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
 	cacheKey := fmt.Sprintf("%s-%s", c.Location, c.VMSize)
 	cacheSku, found := cache.Get(cacheKey)
 	if found {
-		klog.V(3).Info("found SKU in cache!")
+		log.Debugw("Found SKU in cache", "key", cacheKey, "sku", cacheSku)
 		return cacheSku.(compute.ResourceSku), nil
 	}
 
@@ -319,7 +319,7 @@ func getVirtualNetwork(ctx context.Context, c *config) (network.VirtualNetwork, 
 	return virtualNetworksClient.Get(ctx, c.VNetResourceGroup, c.VNetName, "")
 }
 
-func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *network.PublicIPAddress, ipFamily util.IPFamily, enableAcceleratedNetworking *bool) (*network.Interface, error) {
+func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger, ifName string, machineUID types.UID, config *config, publicIP, publicIPv6 *network.PublicIPAddress, ipFamily util.IPFamily, enableAcceleratedNetworking *bool) (*network.Interface, error) {
 	ifClient, err := getInterfacesClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interfaces client: %w", err)
@@ -377,7 +377,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 		}
 		ifSpec.NetworkSecurityGroup = &secGroup
 	}
-	klog.Infof("Creating/Updating public network interface %q", ifName)
+	log.Infow("Creating/Updating public network interface", "interface", ifName)
 	future, err := ifClient.CreateOrUpdate(ctx, config.ResourceGroup, ifName, ifSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create interface: %w", err)
@@ -393,7 +393,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, ifName string, machineU
 		return nil, fmt.Errorf("failed to get interface creation result: %w", err)
 	}
 
-	klog.Infof("Fetching info about network interface %q", ifName)
+	log.Infow("Fetching info about network interface", "interface", ifName)
 	iface, err := ifClient.Get(ctx, config.ResourceGroup, ifName, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch info about interface %q: %w", ifName, err)

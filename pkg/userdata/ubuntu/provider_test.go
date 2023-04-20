@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
@@ -670,7 +671,7 @@ func TestUserDataGeneration(t *testing.T) {
 				KubeletFeatureGates:      kubeletFeatureGates,
 				ContainerRuntime:         containerRuntimeConfig,
 			}
-			s, err := provider.UserData(req)
+			s, err := provider.UserData(zap.NewNop().Sugar(), req)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/digitalocean/godo"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
@@ -42,7 +43,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
 )
 
 type provider struct {
@@ -162,11 +162,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	return &c, pconfig, err
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -276,7 +276,7 @@ func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (st
 	return newDoKey.Fingerprint, nil
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -294,7 +294,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	defer func() {
 		_, err := client.Keys.DeleteByFingerprint(ctx, fingerprint)
 		if err != nil {
-			klog.Errorf("failed to remove a temporary ssh key with fingerprint = %v, due to = %v", fingerprint, err)
+			log.Errorw("Failed to remove a temporary ssh key", "fingerprint", fingerprint, zap.Error(err))
 		}
 	}()
 
@@ -324,6 +324,8 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, doStatusAndErrToTerminalError(rsp.StatusCode, err)
 	}
 
+	dropletLog := log.With("droplet", droplet.ID)
+
 	//We need to wait until the droplet really got created as tags will be only applied when the droplet is running
 	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
 		newDroplet, rsp, err := client.Droplets.Get(ctx, droplet.ID)
@@ -334,20 +336,20 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 			}
 			//Well just wait 10 sec and hope the droplet got started by then...
 			time.Sleep(createCheckFailedWaitPeriod)
-			return false, fmt.Errorf("droplet (id='%d') got created but we failed to fetch its status", droplet.ID)
+			return false, fmt.Errorf("droplet %q got created but we failed to fetch its status", droplet.ID)
 		}
 		if sets.NewString(newDroplet.Tags...).Has(string(machine.UID)) {
-			klog.V(6).Infof("droplet (id='%d') got fully created", droplet.ID)
+			dropletLog.Debug("Droplet got fully created")
 			return true, nil
 		}
-		klog.V(6).Infof("waiting until droplet (id='%d') got fully created...", droplet.ID)
+		dropletLog.Debug("Waiting until droplet got fully created...")
 		return false, nil
 	})
 
 	return &doInstance{droplet: droplet}, err
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	instance, err := p.get(ctx, machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
@@ -378,7 +380,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	return false, nil
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return p.get(ctx, machine)
 }
 
@@ -436,7 +438,7 @@ func (p *provider) listDroplets(ctx context.Context, token string) ([]godo.Dropl
 	return result, nil
 }
 
-func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *provider) MigrateUID(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to decode providerconfig: %w", err)

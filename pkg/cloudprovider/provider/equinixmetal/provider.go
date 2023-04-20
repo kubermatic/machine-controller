@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/packethost/packngo"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -38,7 +39,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
 )
 
 const (
@@ -169,7 +169,7 @@ func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.De
 	return device, client, nil
 }
 
-func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, _, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -240,7 +240,7 @@ func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 	return nil
 }
 
-func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -281,8 +281,8 @@ func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, d
 	return &metalDevice{device: device}, nil
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.Get(ctx, machine, data)
+func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.Get(ctx, log, machine, data)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
@@ -307,7 +307,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	return false, nil
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	_, rawConfig, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, err
@@ -320,7 +320,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	device, _, err := p.getMetalDevice(machine)
 	if err != nil {
 		return nil, err
@@ -332,13 +332,13 @@ func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, _ *c
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machine, newID types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newID types.UID) error {
 	device, client, err := p.getMetalDevice(machine)
 	if err != nil {
 		return err
 	}
 	if device == nil {
-		klog.Infof("No instance exists for machine %s", machine.Name)
+		log.Info("No instance exists for machine")
 		return nil
 	}
 
@@ -354,7 +354,7 @@ func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machin
 	// create a new UID label
 	tags = append(tags, generateTag(string(newID)))
 
-	klog.Infof("Setting UID label for machine %s", machine.Name)
+	log.Info("Setting UID label for machine")
 	dur := &packngo.DeviceUpdateRequest{
 		Tags: &tags,
 	}
@@ -362,7 +362,7 @@ func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machin
 	if err != nil {
 		return metalErrorToTerminalError(err, response, "failed to update UID label")
 	}
-	klog.Infof("Successfully set UID label for machine %s", machine.Name)
+	log.Info("Successfully set UID label for machine")
 
 	return nil
 }

@@ -18,17 +18,16 @@ package machineset
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,7 +36,7 @@ const (
 	statusUpdateRetries = 1
 )
 
-func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, ms *v1alpha1.MachineSet, filteredMachines []*v1alpha1.Machine) v1alpha1.MachineSetStatus {
+func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, log *zap.SugaredLogger, ms *v1alpha1.MachineSet, filteredMachines []*v1alpha1.Machine) v1alpha1.MachineSetStatus {
 	newStatus := ms.Status
 	// Count the number of machines that have labels matching the labels of the machine
 	// template of the replica set, the matching machines may have more
@@ -54,7 +53,7 @@ func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, ms *v1alpha1.
 		}
 		node, err := c.getMachineNode(ctx, machine)
 		if err != nil {
-			klog.V(4).Infof("Unable to get node for machine %v, %v", machine.Name, err)
+			log.Debugw("Failed to get node for machine", "machine", client.ObjectKeyFromObject(machine), zap.Error(err))
 			continue
 		}
 		if isNodeReady(node) {
@@ -73,7 +72,7 @@ func (c *ReconcileMachineSet) calculateStatus(ctx context.Context, ms *v1alpha1.
 }
 
 // updateMachineSetStatus attempts to update the Status.Replicas of the given MachineSet, with a single GET/PUT retry.
-func updateMachineSetStatus(ctx context.Context, c client.Client, ms *v1alpha1.MachineSet, newStatus v1alpha1.MachineSetStatus) (*v1alpha1.MachineSet, error) {
+func updateMachineSetStatus(ctx context.Context, log *zap.SugaredLogger, c client.Client, ms *v1alpha1.MachineSet, newStatus v1alpha1.MachineSetStatus) (*v1alpha1.MachineSet, error) {
 	// This is the steady state. It happens when the MachineSet doesn't have any expectations, since
 	// we do a periodic relist every 30s. If the generations differ but the replicas are
 	// the same, a caller might've resized to the same replica count.
@@ -97,12 +96,20 @@ func updateMachineSetStatus(ctx context.Context, c client.Client, ms *v1alpha1.M
 		if ms.Spec.Replicas != nil {
 			replicas = *ms.Spec.Replicas
 		}
-		klog.V(4).Infof(fmt.Sprintf("Updating status for %v: %s/%s, ", ms.Kind, ms.Namespace, ms.Name) +
-			fmt.Sprintf("replicas %d->%d (need %d), ", ms.Status.Replicas, newStatus.Replicas, replicas) +
-			fmt.Sprintf("fullyLabeledReplicas %d->%d, ", ms.Status.FullyLabeledReplicas, newStatus.FullyLabeledReplicas) +
-			fmt.Sprintf("readyReplicas %d->%d, ", ms.Status.ReadyReplicas, newStatus.ReadyReplicas) +
-			fmt.Sprintf("availableReplicas %d->%d, ", ms.Status.AvailableReplicas, newStatus.AvailableReplicas) +
-			fmt.Sprintf("sequence No: %v->%v", ms.Status.ObservedGeneration, newStatus.ObservedGeneration))
+
+		log.Debugw("Updating status",
+			"specreplicas", replicas,
+			"oldreplicas", ms.Status.Replicas,
+			"newreplicas", newStatus.Replicas,
+			"oldlabeledreplicas", ms.Status.FullyLabeledReplicas,
+			"newlabeledreplicas", newStatus.FullyLabeledReplicas,
+			"oldreadyreplicas", ms.Status.ReadyReplicas,
+			"newreadyreplicas", newStatus.ReadyReplicas,
+			"oldavailablereplicas", ms.Status.AvailableReplicas,
+			"newavailablereplicas", newStatus.AvailableReplicas,
+			"oldobservedgeneration", ms.Status.ObservedGeneration,
+			"newobservedgeneration", newStatus.ObservedGeneration,
+		)
 
 		ms.Status = newStatus
 		updateErr = c.Status().Update(ctx, ms)

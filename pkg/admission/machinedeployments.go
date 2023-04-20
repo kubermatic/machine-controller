@@ -25,6 +25,7 @@ import (
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
@@ -33,6 +34,9 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 	machineDeploymentOriginal := machineDeployment.DeepCopy()
+
+	log := ad.log.With("machinedeployment", ctrlruntimeclient.ObjectKeyFromObject(&machineDeployment))
+	log.Debug("Defaulting and validating machine deployment")
 
 	machineDeploymentDefaultingFunction(&machineDeployment)
 
@@ -62,5 +66,5 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 		}
 	}
 
-	return createAdmissionResponse(machineDeploymentOriginal, &machineDeployment)
+	return createAdmissionResponse(log, machineDeploymentOriginal, &machineDeployment)
 }

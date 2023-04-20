@@ -33,7 +33,7 @@ import (
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/klog"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // BypassSpecNoModificationRequirementAnnotation is used to bypass the "no machine.spec modification" allowed
@@ -48,7 +48,8 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 	}
 
 	machineOriginal := machine.DeepCopy()
-	klog.V(3).Infof("Defaulting and validating machine %s/%s", machine.Namespace, machine.Name)
+	log := ad.log.With("machine", ctrlruntimeclient.ObjectKeyFromObject(&machine))
+	log.Debug("Defaulting and validating machine")
 
 	// Mutating .Spec is never allowed
 	// Only hidden exception: the machine-controller may set the .Spec.Name to .Metadata.Name
@@ -109,7 +110,7 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 		machine.Labels[controllerutil.LegacyMachineControllerUserDataLabel] = "true"
 	}
 
-	return createAdmissionResponse(machineOriginal, &machine)
+	return createAdmissionResponse(log, machineOriginal, &machine)
 }
 
 func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec *clusterv1alpha1.MachineSpec) error {
@@ -177,13 +178,13 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %w", err)
 	}
 
-	defaultedSpec, err := prov.AddDefaults(*spec)
+	defaultedSpec, err := prov.AddDefaults(ad.log, *spec)
 	if err != nil {
 		return fmt.Errorf("failed to default machineSpec: %w", err)
 	}
 	spec = &defaultedSpec
 
-	if err := prov.Validate(ctx, *spec); err != nil {
+	if err := prov.Validate(ctx, ad.log, *spec); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 

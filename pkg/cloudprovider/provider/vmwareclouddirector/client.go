@@ -82,7 +82,7 @@ func (c *Client) GetAuthenticatedClient() (*govcd.VCDClient, error) {
 	// Ensure that `/api` suffix exists in the cloud director URL.
 	apiEndpoint, err := url.Parse(c.Auth.URL)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse url '%s': %w", c.Auth.URL, err)
+		return nil, fmt.Errorf("failed to parse url '%s': %w", c.Auth.URL, err)
 	}
 	if !strings.HasSuffix(c.Auth.URL, "/api") {
 		apiEndpoint.Path = path.Join(apiEndpoint.Path, "api")

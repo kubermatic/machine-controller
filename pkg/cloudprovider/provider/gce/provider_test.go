@@ -24,6 +24,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
@@ -168,7 +170,7 @@ func TestValidate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := p.Validate(context.Background(), test.mspec)
+			err := p.Validate(context.Background(), zap.NewNop().Sugar(), test.mspec)
 			if (err != nil) != test.expectErr {
 				t.Fatalf("expectedErr: %t, got: %v", test.expectErr, err)
 			}

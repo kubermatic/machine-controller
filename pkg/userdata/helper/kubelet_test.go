@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
@@ -113,6 +114,7 @@ func TestKubeletSystemdUnit(t *testing.T) {
 		name := fmt.Sprintf("kublet_systemd_unit_%s", test.name)
 		t.Run(name, func(t *testing.T) {
 			out, err := KubeletSystemdUnit(
+				zap.NewNop().Sugar(),
 				defaultTo(test.containerRuntime, "docker"),
 				test.version.String(),
 				test.cloudProvider,

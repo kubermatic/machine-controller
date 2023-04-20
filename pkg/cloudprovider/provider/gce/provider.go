@@ -29,6 +29,7 @@ import (
 
 	"cloud.google.com/go/logging"
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
+	"go.uber.org/zap"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/googleapi"
 
@@ -84,7 +85,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) *Provider {
 }
 
 // AddDefaults reads the MachineSpec and applies defaults for provider specific fields.
-func (p *Provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *Provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	// Read cloud provider spec.
 	cpSpec, _, err := newCloudProviderSpec(spec.ProviderSpec)
 	if err != nil {
@@ -102,7 +103,7 @@ func (p *Provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 }
 
 // Validate checks the given machine's specification.
-func (p *Provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *Provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, spec.ProviderSpec)
 	if err != nil {
@@ -143,7 +144,7 @@ func (p *Provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec)
 }
 
 // Get retrieves a node instance that is associated with the given machine.
-func (p *Provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *Provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return p.get(machine)
 }
 
@@ -210,7 +211,7 @@ func (p *Provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 }
 
 // Create inserts a cloud instance according to the given machine.
-func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *Provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
@@ -222,7 +223,7 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
 	// Create Google compute instance spec and insert it.
-	networkInterfaces, err := svc.networkInterfaces(cfg)
+	networkInterfaces, err := svc.networkInterfaces(log, cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
@@ -299,11 +300,11 @@ func (p *Provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
 	// Retrieve it to get a full qualified instance.
-	return p.Get(ctx, machine, data)
+	return p.Get(ctx, log, machine, data)
 }
 
 // Cleanup deletes the instance associated with the machine and all associated resources.
-func (p *Provider) Cleanup(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *Provider) Cleanup(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
@@ -354,7 +355,7 @@ func (p *Provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 
 // MigrateUID updates the UID of an instance after the controller migrates types
 // and the UID of the machine object changed.
-func (p *Provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *Provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {

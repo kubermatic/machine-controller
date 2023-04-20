@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -158,8 +160,8 @@ fi
 
 // SafeDownloadBinariesScript returns the script which is responsible to
 // download and check checksums of all required binaries.
-func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
-	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(safeDownloadBinariesTpl)
+func SafeDownloadBinariesScript(log *zap.SugaredLogger, kubeVersion string) (string, error) {
+	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap(log)).Parse(safeDownloadBinariesTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse download-binaries template: %w", err)
 	}
@@ -195,8 +197,8 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 
 // DownloadBinariesScript returns the script which is responsible to download
 // all required binaries.
-func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string, error) {
-	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(downloadBinariesTpl)
+func DownloadBinariesScript(log *zap.SugaredLogger, kubeletVersion string, downloadKubelet bool) (string, error) {
+	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap(log)).Parse(downloadBinariesTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse download-binaries template: %w", err)
 	}
