@@ -32,11 +32,11 @@ spec:
             vcpu: 2
             memory: 1024
 
-            image: "<< OS_IMAGE >>"
-            datastore: "<< YOUR_DATASTORE_NAME >>"
+            image: "<< ONE_IMAGE >>"
+            datastore: "<< ONE_DATASTORE_NAME >>"
             diskSize: 51200 # MB
 
-            network: "<< YOUR_NETWORK_NAME >>"
+            network: "<< ONE_NETWORK_NAME >>"
 
             enableVNC: true
           operatingSystem: "<< OS_NAME >>"

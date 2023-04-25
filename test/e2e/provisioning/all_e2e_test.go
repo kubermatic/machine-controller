@@ -994,8 +994,8 @@ func TestOpenNebulaProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< ONE_ENDPOINT >>=%s", oneEndpoint),
 		fmt.Sprintf("<< ONE_USERNAME >>=%s", oneUsername),
 		fmt.Sprintf("<< ONE_PASSWORD >>=%s", onePassword),
-		fmt.Sprintf("<< YOUR_DATASTORE_NAME >>=%s", oneDatastore),
-		fmt.Sprintf("<< YOUR_NETWORK_NAME >>=%s", oneNetwork),
+		fmt.Sprintf("<< ONE_DATASTORE_NAME >>=%s", oneDatastore),
+		fmt.Sprintf("<< ONE_NETWORK_NAME >>=%s", oneNetwork),
 	}
 
 	selector := OsSelector("rockylinux", "flatcar")
