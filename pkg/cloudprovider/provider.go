@@ -44,6 +44,8 @@ import (
 )
 
 var (
+	enableCommunityProviders bool
+
 	cache = cloudprovidercache.New()
 
 	// ErrProviderNotFound tells that the requested cloud provider was not found.
@@ -65,9 +67,6 @@ var (
 		providerconfigtypes.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return hetzner.New(cvr)
 		},
-		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return linode.New(cvr)
-		},
 		providerconfigtypes.CloudProviderVsphere: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vsphere.New(cvr)
 		},
@@ -76,9 +75,6 @@ var (
 		},
 		providerconfigtypes.CloudProviderEquinixMetal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return equinixmetal.New(cvr)
-		},
-		providerconfigtypes.CloudProviderVultr: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return vultr.New(cvr)
 		},
 		// NB: This is explicitly left to allow old Packet machines to be deleted.
 		// We can handle those machines in the same way as Equinix Metal machines
@@ -113,6 +109,19 @@ var (
 			return vcd.New(cvr)
 		},
 	}
+
+	// communityProviders includes all providers not officially supported by the machine-controller team. These are provided by
+	// external community contributors, but support for them cannot be guaranteed. Community providers might later be adopted
+	// into the regular provider maintenance list in coordination with the community contributors.
+	// SetCommunityProviderSupport(true) needs to be called so these providers are recognised when calling ForProvider.
+	communityProviders = map[providerconfigtypes.CloudProvider]func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider{
+		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return linode.New(cvr)
+		},
+		providerconfigtypes.CloudProviderVultr: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return vultr.New(cvr)
+		},
+	}
 )
 
 // ForProvider returns a CloudProvider actuator for the requested provider.
@@ -120,5 +129,13 @@ func ForProvider(p providerconfigtypes.CloudProvider, cvr *providerconfig.Config
 	if p, found := providers[p]; found {
 		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
 	}
+	if p, found := communityProviders[p]; enableCommunityProviders && found {
+		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
+	}
 	return nil, ErrProviderNotFound
+}
+
+// SetCommunityProviderSupport enables or disables community providers being returned by ForProvider.
+func SetCommunityProviderSupport(enableProviders bool) {
+	enableCommunityProviders = enableProviders
 }

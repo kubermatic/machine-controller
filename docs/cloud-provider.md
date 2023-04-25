@@ -195,6 +195,8 @@ labels:
 
 ## Linode
 
+Note: This is a [community provider](./community-providers.md).
+
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
 # your linode token
@@ -322,6 +324,8 @@ memory: "2048M"
 Refer to the [VSphere](./vsphere.md#provider-configuration) specific documentation.
 
 ## Vultr
+
+Note: This is a [community provider](./community-providers.md).
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml

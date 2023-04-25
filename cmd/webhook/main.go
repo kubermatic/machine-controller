@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/admission"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	machinecontrollerlog "github.com/kubermatic/machine-controller/pkg/log"
 	"github.com/kubermatic/machine-controller/pkg/node"
@@ -36,17 +37,18 @@ import (
 )
 
 type options struct {
-	masterURL               string
-	kubeconfig              string
-	admissionListenAddress  string
-	admissionTLSCertPath    string
-	admissionTLSKeyPath     string
-	caBundleFile            string
-	useOSM                  bool
-	useExternalBootstrap    bool
-	namespace               string
-	workerClusterKubeconfig string
-	versionConstraint       string
+	masterURL                string
+	kubeconfig               string
+	admissionListenAddress   string
+	admissionTLSCertPath     string
+	admissionTLSKeyPath      string
+	caBundleFile             string
+	useOSM                   bool
+	useExternalBootstrap     bool
+	namespace                string
+	workerClusterKubeconfig  string
+	versionConstraint        string
+	enableCommunityProviders bool
 }
 
 func main() {
@@ -73,12 +75,16 @@ func main() {
 	// OSM specific flags
 	flag.BoolVar(&opt.useOSM, "use-osm", false, "DEPRECATED: osm controller is enabled for node bootstrap [use use-external-bootstrap instead]")
 	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", false, "user-data is provided by external bootstrap mechanism (e.g. operating-system-manager, also known as OSM)")
+	flag.BoolVar(&opt.enableCommunityProviders, "enable-community-providers", false, "Enable community provider implementations that are disabled by default. Community providers are implemented by external contributors and not tested as part of the machine-controller development process")
 
 	flag.Parse()
 
 	if err := logFlags.Validate(); err != nil {
 		log.Fatalf("Invalid options: %v", err)
 	}
+
+	// enable/disable community provider support
+	cloudprovider.SetCommunityProviderSupport(opt.enableCommunityProviders)
 
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
 	log := rawLog.Sugar()

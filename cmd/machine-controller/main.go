@@ -33,6 +33,7 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1/migrations"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	clusterinfo "github.com/kubermatic/machine-controller/pkg/clusterinfo"
@@ -77,6 +78,8 @@ var (
 
 	useOSM               bool
 	useExternalBootstrap bool
+
+	enableCommunityProviders bool
 
 	nodeCSRApprover                   bool
 	nodeHTTPProxy                     string
@@ -188,12 +191,16 @@ func main() {
 	flag.BoolVar(&useOSM, "use-osm", false, "DEPRECATED: use osm controller for node bootstrap [use use-external-bootstrap instead]")
 	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", false, "use an external bootstrap provider for instance user-data (e.g. operating-system-manager, also known as OSM)")
 	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
+	flag.BoolVar(&enableCommunityProviders, "enable-community-providers", false, "Enable community provider implementations that are disabled by default. Community providers are implemented by external contributors and not tested as part of the machine-controller development process")
 
 	flag.Parse()
 
 	if err := logFlags.Validate(); err != nil {
 		log.Fatalf("Invalid options: %v", err)
 	}
+
+	// enable/disable community provider support
+	cloudprovider.SetCommunityProviderSupport(enableCommunityProviders)
 
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
 	log := rawLog.Sugar()
