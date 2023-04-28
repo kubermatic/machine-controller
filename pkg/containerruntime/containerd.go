@@ -52,7 +52,6 @@ func (eng *Containerd) AuthConfigFileName() string {
 
 func (eng *Containerd) KubeletFlags() []string {
 	return []string{
-		"--container-runtime=remote",
 		"--container-runtime-endpoint=unix:///run/containerd/containerd.sock",
 	}
 }

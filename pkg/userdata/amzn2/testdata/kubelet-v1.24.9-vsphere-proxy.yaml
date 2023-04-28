@@ -244,7 +244,6 @@ write_files:
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
       --pod-infra-container-image=192.168.100.100:5000/kubernetes/pause:v3.1 \
-      --container-runtime=remote \
       --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
       --node-ip ${KUBELET_NODE_IP}
 
@@ -327,7 +326,6 @@ write_files:
     cgroupDriver: systemd
     clusterDomain: cluster.local
     containerLogMaxSize: 100Mi
-    containerRuntimeEndpoint: ""
     cpuManagerReconcilePeriod: 0s
     evictionHard:
       imagefs.available: 15%
