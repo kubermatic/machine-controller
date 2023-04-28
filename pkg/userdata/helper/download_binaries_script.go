@@ -168,7 +168,7 @@ func SafeDownloadBinariesScript(log *zap.SugaredLogger, kubeVersion string) (str
 
 	const (
 		CNIVersion      = "v1.2.0"
-		CRIToolsVersion = "v1.26.0"
+		CRIToolsVersion = "v1.27.0"
 	)
 
 	// force v in case if it's not there
