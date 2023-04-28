@@ -62,7 +62,7 @@ require (
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491
 	kubevirt.io/api v0.58.0
 	kubevirt.io/containerized-data-importer-api v1.55.2
-	sigs.k8s.io/controller-runtime v0.14.1
+	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -188,3 +188,6 @@ require (
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.27.1
+
+// TODO: Remove this once sigs.k8s.io/controller-runtime 0.14.7 is released. For more details https://github.com/kubernetes/client-go/issues/1245#issuecomment-1523434471
+replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230418125457-f83169592e24

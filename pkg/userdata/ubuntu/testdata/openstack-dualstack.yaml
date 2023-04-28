@@ -400,6 +400,7 @@ write_files:
     - 10.10.10.12
     clusterDomain: cluster.local
     containerLogMaxSize: 100Mi
+    containerRuntimeEndpoint: ""
     cpuManagerReconcilePeriod: 0s
     evictionHard:
       imagefs.available: 15%
