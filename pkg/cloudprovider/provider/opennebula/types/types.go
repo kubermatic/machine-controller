@@ -28,8 +28,8 @@ type RawConfig struct {
 	Endpoint providerconfigtypes.ConfigVarString `json:"endpoint,omitempty"`
 
 	// Machine details
-	Cpu             *float64                            `json:"cpu"`
-	Vcpu            *int                                `json:"vcpu"`
+	CPU             *float64                            `json:"cpu"`
+	VCPU            *int                                `json:"vcpu"`
 	Memory          *int                                `json:"memory"`
 	Image           providerconfigtypes.ConfigVarString `json:"image"`
 	Datastore       providerconfigtypes.ConfigVarString `json:"datastore"`
