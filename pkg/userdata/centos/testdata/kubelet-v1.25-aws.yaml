@@ -137,7 +137,7 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.26.0}"
+    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.27.0}"
     cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
     cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
     curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
@@ -233,7 +233,6 @@ write_files:
       --cloud-config=/etc/kubernetes/cloud-config \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
-      --container-runtime=remote \
       --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
       --node-ip ${KUBELET_NODE_IP}
 

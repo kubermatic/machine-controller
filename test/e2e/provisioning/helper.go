@@ -33,9 +33,10 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.24.10"),
-		semver.MustParse("v1.25.6"),
-		semver.MustParse("v1.26.1"),
+		semver.MustParse("v1.24.13"),
+		semver.MustParse("v1.25.9"),
+		semver.MustParse("v1.26.4"),
+		semver.MustParse("v1.27.1"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
@@ -156,9 +157,30 @@ func (n *name) Match(tc scenario) bool {
 	return tc.name == n.name
 }
 
+// VersionSelector is used to match against the kubernetes version used for a test case.
+func VersionSelector(v ...string) Selector {
+	return &version{v}
+}
+
+type version struct {
+	versions []string
+}
+
+var _ Selector = &version{}
+
+func (v *version) Match(testCase scenario) bool {
+	for _, version := range v.versions {
+		if testCase.kubernetesVersion == version {
+			return true
+		}
+	}
+	return false
+}
+
 func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
 		if selector != nil && !selector.Match(testCase) {
+			fmt.Printf("Skipping test %s\n", testCase.name)
 			continue
 		}
 
@@ -212,7 +234,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DATA_DISK_SIZE >>=%v", 30))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 25))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< CUSTOM-IMAGE >>=%v", ""))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.03"))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.02"))
 	}
 
 	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderEquinixMetal)) {

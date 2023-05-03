@@ -31,7 +31,7 @@ spec:
             region: "eu-central-1"
             availabilityZone: "eu-central-1a"
             vpcId: "vpc-079f7648481a11e77"
-            instanceType: "t2.medium"
+            instanceType: "t3a.small"
             instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
