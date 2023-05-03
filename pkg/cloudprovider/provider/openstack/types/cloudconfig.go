@@ -27,9 +27,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
-//  use-octavia is enabled by default in CCM since v1.17.0, and disabled by
-//  default with the in-tree cloud provider.
-//  https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
+// use-octavia is enabled by default in CCM since v1.17.0, and disabled by
+// default with the in-tree cloud provider.
+// https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
 const (
 	cloudConfigTpl = `[Global]
 auth-url    = {{ .Global.AuthURL | iniEscape }}
@@ -77,6 +77,11 @@ bs-version        = {{ default "auto" .BlockStorage.BSVersion | iniEscape }}
 {{- if .BlockStorage.NodeVolumeAttachLimit }}
 node-volume-attach-limit = {{ .BlockStorage.NodeVolumeAttachLimit }}
 {{- end }}
+
+{{- if .Route.RouterID }}
+[Router]
+router-id = {{ .Route.RouterID }}
+{{- end }}
 `
 )
 
@@ -103,6 +108,11 @@ type BlockStorageOpts struct {
 	NodeVolumeAttachLimit uint   `gcfg:"node-volume-attach-limit"`
 }
 
+// RouterOpts is used for Neutron routes
+type RouterOpts struct {
+	RouterID string `gcfg:"router-id"`
+}
+
 type GlobalOpts struct {
 	AuthURL                     string `gcfg:"auth-url"`
 	Username                    string
@@ -127,6 +137,7 @@ type CloudConfig struct {
 	Global       GlobalOpts
 	LoadBalancer LoadBalancerOpts
 	BlockStorage BlockStorageOpts
+	Route        RouterOpts
 	Version      string
 }
 
