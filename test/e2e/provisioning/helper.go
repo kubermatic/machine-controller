@@ -158,7 +158,7 @@ func (n *name) Match(tc scenario) bool {
 }
 
 // VersionSelector is used to match against the kubernetes version used for a test case.
-func VersionSelector(v []string) Selector {
+func VersionSelector(v ...string) Selector {
 	return &version{v}
 }
 
@@ -180,6 +180,7 @@ func (v *version) Match(testCase scenario) bool {
 func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
 		if selector != nil && !selector.Match(testCase) {
+			fmt.Printf("Skipping test %s\n", testCase.name)
 			continue
 		}
 
