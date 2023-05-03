@@ -82,7 +82,7 @@ const (
 )
 
 const (
-	defaultKubernetesVersion = "1.24.9"
+	defaultKubernetesVersion = "1.25.9"
 	defaultContainerRuntime  = "containerd"
 )
 
@@ -340,7 +340,8 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("amzn2"))
+	// In-tree cloud provider is not supported from Kubernetes v1.26.
+	selector := Not(OsSelector("amzn2"), Not(VersionSelector("v1.26.4", "v1.27.1")))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -419,7 +420,8 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles"))
+	// In-tree cloud provider is not supported from Kubernetes v1.27.
+	selector := Not(OsSelector("sles"), Not(VersionSelector("v1.27.1")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -472,7 +474,9 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 	// Since we are only testing the spot instance functionality, testing it against a single OS is sufficient.
-	selector := OsSelector("ubuntu")
+	// In-tree cloud provider is not supported from Kubernetes v1.27.
+	selector := OsSelector("ubuntu", Not(VersionSelector("v1.27.1")))
+
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -492,7 +496,8 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := OsSelector("ubuntu")
+	// In-tree cloud provider is not supported from Kubernetes v1.27.
+	selector := OsSelector("ubuntu", Not(VersionSelector("v1.27.1")))
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -520,32 +525,6 @@ func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 	// We would like to test flatcar with CoreOS-cloud-init
 	selector := OsSelector("flatcar")
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
-}
-
-func TestAWSFlatcarContainerdProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	// test data
-	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
-	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
-	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
-	}
-
-	params := []string{
-		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
-		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
-	}
-
-	scenario := scenario{
-		name:              "flatcar with containerd in AWS",
-		osName:            "flatcar",
-		containerRuntime:  defaultContainerRuntime,
-		kubernetesVersion: defaultKubernetesVersion,
-		executor:          verifyCreateAndDelete,
-	}
-	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
 }
 
 func TestAWSCentOS8ProvisioningE2E(t *testing.T) {

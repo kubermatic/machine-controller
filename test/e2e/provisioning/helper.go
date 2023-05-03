@@ -157,6 +157,26 @@ func (n *name) Match(tc scenario) bool {
 	return tc.name == n.name
 }
 
+// VersionSelector is used to match against the kubernetes version used for a test case.
+func VersionSelector(v []string) Selector {
+	return &version{v}
+}
+
+type version struct {
+	versions []string
+}
+
+var _ Selector = &version{}
+
+func (v *version) Match(testCase scenario) bool {
+	for _, version := range v.versions {
+		if testCase.kubernetesVersion == version {
+			return true
+		}
+	}
+	return false
+}
+
 func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
 		if selector != nil && !selector.Match(testCase) {
