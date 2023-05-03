@@ -59,7 +59,7 @@ func (ne *NodeEviction) Run(ctx context.Context, log *zap.SugaredLogger) (bool, 
 		return false, fmt.Errorf("failed to get node from lister: %w", err)
 	}
 	if _, exists := node.Annotations[evictiontypes.SkipEvictionAnnotationKey]; exists {
-		nodeLog.Info("Skipping eviction for node as it has a %s annotation", evictiontypes.SkipEvictionAnnotationKey)
+		nodeLog.Infof("Skipping eviction for node as it has a %s annotation", evictiontypes.SkipEvictionAnnotationKey)
 		return false, nil
 	}
 
