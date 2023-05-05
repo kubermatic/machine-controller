@@ -33,6 +33,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/opennebula"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway"
 	vcd "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vmwareclouddirector"
@@ -111,6 +112,9 @@ var (
 		},
 		providerconfigtypes.CloudProviderVMwareCloudDirector: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vcd.New(cvr)
+		},
+		providerconfigtypes.CloudProviderOpenNebula: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return opennebula.New(cvr)
 		},
 	}
 )
