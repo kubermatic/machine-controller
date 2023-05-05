@@ -199,10 +199,7 @@ func (r *reconciler) validateCSRObject(csr *certificatesv1.CertificateSigningReq
 		return "", fmt.Errorf("'%s' and/or '%s' are not in its groups", nodeGroup, authenticatedGroup)
 	}
 
-	// Check are present usages matching allowed usages
-	if len(csr.Spec.Usages) != 3 {
-		return "", fmt.Errorf("there are no exactly three usages defined")
-	}
+	// Check that present usages matching allowed usages
 	for _, usage := range csr.Spec.Usages {
 		if !isUsageInUsageList(usage, allowedUsages) {
 			return "", fmt.Errorf("usage %v is not in the list of allowed usages (%v)", usage, allowedUsages)
