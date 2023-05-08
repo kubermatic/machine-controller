@@ -45,6 +45,7 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -167,7 +168,7 @@ func TestAnexiaProvider(t *testing.T) {
 			},
 		})
 
-		err := provisionVM(ctx, log, client)
+		err := provisionVM(ctx, log, client, &providerconfigtypes.Config{})
 		testhelper.AssertNoErr(t, err)
 	})
 
