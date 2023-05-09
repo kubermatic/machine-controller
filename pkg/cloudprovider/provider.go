@@ -66,9 +66,6 @@ var (
 		providerconfigtypes.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return hetzner.New(cvr)
 		},
-		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return linode.New(cvr)
-		},
 		providerconfigtypes.CloudProviderVsphere: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vsphere.New(cvr)
 		},
@@ -77,9 +74,6 @@ var (
 		},
 		providerconfigtypes.CloudProviderEquinixMetal: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return equinixmetal.New(cvr)
-		},
-		providerconfigtypes.CloudProviderVultr: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return vultr.New(cvr)
 		},
 		// NB: This is explicitly left to allow old Packet machines to be deleted.
 		// We can handle those machines in the same way as Equinix Metal machines
@@ -113,6 +107,17 @@ var (
 		providerconfigtypes.CloudProviderVMwareCloudDirector: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vcd.New(cvr)
 		},
+	}
+
+	// communityProviders holds a map of cloud providers that have been implemented by community members and
+	// contributed to machine-controller. They are not end-to-end tested by the machine-controller development team.
+	communityProviders = map[providerconfigtypes.CloudProvider]func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider{
+		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return linode.New(cvr)
+		},
+		providerconfigtypes.CloudProviderVultr: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return vultr.New(cvr)
+		},
 		providerconfigtypes.CloudProviderOpenNebula: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return opennebula.New(cvr)
 		},
@@ -122,6 +127,9 @@ var (
 // ForProvider returns a CloudProvider actuator for the requested provider.
 func ForProvider(p providerconfigtypes.CloudProvider, cvr *providerconfig.ConfigVarResolver) (cloudprovidertypes.Provider, error) {
 	if p, found := providers[p]; found {
+		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
+	}
+	if p, found := communityProviders[p]; found {
 		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
 	}
 	return nil, ErrProviderNotFound

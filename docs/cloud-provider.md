@@ -148,6 +148,8 @@ tags:
 
 ## OpenNebula
 
+**Note:** This is a [community provider](../README.md#community-providers).
+
 ### machine.spec.providerConfig.cloudProviderSpec
 
 ```yaml
@@ -232,6 +234,8 @@ labels:
 ```
 
 ## Linode
+
+**Note:** This is a [community provider](../README.md#community-providers).
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
@@ -360,6 +364,8 @@ memory: "2048M"
 Refer to the [VSphere](./vsphere.md#provider-configuration) specific documentation.
 
 ## Vultr
+
+**Note:** This is a [community provider](../README.md#community-providers).
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
