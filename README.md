@@ -32,7 +32,7 @@
 ### What Works
 
 - Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, Nutanix, VMWare Cloud Director, VMWare vSphere, Hetzner Cloud and Kubevirt
-- Using Ubuntu, Flatcar or CentOS 8 distributions ([not all distributions work on all providers](/docs/operating-system.md))
+- Using Ubuntu, Flatcar, CentOS 7 or Rocky Linux 8 distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
 ### Supported Kubernetes Versions
 
