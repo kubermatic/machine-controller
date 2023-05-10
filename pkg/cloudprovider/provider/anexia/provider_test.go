@@ -108,6 +108,11 @@ func TestAnexiaProvider(t *testing.T) {
 			testhelper.AssertEquals(t, expectedJSON["cpu_performance_type"], jsonBody["cpu_performance_type"])
 			testhelper.AssertEquals(t, expectedJSON["hostname"], jsonBody["hostname"])
 			testhelper.AssertEquals(t, expectedJSON["memory_mb"], jsonBody["memory_mb"])
+
+			testhelper.AssertEquals(t, jsonBody["dns1"], "1.1.1.1")
+			testhelper.AssertEquals(t, jsonBody["dns2"], nil)
+			testhelper.AssertEquals(t, jsonBody["dns3"], "192.168.0.1")
+			testhelper.AssertEquals(t, jsonBody["dns4"], "192.168.0.2")
 			testhelper.AssertEquals(t, expectedJSON["count"], jsonBody["count"])
 
 			expectedNetwork := expectedJSON["network"].([]jsonObject)[0]
@@ -166,9 +171,22 @@ func TestAnexiaProvider(t *testing.T) {
 					return nil
 				},
 			},
+			ProviderConfig: &providerconfigtypes.Config{
+				Network: &providerconfigtypes.NetworkConfig{
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{
+							"1.1.1.1",
+							"",
+							"192.168.0.1",
+							"192.168.0.2",
+							"192.168.0.3",
+						},
+					},
+				},
+			},
 		})
 
-		err := provisionVM(ctx, log, client, &providerconfigtypes.Config{})
+		err := provisionVM(ctx, log, client)
 		testhelper.AssertNoErr(t, err)
 	})
 
