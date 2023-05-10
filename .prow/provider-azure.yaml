@@ -28,7 +28,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.20-node-18-kind-0.18-1
+        - image: quay.io/kubermatic/build:go-1.20-node-18-kind-0.18-3
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -60,7 +60,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.20-node-18-kind-0.18-1
+        - image: quay.io/kubermatic/build:go-1.20-node-18-kind-0.18-3
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -93,7 +93,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.20-node-18-kind-0.18-1
+        - image: quay.io/kubermatic/build:go-1.20-node-18-kind-0.18-3
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
