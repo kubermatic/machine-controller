@@ -102,11 +102,12 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	}
 
 	ctx = createReconcileContext(ctx, reconcileContext{
-		Status:       &status,
-		UserData:     userdata,
-		Config:       *config,
-		ProviderData: data,
-		Machine:      machine,
+		Status:         &status,
+		UserData:       userdata,
+		Config:         *config,
+		ProviderData:   data,
+		ProviderConfig: providerCfg,
+		Machine:        machine,
 	})
 
 	_, client, err := getClient(config.Token)
@@ -121,14 +122,14 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	}()
 
 	// provision machine
-	err = provisionVM(ctx, log, client, providerCfg)
+	err = provisionVM(ctx, log, client)
 	if err != nil {
 		return nil, anexiaErrorToTerminalError(err, "failed waiting for vm provisioning")
 	}
 	return p.Get(ctx, log, machine, data)
 }
 
-func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client, providerCfg *providerconfigtypes.Config) error {
+func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client) error {
 	reconcileContext := getReconcileContext(ctx)
 	vmAPI := vsphere.NewAPI(client)
 
@@ -165,7 +166,7 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 
 		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
 
-		for index, dnsServer := range providerCfg.Network.DNS.Servers {
+		for index, dnsServer := range reconcileContext.ProviderConfig.Network.DNS.Servers {
 			switch index {
 			case 0:
 				vm.DNS1 = dnsServer
