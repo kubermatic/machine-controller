@@ -19,7 +19,7 @@ set -euo pipefail
 cd $(dirname $0)/..
 source hack/lib.sh
 
-CONTAINERIZE_IMAGE=golang:1.20.3 containerize ./hack/update-fixtures.sh
+CONTAINERIZE_IMAGE=golang:1.20.4 containerize ./hack/update-fixtures.sh
 
 go test ./... -v -update || go test ./...
 
