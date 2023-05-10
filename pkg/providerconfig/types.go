@@ -173,6 +173,42 @@ func (cvr *ConfigVarResolver) GetConfigVarBoolValueOrEnv(configVar providerconfi
 	return false, nil
 }
 
+func (cvr *ConfigVarResolver) GetConfigVarDurationValueOrEnvOrDefault(configVar providerconfigtypes.ConfigVarString, envVarName string, defaultDuration time.Duration) (time.Duration, error) {
+	durStr, err := cvr.GetConfigVarStringValue(configVar)
+	if err != nil {
+		return 0, err
+	}
+
+	if durStr != "" {
+		duration, err := time.ParseDuration(durStr)
+		if err != nil {
+			return 0, err
+		}
+
+		if duration <= 0 {
+			return 0, fmt.Errorf("non-positive duration: '%v'", durStr)
+		}
+
+		return duration, nil
+	}
+
+	envVal, envValFound := os.LookupEnv(envVarName)
+	if envValFound {
+		duration, err := time.ParseDuration(envVal)
+		if err != nil {
+			return 0, fmt.Errorf("failed to parse ${%v}: %v", envVarName, err)
+		}
+
+		if duration <= 0 {
+			return 0, fmt.Errorf("non-positive duration in ${%v} ('%v')", envVarName, durStr)
+		}
+
+		return duration, nil
+	}
+
+	return defaultDuration, nil
+}
+
 func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) *ConfigVarResolver {
 	return &ConfigVarResolver{
 		ctx:    ctx,
@@ -248,4 +284,12 @@ func (cpvr *ConfigPointerVarResolver) GetConfigVarDurationValueOrDefault(configV
 		return cpvr.Cvr.GetConfigVarDurationValueOrDefault(*c, defaultDuration)
 	}
 	return cpvr.Cvr.GetConfigVarDurationValueOrDefault(*configVar, defaultDuration)
+}
+
+func (cpvr *ConfigPointerVarResolver) GetConfigVarDurationValueOrEnvOrDefault(configVar *providerconfigtypes.ConfigVarString, envVarName string, defaultDuration time.Duration) (time.Duration, error) {
+	c := &providerconfigtypes.ConfigVarString{}
+	if configVar == nil {
+		return cpvr.Cvr.GetConfigVarDurationValueOrEnvOrDefault(*c, envVarName, defaultDuration)
+	}
+	return cpvr.Cvr.GetConfigVarDurationValueOrEnvOrDefault(*configVar, envVarName, defaultDuration)
 }

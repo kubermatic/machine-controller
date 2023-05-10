@@ -61,6 +61,8 @@ const (
 
 	defaultInstanceReadyCheckPeriod  = 5 * time.Second
 	defaultInstanceReadyCheckTimeout = 120 * time.Second
+
+	defaultOpenstackClientTimeout = 15 * time.Second
 )
 
 // clientGetterFunc returns an OpenStack client.
@@ -98,6 +100,9 @@ type Config struct {
 	TokenID                     string
 	Region                      string
 	ComputeAPIVersion           string
+
+	OpenstackClientTimeout        time.Duration
+	OpenstackComputeClientTimeout time.Duration
 
 	// Machine details
 	Image                 string
@@ -231,6 +236,16 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, fmt.Errorf(`failed to get the value of "InstanceReadyCheckTimeout" field, error = %v`, err)
 	}
 
+	cfg.OpenstackClientTimeout, err = p.configVarResolver.GetConfigVarDurationValueOrEnvOrDefault(rawConfig.OpenstackClientTimeout, "OPENSTACK_CLIENT_TIMEOUT", defaultOpenstackClientTimeout)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "OpenstackClientTimeout" field, error = %v`, err)
+	}
+
+	cfg.OpenstackComputeClientTimeout, err = p.configVarResolver.GetConfigVarDurationValueOrEnvOrDefault(rawConfig.OpenstackComputeClientTimeout, "OPENSTACK_COMPUTE_CLIENT_TIMEOUT", cfg.OpenstackClientTimeout)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "OpenstackComputeClientTimeout" field, error = %v`, err)
+	}
+
 	// We ignore errors here because the OS domain is only required when using Identity API V3
 	cfg.DomainName, _ = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.DomainName, "OS_DOMAIN_NAME")
 	cfg.TokenID, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.TokenID)
@@ -342,7 +357,7 @@ func getClient(c *Config) (*gophercloud.ProviderClient, error) {
 	}
 	if pc != nil {
 		// use the util's HTTP client to benefit, among other things, from its CA bundle
-		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]"}.New()
+		pc.HTTPClient = cloudproviderutil.HTTPClientConfig{LogPrefix: "[OpenStack API]", Timeout: c.OpenstackClientTimeout}.New()
 	}
 
 	err = goopenstack.Authenticate(pc, opts)

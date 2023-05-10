@@ -39,6 +39,9 @@ type RawConfig struct {
 	InstanceReadyCheckTimeout   *providerconfigtypes.ConfigVarString `json:"instanceReadyCheckTimeout,omitempty"`
 	ComputeAPIVersion           *providerconfigtypes.ConfigVarString `json:"computeAPIVersion,omitempty"`
 
+	OpenstackClientTimeout        *providerconfigtypes.ConfigVarString `json:"openstackClientTimeout,omitempty"`
+	OpenstackComputeClientTimeout *providerconfigtypes.ConfigVarString `json:"openstackComputeClientTimeout,omitempty"`
+
 	// Machine details
 	Image                 *providerconfigtypes.ConfigVarString  `json:"image"`
 	Flavor                *providerconfigtypes.ConfigVarString  `json:"flavor"`
