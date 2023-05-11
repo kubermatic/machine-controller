@@ -96,17 +96,18 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	// ensure conditions are present on machine
 	ensureConditions(&status)
 
-	config, _, err := p.getConfig(ctx, log, machine.Spec.ProviderSpec)
+	config, providerCfg, err := p.getConfig(ctx, log, machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get provider config: %w", err)
 	}
 
 	ctx = createReconcileContext(ctx, reconcileContext{
-		Status:       &status,
-		UserData:     userdata,
-		Config:       *config,
-		ProviderData: data,
-		Machine:      machine,
+		Status:         &status,
+		UserData:       userdata,
+		Config:         *config,
+		ProviderData:   data,
+		ProviderConfig: providerCfg,
+		Machine:        machine,
 	})
 
 	_, client, err := getClient(config.Token)
@@ -164,6 +165,19 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 		vm.DiskType = config.Disks[0].PerformanceType
 
 		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
+
+		for index, dnsServer := range reconcileContext.ProviderConfig.Network.DNS.Servers {
+			switch index {
+			case 0:
+				vm.DNS1 = dnsServer
+			case 1:
+				vm.DNS2 = dnsServer
+			case 2:
+				vm.DNS3 = dnsServer
+			case 3:
+				vm.DNS4 = dnsServer
+			}
+		}
 
 		// We generate a fresh SSH key but will never actually use it - we just want a valid public key to disable password authentication for our fresh VM.
 		sshKey, err := ssh.NewKey()
