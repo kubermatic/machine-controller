@@ -34,6 +34,7 @@ import (
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -118,6 +119,11 @@ func TestAnexiaProvider(t *testing.T) {
 			testhelper.AssertEquals(t, expectedJSON["cpu_performance_type"], jsonBody["cpu_performance_type"])
 			testhelper.AssertEquals(t, expectedJSON["hostname"], jsonBody["hostname"])
 			testhelper.AssertEquals(t, expectedJSON["memory_mb"], jsonBody["memory_mb"])
+
+			testhelper.AssertEquals(t, jsonBody["dns1"], "1.1.1.1")
+			testhelper.AssertEquals(t, jsonBody["dns2"], nil)
+			testhelper.AssertEquals(t, jsonBody["dns3"], "192.168.0.1")
+			testhelper.AssertEquals(t, jsonBody["dns4"], "192.168.0.2")
 			testhelper.AssertEquals(t, expectedJSON["count"], jsonBody["count"])
 
 			expectedNetwork := expectedJSON["network"].([]jsonObject)[0]
@@ -174,6 +180,19 @@ func TestAnexiaProvider(t *testing.T) {
 			ProviderData: &cloudprovidertypes.ProviderData{
 				Update: func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
 					return nil
+				},
+			},
+			ProviderConfig: &providerconfigtypes.Config{
+				Network: &providerconfigtypes.NetworkConfig{
+					DNS: providerconfigtypes.DNSConfig{
+						Servers: []string{
+							"1.1.1.1",
+							"",
+							"192.168.0.1",
+							"192.168.0.2",
+							"192.168.0.3",
+						},
+					},
 				},
 			},
 		})
