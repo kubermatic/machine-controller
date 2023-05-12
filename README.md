@@ -1,5 +1,7 @@
 # Kubermatic machine-controller
 
+**Important Note: User data plugins for machine-controller are deprecated and will soon be removed. [Operating System Manager](https://github.com/kubermatic/operating-system-manager) is the successor of user data plugins. It's responsible for creating and managing the required configurations for worker nodes in a Kubernetes cluster with better modularity and extensibility. Please refer to [Operating System Manager][8] for more details.**
+
 ## Table of Contents
 
 - [Kubermatic machine-controller](#kubermatic-machine-controller)
@@ -53,7 +55,14 @@ Currently supported K8S versions are:
 
 ### Deploy the machine-controller
 
-`make deploy`
+- Install [cert-manager](https://cert-manager.io/) for generating certificates used by webhooks since they serve using HTTPS
+
+```terminal
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.2/cert-manager.yaml
+```
+
+- Run `kubectl apply -f examples/operating-system-manager.yaml` to deploy the operating-system-manager which is responsible for managing user data for worker machines.
+- Run `kubectl apply -f examples/machine-controller.yaml` to deploy the machine-controller.
 
 ### Creating a machineDeployment
 
@@ -147,3 +156,4 @@ See [the list of releases][7] to find out about feature changes.
 [5]: CONTRIBUTING.md
 [6]: Zenhub.md
 [7]: https://github.com/kubermatic/machine-controller/releases
+[8]: https://docs.kubermatic.com/operatingsystemmanager
