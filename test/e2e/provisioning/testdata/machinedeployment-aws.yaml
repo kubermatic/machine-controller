@@ -31,9 +31,9 @@ spec:
             assumeRoleARN: "<< AWS_ASSUME_ROLE_ARN >>"
             assumeRoleExternalID: "<< AWS_ASSUME_ROLE_EXTERNAL_ID >>"
             region: "eu-central-1"
-            availabilityZone: "eu-central-1a"
+            availabilityZone: "eu-central-1b"
             vpcId: "vpc-079f7648481a11e77"
-            instanceType: "t3a.small"
+            instanceType: "t2.medium"
             instanceProfile: "kubernetes-v1"
             diskSize: 50
             diskType: "gp2"
