@@ -22,6 +22,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
 type contextKey byte
@@ -29,11 +30,12 @@ type contextKey byte
 const machineReconcileContextKey contextKey = 0
 
 type reconcileContext struct {
-	Machine      *v1alpha1.Machine
-	Status       *anxtypes.ProviderStatus
-	UserData     string
-	Config       resolvedConfig
-	ProviderData *cloudprovidertypes.ProviderData
+	Machine        *v1alpha1.Machine
+	Status         *anxtypes.ProviderStatus
+	UserData       string
+	Config         resolvedConfig
+	ProviderData   *cloudprovidertypes.ProviderData
+	ProviderConfig *providerconfigtypes.Config
 }
 
 func createReconcileContext(ctx context.Context, cc reconcileContext) context.Context {
