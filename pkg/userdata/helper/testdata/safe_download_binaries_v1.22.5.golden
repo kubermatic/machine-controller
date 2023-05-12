@@ -18,7 +18,7 @@ aarch64)
     ;;
 esac
 fi
-CNI_VERSION="${CNI_VERSION:-v1.1.1}"
+CNI_VERSION="${CNI_VERSION:-v1.2.0}"
 cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
 cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
 curl -Lfo "$cni_bin_dir/$cni_filename" "$cni_base_url/$cni_filename"
@@ -28,11 +28,12 @@ sha256sum -c <<<"$cni_sum"
 tar xvf "$cni_filename"
 rm -f "$cni_filename"
 cd -
-CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.22.0}"
+CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.26.0}"
 cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
 cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
 curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
-cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+cri_tools_sum_value=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256")
+cri_tools_sum="$cri_tools_sum_value $cri_tools_filename"
 cd "$opt_bin"
 sha256sum -c <<<"$cri_tools_sum"
 tar xvf "$cri_tools_filename"

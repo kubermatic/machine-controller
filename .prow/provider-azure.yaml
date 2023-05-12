@@ -14,7 +14,7 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-azure
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/azure/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -28,7 +28,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
+        - image: quay.io/kubermatic/build:go-1.18-node-18-kind-0.14-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -43,7 +43,7 @@ presubmits:
               memory: 6Gi
 
   - name: pull-machine-controller-e2e-azure-custom-image-reference
-    always_run: true
+    run_if_changed: "(pkg/cloudprovider/provider/azure/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -57,7 +57,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
+        - image: quay.io/kubermatic/build:go-1.18-node-18-kind-0.14-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -73,7 +73,7 @@ presubmits:
 
   - name: pull-machine-controller-e2e-azure-redhat-satellite
     optional: true
-    always_run: false
+    run_if_changed: "(pkg/cloudprovider/provider/azure/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -87,7 +87,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.18-node-16-kind-0.14-9
+        - image: quay.io/kubermatic/build:go-1.18-node-18-kind-0.14-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
