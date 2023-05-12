@@ -62,7 +62,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 ```
 
 - Run `kubectl apply -f examples/operating-system-manager.yaml` to deploy the operating-system-manager which is responsible for managing user data for worker machines.
-- Run `kubectl apply -f examples/machine-controller.yaml` to deploy the machine-controller.
+- Run `make deploy` to deploy the machine-controller.
 
 ### Creating a machineDeployment
 
