@@ -91,7 +91,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	// ensure conditions are present on machine
 	ensureConditions(&status)
 
-	config, providerCfg, err := p.getConfig(machine.Spec.ProviderSpec)
+	config, providerCfg, err := p.getConfig(ctx, machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get provider config: %w", err)
 	}
