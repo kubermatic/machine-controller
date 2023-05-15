@@ -66,6 +66,19 @@ func TestAnexiaProvider(t *testing.T) {
 	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-OLD-BUILD", Name: testTemplateName, Build: "b01"})
 	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID", Name: testTemplateName, Build: "b02"})
 	a.FakeExisting(&vspherev1.Template{Identifier: "WRONG-TEMPLATE-NAME", Name: "Wrong Template Name", Build: "b02"})
+	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-NO-NETWORK-CONFIG", Name: "no-network-config", Build: "b03"})
+
+	testhelper.Mux.HandleFunc("/api/ipam/v1/address/reserve/ip/count.json", func(writer http.ResponseWriter, request *http.Request) {
+		err := json.NewEncoder(writer).Encode(address.ReserveRandomSummary{
+			Data: []address.ReservedIP{
+				{
+					ID:      "IP-ID",
+					Address: "8.8.8.8",
+				},
+			},
+		})
+		testhelper.AssertNoErr(t, err)
+	})
 
 	t.Cleanup(func() {
 		testhelper.TeardownHTTP()
@@ -74,17 +87,6 @@ func TestAnexiaProvider(t *testing.T) {
 
 	t.Run("Test provision VM", func(t *testing.T) {
 		t.Parallel()
-		testhelper.Mux.HandleFunc("/api/ipam/v1/address/reserve/ip/count.json", func(writer http.ResponseWriter, request *http.Request) {
-			err := json.NewEncoder(writer).Encode(address.ReserveRandomSummary{
-				Data: []address.ReservedIP{
-					{
-						ID:      "IP-ID",
-						Address: "8.8.8.8",
-					},
-				},
-			})
-			testhelper.AssertNoErr(t, err)
-		})
 
 		testhelper.Mux.HandleFunc("/api/vsphere/v1/provisioning/vm.json/LOCATION-ID/templates/TEMPLATE-ID", func(writer http.ResponseWriter, request *http.Request) {
 			testhelper.TestMethod(t, request, http.MethodPost)
@@ -184,6 +186,79 @@ func TestAnexiaProvider(t *testing.T) {
 					},
 				},
 			},
+		})
+
+		err := provisionVM(ctx, log, client)
+		testhelper.AssertNoErr(t, err)
+	})
+
+	t.Run("Test provision VM without network config", func(t *testing.T) {
+		t.Parallel()
+
+		testhelper.Mux.HandleFunc("/api/vsphere/v1/provisioning/vm.json/LOCATION-ID/templates/TEMPLATE-ID-NO-NETWORK-CONFIG", func(writer http.ResponseWriter, request *http.Request) {
+			testhelper.TestMethod(t, request, http.MethodPost)
+			type jsonObject = map[string]interface{}
+			var jsonBody jsonObject
+			decoder := json.NewDecoder(request.Body)
+			decoder.UseNumber()
+			testhelper.AssertNoErr(t, decoder.Decode(&jsonBody))
+
+			testhelper.AssertEquals(t, jsonBody["dns1"], nil)
+			testhelper.AssertEquals(t, jsonBody["dns2"], nil)
+			testhelper.AssertEquals(t, jsonBody["dns3"], nil)
+			testhelper.AssertEquals(t, jsonBody["dns4"], nil)
+
+			err := json.NewEncoder(writer).Encode(vm.ProvisioningResponse{
+				Progress:   100,
+				Errors:     nil,
+				Identifier: "TEMPLATE-ID-NO-NETWORK-CONFIG",
+				Queued:     false,
+			})
+			testhelper.AssertNoErr(t, err)
+		})
+
+		testhelper.Mux.HandleFunc("/api/vsphere/v1/provisioning/progress.json/TEMPLATE-ID-NO-NETWORK-CONFIG", func(writer http.ResponseWriter, request *http.Request) {
+			testhelper.TestMethod(t, request, http.MethodGet)
+
+			err := json.NewEncoder(writer).Encode(progress.Progress{
+				TaskIdentifier: "TEMPLATE-ID-NO-NETWORK-CONFIG",
+				Queued:         false,
+				Progress:       100,
+				VMIdentifier:   "VM-IDENTIFIER",
+				Errors:         nil,
+			})
+			testhelper.AssertNoErr(t, err)
+		})
+
+		providerStatus := anxtypes.ProviderStatus{}
+		ctx := createReconcileContext(context.Background(), reconcileContext{
+			Machine: &v1alpha1.Machine{
+				ObjectMeta: metav1.ObjectMeta{Name: "TestMachine"},
+			},
+			Status:   &providerStatus,
+			UserData: "",
+			Config: resolvedConfig{
+				VlanID:     "VLAN-ID",
+				LocationID: "LOCATION-ID",
+				TemplateID: "TEMPLATE-ID-NO-NETWORK-CONFIG",
+				Disks: []resolvedDisk{
+					{
+						RawDisk: anxtypes.RawDisk{
+							Size: 5,
+						},
+					},
+				},
+				RawConfig: anxtypes.RawConfig{
+					CPUs:   5,
+					Memory: 5,
+				},
+			},
+			ProviderData: &cloudprovidertypes.ProviderData{
+				Update: func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
+					return nil
+				},
+			},
+			ProviderConfig: &providerconfigtypes.Config{},
 		})
 
 		err := provisionVM(ctx, log, client)
