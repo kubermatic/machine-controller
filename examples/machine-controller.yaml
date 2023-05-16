@@ -155,6 +155,28 @@ spec:
           jsonPath: .metadata.deletionTimestamp
           priority: 1
 ---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: machine-controller-selfsigned-issuer
+  namespace: kube-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: machine-controller-serving-cert
+  namespace: kube-system
+spec:
+  dnsNames:
+    - "machine-controller-webhook.kube-system.svc"
+    - "machine-controller-webhook.kube-system.svc.cluster.local"
+  issuerRef:
+    kind: Issuer
+    name: machine-controller-selfsigned-issuer
+  secretName: machine-controller-webhook-server-cert
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -267,7 +289,8 @@ spec:
             - -listen-address=0.0.0.0:9876
           volumeMounts:
             - name: machine-controller-admission-cert
-              mountPath: /tmp/cert
+              mountPath: /tmp/cert/
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /healthz
@@ -284,16 +307,8 @@ spec:
       volumes:
         - name: machine-controller-admission-cert
           secret:
-            secretName: machine-controller-admission-cert
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: machine-controller-admission-cert
-  namespace: kube-system
-data:
-  "cert.pem": __admission_cert__
-  "key.pem": __admission_key__
+            defaultMode: 420
+            secretName: machine-controller-webhook-server-cert
 ---
 apiVersion: v1
 kind: Service
@@ -602,6 +617,8 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: machinedeployments.machine-controller.kubermatic.io
+  annotations:
+    cert-manager.io/inject-ca-from: kube-system/machine-controller-serving-cert
 webhooks:
 - name: machinedeployments.machine-controller.kubermatic.io
   failurePolicy: Fail
@@ -622,7 +639,6 @@ webhooks:
       namespace: kube-system
       name: machine-controller-webhook
       path: /machinedeployments
-    caBundle: __admission_ca_cert__
 - name: machines.machine-controller.kubermatic.io
   failurePolicy: Fail
   sideEffects: None
@@ -642,4 +658,3 @@ webhooks:
       namespace: kube-system
       name: machine-controller-webhook
       path: /machines
-    caBundle: __admission_ca_cert__
