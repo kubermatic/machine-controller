@@ -1561,10 +1561,14 @@ k8s.io/apimachinery v0.25.0/go.mod h1:qMx9eAk0sZQGsXGu86fab8tZdffHbwUfsvzqKn4mfB
 k8s.io/apiserver v0.24.2/go.mod h1:pSuKzr3zV+L+MWqsEo0kHHYwCo77AT5qXbFXP2jbvFI=
 k8s.io/client-go v0.25.0 h1:CVWIaCETLMBNiTUta3d5nzRbXvY5Hy9Dpl+VvREpu5E=
 k8s.io/client-go v0.25.0/go.mod h1:lxykvypVfKilxhTklov0wz1FoaUZ8X4EwbhS6rpRfN8=
+k8s.io/cloud-provider v0.24.2 h1:DYNf90zS/GAQbEHsTfJsH4Oas7vim4U+WU9GftMQlfs=
+k8s.io/cloud-provider v0.24.2/go.mod h1:a7jyWjizk+IKbcIf8+mX2cj3NvpRv9ZyGdXDyb8UEkI=
 k8s.io/code-generator v0.23.3/go.mod h1:S0Q1JVA+kSzTI1oUvbKAxZY/DYbA/ZUb4Uknog12ETk=
 k8s.io/code-generator v0.24.2/go.mod h1:dpVhs00hTuTdTY6jvVxvTFCk6gSMrtfRydbhZwHI15w=
 k8s.io/component-base v0.24.2 h1:kwpQdoSfbcH+8MPN4tALtajLDfSfYxBDYlXobNWI6OU=
 k8s.io/component-base v0.24.2/go.mod h1:ucHwW76dajvQ9B7+zecZAP3BVqvrHoOxm8olHEg0nmM=
+k8s.io/component-helpers v0.24.2/go.mod h1:TRQPBQKfmqkmV6c0HAmUs8cXVNYYYLsXy4zu8eODi9g=
+k8s.io/controller-manager v0.24.2/go.mod h1:hpwCof4KxP4vrw/M5QiVxU6Zmmggmr1keGXtjGHF+vc=
 k8s.io/gengo v0.0.0-20210813121822-485abfe95c7c/go.mod h1:FiNAH4ZV3gBg2Kwh89tzAEV2be7d5xI0vBa/VySYy3E=
 k8s.io/gengo v0.0.0-20211129171323-c02415ce4185/go.mod h1:FiNAH4ZV3gBg2Kwh89tzAEV2be7d5xI0vBa/VySYy3E=
 k8s.io/klog v1.0.0 h1:Pt+yjF5aB1xDSVbau4VsWe+dQNzA0qv1LlXdC2dF6Q8=
