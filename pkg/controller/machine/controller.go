@@ -67,6 +67,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
+
+	ccmapi "k8s.io/cloud-provider/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -434,9 +436,8 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 
 	// step 2: check if a user requested to delete the machine
 	if machine.DeletionTimestamp != nil {
-		return r.deleteMachine(ctx, log, prov, providerConfig.CloudProvider, machine)
-		// deleteResult, deleteErr := r.deleteMachine(ctx, log, prov, providerConfig.CloudProvider, machine)
-		// if client.IgnoreNotFound(deleteErr)
+		skipEviction := false
+		return r.deleteMachine(ctx, log, prov, providerConfig.CloudProvider, machine, skipEviction)
 	}
 
 	// Step 3: Essentially creates an instance for the given machine.
@@ -471,8 +472,10 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 			return nil, fmt.Errorf("failed to set nodeReady condition on machine: %w", err)
 		}
 	} else {
-		// Node is not ready anymore? Maybe it got deleted
-		return r.ensureInstanceExistsForMachine(ctx, nodeLog, prov, machine, userdataPlugin, providerConfig)
+		if r.nodeSettings.ExternalCloudProvider {
+			return r.handleNodeFailuresWithExternalCCM(ctx, log, prov, providerConfig, node, machine)
+		}
+		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, userdataPlugin, providerConfig)
 	}
 
 	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
@@ -534,7 +537,7 @@ func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, log *zap.SugaredL
 func (r *Reconciler) shouldEvict(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (bool, error) {
 	// If the deletion got triggered a few hours ago, skip eviction.
 	// We assume here that the eviction is blocked by misconfiguration or a misbehaving kubelet and/or controller-runtime
-	if time.Since(machine.DeletionTimestamp.Time) > r.skipEvictionAfter {
+	if machine.DeletionTimestamp != nil && time.Since(machine.DeletionTimestamp.Time) > r.skipEvictionAfter {
 		log.Infow("Skipping eviction since the deletion got triggered too long ago", "threshold", r.skipEvictionAfter)
 		return false, nil
 	}
@@ -583,10 +586,24 @@ func (r *Reconciler) shouldEvict(ctx context.Context, log *zap.SugaredLogger, ma
 }
 
 // deleteMachine makes sure that an instance has gone in a series of steps.
-func (r *Reconciler) deleteMachine(ctx context.Context, log *zap.SugaredLogger, prov cloudprovidertypes.Provider, providerName providerconfigtypes.CloudProvider, machine *clusterv1alpha1.Machine) (*reconcile.Result, error) {
-	shouldEvict, err := r.shouldEvict(ctx, log, machine)
-	if err != nil {
-		return nil, err
+func (r *Reconciler) deleteMachine(
+	ctx context.Context,
+	log *zap.SugaredLogger,
+	prov cloudprovidertypes.Provider,
+	providerName providerconfigtypes.CloudProvider,
+	machine *clusterv1alpha1.Machine,
+	skipEviction bool,
+) (*reconcile.Result, error) {
+	var (
+		shouldEvict bool
+		err         error
+	)
+
+	if !skipEviction {
+		shouldEvict, err = r.shouldEvict(ctx, log, machine)
+		if err != nil {
+			return nil, err
+		}
 	}
 	shouldCleanUpVolumes, err := r.shouldCleanupVolumes(ctx, log, machine, providerName)
 	if err != nil {
@@ -691,7 +708,6 @@ func (r *Reconciler) deleteCloudProviderInstance(ctx context.Context, log *zap.S
 		message := fmt.Sprintf("%v. Please manually delete %s finalizer from the machine object.", err, FinalizerDeleteInstance)
 		return nil, r.updateMachineErrorIfTerminalError(machine, common.DeleteMachineError, message, err, "failed to delete machine at cloud provider")
 	}
-
 	if !completelyGone {
 		// As the instance is not completely gone yet, we need to recheck in a few seconds.
 		return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, nil
@@ -1051,14 +1067,6 @@ func (r *Reconciler) ensureNodeLabelsAnnotationsAndTaints(ctx context.Context, n
 		modifiers = append(modifiers, f(AnnotationAutoscalerIdentifier, autoscalerAnnotationValue))
 	}
 
-	taintExists := func(node *corev1.Node, taint corev1.Taint) bool {
-		for _, t := range node.Spec.Taints {
-			if t.MatchTaint(&taint) {
-				return true
-			}
-		}
-		return false
-	}
 	for _, t := range machine.Spec.Taints {
 		if !taintExists(node, t) {
 			f := func(t corev1.Taint) func(*corev1.Node) {
@@ -1181,6 +1189,15 @@ func findNodeByProviderID(instance instance.Instance, provider providerconfigtyp
 	return nil
 }
 
+func taintExists(node *corev1.Node, taint corev1.Taint) bool {
+	for _, t := range node.Spec.Taints {
+		if t.MatchTaint(&taint) {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Reconciler) ReadinessChecks(ctx context.Context) map[string]healthcheck.Check {
 	return map[string]healthcheck.Check{
 		"valid-info-kubeconfig": func() error {
@@ -1241,4 +1258,47 @@ func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifier
 		}
 		return r.client.Update(ctx, node)
 	})
+}
+
+// handleNodeFailuresWithExternalCCM reacts node status discovery of CCM's node lifecycle controller.
+// If an instance at cloud provider is not found then it waits till CCM deletes node objects, that allows:
+//   - create a new instance at cloud provider
+//   - initialize a new node object - the object should not be reused between instance creation
+//     for example, instance foo that got deleted and recreated should initialize a completely new node object
+//     instead of reusing the old one as it can cause problems to update node's metadata, like IP address.
+//
+// If node is shut-down it allows MC to react accordingly to specific cloud provider requirements, those are:
+//   - wait for node to become online again or
+//   - delete a machine that it can be recreated
+func (r *Reconciler) handleNodeFailuresWithExternalCCM(
+	ctx context.Context,
+	log *zap.SugaredLogger,
+	prov cloudprovidertypes.Provider,
+	provConfig *providerconfigtypes.Config,
+	node *corev1.Node,
+	machine *clusterv1alpha1.Machine,
+) (*reconcile.Result, error) {
+	taintShutdown := corev1.Taint{
+		Key:    ccmapi.TaintNodeShutdown,
+		Effect: corev1.TaintEffectNoSchedule,
+	}
+
+	_, err := prov.Get(ctx, log, machine, r.providerData)
+	if err != nil {
+		if cloudprovidererrors.IsNotFound(err) {
+			log.Info("The node does not have corresponding instance, waiting for CCM to delete it")
+			return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, nil
+		}
+		return nil, err
+	} else if taintExists(node, taintShutdown) {
+		switch provConfig.CloudProvider {
+		case providerconfigtypes.CloudProviderKubeVirt:
+			log.Infof("Deleting a shut-down machine %q that cannot recover", machine.Name)
+			skipEviction := true
+			return r.deleteMachine(ctx, log, prov, providerconfigtypes.CloudProviderKubeVirt, machine, skipEviction)
+		}
+	}
+
+	log.Debug("Waiting for a node to become %q", corev1.NodeReady)
+	return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, err
 }
