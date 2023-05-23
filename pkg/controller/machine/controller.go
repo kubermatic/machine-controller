@@ -1260,7 +1260,7 @@ func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifier
 	})
 }
 
-// handleNodeFailuresWithExternalCCM reacts node status discovery of CCM's node lifecycle controller.
+// handleNodeFailuresWithExternalCCM reacts to node status discovery of CCM's node lifecycle controller.
 // If an instance at cloud provider is not found then it waits till CCM deletes node objects, that allows:
 //   - create a new instance at cloud provider
 //   - initialize a new node object - the object should not be reused between instance creation
@@ -1269,7 +1269,7 @@ func (r *Reconciler) updateNode(ctx context.Context, node *corev1.Node, modifier
 //
 // If node is shut-down it allows MC to react accordingly to specific cloud provider requirements, those are:
 //   - wait for node to become online again or
-//   - delete a machine that it can be recreated
+//   - delete a machine which cannot be recovered
 func (r *Reconciler) handleNodeFailuresWithExternalCCM(
 	ctx context.Context,
 	log *zap.SugaredLogger,
