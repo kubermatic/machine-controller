@@ -7,35 +7,36 @@
 - [Kubermatic machine-controller](#kubermatic-machine-controller)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
-    - [What works](#what-works)
-    - [Supported Kubernetes versions](#supported-kubernetes-versions)
-  - [What does not work](#what-does-not-work)
+    - [What Works](#what-works)
+    - [Supported Kubernetes Versions](#supported-kubernetes-versions)
+    - [Community Providers](#community-providers)
+  - [What doesn't Work](#what-doesnt-work)
   - [Quickstart](#quickstart)
-    - [Deploy the machine-controller](#deploy-the-machine-controller)
-    - [Creating a machineDeployment](#creating-a-machinedeployment)
-  - [Advanced usage](#advanced-usage)
-    - [Specifying the apiserver endpoint](#specifying-the-apiserver-endpoint)
-    - [CA-data](#ca-data)
-    - [Apiserver endpoint](#apiserver-endpoint)
+    - [Deploy machine-controller](#deploy-the-machine-controller)
+    - [Creating a MachineDeployment](#creating-a-machinedeployment)
+  - [Advanced Usage](#advanced-usage)
+    - [Specifying the Apiserver Endpoint](#specifying-the-apiserver-endpoint)
+    - [CA Data](#ca-data)
+    - [Apiserver Endpoint](#apiserver-endpoint)
       - [Example cluster-info ConfigMap](#example-cluster-info-configmap)
   - [Development](#development)
     - [Testing](#testing)
-      - [Unittests](#unittests)
-      - [End-to-End locally](#end-to-end-locally)
+      - [Unit Tests](#unit-tests)
+      - [End-to-End Locally](#end-to-end-locally)
   - [Troubleshooting](#troubleshooting)
   - [Contributing](#contributing)
-    - [Before you start](#before-you-start)
-    - [Pull requests](#pull-requests)
+    - [Before You Start](#before-you-start)
+    - [Pull Requests](#pull-requests)
   - [Changelog](#changelog)
 
 ## Features
 
-### What works
+### What Works
 
-- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, Nutanix, VMWare Cloud Director, VMWare Vsphere, Linode, Hetzner cloud and Kubevirt (experimental)
-- Using Ubuntu, Flatcar or CentOS 7 distributions ([not all distributions work on all providers](/docs/operating-system.md))
+- Creation of worker nodes on AWS, Digitalocean, Openstack, Azure, Google Cloud Platform, Nutanix, VMWare Cloud Director, VMWare vSphere, Hetzner Cloud and Kubevirt
+- Using Ubuntu, Flatcar, CentOS 7 or Rocky Linux 8 distributions ([not all distributions work on all providers](/docs/operating-system.md))
 
-### Supported Kubernetes versions
+### Supported Kubernetes Versions
 
 machine-controller tries to follow the Kubernetes version
 [support policy](https://kubernetes.io/docs/setup/release/version-skew-policy/) as close as possible.
@@ -47,13 +48,25 @@ Currently supported K8S versions are:
 - 1.25
 - 1.24
 
-## What does not work
+### Community Providers
+
+Some cloud providers implemented in machine-controller have been graciously contributed by community members. Those cloud providers are not part of the automated end-to-end
+tests run by the machine-controller developers and thus, their status cannot be guaranteed. The machine-controller developers assume that they are functional, but can only
+offer limited support for new features or bugfixes in those providers.
+
+The current list of community providers is:
+
+- Linode
+- Vultr
+- OpenNebula
+
+## What Doesn't Work
 
 - Master creation (Not planned at the moment)
 
 ## Quickstart
 
-### Deploy the machine-controller
+### Deploy machine-controller
 
 - Install [cert-manager](https://cert-manager.io/) for generating certificates used by webhooks since they serve using HTTPS
 
@@ -64,16 +77,16 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 - Run `kubectl apply -f examples/operating-system-manager.yaml` to deploy the operating-system-manager which is responsible for managing user data for worker machines.
 - Run `kubectl apply -f examples/machine-controller.yaml` to deploy the machine-controller.
 
-### Creating a machineDeployment
+### Creating a `MachineDeployment`
 
 ```bash
 # edit examples/$cloudprovider-machinedeployment.yaml & create the machineDeployment
 kubectl create -f examples/$cloudprovider-machinedeployment.yaml
 ```
 
-## Advanced usage
+## Advanced Usage
 
-### Specifying the apiserver endpoint
+### Specifying the Apiserver Endpoint
 
 By default the controller looks for a `cluster-info` ConfigMap within the `kube-public` Namespace.
 If one is found which contains a minimal kubeconfig (kubeadm cluster have them by default), this kubeconfig will be used for the node bootstrapping.
@@ -84,11 +97,11 @@ The kubeconfig only needs to contain two things:
 
 If no ConfigMap can be found:
 
-### CA-data
+### CA Data
 
-The CA will be loaded from the passed kubeconfig when running outside the cluster or from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` when running inside the cluster.
+The Certificate Authority (CA) will be loaded from the passed kubeconfig when running outside the cluster or from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` when running inside the cluster.
 
-### Apiserver endpoint
+### Apiserver Endpoint
 
 The first endpoint from the kubernetes endpoints will be taken. `kubectl get endpoints kubernetes -o yaml`
 
@@ -119,11 +132,11 @@ data:
 
 ### Testing
 
-#### Unittests
+#### Unit Tests
 
 Simply run `make test-unit`
 
-#### End-to-End locally
+#### End-to-End Locally
 
 **_[WIP]_**
 
@@ -135,13 +148,13 @@ If you encounter issues [file an issue][1] or talk to us on the [#kubermatic cha
 
 Thanks for taking the time to join our community and start contributing!
 
-### Before you start
+### Before You Start
 
 - Please familiarize yourself with the [Code of Conduct][4] before contributing.
 - See [CONTRIBUTING.md][5] for instructions on the developer certificate of origin that we require.
 - Read how [we're using ZenHub][6] for project and roadmap planning
 
-### Pull requests
+### Pull Requests
 
 - We welcome pull requests. Feel free to dig through the [issues][1] and jump in.
 
