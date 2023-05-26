@@ -17,7 +17,9 @@ limitations under the License.
 package anexia
 
 import (
-	"github.com/anexia-it/go-anxcloud/pkg/vsphere/info"
+	"net"
+
+	"go.anx.io/go-anxcloud/pkg/vsphere/info"
 
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	anxtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/anexia/types"
@@ -26,7 +28,10 @@ import (
 )
 
 type anexiaInstance struct {
-	info *info.Info
+	isCreating        bool
+	isDeleting        bool
+	info              *info.Info
+	reservedAddresses []string
 }
 
 func (ai *anexiaInstance) HostID() string {
@@ -49,28 +54,50 @@ func (ai *anexiaInstance) ID() string {
 	return ai.info.Identifier
 }
 
+func (ai *anexiaInstance) ProviderID() string {
+	return ai.ID()
+}
+
 func (ai *anexiaInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 
-	if ai.info == nil {
-		return addresses
+	if ai.reservedAddresses != nil {
+		for _, reservedIP := range ai.reservedAddresses {
+			addresses[reservedIP] = v1.NodeExternalIP
+		}
 	}
 
-	for _, network := range ai.info.Network {
-		for _, ip := range network.IPv4 {
-			addresses[ip] = v1.NodeExternalIP
+	if ai.info != nil {
+		for _, network := range ai.info.Network {
+			for _, ip := range network.IPv4 {
+				addresses[ip] = v1.NodeExternalIP
+			}
+			for _, ip := range network.IPv6 {
+				addresses[ip] = v1.NodeExternalIP
+			}
 		}
-		for _, ip := range network.IPv6 {
-			addresses[ip] = v1.NodeExternalIP
-		}
+	}
 
-		// TODO mark RFC1918 and RFC4193 addresses as internal
+	for ip := range addresses {
+		parsed := net.ParseIP(ip)
+		if parsed.IsPrivate() {
+			addresses[ip] = v1.NodeInternalIP
+		} else {
+			addresses[ip] = v1.NodeExternalIP
+		}
 	}
 
 	return addresses
 }
 
 func (ai *anexiaInstance) Status() instance.Status {
+	if ai.isDeleting {
+		return instance.StatusDeleting
+	}
+	if ai.isCreating {
+		return instance.StatusCreating
+	}
+
 	if ai.info != nil {
 		if ai.info.Status == anxtypes.MachinePoweredOn {
 			return instance.StatusRunning

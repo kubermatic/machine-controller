@@ -3,6 +3,8 @@ kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
+  annotations:
+    k8c.io/operating-system-profile: osp-<< OS_NAME >>
 spec:
   replicas: 1
   strategy:
@@ -24,17 +26,18 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "vsphere"
           cloudProviderSpec:
-            templateVMName: 'machine-controller-e2e-<< OS_NAME >>'
+            templateVMName: '<< OS_Image_Template >>'
             username: '<< VSPHERE_USERNAME >>'
             vsphereURL: '<< VSPHERE_ADDRESS >>'
-            datacenter: 'dc-1'
-            folder: '/dc-1/vm/e2e-tests'
+            datacenter: 'Hamburg'
+            folder: '/Hamburg/vm/Kubermatic-ci'
             password: << VSPHERE_PASSWORD >>
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            datastore: HS-FreeNAS
+            datastore: vsan
             cpus: 2
             MemoryMB: 4096
             diskSizeGB: << DISK_SIZE >>
+            allowInsecure: true
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:
             distUpgradeOnBoot: false

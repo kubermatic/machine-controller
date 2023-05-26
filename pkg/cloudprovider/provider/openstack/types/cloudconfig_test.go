@@ -78,7 +78,7 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
-					UseOctavia:           pointer.BoolPtr(true),
+					UseOctavia:           pointer.Bool(true),
 				},
 				Version: "1.10.0",
 			},
@@ -102,7 +102,7 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
-					UseOctavia:           pointer.BoolPtr(false),
+					UseOctavia:           pointer.Bool(false),
 				},
 				Version: "1.10.0",
 			},

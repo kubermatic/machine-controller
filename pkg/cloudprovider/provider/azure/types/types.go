@@ -21,27 +21,29 @@ import (
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
-// RawConfig is a direct representation of an Azure machine object's configuration
+// RawConfig is a direct representation of an Azure machine object's configuration.
 type RawConfig struct {
 	SubscriptionID *providerconfigtypes.ConfigVarString `json:"subscriptionID,omitempty"`
 	TenantID       *providerconfigtypes.ConfigVarString `json:"tenantID,omitempty"`
 	ClientID       *providerconfigtypes.ConfigVarString `json:"clientID,omitempty"`
 	ClientSecret   *providerconfigtypes.ConfigVarString `json:"clientSecret,omitempty"`
 
-	Location              *providerconfigtypes.ConfigVarString `json:"location"`
-	ResourceGroup         *providerconfigtypes.ConfigVarString `json:"resourceGroup"`
-	VNetResourceGroup     *providerconfigtypes.ConfigVarString `json:"vnetResourceGroup"`
-	VMSize                *providerconfigtypes.ConfigVarString `json:"vmSize"`
-	VNetName              *providerconfigtypes.ConfigVarString `json:"vnetName"`
-	SubnetName            *providerconfigtypes.ConfigVarString `json:"subnetName"`
-	LoadBalancerSku       *providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
-	RouteTableName        *providerconfigtypes.ConfigVarString `json:"routeTableName"`
-	AvailabilitySet       *providerconfigtypes.ConfigVarString `json:"availabilitySet"`
-	AssignAvailabilitySet *bool                                `json:"assignAvailabilitySet"`
-	SecurityGroupName     *providerconfigtypes.ConfigVarString `json:"securityGroupName"`
-	Zones                 []string                             `json:"zones"`
-	ImagePlan             *ImagePlan                           `json:"imagePlan,omitempty"`
-	ImageReference        *ImageReference                      `json:"imageReference,omitempty"`
+	Location                    *providerconfigtypes.ConfigVarString `json:"location"`
+	ResourceGroup               *providerconfigtypes.ConfigVarString `json:"resourceGroup"`
+	VNetResourceGroup           *providerconfigtypes.ConfigVarString `json:"vnetResourceGroup"`
+	VMSize                      *providerconfigtypes.ConfigVarString `json:"vmSize"`
+	VNetName                    *providerconfigtypes.ConfigVarString `json:"vnetName"`
+	SubnetName                  *providerconfigtypes.ConfigVarString `json:"subnetName"`
+	LoadBalancerSku             *providerconfigtypes.ConfigVarString `json:"loadBalancerSku"`
+	RouteTableName              *providerconfigtypes.ConfigVarString `json:"routeTableName"`
+	AvailabilitySet             *providerconfigtypes.ConfigVarString `json:"availabilitySet"`
+	AssignAvailabilitySet       *bool                                `json:"assignAvailabilitySet"`
+	SecurityGroupName           *providerconfigtypes.ConfigVarString `json:"securityGroupName"`
+	Zones                       []string                             `json:"zones"`
+	ImagePlan                   *ImagePlan                           `json:"imagePlan,omitempty"`
+	ImageReference              *ImageReference                      `json:"imageReference,omitempty"`
+	EnableAcceleratedNetworking *bool                                `json:"enableAcceleratedNetworking"`
+	EnableBootDiagnostics       *bool                                `json:"enableBootDiagnostics,omitempty"`
 
 	ImageID        *providerconfigtypes.ConfigVarString `json:"imageID"`
 	OSDiskSize     int32                                `json:"osDiskSize"`
@@ -49,10 +51,11 @@ type RawConfig struct {
 	DataDiskSize   int32                                `json:"dataDiskSize"`
 	DataDiskSKU    *string                              `json:"dataDiskSKU,omitempty"`
 	AssignPublicIP *providerconfigtypes.ConfigVarBool   `json:"assignPublicIP"`
+	PublicIPSKU    *string                              `json:"publicIPSKU,omitempty"`
 	Tags           map[string]string                    `json:"tags,omitempty"`
 }
 
-// ImagePlan contains azure OS Plan fields for the marketplace images
+// ImagePlan contains azure OS Plan fields for the marketplace images.
 type ImagePlan struct {
 	Name      string `json:"name,omitempty"`
 	Publisher string `json:"publisher,omitempty"`

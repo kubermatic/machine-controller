@@ -44,10 +44,11 @@ type RawConfig struct {
 	AllowInsecure *providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
 }
 
-// Tag represents vsphere tag
+// Tag represents vsphere tag.
 type Tag struct {
 	Description string `json:"description,omitempty"`
-	Name        string `json:"name"`
+	ID          string `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
 	CategoryID  string `json:"categoryID"`
 }
 

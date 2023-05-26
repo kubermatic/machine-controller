@@ -35,6 +35,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway"
+	vcd "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vmwareclouddirector"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -44,7 +45,7 @@ import (
 var (
 	cache = cloudprovidercache.New()
 
-	// ErrProviderNotFound tells that the requested cloud provider was not found
+	// ErrProviderNotFound tells that the requested cloud provider was not found.
 	ErrProviderNotFound = errors.New("cloudprovider not found")
 
 	providers = map[providerconfigtypes.CloudProvider]func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider{
@@ -104,10 +105,13 @@ var (
 		providerconfigtypes.CloudProviderNutanix: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return nutanix.New(cvr)
 		},
+		providerconfigtypes.CloudProviderVMwareCloudDirector: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return vcd.New(cvr)
+		},
 	}
 )
 
-// ForProvider returns a CloudProvider actuator for the requested provider
+// ForProvider returns a CloudProvider actuator for the requested provider.
 func ForProvider(p providerconfigtypes.CloudProvider, cvr *providerconfig.ConfigVarResolver) (cloudprovidertypes.Provider, error) {
 	if p, found := providers[p]; found {
 		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil

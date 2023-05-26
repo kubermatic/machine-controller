@@ -30,7 +30,7 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-/// [MachineSet]
+// / [MachineSet]
 // MachineSet ensures that a specified number of machines replicas are running at any given time.
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName=ms
@@ -46,8 +46,8 @@ type MachineSet struct {
 
 /// [MachineSet]
 
-/// [MachineSetSpec]
-// MachineSetSpec defines the desired state of MachineSet
+// / [MachineSetSpec]
+// MachineSetSpec defines the desired state of MachineSet.
 type MachineSetSpec struct {
 	// Replicas is the number of desired replicas.
 	// This is a pointer to distinguish between explicit zero and unspecified.
@@ -103,8 +103,8 @@ const (
 
 /// [MachineSetSpec] // doxygen marker
 
-/// [MachineTemplateSpec] // doxygen marker
-// MachineTemplateSpec describes the data needed to create a Machine from a template
+// / [MachineTemplateSpec] // doxygen marker
+// MachineTemplateSpec describes the data needed to create a Machine from a template.
 type MachineTemplateSpec struct {
 	// Standard object's metadata.
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
@@ -119,8 +119,8 @@ type MachineTemplateSpec struct {
 
 /// [MachineTemplateSpec]
 
-/// [MachineSetStatus]
-// MachineSetStatus defines the observed state of MachineSet
+// / [MachineSetStatus]
+// MachineSetStatus defines the observed state of MachineSet.
 type MachineSetStatus struct {
 	// Replicas is the most recently observed number of replicas.
 	Replicas int32 `json:"replicas"`
@@ -172,7 +172,7 @@ func (m *MachineSet) Validate() field.ErrorList {
 
 	// validate spec.selector and spec.template.labels
 	fldPath := field.NewPath("spec")
-	errors = append(errors, metav1validation.ValidateLabelSelector(&m.Spec.Selector, fldPath.Child("selector"))...)
+	errors = append(errors, metav1validation.ValidateLabelSelector(&m.Spec.Selector, metav1validation.LabelSelectorValidationOptions{}, fldPath.Child("selector"))...)
 	if len(m.Spec.Selector.MatchLabels)+len(m.Spec.Selector.MatchExpressions) == 0 {
 		errors = append(errors, field.Invalid(fldPath.Child("selector"), m.Spec.Selector, "empty selector is not valid for MachineSet."))
 	}
@@ -189,7 +189,7 @@ func (m *MachineSet) Validate() field.ErrorList {
 	return errors
 }
 
-// DefaultingFunction sets default MachineSet field values
+// DefaultingFunction sets default MachineSet field values...
 func (m *MachineSet) Default() {
 	log.Printf("Defaulting fields for MachineSet %s\n", m.Name)
 
@@ -211,7 +211,7 @@ func (m *MachineSet) Default() {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MachineSetList contains a list of MachineSet
+// MachineSetList contains a list of MachineSet.
 type MachineSetList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

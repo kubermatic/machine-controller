@@ -38,10 +38,11 @@ type RawConfig struct {
 	AllowInsecure providerconfigtypes.ConfigVarBool   `json:"allowInsecure"`
 	ProxyURL      providerconfigtypes.ConfigVarString `json:"proxyURL,omitempty"`
 
-	ClusterName providerconfigtypes.ConfigVarString  `json:"clusterName"`
-	ProjectName *providerconfigtypes.ConfigVarString `json:"projectName,omitempty"`
-	SubnetName  providerconfigtypes.ConfigVarString  `json:"subnetName"`
-	ImageName   providerconfigtypes.ConfigVarString  `json:"imageName"`
+	ClusterName           providerconfigtypes.ConfigVarString  `json:"clusterName"`
+	ProjectName           *providerconfigtypes.ConfigVarString `json:"projectName,omitempty"`
+	SubnetName            providerconfigtypes.ConfigVarString  `json:"subnetName"`
+	AdditionalSubnetNames []string                             `json:"additionalSubnetNames,omitempty"`
+	ImageName             providerconfigtypes.ConfigVarString  `json:"imageName"`
 
 	// VM sizing configuration
 	CPUs           int64  `json:"cpus"`

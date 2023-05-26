@@ -3,6 +3,8 @@ kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
+  annotations:
+    k8c.io/operating-system-profile: osp-<< OS_NAME >>
 spec:
   replicas: 1
   strategy:
@@ -24,20 +26,22 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "gce"
           cloudProviderSpec:
-            # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var
-            serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
+            # If empty, can be set via GOOGLE_SERVICE_ACCOUNT env var. The environment variable
+            # should be plaintext. The value in the cloudProviderSpec however must be base64-encoded.
+            serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>"
             # See https://cloud.google.com/compute/docs/regions-zones/
             zone: "europe-west3-a"
             # See https://cloud.google.com/compute/docs/machine-types
-            machineType: "n1-standard-2"
+            machineType: "n1-standard-1"
             # In GB
             diskSize: 25
             # Can be 'pd-standard' or 'pd-ssd'
             diskType: "pd-standard"
             labels:
-                "kubernetes_cluster": "gce-test-cluster"
+              "kubernetes_cluster": "gce-test-cluster"
             assignPublicIPAddress: true
             customImage: "<< CUSTOM-IMAGE >>"
+            disableMachineServiceAccount: false
           # Can be 'ubuntu' or 'rhel'
           operatingSystem: "<< OS_NAME >>"
           operatingSystemSpec:

@@ -3,6 +3,8 @@ kind: MachineDeployment
 metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
+  annotations:
+    k8c.io/operating-system-profile: osp-<< OS_NAME >>
 spec:
   replicas: 1
   strategy:
@@ -53,4 +55,4 @@ spec:
             rhelOrganizationName: ""
             rhelActivationKey: ""
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

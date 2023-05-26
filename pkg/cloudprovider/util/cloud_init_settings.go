@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -33,56 +32,27 @@ import (
 )
 
 const (
-	CloudInitNamespace = "cloud-init-settings"
-	jwtTokenNamePrefix = "cloud-init-getter-token"
+	CloudInitNamespace    = "cloud-init-settings"
+	cloudInitGetterSecret = "cloud-init-getter-token"
 )
 
-func ExtractAPIServerToken(ctx context.Context, client ctrlruntimeclient.Client) (string, error) {
-	secretList := corev1.SecretList{}
-	if err := client.List(ctx, &secretList, &ctrlruntimeclient.ListOptions{Namespace: CloudInitNamespace}); err != nil {
-		return "", fmt.Errorf("failed to list secrets in namespace %s: %v", CloudInitNamespace, err)
+func ExtractTokenAndAPIServer(ctx context.Context, userdata string, client ctrlruntimeclient.Client) (string, string, error) {
+	secret := &corev1.Secret{}
+	if err := client.Get(ctx, types.NamespacedName{Name: cloudInitGetterSecret, Namespace: CloudInitNamespace}, secret); err != nil {
+		return "", "", fmt.Errorf("failed to get %s secrets in namespace %s: %w", cloudInitGetterSecret, CloudInitNamespace, err)
 	}
 
-	for _, secret := range secretList.Items {
-		if strings.HasPrefix(secret.Name, jwtTokenNamePrefix) {
-			if secret.Data != nil {
-				jwtToken := secret.Data["token"]
-				if jwtToken != nil {
-					token := string(jwtToken)
-					return token, nil
-				}
-			}
-		}
+	token := secret.Data["token"]
+	if token == nil {
+		return "", "", errors.New("failed to extract token from cloud-init secret")
 	}
 
-	return "", errors.New("failed to fetch api server token")
-
-}
-
-func ExtractTokenAndAPIServer(ctx context.Context, userdata string, client ctrlruntimeclient.Client) (token string, apiServer string, err error) {
-	secretList := corev1.SecretList{}
-	if err := client.List(ctx, &secretList, &ctrlruntimeclient.ListOptions{Namespace: CloudInitNamespace}); err != nil {
-		return "", "", fmt.Errorf("failed to list secrets in namespace %s: %v", CloudInitNamespace, err)
-	}
-
-	apiServer, err = extractAPIServer(userdata)
+	apiServer, err := extractAPIServer(userdata)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to extract api server address: %v", err)
+		return "", "", fmt.Errorf("failed to extract api server address: %w", err)
 	}
 
-	for _, secret := range secretList.Items {
-		if strings.HasPrefix(secret.Name, jwtTokenNamePrefix) {
-			if secret.Data != nil {
-				jwtToken := secret.Data["token"]
-				if jwtToken != nil {
-					token = string(jwtToken)
-					return token, apiServer, nil
-				}
-			}
-		}
-	}
-
-	return "", "", errors.New("failed to find cloud-init secret")
+	return string(token), apiServer, nil
 }
 
 func CreateMachineCloudInitSecret(ctx context.Context, userdata, machineName string, client ctrlruntimeclient.Client) error {
@@ -97,11 +67,11 @@ func CreateMachineCloudInitSecret(ctx context.Context, userdata, machineName str
 				Data: map[string][]byte{"cloud_init": []byte(userdata)},
 			}
 			if err := client.Create(ctx, secret); err != nil {
-				return fmt.Errorf("failed to create secret for userdata: %v", err)
+				return fmt.Errorf("failed to create secret for userdata: %w", err)
 			}
 		}
 
-		return fmt.Errorf("failed to fetch cloud-init secret: %v", err)
+		return fmt.Errorf("failed to fetch cloud-init secret: %w", err)
 	}
 
 	return nil
@@ -119,14 +89,14 @@ func extractAPIServer(userdata string) (string, error) {
 	}{}
 
 	if err := yaml.Unmarshal([]byte(userdata), files); err != nil {
-		return "", fmt.Errorf("failed to unmarshal userdata: %v", err)
+		return "", fmt.Errorf("failed to unmarshal userdata: %w", err)
 	}
 
 	for _, file := range files.WriteFiles {
 		if file.Path == "/etc/kubernetes/bootstrap-kubelet.conf" {
 			config, err := clientcmd.RESTConfigFromKubeConfig([]byte(file.Content))
 			if err != nil {
-				return "", fmt.Errorf("failed to get kubeconfig from userdata: %v", err)
+				return "", fmt.Errorf("failed to get kubeconfig from userdata: %w", err)
 			}
 
 			return config.Host, nil

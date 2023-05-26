@@ -88,11 +88,19 @@ coreos:
       content: |
         [Service]
         EnvironmentFile=/etc/kubernetes/nodeip.conf
+    - name: resolv.conf
+      content: |
+        [Service]
+        Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
     - name: 40-download.conf
       content: |
         [Unit]
         Requires=download-script.service
         After=download-script.service
+    - name: 50-rpc-statd.conf
+      content: |
+        [Unit]
+        Wants=rpc-statd.service
     content: |
       [Unit]
       After=containerd.service
@@ -102,6 +110,7 @@ coreos:
       Documentation=https://kubernetes.io/docs/home/
 
       [Service]
+      User=root
       Restart=always
       StartLimitInterval=0
       RestartSec=10
@@ -293,6 +302,15 @@ write_files:
     fi
 
 
+- path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+  permissions: "0755"
+  content: |
+    # IPv6 autoconfiguration doesn't work out of the box on some versions of Flatcar
+    # so we enable IPv6 Router Advertisement here.
+    # See for details https://github.com/flatcar-linux/Flatcar/issues/384
+    [Network]
+    IPv6AcceptRA=true
+
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: "0400"
   content: |
@@ -374,7 +392,7 @@ write_files:
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
     cni_bin_dir=/opt/cni/bin
-    mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+    mkdir -p /etc/cni/net.d /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
     arch=${HOST_ARCH-}
     if [ -z "$arch" ]
     then
@@ -391,7 +409,7 @@ write_files:
         ;;
     esac
     fi
-    CNI_VERSION="${CNI_VERSION:-v0.8.7}"
+    CNI_VERSION="${CNI_VERSION:-v1.2.0}"
     cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
     cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
     curl -Lfo "$cni_bin_dir/$cni_filename" "$cni_base_url/$cni_filename"
@@ -401,11 +419,12 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.22.0}"
+    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.26.0}"
     cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
     cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
     curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
-    cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+    cri_tools_sum_value=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256")
+    cri_tools_sum="$cri_tools_sum_value $cri_tools_filename"
     cd "$opt_bin"
     sha256sum -c <<<"$cri_tools_sum"
     tar xvf "$cri_tools_filename"
@@ -448,7 +467,7 @@ write_files:
     EOF
 
     systemctl daemon-reload
-    systemctl enable --now containerd
+    systemctl restart containerd
 
     systemctl disable download-script.service
 

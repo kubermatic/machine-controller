@@ -38,7 +38,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const expectedServerRequest = `{
@@ -82,7 +82,7 @@ const expectedBlockDeviceBootRequest = `{
 	  }
 	],
 	"flavorRef": "1",
-	"imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+	"imageRef": "",
 	"metadata": {
 	  "kubernetes-cluster": "xyz",
 	  "machine-uid": "",
@@ -119,7 +119,7 @@ const expectedBlockDeviceBootVolumeTypeRequest = `{
 		}
 	  ],
 	  "flavorRef": "1",
-	  "imageRef": "1bea47ed-f6a9-463b-b423-14b9cca9ad27",
+	  "imageRef": "",
 	  "metadata": {
 		"kubernetes-cluster": "xyz",
 		"machine-uid": "",
@@ -240,13 +240,13 @@ func TestCreateServer(t *testing.T) {
 		},
 		{
 			name:          "Custom disk size",
-			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10)},
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32(10)},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootRequest,
 		},
 		{
 			name:          "Custom disk type",
-			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32Ptr(10), RootDiskVolumeType: "ssd"},
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32(10), RootDiskVolumeType: "ssd"},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootVolumeTypeRequest,
 		},
@@ -270,7 +270,7 @@ func TestCreateServer(t *testing.T) {
 			ExpectServerCreated(t, tt.wantServerReq)
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient())},
+				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.NewClientBuilder().Build())},
 				// mock client config getter
 				clientGetter: func(c *Config) (*gophercloud.ProviderClient, error) {
 					pc := client.ServiceClient()
@@ -295,7 +295,7 @@ func TestCreateServer(t *testing.T) {
 			// It only verifies that the content of the create request matches
 			// the expectation
 			// TODO(irozzo) check the returned instance too
-			_, err := p.Create(m, tt.data, tt.userdata)
+			_, err := p.Create(context.Background(), m, tt.data, tt.userdata)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("provider.Create() or = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -334,7 +334,9 @@ func TestProjectAuthVarsAreCorrectlyLoaded(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient())},
+				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.
+					NewClientBuilder().
+					Build())},
 			}
 			conf, _, _, _ := p.getConfig(v1alpha1.ProviderSpec{
 				Value: &runtime.RawExtension{
@@ -383,7 +385,7 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 
 		w.WriteHeader(http.StatusAccepted)
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprintf(w, string(srvRes))
+		fmt.Fprint(w, string(srvRes))
 	})
 	th.Mux.HandleFunc("/os-volumes_boot", func(w http.ResponseWriter, r *http.Request) {
 		th.TestMethod(t, r, "POST")
@@ -392,7 +394,7 @@ func ExpectServerCreated(t *testing.T, expectedServer string) {
 
 		w.WriteHeader(http.StatusAccepted)
 		w.Header().Add("Content-Type", "application/json")
-		fmt.Fprintf(w, string(srvRes))
+		fmt.Fprint(w, string(srvRes))
 	})
 
 	// Handle listing images v2.

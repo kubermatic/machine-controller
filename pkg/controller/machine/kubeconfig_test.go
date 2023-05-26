@@ -24,27 +24,27 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	ctrlruntimefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 	tests := []struct {
-		initialExperirationTime time.Time
-		shouldRenew             bool
+		initialExpirationTime time.Time
+		shouldRenew           bool
 	}{
 		{
-			initialExperirationTime: time.Now().Add(1 * time.Hour),
-			shouldRenew:             false,
+			initialExpirationTime: time.Now().Add(1 * time.Hour),
+			shouldRenew:           false,
 		},
 		{
-			initialExperirationTime: time.Now().Add(25 * time.Minute),
-			shouldRenew:             true,
+			initialExpirationTime: time.Now().Add(25 * time.Minute),
+			shouldRenew:           true,
 		},
 		{
-			initialExperirationTime: time.Now().Add(-25 * time.Minute),
-			shouldRenew:             true,
+			initialExpirationTime: time.Now().Add(-25 * time.Minute),
+			shouldRenew:           true,
 		},
 	}
 
@@ -58,9 +58,13 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		data := map[string][]byte{}
 		data[tokenSecretKey] = []byte("tokenSecret")
 		data[tokenIDKey] = []byte("tokenID")
-		data[expirationKey] = []byte(testCase.initialExperirationTime.Format(time.RFC3339))
+		data[expirationKey] = []byte(testCase.initialExpirationTime.Format(time.RFC3339))
 		secret.Data = data
-		reconciler.client = ctrlruntimefake.NewFakeClient(runtime.Object(secret))
+		reconciler.client = ctrlruntimefake.
+			NewClientBuilder().
+			WithScheme(scheme.Scheme).
+			WithObjects(secret).
+			Build()
 
 		if _, err := reconciler.updateSecretExpirationAndGetToken(ctx, secret); err != nil {
 			t.Fatalf("Unexpected error running updateSecretExpirationAndGetToken: %v", err)
@@ -75,12 +79,12 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		}
 
 		if testCase.shouldRenew &&
-			bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExperirationTime.Format(time.RFC3339))) {
+			bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExpirationTime.Format(time.RFC3339))) {
 			t.Errorf("Error, token secret did not update but was expected to!")
 		}
 
 		if !testCase.shouldRenew &&
-			!bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExperirationTime.Format(time.RFC3339))) {
+			!bytes.Equal(updatedSecret.Data[expirationKey], []byte(testCase.initialExpirationTime.Format(time.RFC3339))) {
 			t.Errorf("Error, token secret was expected to get updated, but did not happen!")
 		}
 
@@ -92,6 +96,5 @@ func TestUpdateSecretExpirationAndGetToken(t *testing.T) {
 		if time.Until(expirationTimeParsed).Minutes() < 0 {
 			t.Errorf("Error, secret expiration is in the past!")
 		}
-
 	}
 }

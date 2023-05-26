@@ -1,0 +1,29 @@
+[Global]
+user              = "admin"
+password          = "password"
+port              = ""
+insecure-flag     = true
+working-dir       = ""
+datacenter        = ""
+datastore         = ""
+server            = ""
+ip-family         = "ipv4,ipv6"
+
+[Disk]
+scsicontrollertype = "pvscsi"
+
+[Workspace]
+server            = "https://127.0.0.1:8443"
+datacenter        = "Datacenter"
+folder            = "some-folder"
+default-datastore = "Datastore"
+resourcepool-path = "/some-resource-pool"
+
+
+[VirtualCenter "vc1"]
+user = "1-some-user"
+password = "1-some-password"
+port = 443
+datacenters = "1-foo"
+ip-family = "ipv4,ipv6"
+

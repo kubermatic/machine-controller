@@ -1,0 +1,82 @@
+# Copyright 2022 The Machine Controller Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+presubmits:
+  - name: pull-machine-controller-e2e-openstack
+    run_if_changed: "(pkg/cloudprovider/provider/openstack/|pkg/userdata)"
+    # We've made the E2E tests for OpenStack optional since in-tree cloud provider for OpenStack was removed with k8s v1.26. Since MC depends on the in-tree cloud provider
+    # the tests on k8s v1.26+ will fail.
+    # TODO: These tests shouldn't be marked as optional.
+    optional: true
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-openstack: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-rhel: "true"
+      preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-9
+          command:
+            - "./hack/ci/run-e2e-tests.sh"
+          args:
+            - "TestOpenstackProvisioningE2E"
+          env:
+            - name: CLOUD_PROVIDER
+              value: openstack
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              memory: 7Gi
+              cpu: 2
+            limits:
+              memory: 7Gi
+
+  - name: pull-machine-controller-e2e-openstack-project-auth
+    run_if_changed: "(pkg/cloudprovider/provider/openstack/|pkg/userdata)"
+    decorate: true
+    clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
+    labels:
+      preset-openstack: "true"
+      preset-hetzner: "true"
+      preset-e2e-ssh: "true"
+      preset-rhel: "true"
+      preset-goproxy: "true"
+      preset-kind-volume-mounts: "true"
+      preset-docker-mirror: "true"
+      preset-kubeconfig-ci: "true"
+    spec:
+      containers:
+        - image: quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-9
+          command:
+            - "./hack/ci/run-e2e-tests.sh"
+          args:
+            - "TestOpenstackProjectAuthProvisioningE2E"
+          env:
+            - name: CLOUD_PROVIDER
+              value: openstack
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              memory: 7Gi
+              cpu: 2
+            limits:
+              memory: 7Gi

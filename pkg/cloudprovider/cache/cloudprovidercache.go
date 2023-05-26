@@ -31,13 +31,13 @@ type CloudproviderCache struct {
 	cache *gocache.Cache
 }
 
-// New returns a new cloudproviderCache
+// New returns a new cloudproviderCache.
 func New() *CloudproviderCache {
 	return &CloudproviderCache{cache: gocache.New(5*time.Minute, 5*time.Minute)}
 }
 
 // Get returns an error indicating the result of the validation and a boolean indicating if
-// it got a cache hit or miss
+// it got a cache hit or miss.
 func (c *CloudproviderCache) Get(machineSpec clusterv1alpha1.MachineSpec) (error, bool, error) {
 	id, err := getID(machineSpec)
 	if err != nil {
@@ -55,12 +55,12 @@ func (c *CloudproviderCache) Get(machineSpec clusterv1alpha1.MachineSpec) (error
 
 	errVal, castable := val.(error)
 	if !castable {
-		return nil, false, fmt.Errorf("failed to cast val to err: %v", err)
+		return nil, false, fmt.Errorf("failed to cast val to err: %w", err)
 	}
 	return errVal, true, nil
 }
 
-// Set sets the passed value for the given machineSpec
+// Set sets the passed value for the given machineSpec.
 func (c *CloudproviderCache) Set(machineSpec clusterv1alpha1.MachineSpec, val error) error {
 	id, err := getID(machineSpec)
 	if err != nil {
@@ -74,7 +74,7 @@ func (c *CloudproviderCache) Set(machineSpec clusterv1alpha1.MachineSpec, val er
 func getID(machineSpec clusterv1alpha1.MachineSpec) (string, error) {
 	b, err := json.Marshal(machineSpec.ProviderSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal MachineSpec: %v", err)
+		return "", fmt.Errorf("failed to marshal MachineSpec: %w", err)
 	}
 
 	sum := sha256.Sum256(b)

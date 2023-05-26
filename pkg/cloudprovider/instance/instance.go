@@ -18,12 +18,14 @@ package instance
 
 import v1 "k8s.io/api/core/v1"
 
-// Instance represents a instance on the cloud provider
+// Instance represents a instance on the cloud provider.
 type Instance interface {
 	// Name returns the instance name.
 	Name() string
 	// ID returns the instance identifier.
 	ID() string
+	// ProviderID returns the expected providerID for the instance
+	ProviderID() string
 	// ID of the physical host where the VM is on
 	HostID() string
 	// Addresses returns a list of addresses associated with the instance.

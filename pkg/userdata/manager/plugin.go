@@ -76,7 +76,7 @@ func (p *Plugin) UserData(req plugin.UserDataRequest) (string, error) {
 	// Execute command.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to execute command %q: output: %q error: %q", p.command, string(out), err)
+		return "", fmt.Errorf("failed to execute command %q: output: %q error: %w", p.command, string(out), err)
 	}
 	var resp plugin.UserDataResponse
 	err = json.Unmarshal(out, &resp)
@@ -126,7 +126,7 @@ func (p *Plugin) findPlugin(name string) error {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return fmt.Errorf("error when looking for %q: %v", command, err)
+			return fmt.Errorf("error when looking for %q: %w", command, err)
 		}
 		if fi.IsDir() || (fi.Mode()&0111 == 0) {
 			klog.Infof("found '%s', but is no executable", command)

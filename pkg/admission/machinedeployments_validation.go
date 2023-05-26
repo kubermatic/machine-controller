@@ -23,7 +23,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
-	osmresources "k8c.io/operating-system-manager/pkg/controllers/osc/resources"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -33,8 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-const ospNamePattern = "osp-%s"
-
 func validateMachineDeployment(md v1alpha1.MachineDeployment) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateMachineDeploymentSpec(&md.Spec, field.NewPath("spec"))...)
@@ -43,7 +40,7 @@ func validateMachineDeployment(md v1alpha1.MachineDeployment) field.ErrorList {
 
 func validateMachineDeploymentSpec(spec *v1alpha1.MachineDeploymentSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, metav1validation.ValidateLabelSelector(&spec.Selector, fldPath.Child("selector"))...)
+	allErrs = append(allErrs, metav1validation.ValidateLabelSelector(&spec.Selector, metav1validation.LabelSelectorValidationOptions{}, fldPath.Child("selector"))...)
 	if len(spec.Selector.MatchLabels)+len(spec.Selector.MatchExpressions) == 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("selector"), spec.Selector, "empty selector is not valid for MachineDeployment."))
 	}
@@ -117,52 +114,25 @@ func machineDeploymentDefaultingFunction(md *v1alpha1.MachineDeployment) {
 	v1alpha1.PopulateDefaultsMachineDeployment(md)
 }
 
-func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment, useOSM bool) error {
+func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment) error {
 	providerConfig, err := providerconfigtypes.GetConfig(md.Spec.Template.Spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to read MachineDeployment.Spec.Template.Spec.ProviderSpec: %v", err)
-	}
-
-	if useOSM {
-		err = ensureOSPAnnotation(md, *providerConfig)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("failed to read MachineDeployment.Spec.Template.Spec.ProviderSpec: %w", err)
 	}
 
 	// Packet has been renamed to Equinix Metal
 	if providerConfig.CloudProvider == cloudProviderPacket {
 		err = migrateToEquinixMetal(providerConfig)
 		if err != nil {
-			return fmt.Errorf("failed to migrate packet to equinix metal: %v", err)
+			return fmt.Errorf("failed to migrate packet to equinix metal: %w", err)
 		}
 	}
 
 	// Update value in original object
 	md.Spec.Template.Spec.ProviderSpec.Value.Raw, err = json.Marshal(providerConfig)
 	if err != nil {
-		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %v", err)
+		return fmt.Errorf("failed to json marshal machine.spec.providerSpec: %w", err)
 	}
 
-	return nil
-}
-
-func ensureOSPAnnotation(md *v1alpha1.MachineDeployment, providerConfig providerconfigtypes.Config) error {
-	// Check for existing annotation
-	if _, ok := md.Annotations[osmresources.MachineDeploymentOSPAnnotation]; !ok {
-		if md.Annotations == nil {
-			md.Annotations = make(map[string]string)
-		}
-		// Annotation not specified, populate default OSP annotation
-		switch providerConfig.OperatingSystem {
-		case providerconfigtypes.OperatingSystemUbuntu, providerconfigtypes.OperatingSystemCentOS, providerconfigtypes.OperatingSystemFlatcar,
-			providerconfigtypes.OperatingSystemAmazonLinux2:
-			md.Annotations[osmresources.MachineDeploymentOSPAnnotation] = fmt.Sprintf(ospNamePattern, providerConfig.OperatingSystem)
-			return nil
-
-		default:
-			return fmt.Errorf("failed to populate OSP annotation for machinedeployment with unsupported Operating System %s", providerConfig.OperatingSystem)
-		}
-	}
 	return nil
 }

@@ -79,7 +79,6 @@ spec:
             # that protects your applications and data from datacenter failures.
             zones:
               - "1"
-          # Can be 'ubuntu','flatcar' or 'rhel'
           operatingSystem: "flatcar"
           operatingSystemSpec:
             distUpgradeOnBoot: false
@@ -92,4 +91,4 @@ spec:
             # provided the rhsm will be disabled and any created subscription won't be removed automatically
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

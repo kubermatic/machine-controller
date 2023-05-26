@@ -60,6 +60,10 @@ func (gi *googleInstance) ID() string {
 	return strconv.FormatUint(gi.ci.Id, 10)
 }
 
+func (gi *googleInstance) ProviderID() string {
+	return fmt.Sprintf("gce://%s/%s/%s", gi.projectID, gi.zone, gi.ci.Name)
+}
+
 func (gi *googleInstance) HostID() string {
 	return ""
 }

@@ -26,10 +26,19 @@ spec:
             - "<< YOUR_PUBLIC_KEY >>"
           cloudProvider: "kubevirt"
           cloudProviderSpec:
+            clusterName: cluster-name
             auth:
               kubeconfig:
-                value: '<< KUBECONFIG >>'
+                # Can also be set via the env var 'KUBEVIRT_KUBECONFIG' on the machine-controller.
+                # If instead specified directly, this value should be a base64 encoded kubeconfig.
+                value: "<< KUBECONFIG_BASE64 >>"
             virtualMachine:
+              instancetype:
+                name: "standard-2"
+                kind: "VirtualMachineInstancetype" # Allowed values: "VirtualMachineInstancetype"/"VirtualMachineClusterInstancetype"
+              preference:
+                name: "sockets-advantage"
+                kind: "VirtualMachinePreference" # Allowed values: "VirtualMachinePreference"/"VirtualMachineClusterPreference"
               template:
                 cpus: "1"
                 memory: "2048M"
@@ -38,13 +47,15 @@ spec:
                   size: "10Gi"
                   storageClassName: kubermatic-fast
             affinity:
-              podAffinityPreset: "" # Allowed values: "", "soft", "hard"
-              podAntiAffinityPreset: "" # Allowed values: "", "soft", "hard"
               nodeAffinityPreset:
                 type: "" # Allowed values: "", "soft", "hard"
                 key: "foo"
                 values:
-                - bar
+                  - bar
+            topologySpreadConstraints:
+              - maxSkew: "1"
+                topologyKey: "kubernetes.io/hostname"
+                whenUnsatisfiable: "" # Allowed values: "DoNotSchedule", "ScheduleAnyway"
           # Can also be `centos`, must align with he configured registryImage above
           operatingSystem: "ubuntu"
           operatingSystemSpec:
@@ -58,4 +69,4 @@ spec:
             # provided the rhsm will be disabled and any created subscription won't be removed automatically
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

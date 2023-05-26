@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -30,24 +32,11 @@ const (
 	DefaultDockerContainerLogMaxSize  = "100m"
 )
 
-func GetServerAddressFromKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
-	if len(kubeconfig.Clusters) != 1 {
-		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address")
-	}
-	// Clusters is a map so we have to use range here
-	for _, clusterConfig := range kubeconfig.Clusters {
-		return strings.Replace(clusterConfig.Server, "https://", "", -1), nil
-	}
-
-	return "", fmt.Errorf("no server address found")
-
-}
-
 func GetCACert(kubeconfig *clientcmdapi.Config) (string, error) {
 	if len(kubeconfig.Clusters) != 1 {
 		return "", fmt.Errorf("kubeconfig does not contain exactly one cluster, can not extract server address")
 	}
-	// Clusters is a map so we have to use range here
+	// Clusters is a map so we have to use range here.
 	for _, clusterConfig := range kubeconfig.Clusters {
 		return string(clusterConfig.CertificateAuthorityData), nil
 	}
@@ -55,18 +44,18 @@ func GetCACert(kubeconfig *clientcmdapi.Config) (string, error) {
 	return "", fmt.Errorf("no CACert found")
 }
 
-// StringifyKubeconfig marshals a kubeconfig to its text form
+// StringifyKubeconfig marshals a kubeconfig to its text form.
 func StringifyKubeconfig(kubeconfig *clientcmdapi.Config) (string, error) {
 	kubeconfigBytes, err := clientcmd.Write(*kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error writing kubeconfig: %v", err)
+		return "", fmt.Errorf("error writing kubeconfig: %w", err)
 	}
 
 	return string(kubeconfigBytes), nil
 }
 
 // LoadKernelModules returns a script which is responsible for loading all required kernel modules
-// The nf_conntrack_ipv4 module get removed in newer kernel versions
+// The nf_conntrack_ipv4 module get removed in newer kernel versions.
 func LoadKernelModulesScript() string {
 	return `#!/usr/bin/env bash
 set -euo pipefail
@@ -85,7 +74,7 @@ fi
 }
 
 // KernelSettings returns the list of kernel settings required for a kubernetes worker node
-// inotify changes according to https://github.com/kubernetes/kubernetes/issues/10421 - better than letting the kubelet die
+// inotify changes according to https://github.com/kubernetes/kubernetes/issues/10421 - better than letting the kubelet die.
 func KernelSettings() string {
 	return `net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
@@ -98,7 +87,7 @@ fs.inotify.max_user_instances = 8192
 `
 }
 
-// JournalDConfig returns the journal config preferable on every node
+// JournalDConfig returns the journal config preferable on every node.
 func JournalDConfig() string {
 	// JournaldMaxUse defines the maximum space that journalD logs can occupy.
 	// https://www.freedesktop.org/software/systemd/man/journald.conf.html#SystemMaxUse=
@@ -159,14 +148,43 @@ NO_PROXY=%s
 no_proxy=%s`, proxy, proxy, proxy, proxy, noProxy, noProxy)
 }
 
-func SetupNodeIPEnvScript() string {
+func SetupNodeIPEnvScript(ipFamily util.IPFamily) string {
+	const defaultIfcIPv4 = `DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")`
+
+	var defaultIfcIP string
+	switch ipFamily {
+	case util.IPFamilyIPv4:
+		defaultIfcIP = defaultIfcIPv4
+	case util.IPFamilyIPv6:
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")`
+	case util.IPFamilyIPv4IPv6:
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o route get  1 | grep -oP "src \K\S+")
+DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
+if [ -z "${DEFAULT_IFC_IP6}" ]
+then
+  echodate "Failed to get IPv6 address for the default route interface"
+  exit 1
+fi
+DEFAULT_IFC_IP=$DEFAULT_IFC_IP,$DEFAULT_IFC_IP6`
+	case util.IPFamilyIPv6IPv4:
+		defaultIfcIP = `DEFAULT_IFC_IP=$(ip -o route get  1 | grep -oP "src \K\S+")
+DEFAULT_IFC_IP6=$(ip -o -6 route get  1:: | grep -oP "src \K\S+")
+if [ -z "${DEFAULT_IFC_IP6}" ]
+then
+  echodate "Failed to get IPv6 address for the default route interface"
+  exit 1
+fi
+DEFAULT_IFC_IP=$DEFAULT_IFC_IP6,$DEFAULT_IFC_IP`
+	default:
+		defaultIfcIP = defaultIfcIPv4
+	}
 	return `#!/usr/bin/env bash
 echodate() {
   echo "[$(date -Is)]" "$@"
 }
 
 # get the default interface IP address
-DEFAULT_IFC_IP=$(ip -o  route get 1 | grep -oP "src \K\S+")
+` + defaultIfcIP + `
 
 # get the full hostname
 FULL_HOSTNAME=$(hostname -f)

@@ -32,6 +32,8 @@ type Engine interface {
 	ScriptFor(os types.OperatingSystem) (string, error)
 	ConfigFileName() string
 	Config() (string, error)
+	AuthConfigFileName() string
+	AuthConfig() (string, error)
 	String() string
 }
 
@@ -52,6 +54,12 @@ func withRegistryMirrors(mirrors map[string][]string) Opt {
 func withSandboxImage(image string) Opt {
 	return func(cfg *Config) {
 		cfg.SandboxImage = image
+	}
+}
+
+func withContainerdVersion(version string) Opt {
+	return func(cfg *Config) {
+		cfg.ContainerdVersion = version
 	}
 }
 
@@ -86,6 +94,22 @@ type Config struct {
 	SandboxImage         string                `json:",omitempty"`
 	ContainerLogMaxFiles string                `json:",omitempty"`
 	ContainerLogMaxSize  string                `json:",omitempty"`
+	ContainerdVersion    string                `json:",omitempty"`
+}
+
+// AuthConfig is a COPY of github.com/containerd/containerd/pkg/cri/config.AuthConfig.
+// AuthConfig contains the config related to authentication to a specific registry.
+type AuthConfig struct {
+	// Username is the username to login the registry.
+	Username string `toml:"username,omitempty" json:"username,omitempty"`
+	// Password is the password to login the registry.
+	Password string `toml:"password,omitempty" json:"password,omitempty"`
+	// Auth is a base64 encoded string from the concatenation of the username,
+	// a colon, and the password.
+	Auth string `toml:"auth,omitempty" json:"auth,omitempty"`
+	// IdentityToken is used to authenticate the user and get
+	// an access token for the registry.
+	IdentityToken string `toml:"identitytoken,omitempty" json:"identitytoken,omitempty"`
 }
 
 func (cfg Config) String() string {
@@ -105,6 +129,8 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		registryMirrors:      cfg.RegistryMirrors["docker.io"],
 		containerLogMaxFiles: cfg.ContainerLogMaxFiles,
 		containerLogMaxSize:  cfg.ContainerLogMaxSize,
+		registryCredentials:  cfg.RegistryCredentials,
+		containerdVersion:    cfg.ContainerdVersion,
 	}
 
 	containerd := &Containerd{
@@ -112,6 +138,7 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		registryMirrors:     cfg.RegistryMirrors,
 		sandboxImage:        cfg.SandboxImage,
 		registryCredentials: cfg.RegistryCredentials,
+		version:             cfg.ContainerdVersion,
 	}
 
 	moreThan124, _ := semver.NewConstraint(">= 1.24")

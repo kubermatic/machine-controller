@@ -20,12 +20,12 @@ import (
 	"time"
 )
 
-// Duration is the encoding.TextUnmarshaler interface for time.Duration
+// Duration is the encoding.TextUnmarshaler interface for time.Duration.
 type Duration struct {
 	time.Duration
 }
 
-// UnmarshalText is used to convert from text to Duration
+// UnmarshalText is used to convert from text to Duration.
 func (d *Duration) UnmarshalText(text []byte) error {
 	res, err := time.ParseDuration(string(text))
 	if err != nil {
@@ -35,7 +35,7 @@ func (d *Duration) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// MarshalText is used to convert from Duration to text
+// MarshalText is used to convert from Duration to text.
 func (d *Duration) MarshalText() []byte {
 	return []byte(d.Duration.String())
 }

@@ -27,9 +27,9 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/ini"
 )
 
-//  use-octavia is enabled by default in CCM since v1.17.0, and disabled by
-//  default with the in-tree cloud provider.
-//  https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
+// use-octavia is enabled by default in CCM since v1.17.0, and disabled by
+// default with the in-tree cloud provider.
+// https://v1-18.docs.kubernetes.io/docs/concepts/cluster-administration/cloud-providers/#load-balancer
 const (
 	cloudConfigTpl = `[Global]
 auth-url    = {{ .Global.AuthURL | iniEscape }}
@@ -122,7 +122,7 @@ type GlobalOpts struct {
 	Region     string
 }
 
-// CloudConfig is used to read and store information from the cloud configuration file
+// CloudConfig is used to read and store information from the cloud configuration file.
 type CloudConfig struct {
 	Global       GlobalOpts
 	LoadBalancer LoadBalancerOpts
@@ -137,12 +137,12 @@ func CloudConfigToString(c *CloudConfig) (string, error) {
 
 	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse the cloud config template: %v", err)
+		return "", fmt.Errorf("failed to parse the cloud config template: %w", err)
 	}
 
 	buf := &bytes.Buffer{}
 	if err := tpl.Execute(buf, c); err != nil {
-		return "", fmt.Errorf("failed to execute cloud config template: %v", err)
+		return "", fmt.Errorf("failed to execute cloud config template: %w", err)
 	}
 
 	return buf.String(), nil

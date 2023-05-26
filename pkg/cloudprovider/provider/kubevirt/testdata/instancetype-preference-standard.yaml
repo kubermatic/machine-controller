@@ -1,0 +1,76 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  annotations:
+  labels:
+    cluster.x-k8s.io/cluster-name: cluster-name
+    cluster.x-k8s.io/role: worker
+    kubevirt.io/vm: instancetype-preference-standard
+    md: md-name
+  name: instancetype-preference-standard
+  namespace: test-namespace
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        name: instancetype-preference-standard
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: longhorn
+        source:
+          http:
+            url: http://x.y.z.t/ubuntu.img
+  running: true
+  instancetype:
+    kind: VirtualMachineInstancetype
+    name: standard-it
+  preference:
+    kind: VirtualMachinePreference
+    name: standard-pref
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        cluster.x-k8s.io/cluster-name: cluster-name
+        cluster.x-k8s.io/role: worker
+        kubevirt.io/vm: instancetype-preference-standard
+        md: md-name
+    spec:
+      affinity: {}
+      domain:
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: datavolumedisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - macAddress: b6:f5:b4:fe:45:1d
+              name: default
+              bridge: {}
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 30
+      topologyspreadconstraints:
+        - maxskew: 1
+          topologykey: kubernetes.io/hostname
+          whenunsatisfiable: ScheduleAnyway
+          labelselector:
+            matchlabels:
+              md: md-name
+      volumes:
+        - dataVolume:
+            name: instancetype-preference-standard
+          name: datavolumedisk
+        - cloudInitNoCloud:
+            secretRef:
+              name: udsn
+          name: cloudinitdisk
+      evictionStrategy: External

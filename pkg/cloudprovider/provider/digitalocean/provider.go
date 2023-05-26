@@ -34,6 +34,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	digitaloceantypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -48,7 +49,7 @@ type provider struct {
 	configVarResolver *providerconfig.ConfigPointerVarResolver
 }
 
-// New returns a digitalocean provider
+// New returns a digitalocean provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 }
@@ -84,7 +85,7 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return "ubuntu-20-04-x64", nil
+		return "ubuntu-22-04-x64", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos-7-x64", nil
 	case providerconfigtypes.OperatingSystemRockyLinux:
@@ -93,12 +94,12 @@ func getSlugForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	return "", providerconfigtypes.ErrOSNotSupported
 }
 
-func getClient(token string) *godo.Client {
+func getClient(ctx context.Context, token string) *godo.Client {
 	tokenSource := &TokenSource{
 		AccessToken: token,
 	}
 
-	oauthClient := oauth2.NewClient(context.Background(), tokenSource)
+	oauthClient := oauth2.NewClient(ctx, tokenSource)
 	return godo.NewClient(oauthClient)
 }
 
@@ -124,7 +125,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	c := Config{}
 	c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "DO_TOKEN")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %v", err)
+		return nil, nil, fmt.Errorf("failed to get the value of \"token\" field, error = %w", err)
 	}
 	c.Region, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Region)
 	if err != nil {
@@ -165,10 +166,10 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if c.Token == "" {
@@ -185,11 +186,21 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	_, err = getSlugForOS(pc.OperatingSystem)
 	if err != nil {
-		return fmt.Errorf("invalid operating system specified %q: %v", pc.OperatingSystem, err)
+		return fmt.Errorf("invalid operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	switch f := pc.Network.GetIPFamily(); f {
+	case util.IPFamilyUnspecified, util.IPFamilyIPv4:
+	// noop
+	case util.IPFamilyIPv6:
+		return fmt.Errorf(util.ErrIPv6OnlyUnsupported)
+	case util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
+		// noop
+	default:
+		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
+	}
+
+	client := getClient(ctx, c.Token)
 
 	regions, _, err := client.Regions.List(ctx, &godo.ListOptions{PerPage: 1000})
 	if err != nil {
@@ -242,11 +253,11 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 // uploadRandomSSHPublicKey generates a random key pair and uploads the public part of the key to
 // digital ocean because it is not possible to create a droplet without ssh key assigned
-// this method returns an error if the key already exists
+// this method returns an error if the key already exists.
 func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (string, error) {
 	sshkey, err := ssh.NewKey()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate ssh key: %v", err)
+		return "", fmt.Errorf("failed to generate ssh key: %w", err)
 	}
 
 	existingkey, res, err := service.GetByFingerprint(ctx, sshkey.FingerprintMD5)
@@ -259,13 +270,13 @@ func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (st
 		Name:      sshkey.Name,
 	})
 	if err != nil {
-		return "", doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to create ssh public key on digitalocean: %v", err))
+		return "", doStatusAndErrToTerminalError(rsp.StatusCode, fmt.Errorf("failed to create ssh public key on digitalocean: %w", err))
 	}
 
 	return newDoKey.Fingerprint, nil
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -274,8 +285,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		}
 	}
 
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	fingerprint, err := uploadRandomSSHPublicKey(ctx, client.Keys)
 	if err != nil {
@@ -300,7 +310,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		Name:              machine.Spec.Name,
 		Region:            c.Region,
 		Size:              c.Size,
-		IPv6:              c.IPv6,
+		IPv6:              c.IPv6 || pc.Network.GetIPFamily().IsDualstack(),
 		PrivateNetworking: c.PrivateNetworking,
 		Backups:           c.Backups,
 		Monitoring:        c.Monitoring,
@@ -337,10 +347,10 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return &doInstance{droplet: droplet}, err
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.get(machine)
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.get(ctx, machine)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
 		}
 		return false, err
@@ -353,12 +363,11 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 			Message: fmt.Sprintf("Failed to parse MachineSpec, due to %v", err),
 		}
 	}
-	ctx := context.TODO()
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 
 	doID, err := strconv.Atoi(instance.ID())
 	if err != nil {
-		return false, fmt.Errorf("failed to convert instance id %s to int: %v", instance.ID(), err)
+		return false, fmt.Errorf("failed to convert instance id %s to int: %w", instance.ID(), err)
 	}
 
 	rsp, err := client.Droplets.Delete(ctx, doID)
@@ -369,11 +378,11 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, _ *cloudprovidertyp
 	return false, nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return p.get(machine)
+func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return p.get(ctx, machine)
 }
 
-func (p *provider) get(machine *clusterv1alpha1.Machine) (*doInstance, error) {
+func (p *provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*doInstance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -382,7 +391,7 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*doInstance, error) {
 		}
 	}
 
-	droplets, err := p.listDroplets(c.Token)
+	droplets, err := p.listDroplets(ctx, c.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -396,9 +405,8 @@ func (p *provider) get(machine *clusterv1alpha1.Machine) (*doInstance, error) {
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) listDroplets(token string) ([]godo.Droplet, error) {
-	ctx := context.TODO()
-	client := getClient(token)
+func (p *provider) listDroplets(ctx context.Context, token string) ([]godo.Droplet, error) {
+	client := getClient(ctx, token)
 	result := make([]godo.Droplet, 0)
 
 	opt := &godo.ListOptions{
@@ -408,7 +416,7 @@ func (p *provider) listDroplets(token string) ([]godo.Droplet, error) {
 	for {
 		droplets, resp, err := client.Droplets.List(ctx, opt)
 		if err != nil {
-			return nil, doStatusAndErrToTerminalError(resp.StatusCode, fmt.Errorf("failed to get droplets: %v", err))
+			return nil, doStatusAndErrToTerminalError(resp.StatusCode, fmt.Errorf("failed to get droplets: %w", err))
 		}
 
 		result = append(result, droplets...)
@@ -428,24 +436,21 @@ func (p *provider) listDroplets(token string) ([]godo.Droplet, error) {
 	return result, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to decode providerconfig: %v", err)
+		return fmt.Errorf("failed to decode providerconfig: %w", err)
 	}
-	client := getClient(c.Token)
+	client := getClient(ctx, c.Token)
 	droplets, _, err := client.Droplets.List(ctx, &godo.ListOptions{PerPage: 1000})
 	if err != nil {
-		return fmt.Errorf("failed to list droplets: %v", err)
+		return fmt.Errorf("failed to list droplets: %w", err)
 	}
 
 	// The create does not fail if that tag already exists, it even keep responding with a http/201
-	_, response, err := client.Tags.Create(ctx, &godo.TagCreateRequest{Name: string(new)})
+	_, response, err := client.Tags.Create(ctx, &godo.TagCreateRequest{Name: string(newUID)})
 	if err != nil {
-		return fmt.Errorf("failed to create new UID tag: %v, status code: %v", err, response.StatusCode)
+		return fmt.Errorf("failed to create new UID tag: %w, status code: %v", err, response.StatusCode)
 	}
 
 	for _, droplet := range droplets {
@@ -453,16 +458,16 @@ func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) e
 			tagResourceRequest := &godo.TagResourcesRequest{
 				Resources: []godo.Resource{{ID: strconv.Itoa(droplet.ID), Type: godo.DropletResourceType}},
 			}
-			_, err = client.Tags.TagResources(ctx, string(new), tagResourceRequest)
+			_, err = client.Tags.TagResources(ctx, string(newUID), tagResourceRequest)
 			if err != nil {
-				return fmt.Errorf("failed to tag droplet with new UID tag: %v", err)
+				return fmt.Errorf("failed to tag droplet with new UID tag: %w", err)
 			}
 			untagResourceRequest := &godo.UntagResourcesRequest{
 				Resources: []godo.Resource{{ID: strconv.Itoa(droplet.ID), Type: godo.DropletResourceType}},
 			}
 			_, err = client.Tags.UntagResources(ctx, string(machine.UID), untagResourceRequest)
 			if err != nil {
-				return fmt.Errorf("failed to remove old UID tag: %v", err)
+				return fmt.Errorf("failed to remove old UID tag: %w", err)
 			}
 		}
 	}
@@ -496,6 +501,10 @@ func (d *doInstance) Name() string {
 
 func (d *doInstance) ID() string {
 	return strconv.Itoa(d.droplet.ID)
+}
+
+func (d *doInstance) ProviderID() string {
+	return fmt.Sprintf("digitalocean://%d", d.droplet.ID)
 }
 
 func (d *doInstance) HostID() string {
@@ -536,7 +545,7 @@ func (d *doInstance) Status() instance.Status {
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 
 // if the given error doesn't qualify the error passed as
-// an argument will be returned
+// an argument will be returned.
 func doStatusAndErrToTerminalError(status int, err error) error {
 	switch status {
 	case http.StatusUnauthorized:

@@ -23,8 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-/// [MachineDeploymentSpec]
-// MachineDeploymentSpec defines the desired state of MachineDeployment
+// / [MachineDeploymentSpec]
+// MachineDeploymentSpec defines the desired state of MachineDeployment.
 type MachineDeploymentSpec struct {
 	// Number of desired machines. Defaults to 1.
 	// This is a pointer to distinguish between explicit zero and not specified.
@@ -70,7 +70,7 @@ type MachineDeploymentSpec struct {
 
 /// [MachineDeploymentSpec]
 
-/// [MachineDeploymentStrategy]
+// / [MachineDeploymentStrategy]
 // MachineDeploymentStrategy describes how to replace existing machines
 // with new ones.
 type MachineDeploymentStrategy struct {
@@ -88,7 +88,7 @@ type MachineDeploymentStrategy struct {
 
 /// [MachineDeploymentStrategy]
 
-/// [MachineRollingUpdateDeployment]
+// / [MachineRollingUpdateDeployment]
 // Spec to control the desired behavior of rolling update.
 type MachineRollingUpdateDeployment struct {
 	// The maximum number of machines that can be unavailable during the update.
@@ -125,8 +125,8 @@ type MachineRollingUpdateDeployment struct {
 
 /// [MachineRollingUpdateDeployment]
 
-/// [MachineDeploymentStatus]
-// MachineDeploymentStatus defines the observed state of MachineDeployment
+// / [MachineDeploymentStatus]
+// MachineDeploymentStatus defines the observed state of MachineDeployment.
 type MachineDeploymentStatus struct {
 	// The generation observed by the deployment controller.
 	// +optional
@@ -165,7 +165,7 @@ type MachineDeploymentStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-/// [MachineDeployment]
+// / [MachineDeployment]
 // MachineDeployment is the Schema for the machinedeployments API
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName=md
@@ -183,7 +183,7 @@ type MachineDeployment struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MachineDeploymentList contains a list of MachineDeployment
+// MachineDeploymentList contains a list of MachineDeployment.
 type MachineDeploymentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"time"
@@ -42,37 +42,37 @@ import (
 )
 
 type admissionData struct {
-	client          ctrlruntimeclient.Client
-	workerClient    ctrlruntimeclient.Client
-	userDataManager *userdatamanager.Manager
-	nodeSettings    machinecontroller.NodeSettings
-	useOSM          bool
-	namespace       string
-	constraints     *semver.Constraints
+	client               ctrlruntimeclient.Client
+	workerClient         ctrlruntimeclient.Client
+	userDataManager      *userdatamanager.Manager
+	nodeSettings         machinecontroller.NodeSettings
+	useExternalBootstrap bool
+	namespace            string
+	constraints          *semver.Constraints
 }
 
 var jsonPatch = admissionv1.PatchTypeJSONPatch
 
 type Builder struct {
-	ListenAddress      string
-	Client             ctrlruntimeclient.Client
-	WorkerClient       ctrlruntimeclient.Client
-	UserdataManager    *userdatamanager.Manager
-	NodeFlags          *node.Flags
-	UseOSM             bool
-	Namespace          string
-	VersionConstraints *semver.Constraints
+	ListenAddress        string
+	Client               ctrlruntimeclient.Client
+	WorkerClient         ctrlruntimeclient.Client
+	UserdataManager      *userdatamanager.Manager
+	UseExternalBootstrap bool
+	NodeFlags            *node.Flags
+	Namespace            string
+	VersionConstraints   *semver.Constraints
 }
 
 func (build Builder) Build() (*http.Server, error) {
 	mux := http.NewServeMux()
 	ad := &admissionData{
-		client:          build.Client,
-		workerClient:    build.WorkerClient,
-		userDataManager: build.UserdataManager,
-		useOSM:          build.UseOSM,
-		namespace:       build.Namespace,
-		constraints:     build.VersionConstraints,
+		client:               build.Client,
+		workerClient:         build.WorkerClient,
+		userDataManager:      build.UserdataManager,
+		useExternalBootstrap: build.UseExternalBootstrap,
+		namespace:            build.Namespace,
+		constraints:          build.VersionConstraints,
 	}
 
 	if err := build.NodeFlags.UpdateNodeSettings(&ad.nodeSettings); err != nil {
@@ -118,12 +118,12 @@ func createAdmissionResponse(original, mutated runtime.Object) (*admissionv1.Adm
 	if !apiequality.Semantic.DeepEqual(original, mutated) {
 		patchOpts, err := newJSONPatch(original, mutated)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create json patch: %v", err)
+			return nil, fmt.Errorf("failed to create json patch: %w", err)
 		}
 
 		patchRaw, err := json.Marshal(patchOpts)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal json patch: %v", err)
+			return nil, fmt.Errorf("failed to marshal json patch: %w", err)
 		}
 		klog.V(3).Infof("Produced jsonpatch: %s", string(patchRaw))
 
@@ -181,9 +181,9 @@ func readReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 	if r.Body == nil {
 		return nil, fmt.Errorf("request has no body")
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading data from request body: %v", err)
+		return nil, fmt.Errorf("error reading data from request body: %w", err)
 	}
 
 	// verify the content type is accurate
@@ -193,7 +193,7 @@ func readReview(r *http.Request) (*admissionv1.AdmissionReview, error) {
 
 	admissionReview := &admissionv1.AdmissionReview{}
 	if err := json.Unmarshal(body, admissionReview); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal request into admissionReview: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal request into admissionReview: %w", err)
 	}
 	if admissionReview.Request == nil {
 		return nil, errors.New("invalid admission review: no request defined")

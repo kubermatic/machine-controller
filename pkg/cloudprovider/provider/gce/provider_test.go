@@ -53,7 +53,14 @@ func testProviderSpec() map[string]interface{} {
 				"system-cluster-kdlj8sn58d",
 				"system-project-sszxpzjcnm",
 			},
-			"zone": "europe-west2-a",
+			"zone":                         "europe-west2-a",
+			"disableMachineServiceAccount": false,
+			"enableNestedVirtualization":   true,
+			"minCPUPlatform":               "Intel Haswell",
+			"guestOSFeatures": []string{
+				"VIRTIO_SCSI_MULTIQUEUE",
+				"GVNIC",
+			},
 		},
 		"operatingSystem": "ubuntu",
 		"operatingSystemSpec": map[string]interface{}{
@@ -82,7 +89,7 @@ func testServiceAccount() string {
 
 type testMap map[string]interface{}
 
-// with patches value of m at keypath with val e.g. keypath=x.y val=z then m[x][y] = z
+// with patches value of m at keypath with val e.g. keypath=x.y val=z then m[x][y] = z.
 func (m testMap) with(keypath, val string) testMap {
 	parts := strings.Split(keypath, ".")
 	var curr interface{} = m
@@ -103,7 +110,7 @@ func (m testMap) with(keypath, val string) testMap {
 }
 
 func TestValidate(t *testing.T) {
-	os.Setenv(envGoogleServiceAccount, testServiceAccount())
+	t.Setenv(envGoogleServiceAccount, testServiceAccount())
 	defer os.Unsetenv(envGoogleServiceAccount)
 
 	rawBytes := func(m map[string]interface{}) []byte {
@@ -161,7 +168,7 @@ func TestValidate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := p.Validate(test.mspec)
+			err := p.Validate(context.Background(), test.mspec)
 			if (err != nil) != test.expectErr {
 				t.Fatalf("expectedErr: %t, got: %v", test.expectErr, err)
 			}
