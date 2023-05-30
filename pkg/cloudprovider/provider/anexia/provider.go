@@ -166,16 +166,19 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 
 		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
 
-		for index, dnsServer := range reconcileContext.ProviderConfig.Network.DNS.Servers {
-			switch index {
-			case 0:
-				vm.DNS1 = dnsServer
-			case 1:
-				vm.DNS2 = dnsServer
-			case 2:
-				vm.DNS3 = dnsServer
-			case 3:
-				vm.DNS4 = dnsServer
+		providerCfg := reconcileContext.ProviderConfig
+		if providerCfg.Network != nil {
+			for index, dnsServer := range providerCfg.Network.DNS.Servers {
+				switch index {
+				case 0:
+					vm.DNS1 = dnsServer
+				case 1:
+					vm.DNS2 = dnsServer
+				case 2:
+					vm.DNS3 = dnsServer
+				case 3:
+					vm.DNS4 = dnsServer
+				}
 			}
 		}
 
