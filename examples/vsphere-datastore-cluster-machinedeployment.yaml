@@ -57,6 +57,10 @@ spec:
             datastoreCluster: datastorecluster1
             # Can also be set via the env var 'VSPHERE_ALLOW_INSECURE' on the machine-controller
             allowInsecure: true
+            # vSphere Cluster
+            cluster: cl-1
+            # Automatically create anti affinity rules for machines
+            vmAntiAffinity: true
             cpus: 2
             memoryMB: 2048
             # Optional: Resize the root disk to this size. Must be bigger than the existing size

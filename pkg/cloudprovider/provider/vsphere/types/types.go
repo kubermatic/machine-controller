@@ -40,11 +40,12 @@ type RawConfig struct {
 	DatastoreCluster providerconfigtypes.ConfigVarString `json:"datastoreCluster"`
 	Datastore        providerconfigtypes.ConfigVarString `json:"datastore"`
 
-	CPUs          int32                             `json:"cpus"`
-	MemoryMB      int64                             `json:"memoryMB"`
-	DiskSizeGB    *int64                            `json:"diskSizeGB,omitempty"`
-	Tags          []Tag                             `json:"tags,omitempty"`
-	AllowInsecure providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
+	CPUs           int32                             `json:"cpus"`
+	MemoryMB       int64                             `json:"memoryMB"`
+	DiskSizeGB     *int64                            `json:"diskSizeGB,omitempty"`
+	Tags           []Tag                             `json:"tags,omitempty"`
+	AllowInsecure  providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
+	VMAntiAffinity providerconfigtypes.ConfigVarBool `json:"vmAntiAffinity"`
 }
 
 // Tag represents vsphere tag.
