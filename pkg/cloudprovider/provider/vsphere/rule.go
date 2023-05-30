@@ -35,7 +35,6 @@ import (
 // VMs are attached to the rule based on their folder path and name prefix in vsphere.
 // A minimum of two VMs is required.
 func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, session *Session, name string, config *Config) error {
-
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -48,9 +47,8 @@ func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, session
 	if err != nil {
 		if errors.Is(err, &find.NotFoundError{}) {
 			return removeVMAntiAffinityRule(ctx, session, config.Cluster, name)
-		} else {
-			return err
 		}
+		return err
 	}
 
 	var ruleVMRef []types.ManagedObjectReference
@@ -82,9 +80,7 @@ func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, session
 				UserCreated: ptr.Bool(true),
 			},
 		}
-
 		operation = types.ArrayUpdateOperationAdd
-
 	}
 
 	info.Vm = ruleVMRef
@@ -114,10 +110,8 @@ func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, session
 
 // waitForRule checks periodically the vsphere api for the ClusterAntiAffinityRule and returns error if the rule was not found after a timeout.
 func waitForRule(ctx context.Context, cluster *object.ClusterComputeResource, rule *types.ClusterAntiAffinityRuleSpec) error {
-
 	timeout := time.NewTimer(5 * time.Second)
 	ticker := time.NewTicker(500 * time.Millisecond)
-
 	defer timeout.Stop()
 	defer ticker.Stop()
 
@@ -133,7 +127,6 @@ func waitForRule(ctx context.Context, cluster *object.ClusterComputeResource, ru
 			if !reflect.DeepEqual(rule, info) {
 				return fmt.Errorf("expected anti affinity changes not found in vsphere")
 			}
-
 		case <-ticker.C:
 			info, err := findClusterAntiAffinityRuleByName(ctx, cluster, rule.Name)
 			if err != nil {
@@ -145,7 +138,6 @@ func waitForRule(ctx context.Context, cluster *object.ClusterComputeResource, ru
 			}
 		}
 	}
-
 }
 
 // removeVMAntiAffinityRule removes an anti affinity rule with the name in the given cluster.
