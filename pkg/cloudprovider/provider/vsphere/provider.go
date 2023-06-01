@@ -198,7 +198,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, err
 	}
 
-	c.VMAntiAffinity, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.VMAntiAffinity, "VSPHERE_ALLOW_INSECURE")
+	c.VMAntiAffinity, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.VMAntiAffinity)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -299,6 +299,11 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 			return err
 		}
 	}
+
+	if config.VMAntiAffinity && config.Cluster == "" {
+		return fmt.Errorf("cluster is required for vm anti affinity")
+	}
+
 	return nil
 }
 

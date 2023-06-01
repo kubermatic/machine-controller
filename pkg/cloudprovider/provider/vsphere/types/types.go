@@ -30,7 +30,8 @@ type RawConfig struct {
 	VSphereURL     providerconfigtypes.ConfigVarString `json:"vsphereURL"`
 	Datacenter     providerconfigtypes.ConfigVarString `json:"datacenter"`
 
-	// Cluster is a noop field, it's not used anywhere but left here intentionally for backward compatibility purposes
+	// Cluster defines the cluster to use in vcenter.
+	// Only needed for vm anti affinity.
 	Cluster providerconfigtypes.ConfigVarString `json:"cluster"`
 
 	Folder       providerconfigtypes.ConfigVarString `json:"folder"`
