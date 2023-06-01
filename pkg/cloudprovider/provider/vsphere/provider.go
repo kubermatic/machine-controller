@@ -300,8 +300,14 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 		}
 	}
 
-	if config.VMAntiAffinity && config.Cluster == "" {
-		return fmt.Errorf("cluster is required for vm anti affinity")
+	if config.VMAntiAffinity {
+		if config.Cluster == "" {
+			return fmt.Errorf("cluster is required for vm anti affinity")
+		}
+		_, err = session.Finder.ClusterComputeResource(ctx, config.Cluster)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster %q, %w", config.Cluster, err)
+		}
 	}
 
 	return nil
