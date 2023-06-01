@@ -445,18 +445,6 @@ func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clust
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	if virtualMachineInstance.Status.Phase == kubevirtv1.Failed ||
-		// The VMI enters phase succeeded if someone issues a kubectl
-		// delete pod on the virt-launcher pod it runs in
-		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
-		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
-		// will get recreated
-		if err := sigClient.Delete(ctx, virtualMachineInstance); err != nil {
-			return nil, fmt.Errorf("failed to delete failed VMI %s: %w", machine.Name, err)
-		}
-		return nil, cloudprovidererrors.ErrInstanceNotFound
-	}
-
 	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
 }
 
@@ -633,6 +621,8 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 		return nil, fmt.Errorf("could not compute a random MAC address")
 	}
 
+	runStrategyOnce := kubevirtv1.RunStrategyOnce
+
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -640,7 +630,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 			Labels:    labels,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			Running:      utilpointer.Bool(true),
+			RunStrategy:  &runStrategyOnce,
 			Instancetype: c.Instancetype,
 			Preference:   c.Preference,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
@@ -692,7 +682,6 @@ func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *c
 		if !kerrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %w", machine.Name, err)
 		}
-		// VMI is gone
 		return true, nil
 	}
 
