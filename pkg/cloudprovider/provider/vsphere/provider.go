@@ -435,13 +435,6 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, fmt.Errorf("failed to delete tags: %w", err)
 	}
 
-	if config.VMAntiAffinity {
-		machineSetName := machine.Name[:strings.LastIndex(machine.Name, "-")]
-		if err := p.createOrUpdateVMAntiAffinityRule(ctx, session, machineSetName, config); err != nil {
-			return false, fmt.Errorf("failed to add VM to anti affinity rule: %w", err)
-		}
-	}
-
 	powerState, err := virtualMachine.PowerState(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get virtual machine power state: %w", err)
@@ -495,6 +488,13 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	}
 	if err := destroyTask.Wait(ctx); err != nil {
 		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
+	}
+
+	if config.VMAntiAffinity {
+		machineSetName := machine.Name[:strings.LastIndex(machine.Name, "-")]
+		if err := p.createOrUpdateVMAntiAffinityRule(ctx, session, machineSetName, config); err != nil {
+			return false, fmt.Errorf("failed to add VM to anti affinity rule: %w", err)
+		}
 	}
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {

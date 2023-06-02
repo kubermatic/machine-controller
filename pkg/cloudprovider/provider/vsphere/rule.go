@@ -110,7 +110,7 @@ func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, session
 
 // waitForRule checks periodically the vsphere api for the ClusterAntiAffinityRule and returns error if the rule was not found after a timeout.
 func waitForRule(ctx context.Context, cluster *object.ClusterComputeResource, rule *types.ClusterAntiAffinityRuleSpec) error {
-	timeout := time.NewTimer(5 * time.Second)
+	timeout := time.NewTimer(10 * time.Second)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer timeout.Stop()
 	defer ticker.Stop()
