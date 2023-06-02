@@ -31,12 +31,22 @@ spec:
                 name: machine-controller-anexia
                 key: token
             vlanID: "<< ANEXIA_VLAN_ID >>"
-            # Currently only the flatcar template is supported: 12c28aa7-604d-47e9-83fb-5f1d1f1837b3
-            templateID: "<< ANEXIA_TEMPLATE_ID >>"
+            # Currently only the "Flatcar Linux Stable" template is supported.
+            # Use templateBuild to specify a build. If empty => latest
+            # Alternatively use templateID for a specific template.
+            template: "<< ANEXIA_TEMPLATE_NAME >>"
             locationID: "<< ANEXIA_LOCATION_ID >>"
             cpus: 2
             memory: 2048
-            diskSize: 60
+
+            # only a single disk is currently supported, but support for multiple disks is planned already
+            disks:
+              - size: 60
+                performanceType: ENT6
+
+            # You may have this old disk config attribute in your config - please migrate to the disks attribute.
+            # For now it is still recognized though.
+            #diskSize: 60
           # Flatcar is the only supported operating system
           operatingSystem: "flatcar"
           operatingSystemSpec:
@@ -45,4 +55,4 @@ spec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

@@ -40,7 +40,7 @@ type Provider struct{}
 func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 	pconfig, err := providerconfigtypes.GetConfig(req.MachineSpec.ProviderSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get provider config: %v", err)
+		return "", fmt.Errorf("failed to get provider config: %w", err)
 	}
 
 	if pconfig.OverwriteCloudConfig != nil {
@@ -49,22 +49,22 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	flatcarConfig, err := LoadConfig(pconfig.OperatingSystemSpec)
 	if err != nil {
-		return "", fmt.Errorf("failed to get flatcar config from provider config: %v", err)
+		return "", fmt.Errorf("failed to get flatcar config from provider config: %w", err)
 	}
 
 	userDataTemplate, err := getUserDataTemplate(flatcarConfig.ProvisioningUtility)
 	if err != nil {
-		return "", fmt.Errorf("failed to get an appropriate user-data template: %v", err)
+		return "", fmt.Errorf("failed to get an appropriate user-data template: %w", err)
 	}
 
 	tmpl, err := template.New("user-data").Funcs(userdatahelper.TxtFuncMap()).Parse(userDataTemplate)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse user-data template: %v", err)
+		return "", fmt.Errorf("failed to parse user-data template: %w", err)
 	}
 
 	kubeletVersion, err := semver.NewVersion(req.MachineSpec.Versions.Kubelet)
 	if err != nil {
-		return "", fmt.Errorf("invalid kubelet version: %v", err)
+		return "", fmt.Errorf("invalid kubelet version: %w", err)
 	}
 
 	kubeconfigString, err := userdatahelper.StringifyKubeconfig(req.Kubeconfig)
@@ -74,7 +74,7 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 
 	kubernetesCACert, err := userdatahelper.GetCACert(req.Kubeconfig)
 	if err != nil {
-		return "", fmt.Errorf("error extracting cacert: %v", err)
+		return "", fmt.Errorf("error extracting cacert: %w", err)
 	}
 
 	if flatcarConfig.DisableAutoUpdate {
@@ -93,47 +93,56 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		return "", fmt.Errorf("failed to generate container runtime config: %w", err)
 	}
 
+	crAuthConfig, err := crEngine.AuthConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate container runtime auth config: %w", err)
+	}
+
 	data := struct {
 		plugin.UserDataRequest
-		ProviderSpec                   *providerconfigtypes.Config
-		FlatcarConfig                  *Config
-		Kubeconfig                     string
-		KubernetesCACert               string
-		KubeletVersion                 string
-		NodeIPScript                   string
-		ExtraKubeletFlags              []string
+		ProviderSpec                       *providerconfigtypes.Config
+		FlatcarConfig                      *Config
+		KubeletVersion                     string
+		Kubeconfig                         string
+		KubernetesCACert                   string
+		NodeIPScript                       string
+		ExtraKubeletFlags                  []string
 		InsecureRegistries             []string
 		RegistryMirrors                map[string][]string
-		ContainerRuntimeScript         string
-		ContainerRuntimeConfigFileName string
-		ContainerRuntimeConfig         string
-		ContainerRuntimeName           string
+		ContainerRuntimeScript             string
+		ContainerRuntimeConfigFileName     string
+		ContainerRuntimeConfig             string
+		ContainerRuntimeAuthConfigFileName string
+		ContainerRuntimeAuthConfig         string
+		ContainerRuntimeName               string
 	}{
-		UserDataRequest:                req,
-		ProviderSpec:                   pconfig,
-		FlatcarConfig:                  flatcarConfig,
-		Kubeconfig:                     kubeconfigString,
-		KubernetesCACert:               kubernetesCACert,
-		KubeletVersion:                 kubeletVersion.String(),
-		NodeIPScript:                   userdatahelper.SetupNodeIPEnvScript(),
-		ExtraKubeletFlags:              crEngine.KubeletFlags(),
+		UserDataRequest:                    req,
+		ProviderSpec:                       pconfig,
+		FlatcarConfig:                      flatcarConfig,
+		KubeletVersion:                     kubeletVersion.String(),
+		Kubeconfig:                         kubeconfigString,
+		KubernetesCACert:                   kubernetesCACert,
+		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(pconfig.Network.GetIPFamily()),
+		ExtraKubeletFlags:                  crEngine.KubeletFlags(),
 		InsecureRegistries:             req.ContainerRuntime.InsecureRegistries,
 		RegistryMirrors:                req.ContainerRuntime.RegistryMirrors,
-		ContainerRuntimeScript:         crScript,
-		ContainerRuntimeConfigFileName: crEngine.ConfigFileName(),
-		ContainerRuntimeConfig:         crConfig,
-		ContainerRuntimeName:           crEngine.String(),
+		ContainerRuntimeScript:             crScript,
+		ContainerRuntimeConfigFileName:     crEngine.ConfigFileName(),
+		ContainerRuntimeConfig:             crConfig,
+		ContainerRuntimeAuthConfigFileName: crEngine.AuthConfigFileName(),
+		ContainerRuntimeAuthConfig:         crAuthConfig,
+		ContainerRuntimeName:               crEngine.String(),
 	}
 
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute user-data template: %v", err)
+		return "", fmt.Errorf("failed to execute user-data template: %w", err)
 	}
 
 	out, err := userdatahelper.CleanupTemplateOutput(b.String())
 	if err != nil {
-		return "", fmt.Errorf("failed to cleanup user-data template: %v", err)
+		return "", fmt.Errorf("failed to cleanup user-data template: %w", err)
 	}
 
 	if flatcarConfig.ProvisioningUtility == CloudInit {
@@ -165,7 +174,7 @@ const userDataIgnitionTemplate = `passwd:
         {{end}}
 {{- end }}
 
-{{- if .ProviderSpec.Network }}
+{{- if .ProviderSpec.Network.IsStaticIPConfig }}
 networkd:
   units:
     - name: static-nic.network
@@ -290,13 +299,17 @@ systemd:
         contents: |
           [Service]
           EnvironmentFile=/etc/kubernetes/nodeip.conf
+      - name: resolv.conf
+        contents: |
+          [Service]
+          Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
       - name: 40-download.conf
         contents: |
           [Unit]
           Requires=download-script.service
           After=download-script.service
       contents: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 8 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .ProviderSpec.Network.GetIPFamily .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 8 }}
 
 storage:
   files:
@@ -356,6 +369,13 @@ storage:
         inline: |
 {{ .NodeIPScript | indent 10 }}
 
+    - path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+          [Network]
+          IPv6AcceptRA=true
     - path: /etc/kubernetes/bootstrap-kubelet.conf
       filesystem: root
       mode: 0400
@@ -363,12 +383,14 @@ storage:
         inline: |
 {{ .Kubeconfig | indent 10 }}
 
+{{- if ne (len .CloudConfig) 0 }}
     - path: /etc/kubernetes/cloud-config
       filesystem: root
       mode: 0400
       contents:
         inline: |
 {{ .CloudConfig | indent 10 }}
+{{- end }}
 
     - path: /etc/kubernetes/pki/ca.crt
       filesystem: root
@@ -488,6 +510,16 @@ storage:
         inline: |
 {{ .ContainerRuntimeConfig | indent 10 }}
 
+{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
+
+    - path: {{ .ContainerRuntimeAuthConfigFileName }}
+      filesystem: root
+      permissions: 0600
+      content:
+        inline: |
+{{ .ContainerRuntimeAuthConfig | indent 10 }}
+{{- end }}
+
     - path: /etc/crictl.yaml
       filesystem: root
       mode: 0644
@@ -496,7 +528,7 @@ storage:
           runtime-endpoint: unix:///run/containerd/containerd.sock
 `
 
-// Coreos cloud-config template
+// Coreos cloud-config template.
 const userDataCloudInitTemplate = `#cloud-config
 
 users:
@@ -509,7 +541,7 @@ users:
 
 coreos:
   units:
-{{- if .ProviderSpec.Network }}
+{{- if .ProviderSpec.Network.IsStaticIPConfig }}
   - name: static-nic.network
     content: |
       [Match]
@@ -593,13 +625,23 @@ coreos:
       content: |
         [Service]
         EnvironmentFile=/etc/kubernetes/nodeip.conf
+    - name: resolv.conf
+      content: |
+        [Service]
+        Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
     - name: 40-download.conf
       content: |
         [Unit]
         Requires=download-script.service
         After=download-script.service
+{{- if eq .CloudProviderName "anexia" }}
+    - name: 50-rpc-statd.conf
+      content: |
+        [Unit]
+        Wants=rpc-statd.service
+{{- end }}
     content: |
-{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 6 }}
+{{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .ProviderSpec.Network.GetIPFamily .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 6 }}
 
   - name: apply-sysctl-settings.service
     enable: true
@@ -665,6 +707,15 @@ write_files:
   permissions: "0755"
   content: |
 {{ .NodeIPScript | indent 4 }}
+
+- path: "/etc/systemd/network/zz-default.network.d/ipv6-fix.conf"
+  permissions: "0755"
+  content: |
+    # IPv6 autoconfiguration doesn't work out of the box on some versions of Flatcar
+    # so we enable IPv6 Router Advertisement here.
+    # See for details https://github.com/flatcar-linux/Flatcar/issues/384
+    [Network]
+    IPv6AcceptRA=true
 
 - path: /etc/kubernetes/bootstrap-kubelet.conf
   permissions: "0400"
@@ -752,6 +803,14 @@ write_files:
   user: root
   content: |
 {{ .ContainerRuntimeConfig | indent 4 }}
+
+{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
+
+- path: {{ .ContainerRuntimeAuthConfigFileName }}
+  permissions: "0600"
+  content: |
+{{ .ContainerRuntimeAuthConfig | indent 4 }}
+{{- end }}
 
 - path: /etc/crictl.yaml
   permissions: "0644"

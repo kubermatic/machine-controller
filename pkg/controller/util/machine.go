@@ -26,7 +26,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetMachineDeploymentNameForMachine(ctx context.Context, machine *clusterv1alpha1.Machine, c client.Client) (string, error) {
+// LegacyMachineControllerUserDataLabel is set to true when machine-controller is used for managing machine configuration.
+const LegacyMachineControllerUserDataLabel = "machine.clusters.k8s.io/legacy-machine-controller-user-data"
+
+func GetMachineDeploymentNameAndRevisionForMachine(ctx context.Context, machine *clusterv1alpha1.Machine, c client.Client) (string, string, error) {
 	var (
 		machineSetName        string
 		machineDeploymentName string
@@ -40,7 +43,7 @@ func GetMachineDeploymentNameForMachine(ctx context.Context, machine *clusterv1a
 	if machineSetName != "" {
 		machineSet := &clusterv1alpha1.MachineSet{}
 		if err := c.Get(ctx, types.NamespacedName{Name: machineSetName, Namespace: "kube-system"}, machineSet); err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		for _, ownerRef := range machineSet.OwnerReferences {
@@ -49,10 +52,11 @@ func GetMachineDeploymentNameForMachine(ctx context.Context, machine *clusterv1a
 			}
 		}
 
+		revision := machineSet.Annotations[RevisionAnnotation]
 		if machineDeploymentName != "" {
-			return machineDeploymentName, nil
+			return machineDeploymentName, revision, nil
 		}
 	}
 
-	return "", fmt.Errorf("failed to find machine deployment reference for the machine %s", machine.Name)
+	return "", "", fmt.Errorf("failed to find machine deployment reference for the machine %s", machine.Name)
 }

@@ -96,7 +96,7 @@ write_files:
     EnvironmentFile=-/etc/environment
     EOF
 
-    yum install -y containerd.io-1.5* yum-plugin-versionlock
+    yum install -y containerd.io-1.6* yum-plugin-versionlock
     yum versionlock add containerd.io
 
     systemctl daemon-reload
@@ -105,7 +105,7 @@ write_files:
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
     cni_bin_dir=/opt/cni/bin
-    mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+    mkdir -p /etc/cni/net.d /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
     arch=${HOST_ARCH-}
     if [ -z "$arch" ]
     then
@@ -122,7 +122,7 @@ write_files:
         ;;
     esac
     fi
-    CNI_VERSION="${CNI_VERSION:-v0.8.7}"
+    CNI_VERSION="${CNI_VERSION:-v1.2.0}"
     cni_base_url="https://github.com/containernetworking/plugins/releases/download/$CNI_VERSION"
     cni_filename="cni-plugins-linux-$arch-$CNI_VERSION.tgz"
     curl -Lfo "$cni_bin_dir/$cni_filename" "$cni_base_url/$cni_filename"
@@ -132,11 +132,12 @@ write_files:
     tar xvf "$cni_filename"
     rm -f "$cni_filename"
     cd -
-    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.22.0}"
+    CRI_TOOLS_RELEASE="${CRI_TOOLS_RELEASE:-v1.26.0}"
     cri_tools_base_url="https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRI_TOOLS_RELEASE}"
     cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
     curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
-    cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+    cri_tools_sum_value=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256")
+    cri_tools_sum="$cri_tools_sum_value $cri_tools_filename"
     cd "$opt_bin"
     sha256sum -c <<<"$cri_tools_sum"
     tar xvf "$cri_tools_filename"
@@ -167,6 +168,18 @@ write_files:
         chmod +x /opt/bin/health-monitor.sh
     fi
 
+    DEFAULT_IFC_NAME=$(ip -o route get 1  | grep -oP "dev \K\S+")
+    IFC_CFG_FILE=/etc/sysconfig/network-scripts/ifcfg-$DEFAULT_IFC_NAME
+    # Enable IPv6 and DHCPv6 on the default interface
+    grep IPV6INIT $IFC_CFG_FILE && sed -i '/IPV6INIT*/c IPV6INIT=yes' $IFC_CFG_FILE || echo "IPV6INIT=yes" >> $IFC_CFG_FILE
+    grep DHCPV6C $IFC_CFG_FILE && sed -i '/DHCPV6C*/c DHCPV6C=yes' $IFC_CFG_FILE || echo "DHCPV6C=yes" >> $IFC_CFG_FILE
+    grep IPV6_AUTOCONF $IFC_CFG_FILE && sed -i '/IPV6_AUTOCONF*/c IPV6_AUTOCONF=yes' $IFC_CFG_FILE || echo "IPV6_AUTOCONF=yes" >> $IFC_CFG_FILE
+
+    # Restart NetworkManager to apply for IPv6 configs
+    systemctl restart NetworkManager
+    # Let NetworkManager apply the DHCPv6 configs
+    sleep 3
+
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/
     /opt/bin/setup_net_env.sh
@@ -174,6 +187,7 @@ write_files:
     systemctl disable --now firewalld || true
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
+    systemctl disable setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -202,6 +216,7 @@ write_files:
     Documentation=https://kubernetes.io/docs/home/
 
     [Service]
+    User=root
     Restart=always
     StartLimitInterval=0
     RestartSec=10
@@ -231,7 +246,6 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
-
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
@@ -449,4 +463,4 @@ write_files:
 
 
 runcmd:
-- systemctl start setup.service
+- systemctl enable --now setup.service

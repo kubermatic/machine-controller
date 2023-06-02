@@ -8,33 +8,54 @@ run:
 
 linters:
   enable:
-    - revive
-    - govet
-    - gofmt
-    - structcheck
-    - varcheck
-    - unconvert
-    - ineffassign
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - deadcode
+    - depguard
+    - durationcheck
+    - errcheck
+    - errname
+    - errorlint
+    - exportloopref
     - goconst
     - gocyclo
-    - misspell
+    - godot
+    - gofmt
     - gosimple
+    - govet
+    - importas
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - predeclared
+    - promlinter
+    - revive
+    - staticcheck
+    - structcheck
+    - tenv
+    - unconvert
     - unused
-    - errcheck
+    - varcheck
+    - wastedassign
+    - whitespace
   disable-all: true
 
 issues:
   exclude:
-  - should have comment or be unexported
-  - should have comment \\(or a comment on this block\\) or be unexported
-  - func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine should be ConvertMachinesV1alpha1MachineToClusterV1alpha1Machine
-  - func Convert_MachineDeployment_ProviderConfig_To_ProviderSpec should be ConvertMachineDeploymentProviderConfigToProviderSpec
-  - func Convert_MachineSet_ProviderConfig_To_ProviderSpec should be ConvertMachineSetProviderConfigToProviderSpec
-  - func Convert_Machine_ProviderConfig_To_ProviderSpec should be ConvertMachineProviderConfigToProviderSpec
-  - 'counter\.Set is deprecated: Use NewConstMetric'
-  - 'eviction\.go:221:4: the surrounding loop is unconditionally terminated'
-  - 'cyclomatic complexity 31 of func `verifyMigrateUID` is high'
-  - 'cyclomatic complexity 31 of func `main` is high'
-  - 'cyclomatic complexity 34 of func `\(\*provider\)\.getConfig` is high'
-  - 'cyclomatic complexity 31 of func `\(\*provider\)\.Validate` is high'
-  - 'cyclomatic complexity 31 of func `\(\*provider\)\.Create` is high'
+    - should have comment or be unexported
+    - should have comment \\(or a comment on this block\\) or be unexported
+    - func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine should be ConvertMachinesV1alpha1MachineToClusterV1alpha1Machine
+    - func Convert_MachineDeployment_ProviderConfig_To_ProviderSpec should be ConvertMachineDeploymentProviderConfigToProviderSpec
+    - func Convert_MachineSet_ProviderConfig_To_ProviderSpec should be ConvertMachineSetProviderConfigToProviderSpec
+    - func Convert_Machine_ProviderConfig_To_ProviderSpec should be ConvertMachineProviderConfigToProviderSpec
+    - 'counter\.Set is deprecated: Use NewConstMetric'
+    - 'eviction\.go:221:4: the surrounding loop is unconditionally terminated'
+    - "cyclomatic complexity 31 of func `verifyMigrateUID` is high"
+    - "cyclomatic complexity 31 of func `main` is high"
+    - 'cyclomatic complexity 34 of func `\(\*provider\)\.getConfig` is high'
+    - 'cyclomatic complexity 31 of func `\(\*provider\)\.Validate` is high'
+    - 'cyclomatic complexity 33 of func `\(\*provider\)\.Create` is high'

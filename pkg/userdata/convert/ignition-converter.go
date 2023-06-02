@@ -57,7 +57,7 @@ func ToIgnition(s string) (string, error) {
 
 	out, err := json.Marshal(ignCfg)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal ignition config: %v", err)
+		return "", fmt.Errorf("failed to marshal ignition config: %w", err)
 	}
 
 	return string(out), nil

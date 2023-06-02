@@ -57,7 +57,7 @@ region: "eu-central-1"
 # avaiability zone for the instance
 availabilityZone: "eu-central-1a"
 # vpc id for the instance
-vpcId: "vpc-819f62e9"
+vpcId: "vpc-079f7648481a11e77"
 # subnet id for the instance
 subnetId: "subnet-2bff4f43"
 # enable public IP assignment, default is true
@@ -152,7 +152,8 @@ tags:
 ### machine.spec.providerConfig.cloudProviderSpec
 
 ```yaml
-serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT >>"
+# The service account needs to be base64-encoded.
+serviceAccount: "<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>"
 # See https://cloud.google.com/compute/docs/regions-zones/
 zone: "europe-west3-a"
 # See https://cloud.google.com/compute/docs/machine-types
@@ -170,6 +171,8 @@ network: "my-cool-network"
 subnetwork: "my-cool-subnetwork"
 # assign a public IP Address. Required for Internet access
 assignPublicIPAddress: true
+# if true, does not inject the Service Account from the controller in the machine, leaving it empty
+disableMachineServiceAccount: false
 # set node labels
 labels:
     "kubernetesCluster": "my-cluster"
@@ -300,8 +303,8 @@ tags:
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
-# kubeconfig to access KubeVirt cluster
-kubeconfig: '<< KUBECONFIG >>'
+# base64-encoded kubeconfig to access KubeVirt cluster
+kubeconfig: '<< KUBECONFIG_BASE64 >>'
 # KubeVirt namespace
 namespace: kube-system
 # kubernetes storage class

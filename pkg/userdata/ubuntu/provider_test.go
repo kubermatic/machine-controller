@@ -31,6 +31,7 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/containerruntime"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
@@ -92,7 +93,7 @@ kPe6XoSbiLm/kxk32T0=
 )
 
 const (
-	defaultVersion = "1.22.7"
+	defaultVersion = "1.25.5"
 )
 
 type fakeCloudConfigProvider struct {
@@ -127,10 +128,9 @@ type userDataTestCase struct {
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.21.10"),
-		semver.MustParse("v1.22.7"),
-		semver.MustParse("v1.23.5"),
-		semver.MustParse("v1.24.0"),
+		semver.MustParse("v1.24.9"),
+		semver.MustParse("v1.25.5"),
+		semver.MustParse("v1.26.0"),
 	}
 
 	var tests []userDataTestCase
@@ -298,6 +298,118 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
+			name: "openstack-dualstack",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "openstack",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+				Network: &providerconfigtypes.NetworkConfig{
+					IPFamily: util.IPFamilyIPv4IPv6,
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
+			externalCloudProvider: true,
+		},
+		{
+			name: "digitalocean-dualstack",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "digitalocean",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+				Network: &providerconfigtypes.NetworkConfig{
+					IPFamily: util.IPFamilyIPv4IPv6,
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				config: "{digitalocean-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
+		},
+		{
+			name: "openstack-dualstack-IPv6+IPv4",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "openstack",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+				Network: &providerconfigtypes.NetworkConfig{
+					IPFamily: util.IPFamilyIPv6IPv4,
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "openstack",
+				config: "{openstack-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
+			externalCloudProvider: true,
+		},
+		{
+			name: "digitalocean-dualstack-IPv6+IPv4",
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "digitalocean",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+				Network: &providerconfigtypes.NetworkConfig{
+					IPFamily: util.IPFamilyIPv6IPv4,
+				},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				config: "{digitalocean-config:true}",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: false,
+			},
+		},
+		{
 			name: "openstack-overwrite-cloud-config",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "openstack",
@@ -446,6 +558,38 @@ func TestUserDataGeneration(t *testing.T) {
 			},
 		},
 		{
+			name:             "docker",
+			containerruntime: "docker",
+			registryCredentials: map[string]containerruntime.AuthConfig{
+				"docker.io": {
+					Username: "login1",
+					Password: "passwd1",
+				},
+			},
+			providerSpec: &providerconfigtypes.Config{
+				CloudProvider: "",
+				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
+			},
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+				},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: defaultVersion,
+				},
+			},
+			ccProvider: &fakeCloudConfigProvider{
+				name:   "",
+				config: "",
+				err:    nil,
+			},
+			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
+			kubernetesCACert: "CACert",
+			osConfig: &Config{
+				DistUpgradeOnBoot: true,
+			},
+		},
+		{
 			name: "nutanix",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "nutanix",
@@ -457,7 +601,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.21.10",
+					Kubelet: "1.24.9",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{

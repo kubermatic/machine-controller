@@ -17,6 +17,7 @@ limitations under the License.
 package nutanix
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -24,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	nutanixclient "github.com/embik/nutanix-client-go/pkg/client"
-	nutanixv3 "github.com/embik/nutanix-client-go/pkg/client/v3"
+	nutanixclient "github.com/nutanix-cloud-native/prism-go-client"
+	nutanixv3 "github.com/nutanix-cloud-native/prism-go-client/v3"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -56,7 +57,7 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 	}
 
 	if config.Password == "" {
-		return nil, errors.New("no password specificed")
+		return nil, errors.New("no password specified")
 	}
 
 	if config.Endpoint == "" {
@@ -92,18 +93,41 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 	}, nil
 }
 
-func createVM(client *ClientSet, name string, conf Config, os providerconfigtypes.OperatingSystem, userdata string) (instance.Instance, error) {
-	cluster, err := getClusterByName(client, conf.ClusterName)
+func createVM(ctx context.Context, client *ClientSet, name string, conf Config, os providerconfigtypes.OperatingSystem, userdata string) (instance.Instance, error) {
+	cluster, err := getClusterByName(ctx, client, conf.ClusterName)
 	if err != nil {
 		return nil, err
 	}
 
-	subnet, err := getSubnetByName(client, conf.SubnetName, *cluster.Metadata.UUID)
+	subnet, err := getSubnetByName(ctx, client, conf.SubnetName, *cluster.Metadata.UUID)
 	if err != nil {
 		return nil, err
 	}
 
-	image, err := getImageByName(client, conf.ImageName)
+	nicList := []*nutanixv3.VMNic{
+		{
+			SubnetReference: &nutanixv3.Reference{
+				Kind: pointer.String(nutanixtypes.SubnetKind),
+				UUID: subnet.Metadata.UUID,
+			},
+		},
+	}
+
+	for _, subnet := range conf.AdditionalSubnetNames {
+		additionalSubnet, err := getSubnetByName(ctx, client, subnet, *cluster.Metadata.UUID)
+		if err != nil {
+			return nil, err
+		}
+		additionalSubnetNic := &nutanixv3.VMNic{
+			SubnetReference: &nutanixv3.Reference{
+				Kind: pointer.String(nutanixtypes.SubnetKind),
+				UUID: additionalSubnet.Metadata.UUID,
+			},
+		}
+		nicList = append(nicList, additionalSubnetNic)
+	}
+
+	image, err := getImageByName(ctx, client, conf.ImageName)
 	if err != nil {
 		return nil, err
 	}
@@ -126,14 +150,7 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		PowerState:    pointer.String("ON"),
 		NumSockets:    pointer.Int64(conf.CPUs),
 		MemorySizeMib: pointer.Int64(conf.MemoryMB),
-		NicList: []*nutanixv3.VMNic{
-			{
-				SubnetReference: &nutanixv3.Reference{
-					Kind: pointer.String(nutanixtypes.SubnetKind),
-					UUID: subnet.Metadata.UUID,
-				},
-			},
-		},
+		NicList:       nicList,
 		DiskList: []*nutanixv3.VMDisk{
 			{
 				DeviceProperties: &nutanixv3.VMDiskDeviceProperties{
@@ -157,9 +174,9 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}
 
 	if conf.ProjectName != "" {
-		project, err := getProjectByName(client, conf.ProjectName)
+		project, err := getProjectByName(ctx, client, conf.ProjectName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get project: %v", err)
+			return nil, fmt.Errorf("failed to get project: %w", err)
 		}
 
 		request.Metadata.ProjectReference = &nutanixv3.Reference{
@@ -182,26 +199,26 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 
 	request.Spec.Resources = resources
 
-	resp, err := client.Prism.V3.CreateVM(request)
+	resp, err := client.Prism.V3.CreateVM(ctx, request)
 	if err != nil {
 		return nil, wrapNutanixError(err)
 	}
 
 	taskUUID := resp.Status.ExecutionContext.TaskUUID.(string)
 
-	if err := waitForCompletion(client, taskUUID, time.Second*10, time.Minute*15); err != nil {
-		return nil, fmt.Errorf("failed to wait for task: %v", err)
+	if err := waitForCompletion(ctx, client, taskUUID, time.Second*10, time.Minute*15); err != nil {
+		return nil, fmt.Errorf("failed to wait for task: %w", err)
 	}
 
 	if resp.Metadata.UUID == nil {
 		return nil, errors.New("did not get response with UUID")
 	}
 
-	if err := waitForPowerState(client, *resp.Metadata.UUID, time.Second*10, time.Minute*10); err != nil {
-		return nil, fmt.Errorf("failed to wait for power state: %v", err)
+	if err := waitForPowerState(ctx, client, *resp.Metadata.UUID, time.Second*10, time.Minute*10); err != nil {
+		return nil, fmt.Errorf("failed to wait for power state: %w", err)
 	}
 
-	vm, err := client.Prism.V3.GetVM(*resp.Metadata.UUID)
+	vm, err := client.Prism.V3.GetVM(ctx, *resp.Metadata.UUID)
 	if err != nil {
 		return nil, wrapNutanixError(err)
 	}
@@ -210,9 +227,9 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 		return nil, fmt.Errorf("request for VM UUID '%s' did not return name", *resp.Metadata.UUID)
 	}
 
-	addresses, err := getIPs(client, *vm.Metadata.UUID, time.Second*5, time.Minute*10)
+	addresses, err := getIPs(ctx, client, *vm.Metadata.UUID, time.Second*5, time.Minute*10)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get addresses: %v", err)
+		return nil, fmt.Errorf("failed to get addresses: %w", err)
 	}
 
 	return Server{
@@ -223,9 +240,9 @@ func createVM(client *ClientSet, name string, conf Config, os providerconfigtype
 	}, nil
 }
 
-func getSubnetByName(client *ClientSet, name, clusterID string) (*nutanixv3.SubnetIntentResponse, error) {
+func getSubnetByName(ctx context.Context, client *ClientSet, name, clusterID string) (*nutanixv3.SubnetIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	subnets, err := client.Prism.V3.ListAllSubnet(filter)
+	subnets, err := client.Prism.V3.ListAllSubnet(ctx, filter, nil)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -246,9 +263,9 @@ func getSubnetByName(client *ClientSet, name, clusterID string) (*nutanixv3.Subn
 	}
 }
 
-func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error) {
+func getProjectByName(ctx context.Context, client *ClientSet, name string) (*nutanixv3.Project, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	projects, err := client.Prism.V3.ListAllProject(filter)
+	projects, err := client.Prism.V3.ListAllProject(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -259,7 +276,6 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 			Reason:  common.InvalidConfigurationMachineError,
 			Message: fmt.Sprintf("no project found for name==%s", name),
 		}
-
 	}
 
 	for _, project := range projects.Entities {
@@ -274,9 +290,9 @@ func getProjectByName(client *ClientSet, name string) (*nutanixv3.Project, error
 	}
 }
 
-func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentResponse, error) {
+func getClusterByName(ctx context.Context, client *ClientSet, name string) (*nutanixv3.ClusterIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	clusters, err := client.Prism.V3.ListAllCluster(filter)
+	clusters, err := client.Prism.V3.ListAllCluster(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -301,9 +317,9 @@ func getClusterByName(client *ClientSet, name string) (*nutanixv3.ClusterIntentR
 	}
 }
 
-func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentResponse, error) {
+func getImageByName(ctx context.Context, client *ClientSet, name string) (*nutanixv3.ImageIntentResponse, error) {
 	filter := fmt.Sprintf("name==%s", name)
-	images, err := client.Prism.V3.ListAllImage(filter)
+	images, err := client.Prism.V3.ListAllImage(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -328,9 +344,9 @@ func getImageByName(client *ClientSet, name string) (*nutanixv3.ImageIntentRespo
 	}
 }
 
-func getVMByName(client *ClientSet, name string, projectID *string) (*nutanixv3.VMIntentResource, error) {
+func getVMByName(ctx context.Context, client *ClientSet, name string, projectID *string) (*nutanixv3.VMIntentResource, error) {
 	filter := fmt.Sprintf("vm_name==%s", name)
-	vms, err := client.Prism.V3.ListAllVM(filter)
+	vms, err := client.Prism.V3.ListAllVM(ctx, filter)
 
 	if err != nil {
 		return nil, wrapNutanixError(err)
@@ -349,11 +365,11 @@ func getVMByName(client *ClientSet, name string, projectID *string) (*nutanixv3.
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]corev1.NodeAddressType, error) {
+func getIPs(ctx context.Context, client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) (map[string]corev1.NodeAddressType, error) {
 	addresses := make(map[string]corev1.NodeAddressType)
 
 	if err := wait.Poll(interval, timeout, func() (bool, error) {
-		vm, err := client.Prism.V3.GetVM(vmID)
+		vm, err := client.Prism.V3.GetVM(ctx, vmID)
 		if err != nil {
 			return false, wrapNutanixError(err)
 		}
@@ -373,9 +389,9 @@ func getIPs(client *ClientSet, vmID string, interval time.Duration, timeout time
 	return addresses, nil
 }
 
-func waitForCompletion(client *ClientSet, taskID string, interval time.Duration, timeout time.Duration) error {
+func waitForCompletion(ctx context.Context, client *ClientSet, taskID string, interval time.Duration, timeout time.Duration) error {
 	return wait.Poll(interval, timeout, func() (bool, error) {
-		task, err := client.Prism.V3.GetTask(taskID)
+		task, err := client.Prism.V3.GetTask(ctx, taskID)
 		if err != nil {
 			return false, wrapNutanixError(err)
 		}
@@ -394,13 +410,12 @@ func waitForCompletion(client *ClientSet, taskID string, interval time.Duration,
 		default:
 			return false, fmt.Errorf("unknown status: %s", *task.Status)
 		}
-
 	})
 }
 
-func waitForPowerState(client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) error {
+func waitForPowerState(ctx context.Context, client *ClientSet, vmID string, interval time.Duration, timeout time.Duration) error {
 	return wait.Poll(interval, timeout, func() (bool, error) {
-		vm, err := client.Prism.V3.GetVM(vmID)
+		vm, err := client.Prism.V3.GetVM(ctx, vmID)
 		if err != nil {
 			return false, wrapNutanixError(err)
 		}

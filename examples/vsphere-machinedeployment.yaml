@@ -38,10 +38,10 @@ spec:
           cloudProvider: "vsphere"
           cloudProviderSpec:
             # Can also be set via the env var 'VSPHERE_USERNAME' on the machine-controller
-            username: '<< VSPHERE_USERNAME >>'
+            username: "<< VSPHERE_USERNAME >>"
             # Can also be set via the env var 'VSPHERE_ADDRESS' on the machine-controller
             # example: 'https://your-vcenter:8443'. '/sdk' gets appended automatically
-            vsphereURL: '<< VSPHERE_ADDRESS >>'
+            vsphereURL: "<< VSPHERE_ADDRESS >>"
             # Can also be set via the env var 'VSPHERE_PASSWORD' on the machine-controller
             password:
               secretKeyRef:
@@ -74,4 +74,4 @@ spec:
             # provided the rhsm will be disabled and any created subscription won't be removed automatically
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

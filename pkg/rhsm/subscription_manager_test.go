@@ -17,6 +17,7 @@ limitations under the License.
 package rhsm
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -62,7 +63,7 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			manager.(*defaultRedHatSubscriptionManager).authURL = tt.testingServer.URL
 			manager.(*defaultRedHatSubscriptionManager).requestsLimiter = tt.requestLimiter
 
-			if err := manager.UnregisterInstance(tt.offlineToken, tt.machineName); err != nil {
+			if err := manager.UnregisterInstance(context.Background(), tt.offlineToken, tt.machineName); err != nil {
 				t.Fatalf("failed executing test: %v", err)
 			}
 		})

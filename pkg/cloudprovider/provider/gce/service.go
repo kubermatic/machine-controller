@@ -21,13 +21,12 @@ limitations under the License.
 package gce
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
-
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+	"google.golang.org/api/option"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
@@ -55,9 +54,10 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	svc, err := compute.New(cfg.jwtConfig.Client(oauth2.NoContext))
+	client := cfg.jwtConfig.Client(context.Background())
+	svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to Google Cloud: %v", err)
+		return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
 	}
 	return &service{svc}, nil
 }
@@ -91,7 +91,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 	// if assigning public IP addresses is enabled.
 	if cfg.assignPublicIPAddress {
 		// GCP doesn't support IPv6 only stack
-		if cfg.providerConfig.Network.GetIPFamily() == util.DualStack {
+		if cfg.providerConfig.Network.GetIPFamily().IsDualstack() {
 			ifc.StackType = "IPV4_IPV6"
 
 			ifc.Ipv6AccessConfigs = []*compute.AccessConfig{
@@ -104,9 +104,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 		} else {
 			klog.Infof("IP family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetIPFamily())
 		}
-
 	}
-
 	return []*compute.NetworkInterface{ifc}, nil
 }
 
@@ -124,6 +122,11 @@ func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) 
 			DiskType:    cfg.diskTypeDescriptor(),
 			SourceImage: sourceImage,
 		},
+	}
+	for _, v := range cfg.guestOSFeatures {
+		bootDisk.GuestOsFeatures = append(bootDisk.GuestOsFeatures, &compute.GuestOsFeature{
+			Type: v,
+		})
 	}
 	return []*compute.AttachedDisk{bootDisk}, nil
 }

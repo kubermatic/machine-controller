@@ -40,7 +40,7 @@ type testData struct {
 	Global globalSection
 }
 
-// TestINIEscape will ensure that we hopefully cover every case
+// TestINIEscape will ensure that we hopefully cover every case.
 func TestINIEscape(t *testing.T) {
 	// We'll simply generate 1000 times a password with special chars,
 	// Put it into a OpenStack cloud config,

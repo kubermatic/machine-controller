@@ -43,7 +43,7 @@ const (
 	tokenSecretKey           string            = "token-secret"
 	expirationKey            string            = "expiration"
 	tokenFormatter           string            = "%s.%s"
-	// Keep this short, userdata is limited
+	// Keep this short, userdata is limited.
 	contextIdentifier string = "c"
 )
 
@@ -54,12 +54,12 @@ func (r *Reconciler) createBootstrapKubeconfig(ctx context.Context, name string)
 	if r.bootstrapTokenServiceAccountName != nil {
 		token, err = r.getTokenFromServiceAccount(ctx, *r.bootstrapTokenServiceAccountName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %v", r.bootstrapTokenServiceAccountName.Namespace, r.bootstrapTokenServiceAccountName.Name, err)
+			return nil, fmt.Errorf("failed to get token from ServiceAccount %s/%s: %w", r.bootstrapTokenServiceAccountName.Namespace, r.bootstrapTokenServiceAccountName.Name, err)
 		}
 	} else {
 		token, err = r.createBootstrapToken(ctx, name)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create bootstrap token: %v", err)
+			return nil, fmt.Errorf("failed to create bootstrap token: %w", err)
 		}
 	}
 
@@ -90,6 +90,18 @@ func (r *Reconciler) createBootstrapKubeconfig(ctx context.Context, name string)
 		},
 	}
 
+	// This is supposed to have a length of 1. We have code further down the
+	// line that extracts the CA cert and errors out if that is not the case.
+	//
+	// This handles a very special case in which we want to override the API server
+	// address that will be used in the `bootstrap-kubelet.conf` in the worker nodes for
+	// our E2E tests that run in KIND clusters.
+	if r.overrideBootstrapKubeletAPIServer != "" {
+		for key := range outConfig.Clusters {
+			outConfig.Clusters[key].Server = r.overrideBootstrapKubeletAPIServer
+		}
+	}
+
 	outConfig.Contexts = map[string]*clientcmdapi.Context{contextIdentifier: {Cluster: contextIdentifier, AuthInfo: contextIdentifier}}
 	outConfig.CurrentContext = contextIdentifier
 
@@ -100,14 +112,14 @@ func (r *Reconciler) getTokenFromServiceAccount(ctx context.Context, name types.
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name.Name, Namespace: name.Namespace}}
 	raw, err := r.getAsUnstructured(ctx, sa)
 	if err != nil {
-		return "", fmt.Errorf("failed to get serviceAccount %q: %v", name.String(), err)
+		return "", fmt.Errorf("failed to get serviceAccount %q: %w", name.String(), err)
 	}
 	sa = raw.(*corev1.ServiceAccount)
 	for _, serviceAccountSecretName := range sa.Secrets {
 		serviceAccountSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: sa.Namespace, Name: serviceAccountSecretName.Name}}
 		raw, err = r.getAsUnstructured(ctx, serviceAccountSecret)
 		if err != nil {
-			return "", fmt.Errorf("failed to get serviceAccountSecret: %v", err)
+			return "", fmt.Errorf("failed to get serviceAccountSecret: %w", err)
 		}
 		serviceAccountSecret = raw.(*corev1.Secret)
 		if serviceAccountSecret.Type != corev1.SecretTypeServiceAccountToken {
@@ -149,7 +161,7 @@ func (r *Reconciler) createBootstrapToken(ctx context.Context, name string) (str
 	}
 
 	if err := r.client.Create(ctx, &secret); err != nil {
-		return "", fmt.Errorf("failed to create bootstrap token secret: %v", err)
+		return "", fmt.Errorf("failed to create bootstrap token secret: %w", err)
 	}
 
 	return fmt.Sprintf(tokenFormatter, tokenID, tokenSecret), nil
@@ -168,7 +180,7 @@ func (r *Reconciler) updateSecretExpirationAndGetToken(ctx context.Context, secr
 		return "", err
 	}
 
-	//If the token is close to expire, reset it's expiration time
+	// If the token is close to expire, reset it's expiration time
 	if time.Until(expirationTime).Minutes() < 30 {
 		secret.Data[expirationKey] = []byte(metav1.Now().Add(1 * time.Hour).Format(time.RFC3339))
 	} else {
@@ -176,7 +188,7 @@ func (r *Reconciler) updateSecretExpirationAndGetToken(ctx context.Context, secr
 	}
 
 	if err := r.client.Update(ctx, secret); err != nil {
-		return "", fmt.Errorf("failed to update secret: %v", err)
+		return "", fmt.Errorf("failed to update secret: %w", err)
 	}
 	return token, nil
 }
@@ -215,7 +227,7 @@ func (r *Reconciler) getAsUnstructured(ctx context.Context, obj runtime.Object) 
 	}
 	kinds, _, err := scheme.Scheme.ObjectKinds(obj)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kinds for object: %v", err)
+		return nil, fmt.Errorf("failed to get kinds for object: %w", err)
 	}
 	if len(kinds) == 0 {
 		return nil, fmt.Errorf("found no kind for object %t", obj)
@@ -228,15 +240,15 @@ func (r *Reconciler) getAsUnstructured(ctx context.Context, obj runtime.Object) 
 	name := types.NamespacedName{Name: metaObj.GetName(), Namespace: metaObj.GetNamespace()}
 
 	if err := r.client.Get(ctx, name, target); err != nil {
-		return nil, fmt.Errorf("failed to get object: %v", err)
+		return nil, fmt.Errorf("failed to get object: %w", err)
 	}
 
 	rawJSON, err := target.MarshalJSON()
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal unstructured.Unstructured: %v", err)
+		return nil, fmt.Errorf("failed to marshal unstructured.Unstructured: %w", err)
 	}
 	if err := json.Unmarshal(rawJSON, obj); err != nil {
-		return nil, fmt.Errorf("failed to marshal unstructured.Unstructued into %T: %v", obj, err)
+		return nil, fmt.Errorf("failed to marshal unstructured.Unstructued into %T: %w", obj, err)
 	}
 	return obj, nil
 }

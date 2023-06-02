@@ -23,7 +23,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 )
 
-// TxtFuncMap returns an aggregated template function map. Currently (custom functions + sprig)
+// TxtFuncMap returns an aggregated template function map. Currently (custom functions + sprig).
 func TxtFuncMap() template.FuncMap {
 	funcMap := sprig.TxtFuncMap()
 

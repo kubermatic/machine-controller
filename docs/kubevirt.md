@@ -4,16 +4,18 @@ In order to use the machine-controller to create machines using [Kubevirt](https
 you must first install the latter. We provide a manifest for this, simply run `kubectl apply -f examples/kubevirt-operator-0.19.0.yaml`.
 We strongly recommend installing a version which is equal or higher than `0.19.0`. Machine Controller also uses the KubeVirt CDI which can be found
 under `examples/cdi-operator.yaml` to provision storage. It is important to have a basic understanding of Kubernetes storage. For more
-information regarding which types of storage can be used please refer to [KubeVirt documentation](https://github.com/kubevirt/containerized-data-importer/blob/master/doc/basic_pv_pvc_dv.md).
+information regarding which types of storage can be used please refer to [KubeVirt documentation](https://github.com/kubevirt/containerized-data-importer/blob/main/doc/basic_pv_pvc_dv.md).
 
 
-Afterwards, you can use the provided `exampes/examples/kubevirt-machinedeployment.yaml` as base. There
+Afterwards, you can use the provided `examples/kubevirt-machinedeployment.yaml` as base. There
 are some things you need to keep in mind:
 
 * The machine-controller will create `VMIs` that have the same name as the underlying `machine`. To
 avoid collisions, use one namespace per cluster that runs the `machine-controller`
+* EvictionStratey of `VMIs` is set to external, so VMI eviction needs to handled properly by a custom external controller or manual action
 * Service CIDR range: The CIDR ranges of the cluster that runs Kubevirt and the cluster that hosts the machine-controller must not overlap,
 otherwise routing of services that run in the kubevirt cluster won't work anymore. This is especially important for the DNS ClusterIP.
+* `clusterName` is used to [label VMs](https://github.com/kubevirt/cloud-provider-kubevirt#prerequisites) for LoadBalancer selection
 
 ## Serving Supported Images
 

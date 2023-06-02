@@ -19,7 +19,7 @@ package conversions
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -28,13 +28,13 @@ import (
 )
 
 func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T) {
-	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineDeploymentWithProviderConfig")
+	fixtures, err := os.ReadDir("testdata/clusterv1alpha1machineDeploymentWithProviderConfig")
 	if err != nil {
 		t.Fatalf("failed to list fixtures: %v", err)
 	}
 
 	for _, fixture := range fixtures {
-		fixtureYamlByte, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineDeploymentWithProviderConfig/%s", fixture.Name()))
+		fixtureYamlByte, err := os.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineDeploymentWithProviderConfig/%s", fixture.Name()))
 		if err != nil {
 			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
 			continue
@@ -67,13 +67,13 @@ func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T)
 }
 
 func Test_Convert_MachineSet_ProviderConfig_To_ProviderSpec(t *testing.T) {
-	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineSetWithProviderConfig")
+	fixtures, err := os.ReadDir("testdata/clusterv1alpha1machineSetWithProviderConfig")
 	if err != nil {
 		t.Fatalf("failed to list fixtures: %v", err)
 	}
 
 	for _, fixture := range fixtures {
-		fixtureYamlByte, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineSetWithProviderConfig/%s", fixture.Name()))
+		fixtureYamlByte, err := os.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineSetWithProviderConfig/%s", fixture.Name()))
 		if err != nil {
 			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
 			continue
@@ -107,13 +107,13 @@ func Test_Convert_MachineSet_ProviderConfig_To_ProviderSpec(t *testing.T) {
 }
 
 func Test_Convert_Machine_ProviderConfig_To_ProviderSpec(t *testing.T) {
-	fixtures, err := ioutil.ReadDir("testdata/clusterv1alpha1machineWithProviderConfig")
+	fixtures, err := os.ReadDir("testdata/clusterv1alpha1machineWithProviderConfig")
 	if err != nil {
 		t.Fatalf("failed to list fixtures: %v", err)
 	}
 
 	for _, fixture := range fixtures {
-		fixtureYamlByte, err := ioutil.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineWithProviderConfig/%s", fixture.Name()))
+		fixtureYamlByte, err := os.ReadFile(fmt.Sprintf("testdata/clusterv1alpha1machineWithProviderConfig/%s", fixture.Name()))
 		if err != nil {
 			t.Errorf("failed to read fixture file %s: %v", fixture.Name(), err)
 			continue

@@ -6,6 +6,11 @@ reference in form `namespace/secret-name` where authentication info will be
 stored. During the VM creation this info will be used to configure container
 runtime.
 
+There are two options for the type of the secret that can be passed on this
+flag.
+
+## Custom secret
+
 Secret format is serialized
 `map[string]github.com/containerd/containerd/pkg/cri/config.AuthConfig`, where
 `AuthConfig` is defined as
@@ -27,9 +32,7 @@ type AuthConfig struct {
 
 Original source: https://github.com/containerd/containerd/blob/v1.5.9/pkg/cri/config/config.go#L126-L137
 
-
 Example:
-
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -45,3 +48,12 @@ data:
 
 Now having this saved in the Kubernetes API, launch machine-controller with
 `-node-registry-credentials-secret=kube-system/my-registries` flag.
+
+## `kubernetes.io/dockerconfigjson`
+
+This type stores a serialized `~/.docker/config.json` and can directly be
+created via `kubectl` by either passing such file directly or by providing
+the necessary data.
+
+See also:
+https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets

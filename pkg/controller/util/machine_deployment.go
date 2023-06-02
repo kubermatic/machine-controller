@@ -29,7 +29,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,7 +42,7 @@ import (
 const (
 	DefaultMachineDeploymentUniqueLabelKey = "machine-template-hash"
 
-	// RevisionAnnotation is the revision annotation of a machine deployment's machine sets which records its rollout sequence
+	// RevisionAnnotation is the revision annotation of a machine deployment's machine sets which records its rollout sequence.
 	RevisionAnnotation = "machinedeployment.clusters.k8s.io/revision"
 	// RevisionHistoryAnnotation maintains the history of all old revisions that a machine set has served for a machine deployment.
 	RevisionHistoryAnnotation = "machinedeployment.clusters.k8s.io/revision-history"
@@ -129,7 +129,7 @@ func SetDeploymentRevision(deployment *v1alpha1.MachineDeployment, revision stri
 	return updated
 }
 
-// MaxRevision finds the highest revision in the machine sets
+// MaxRevision finds the highest revision in the machine sets.
 func MaxRevision(allMSs []*v1alpha1.MachineSet) int64 {
 	max := int64(0)
 	for _, ms := range allMSs {
@@ -166,7 +166,8 @@ var annotationsToSkip = map[string]bool{
 
 // skipCopyAnnotation returns true if we should skip copying the annotation with the given annotation key
 // TODO: How to decide which annotations should / should not be copied?
-//       See https://github.com/kubernetes/kubernetes/pull/20035#issuecomment-179558615
+//
+//	See https://github.com/kubernetes/kubernetes/pull/20035#issuecomment-179558615
 func skipCopyAnnotation(key string) bool {
 	return annotationsToSkip[key]
 }
@@ -192,7 +193,7 @@ func copyDeploymentAnnotationsToMachineSet(deployment *v1alpha1.MachineDeploymen
 	return msAnnotationsChanged
 }
 
-// GetDesiredReplicasAnnotation returns the number of desired replicas
+// GetDesiredReplicasAnnotation returns the number of desired replicas.
 func GetDesiredReplicasAnnotation(ms *v1alpha1.MachineSet) (int32, bool) {
 	return getIntFromAnnotation(ms, DesiredReplicasAnnotation)
 }
@@ -292,7 +293,7 @@ func FindOneActiveOrLatest(newMS *v1alpha1.MachineSet, oldMSs []*v1alpha1.Machin
 	}
 }
 
-// SetReplicasAnnotations sets the desiredReplicas and maxReplicas into the annotations
+// SetReplicasAnnotations sets the desiredReplicas and maxReplicas into the annotations.
 func SetReplicasAnnotations(ms *v1alpha1.MachineSet, desiredReplicas, maxReplicas int32) bool {
 	updated := false
 	if ms.Annotations == nil {
@@ -311,7 +312,7 @@ func SetReplicasAnnotations(ms *v1alpha1.MachineSet, desiredReplicas, maxReplica
 	return updated
 }
 
-// AnnotationsNeedUpdate return true if ReplicasAnnotations need to be updated
+// AnnotationsNeedUpdate return true if ReplicasAnnotations need to be updated.
 func ReplicasAnnotationsNeedUpdate(ms *v1alpha1.MachineSet, desiredReplicas, maxReplicas int32) bool {
 	if ms.Annotations == nil {
 		return true
@@ -399,13 +400,13 @@ func getMachineSetFraction(ms v1alpha1.MachineSet, d v1alpha1.MachineDeployment)
 
 // EqualIgnoreHash returns true if two given machineTemplateSpec are equal, ignoring the diff in value of Labels[machine-template-hash]
 // We ignore machine-template-hash because:
-// 1. The hash result would be different upon machineTemplateSpec API changes
-//    (e.g. the addition of a new field will cause the hash code to change)
-// 2. The deployment template won't have hash labels
+//  1. The hash result would be different upon machineTemplateSpec API changes
+//     (e.g. the addition of a new field will cause the hash code to change)
+//  2. The deployment template won't have hash labels.
 func EqualIgnoreHash(template1, template2 *v1alpha1.MachineTemplateSpec) bool {
 	t1Copy := template1.DeepCopy()
 	t2Copy := template2.DeepCopy()
-	// Remove hash labels from template.Labels before comparing
+	// Remove hash labels from template.Labels before comparing.
 	delete(t1Copy.Labels, DefaultMachineDeploymentUniqueLabelKey)
 	delete(t2Copy.Labels, DefaultMachineDeploymentUniqueLabelKey)
 	return apiequality.Semantic.DeepEqual(t1Copy, t2Copy)
@@ -429,8 +430,8 @@ func FindNewMachineSet(deployment *v1alpha1.MachineDeployment, msList []*v1alpha
 
 // FindOldMachineSets returns the old machine sets targeted by the given Deployment, with the given slice of MSes.
 // Returns two list of machine sets
-//  - the first contains all old machine sets with all non-zero replicas
-//  - the second contains all old machine sets
+//   - the first contains all old machine sets with all non-zero replicas
+//   - the second contains all old machine sets
 func FindOldMachineSets(deployment *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet) ([]*v1alpha1.MachineSet, []*v1alpha1.MachineSet) {
 	var requiredMSs []*v1alpha1.MachineSet
 	allMSs := make([]*v1alpha1.MachineSet, 0, len(msList))
@@ -509,7 +510,7 @@ func DeploymentComplete(deployment *v1alpha1.MachineDeployment, newStatus *v1alp
 // NewMSNewReplicas calculates the number of replicas a deployment's new MS should have.
 // When one of the following is true, we're rolling out the deployment; otherwise, we're scaling it.
 // 1) The new MS is saturated: newMS's replicas == deployment's replicas
-// 2) Max number of machines allowed is reached: deployment's replicas + maxSurge == all MSs' replicas
+// 2) Max number of machines allowed is reached: deployment's replicas + maxSurge == all MSs' replicas.
 func NewMSNewReplicas(deployment *v1alpha1.MachineDeployment, allMSs []*v1alpha1.MachineSet, newMS *v1alpha1.MachineSet) (int32, error) {
 	switch deployment.Spec.Strategy.Type {
 	case common.RollingUpdateMachineDeploymentStrategyType:
@@ -578,7 +579,7 @@ func IsSaturated(deployment *v1alpha1.MachineDeployment, ms *v1alpha1.MachineSet
 // 2 desired, max unavailable 25%, surge 1% - should scale new(+1), then old(-1), then new(+1), then old(-1)
 // 1 desired, max unavailable 25%, surge 1% - should scale new(+1), then old(-1)
 // 2 desired, max unavailable 0%, surge 1% - should scale new(+1), then old(-1), then new(+1), then old(-1)
-// 1 desired, max unavailable 0%, surge 1% - should scale new(+1), then old(-1)
+// 1 desired, max unavailable 0%, surge 1% - should scale new(+1), then old(-1).
 func ResolveFenceposts(maxSurge, maxUnavailable *intstrutil.IntOrString, desired int32) (int32, int32, error) {
 	surge, err := intstrutil.GetValueFromIntOrPercent(maxSurge, int(desired), true)
 	if err != nil {

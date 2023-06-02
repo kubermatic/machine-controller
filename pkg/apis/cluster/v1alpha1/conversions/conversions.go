@@ -30,7 +30,6 @@ import (
 func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alpha1.Machine, out *clusterv1alpha1.Machine) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
-	out.SelfLink = ""
 	out.UID = ""
 	out.ResourceVersion = ""
 	out.Generation = 0
@@ -42,10 +41,10 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	// only has one additional field, so we cast by serializing and deserializing
 	inStatusJSON, err := json.Marshal(in.Status)
 	if err != nil {
-		return fmt.Errorf("failed to marshal downstreammachine status: %v", err)
+		return fmt.Errorf("failed to marshal downstreammachine status: %w", err)
 	}
 	if err = json.Unmarshal(inStatusJSON, &out.Status); err != nil {
-		return fmt.Errorf("failed to unmarshal downstreammachine status: %v", err)
+		return fmt.Errorf("failed to unmarshal downstreammachine status: %w", err)
 	}
 	out.Spec.ObjectMeta = in.Spec.ObjectMeta
 	out.Spec.Taints = in.Spec.Taints
@@ -61,10 +60,10 @@ func Convert_MachinesV1alpha1Machine_To_ClusterV1alpha1Machine(in *machinesv1alp
 	// To work around this, we put it into the providerConfig
 	inMachineVersionJSON, err := json.Marshal(in.Spec.Versions)
 	if err != nil {
-		return fmt.Errorf("failed to marshal downstreammachine version: %v", err)
+		return fmt.Errorf("failed to marshal downstreammachine version: %w", err)
 	}
 	if err = json.Unmarshal(inMachineVersionJSON, &out.Spec.Versions); err != nil {
-		return fmt.Errorf("failed to unmarshal downstreammachine version: %v", err)
+		return fmt.Errorf("failed to unmarshal downstreammachine version: %w", err)
 	}
 	out.Spec.ConfigSource = in.Spec.ConfigSource
 	return nil

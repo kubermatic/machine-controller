@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -34,13 +34,13 @@ import (
 var update = flag.Bool("update", false, "update .testdata files")
 
 func getMachinesV1Alpha1TestMachines() (machines []machinesv1alpha1.Machine, err error) {
-	files, err := ioutil.ReadDir("testdata/machinesv1alpha1machine")
+	files, err := os.ReadDir("testdata/machinesv1alpha1machine")
 	if err != nil {
 		return nil, err
 	}
 	for _, file := range files {
 		newMachine := &machinesv1alpha1.Machine{}
-		fileContent, err := ioutil.ReadFile(fmt.Sprintf("testdata/machinesv1alpha1machine/%s", file.Name()))
+		fileContent, err := os.ReadFile(fmt.Sprintf("testdata/machinesv1alpha1machine/%s", file.Name()))
 		if err != nil {
 			return nil, err
 		}
@@ -71,11 +71,11 @@ func TestMigratingMachine(t *testing.T) {
 			t.Errorf("Failed to marshal machine: %v", err)
 		}
 		if *update {
-			if err = ioutil.WriteFile(fixtureFilePath, outMachineRaw, 0644); err != nil {
+			if err = os.WriteFile(fixtureFilePath, outMachineRaw, 0644); err != nil {
 				t.Fatalf("Failed to write updated test fixture: %v", err)
 			}
 		}
-		expected, err := ioutil.ReadFile(fixtureFilePath)
+		expected, err := os.ReadFile(fixtureFilePath)
 		if err != nil {
 			t.Fatalf("Failed to read fixture: %v", err)
 		}

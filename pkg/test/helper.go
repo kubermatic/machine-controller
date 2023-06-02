@@ -17,7 +17,7 @@ limitations under the License.
 package test
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -30,11 +30,11 @@ func CompareOutput(t *testing.T, name, output string, update bool) {
 		t.Fatalf("failed to get absolute path to testdata file: %v", err)
 	}
 	if update {
-		if err := ioutil.WriteFile(golden, []byte(output), 0644); err != nil {
+		if err := os.WriteFile(golden, []byte(output), 0644); err != nil {
 			t.Fatalf("failed to write updated fixture: %v", err)
 		}
 	}
-	expected, err := ioutil.ReadFile(golden)
+	expected, err := os.ReadFile(golden)
 	if err != nil {
 		t.Fatalf("failed to read testdata file: %v", err)
 	}

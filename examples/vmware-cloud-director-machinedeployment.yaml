@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  # If you change the namespace/name, you must also
+  # adjust the rbac rules
+  name: machine-controller-vmware-cloud-director
+  namespace: kube-system
+type: Opaque
+stringData:
+  password: << VCD_PASSWORD >>
+---
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: MachineDeployment
+metadata:
+  name: vmware-cloud-director-machinedeployment
+  namespace: kube-system
+spec:
+  paused: false
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      foo: bar
+  template:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      providerSpec:
+        value:
+          sshPublicKeys:
+            - "<< YOUR_PUBLIC_KEY >>"
+          cloudProvider: "vmware-cloud-director"
+          cloudProviderSpec:
+            # Can also be set via the env var 'VCD_USER' on the machine-controller
+            username: "<< VCD_USER >>"
+            # Can also be set via the env var 'VCD_URL' on the machine-controller
+            # example: 'https://your-vcloud-director:8443'. '/api' gets appended automatically
+            url: "<< VCD_URL >>"
+            # Can also be set via the env var 'VCD_PASSWORD' on the machine-controller
+            password:
+              secretKeyRef:
+                namespace: kube-system
+                name: machine-controller-vmware-cloud-director
+                key: password
+            # Can also be set via the env var 'VCD_ORG' on the machine-controller
+            organization: "<< VCD_ORG >>"
+            # Can also be set via the env var 'VCD_VDC' on the machine-controller
+            vdc: "<< VCD_VDC >>"
+            # Can also be set via the env var 'VCD_ALLOW_UNVERIFIED_SSL' on the machine-controller
+            allowInsecure: false
+            # vApp to associate the VM with. This should be created before the machine is created
+            vapp: "<< VCD_VAPP >>"
+            # Name of catalog where the VM template is located
+            catalog: "<< VCD_CATALOG >>"
+            # Name of OS template to be used for the VM
+            template: "<< VCD_TEMPLATE >>"
+            # Direct or routed network that can be used for the VM
+            network: "<< VCD_NETWORK >>"
+            ipAllocationMode: "DHCP"
+            cpus: 2
+            cpuCores: 1
+            memoryMB: 2048
+            # Optional: Resize the root disk to this size. Must be bigger than the existing size
+            # Default is to leave the disk at the same size as the template
+            diskSizeGB: 10
+            diskBusType: "paravirtual"
+            diskIOPS: 0
+            storageProfile: "*"
+          operatingSystem: "ubuntu"
+          operatingSystemSpec:
+            distUpgradeOnBoot: false
+      versions:
+        kubelet: 1.24.9

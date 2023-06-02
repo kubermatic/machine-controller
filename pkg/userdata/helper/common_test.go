@@ -26,9 +26,8 @@ var update = flag.Bool("update", false, "update testdata files")
 
 var (
 	versions = []*semver.Version{
-		semver.MustParse("v1.21.10"),
-		semver.MustParse("v1.22.7"),
-		semver.MustParse("v1.23.5"),
-		semver.MustParse("v1.24.0"),
+		semver.MustParse("v1.24.9"),
+		semver.MustParse("v1.25.5"),
+		semver.MustParse("v1.26.0"),
 	}
 )

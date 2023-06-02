@@ -30,7 +30,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/utils/pointer"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 type vsphereProviderSpecConf struct {
@@ -92,7 +92,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid Datastore",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.StringPtr("LocalDS_0"),
+				Datastore: pointer.String("LocalDS_0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -100,8 +100,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid Datastore end empty DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				Datastore:        pointer.StringPtr("LocalDS_0"),
-				DatastoreCluster: pointer.StringPtr(""),
+				Datastore:        pointer.String("LocalDS_0"),
+				DatastoreCluster: pointer.String(""),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -109,7 +109,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				DatastoreCluster: pointer.StringPtr("DC0_POD0"),
+				DatastoreCluster: pointer.String("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -117,7 +117,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Invalid Datastore",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.StringPtr("LocalDS_10"),
+				Datastore: pointer.String("LocalDS_10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
@@ -125,7 +125,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Invalid DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.StringPtr("DC0_POD10"),
+				Datastore: pointer.String("DC0_POD10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
@@ -133,8 +133,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Both Datastore and DatastoreCluster specified",
 			args: vsphereProviderSpecConf{
-				Datastore:        pointer.StringPtr("DC0_POD10"),
-				DatastoreCluster: pointer.StringPtr("DC0_POD0"),
+				Datastore:        pointer.String("DC0_POD10"),
+				DatastoreCluster: pointer.String("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
@@ -169,14 +169,16 @@ func TestValidate(t *testing.T) {
 			password, _ := simulator.DefaultLogin.Password()
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakeclient.NewFakeClient())},
+				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.
+					NewClientBuilder().
+					Build())},
 			}
 			tt.args.User = username
 			tt.args.Password = password
 			tt.args.URL = vSphereURL
 			m := cloudprovidertesting.Creator{Name: "test", Namespace: "vsphere", ProviderSpecGetter: tt.args.rawProviderSpec}.
 				CreateMachine(t)
-			if err := p.Validate(m.Spec); (err != nil) != tt.wantErr {
+			if err := p.Validate(context.Background(), m.Spec); (err != nil) != tt.wantErr {
 				t.Errorf("provider.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

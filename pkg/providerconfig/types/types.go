@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
@@ -37,7 +38,6 @@ const (
 	OperatingSystemUbuntu       OperatingSystem = "ubuntu"
 	OperatingSystemCentOS       OperatingSystem = "centos"
 	OperatingSystemAmazonLinux2 OperatingSystem = "amzn2"
-	OperatingSystemSLES         OperatingSystem = "sles"
 	OperatingSystemRHEL         OperatingSystem = "rhel"
 	OperatingSystemFlatcar      OperatingSystem = "flatcar"
 	OperatingSystemRockyLinux   OperatingSystem = "rockylinux"
@@ -46,24 +46,25 @@ const (
 type CloudProvider string
 
 const (
-	CloudProviderAWS          CloudProvider = "aws"
-	CloudProviderAzure        CloudProvider = "azure"
-	CloudProviderDigitalocean CloudProvider = "digitalocean"
-	CloudProviderGoogle       CloudProvider = "gce"
-	CloudProviderEquinixMetal CloudProvider = "equinixmetal"
-	CloudProviderPacket       CloudProvider = "packet"
-	CloudProviderHetzner      CloudProvider = "hetzner"
-	CloudProviderKubeVirt     CloudProvider = "kubevirt"
-	CloudProviderLinode       CloudProvider = "linode"
-	CloudProviderNutanix      CloudProvider = "nutanix"
-	CloudProviderOpenstack    CloudProvider = "openstack"
-	CloudProviderVsphere      CloudProvider = "vsphere"
-	CloudProviderFake         CloudProvider = "fake"
-	CloudProviderAlibaba      CloudProvider = "alibaba"
-	CloudProviderAnexia       CloudProvider = "anexia"
-	CloudProviderScaleway     CloudProvider = "scaleway"
-	CloudProviderBaremetal    CloudProvider = "baremetal"
-	CloudProviderExternal     CloudProvider = "external"
+	CloudProviderAWS                 CloudProvider = "aws"
+	CloudProviderAzure               CloudProvider = "azure"
+	CloudProviderDigitalocean        CloudProvider = "digitalocean"
+	CloudProviderGoogle              CloudProvider = "gce"
+	CloudProviderEquinixMetal        CloudProvider = "equinixmetal"
+	CloudProviderPacket              CloudProvider = "packet"
+	CloudProviderHetzner             CloudProvider = "hetzner"
+	CloudProviderKubeVirt            CloudProvider = "kubevirt"
+	CloudProviderLinode              CloudProvider = "linode"
+	CloudProviderNutanix             CloudProvider = "nutanix"
+	CloudProviderOpenstack           CloudProvider = "openstack"
+	CloudProviderVsphere             CloudProvider = "vsphere"
+	CloudProviderVMwareCloudDirector CloudProvider = "vmware-cloud-director"
+	CloudProviderFake                CloudProvider = "fake"
+	CloudProviderAlibaba             CloudProvider = "alibaba"
+	CloudProviderAnexia              CloudProvider = "anexia"
+	CloudProviderScaleway            CloudProvider = "scaleway"
+	CloudProviderBaremetal           CloudProvider = "baremetal"
+	CloudProviderExternal            CloudProvider = "external"
 )
 
 var (
@@ -74,7 +75,6 @@ var (
 		OperatingSystemUbuntu,
 		OperatingSystemCentOS,
 		OperatingSystemAmazonLinux2,
-		OperatingSystemSLES,
 		OperatingSystemRHEL,
 		OperatingSystemFlatcar,
 		OperatingSystemRockyLinux,
@@ -94,6 +94,7 @@ var (
 		CloudProviderNutanix,
 		CloudProviderOpenstack,
 		CloudProviderVsphere,
+		CloudProviderVMwareCloudDirector,
 		CloudProviderFake,
 		CloudProviderAlibaba,
 		CloudProviderAnexia,
@@ -102,12 +103,12 @@ var (
 	}
 )
 
-// DNSConfig contains a machine's DNS configuration
+// DNSConfig contains a machine's DNS configuration.
 type DNSConfig struct {
 	Servers []string `json:"servers"`
 }
 
-// NetworkConfig contains a machine's static network configuration
+// NetworkConfig contains a machine's static network configuration.
 type NetworkConfig struct {
 	CIDR     string        `json:"cidr"`
 	Gateway  string        `json:"gateway"`
@@ -126,7 +127,7 @@ func (n *NetworkConfig) IsStaticIPConfig() bool {
 
 func (n *NetworkConfig) GetIPFamily() util.IPFamily {
 	if n == nil {
-		return util.Unspecified
+		return util.IPFamilyUnspecified
 	}
 	return n.IPFamily
 }
@@ -149,7 +150,7 @@ type Config struct {
 }
 
 // GlobalObjectKeySelector is needed as we can not use v1.SecretKeySelector
-// because it is not cross namespace
+// because it is not cross namespace.
 type GlobalObjectKeySelector struct {
 	corev1.ObjectReference `json:",inline"`
 	Key                    string `json:"key,omitempty"`
@@ -174,13 +175,13 @@ func (c *ConfigVarString) Empty() bool {
 
 // This type only exists to have the same fields as ConfigVarString but
 // not its funcs, so it can be used as target for json.Unmarshal without
-// causing a recursion
+// causing a recursion.
 type configVarStringWithoutUnmarshaller ConfigVarString
 
 // MarshalJSON converts a configVarString to its JSON form, omitting empty strings.
 // This is done to not have the json object cluttered with empty strings
 // This will eventually hopefully be resolved within golang itself
-// https://github.com/golang/go/issues/11939
+// https://github.com/golang/go/issues/11939.
 func (configVarString ConfigVarString) MarshalJSON() ([]byte, error) {
 	var secretKeyRefEmpty, configMapKeyRefEmpty bool
 	if configVarString.SecretKeyRef.ObjectReference.Namespace == "" &&
@@ -232,7 +233,16 @@ func (configVarString *ConfigVarString) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
 		b = bytes.TrimPrefix(b, []byte(`"`))
 		b = bytes.TrimSuffix(b, []byte(`"`))
-		configVarString.Value = string(b)
+
+		// `Unquote` expects the input string to be inside quotation marks.
+		//  Since we can have a string without any quotations, in which case `TrimPrefix` and
+		// `TrimSuffix` will be noop. We explicitly add quotation marks to the input string
+		// to make sure that `Unquote` never fails.
+		s, err := strconv.Unquote("\"" + string(b) + "\"")
+		if err != nil {
+			return err
+		}
+		configVarString.Value = s
 		return nil
 	}
 	// This type must have the same fields as ConfigVarString but not
@@ -329,7 +339,7 @@ func (configVarBool *ConfigVarBool) UnmarshalJSON(b []byte) error {
 	if !bytes.HasPrefix(b, []byte("{")) {
 		var val *bool
 		if err := json.Unmarshal(b, &val); err != nil {
-			return fmt.Errorf("Error parsing value: '%v'", err)
+			return fmt.Errorf("Error parsing value: '%w'", err)
 		}
 		configVarBool.Value = val
 

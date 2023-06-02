@@ -101,7 +101,8 @@ func (l *machineMetricLabels) Counter(value uint) prometheus.Counter {
 	}
 
 	counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: metricsPrefix + "machines",
+		Name: metricsPrefix + "machines_total",
+		Help: "Total number of machines",
 	}, labelNames)
 
 	counter := counterVec.With(labels)
@@ -117,7 +118,7 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 		metricGatheringExecutor := func() {
 			machines := &clusterv1alpha1.MachineList{}
 			if err := client.List(ctx, machines); err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to list machines for SetMetricsForMachines: %v", err))
+				utilruntime.HandleError(fmt.Errorf("failed to list machines for SetMetricsForMachines: %w", err))
 				return
 			}
 			var machineList clusterv1alpha1.MachineList
@@ -132,7 +133,7 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 			for _, machine := range machines.Items {
 				providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %v", err))
+					utilruntime.HandleError(fmt.Errorf("failed to get providerSpec for SetMetricsForMachines: %w", err))
 					continue
 				}
 				if _, exists := providerMachineMap[providerConfig.CloudProvider]; !exists {
@@ -144,15 +145,14 @@ func NewMachineCollector(ctx context.Context, client ctrlruntimeclient.Client) *
 			for provider, providerMachineList := range providerMachineMap {
 				prov, err := cloudprovider.ForProvider(provider, skg)
 				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("failed to get cloud provider for SetMetricsForMachines:: %q: %v", provider, err))
+					utilruntime.HandleError(fmt.Errorf("failed to get cloud provider for SetMetricsForMachines:: %q: %w", provider, err))
 					continue
 				}
 				if err := prov.SetMetricsForMachines(*providerMachineList); err != nil {
-					utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %v", err))
+					utilruntime.HandleError(fmt.Errorf("failed to call prov.SetInstanceNumberForMachines: %w", err))
 					continue
 				}
 			}
-
 		}
 		for {
 			metricGatheringExecutor()
@@ -218,19 +218,19 @@ func (mc MachineCollector) Collect(ch chan<- prometheus.Metric) {
 
 		providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %v", machine.Name, err))
+			utilruntime.HandleError(fmt.Errorf("failed to determine providerSpec for machine %s: %w", machine.Name, err))
 			continue
 		}
 
 		provider, err := cloudprovider.ForProvider(providerConfig.CloudProvider, cvr)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to determine provider provider: %v", err))
+			utilruntime.HandleError(fmt.Errorf("failed to determine provider provider: %w", err))
 			continue
 		}
 
 		labels, err := provider.MachineMetricsLabels(&machine)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("failed to determine machine metrics labels: %v", err))
+			utilruntime.HandleError(fmt.Errorf("failed to determine machine metrics labels: %w", err))
 			continue
 		}
 

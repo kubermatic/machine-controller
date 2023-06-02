@@ -51,4 +51,4 @@ spec:
           operatingSystemSpec:
             distUpgradeOnBoot: false
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

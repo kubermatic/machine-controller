@@ -89,7 +89,7 @@ Now the provider is ready to be added into the project for CI tests.
 
 ## References
 
-- [Cloud Provider Interface](https://github.com/kubermatic/machine-controller/blob/master/pkg/cloudprovider/cloud/provider.go)
-- [Implementation for Hetzner](https://github.com/kubermatic/machine-controller/blob/master/pkg/cloudprovider/provider/hetzner/provider.go)
-- [Cloud Provider Type Definition](https://github.com/kubermatic/machine-controller/blob/master/pkg/providerconfig/types.go)
-- [Registration of supported Cloud Providers](https://github.com/kubermatic/machine-controller/blob/master/pkg/cloudprovider/provider.go)
+- [Cloud Provider Interface](https://github.com/kubermatic/machine-controller/blob/main/pkg/cloudprovider/cloud/provider.go)
+- [Implementation for Hetzner](https://github.com/kubermatic/machine-controller/blob/main/pkg/cloudprovider/provider/hetzner/provider.go)
+- [Cloud Provider Type Definition](https://github.com/kubermatic/machine-controller/blob/main/pkg/providerconfig/types.go)
+- [Registration of supported Cloud Providers](https://github.com/kubermatic/machine-controller/blob/main/pkg/cloudprovider/provider.go)

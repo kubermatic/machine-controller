@@ -38,13 +38,13 @@ spec:
           cloudProvider: "nutanix"
           cloudProviderSpec:
             # Can also be set via the env var 'NUTANIX_USERNAME' on the machine-controller
-            username: '<< NUTANIX_USERNAME >>'
+            username: "<< NUTANIX_USERNAME >>"
             # Can also be set via the env var 'NUTANIX_ENDPOINT' on the machine-controller
             # example: 'your-nutanix-host' or '10.0.1.5'. No protocol or port should be passed.
-            endpoint: '<< NUTANIX_ENDPOINT >>'
+            endpoint: "<< NUTANIX_ENDPOINT >>"
             # Can also be set via the env var 'NUTANIX_PORT' on the machine-controller
             # if not set, defaults to 9440 (default Nutanix port)
-            port: '<< NUTANIX_PORT >>'
+            port: "<< NUTANIX_PORT >>"
             # Optional: Allow insecure connections to endpoint if no valid TLS certificate is presented
             allowInsecure: true
             # Can also be set via the env var 'NUTANIX_PASSWORD' on the machine-controller
@@ -60,6 +60,10 @@ spec:
             projectName: project1
             # Sets the subnet that the VM is connected to. Must exist in the given Nutanix cluster
             subnetName: subnet1
+            # Optional: Sets multiple additional subnets that the VM is connected to. Must exist in the given Nutanix cluster
+            # additionalSubnetNames:
+            #   - subnet2
+            #   - subnet3
             # Provides the image used to create the VM
             imageName: ubuntu-20.04
             # Sets the vCPU count for this VM
@@ -78,4 +82,4 @@ spec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

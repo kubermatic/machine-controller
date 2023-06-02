@@ -1,0 +1,86 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  annotations:
+  labels:
+    cluster.x-k8s.io/cluster-name: cluster-name
+    cluster.x-k8s.io/role: worker
+    kubevirt.io/vm: affinity
+    md: md-name
+  name: affinity
+  namespace: test-namespace
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        creationTimestamp: null
+        name: affinity
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: longhorn
+        source:
+          http:
+            url: http://x.y.z.t/ubuntu.img
+  running: true
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: cluster-name
+        cluster.x-k8s.io/role: worker
+        kubevirt.io/vm: affinity
+        md: md-name
+    spec:
+      affinity:
+        nodeAffinity: # Section present if nodeAffinityPreset.type != ""
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: key1
+                    operator: In
+                    values:
+                      - foo1
+                      - foo2
+      domain:
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: datavolumedisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - macAddress: b6:f5:b4:fe:45:1d
+              name: default
+              bridge: {}
+        resources:
+          limits:
+            cpu: "2"
+            memory: 2Gi
+          requests:
+            cpu: "2"
+            memory: 2Gi
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 30
+      topologyspreadconstraints:
+        - maxskew: 1
+          topologykey: kubernetes.io/hostname
+          whenunsatisfiable: ScheduleAnyway
+          labelselector:
+            matchlabels:
+              md: md-name
+      volumes:
+        - dataVolume:
+            name: affinity
+          name: datavolumedisk
+        - cloudInitNoCloud:
+            secretRef:
+              name: udsn
+          name: cloudinitdisk
+      evictionStrategy: External

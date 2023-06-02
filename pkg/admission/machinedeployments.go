@@ -22,7 +22,6 @@ import (
 	"fmt"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	osmadmission "k8c.io/operating-system-manager/pkg/admission"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -31,27 +30,21 @@ import (
 func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error) {
 	machineDeployment := clusterv1alpha1.MachineDeployment{}
 	if err := json.Unmarshal(ar.Object.Raw, &machineDeployment); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 	machineDeploymentOriginal := machineDeployment.DeepCopy()
 
 	machineDeploymentDefaultingFunction(&machineDeployment)
 
-	if err := mutationsForMachineDeployment(&machineDeployment, ad.useOSM); err != nil {
-		return nil, fmt.Errorf("mutation failed: %v", err)
+	if err := mutationsForMachineDeployment(&machineDeployment); err != nil {
+		return nil, fmt.Errorf("mutation failed: %w", err)
 	}
 
 	if errs := validateMachineDeployment(machineDeployment); len(errs) > 0 {
 		return nil, fmt.Errorf("validation failed: %v", errs)
 	}
 
-	// If OSM is enabled then validate machine deployment against selected OSP
-	if ad.useOSM {
-		if errs := osmadmission.ValidateMachineDeployment(machineDeployment, ad.client, ad.namespace); len(errs) > 0 {
-			return nil, fmt.Errorf("validation failed: %v", errs)
-		}
-	}
-
+	// Do not validate the spec if it hasn't changed
 	machineSpecNeedsValidation := true
 	if ar.Operation == admissionv1.Update {
 		// Do not validate spec if deletion in progress.
@@ -61,7 +54,7 @@ func (ad *admissionData) mutateMachineDeployments(ctx context.Context, ar admiss
 			// Do not validate the spec if it hasn't changed
 			var oldMachineDeployment clusterv1alpha1.MachineDeployment
 			if err := json.Unmarshal(ar.OldObject.Raw, &oldMachineDeployment); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal OldObject: %v", err)
+				return nil, fmt.Errorf("failed to unmarshal OldObject: %w", err)
 			}
 			if equal := apiequality.Semantic.DeepEqual(oldMachineDeployment.Spec.Template.Spec, machineDeployment.Spec.Template.Spec); equal {
 				machineSpecNeedsValidation = false

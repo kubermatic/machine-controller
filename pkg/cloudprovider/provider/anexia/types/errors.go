@@ -22,14 +22,14 @@ import (
 )
 
 // MultiError represent multiple errors at the same time.
-type MultiError []error
+type MultiErrors []error
 
-func (r MultiError) Error() string {
+func (r MultiErrors) Error() string {
 	errString := make([]string, len(r))
 	for i, err := range r {
 		errString[i] = fmt.Sprintf("Error %d: %s", i, err)
 	}
-	return fmt.Sprintf("Multiple errors occoured:\n%s", strings.Join(errString, "\n"))
+	return fmt.Sprintf("Multiple errors occurred:\n%s", strings.Join(errString, "\n"))
 }
 
 func NewMultiError(errs ...error) error {
@@ -42,7 +42,7 @@ func NewMultiError(errs ...error) error {
 	}
 
 	if len(combinedErr) > 0 {
-		return MultiError(combinedErr)
+		return MultiErrors(combinedErr)
 	}
 
 	return nil

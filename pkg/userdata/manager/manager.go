@@ -48,7 +48,6 @@ var (
 		providerconfigtypes.OperatingSystemCentOS,
 		providerconfigtypes.OperatingSystemFlatcar,
 		providerconfigtypes.OperatingSystemRHEL,
-		providerconfigtypes.OperatingSystemSLES,
 		providerconfigtypes.OperatingSystemUbuntu,
 		providerconfigtypes.OperatingSystemRockyLinux,
 	}

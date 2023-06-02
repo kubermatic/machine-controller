@@ -36,6 +36,9 @@ working-dir       = {{ .Global.WorkingDir | iniEscape }}
 datacenter        = {{ .Global.Datacenter | iniEscape }}
 datastore         = {{ .Global.DefaultDatastore | iniEscape }}
 server            = {{ .Global.VCenterIP | iniEscape }}
+{{- if .Global.IPFamily }}
+ip-family         = {{ .Global.IPFamily | iniEscape }}
+{{- end }}
 
 [Disk]
 scsicontrollertype = {{ .Disk.SCSIControllerType | iniEscape }}
@@ -53,6 +56,9 @@ user = {{ $vc.User | iniEscape }}
 password = {{ $vc.Password | iniEscape }}
 port = {{ $vc.VCenterPort }}
 datacenters = {{ $vc.Datacenters | iniEscape }}
+{{- if $vc.IPFamily }}
+ip-family = {{ $vc.IPFamily | iniEscape }}
+{{- end }}
 {{ end }}
 `
 )
@@ -79,6 +85,7 @@ type GlobalOpts struct {
 	DefaultDatastore string `gcfg:"datastore"`
 	VCenterIP        string `gcfg:"server"`
 	ClusterID        string `gcfg:"cluster-id"`
+	IPFamily         string `gcfg:"ip-family"` // NOTE: supported only in case of out-of-tree CCM
 }
 
 type VirtualCenterConfig struct {
@@ -86,9 +93,10 @@ type VirtualCenterConfig struct {
 	Password    string `gcfg:"password"`
 	VCenterPort string `gcfg:"port"`
 	Datacenters string `gcfg:"datacenters"`
+	IPFamily    string `gcfg:"ip-family"` // NOTE: supported only in case of out-of-tree CCM
 }
 
-// CloudConfig is used to read and store information from the cloud configuration file
+// CloudConfig is used to read and store information from the cloud configuration file.
 type CloudConfig struct {
 	Global    GlobalOpts
 	Disk      DiskOpts
@@ -97,18 +105,38 @@ type CloudConfig struct {
 	VirtualCenter map[string]*VirtualCenterConfig
 }
 
+// String converts CloudConfig into its formatted string representation.
+func (c *CloudConfig) String() (string, error) {
+	funcMap := sprig.TxtFuncMap()
+	funcMap["iniEscape"] = ini.Escape
+
+	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse the cloud config template: %w", err)
+	}
+
+	buf := &bytes.Buffer{}
+	if err := tpl.Execute(buf, c); err != nil {
+		return "", fmt.Errorf("failed to execute cloud config template: %w", err)
+	}
+
+	return buf.String(), nil
+}
+
+// CloudConfigToString converts CloudConfig into its formatted string representation.
+// Deprecated: use struct receiver function String() instead.
 func CloudConfigToString(c *CloudConfig) (string, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["iniEscape"] = ini.Escape
 
 	tpl, err := template.New("cloud-config").Funcs(funcMap).Parse(cloudConfigTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse the cloud config template: %v", err)
+		return "", fmt.Errorf("failed to parse the cloud config template: %w", err)
 	}
 
 	buf := &bytes.Buffer{}
 	if err := tpl.Execute(buf, c); err != nil {
-		return "", fmt.Errorf("failed to execute cloud config template: %v", err)
+		return "", fmt.Errorf("failed to execute cloud config template: %w", err)
 	}
 
 	return buf.String(), nil

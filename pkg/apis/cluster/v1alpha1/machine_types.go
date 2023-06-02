@@ -35,7 +35,7 @@ const (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-/// [Machine]
+// / [Machine]
 // Machine is the Schema for the machines API
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName=ma
@@ -53,8 +53,8 @@ type Machine struct {
 
 /// [Machine]
 
-/// [MachineSpec]
-// MachineSpec defines the desired state of Machine
+// / [MachineSpec]
+// MachineSpec defines the desired state of Machine.
 type MachineSpec struct {
 	// ObjectMeta will autopopulate the Node created. Use this to
 	// indicate what labels, annotations, name prefix, etc., should be used
@@ -89,6 +89,7 @@ type MachineSpec struct {
 	// spec will be automatically copied to the linked NodeRef from the
 	// status. The rest of dynamic kubelet config support should then work
 	// as-is.
+	// Deprecated: This feature has been removed with k8s v1.24.
 	// +optional
 	ConfigSource *corev1.NodeConfigSource `json:"configSource,omitempty"`
 
@@ -108,8 +109,8 @@ type MachineSpec struct {
 
 /// [MachineSpec]
 
-/// [MachineStatus]
-// MachineStatus defines the observed state of Machine
+// / [MachineStatus]
+// MachineStatus defines the observed state of Machine.
 type MachineStatus struct {
 	// NodeRef will point to the corresponding Node if it exists.
 	// +optional
@@ -224,7 +225,8 @@ type LastOperation struct {
 
 /// [MachineStatus]
 
-/// [MachineVersionInfo]
+// / [MachineVersionInfo]
+// Holds information regarding kubelet and controlplane versions for machine.
 type MachineVersionInfo struct {
 	// Kubelet is the semantic version of kubelet to run
 	Kubelet string `json:"kubelet"`
@@ -240,7 +242,7 @@ type MachineVersionInfo struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MachineList contains a list of Machine
+// MachineList contains a list of Machine.
 type MachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

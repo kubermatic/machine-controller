@@ -17,6 +17,7 @@ limitations under the License.
 package cloudprovider
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -31,22 +32,22 @@ type cachingValidationWrapper struct {
 	actualProvider cloudprovidertypes.Provider
 }
 
-// NewValidationCacheWrappingCloudProvider returns a wrapped cloudprovider
+// NewValidationCacheWrappingCloudProvider returns a wrapped cloudprovider.
 func NewValidationCacheWrappingCloudProvider(actualProvider cloudprovidertypes.Provider) cloudprovidertypes.Provider {
 	return &cachingValidationWrapper{actualProvider: actualProvider}
 }
 
-// AddDefaults just calls the underlying cloudproviders AddDefaults
+// AddDefaults just calls the underlying cloudproviders AddDefaults.
 func (w *cachingValidationWrapper) AddDefaults(spec v1alpha1.MachineSpec) (v1alpha1.MachineSpec, error) {
 	return w.actualProvider.AddDefaults(spec)
 }
 
 // Validate tries to get the validation result from the cache and if not found, calls the
-// cloudproviders Validate and saves that to the cache
-func (w *cachingValidationWrapper) Validate(spec v1alpha1.MachineSpec) error {
+// cloudproviders Validate and saves that to the cache.
+func (w *cachingValidationWrapper) Validate(ctx context.Context, spec v1alpha1.MachineSpec) error {
 	result, exists, err := cache.Get(spec)
 	if err != nil {
-		return fmt.Errorf("error getting validation result from cache: %v", err)
+		return fmt.Errorf("error getting validation result from cache: %w", err)
 	}
 	if exists {
 		klog.V(6).Infof("Got cache hit for validation")
@@ -54,40 +55,40 @@ func (w *cachingValidationWrapper) Validate(spec v1alpha1.MachineSpec) error {
 	}
 
 	klog.V(6).Infof("Got cache miss for validation")
-	err = w.actualProvider.Validate(spec)
+	err = w.actualProvider.Validate(ctx, spec)
 	if err := cache.Set(spec, err); err != nil {
-		return fmt.Errorf("failed to set cache after validation: %v", err)
+		return fmt.Errorf("failed to set cache after validation: %w", err)
 	}
 
 	return err
 }
 
-// Get just calls the underlying cloudproviders Get
-func (w *cachingValidationWrapper) Get(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return w.actualProvider.Get(machine, data)
+// Get just calls the underlying cloudproviders Get.
+func (w *cachingValidationWrapper) Get(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return w.actualProvider.Get(ctx, machine, data)
 }
 
-// GetCloudConfig just calls the underlying cloudproviders GetCloudConfig
+// GetCloudConfig just calls the underlying cloudproviders GetCloudConfig.
 func (w *cachingValidationWrapper) GetCloudConfig(spec v1alpha1.MachineSpec) (string, string, error) {
 	return w.actualProvider.GetCloudConfig(spec)
 }
 
-// Create just calls the underlying cloudproviders Create
-func (w *cachingValidationWrapper) Create(machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	return w.actualProvider.Create(machine, data, userdata)
+// Create just calls the underlying cloudproviders Create.
+func (w *cachingValidationWrapper) Create(ctx context.Context, machine *v1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+	return w.actualProvider.Create(ctx, machine, data, userdata)
 }
 
-// Cleanup just calls the underlying cloudproviders Cleanup
-func (w *cachingValidationWrapper) Cleanup(m *v1alpha1.Machine, mcd *cloudprovidertypes.ProviderData) (bool, error) {
-	return w.actualProvider.Cleanup(m, mcd)
+// Cleanup just calls the underlying cloudproviders Cleanup.
+func (w *cachingValidationWrapper) Cleanup(ctx context.Context, m *v1alpha1.Machine, mcd *cloudprovidertypes.ProviderData) (bool, error) {
+	return w.actualProvider.Cleanup(ctx, m, mcd)
 }
 
-// MigrateUID just calls the underlying cloudproviders MigrateUID
-func (w *cachingValidationWrapper) MigrateUID(m *v1alpha1.Machine, new types.UID) error {
-	return w.actualProvider.MigrateUID(m, new)
+// MigrateUID just calls the underlying cloudproviders MigrateUID.
+func (w *cachingValidationWrapper) MigrateUID(ctx context.Context, m *v1alpha1.Machine, newUID types.UID) error {
+	return w.actualProvider.MigrateUID(ctx, m, newUID)
 }
 
-// MachineMetricsLabels just calls the underlying cloudproviders MachineMetricsLabels
+// MachineMetricsLabels just calls the underlying cloudproviders MachineMetricsLabels.
 func (w *cachingValidationWrapper) MachineMetricsLabels(machine *v1alpha1.Machine) (map[string]string, error) {
 	return w.actualProvider.MachineMetricsLabels(machine)
 }

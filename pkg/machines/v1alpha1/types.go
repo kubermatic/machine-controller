@@ -126,8 +126,9 @@ type MachineSpec struct {
 // with new additions accommodating common cluster patterns, like dedicated
 // etcd Machines.
 //
-//                 +-----------------------+------------------------+
-//                 | Master present        | Master absent          |
+//	+-----------------------+------------------------+
+//	| Master present        | Master absent          |
+//
 // +---------------+-----------------------+------------------------|
 // | Node present: | Install control plane | Join the cluster as    |
 // |               | and be schedulable    | just a node            |

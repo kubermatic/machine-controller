@@ -22,7 +22,7 @@ spec:
         subnetId: subnet-2bff4f43
         tags:
           KubernetesCluster: 6qsm86c2d
-        vpcId: vpc-819f62e9
+        vpcId: vpc-079f7648481a11e77
       operatingSystem: flatcar
       operatingSystemSpec:
         disableAutoUpdate: true

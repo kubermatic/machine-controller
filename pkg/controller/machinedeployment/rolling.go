@@ -228,7 +228,7 @@ func (r *ReconcileMachineDeployment) cleanupUnhealthyReplicas(ctx context.Contex
 }
 
 // scaleDownOldMachineSetsForRollingUpdate scales down old machine sets when deployment strategy is "RollingUpdate".
-// Need check maxUnavailable to ensure availability
+// Need check maxUnavailable to ensure availability.
 func (r *ReconcileMachineDeployment) scaleDownOldMachineSetsForRollingUpdate(ctx context.Context, allMSs []*v1alpha1.MachineSet, oldMSs []*v1alpha1.MachineSet, deployment *v1alpha1.MachineDeployment) (int32, error) {
 	if deployment.Spec.Replicas == nil {
 		return 0, errors.Errorf("spec replicas for deployment %v is nil, this is unexpected", deployment.Name)

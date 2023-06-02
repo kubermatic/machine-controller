@@ -52,7 +52,7 @@ spec:
                 key: secretAccessKey
             region: "eu-central-1"
             availabilityZone: "eu-central-1a"
-            vpcId: "vpc-819f62e9"
+            vpcId: "vpc-079f7648481a11e77"
             subnetId: "subnet-2bff4f43"
             instanceType: "t2.micro"
             instanceProfile: "kubernetes-v1"
@@ -67,7 +67,6 @@ spec:
             assignPublicIP: false
             tags:
               "KubernetesCluster": "6qsm86c2d"
-          # Can be 'ubuntu', 'centos', `rhel` or 'sles'
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             disableAutoUpdate: true
@@ -80,4 +79,4 @@ spec:
             # provided the rhsm will be disabled and any created subscription won't be removed automatically
             rhsmOfflineToken: "<< REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN >>"
       versions:
-        kubelet: 1.22.5
+        kubelet: 1.24.9

@@ -60,13 +60,13 @@ func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	}
 
 	if err = client.Login(ctx, url.UserPassword(config.Username, config.Password)); err != nil {
-		return nil, fmt.Errorf("failed vsphere login: %v", err)
+		return nil, fmt.Errorf("failed vsphere login: %w", err)
 	}
 
 	finder := find.NewFinder(client.Client, true)
 	dc, err := finder.Datacenter(ctx, config.Datacenter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get vsphere datacenter: %v", err)
+		return nil, fmt.Errorf("failed to get vsphere datacenter: %w", err)
 	}
 	finder.SetDatacenter(dc)
 
@@ -77,10 +77,10 @@ func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	}, nil
 }
 
-// Logout closes the idling vCenter connections
-func (s *Session) Logout() {
-	if err := s.Client.Logout(context.Background()); err != nil {
-		utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %s", err))
+// Logout closes the idling vCenter connections.
+func (s *Session) Logout(ctx context.Context) {
+	if err := s.Client.Logout(ctx); err != nil {
+		utilruntime.HandleError(fmt.Errorf("vsphere client failed to logout: %w", err))
 	}
 }
 
@@ -101,10 +101,10 @@ func NewRESTSession(ctx context.Context, config *Config) (*RESTSession, error) {
 	}, nil
 }
 
-// Logout closes the idling vCenter connections
+// Logout closes the idling vCenter connections.
 func (s *RESTSession) Logout(ctx context.Context) {
 	if err := s.Client.Logout(ctx); err != nil {
-		utilruntime.HandleError(fmt.Errorf("vsphere REST client failed to logout: %s", err))
+		utilruntime.HandleError(fmt.Errorf("vsphere REST client failed to logout: %w", err))
 	}
 }
 

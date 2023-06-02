@@ -17,6 +17,7 @@ limitations under the License.
 package equinixmetal
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -45,7 +46,7 @@ const (
 	defaultBillingCycle = "hourly"
 )
 
-// New returns a Equinix Metal provider
+// New returns a Equinix Metal provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 }
@@ -55,12 +56,13 @@ type Config struct {
 	ProjectID    string
 	BillingCycle string
 	InstanceType string
+	Metro        string
 	Facilities   []string
 	Tags         []string
 }
 
 // because we have both Config and RawConfig, we need to have func for each
-// ideally, these would be merged into one
+// ideally, these would be merged into one.
 func (c *Config) populateDefaults() {
 	if c.BillingCycle == "" {
 		c.BillingCycle = defaultBillingCycle
@@ -104,7 +106,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
 		c.Token, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Token, "PACKET_API_KEY")
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %w", err)
 		}
 	}
 	c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "METAL_PROJECT_ID")
@@ -114,30 +116,34 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *e
 		// TODO(@ahmedwaleedmalik) Remove this after a release period
 		c.ProjectID, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.ProjectID, "PACKET_PROJECT_ID")
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to get the value of \"apiKey\" field, error = %w", err)
 		}
 	}
 	c.InstanceType, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.InstanceType)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"instanceType\" field, error = %w", err)
 	}
 	c.BillingCycle, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.BillingCycle)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"billingCycle\" field, error = %v", err)
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"billingCycle\" field, error = %w", err)
 	}
 	for i, tag := range rawConfig.Tags {
 		tagValue, err := p.configVarResolver.GetConfigVarStringValue(&tag)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"tags\" field, error = %v", i, err)
+			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"tags\" field, error = %w", i, err)
 		}
 		c.Tags = append(c.Tags, tagValue)
 	}
 	for i, facility := range rawConfig.Facilities {
 		facilityValue, err := p.configVarResolver.GetConfigVarStringValue(&facility)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"facilities\" field, error = %v", i, err)
+			return nil, nil, nil, fmt.Errorf("failed to read the value for the Tag at index %d of the \"facilities\" field, error = %w", i, err)
 		}
 		c.Facilities = append(c.Facilities, facilityValue)
+	}
+	c.Metro, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Metro)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get the value of \"metro\" field, error = %w", err)
 	}
 
 	// ensure we have defaults
@@ -163,10 +169,10 @@ func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.De
 	return device, client, nil
 }
 
-func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec) error {
 	c, _, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
-		return fmt.Errorf("failed to parse config: %v", err)
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if c.Token == "" {
@@ -181,29 +187,49 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 
 	_, err = getNameForOS(pc.OperatingSystem)
 	if err != nil {
-		return fmt.Errorf("invalid/not supported operating system specified %q: %v", pc.OperatingSystem, err)
+		return fmt.Errorf("invalid/not supported operating system specified %q: %w", pc.OperatingSystem, err)
 	}
 
 	client := getClient(c.Token)
 
-	if len(c.Facilities) == 0 || c.Facilities[0] == "" {
-		return fmt.Errorf("must have at least one non-blank facility")
+	if c.Metro == "" && (len(c.Facilities) == 0 || c.Facilities[0] == "") {
+		return fmt.Errorf("must have at least one non-blank facility or a metro")
 	}
 
-	// get all valid facilities
-	facilities, _, err := client.Facilities.List(nil)
-	if err != nil {
-		return fmt.Errorf("failed to list facilities: %v", err)
+	if c.Facilities != nil && (len(c.Facilities) > 0 || c.Facilities[0] != "") {
+		// get all valid facilities
+		facilities, _, err := client.Facilities.List(nil)
+		if err != nil {
+			return fmt.Errorf("failed to list facilities: %w", err)
+		}
+		// ensure our requested facilities are in those facilities
+		if missingFacilities := itemsNotInList(facilityProp(facilities, "Code"), c.Facilities); len(missingFacilities) > 0 {
+			return fmt.Errorf("unknown facilities: %s", strings.Join(missingFacilities, ","))
+		}
 	}
-	// ensure our requested facilities are in those facilities
-	if missingFacilities := itemsNotInList(facilityProp(facilities, "Code"), c.Facilities); len(missingFacilities) > 0 {
-		return fmt.Errorf("unknown facilities: %s", strings.Join(missingFacilities, ","))
+
+	if c.Metro != "" {
+		metros, _, err := client.Metros.List(nil)
+		if err != nil {
+			return fmt.Errorf("failed to list metros: %w", err)
+		}
+
+		var metroExists bool
+		for _, metro := range metros {
+			if strings.EqualFold(metro.Code, c.Metro) {
+				metroExists = true
+			}
+		}
+
+		if !metroExists {
+			return fmt.Errorf("unknown metro: %s", c.Metro)
+		}
 	}
 
 	// get all valid plans a.k.a. instance types
 	plans, _, err := client.Plans.List(nil)
 	if err != nil {
-		return fmt.Errorf("failed to list instance types / plans: %v", err)
+		return fmt.Errorf("failed to list instance types / plans: %w", err)
 	}
 	// ensure our requested plan is in those plans
 	validPlanNames := planProp(plans, "Name")
@@ -214,7 +240,7 @@ func (p *provider) Validate(spec clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(_ context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, _, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -238,6 +264,7 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 		UserData:     userdata,
 		ProjectID:    c.ProjectID,
 		Facility:     c.Facilities,
+		Metro:        c.Metro,
 		BillingCycle: c.BillingCycle,
 		Plan:         c.InstanceType,
 		OS:           imageName,
@@ -254,10 +281,10 @@ func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidert
 	return &metalDevice{device: device}, nil
 }
 
-func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.Get(machine, data)
+func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.Get(ctx, machine, data)
 	if err != nil {
-		if err == cloudprovidererrors.ErrInstanceNotFound {
+		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
 		}
 		return false, err
@@ -272,7 +299,7 @@ func (p *provider) Cleanup(machine *clusterv1alpha1.Machine, data *cloudprovider
 	}
 
 	client := getClient(c.Token)
-	res, err := client.Devices.Delete(instance.(*metalDevice).device.ID)
+	res, err := client.Devices.Delete(instance.(*metalDevice).device.ID, false)
 	if err != nil {
 		return false, metalErrorToTerminalError(err, res, "failed to delete the server")
 	}
@@ -293,7 +320,7 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	device, _, err := p.getMetalDevice(machine)
 	if err != nil {
 		return nil, err
@@ -305,7 +332,7 @@ func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.P
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, newID types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, machine *clusterv1alpha1.Machine, newID types.UID) error {
 	device, client, err := p.getMetalDevice(machine)
 	if err != nil {
 		return err
@@ -376,6 +403,10 @@ func (s *metalDevice) ID() string {
 	return s.device.ID
 }
 
+func (s *metalDevice) ProviderID() string {
+	return "equinixmetal://" + s.device.ID
+}
+
 func (s *metalDevice) Addresses() map[string]v1.NodeAddressType {
 	// returns addresses in CIDR format
 	addresses := map[string]v1.NodeAddressType{}
@@ -401,11 +432,7 @@ func (s *metalDevice) Status() instance.Status {
 	}
 }
 
-/*
-*****
-CONVENIENCE INTERNAL FUNCTIONS
-*****
-*/
+// CONVENIENCE INTERNAL FUNCTIONS.
 func setProviderSpec(rawConfig equinixmetaltypes.RawConfig, s clusterv1alpha1.ProviderSpec) (*runtime.RawExtension, error) {
 	if s.Value == nil {
 		return nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
@@ -444,15 +471,17 @@ func getDeviceByTag(client *packngo.Client, projectID, tag string) (*packngo.Dev
 	return nil, nil
 }
 
-// given a defined Kubermatic constant for an operating system, return the canonical slug for Equinix Metal
+// given a defined Kubermatic constant for an operating system, return the canonical slug for Equinix Metal.
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
 	switch os {
 	case providerconfigtypes.OperatingSystemUbuntu:
-		return "ubuntu_20_04", nil
+		return "ubuntu_22_04", nil
 	case providerconfigtypes.OperatingSystemCentOS:
 		return "centos_7", nil
 	case providerconfigtypes.OperatingSystemFlatcar:
 		return "flatcar_stable", nil
+	case providerconfigtypes.OperatingSystemRockyLinux:
+		return "rocky_8", nil
 	}
 	return "", providerconfigtypes.ErrOSNotSupported
 }
@@ -476,10 +505,10 @@ func getTagUID(tag string) (string, error) {
 // metalErrorToTerminalError judges if the given error
 // can be qualified as a "terminal" error, for more info see v1alpha1.MachineStatus
 //
-// if the given error doesn't qualify the error passed as an argument will be returned
+// if the given error doesn't qualify the error passed as an argument will be returned.
 func metalErrorToTerminalError(err error, response *packngo.Response, msg string) error {
 	prepareAndReturnError := func() error {
-		return fmt.Errorf("%s, due to %s", msg, err)
+		return fmt.Errorf("%s, due to %w", msg, err)
 	}
 
 	if err != nil {

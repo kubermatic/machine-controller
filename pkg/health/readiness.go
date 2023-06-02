@@ -32,7 +32,7 @@ func ApiserverReachable(client kubernetes.Interface) healthz.Checker {
 	return func(req *http.Request) error {
 		_, err := client.CoreV1().Nodes().List(req.Context(), metav1.ListOptions{})
 		if err != nil {
-			return fmt.Errorf("unable to list nodes check: %v", err)
+			return fmt.Errorf("unable to list nodes check: %w", err)
 		}
 
 		return nil
@@ -43,7 +43,7 @@ func KubeconfigAvailable(kubeconfigProvider machinecontroller.KubeconfigProvider
 	return func(req *http.Request) error {
 		cm, err := kubeconfigProvider.GetKubeconfig(req.Context())
 		if err != nil {
-			return fmt.Errorf("unable to get kubeconfig: %v", err)
+			return fmt.Errorf("unable to get kubeconfig: %w", err)
 		}
 
 		if len(cm.Clusters) != 1 {

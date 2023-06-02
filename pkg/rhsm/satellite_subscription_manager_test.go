@@ -17,6 +17,7 @@ limitations under the License.
 package rhsm
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -55,7 +56,7 @@ func TestDefaultRedHatSatelliteManager_DeleteSatelliteHost(t *testing.T) {
 				t.Fatalf("failed to parse testing server url: %v", err)
 			}
 
-			err = manager.DeleteSatelliteHost("satellite-vm", satelliteUsername, satellitePassword, parsedURL.Host)
+			err = manager.DeleteSatelliteHost(context.TODO(), "satellite-vm", satelliteUsername, satellitePassword, parsedURL.Host)
 			if err != nil {
 				t.Fatalf("failed to execute redhat host deletion")
 			}

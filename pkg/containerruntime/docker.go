@@ -17,6 +17,7 @@ limitations under the License.
 package containerruntime
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"text/template"
@@ -26,7 +27,8 @@ import (
 )
 
 const (
-	DefaultDockerContainerdVersion = "1.4"
+	LegacyDockerContainerdVersion  = "1.4*"
+	DefaultDockerContainerdVersion = "1.6*"
 	DefaultDockerVersion           = "20.10"
 )
 
@@ -35,6 +37,12 @@ type Docker struct {
 	registryMirrors      []string
 	containerLogMaxFiles string
 	containerLogMaxSize  string
+	registryCredentials  map[string]AuthConfig
+	containerdVersion    string
+}
+
+type DockerCfgJSON struct {
+	Auths map[string]AuthConfig `json:"auths,omitempty"`
 }
 
 func (eng *Docker) Config() (string, error) {
@@ -43,6 +51,23 @@ func (eng *Docker) Config() (string, error) {
 
 func (eng *Docker) ConfigFileName() string {
 	return "/etc/docker/daemon.json"
+}
+
+func (eng *Docker) AuthConfig() (string, error) {
+	if eng.registryCredentials == nil {
+		return "", nil
+	}
+
+	cfg := DockerCfgJSON{
+		Auths: eng.registryCredentials,
+	}
+	b, err := json.MarshalIndent(cfg, "", "  ")
+
+	return string(b), err
+}
+
+func (eng *Docker) AuthConfigFileName() string {
+	return "/root/.docker/config.json"
 }
 
 func (eng *Docker) KubeletFlags() []string {
@@ -63,8 +88,13 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 		ContainerdVersion: DefaultDockerContainerdVersion,
 	}
 
+	if eng.containerdVersion != "" {
+		args.ContainerdVersion = eng.containerdVersion
+	}
+
 	switch os {
 	case types.OperatingSystemAmazonLinux2:
+		args.ContainerdVersion = LegacyDockerContainerdVersion
 		err := dockerAmazonTemplate.Execute(&buf, args)
 		return buf.String(), err
 	case types.OperatingSystemCentOS, types.OperatingSystemRHEL, types.OperatingSystemRockyLinux:
@@ -76,8 +106,6 @@ func (eng *Docker) ScriptFor(os types.OperatingSystem) (string, error) {
 	case types.OperatingSystemFlatcar:
 		err := dockerFlatcarTemplate.Execute(&buf, args)
 		return buf.String(), err
-	case types.OperatingSystemSLES:
-		return "", nil
 	}
 
 	return "", fmt.Errorf("unknown OS: %s", os)
@@ -100,7 +128,7 @@ EOF
 
 yum install -y \
 {{- if .ContainerdVersion }}
-    containerd-{{ .ContainerdVersion }}* \
+    containerd-{{ .ContainerdVersion }} \
 {{- end }}
     docker-{{ .DockerVersion }}* \
     yum-plugin-versionlock
@@ -126,7 +154,7 @@ EOF
 yum install -y \
 {{- if .ContainerdVersion }}
     docker-ce-cli-{{ .DockerVersion }}* \
-    containerd.io-{{ .ContainerdVersion }}* \
+    containerd.io-{{ .ContainerdVersion }} \
 {{- end }}
     docker-ce-{{ .DockerVersion }}* \
     yum-plugin-versionlock
@@ -152,7 +180,7 @@ EOF
 
 apt-get install --allow-downgrades -y \
 {{- if .ContainerdVersion }}
-    containerd.io={{ .ContainerdVersion }}* \
+    containerd.io={{ .ContainerdVersion }} \
     docker-ce-cli=5:{{ .DockerVersion }}* \
 {{- end }}
     docker-ce=5:{{ .DockerVersion }}*

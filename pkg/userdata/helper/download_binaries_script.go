@@ -30,7 +30,7 @@ usr_local_bin=/usr/local/bin
 cni_bin_dir=/opt/cni/bin
 
 {{- /* create all the necessary dirs */}}
-mkdir -p /etc/cni/net.d /etc/kubernetes/dynamic-config-dir /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
+mkdir -p /etc/cni/net.d /etc/kubernetes/manifests "$opt_bin" "$cni_bin_dir"
 
 {{- /* HOST_ARCH can be defined outside of machine-controller (in kubeone for example) */}}
 arch=${HOST_ARCH-}
@@ -79,8 +79,9 @@ cri_tools_filename="crictl-${CRI_TOOLS_RELEASE}-linux-${arch}.tar.gz"
 curl -Lfo "$opt_bin/$cri_tools_filename" "$cri_tools_base_url/$cri_tools_filename"
 
 {{- /* download cri-tools checksum */}}
-{{- /* the cri-tools checksum file has a filename prefix that breaks sha256sum so we need to drop it with sed */}}
-cri_tools_sum=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256" | sed 's/\*\///')
+{{- /* the cri-tools checksum file provides only the checksum without the file name, so we need to handle it specially */}}
+cri_tools_sum_value=$(curl -Lf "$cri_tools_base_url/$cri_tools_filename.sha256")
+cri_tools_sum="$cri_tools_sum_value $cri_tools_filename"
 cd "$opt_bin"
 
 {{- /* verify cri-tools checksum */}}
@@ -160,12 +161,12 @@ fi
 func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(safeDownloadBinariesTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to parse download-binaries template: %w", err)
 	}
 
 	const (
-		CNIVersion      = "v0.8.7"
-		CRIToolsVersion = "v1.22.0"
+		CNIVersion      = "v1.2.0"
+		CRIToolsVersion = "v1.26.0"
 	)
 
 	// force v in case if it's not there
@@ -186,7 +187,7 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to execute download-binaries template: %w", err)
 	}
 
 	return b.String(), nil
@@ -197,7 +198,7 @@ func SafeDownloadBinariesScript(kubeVersion string) (string, error) {
 func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string, error) {
 	tmpl, err := template.New("download-binaries").Funcs(TxtFuncMap()).Parse(downloadBinariesTpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to parse download-binaries template: %w", err)
 	}
 
 	data := struct {
@@ -210,7 +211,7 @@ func DownloadBinariesScript(kubeletVersion string, downloadKubelet bool) (string
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute download-binaries template: %v", err)
+		return "", fmt.Errorf("failed to execute download-binaries template: %w", err)
 	}
 
 	return b.String(), nil

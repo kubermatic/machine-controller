@@ -25,7 +25,7 @@ import (
 )
 
 // Constants aren't automatically generated for unversioned packages.
-// Instead share the same constant for all versioned packages
+// Instead share the same constant for all versioned packages.
 type MachineStatusError string
 
 const (
@@ -33,7 +33,7 @@ const (
 	// is not supported by this cluster. This is not a transient error, but
 	// indicates a state that must be fixed before progress can be made.
 	//
-	// Example: the ProviderSpec specifies an instance type that doesn't exist,
+	// Example: the ProviderSpec specifies an instance type that doesn't exist,.
 	InvalidConfigurationMachineError MachineStatusError = "InvalidConfiguration"
 
 	// This indicates that the MachineSpec has been updated in a way that
@@ -61,9 +61,9 @@ const (
 
 	// There was an error while trying to update a Node that this
 	// Machine represents. This may indicate a transient problem that will be
-	// fixed automatically with time, such as a service outage,
+	// fixed automatically with time, such as a service outage.
 	//
-	// Example: error updating load balancers
+	// Example: error updating load balancers.
 	UpdateMachineError MachineStatusError = "UpdateError"
 
 	// An error was encountered while trying to delete the Node that this
@@ -80,7 +80,7 @@ const (
 	//
 	// Example use case: A controller that deletes Machines which do
 	// not result in a Node joining the cluster within a given timeout
-	// and that are managed by a MachineSet
+	// and that are managed by a MachineSet.
 	JoinClusterTimeoutMachineError = "JoinClusterTimeoutError"
 )
 
@@ -140,17 +140,18 @@ const (
 	EvictionHardKubeletConfig         = "EvictionHard"
 	ContainerLogMaxSizeKubeletConfig  = "ContainerLogMaxSize"
 	ContainerLogMaxFilesKubeletConfig = "ContainerLogMaxFiles"
+	MaxPodsKubeletConfig              = "MaxPods"
 )
 
 const (
-	// Annotation prefixes, used on Machine objects to indicate the parameters that been used to create those Machines
+	// Annotation prefixes, used on Machine objects to indicate the parameters that been used to create those Machines.
 	KubeletFeatureGatesAnnotationPrefixV1 = "v1.kubelet-featuregates.machine-controller.kubermatic.io"
 	KubeletFlagsGroupAnnotationPrefixV1   = "v1.kubelet-flags.machine-controller.kubermatic.io"
 	KubeletConfigAnnotationPrefixV1       = "v1.kubelet-config.machine-controller.kubermatic.io"
 )
 
 // SetKubeletFeatureGates marshal and save featureGates into metaobject annotations with
-// KubeletFeatureGatesAnnotationPrefixV1 prefix
+// KubeletFeatureGatesAnnotationPrefixV1 prefix.
 func SetKubeletFeatureGates(metaobj metav1.Object, featureGates map[string]bool) {
 	annts := metaobj.GetAnnotations()
 	if annts == nil {
@@ -162,7 +163,7 @@ func SetKubeletFeatureGates(metaobj metav1.Object, featureGates map[string]bool)
 	metaobj.SetAnnotations(annts)
 }
 
-// SetKubeletFlags marshal and save flags into metaobject annotations with KubeletFlagsGroupAnnotationPrefixV1 prefix
+// SetKubeletFlags marshal and save flags into metaobject annotations with KubeletFlagsGroupAnnotationPrefixV1 prefix.
 func SetKubeletFlags(metaobj metav1.Object, flags map[KubeletFlags]string) {
 	annts := metaobj.GetAnnotations()
 	if annts == nil {

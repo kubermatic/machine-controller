@@ -17,6 +17,7 @@ limitations under the License.
 package fake
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -50,6 +51,10 @@ func (f CloudProviderInstance) HostID() string {
 	return ""
 }
 
+func (f CloudProviderInstance) ProviderID() string {
+	return ""
+}
+
 func (f CloudProviderInstance) Addresses() map[string]corev1.NodeAddressType {
 	return nil
 }
@@ -58,7 +63,7 @@ func (f CloudProviderInstance) Status() instance.Status {
 	return instance.StatusUnknown
 }
 
-// New returns a fake cloud provider
+// New returns a fake cloud provider.
 func New(_ *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{}
 }
@@ -67,8 +72,8 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, nil
 }
 
-// Validate returns success or failure based according to its FakeCloudProviderSpec
-func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
+// Validate returns success or failure based according to its FakeCloudProviderSpec.
+func (p *provider) Validate(_ context.Context, machinespec clusterv1alpha1.MachineSpec) error {
 	pconfig, err := providerconfigtypes.GetConfig(machinespec.ProviderSpec)
 	if err != nil {
 		return err
@@ -88,28 +93,28 @@ func (p *provider) Validate(machinespec clusterv1alpha1.MachineSpec) error {
 	return fmt.Errorf("failing validation as requested")
 }
 
-func (p *provider) Get(machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, _ *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (string, string, error) {
+func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string, error) {
 	return "", "", nil
 }
 
-// Create creates a cloud instance according to the given machine
-func (p *provider) Create(machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+// Create creates a cloud instance according to the given machine.
+func (p *provider) Create(_ context.Context, _ *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, _ string) (instance.Instance, error) {
 	return CloudProviderInstance{}, nil
 }
 
-func (p *provider) Cleanup(_ *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(_ context.Context, _ *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	return true, nil
 }
 
-func (p *provider) MigrateUID(machine *clusterv1alpha1.Machine, new types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ types.UID) error {
 	return nil
 }
 
-func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[string]string, error) {
+func (p *provider) MachineMetricsLabels(_ *clusterv1alpha1.Machine) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 

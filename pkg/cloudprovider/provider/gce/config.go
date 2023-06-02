@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
@@ -41,14 +42,14 @@ const (
 	envGoogleServiceAccount = "GOOGLE_SERVICE_ACCOUNT"
 )
 
-// imageProjects maps the OS to the Google Cloud image projects
+// imageProjects maps the OS to the Google Cloud image projects.
 var imageProjects = map[providerconfigtypes.OperatingSystem]string{
 	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-os-cloud",
 }
 
-// imageFamilies maps the OS to the Google Cloud image projects
+// imageFamilies maps the OS to the Google Cloud image projects.
 var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-2004-lts",
+	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-2204-lts",
 }
 
 // diskTypes are the disk types of the Google Cloud. Map is used for
@@ -74,7 +75,7 @@ func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProvid
 
 	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %v", err)
+		return nil, nil, fmt.Errorf("cannot unmarshal machine.spec.providerconfig.value: %w", err)
 	}
 
 	if pconfig.OperatingSystemSpec.Raw == nil {
@@ -84,7 +85,7 @@ func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProvid
 	// Retrieve cloud provider specification from cloud provider specification.
 	cpSpec, err := gcetypes.GetConfig(*pconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %v", err)
+		return nil, nil, fmt.Errorf("cannot unmarshal cloud provider specification: %w", err)
 	}
 
 	return cpSpec, pconfig, nil
@@ -92,25 +93,29 @@ func newCloudProviderSpec(provSpec v1alpha1.ProviderSpec) (*gcetypes.CloudProvid
 
 // config contains the configuration of the Provider.
 type config struct {
-	serviceAccount        string
-	projectID             string
-	zone                  string
-	machineType           string
-	diskSize              int64
-	diskType              string
-	network               string
-	subnetwork            string
-	preemptible           bool
-	automaticRestart      *bool
-	provisioningModel     *string
-	labels                map[string]string
-	tags                  []string
-	jwtConfig             *jwt.Config
-	providerConfig        *providerconfigtypes.Config
-	assignPublicIPAddress bool
-	multizone             bool
-	regional              bool
-	customImage           string
+	serviceAccount               string
+	projectID                    string
+	zone                         string
+	machineType                  string
+	diskSize                     int64
+	diskType                     string
+	network                      string
+	subnetwork                   string
+	preemptible                  bool
+	automaticRestart             *bool
+	provisioningModel            *string
+	labels                       map[string]string
+	tags                         []string
+	jwtConfig                    *jwt.Config
+	providerConfig               *providerconfigtypes.Config
+	assignPublicIPAddress        bool
+	multizone                    bool
+	regional                     bool
+	customImage                  string
+	disableMachineServiceAccount bool
+	enableNestedVirtualization   bool
+	minCPUPlatform               string
+	guestOSFeatures              []string
 }
 
 // newConfig creates a Provider configuration out of the passed resolver and spec.
@@ -123,56 +128,57 @@ func newConfig(resolver *providerconfig.ConfigPointerVarResolver, spec v1alpha1.
 
 	// Setup configuration.
 	cfg := &config{
-		providerConfig: providerConfig,
-		labels:         cpSpec.Labels,
-		tags:           cpSpec.Tags,
-		diskSize:       cpSpec.DiskSize,
+		providerConfig:  providerConfig,
+		labels:          cpSpec.Labels,
+		tags:            cpSpec.Tags,
+		diskSize:        cpSpec.DiskSize,
+		guestOSFeatures: cpSpec.GuestOSFeatures,
 	}
 
 	cfg.serviceAccount, err = resolver.GetConfigVarStringValueOrEnv(cpSpec.ServiceAccount, envGoogleServiceAccount)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve service account: %v", err)
+		return nil, fmt.Errorf("cannot retrieve service account: %w", err)
 	}
 
 	err = cfg.postprocessServiceAccount()
 	if err != nil {
-		return nil, fmt.Errorf("cannot prepare JWT: %v", err)
+		return nil, fmt.Errorf("cannot prepare JWT: %w", err)
 	}
 
 	cfg.zone, err = resolver.GetConfigVarStringValue(cpSpec.Zone)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve zone: %v", err)
+		return nil, fmt.Errorf("cannot retrieve zone: %w", err)
 	}
 
 	cfg.machineType, err = resolver.GetConfigVarStringValue(cpSpec.MachineType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve machine type: %v", err)
+		return nil, fmt.Errorf("cannot retrieve machine type: %w", err)
 	}
 
 	cfg.diskType, err = resolver.GetConfigVarStringValue(cpSpec.DiskType)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve disk type: %v", err)
+		return nil, fmt.Errorf("cannot retrieve disk type: %w", err)
 	}
 
 	cfg.network, err = resolver.GetConfigVarStringValue(cpSpec.Network)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve network: %v", err)
+		return nil, fmt.Errorf("cannot retrieve network: %w", err)
 	}
 
 	cfg.subnetwork, err = resolver.GetConfigVarStringValue(cpSpec.Subnetwork)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve subnetwork: %v", err)
+		return nil, fmt.Errorf("cannot retrieve subnetwork: %w", err)
 	}
 
 	cfg.preemptible, _, err = resolver.GetConfigVarBoolValue(cpSpec.Preemptible)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve preemptible: %v", err)
+		return nil, fmt.Errorf("cannot retrieve preemptible: %w", err)
 	}
 
 	if cpSpec.AutomaticRestart != nil {
 		automaticRestart, _, err := resolver.GetConfigVarBoolValue(cpSpec.AutomaticRestart)
 		if err != nil {
-			return nil, fmt.Errorf("cannot retrieve automaticRestart: %v", err)
+			return nil, fmt.Errorf("cannot retrieve automaticRestart: %w", err)
 		}
 		cfg.automaticRestart = &automaticRestart
 
@@ -184,7 +190,7 @@ func newConfig(resolver *providerconfig.ConfigPointerVarResolver, spec v1alpha1.
 	if cpSpec.ProvisioningModel != nil {
 		provisioningModel, err := resolver.GetConfigVarStringValue(cpSpec.ProvisioningModel)
 		if err != nil {
-			return nil, fmt.Errorf("cannot retrieve provisioningModel: %v", err)
+			return nil, fmt.Errorf("cannot retrieve provisioningModel: %w", err)
 		}
 		cfg.provisioningModel = &provisioningModel
 	}
@@ -195,23 +201,38 @@ func newConfig(resolver *providerconfig.ConfigPointerVarResolver, spec v1alpha1.
 	if cpSpec.AssignPublicIPAddress != nil {
 		cfg.assignPublicIPAddress, _, err = resolver.GetConfigVarBoolValue(cpSpec.AssignPublicIPAddress)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %v", err)
+			return nil, fmt.Errorf("failed to retrieve assignPublicIPAddress: %w", err)
 		}
 	}
 
 	cfg.multizone, _, err = resolver.GetConfigVarBoolValue(cpSpec.MultiZone)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve multizone: %v", err)
+		return nil, fmt.Errorf("failed to retrieve multizone: %w", err)
 	}
 
 	cfg.regional, _, err = resolver.GetConfigVarBoolValue(cpSpec.Regional)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve regional: %v", err)
+		return nil, fmt.Errorf("failed to retrieve regional: %w", err)
 	}
 
 	cfg.customImage, err = resolver.GetConfigVarStringValue(cpSpec.CustomImage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve gce custom image: %v", err)
+		return nil, fmt.Errorf("failed to retrieve gce custom image: %w", err)
+	}
+
+	cfg.disableMachineServiceAccount, _, err = resolver.GetConfigVarBoolValue(cpSpec.DisableMachineServiceAccount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve disable machine service account: %w", err)
+	}
+
+	cfg.enableNestedVirtualization, _, err = resolver.GetConfigVarBoolValue(cpSpec.EnableNestedVirtualization)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve enable nested virtualization: %w", err)
+	}
+
+	cfg.minCPUPlatform, err = resolver.GetConfigVarStringValue(cpSpec.MinCPUPlatform)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve min cpu platform: %w", err)
 	}
 
 	return cfg, nil
@@ -220,19 +241,25 @@ func newConfig(resolver *providerconfig.ConfigPointerVarResolver, spec v1alpha1.
 // postprocessServiceAccount processes the service account and creates a JWT configuration
 // out of it.
 func (cfg *config) postprocessServiceAccount() error {
-	sa, err := base64.StdEncoding.DecodeString(cfg.serviceAccount)
-	if err != nil {
-		return fmt.Errorf("failed to decode base64 service account: %v", err)
+	sa := cfg.serviceAccount
+
+	// safely decode the service account, in case we did not read the value
+	// from a "known-safe" location (like the MachineDeployment), but from
+	// an environment variable.
+	decoded, err := base64.StdEncoding.DecodeString(cfg.serviceAccount)
+	if err == nil {
+		sa = string(decoded)
 	}
+
 	sam := map[string]string{}
-	err = json.Unmarshal(sa, &sam)
+	err = json.Unmarshal([]byte(sa), &sam)
 	if err != nil {
-		return fmt.Errorf("failed unmarshalling service account: %v", err)
+		return fmt.Errorf("failed unmarshalling service account: %w", err)
 	}
 	cfg.projectID = sam["project_id"]
-	cfg.jwtConfig, err = google.JWTConfigFromJSON(sa, compute.ComputeScope)
+	cfg.jwtConfig, err = google.JWTConfigFromJSON([]byte(sa), compute.ComputeScope)
 	if err != nil {
-		return fmt.Errorf("failed preparing JWT: %v", err)
+		return fmt.Errorf("failed preparing JWT: %w", err)
 	}
 	return nil
 }
@@ -253,6 +280,12 @@ func (cfg *config) diskTypeDescriptor() string {
 // for the source image of an instance boot disk.
 func (cfg *config) sourceImageDescriptor() (string, error) {
 	if cfg.customImage != "" {
+		// If a full image identifier is provided, use it
+		if strings.HasPrefix("projects/", cfg.customImage) {
+			return cfg.customImage, nil
+		}
+
+		// Otherwise, make sure to properly prefix the image identifier
 		return fmt.Sprintf("global/images/%s", cfg.customImage), nil
 	}
 	project, ok := imageProjects[cfg.providerConfig.OperatingSystem]

@@ -26,6 +26,7 @@ type RawConfig struct {
 	ProjectID    *providerconfigtypes.ConfigVarString   `json:"projectID,omitempty"`
 	BillingCycle *providerconfigtypes.ConfigVarString   `json:"billingCycle"`
 	InstanceType *providerconfigtypes.ConfigVarString   `json:"instanceType"`
+	Metro        *providerconfigtypes.ConfigVarString   `json:"metro,omitempty"`
 	Facilities   []providerconfigtypes.ConfigVarString `json:"facilities"`
 	Tags         []providerconfigtypes.ConfigVarString `json:"tags,omitempty"`
 }
