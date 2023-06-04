@@ -233,14 +233,12 @@ spec:
           name: machine-controller
           command:
             - /usr/local/bin/machine-controller
-            - -log-debug=false
-            - -log-format=json # json or console
             - -worker-count=5
             - -node-csr-approver=true
             - -cluster-dns=10.10.10.10
             - -metrics-address=0.0.0.0:8080
             - -health-probe-address=0.0.0.0:8085
-            - -use-osm=true
+            - -use-external-bootstrap=true
             # Machines that fail to join the cluster within this timeout and
             # are owned by a MachineSet will get deleted so the MachineSet
             # controller re-creates them
@@ -282,9 +280,9 @@ spec:
           command:
             - /usr/local/bin/webhook
             # on debug level, full Machine objects with inline credentials might be logged, beware!
-            - -log-debug=false
-            - -log-format=json # json or console
-            - -use-osm=true
+            - -use-external-bootstrap=true
+            - -tls-cert-path=/tmp/cert/tls.crt
+            - -tls-key-path=/tmp/cert/tls.key
             - -namespace=kube-system
             - -listen-address=0.0.0.0:9876
           volumeMounts:
