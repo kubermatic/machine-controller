@@ -48,6 +48,8 @@ func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 	"cloudProvider": "vsphere",
 	"cloudProviderSpec": {
 		"allowInsecure": false,
+		"vmAntiAffinity": true,
+        "cluster": "DC0_C0",
 		"cpus": 1,
 		"datacenter": "DC0",
 		{{- if .Datastore }}

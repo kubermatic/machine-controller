@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
@@ -48,6 +49,7 @@ import (
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
+	mutex             sync.Mutex
 }
 
 // New returns a VSphere provider.
@@ -64,11 +66,13 @@ type Config struct {
 	Password         string
 	VSphereURL       string
 	Datacenter       string
+	Cluster          string
 	Folder           string
 	ResourcePool     string
 	Datastore        string
 	DatastoreCluster string
 	AllowInsecure    bool
+	VMAntiAffinity   bool
 	CPUs             int32
 	MemoryMB         int64
 	DiskSizeGB       *int64
@@ -164,6 +168,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, err
 	}
 
+	c.Cluster, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Cluster)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	c.Folder, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.Folder)
 	if err != nil {
 		return nil, nil, nil, err
@@ -185,6 +194,11 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.AllowInsecure, "VSPHERE_ALLOW_INSECURE")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	c.VMAntiAffinity, _, err = p.configVarResolver.GetConfigVarBoolValue(rawConfig.VMAntiAffinity)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -285,6 +299,17 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 			return err
 		}
 	}
+
+	if config.VMAntiAffinity {
+		if config.Cluster == "" {
+			return fmt.Errorf("cluster is required for vm anti affinity")
+		}
+		_, err = session.Finder.ClusterComputeResource(ctx, config.Cluster)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster %q, %w", config.Cluster, err)
+		}
+	}
+
 	return nil
 }
 
@@ -339,6 +364,13 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 
 	if err := attachTags(ctx, log, config, virtualMachine); err != nil {
 		return nil, fmt.Errorf("failed to attach tags: %w", err)
+	}
+
+	if config.VMAntiAffinity {
+		machineSetName := machine.Name[:strings.LastIndex(machine.Name, "-")]
+		if err := p.createOrUpdateVMAntiAffinityRule(ctx, session, machineSetName, config); err != nil {
+			return nil, fmt.Errorf("failed to add VM to anti affinity rule: %w", err)
+		}
 	}
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
@@ -456,6 +488,13 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	}
 	if err := destroyTask.Wait(ctx); err != nil {
 		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
+	}
+
+	if config.VMAntiAffinity {
+		machineSetName := machine.Name[:strings.LastIndex(machine.Name, "-")]
+		if err := p.createOrUpdateVMAntiAffinityRule(ctx, session, machineSetName, config); err != nil {
+			return false, fmt.Errorf("failed to add VM to anti affinity rule: %w", err)
+		}
 	}
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
