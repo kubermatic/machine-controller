@@ -25,7 +25,7 @@ spec:
         source:
           http:
             url: http://x.y.z.t/ubuntu.img
-  running: true
+  runStrategy: Once
   instancetype:
     kind: VirtualMachineClusterInstancetype
     name: custom-it
