@@ -195,6 +195,7 @@ spec:
                     - baremetal
                     - external
                     - vmware-cloud-director
+                    - opennebula
                     type: string
                   spec:
                     description: Spec represents the os/image reference in the supported
@@ -211,7 +212,6 @@ spec:
                 - rhel
                 - centos
                 - ubuntu
-                - sles
                 - amzn2
                 - rockylinux
                 type: string
@@ -348,6 +348,14 @@ spec:
                       type: string
                     type: array
                 type: object
+              provisioningUtility:
+                default: cloud-init
+                description: ProvisioningUtility used for configuring the worker node.
+                  Defaults to cloud-init.
+                enum:
+                - cloud-init
+                - ignition
+                type: string
             required:
             - bootstrapConfig
             - cloudProvider
@@ -605,7 +613,6 @@ spec:
                 - rhel
                 - centos
                 - ubuntu
-                - sles
                 - amzn2
                 - rockylinux
                 type: string
@@ -809,6 +816,14 @@ spec:
                       type: object
                     type: array
                 type: object
+              provisioningUtility:
+                default: cloud-init
+                description: ProvisioningUtility used for configuring the worker node.
+                  Defaults to cloud-init.
+                enum:
+                - cloud-init
+                - ignition
+                type: string
               supportedCloudProviders:
                 description: SupportedCloudProviders represent the cloud providers
                   that support the given operating system version
@@ -838,6 +853,7 @@ spec:
                       - baremetal
                       - external
                       - vmware-cloud-director
+                      - opennebula
                       type: string
                     spec:
                       description: Spec represents the os/image reference in the supported
