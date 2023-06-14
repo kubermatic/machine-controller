@@ -39,7 +39,6 @@ spec:
             cpus: 2
             memory: 2048
 
-            # only a single disk is currently supported, but support for multiple disks is planned already
             disks:
             - size: 60
               performanceType: ENT6

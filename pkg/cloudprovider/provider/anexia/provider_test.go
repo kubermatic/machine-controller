@@ -58,6 +58,7 @@ func TestAnexiaProvider(t *testing.T) {
 	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID", Name: testTemplateName, Build: "b02"})
 	a.FakeExisting(&vspherev1.Template{Identifier: "WRONG-TEMPLATE-NAME", Name: "Wrong Template Name", Build: "b02"})
 	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-NO-NETWORK-CONFIG", Name: "no-network-config", Build: "b03"})
+	a.FakeExisting(&vspherev1.Template{Identifier: "TEMPLATE-ID-ADDITIONAL-DISKS", Name: "additional-disks", Build: "b03"})
 
 	t.Cleanup(func() {
 		testhelper.TeardownHTTP()
@@ -117,6 +118,21 @@ func TestAnexiaProvider(t *testing.T) {
 					testhelper.AssertEquals(t, exists, false)
 					_, exists = jsonBody["dns4"]
 					testhelper.AssertEquals(t, exists, false)
+				},
+			},
+			{
+				ReconcileContext: hookableReconcileContext("LOCATION-ID", "ADDITIONAL-DISKS", func(rc *reconcileContext) {
+					rc.Config.Disks = append(rc.Config.Disks, resolvedDisk{
+						RawDisk: anxtypes.RawDisk{
+							Size: 10,
+						},
+						PerformanceType: "STD1",
+					})
+				}),
+
+				AssertJSONBody: func(jsonBody jsonObject) {
+					testhelper.AssertEquals(t, json.Number("5"), jsonBody["disk_gb"])
+					testhelper.AssertJSONEquals(t, `[{"gb":10,"type":"STD1"}]`, jsonBody["additional_disks"])
 				},
 			},
 		}
@@ -303,10 +319,6 @@ func TestValidate(t *testing.T) {
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.DiskSize = 10 }),
 			Error:  ErrConfigDiskSizeAndDisks,
-		},
-		ConfigTestCase{
-			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks = append(c.Disks, anxtypes.RawDisk{Size: 10}) }),
-			Error:  ErrMultipleDisksNotYetImplemented,
 		},
 		ConfigTestCase{
 			Config: hookableConfig(func(c *anxtypes.RawConfig) { c.Disks[0].Size = 0 }),
