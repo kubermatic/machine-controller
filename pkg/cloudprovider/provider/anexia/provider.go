@@ -61,9 +61,6 @@ const (
 var (
 	// ErrConfigDiskSizeAndDisks is returned when the config has both DiskSize and Disks set, which is unsupported.
 	ErrConfigDiskSizeAndDisks = errors.New("both the deprecated DiskSize and new Disks attribute are set")
-
-	// ErrMultipleDisksNotYetImplemented is returned when multiple disks are configured.
-	ErrMultipleDisksNotYetImplemented = errors.New("multiple disks configured, but this feature is not yet implemented")
 )
 
 type provider struct {
@@ -164,6 +161,13 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 		)
 
 		vm.DiskType = config.Disks[0].PerformanceType
+
+		for _, disk := range config.Disks[1:] {
+			vm.AdditionalDisks = append(vm.AdditionalDisks, anxvm.AdditionalDisk{
+				SizeGBs: disk.Size,
+				Type:    disk.PerformanceType,
+			})
+		}
 
 		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
 
@@ -431,10 +435,6 @@ func (p *provider) Validate(ctx context.Context, machinespec clusterv1alpha1.Mac
 
 	if len(config.Disks) == 0 {
 		return errors.New("no disks configured")
-	}
-
-	if len(config.Disks) > 1 {
-		return ErrMultipleDisksNotYetImplemented
 	}
 
 	for _, disk := range config.Disks {
