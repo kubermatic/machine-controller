@@ -64,6 +64,7 @@ type kubevirtProviderSpecConf struct {
 	AffinityValues           bool
 	SecondaryDisks           bool
 	OsImageSource            imageSource
+	OsImageSourceURL         string
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -123,7 +124,7 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 					{{- if .OsImageDV }}
 					"osImage": "{{ .OsImageDV }}",
 					{{- else }}
-					"osImage": "http://x.y.z.t/ubuntu.img",
+					"osImage": "{{ if .OsImageSourceURL }}{{ .OsImageSourceURL }}{{ else }}http://x.y.z.t/ubuntu.img{{ end }}",
 					{{- end }}
 					"size": "10Gi",
 					{{- if .OsImageSource }}
@@ -215,6 +216,10 @@ func TestNewVirtualMachine(t *testing.T) {
 		{
 			name:     "http-image-source",
 			specConf: kubevirtProviderSpecConf{OsImageSource: httpSource},
+		},
+		{
+			name:     "registry-image-source",
+			specConf: kubevirtProviderSpecConf{OsImageSource: registrySource, OsImageSourceURL: "docker://x.y.z.t/ubuntu.img:latest"},
 		},
 		{
 			name:     "pvc-image-source",
