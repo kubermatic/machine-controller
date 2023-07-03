@@ -62,6 +62,7 @@ func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes
 type Config struct {
 	TemplateVMName   string
 	VMNetName        string
+	Networks         []string
 	Username         string
 	Password         string
 	VSphereURL       string
@@ -143,9 +144,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		return nil, nil, nil, err
 	}
 
+	//nolint:staticcheck
+	//lint:ignore SA1019: rawConfig.VMNetName is deprecated: use networks instead.
 	c.VMNetName, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VMNetName)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+
+	for _, network := range rawConfig.Networks {
+		networkValue, err := p.configVarResolver.GetConfigVarStringValue(network)
+		if err != nil {
+			return nil, nil, rawConfig, err
+		}
+		c.Networks = append(c.Networks, networkValue)
 	}
 
 	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "VSPHERE_USERNAME")
@@ -230,6 +241,10 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 		return fmt.Errorf("failed to create vCenter session: %w", err)
 	}
 	defer session.Logout(ctx)
+
+	if len(config.Networks) > 0 && config.VMNetName != "" {
+		return fmt.Errorf("both networks and vmNetName are specified, only one of them can be used")
+	}
 
 	if config.Tags != nil {
 		restAPISession, err := NewRESTSession(ctx, config)
