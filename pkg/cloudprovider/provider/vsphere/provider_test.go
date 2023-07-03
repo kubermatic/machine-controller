@@ -64,7 +64,9 @@ func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"password": "{{ .Password }}",
 		"templateVMName": "DC0_H0_VM0",
 		"username": "{{ .User }}",
-		"vmNetName": "",
+		"networks": [
+			""
+		],
 		"vsphereURL": "{{ .URL }}"
 	},
 	"operatingSystem": "flatcar",
