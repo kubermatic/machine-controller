@@ -52,7 +52,7 @@ var (
 		string(providerconfigtypes.OperatingSystemUbuntu):     "kubermatic-ubuntu",
 		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
 		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-8-5",
-		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar-stable-2983",
+		string(providerconfigtypes.OperatingSystemFlatcar):    "kubermatic-e2e-flatcar",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
 	}
 
