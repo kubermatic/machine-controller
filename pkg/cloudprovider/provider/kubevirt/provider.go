@@ -376,11 +376,15 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.source" field: %w`, err)
 	}
+	pullMethod, err := p.getPullMethod(primaryDisk.PullMethod)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get value of "primaryDisk.pullMethod" field: %w`, err)
+	}
 	switch imageSource(osImageSource) {
 	case httpSource:
 		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
 	case registrySource:
-		return registryDataVolume(osImage), nil
+		return registryDataVolume(osImage, pullMethod), nil
 	case pvcSource:
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
@@ -390,7 +394,7 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 		// handle old API for backward compatibility.
 		if srcURL, err := url.ParseRequestURI(osImage); err == nil {
 			if srcURL.Scheme == cdiv1beta1.RegistrySchemeDocker || srcURL.Scheme == cdiv1beta1.RegistrySchemeOci {
-				return registryDataVolume(osImage), nil
+				return registryDataVolume(osImage, pullMethod), nil
 			}
 			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
 		}
@@ -414,15 +418,26 @@ func getNamespace() string {
 	return ns
 }
 
-func ptr[T any](val T) *T {
-	return &val
+func (p *provider) getPullMethod(pullMethod providerconfigtypes.ConfigVarString) (cdiv1beta1.RegistryPullMethod, error) {
+	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(pullMethod)
+	if err != nil {
+		return "", err
+	}
+	switch pm := cdiv1beta1.RegistryPullMethod(resolvedPM); pm {
+	case cdiv1beta1.RegistryPullNode, cdiv1beta1.RegistryPullPod:
+		return pm, nil
+	case "":
+		return cdiv1beta1.RegistryPullNode, nil
+	default:
+		return "", fmt.Errorf("unsupported value: %v", resolvedPM)
+	}
 }
 
-func registryDataVolume(imageURL string) *cdiv1beta1.DataVolumeSource {
+func registryDataVolume(imageURL string, pullMethod cdiv1beta1.RegistryPullMethod) *cdiv1beta1.DataVolumeSource {
 	return &cdiv1beta1.DataVolumeSource{
 		Registry: &cdiv1beta1.DataVolumeSourceRegistry{
 			URL:        &imageURL,
-			PullMethod: ptr(cdiv1beta1.RegistryPullNode),
+			PullMethod: &pullMethod,
 		},
 	}
 }
