@@ -73,6 +73,8 @@ const (
 	machineDeploymentLabelKey = "md"
 	// httpSource defines the http source type for VM Disk Image.
 	httpSource imageSource = "http"
+	// registrySource defines the OCI registry source type for VM Disk Image.
+	registrySource imageSource = "registry"
 	// pvcSource defines the pvc source type for VM Disk Image.
 	pvcSource imageSource = "pvc"
 )
@@ -374,9 +376,15 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.source" field: %w`, err)
 	}
+	pullMethod, err := p.getPullMethod(primaryDisk.PullMethod)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get value of "primaryDisk.pullMethod" field: %w`, err)
+	}
 	switch imageSource(osImageSource) {
 	case httpSource:
 		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
+	case registrySource:
+		return registryDataVolume(osImage, pullMethod), nil
 	case pvcSource:
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
@@ -384,7 +392,10 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: namespace}}, nil
 	default:
 		// handle old API for backward compatibility.
-		if _, err = url.ParseRequestURI(osImage); err == nil {
+		if srcURL, err := url.ParseRequestURI(osImage); err == nil {
+			if srcURL.Scheme == cdiv1beta1.RegistrySchemeDocker || srcURL.Scheme == cdiv1beta1.RegistrySchemeOci {
+				return registryDataVolume(osImage, pullMethod), nil
+			}
 			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
 		}
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
@@ -405,6 +416,30 @@ func getNamespace() string {
 		ns = metav1.NamespaceSystem
 	}
 	return ns
+}
+
+func (p *provider) getPullMethod(pullMethod providerconfigtypes.ConfigVarString) (cdiv1beta1.RegistryPullMethod, error) {
+	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(pullMethod)
+	if err != nil {
+		return "", err
+	}
+	switch pm := cdiv1beta1.RegistryPullMethod(resolvedPM); pm {
+	case cdiv1beta1.RegistryPullNode, cdiv1beta1.RegistryPullPod:
+		return pm, nil
+	case "":
+		return cdiv1beta1.RegistryPullNode, nil
+	default:
+		return "", fmt.Errorf("unsupported value: %v", resolvedPM)
+	}
+}
+
+func registryDataVolume(imageURL string, pullMethod cdiv1beta1.RegistryPullMethod) *cdiv1beta1.DataVolumeSource {
+	return &cdiv1beta1.DataVolumeSource{
+		Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+			URL:        &imageURL,
+			PullMethod: &pullMethod,
+		},
+	}
 }
 
 func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
