@@ -10,10 +10,10 @@
     - [What Works](#what-works)
     - [Supported Kubernetes Versions](#supported-kubernetes-versions)
     - [Community Providers](#community-providers)
-  - [What doesn't Work](#what-doesnt-work)
+  - [What Doesn't Work](#what-doesnt-work)
   - [Quickstart](#quickstart)
-    - [Deploy machine-controller](#deploy-the-machine-controller)
-    - [Creating a MachineDeployment](#creating-a-machinedeployment)
+    - [Deploy machine-controller](#deploy-machine-controller)
+    - [Creating a `MachineDeployment`](#creating-a-machinedeployment)
   - [Advanced Usage](#advanced-usage)
     - [Specifying the Apiserver Endpoint](#specifying-the-apiserver-endpoint)
     - [CA Data](#ca-data)
@@ -46,7 +46,6 @@ Currently supported K8S versions are:
 - 1.27
 - 1.26
 - 1.25
-- 1.24
 
 ### Community Providers
 
