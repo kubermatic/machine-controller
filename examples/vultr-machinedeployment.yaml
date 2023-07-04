@@ -44,7 +44,7 @@ spec:
                 name: machine-controller-vultr
                 key: apiKey
             region: blr
-            plan: 'vhf-8c-32gb'
+            plan: "vhf-8c-32gb"
             # Required: app_id, image_id, os_id, snapshot_id, or iso_id must be provided. Currently only os_id is supported.
             osId: 215
             # Optional
@@ -57,4 +57,4 @@ spec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: 1.24.9
+        kubelet: 1.26.6

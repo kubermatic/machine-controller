@@ -1,0 +1,35 @@
+[Unit]
+After=docker.service
+Requires=docker.service
+
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/home/
+
+[Service]
+User=root
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+CPUAccounting=true
+MemoryAccounting=true
+
+Environment="PATH=/opt/bin:/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin/"
+EnvironmentFile=-/etc/environment
+
+ExecStartPre=/bin/bash /opt/load-kernel-modules.sh
+
+ExecStartPre=/bin/bash /opt/disable-swap.sh
+
+ExecStartPre=/bin/bash /opt/bin/setup_net_env.sh
+ExecStart=/opt/bin/kubelet $KUBELET_EXTRA_ARGS \
+  --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf \
+  --kubeconfig=/var/lib/kubelet/kubeconfig \
+  --config=/etc/kubernetes/kubelet.conf \
+  --cert-dir=/etc/kubernetes/pki \
+  --hostname-override=some-test-node \
+  --exit-on-lock-contention \
+  --lock-file=/tmp/kubelet.lock \
+  --node-ip ${KUBELET_NODE_IP}
+
+[Install]
+WantedBy=multi-user.target
