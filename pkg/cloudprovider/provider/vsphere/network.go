@@ -28,9 +28,9 @@ const (
 	ethCardType = "vmxnet3"
 )
 
-// Based on https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/pkg/cloud/vsphere/services/govmomi/vcenter/clone.go#L158
+// Based on https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/v1.7.0/pkg/services/govmomi/vcenter/clone.go#L372
 func GetNetworkSpecs(ctx context.Context, session *Session, devices object.VirtualDeviceList, network string, networks []string) ([]types.BaseVirtualDeviceConfigSpec, error) {
-	var deviceSpecs []types.BaseVirtualDeviceConfigSpec
+	deviceSpecs := []types.BaseVirtualDeviceConfigSpec{}
 
 	// Remove any existing NICs.
 	for _, dev := range devices.SelectByType((*types.VirtualEthernetCard)(nil)) {
@@ -46,6 +46,7 @@ func GetNetworkSpecs(ctx context.Context, session *Session, devices object.Virtu
 	}
 
 	// Add NICs for each network.
+	deviceKey := int32(-100)
 	for _, net := range networks {
 		// Add new NICs based on the machine config.
 		ref, err := session.Finder.Network(ctx, net)
@@ -68,12 +69,13 @@ func GetNetworkSpecs(ctx context.Context, session *Session, devices object.Virtu
 
 		// Assign a temporary device key to ensure that a unique one will be
 		// generated when the device is created.
-		nic.Key = devices.NewKey()
+		nic.Key = deviceKey
 
 		deviceSpecs = append(deviceSpecs, &types.VirtualDeviceConfigSpec{
 			Device:    dev,
 			Operation: types.VirtualDeviceConfigSpecOperationAdd,
 		})
+		deviceKey--
 	}
 	return deviceSpecs, nil
 }

@@ -66,6 +66,7 @@ const (
 	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
 	VMwareCloudDirectorManifest       = "./testdata/machinedeployment-vmware-cloud-director.yaml"
 	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereMultipleNICManifest        = "./testdata/machinedeployment-vsphere-multiple-nic.yaml"
 	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	VSPhereResourcePoolManifest       = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
 	ScalewayManifest                  = "./testdata/machinedeployment-scaleway.yaml"
@@ -840,6 +841,17 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	params := getVSphereTestParams(t)
 
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+}
+
+// TestVsphereMultipleNICProvisioning - is the same as the TestVsphereProvisioning suit but has multiple networks attached to the VMs.
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVsphereMultipleNICProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	selector := OsSelector("ubuntu")
+	params := getVSphereTestParams(t)
+
+	runScenarios(t, selector, params, VSPhereMultipleNICManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }
 
 // TestVsphereDatastoreClusterProvisioning - is the same as the TestVsphereProvisioning suite but specifies a DatastoreCluster
