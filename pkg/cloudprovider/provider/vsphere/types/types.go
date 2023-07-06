@@ -24,11 +24,13 @@ import (
 // RawConfig represents vsphere specific configuration.
 type RawConfig struct {
 	TemplateVMName providerconfigtypes.ConfigVarString `json:"templateVMName"`
-	VMNetName      providerconfigtypes.ConfigVarString `json:"vmNetName"`
-	Username       providerconfigtypes.ConfigVarString `json:"username"`
-	Password       providerconfigtypes.ConfigVarString `json:"password"`
-	VSphereURL     providerconfigtypes.ConfigVarString `json:"vsphereURL"`
-	Datacenter     providerconfigtypes.ConfigVarString `json:"datacenter"`
+	// Deprecated: use networks instead.
+	VMNetName  providerconfigtypes.ConfigVarString   `json:"vmNetName"`
+	Networks   []providerconfigtypes.ConfigVarString `json:"networks"`
+	Username   providerconfigtypes.ConfigVarString   `json:"username"`
+	Password   providerconfigtypes.ConfigVarString   `json:"password"`
+	VSphereURL providerconfigtypes.ConfigVarString   `json:"vsphereURL"`
+	Datacenter providerconfigtypes.ConfigVarString   `json:"datacenter"`
 
 	// Cluster defines the cluster to use in vcenter.
 	// Only needed for vm anti affinity.

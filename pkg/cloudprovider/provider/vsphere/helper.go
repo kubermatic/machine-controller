@@ -192,8 +192,8 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 		deviceSpecs = append(deviceSpecs, diskspec)
 	}
 
-	if config.VMNetName != "" {
-		networkSpecs, err := GetNetworkSpecs(ctx, session, vmDevices, config.VMNetName)
+	if config.VMNetName != "" || len(config.Networks) > 0 {
+		networkSpecs, err := GetNetworkSpecs(ctx, session, vmDevices, config.VMNetName, config.Networks)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get network specifications: %w", err)
 		}

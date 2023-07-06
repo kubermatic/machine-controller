@@ -226,7 +226,8 @@ datacenter: datacenter1
 # VM template name
 templateVMName: ubuntu-template
 # Optional. Sets the networks on the VM. If no network is specified, the template default will be used.
-vmNetName: network1
+networks:
+- network1
 # Optional
 folder: folder1
 # Optional: Force VMs to be provisoned to the specified resourcePool
