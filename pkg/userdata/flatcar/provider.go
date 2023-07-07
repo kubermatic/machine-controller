@@ -107,8 +107,8 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubernetesCACert                   string
 		NodeIPScript                       string
 		ExtraKubeletFlags                  []string
-		InsecureRegistries             []string
-		RegistryMirrors                map[string][]string
+		InsecureRegistries                 []string
+		RegistryMirrors                    map[string][]string
 		ContainerRuntimeScript             string
 		ContainerRuntimeConfigFileName     string
 		ContainerRuntimeConfig             string
@@ -124,8 +124,8 @@ func (p Provider) UserData(req plugin.UserDataRequest) (string, error) {
 		KubernetesCACert:                   kubernetesCACert,
 		NodeIPScript:                       userdatahelper.SetupNodeIPEnvScript(pconfig.Network.GetIPFamily()),
 		ExtraKubeletFlags:                  crEngine.KubeletFlags(),
-		InsecureRegistries:             req.ContainerRuntime.InsecureRegistries,
-		RegistryMirrors:                req.ContainerRuntime.RegistryMirrors,
+		InsecureRegistries:                 req.ContainerRuntime.InsecureRegistries,
+		RegistryMirrors:                    req.ContainerRuntime.RegistryMirrors,
 		ContainerRuntimeScript:             crScript,
 		ContainerRuntimeConfigFileName:     crEngine.ConfigFileName(),
 		ContainerRuntimeConfig:             crConfig,
@@ -213,6 +213,9 @@ systemd:
             Environment=ALL_PROXY={{ .HTTPProxy }}
 {{- end }}
 
+    - name: coreos-metadata-sshkeys@core.service
+      mask: true
+
     - name: setup.service
       enabled: true
       contents: |
@@ -248,14 +251,28 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
+    # sys11: this prevents the download script from
+    # being called in a loop if kubelet is failing to start
+    - name: disable-download-script.service
+      enabled: true
+      contents: |
+        [Unit]
+        Requires=download-script.service
+        After=download-script.service
+        [Service]
+        Type=oneshot
+        EnvironmentFile=-/etc/environment
+        ExecStart=/opt/bin/disable-download.sh
+        [Install]
+        WantedBy=multi-user.target
+
     - name: kubelet-healthcheck.service
       enabled: true
       dropins:
       - name: 40-download.conf
         contents: |
           [Unit]
-          Requires=download-script.service
-          After=download-script.service
+          After=disable-download-script.service
       contents: |
 {{ kubeletHealthCheckSystemdUnit | indent 10 }}
 
@@ -306,8 +323,7 @@ systemd:
       - name: 40-download.conf
         contents: |
           [Unit]
-          Requires=download-script.service
-          After=download-script.service
+          After=disable-download-script.service
       contents: |
 {{ kubeletSystemdUnit .ContainerRuntimeName .KubeletVersion .KubeletCloudProviderName .MachineSpec.Name .DNSIPs .ExternalCloudProvider .ProviderSpec.Network.GetIPFamily .PauseImage .MachineSpec.Taints .ExtraKubeletFlags false | indent 8 }}
 
@@ -476,6 +492,9 @@ storage:
           # We stop these services here explicitly since masking only removes the symlinks for these services so that they can't be started.
           # But that wouldn't "stop" the already running services on the first boot.
 
+          # sys11: we use the user-ssh-keys-agent to deploy ssh keys
+          systemctl stop coreos-metadata-sshkeys@core.service
+
           {{- if or .FlatcarConfig.DisableUpdateEngine .FlatcarConfig.DisableAutoUpdate }}
           systemctl stop update-engine.service
           {{- end }}
@@ -501,6 +520,15 @@ storage:
           EnvironmentFile=-/etc/environment
           EOF
 {{ .ContainerRuntimeScript | indent 10 }}
+
+    - path: /opt/bin/disable-download.sh
+      filesystem: root
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -xeuo pipefail
+          systemctl stop download-script.service
           systemctl disable download-script.service
 
     - path: {{ .ContainerRuntimeConfigFileName }}
