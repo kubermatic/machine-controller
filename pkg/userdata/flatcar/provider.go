@@ -257,7 +257,6 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Requires=download-script.service
         After=download-script.service
         [Service]
         Type=oneshot
