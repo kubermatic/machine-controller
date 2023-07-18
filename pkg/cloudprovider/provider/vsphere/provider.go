@@ -618,6 +618,11 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 		workingDir = fmt.Sprintf("/%s/vm", c.Datacenter)
 	}
 
+	datastore := c.Datastore
+	if datastore == "" {
+		datastore = c.DatastoreCluster
+	}
+
 	cc := &vspheretypes.CloudConfig{
 		Global: vspheretypes.GlobalOpts{
 			User:         c.Username,
@@ -631,7 +636,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 		Workspace: vspheretypes.WorkspaceOpts{
 			Datacenter:       c.Datacenter,
 			VCenterIP:        u.Hostname(),
-			DefaultDatastore: c.Datastore,
+			DefaultDatastore: datastore,
 			Folder:           workingDir,
 		},
 		VirtualCenter: map[string]*vspheretypes.VirtualCenterConfig{
