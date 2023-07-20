@@ -22,7 +22,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/godo v1.93.0
 	github.com/flatcar/container-linux-config-transpiler v0.9.4
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.3
 	github.com/go-test/deep v1.0.8

@@ -22,7 +22,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 )
