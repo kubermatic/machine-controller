@@ -77,7 +77,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	}
 
 	// 2. Retrieve Sizing and Placement Compute Policy if required.
-	computePolicy := vcdapitypes.ComputePolicy{}
+	var computePolicy *types.ComputePolicy
 	if c.SizingPolicy != nil || c.PlacementPolicy != nil {
 		allPolicies, err := org.GetAllVdcComputePolicies(url.Values{})
 		if err != nil {
@@ -89,6 +89,9 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			if sizingPolicy == nil {
 				return fmt.Errorf("sizing policy '%s' doesn't exist", *c.SizingPolicy)
 			}
+			if computePolicy == nil {
+				computePolicy = &types.ComputePolicy{}
+			}
 			computePolicy.VmSizingPolicy = &vcdapitypes.Reference{
 				HREF: sizingPolicy.VdcComputePolicy.ID,
 			}
@@ -99,6 +102,9 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			if placementPolicy == nil {
 				return fmt.Errorf("placement policy '%s' doesn't exist", *c.PlacementPolicy)
 			}
+			if computePolicy == nil {
+				computePolicy = &types.ComputePolicy{}
+			}
 			computePolicy.VmPlacementPolicy = &vcdapitypes.Reference{
 				HREF: placementPolicy.VdcComputePolicy.ID,
 			}
@@ -106,15 +112,15 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 	}
 
 	// 3. Retrieve Storage Profile
-	storageProfileRef := vcdapitypes.Reference{}
+	var storageProfile *types.Reference
 	if c.StorageProfile != nil && *c.StorageProfile != defaultStorageProfile {
 		for _, sp := range vdc.Vdc.VdcStorageProfiles.VdcStorageProfile {
 			if sp.Name == *c.StorageProfile || sp.ID == *c.StorageProfile {
-				storageProfileRef = vcdapitypes.Reference{HREF: sp.HREF, Name: sp.Name, ID: sp.ID}
+				storageProfile = sp
 				break
 			}
 		}
-		if storageProfileRef.HREF == "" {
+		if storageProfile == nil {
 			if err != nil {
 				return fmt.Errorf("failed to get storage profile '%s': %w", *c.StorageProfile, err)
 			}
@@ -154,18 +160,10 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 					},
 				},
 			},
+			StorageProfile: storageProfile,
+			ComputePolicy:  computePolicy,
 		},
 		AllEULAsAccepted: true,
-	}
-
-	// Add storage profile
-	if storageProfileRef.HREF != "" {
-		vAppRecomposition.SourcedItem.StorageProfile = &storageProfileRef
-	}
-
-	// Add compute policy
-	if computePolicy.HREF != "" {
-		vAppRecomposition.SourcedItem.ComputePolicy = &computePolicy
 	}
 
 	apiEndpoint, err := url.Parse(vapp.VApp.HREF)
