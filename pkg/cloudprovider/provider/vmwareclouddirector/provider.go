@@ -412,6 +412,8 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	c.DiskBusType = rawConfig.DiskBusType
 	c.StorageProfile = rawConfig.StorageProfile
 	c.Metadata = rawConfig.Metadata
+	c.SizingPolicy = rawConfig.SizingPolicy
+	c.PlacementPolicy = rawConfig.PlacementPolicy
 	return &c, pconfig, rawConfig, err
 }
 

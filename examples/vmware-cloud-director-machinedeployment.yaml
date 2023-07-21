@@ -72,6 +72,12 @@ spec:
             diskBusType: "paravirtual"
             diskIOPS: 0
             storageProfile: "*"
+            # Optional: SizingPolicy is the sizing policy to be used for machines created by this machine deployment.
+            # If left empty, default sizing policy if specified at OVDC/organization level is used.
+            sizingPolicy: ""
+            # Optional: PlacementPolicy is the placement policy to be used for machines created by this machine deployment.
+            # If left empty, default placement policy if specified at OVDC/organization level is used.
+            placementPolicy: ""
           operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false
