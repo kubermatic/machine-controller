@@ -196,7 +196,7 @@ func main() {
 	}
 
 	if nodeContainerRuntime != "containerd" {
-		log.Fatalf("%s not supported; containerd is the only supported container runtimes", nodeContainerRuntime)
+		log.Fatalf("%s not supported; containerd is the only supported container runtime", nodeContainerRuntime)
 	}
 
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
