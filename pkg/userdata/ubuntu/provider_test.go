@@ -129,9 +129,9 @@ type userDataTestCase struct {
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.25.11"),
-		semver.MustParse("v1.26.6"),
-		semver.MustParse("v1.27.3"),
+		semver.MustParse("v1.25.12"),
+		semver.MustParse("v1.26.7"),
+		semver.MustParse("v1.27.4"),
 	}
 
 	var tests []userDataTestCase
