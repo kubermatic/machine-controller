@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	dockerName     = "docker"
 	containerdName = "containerd"
 )
 
@@ -65,18 +64,7 @@ func withContainerdVersion(version string) Opt {
 
 func get(containerRuntimeName string, opts ...Opt) Config {
 	cfg := Config{}
-
-	switch containerRuntimeName {
-	case dockerName:
-		cfg.Docker = &Docker{}
-		cfg.Containerd = nil
-	case containerdName:
-		cfg.Containerd = &Containerd{}
-		cfg.Docker = nil
-	default:
-		cfg.Docker = &Docker{}
-		cfg.Containerd = nil
-	}
+	cfg.Containerd = &Containerd{}
 
 	for _, o := range opts {
 		o(&cfg)
@@ -86,7 +74,6 @@ func get(containerRuntimeName string, opts ...Opt) Config {
 }
 
 type Config struct {
-	Docker               *Docker               `json:",omitempty"`
 	Containerd           *Containerd           `json:",omitempty"`
 	InsecureRegistries   []string              `json:",omitempty"`
 	RegistryMirrors      map[string][]string   `json:",omitempty"`
@@ -113,26 +100,10 @@ type AuthConfig struct {
 }
 
 func (cfg Config) String() string {
-	switch {
-	case cfg.Containerd != nil:
-		return containerdName
-	case cfg.Docker != nil:
-		return dockerName
-	}
-
-	return dockerName
+	return containerdName
 }
 
 func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
-	docker := &Docker{
-		insecureRegistries:   cfg.InsecureRegistries,
-		registryMirrors:      cfg.RegistryMirrors["docker.io"],
-		containerLogMaxFiles: cfg.ContainerLogMaxFiles,
-		containerLogMaxSize:  cfg.ContainerLogMaxSize,
-		registryCredentials:  cfg.RegistryCredentials,
-		containerdVersion:    cfg.ContainerdVersion,
-	}
-
 	containerd := &Containerd{
 		insecureRegistries:  cfg.InsecureRegistries,
 		registryMirrors:     cfg.RegistryMirrors,
@@ -140,16 +111,5 @@ func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
 		registryCredentials: cfg.RegistryCredentials,
 		version:             cfg.ContainerdVersion,
 	}
-
-	moreThan124, _ := semver.NewConstraint(">= 1.24")
-
-	switch {
-	case moreThan124.Check(kubeletVersion) || cfg.Containerd != nil:
-		// docker support has been removed in Kubernetes 1.24
-		return containerd
-	case cfg.Docker != nil:
-		return docker
-	}
-
-	return docker
+	return containerd
 }

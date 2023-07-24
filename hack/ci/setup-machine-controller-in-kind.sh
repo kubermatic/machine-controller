@@ -59,9 +59,9 @@ if [ ! -f machine-controller-deployed ]; then
   url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
   sed -i "s;-node-csr-approver=true;$url;g" examples/machine-controller.yaml
 
-  # Ensure that we update `use-osm` flag if OSM is disabled
+  # Ensure that we update `use-external-bootstrap` flag if OSM is disabled
   if [[ "$OPERATING_SYSTEM_MANAGER" == "false" ]]; then
-    sed -i "s;-use-osm=true;-use-osm=false;g" examples/machine-controller.yaml
+    sed -i "s;-use-external-bootstrap=true;-use-external-bootstrap=false;g" examples/machine-controller.yaml
   fi
 
   # e2e tests logs are primarily read by humans, if ever
