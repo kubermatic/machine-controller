@@ -522,16 +522,6 @@ storage:
         inline: |
 {{ .ContainerRuntimeConfig | indent 10 }}
 
-{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
-
-    - path: {{ .ContainerRuntimeAuthConfigFileName }}
-      filesystem: root
-      permissions: 0600
-      content:
-        inline: |
-{{ .ContainerRuntimeAuthConfig | indent 10 }}
-{{- end }}
-
     - path: /etc/crictl.yaml
       filesystem: root
       mode: 0644
@@ -815,14 +805,6 @@ write_files:
   user: root
   content: |
 {{ .ContainerRuntimeConfig | indent 4 }}
-
-{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
-
-- path: {{ .ContainerRuntimeAuthConfigFileName }}
-  permissions: "0600"
-  content: |
-{{ .ContainerRuntimeAuthConfig | indent 4 }}
-{{- end }}
 
 - path: /etc/crictl.yaml
   permissions: "0644"

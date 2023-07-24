@@ -330,14 +330,6 @@ write_files:
   content: |
 {{ .ContainerRuntimeConfig | indent 4 }}
 
-{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
-
-- path: {{ .ContainerRuntimeAuthConfigFileName }}
-  permissions: "0600"
-  content: |
-{{ .ContainerRuntimeAuthConfig | indent 4 }}
-{{- end }}
-
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
   content: |
