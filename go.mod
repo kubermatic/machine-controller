@@ -56,7 +56,7 @@ require (
 	k8s.io/api v0.26.4
 	k8s.io/apiextensions-apiserver v0.26.4
 	k8s.io/apimachinery v0.26.4
-	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/client-go v0.26.4
 	k8s.io/cloud-provider v0.26.4
 	k8s.io/klog v1.0.0
 	k8s.io/kubelet v0.26.4
@@ -188,6 +188,3 @@ require (
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
-
-// TODO: Upgrade to 0.27.x once sigs.k8s.io/controller-runtime 0.14.7 is released. For more details https://github.com/kubernetes/client-go/issues/1245#issuecomment-1523434471
-replace k8s.io/client-go => k8s.io/client-go v0.26.4
