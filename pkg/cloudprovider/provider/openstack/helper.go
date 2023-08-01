@@ -428,3 +428,17 @@ func getDefaultSubnet(netClient *gophercloud.ServiceClient, network *osnetworks.
 	}
 	return &subnets[0].ID, nil
 }
+
+func isErrNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	switch err.(type) {
+	case gophercloud.ErrDefault404:
+		return true
+	case gophercloud.Err404er:
+		return true
+	default:
+		return false
+	}
+}
