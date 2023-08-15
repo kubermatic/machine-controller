@@ -17,8 +17,6 @@ limitations under the License.
 package containerruntime
 
 import (
-	"github.com/Masterminds/semver/v3"
-
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 )
 
@@ -62,7 +60,7 @@ func withContainerdVersion(version string) Opt {
 	}
 }
 
-func get(containerRuntimeName string, opts ...Opt) Config {
+func get(_ string, opts ...Opt) Config {
 	cfg := Config{}
 	cfg.Containerd = &Containerd{}
 
@@ -103,7 +101,7 @@ func (cfg Config) String() string {
 	return containerdName
 }
 
-func (cfg Config) Engine(kubeletVersion *semver.Version) Engine {
+func (cfg Config) Engine() Engine {
 	containerd := &Containerd{
 		insecureRegistries:  cfg.InsecureRegistries,
 		registryMirrors:     cfg.RegistryMirrors,

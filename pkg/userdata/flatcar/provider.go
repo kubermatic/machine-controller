@@ -83,7 +83,7 @@ func (p Provider) UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (
 		flatcarConfig.DisableUpdateEngine = true
 	}
 
-	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crEngine := req.ContainerRuntime.Engine()
 	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemFlatcar)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)
@@ -331,7 +331,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root
@@ -693,7 +693,7 @@ write_files:
 - path: "/etc/kubernetes/kubelet.conf"
   permissions: "0644"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
 
 - path: /opt/load-kernel-modules.sh
   permissions: "0755"

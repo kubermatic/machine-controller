@@ -33,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -197,22 +196,17 @@ func (r *ReconcileMachineDeployment) reconcile(ctx context.Context, log *zap.Sug
 		return reconcile.Result{}, err
 	}
 
-	machineMap, err := r.getMachineMapForDeployment(ctx, d, msList)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
 	if d.DeletionTimestamp != nil {
-		return reconcile.Result{}, r.sync(ctx, log, d, msList, machineMap)
+		return reconcile.Result{}, r.sync(ctx, log, d, msList)
 	}
 
 	if d.Spec.Paused {
-		return reconcile.Result{}, r.sync(ctx, log, d, msList, machineMap)
+		return reconcile.Result{}, r.sync(ctx, log, d, msList)
 	}
 
 	switch d.Spec.Strategy.Type {
 	case common.RollingUpdateMachineDeploymentStrategyType:
-		return reconcile.Result{}, r.rolloutRolling(ctx, log, d, msList, machineMap)
+		return reconcile.Result{}, r.rolloutRolling(ctx, log, d, msList)
 	}
 
 	return reconcile.Result{}, errors.Errorf("unexpected deployment strategy type: %s", d.Spec.Strategy.Type)
@@ -272,51 +266,6 @@ func (r *ReconcileMachineDeployment) adoptOrphan(ctx context.Context, deployment
 	newRef := *metav1.NewControllerRef(deployment, controllerKind)
 	machineSet.OwnerReferences = append(machineSet.OwnerReferences, newRef)
 	return r.Client.Update(ctx, machineSet)
-}
-
-// getMachineMapForDeployment returns the Machines managed by a Deployment.
-//
-// It returns a map from MachineSet UID to a list of Machines controlled by that MachineSet,
-// according to the Machine's ControllerRef.
-func (r *ReconcileMachineDeployment) getMachineMapForDeployment(ctx context.Context, d *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet) (map[types.UID]*v1alpha1.MachineList, error) {
-	// TODO(droot): double check if previous selector maps correctly to new one.
-	// _, err := metav1.LabelSelectorAsSelector(&d.Spec.Selector)
-
-	// Get all Machines that potentially belong to this Deployment.
-	selector, err := metav1.LabelSelectorAsMap(&d.Spec.Selector)
-	if err != nil {
-		return nil, err
-	}
-
-	machines := &v1alpha1.MachineList{}
-	listOptions := &client.ListOptions{Namespace: d.Namespace}
-	if err = r.Client.List(ctx, machines, listOptions, client.MatchingLabels(selector)); err != nil {
-		return nil, err
-	}
-
-	// Group Machines by their controller (if it's in msList).
-	machineMap := make(map[types.UID]*v1alpha1.MachineList, len(msList))
-	for _, ms := range msList {
-		machineMap[ms.UID] = &v1alpha1.MachineList{}
-	}
-
-	for idx := range machines.Items {
-		machine := &machines.Items[idx]
-
-		// Do not ignore inactive Machines because Recreate Deployments need to verify that no
-		// Machines from older versions are running before spinning up new Machines.
-		controllerRef := metav1.GetControllerOf(machine)
-		if controllerRef == nil {
-			continue
-		}
-
-		// Only append if we care about this UID.
-		if machineList, ok := machineMap[controllerRef.UID]; ok {
-			machineList.Items = append(machineList.Items, *machine)
-		}
-	}
-
-	return machineMap, nil
 }
 
 // getMachineDeploymentsForMachineSet returns a list of MachineDeployments that could potentially match a MachineSet.

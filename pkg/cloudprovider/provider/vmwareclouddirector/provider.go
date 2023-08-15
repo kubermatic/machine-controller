@@ -156,7 +156,7 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 	return spec, err
 }
 
-func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse config: %w", err)
@@ -209,7 +209,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	return vm, nil
 }
 
-func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
+func (p *provider) create(_ context.Context, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	c, providerConfig, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
@@ -287,7 +287,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return p.getInstance(vm)
 }
 
-func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
@@ -306,7 +306,7 @@ func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clust
 	return p.getInstance(vm)
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
@@ -474,7 +474,7 @@ func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *cluste
 	return nil
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 

@@ -67,7 +67,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
-
 	ccmapi "k8s.io/cloud-provider/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -245,7 +244,6 @@ func Add(
 			machinesList := &clusterv1alpha1.MachineList{}
 			if err := mgr.GetClient().List(ctx, machinesList); err != nil {
 				utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %w", err))
-				return
 			}
 
 			var ownerUIDString string
@@ -264,7 +262,7 @@ func Add(
 								Name:      machine.Name}})
 					}
 				}
-				return
+				return result
 			}
 
 			for _, machine := range machinesList.Items {
@@ -276,7 +274,7 @@ func Add(
 					}}}
 				}
 			}
-			return
+			return result
 		}),
 		predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
 			oldNode := e.ObjectOld.(*corev1.Node)
@@ -363,7 +361,7 @@ func (r *Reconciler) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 
 func (r *Reconciler) createProviderInstance(ctx context.Context, log *zap.SugaredLogger, prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	// Ensure finalizer is there.
-	_, err := r.ensureDeleteFinalizerExists(log, machine)
+	_, err := r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %w", FinalizerDeleteInstance, err)
 	}
@@ -934,7 +932,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		return nil, fmt.Errorf("failed to get instance from provider: %w", err)
 	}
 	// Instance exists, so ensure finalizer does as well
-	machine, err = r.ensureDeleteFinalizerExists(log, machine)
+	machine, err = r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %w", FinalizerDeleteInstance, err)
 	}
@@ -1229,7 +1227,7 @@ func (r *Reconciler) ReadinessChecks(ctx context.Context) map[string]healthcheck
 	}
 }
 
-func (r *Reconciler) ensureDeleteFinalizerExists(log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
+func (r *Reconciler) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
 	finalizers := sets.NewString(machine.Finalizers...)
 	length := finalizers.Len()
 

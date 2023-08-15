@@ -20,8 +20,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/gophercloud/gophercloud/testhelper"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -31,6 +29,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

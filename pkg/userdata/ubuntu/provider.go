@@ -77,7 +77,7 @@ func (p Provider) UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (
 		return "", fmt.Errorf("error extracting cacert: %w", err)
 	}
 
-	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crEngine := req.ContainerRuntime.Engine()
 	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemUbuntu)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)
@@ -320,7 +320,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
