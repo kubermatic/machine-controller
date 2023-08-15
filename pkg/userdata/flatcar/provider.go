@@ -83,7 +83,7 @@ func (p Provider) UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (
 		flatcarConfig.DisableUpdateEngine = true
 	}
 
-	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crEngine := req.ContainerRuntime.Engine()
 	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemFlatcar)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)

@@ -32,7 +32,6 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	nutanixtypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix/types"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -93,7 +92,7 @@ func GetClientSet(config *Config) (*ClientSet, error) {
 	}, nil
 }
 
-func createVM(ctx context.Context, client *ClientSet, name string, conf Config, os providerconfigtypes.OperatingSystem, userdata string) (instance.Instance, error) {
+func createVM(ctx context.Context, client *ClientSet, name string, conf Config, userdata string) (instance.Instance, error) {
 	cluster, err := getClusterByName(ctx, client, conf.ClusterName)
 	if err != nil {
 		return nil, err

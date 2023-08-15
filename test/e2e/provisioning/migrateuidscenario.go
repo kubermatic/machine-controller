@@ -40,7 +40,7 @@ import (
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
+func verifyMigrateUID(_, manifestPath string, parameters []string, _ time.Duration) error {
 	log := zap.NewNop().Sugar()
 
 	// prepare the manifest

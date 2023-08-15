@@ -585,7 +585,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	userDataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
 
 	virtualMachine, err := p.newVirtualMachine(ctx, c, pc, machine, userDataSecretName, userdata,
-		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client), randomMacAddressGetter, sigClient)
+		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client), randomMacAddressGetter)
 	if err != nil {
 		return nil, fmt.Errorf("could not create a VirtualMachine manifest %w", err)
 	}
@@ -608,8 +608,8 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	return &kubeVirtServer{}, nil
 }
 
-func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
-	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter, macAddressGetter macAddressGetter, sigClient client.Client) (*kubevirtv1.VirtualMachine, error) {
+func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
+	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter, macAddressGetter macAddressGetter) (*kubevirtv1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up.
@@ -685,7 +685,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 						},
 						Resources: resourceRequirements,
 					},
-					Affinity:                      getAffinity(c, machineDeploymentLabelKey, labels[machineDeploymentLabelKey]),
+					Affinity:                      getAffinity(c),
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Volumes:                       getVMVolumes(c, dataVolumeName, userdataSecretName),
 					DNSPolicy:                     c.DNSPolicy,
@@ -738,7 +738,7 @@ func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
 	}, nil
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
@@ -873,7 +873,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 	return dataVolumeTemplates
 }
 
-func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
+func getAffinity(config *Config) *corev1.Affinity {
 	affinity := &corev1.Affinity{}
 
 	expressions := []corev1.NodeSelectorRequirement{

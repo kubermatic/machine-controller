@@ -47,8 +47,8 @@ func TxtFuncMap(log *zap.SugaredLogger) template.FuncMap {
 		return KubeletSystemdUnit(log, containerRuntime, kubeletVersion, cloudProvider, hostname, dnsIPs, external, ipFamily, pauseImage, initialTaints, extraKubeletFlags, disableSwap)
 	}
 
-	funcMap["kubeletConfiguration"] = func(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string, containerRuntime string) (string, error) {
-		return kubeletConfiguration(log, clusterDomain, clusterDNS, featureGates, kubeletConfigs, containerRuntime)
+	funcMap["kubeletConfiguration"] = func(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string) (string, error) {
+		return kubeletConfiguration(log, clusterDomain, clusterDNS, featureGates, kubeletConfigs)
 	}
 
 	funcMap["kubeletFlags"] = func(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {

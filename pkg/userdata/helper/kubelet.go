@@ -200,7 +200,7 @@ func KubeletSystemdUnit(log *zap.SugaredLogger, containerRuntime, kubeletVersion
 }
 
 // kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration.
-func kubeletConfiguration(log *zap.SugaredLogger, clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string, containerRuntime string) (string, error) {
+func kubeletConfiguration(log *zap.SugaredLogger, clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string) (string, error) {
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
 		clusterDNSstr = append(clusterDNSstr, ip.String())

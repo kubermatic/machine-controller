@@ -386,7 +386,7 @@ func (p *provider) AddDefaults(log *zap.SugaredLogger, spec clusterv1alpha1.Mach
 
 	if c.AvailabilityZone == "" {
 		log.Debug("Trying to default availability zone for machine...")
-		availabilityZones, err := getAvailabilityZones(computeClient, c)
+		availabilityZones, err := getAvailabilityZones(computeClient)
 		if err != nil {
 			return spec, osErrorToTerminalError(log, err, "failed to get availability zones")
 		}
@@ -1110,6 +1110,6 @@ func assignFloatingIPToInstance(instanceLog *zap.SugaredLogger, machineUpdater c
 	return nil
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
