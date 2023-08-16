@@ -50,7 +50,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	utilpointer "k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -839,7 +839,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
-					StorageClassName: utilpointer.String(config.StorageClassName),
+					StorageClassName: ptr.To(config.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
@@ -858,7 +858,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
-					StorageClassName: utilpointer.String(sd.StorageClassName),
+					StorageClassName: ptr.To(sd.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},

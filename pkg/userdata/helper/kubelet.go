@@ -31,7 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeletv1b1 "k8s.io/kubelet/config/v1beta1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	kyaml "sigs.k8s.io/yaml"
 )
 
@@ -216,10 +216,10 @@ func kubeletConfiguration(log *zap.SugaredLogger, clusterDomain string, clusterD
 				ClientCAFile: "/etc/kubernetes/pki/ca.crt",
 			},
 			Webhook: kubeletv1b1.KubeletWebhookAuthentication{
-				Enabled: pointer.Bool(true),
+				Enabled: ptr.To(true),
 			},
 			Anonymous: kubeletv1b1.KubeletAnonymousAuthentication{
-				Enabled: pointer.Bool(false),
+				Enabled: ptr.To(false),
 			},
 		},
 		Authorization: kubeletv1b1.KubeletAuthorization{
@@ -291,12 +291,12 @@ func kubeletConfiguration(log *zap.SugaredLogger, clusterDomain string, clusterD
 			// Instead of breaking the workflow, just print a warning and skip the configuration
 			log.Infow("Skipping invalid ContainerLogMaxSize value for Kubelet configuration", "value", containerLogMaxFiles)
 		} else {
-			cfg.ContainerLogMaxFiles = pointer.Int32(int32(maxFiles))
+			cfg.ContainerLogMaxFiles = ptr.To(int32(maxFiles))
 		}
 	}
 
 	if enabled, ok := featureGates["SeccompDefault"]; ok && enabled {
-		cfg.SeccompDefault = pointer.Bool(true)
+		cfg.SeccompDefault = ptr.To(true)
 	}
 
 	buf, err := kyaml.Marshal(cfg)

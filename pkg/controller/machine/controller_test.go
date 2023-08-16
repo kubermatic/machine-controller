@@ -197,7 +197,6 @@ func TestController_GetNode(t *testing.T) {
 			}
 			client := fakectrlruntimeclient.NewClientBuilder().
 				WithScheme(scheme.Scheme).
-				WithObjects(nodes...).
 				Build()
 
 			reconciler := Reconciler{client: client}
@@ -604,6 +603,7 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 
 			client := fakectrlruntimeclient.NewClientBuilder().
 				WithScheme(scheme.Scheme).
+				WithStatusSubresource().
 				WithObjects(objects...).
 				Build()
 

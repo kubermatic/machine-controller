@@ -68,7 +68,6 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	ccmapi "k8s.io/cloud-provider/api"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -232,50 +231,16 @@ func Add(
 	if err != nil {
 		return err
 	}
-	if err := c.Watch(&source.Kind{Type: &clusterv1alpha1.Machine{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}),
+		&handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	metrics.Workers.Set(float64(numWorkers))
 
 	return c.Watch(
-		&source.Kind{Type: &corev1.Node{}},
-		handler.EnqueueRequestsFromMapFunc(func(node client.Object) (result []reconcile.Request) {
-			machinesList := &clusterv1alpha1.MachineList{}
-			if err := mgr.GetClient().List(ctx, machinesList); err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %w", err))
-			}
-
-			var ownerUIDString string
-			var exists bool
-			if nodeLabels := node.GetLabels(); nodeLabels != nil {
-				ownerUIDString, exists = nodeLabels[NodeOwnerLabelName]
-			}
-			if !exists {
-				// We get triggered by node{Add,Update}, so enqeue machines if they
-				// have no nodeRef yet to make matching happen ASAP
-				for _, machine := range machinesList.Items {
-					if machine.Status.NodeRef == nil {
-						result = append(result, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Namespace: machine.Namespace,
-								Name:      machine.Name}})
-					}
-				}
-				return result
-			}
-
-			for _, machine := range machinesList.Items {
-				if string(machine.UID) == ownerUIDString {
-					log.Debugw("Processing node", "node", node.GetName(), "machine", ctrlruntimeclient.ObjectKeyFromObject(&machine))
-					return []reconcile.Request{{NamespacedName: types.NamespacedName{
-						Namespace: machine.Namespace,
-						Name:      machine.Name,
-					}}}
-				}
-			}
-			return result
-		}),
+		source.Kind(mgr.GetCache(), &corev1.Node{}),
+		enqueueRequestsForNodes(ctx, log, mgr),
 		predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
 			oldNode := e.ObjectOld.(*corev1.Node)
 			newNode := e.ObjectNew.(*corev1.Node)
@@ -299,6 +264,46 @@ func Add(
 			return true
 		}},
 	)
+}
+
+func enqueueRequestsForNodes(ctx context.Context, log *zap.SugaredLogger, mgr manager.Manager) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(func(_ context.Context, node ctrlruntimeclient.Object) []reconcile.Request {
+		var result []reconcile.Request
+		machinesList := &clusterv1alpha1.MachineList{}
+		if err := mgr.GetClient().List(ctx, machinesList); err != nil {
+			utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %w", err))
+		}
+
+		var ownerUIDString string
+		var exists bool
+		if nodeLabels := node.GetLabels(); nodeLabels != nil {
+			ownerUIDString, exists = nodeLabels[NodeOwnerLabelName]
+		}
+		if !exists {
+			// We get triggered by node{Add,Update}, so enqeue machines if they
+			// have no nodeRef yet to make matching happen ASAP
+			for _, machine := range machinesList.Items {
+				if machine.Status.NodeRef == nil {
+					result = append(result, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: machine.Namespace,
+							Name:      machine.Name}})
+				}
+			}
+			return result
+		}
+
+		for _, machine := range machinesList.Items {
+			if string(machine.UID) == ownerUIDString {
+				log.Debugw("Processing node", "node", node.GetName(), "machine", ctrlruntimeclient.ObjectKeyFromObject(&machine))
+				return []reconcile.Request{{NamespacedName: types.NamespacedName{
+					Namespace: machine.Namespace,
+					Name:      machine.Name,
+				}}}
+			}
+		}
+		return result
+	})
 }
 
 // clearMachineError is a convenience function to remove a error on the machine if its set.

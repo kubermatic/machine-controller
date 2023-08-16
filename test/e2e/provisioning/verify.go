@@ -151,8 +151,8 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	// needs longer to validate a MachineDeployment than the kube-apiserver is willing to wait.
 	// In real world scenarios this is not that critical, but for tests we need to pay closer
 	// attention and retry the creation a few times.
-	err = wait.PollImmediate(3*time.Second, 180*time.Second, func() (bool, error) {
-		err := client.Create(context.Background(), machineDeployment)
+	err = wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 180*time.Second, false, func(ctx context.Context) (bool, error) {
+		err := client.Create(ctx, machineDeployment)
 		if err != nil {
 			klog.Warningf("Creation of %q failed, retrying: %v", machineDeployment.Name, err)
 			return false, nil
@@ -167,7 +167,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	klog.Infof("MachineDeployment %q created", machineDeployment.Name)
 
 	var pollErr error
-	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
+	err = wait.PollUntilContextTimeout(context.Background(), machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		pollErr = assureNodeForMachineDeployment(machineDeployment, client, true)
 		if pollErr == nil {
 			return true, nil
@@ -180,7 +180,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	klog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 
 	klog.Infof("Waiting for node of MachineDeployment %s to become ready", machineDeployment.Name)
-	err = wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
+	err = wait.PollUntilContextTimeout(context.Background(), machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		machines, pollErr := getMatchingMachines(machineDeployment, client)
 		if pollErr != nil || len(machines) < 1 {
 			return false, nil
@@ -241,7 +241,7 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	}
 
 	// Ensure machines are gone
-	if err := wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		ownedMachines, err := getMatchingMachines(machineDeployment, client)
 		if err != nil {
 			return false, err
@@ -258,7 +258,7 @@ func deleteAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	if err := client.Delete(context.Background(), machineDeployment); err != nil {
 		return fmt.Errorf("failed to remove MachineDeployment %s, due to %w", machineDeployment.Name, err)
 	}
-	return wait.Poll(machineReadyCheckPeriod, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(context.Background(), machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		err := client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
 		if kerrors.IsNotFound(err) {
 			return true, nil

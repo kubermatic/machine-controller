@@ -36,7 +36,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 type Config struct {
@@ -143,7 +143,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.Port = pointer.Int(portInt)
+		c.Port = ptr.To(portInt)
 	}
 
 	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "NUTANIX_USERNAME")

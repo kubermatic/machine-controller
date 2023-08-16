@@ -50,7 +50,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 
 	klog.Infof("Waiting for second MachineSet to appear after updating MachineDeployment %s", machineDeployment.Name)
 	var machineSets []clusterv1alpha1.MachineSet
-	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
 		machineSets, err = getMatchingMachineSets(machineDeployment, client)
 		if err != nil {
 			return false, err
@@ -79,7 +79,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 		oldMachineSet = machineSets[1]
 	}
 	var machines []clusterv1alpha1.Machine
-	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
 		machines, err = getMatchingMachinesForMachineset(&newestMachineSet, client)
 		if err != nil {
 			return false, err
@@ -94,7 +94,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	klog.Infof("New MachineSet %s appeared with %v machines", newestMachineSet.Name, len(machines))
 
 	klog.Infof("Waiting for new MachineSet %s to get a ready node", newestMachineSet.Name)
-	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
 		return hasMachineReadyNode(&machines[0], client)
 	}); err != nil {
 		return err
@@ -103,7 +103,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 
 	klog.Infof("Waiting for old MachineSet %s to be scaled down and have no associated machines",
 		oldMachineSet.Name)
-	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
 		machineSet := &clusterv1alpha1.MachineSet{}
 		if err := client.Get(context.Background(), types.NamespacedName{Namespace: oldMachineSet.Namespace, Name: oldMachineSet.Name}, machineSet); err != nil {
 			return false, err
@@ -130,7 +130,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	klog.Infof("Successfully set replicas of MachineDeployment %s to 0", machineDeployment.Name)
 
 	klog.Infof("Waiting for MachineDeployment %s to not have any associated machines", machineDeployment.Name)
-	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
 		machines, err := getMatchingMachines(machineDeployment, client)
 		return len(machines) == 0, err
 	}); err != nil {
@@ -142,8 +142,8 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	if err := client.Delete(context.Background(), machineDeployment); err != nil {
 		return fmt.Errorf("failed to delete MachineDeployment %s: %w", machineDeployment.Name, err)
 	}
-	if err := wait.Poll(5*time.Second, timeout, func() (bool, error) {
-		err := client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
+	if err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
+		err = client.Get(context.Background(), types.NamespacedName{Namespace: machineDeployment.Namespace, Name: machineDeployment.Name}, &clusterv1alpha1.MachineDeployment{})
 		if kerrors.IsNotFound(err) {
 			return true, nil
 		}

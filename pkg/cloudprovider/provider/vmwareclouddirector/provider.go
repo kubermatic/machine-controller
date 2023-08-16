@@ -37,7 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -147,10 +147,10 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 
 	// These defaults will have no effect if DiskSizeGB is not specified
 	if rawConfig.DiskBusType == nil {
-		rawConfig.DiskBusType = pointer.String(defaultDiskType)
+		rawConfig.DiskBusType = ptr.To(defaultDiskType)
 	}
 	if rawConfig.DiskIOPS == nil {
-		rawConfig.DiskIOPS = pointer.Int64(defaultDiskIOPS)
+		rawConfig.DiskIOPS = ptr.To(int64(defaultDiskIOPS))
 	}
 	spec.ProviderSpec.Value, err = setProviderSpec(*rawConfig, spec.ProviderSpec)
 	return spec, err

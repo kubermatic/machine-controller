@@ -64,7 +64,7 @@ func (nm *NodeManager) CordonNode(ctx context.Context, node *corev1.Node) error 
 	// that is not the case, there is a small chance the scheduler schedules
 	// pods in between, those will then get deleted upon node deletion and
 	// not evicted
-	return wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, 1*time.Second, 10*time.Second, false, func(ctx context.Context) (bool, error) {
 		node := &corev1.Node{}
 		if err := nm.client.Get(ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
 			return false, err

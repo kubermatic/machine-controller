@@ -690,7 +690,7 @@ func waitForPort(instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceC
 	started := time.Now()
 	instanceLog.Info("Waiting for the port to become active...")
 
-	portIsReady := func() (bool, error) {
+	portIsReady := func(c context.Context) (bool, error) {
 		port, err := getInstancePort(netClient, serverID, networkID)
 		if err != nil {
 			tErr := osErrorToTerminalError(instanceLog, err, fmt.Sprintf("failed to get current instance port %s", serverID))
@@ -705,8 +705,8 @@ func waitForPort(instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceC
 		return port.Status == "ACTIVE", nil
 	}
 
-	if err := wait.Poll(checkPeriod, checkTimeout, portIsReady); err != nil {
-		if errors.Is(err, wait.ErrWaitTimeout) {
+	if err := wait.PollUntilContextTimeout(context.Background(), checkPeriod, checkTimeout, false, portIsReady); err != nil {
+		if wait.Interrupted(err) {
 			// In case we have a timeout, include the timeout details
 			return fmt.Errorf("instance port became not active after %f seconds", checkTimeout.Seconds())
 		}
