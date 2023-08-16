@@ -29,5 +29,6 @@ var (
 		semver.MustParse("v1.25.12"),
 		semver.MustParse("v1.26.7"),
 		semver.MustParse("v1.27.4"),
+		semver.MustParse("v1.28.0"),
 	}
 )
