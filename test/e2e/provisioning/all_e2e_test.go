@@ -233,7 +233,7 @@ C8QmzsMaZhk+mVFr1sGy
 
 	// wait for deployments to roll out
 	for _, deployment := range deployments {
-		if err := wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 30*time.Second, false, func(ctx context.Context) (bool, error) {
+		if err := wait.PollUntilContextTimeout(ctx, 3*time.Second, 30*time.Second, false, func(ctx context.Context) (bool, error) {
 			d := &appsv1.Deployment{}
 			key := types.NamespacedName{Namespace: ns, Name: deployment}
 

@@ -282,7 +282,7 @@ func TestCreateServer(t *testing.T) {
 					return pc.ProviderClient, nil
 				},
 				// mock server readiness checker
-				portReadinessWaiter: func(*zap.SugaredLogger, *gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
+				portReadinessWaiter: func(context.Context, *zap.SugaredLogger, *gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
 					return nil
 				},
 			}

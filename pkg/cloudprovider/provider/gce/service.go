@@ -55,11 +55,11 @@ type service struct {
 }
 
 // connectComputeService establishes a service connection to the Compute Engine.
-func connectComputeService(cfg *config) (*service, error) {
+func connectComputeService(ctx context.Context, cfg *config) (*service, error) {
 	if cfg.clientConfig != nil &&
 		cfg.clientConfig.TokenSource != nil {
-		client := oauth2.NewClient(context.Background(), cfg.clientConfig.TokenSource)
-		svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
+		client := oauth2.NewClient(ctx, cfg.clientConfig.TokenSource)
+		svc, err := compute.NewService(ctx, option.WithHTTPClient(client))
 		if err != nil {
 			return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
 		}
@@ -139,18 +139,18 @@ func (svc *service) attachedDisks(cfg *config) ([]*compute.AttachedDisk, error) 
 }
 
 // waitZoneOperation waits for a GCE operation in a zone to be completed or timed out.
-func (svc *service) waitZoneOperation(cfg *config, opName string) error {
-	return svc.waitOperation(func() (*compute.Operation, error) {
+func (svc *service) waitZoneOperation(ctx context.Context, cfg *config, opName string) error {
+	return svc.waitOperation(ctx, func() (*compute.Operation, error) {
 		return svc.ZoneOperations.Get(cfg.projectID, cfg.zone, opName).Do()
 	})
 }
 
 // waitOperation waits for a GCE operation to be completed or timed out.
-func (svc *service) waitOperation(refreshOperation func() (*compute.Operation, error)) error {
+func (svc *service) waitOperation(ctx context.Context, refreshOperation func() (*compute.Operation, error)) error {
 	var op *compute.Operation
 	var err error
 
-	return wait.PollUntilContextTimeout(context.TODO(), pollInterval, pollTimeout, false, func(ctx context.Context) (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, pollInterval, pollTimeout, false, func(ctx context.Context) (bool, error) {
 		op, err = refreshOperation()
 		if err != nil {
 			return false, err

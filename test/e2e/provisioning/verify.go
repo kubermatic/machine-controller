@@ -61,7 +61,9 @@ func verifyCreateAndDelete(kubeConfig, manifestPath string, parameters []string,
 		return err
 	}
 
-	machineDeployment, err = createAndAssure(machineDeployment, client, timeout)
+	ctx := context.Background()
+
+	machineDeployment, err = createAndAssure(ctx, machineDeployment, client, timeout)
 	if err != nil {
 		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %w", err)
 	}
@@ -138,7 +140,7 @@ func prepare(kubeConfig, manifestPath string, parameters []string) (ctrlruntimec
 	return client, manifest, nil
 }
 
-func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client, timeout time.Duration) (*clusterv1alpha1.MachineDeployment, error) {
+func createAndAssure(ctx context.Context, machineDeployment *clusterv1alpha1.MachineDeployment, client ctrlruntimeclient.Client, timeout time.Duration) (*clusterv1alpha1.MachineDeployment, error) {
 	// we expect that no node for machine exists in the cluster
 	err := assureNodeForMachineDeployment(machineDeployment, client, false)
 	if err != nil {
@@ -151,7 +153,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	// needs longer to validate a MachineDeployment than the kube-apiserver is willing to wait.
 	// In real world scenarios this is not that critical, but for tests we need to pay closer
 	// attention and retry the creation a few times.
-	err = wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 180*time.Second, false, func(ctx context.Context) (bool, error) {
+	err = wait.PollUntilContextTimeout(ctx, 3*time.Second, 180*time.Second, false, func(ctx context.Context) (bool, error) {
 		err := client.Create(ctx, machineDeployment)
 		if err != nil {
 			klog.Warningf("Creation of %q failed, retrying: %v", machineDeployment.Name, err)
@@ -167,7 +169,7 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	klog.Infof("MachineDeployment %q created", machineDeployment.Name)
 
 	var pollErr error
-	err = wait.PollUntilContextTimeout(context.Background(), machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
+	err = wait.PollUntilContextTimeout(ctx, machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		pollErr = assureNodeForMachineDeployment(machineDeployment, client, true)
 		if pollErr == nil {
 			return true, nil
@@ -180,13 +182,13 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	klog.Infof("Found a node for MachineDeployment %s", machineDeployment.Name)
 
 	klog.Infof("Waiting for node of MachineDeployment %s to become ready", machineDeployment.Name)
-	err = wait.PollUntilContextTimeout(context.Background(), machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
+	err = wait.PollUntilContextTimeout(ctx, machineReadyCheckPeriod, timeout, false, func(ctx context.Context) (bool, error) {
 		machines, pollErr := getMatchingMachines(machineDeployment, client)
 		if pollErr != nil || len(machines) < 1 {
 			return false, nil
 		}
 		for _, machine := range machines {
-			hasReadyNode, pollErr := hasMachineReadyNode(&machine, client)
+			hasReadyNode, pollErr := hasMachineReadyNode(ctx, &machine, client)
 			if err != nil {
 				return false, pollErr
 			}
@@ -202,9 +204,9 @@ func createAndAssure(machineDeployment *clusterv1alpha1.MachineDeployment, clien
 	return machineDeployment, nil
 }
 
-func hasMachineReadyNode(machine *clusterv1alpha1.Machine, client ctrlruntimeclient.Client) (bool, error) {
+func hasMachineReadyNode(ctx context.Context, machine *clusterv1alpha1.Machine, client ctrlruntimeclient.Client) (bool, error) {
 	nodes := &corev1.NodeList{}
-	if err := client.List(context.Background(), nodes); err != nil {
+	if err := client.List(ctx, nodes); err != nil {
 		return false, fmt.Errorf("failed to list nodes: %w", err)
 	}
 	for _, node := range nodes.Items {
