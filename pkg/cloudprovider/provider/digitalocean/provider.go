@@ -327,7 +327,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	dropletLog := log.With("droplet", droplet.ID)
 
 	//We need to wait until the droplet really got created as tags will be only applied when the droplet is running
-	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(ctx, createCheckPeriod, createCheckTimeout, false, func(ctx context.Context) (bool, error) {
 		newDroplet, rsp, err := client.Droplets.Get(ctx, droplet.ID)
 		if err != nil {
 			tErr := doStatusAndErrToTerminalError(rsp.StatusCode, err)

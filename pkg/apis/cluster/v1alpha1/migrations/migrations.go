@@ -156,8 +156,8 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 
 	crdLog := log.With("crd", machines.CRDName)
 
-	err := wait.Poll(cachePopulatingInterval, cachePopulatingTimeout, func() (done bool, err error) {
-		err = client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1.CustomResourceDefinition{})
+	err := wait.PollUntilContextTimeout(ctx, cachePopulatingInterval, cachePopulatingTimeout, false, func(ctx context.Context) (bool, error) {
+		err := client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1.CustomResourceDefinition{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				noMigrationNeed = true
@@ -388,7 +388,7 @@ func deleteMachinesV1Alpha1Machine(ctx context.Context,
 		return fmt.Errorf("failed to delete machine %s: %w", machine.Name, err)
 	}
 
-	if err := wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 60*time.Second, false, func(ctx context.Context) (bool, error) {
 		return isMachinesV1Alpha1MachineDeleted(ctx, machine.Name, client)
 	}); err != nil {
 		return fmt.Errorf("failed to wait for machine %s to be deleted: %w", machine.Name, err)

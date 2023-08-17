@@ -26,7 +26,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/ini"
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
 
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var update = flag.Bool("update", false, "update testdata files")
@@ -78,7 +78,7 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
-					UseOctavia:           pointer.Bool(true),
+					UseOctavia:           ptr.To(true),
 				},
 				Version: "1.10.0",
 			},
@@ -102,7 +102,7 @@ func TestCloudConfigToString(t *testing.T) {
 				},
 				LoadBalancer: LoadBalancerOpts{
 					ManageSecurityGroups: true,
-					UseOctavia:           pointer.Bool(false),
+					UseOctavia:           ptr.To(false),
 				},
 				Version: "1.10.0",
 			},

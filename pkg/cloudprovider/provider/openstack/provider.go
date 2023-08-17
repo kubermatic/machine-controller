@@ -64,7 +64,7 @@ const (
 type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 
 // portReadinessWaiterFunc waits for the port with the given ID to be available.
-type portReadinessWaiterFunc func(instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceClient, serverID string, networkID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
+type portReadinessWaiterFunc func(ctx context.Context, instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceClient, serverID string, networkID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
 
 type provider struct {
 	configVarResolver   *providerconfig.ConfigVarResolver
@@ -556,7 +556,7 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 	return nil
 }
 
-func (p *provider) Create(_ context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	cfg, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -672,7 +672,7 @@ func (p *provider) Create(_ context.Context, log *zap.SugaredLogger, machine *cl
 	if cfg.FloatingIPPool != "" {
 		instanceLog := log.With("instance", server.ID)
 
-		if err := p.portReadinessWaiter(instanceLog, netClient, server.ID, network.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
+		if err := p.portReadinessWaiter(ctx, instanceLog, netClient, server.ID, network.ID, cfg.InstanceReadyCheckPeriod, cfg.InstanceReadyCheckTimeout); err != nil {
 			instanceLog.Infow("Port for instance did not became active", zap.Error(err))
 		}
 
@@ -686,11 +686,11 @@ func (p *provider) Create(_ context.Context, log *zap.SugaredLogger, machine *cl
 	return &osInstance{server: &server}, nil
 }
 
-func waitForPort(instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceClient, serverID string, networkID string, checkPeriod time.Duration, checkTimeout time.Duration) error {
+func waitForPort(ctx context.Context, instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceClient, serverID string, networkID string, checkPeriod time.Duration, checkTimeout time.Duration) error {
 	started := time.Now()
 	instanceLog.Info("Waiting for the port to become active...")
 
-	portIsReady := func() (bool, error) {
+	portIsReady := func(c context.Context) (bool, error) {
 		port, err := getInstancePort(netClient, serverID, networkID)
 		if err != nil {
 			tErr := osErrorToTerminalError(instanceLog, err, fmt.Sprintf("failed to get current instance port %s", serverID))
@@ -705,8 +705,8 @@ func waitForPort(instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceC
 		return port.Status == "ACTIVE", nil
 	}
 
-	if err := wait.Poll(checkPeriod, checkTimeout, portIsReady); err != nil {
-		if errors.Is(err, wait.ErrWaitTimeout) {
+	if err := wait.PollUntilContextTimeout(ctx, checkPeriod, checkTimeout, false, portIsReady); err != nil {
+		if wait.Interrupted(err) {
 			// In case we have a timeout, include the timeout details
 			return fmt.Errorf("instance port became not active after %f seconds", checkTimeout.Seconds())
 		}

@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	ctrlruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -71,7 +72,7 @@ func newReconciler(mgr manager.Manager, log *zap.SugaredLogger) *ReconcileMachin
 // Add creates a new MachineDeployment Controller and adds it to the Manager with default RBAC.
 func Add(mgr manager.Manager, log *zap.SugaredLogger) error {
 	r := newReconciler(mgr, log)
-	return add(mgr, r, r.MachineSetToDeployments)
+	return add(mgr, r, r.MachineSetToDeployments())
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler.
@@ -89,8 +90,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	}
 
 	// Watch for changes to MachineDeployment.
-	err = c.Watch(&source.Kind{
-		Type: &v1alpha1.MachineDeployment{}},
+	err = c.Watch(source.Kind(mgr.GetCache(), &v1alpha1.MachineDeployment{}),
 		&handler.EnqueueRequestForObject{},
 	)
 	if err != nil {
@@ -99,8 +99,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 
 	// Watch for changes to MachineSet and reconcile the owner MachineDeployment.
 	err = c.Watch(
-		&source.Kind{Type: &v1alpha1.MachineSet{}},
-		&handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.MachineDeployment{}, IsController: true},
+		source.Kind(mgr.GetCache(), &v1alpha1.MachineSet{}),
+		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &v1alpha1.MachineDeployment{}, handler.OnlyControllerOwner()),
 	)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	// This watcher is required for use cases like adoption. In case a MachineSet doesn't have
 	// a controller reference, it'll look for potential matching MachineDeployments to reconcile.
 	err = c.Watch(
-		&source.Kind{Type: &v1alpha1.MachineSet{}},
+		source.Kind(mgr.GetCache(), &v1alpha1.MachineSet{}),
 		handler.EnqueueRequestsFromMapFunc(mapFn),
 	)
 	if err != nil {
@@ -302,39 +302,40 @@ func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ctx cont
 
 // MachineSetTodeployments is a handler.MapFunc to be used to enqeue requests for reconciliation
 // for MachineDeployments that might adopt an orphaned MachineSet.
-func (r *ReconcileMachineDeployment) MachineSetToDeployments(o client.Object) []reconcile.Request {
-	result := []reconcile.Request{}
-	ctx := context.Background()
+func (r *ReconcileMachineDeployment) MachineSetToDeployments() handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []ctrlruntime.Request {
+		result := []reconcile.Request{}
 
-	ms := &v1alpha1.MachineSet{}
-	key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
-	if err := r.Client.Get(ctx, key, ms); err != nil {
-		if !apierrors.IsNotFound(err) {
-			r.log.Errorw("Failed to retrieve MachineSet for possible MachineDeployment adoption", "machineset", key, zap.Error(err))
+		ms := &v1alpha1.MachineSet{}
+		key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
+		if err := r.Client.Get(ctx, key, ms); err != nil {
+			if !apierrors.IsNotFound(err) {
+				r.log.Errorw("Failed to retrieve MachineSet for possible MachineDeployment adoption", "machineset", key, zap.Error(err))
+			}
+			return nil
 		}
-		return nil
-	}
 
-	// Check if the controller reference is already set and
-	// return an empty result when one is found.
-	for _, ref := range ms.ObjectMeta.OwnerReferences {
-		if ref.Controller != nil && *ref.Controller {
-			return result
+		// Check if the controller reference is already set and
+		// return an empty result when one is found.
+		for _, ref := range ms.ObjectMeta.OwnerReferences {
+			if ref.Controller != nil && *ref.Controller {
+				return result
+			}
 		}
-	}
 
-	mds := r.getMachineDeploymentsForMachineSet(ctx, r.log.With("machineset", key), ms)
-	if len(mds) == 0 {
-		r.log.Debugw("Found no MachineDeployments for MachineSet", "machineset", key)
-		return nil
-	}
+		mds := r.getMachineDeploymentsForMachineSet(ctx, r.log.With("machineset", key), ms)
+		if len(mds) == 0 {
+			r.log.Debugw("Found no MachineDeployments for MachineSet", "machineset", key)
+			return nil
+		}
 
-	for _, md := range mds {
-		name := client.ObjectKey{Namespace: md.Namespace, Name: md.Name}
-		result = append(result, reconcile.Request{NamespacedName: name})
-	}
+		for _, md := range mds {
+			name := client.ObjectKey{Namespace: md.Namespace, Name: md.Name}
+			result = append(result, reconcile.Request{NamespacedName: name})
+		}
 
-	return result
+		return result
+	}
 }
 
 func contains(list []string, strToSearch string) bool {
