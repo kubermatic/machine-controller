@@ -43,9 +43,22 @@ spec:
                 namespace: kube-system
                 name: machine-controller-vultr
                 key: apiKey
+            # Default is false meaning a virtual machine instance is created
+            # If true, a bare metal instance is created
+            physicalMachine: false
             region: blr
             plan: "vhf-8c-32gb"
+            # This takes precedence over enableVPC
+            vpcId:
+            - <VPC_IDS>
+            # For more reference, see
+            # https://www.vultr.com/api/#tag/instances/operation/create-instance
+            enableVPC: false
+            enableVPC2: true
+            vpc2Id:
+            - <VPC_IDS>
             # Required: app_id, image_id, os_id, snapshot_id, or iso_id must be provided. Currently only os_id is supported.
+            # This takes precedence over operatingSystem
             osId: 215
             # Optional
             tags:

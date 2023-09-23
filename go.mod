@@ -43,7 +43,7 @@ require (
 	github.com/tinkerbell/tink v0.8.0
 	github.com/vmware/go-vcloud-director/v2 v2.21.0
 	github.com/vmware/govmomi v0.30.7
-	github.com/vultr/govultr/v2 v2.17.2
+	github.com/vultr/govultr/v3 v3.3.1
 	go.anx.io/go-anxcloud v0.5.3
 	go.uber.org/zap v1.25.0
 	golang.org/x/crypto v0.12.0
