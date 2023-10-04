@@ -84,7 +84,7 @@ const (
 )
 
 const (
-	defaultKubernetesVersion = "1.25.9"
+	defaultKubernetesVersion = "1.27.6"
 	defaultContainerRuntime  = "containerd"
 )
 

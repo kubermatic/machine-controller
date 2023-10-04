@@ -1,4 +1,6 @@
 #cloud-config
+bootcmd:
+- modprobe ip_tables
 
 
 ssh_pwauth: false
@@ -65,13 +67,6 @@ write_files:
     systemctl restart systemd-modules-load.service
     sysctl --system
 
-
-    source /etc/os-release
-    if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
-      sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
-      sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-    fi
-
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
@@ -83,6 +78,7 @@ write_files:
       socat \
       wget \
       curl \
+      tar \
       ipvsadm
 
     yum install -y yum-utils
@@ -105,7 +101,6 @@ write_files:
 
     systemctl daemon-reload
     systemctl enable --now containerd
-
 
     opt_bin=/opt/bin
     usr_local_bin=/usr/local/bin
@@ -149,7 +144,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.25.0}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.28.0}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -172,6 +167,18 @@ write_files:
         curl -Lfo /opt/bin/health-monitor.sh https://raw.githubusercontent.com/kubermatic/machine-controller/7967a0af2b75f29ad2ab227eeaa26ea7b0f2fbde/pkg/userdata/scripts/health-monitor.sh
         chmod +x /opt/bin/health-monitor.sh
     fi
+
+    DEFAULT_IFC_NAME=$(ip -o route get 1  | grep -oP "dev \K\S+")
+    IFC_CFG_FILE=/etc/sysconfig/network-scripts/ifcfg-$DEFAULT_IFC_NAME
+    # Enable IPv6 and DHCPv6 on the default interface
+    grep IPV6INIT $IFC_CFG_FILE && sed -i '/IPV6INIT*/c IPV6INIT=yes' $IFC_CFG_FILE || echo "IPV6INIT=yes" >> $IFC_CFG_FILE
+    grep DHCPV6C $IFC_CFG_FILE && sed -i '/DHCPV6C*/c DHCPV6C=yes' $IFC_CFG_FILE || echo "DHCPV6C=yes" >> $IFC_CFG_FILE
+    grep IPV6_AUTOCONF $IFC_CFG_FILE && sed -i '/IPV6_AUTOCONF*/c IPV6_AUTOCONF=yes' $IFC_CFG_FILE || echo "IPV6_AUTOCONF=yes" >> $IFC_CFG_FILE
+
+    # Restart NetworkManager to apply for IPv6 configs
+    systemctl restart NetworkManager
+    # Let NetworkManager apply the DHCPv6 configs
+    sleep 3
 
     # set kubelet nodeip environment variable
     mkdir -p /etc/systemd/system/kubelet.service.d/

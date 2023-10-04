@@ -169,11 +169,11 @@ func TestUserDataGeneration(t *testing.T) {
 			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
-			name: "kubelet-v1.25-aws",
+			name: "kubelet-v1.28-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.25.0",
+					Kubelet: "1.28.0",
 				},
 			},
 		},

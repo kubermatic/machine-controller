@@ -78,7 +78,8 @@ presubmits:
               memory: 7Gi
 
   - name: pull-machine-controller-e2e-ubuntu-upgrade
-    always_run: true
+    # In-tree CCM is not supported for openstack starting from k8s 1.26. Please see https://github.com/kubermatic/machine-controller/issues/1626 for updates.
+    # run_if_changed: "(pkg/cloudprovider/provider/openstack/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
