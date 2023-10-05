@@ -84,8 +84,9 @@ const (
 )
 
 const (
-	defaultKubernetesVersion = "1.25.9"
-	defaultContainerRuntime  = "containerd"
+	defaultKubernetesVersion    = "1.27.6"
+	awsDefaultKubernetesVersion = "1.26.9"
+	defaultContainerRuntime     = "containerd"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -574,7 +575,7 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 		name:              "AWS with ebs encryption enabled",
 		osName:            "ubuntu",
 		containerRuntime:  defaultContainerRuntime,
-		kubernetesVersion: defaultKubernetesVersion,
+		kubernetesVersion: awsDefaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
