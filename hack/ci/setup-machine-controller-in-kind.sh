@@ -23,7 +23,17 @@ fi
 
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
 export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
-OSM_TAG="v1.2.2"
+OSM_IMAGE_TAG="v1.2.3"
+
+# cert-manager is required by OSM for generating TLS Certificates
+echodate "Installing cert-manager"
+(
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.2/cert-manager.yaml
+  # Wait for cert-manager to be ready
+  kubectl -n cert-manager rollout status deploy/cert-manager
+  kubectl -n cert-manager rollout status deploy/cert-manager-cainjector
+  kubectl -n cert-manager rollout status deploy/cert-manager-webhook
+)
 
 # Build the Docker image for machine-controller
 beforeDockerBuild=$(nowms)
@@ -53,25 +63,19 @@ if [ ! -f machine-controller-deployed ]; then
     sed -i "s;-use-osm=true;-use-osm=false;g" examples/machine-controller.yaml
   fi
 
-  make deploy
+  # e2e tests logs are primarily read by humans, if ever
+  sed -i 's/log-format=json/log-format=console/g' examples/machine-controller.yaml
+
+  kubectl apply -f examples/machine-controller.yaml
   touch machine-controller-deployed
 fi
 
 if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
-  # cert-manager is required by OSM for generating TLS Certificates
-  echodate "Installing cert-manager"
   (
-    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
-    # Wait for cert-manager to be ready
-    kubectl -n cert-manager rollout status deploy/cert-manager
-    kubectl -n cert-manager rollout status deploy/cert-manager-cainjector
-    kubectl -n cert-manager rollout status deploy/cert-manager-webhook
-  )
+    echodate "Installing operating-system-manager with tag: $OSM_IMAGE_TAG"
 
-  echodate "Installing operating-system-manager"
-  (
     # In release branches we'll have this pinned to a specific semver instead of latest.
-    sed -i "s;:latest;:$OSM_TAG;g" examples/operating-system-manager.yaml
+    sed -i "s;:latest;:$OSM_IMAGE_TAG;g" examples/operating-system-manager.yaml
 
     # This is required for running e2e tests in KIND
     url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
