@@ -23,7 +23,6 @@ fi
 
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
 export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
-OSM_TAG="v1.1.3"
 
 # Build the Docker image for machine-controller
 beforeDockerBuild=$(nowms)
@@ -70,9 +69,6 @@ if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
 
   echodate "Installing operating-system-manager"
   (
-    # In release branches we'll have this pinned to a specific semver instead of latest.
-    sed -i "s;:latest;:$OSM_TAG;g" examples/operating-system-manager.yaml
-
     # This is required for running e2e tests in KIND
     url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
     sed -i "s;-container-runtime=containerd;$url;g" examples/operating-system-manager.yaml
