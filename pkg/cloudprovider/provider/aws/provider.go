@@ -181,9 +181,7 @@ var (
 		providerconfigtypes.OperatingSystemFlatcar: {
 			awstypes.CPUArchitectureX86_64: {
 				// Be as precise as possible - otherwise we might get a nightly dev build
-				// Pin flatcar to 3510.2.8 since the latest version 3602.2.0 is broken. Reference: https://github.com/kubermatic/kubermatic/issues/12690
-				// TODO: Remove this pinning once the issue is fixed.
-				description: "Flatcar Container Linux stable 3510.2.8 *",
+				description: "Flatcar Container Linux stable *",
 				// The AWS marketplace ID from AWS
 				owner: "075585003325",
 			},
