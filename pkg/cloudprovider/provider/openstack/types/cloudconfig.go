@@ -57,6 +57,9 @@ use-octavia = {{ .LoadBalancer.UseOctavia | boolPtr }}
 {{- if .LoadBalancer.EnableIngressHostname }}
 enable-ingress-hostname = {{ .LoadBalancer.EnableIngressHostname }}
 {{- end }}
+{{- if .LoadBalancer.MaxSharedLB }}
+max-shared-lb = {{ .LoadBalancer.MaxSharedLB }}
+{{- end }}
 
 {{- if .LoadBalancer.CreateMonitor }}
 create-monitor = {{ .LoadBalancer.CreateMonitor }}
@@ -94,6 +97,7 @@ type LoadBalancerOpts struct {
 	UseOctavia           *bool        `gcfg:"use-octavia"`
 
 	EnableIngressHostname bool `gcfg:"enable-ingress-hostname"`
+	MaxSharedLB           int  `gcfg:"max-shared-lb"`
 }
 
 type BlockStorageOpts struct {
