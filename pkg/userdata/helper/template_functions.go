@@ -17,27 +17,53 @@ limitations under the License.
 package helper
 
 import (
+	"net"
 	"regexp"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"go.uber.org/zap"
+
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 // TxtFuncMap returns an aggregated template function map. Currently (custom functions + sprig).
-func TxtFuncMap() template.FuncMap {
+func TxtFuncMap(log *zap.SugaredLogger) template.FuncMap {
 	funcMap := sprig.TxtFuncMap()
 
-	funcMap["downloadBinariesScript"] = DownloadBinariesScript
-	funcMap["safeDownloadBinariesScript"] = SafeDownloadBinariesScript
-	funcMap["kubeletSystemdUnit"] = KubeletSystemdUnit
-	funcMap["kubeletConfiguration"] = kubeletConfiguration
-	funcMap["kubeletFlags"] = KubeletFlags
+	// use inline wrappers to inject the logger without forcing the templates to keep track of it
+
+	funcMap["downloadBinariesScript"] = func(kubeletVersion string, downloadKubelet bool) (string, error) {
+		return DownloadBinariesScript(log, kubeletVersion, downloadKubelet)
+	}
+
+	funcMap["safeDownloadBinariesScript"] = func(kubeVersion string) (string, error) {
+		return SafeDownloadBinariesScript(log, kubeVersion)
+	}
+
+	funcMap["kubeletSystemdUnit"] = func(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
+		return KubeletSystemdUnit(log, containerRuntime, kubeletVersion, cloudProvider, hostname, dnsIPs, external, ipFamily, pauseImage, initialTaints, extraKubeletFlags, disableSwap)
+	}
+
+	funcMap["kubeletConfiguration"] = func(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string, containerRuntime string) (string, error) {
+		return kubeletConfiguration(log, clusterDomain, clusterDNS, featureGates, kubeletConfigs, containerRuntime)
+	}
+
+	funcMap["kubeletFlags"] = func(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+		return KubeletFlags(log, version, cloudProvider, hostname, dnsIPs, external, ipFamily, pauseImage, initialTaints, extraKubeletFlags)
+	}
+
+	funcMap["containerRuntimeHealthCheckSystemdUnit"] = func(containerRuntime string) (string, error) {
+		return ContainerRuntimeHealthCheckSystemdUnit(log, containerRuntime)
+	}
+
 	funcMap["cloudProviderFlags"] = CloudProviderFlags
 	funcMap["kernelModulesScript"] = LoadKernelModulesScript
 	funcMap["kernelSettings"] = KernelSettings
 	funcMap["journalDConfig"] = JournalDConfig
 	funcMap["kubeletHealthCheckSystemdUnit"] = KubeletHealthCheckSystemdUnit
-	funcMap["containerRuntimeHealthCheckSystemdUnit"] = ContainerRuntimeHealthCheckSystemdUnit
 	funcMap["dockerConfig"] = DockerConfig
 	funcMap["proxyEnvironment"] = ProxyEnvironment
 	funcMap["sshConfigAddendum"] = SSHConfigAddendum

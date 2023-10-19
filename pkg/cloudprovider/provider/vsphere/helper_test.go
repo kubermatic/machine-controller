@@ -28,6 +28,7 @@ import (
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+	"go.uber.org/zap"
 )
 
 func TestResolveDatastoreRef(t *testing.T) {
@@ -112,7 +113,7 @@ func TestResolveDatastoreRef(t *testing.T) {
 				t.Fatalf("error getting virtual machines: %v", err)
 			}
 
-			got, err := resolveDatastoreRef(ctx, tt.config, session, vms[2], vmFolder, &types.VirtualMachineCloneSpec{})
+			got, err := resolveDatastoreRef(ctx, zap.NewNop().Sugar(), tt.config, session, vms[2], vmFolder, &types.VirtualMachineCloneSpec{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("resolveDatastoreRef() error = %v, wantErr %v", err, tt.wantErr)
 				return

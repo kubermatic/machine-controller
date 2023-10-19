@@ -36,6 +36,7 @@ import (
 	"go.anx.io/go-anxcloud/pkg/vsphere"
 	"go.anx.io/go-anxcloud/pkg/vsphere/provisioning/progress"
 	anxvm "go.anx.io/go-anxcloud/pkg/vsphere/provisioning/vm"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -51,7 +52,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
 )
 
 const (
@@ -61,13 +61,10 @@ const (
 var (
 	// ErrConfigDiskSizeAndDisks is returned when the config has both DiskSize and Disks set, which is unsupported.
 	ErrConfigDiskSizeAndDisks = errors.New("both the deprecated DiskSize and new Disks attribute are set")
-
-	// ErrMultipleDisksNotYetImplemented is returned when multiple disks are configured.
-	ErrMultipleDisksNotYetImplemented = errors.New("multiple disks configured, but this feature is not yet implemented")
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigPointerVarResolver
+	configVarResolver *providerconfig.ConfigVarResolver
 }
 
 // resolvedDisk contains the resolved values from types.RawDisk.
@@ -89,24 +86,25 @@ type resolvedConfig struct {
 	Disks []resolvedDisk
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
-	status := getProviderStatus(machine)
-	klog.V(3).Infof(fmt.Sprintf("'%s' has status %#v", machine.Name, status))
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance instance.Instance, retErr error) {
+	status := getProviderStatus(log, machine)
+	log.Debugw("Machine status", "status", status)
 
 	// ensure conditions are present on machine
 	ensureConditions(&status)
 
-	config, _, err := p.getConfig(ctx, machine.Spec.ProviderSpec)
+	config, providerCfg, err := p.getConfig(ctx, log, machine.Spec.ProviderSpec)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get provider config: %w", err)
+		return nil, fmt.Errorf("failed to get provider config: %w", err)
 	}
 
 	ctx = createReconcileContext(ctx, reconcileContext{
-		Status:       &status,
-		UserData:     userdata,
-		Config:       *config,
-		ProviderData: data,
-		Machine:      machine,
+		Status:         &status,
+		UserData:       userdata,
+		Config:         *config,
+		ProviderData:   data,
+		ProviderConfig: providerCfg,
+		Machine:        machine,
 	})
 
 	_, client, err := getClient(config.Token)
@@ -121,14 +119,14 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	}()
 
 	// provision machine
-	err = provisionVM(ctx, client)
+	err = provisionVM(ctx, log, client)
 	if err != nil {
 		return nil, anexiaErrorToTerminalError(err, "failed waiting for vm provisioning")
 	}
-	return p.Get(ctx, machine, data)
+	return p.Get(ctx, log, machine, data)
 }
 
-func provisionVM(ctx context.Context, client anxclient.Client) error {
+func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client) error {
 	reconcileContext := getReconcileContext(ctx)
 	vmAPI := vsphere.NewAPI(client)
 
@@ -137,11 +135,10 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 
 	status := reconcileContext.Status
 	if status.ProvisioningID == "" {
-		klog.V(2).Info(fmt.Sprintf("Machine '%s'  does not contain a provisioningID yet. Starting to provision",
-			reconcileContext.Machine.Name))
+		log.Info("Machine does not contain a provisioningID yet. Starting to provision")
 
 		config := reconcileContext.Config
-		reservedIP, err := getIPAddress(ctx, client)
+		reservedIP, err := getIPAddress(ctx, log, client)
 		if err != nil {
 			return newError(common.CreateMachineError, "failed to reserve IP: %v", err)
 		}
@@ -164,7 +161,30 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 
 		vm.DiskType = config.Disks[0].PerformanceType
 
+		for _, disk := range config.Disks[1:] {
+			vm.AdditionalDisks = append(vm.AdditionalDisks, anxvm.AdditionalDisk{
+				SizeGBs: disk.Size,
+				Type:    disk.PerformanceType,
+			})
+		}
+
 		vm.Script = base64.StdEncoding.EncodeToString([]byte(reconcileContext.UserData))
+
+		providerCfg := reconcileContext.ProviderConfig
+		if providerCfg.Network != nil {
+			for index, dnsServer := range providerCfg.Network.DNS.Servers {
+				switch index {
+				case 0:
+					vm.DNS1 = dnsServer
+				case 1:
+					vm.DNS2 = dnsServer
+				case 2:
+					vm.DNS3 = dnsServer
+				case 3:
+					vm.DNS4 = dnsServer
+				}
+			}
+		}
 
 		// We generate a fresh SSH key but will never actually use it - we just want a valid public key to disable password authentication for our fresh VM.
 		sshKey, err := ssh.NewKey()
@@ -194,8 +214,7 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 		}
 	}
 
-	klog.V(2).Info(fmt.Sprintf("Using provisionID from machine '%s' to await completion",
-		reconcileContext.Machine.Name))
+	log.Info("Using provisionID from machine to await completion")
 
 	meta.SetStatusCondition(&status.Conditions, v1.Condition{
 		Type:    ProvisionedType,
@@ -209,20 +228,20 @@ func provisionVM(ctx context.Context, client anxclient.Client) error {
 
 var _engsup3404mutex sync.Mutex
 
-func getIPAddress(ctx context.Context, client anxclient.Client) (string, error) {
+func getIPAddress(ctx context.Context, log *zap.SugaredLogger, client anxclient.Client) (string, error) {
 	reconcileContext := getReconcileContext(ctx)
 	status := reconcileContext.Status
 
 	// only use IP if it is still unbound
 	if status.ReservedIP != "" && status.IPState == anxtypes.IPStateUnbound {
-		klog.Infof("reusing already provisioned ip %q", status.ReservedIP)
+		log.Infow("Re-using already provisioned IP", "ip", status.ReservedIP)
 		return status.ReservedIP, nil
 	}
 
 	_engsup3404mutex.Lock()
 	defer _engsup3404mutex.Unlock()
 
-	klog.Info(fmt.Sprintf("Creating a new IP for machine %q", reconcileContext.Machine.Name))
+	log.Info("Creating a new IP for machine")
 	addrAPI := anxaddr.NewAPI(client)
 	config := reconcileContext.Config
 	res, err := addrAPI.ReserveRandom(ctx, anxaddr.ReserveRandom{
@@ -272,7 +291,7 @@ func ensureConditions(status *anxtypes.ProviderStatus) {
 	}
 }
 
-func resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig, configVarResolver *providerconfig.ConfigPointerVarResolver, locationID string) (string, error) {
+func resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig, configVarResolver *providerconfig.ConfigVarResolver, locationID string) (string, error) {
 	templateName, err := configVarResolver.GetConfigVarStringValue(config.Template)
 	if err != nil {
 		return "", fmt.Errorf("failed to get 'template': %w", err)
@@ -291,7 +310,7 @@ func resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig
 	return template.Identifier, nil
 }
 
-func (p *provider) resolveConfig(ctx context.Context, config anxtypes.RawConfig) (*resolvedConfig, error) {
+func (p *provider) resolveConfig(ctx context.Context, log *zap.SugaredLogger, config anxtypes.RawConfig) (*resolvedConfig, error) {
 	var err error
 	ret := resolvedConfig{
 		RawConfig: config,
@@ -337,7 +356,7 @@ func (p *provider) resolveConfig(ctx context.Context, config anxtypes.RawConfig)
 			return nil, ErrConfigDiskSizeAndDisks
 		}
 
-		klog.Warningf("Configuration uses the deprecated DiskSize attribute, please migrate to the Disks array instead.")
+		log.Info("Configuration uses the deprecated DiskSize attribute, please migrate to the Disks array instead.")
 
 		config.Disks = []anxtypes.RawDisk{
 			{
@@ -361,7 +380,7 @@ func (p *provider) resolveConfig(ctx context.Context, config anxtypes.RawConfig)
 	return &ret, nil
 }
 
-func (p *provider) getConfig(ctx context.Context, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
+func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSpec clusterv1alpha1.ProviderSpec) (*resolvedConfig, *providerconfigtypes.Config, error) {
 	if provSpec.Value == nil {
 		return nil, nil, fmt.Errorf("machine.spec.providerSpec.value is nil")
 	}
@@ -379,7 +398,7 @@ func (p *provider) getConfig(ctx context.Context, provSpec clusterv1alpha1.Provi
 		return nil, nil, fmt.Errorf("error parsing provider config: %w", err)
 	}
 
-	resolvedConfig, err := p.resolveConfig(ctx, *rawConfig)
+	resolvedConfig, err := p.resolveConfig(ctx, log, *rawConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error resolving config: %w", err)
 	}
@@ -389,17 +408,17 @@ func (p *provider) getConfig(ctx context.Context, provSpec clusterv1alpha1.Provi
 
 // New returns an Anexia provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	return &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
+	return &provider{configVarResolver: configVarResolver}
 }
 
 // AddDefaults adds omitted optional values to the given MachineSpec.
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
 // Validate returns success or failure based according to its ProviderSpec.
-func (p *provider) Validate(ctx context.Context, machinespec clusterv1alpha1.MachineSpec) error {
-	config, _, err := p.getConfig(ctx, machinespec.ProviderSpec)
+func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, machinespec clusterv1alpha1.MachineSpec) error {
+	config, _, err := p.getConfig(ctx, log, machinespec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
@@ -414,10 +433,6 @@ func (p *provider) Validate(ctx context.Context, machinespec clusterv1alpha1.Mac
 
 	if len(config.Disks) == 0 {
 		return errors.New("no disks configured")
-	}
-
-	if len(config.Disks) > 1 {
-		return ErrMultipleDisksNotYetImplemented
 	}
 
 	for _, disk := range config.Disks {
@@ -445,8 +460,8 @@ func (p *provider) Validate(ctx context.Context, machinespec clusterv1alpha1.Mac
 	return nil
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, pd *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	config, _, err := p.getConfig(ctx, machine.Spec.ProviderSpec)
+func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, pd *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	config, _, err := p.getConfig(ctx, log, machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to retrieve config: %v", err)
 	}
@@ -457,7 +472,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, pd
 	}
 	vsphereAPI := vsphere.NewAPI(cli)
 
-	status := getProviderStatus(machine)
+	status := getProviderStatus(log, machine)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
 	}
@@ -512,19 +527,19 @@ func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (string, string
 	return "", "", nil
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
-	if inst, err := p.Get(ctx, machine, data); err != nil {
+func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (isDeleted bool, retErr error) {
+	if inst, err := p.Get(ctx, log, machine, data); err != nil {
 		if cloudprovidererrors.IsNotFound(err) {
 			return true, nil
 		}
 
 		return false, err
 	} else if inst.Status() == instance.StatusCreating {
-		klog.Warningf("Unable to cleanup machine %q. Instance is still creating", machine.Name)
+		log.Error("Failed to cleanup machine: instance is still creating")
 		return false, nil
 	}
 
-	status := getProviderStatus(machine)
+	status := getProviderStatus(log, machine)
 	// make sure status is reflected in Machine Object
 	defer func() {
 		// if error occurs during updating the machine object don't override the original error
@@ -532,7 +547,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	}()
 
 	ensureConditions(&status)
-	config, _, err := p.getConfig(ctx, machine.Spec.ProviderSpec)
+	config, _, err := p.getConfig(ctx, log, machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
 	}
@@ -581,7 +596,7 @@ func isTaskDone(ctx context.Context, cli anxclient.Client, progressIdentifier st
 	return false, nil
 }
 
-func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ k8stypes.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ k8stypes.UID) error {
 	return nil
 }
 
@@ -610,12 +625,12 @@ func getClient(token string) (api.API, anxclient.Client, error) {
 	return a, legacyClient, nil
 }
 
-func getProviderStatus(machine *clusterv1alpha1.Machine) anxtypes.ProviderStatus {
+func getProviderStatus(log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) anxtypes.ProviderStatus {
 	var providerStatus anxtypes.ProviderStatus
 	status := machine.Status.ProviderStatus
 	if status != nil && status.Raw != nil {
 		if err := json.Unmarshal(status.Raw, &providerStatus); err != nil {
-			klog.Warningf("Unable to parse status from machine object. status was discarded for machine")
+			log.Error("Failed to parse status from machine object; status was discarded for machine")
 			return anxtypes.ProviderStatus{}
 		}
 	}

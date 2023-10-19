@@ -195,6 +195,7 @@ spec:
                     - baremetal
                     - external
                     - vmware-cloud-director
+                    - opennebula
                     type: string
                   spec:
                     description: Spec represents the os/image reference in the supported
@@ -211,7 +212,6 @@ spec:
                 - rhel
                 - centos
                 - ubuntu
-                - sles
                 - amzn2
                 - rockylinux
                 type: string
@@ -348,6 +348,14 @@ spec:
                       type: string
                     type: array
                 type: object
+              provisioningUtility:
+                default: cloud-init
+                description: ProvisioningUtility used for configuring the worker node.
+                  Defaults to cloud-init.
+                enum:
+                - cloud-init
+                - ignition
+                type: string
             required:
             - bootstrapConfig
             - cloudProvider
@@ -605,7 +613,6 @@ spec:
                 - rhel
                 - centos
                 - ubuntu
-                - sles
                 - amzn2
                 - rockylinux
                 type: string
@@ -809,6 +816,14 @@ spec:
                       type: object
                     type: array
                 type: object
+              provisioningUtility:
+                default: cloud-init
+                description: ProvisioningUtility used for configuring the worker node.
+                  Defaults to cloud-init.
+                enum:
+                - cloud-init
+                - ignition
+                type: string
               supportedCloudProviders:
                 description: SupportedCloudProviders represent the cloud providers
                   that support the given operating system version
@@ -838,6 +853,7 @@ spec:
                       - baremetal
                       - external
                       - vmware-cloud-director
+                      - opennebula
                       type: string
                     spec:
                       description: Spec represents the os/image reference in the supported
@@ -974,14 +990,13 @@ spec:
     spec:
       serviceAccountName: operating-system-manager-webhook
       containers:
-        # TODO: Update this to a semver tag before release.
-        - image: quay.io/kubermatic/operating-system-manager:8688a1fde001705f4c0b394ed2f4ff4a292b20a9
-          imagePullPolicy: IfNotPresent
+        - image: quay.io/kubermatic/operating-system-manager:latest
+          imagePullPolicy: Always
           name: webhook
           command:
             - /usr/local/bin/webhook
             - -logtostderr
-            - -v=6
+            - -v=4
             - -namespace=kube-system
           volumeMounts:
             - name: operating-system-manager-admission-cert
@@ -1303,14 +1318,13 @@ spec:
     spec:
       serviceAccountName: operating-system-manager
       containers:
-        # TODO: Update this to a semver tag before release.
-        - image: quay.io/kubermatic/operating-system-manager:8688a1fde001705f4c0b394ed2f4ff4a292b20a9
-          imagePullPolicy: IfNotPresent
+        - image: quay.io/kubermatic/operating-system-manager:latest
+          imagePullPolicy: Always
           name: operating-system-manager
           command:
             - /usr/local/bin/osm-controller
             - -logtostderr
-            - -v=5
+            - -v=4
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -metrics-address=0.0.0.0:8080

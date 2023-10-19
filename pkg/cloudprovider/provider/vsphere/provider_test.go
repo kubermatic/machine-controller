@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/vmware/govmomi/simulator"
+	"go.uber.org/zap"
 
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -47,6 +48,8 @@ func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 	"cloudProvider": "vsphere",
 	"cloudProviderSpec": {
 		"allowInsecure": false,
+		"vmAntiAffinity": true,
+        "cluster": "DC0_C0",
 		"cpus": 1,
 		"datacenter": "DC0",
 		{{- if .Datastore }}
@@ -61,7 +64,9 @@ func (v vsphereProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 		"password": "{{ .Password }}",
 		"templateVMName": "DC0_H0_VM0",
 		"username": "{{ .User }}",
-		"vmNetName": "",
+		"networks": [
+			""
+		],
 		"vsphereURL": "{{ .URL }}"
 	},
 	"operatingSystem": "flatcar",
@@ -178,7 +183,7 @@ func TestValidate(t *testing.T) {
 			tt.args.URL = vSphereURL
 			m := cloudprovidertesting.Creator{Name: "test", Namespace: "vsphere", ProviderSpecGetter: tt.args.rawProviderSpec}.
 				CreateMachine(t)
-			if err := p.Validate(context.Background(), m.Spec); (err != nil) != tt.wantErr {
+			if err := p.Validate(context.Background(), zap.NewNop().Sugar(), m.Spec); (err != nil) != tt.wantErr {
 				t.Errorf("provider.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

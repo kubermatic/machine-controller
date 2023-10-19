@@ -22,25 +22,37 @@ package main
 
 import (
 	"flag"
+	"log"
 
+	"go.uber.org/zap"
+
+	machinecontrollerlog "github.com/kubermatic/machine-controller/pkg/log"
 	"github.com/kubermatic/machine-controller/pkg/userdata/centos"
 	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
-
-	"k8s.io/klog"
 )
 
 func main() {
 	// Parse flags.
 	var debug bool
-
 	flag.BoolVar(&debug, "debug", false, "Switch for enabling the plugin debugging")
+
+	logFlags := machinecontrollerlog.NewDefaultOptions()
+	logFlags.AddFlags(flag.CommandLine)
+
 	flag.Parse()
+
+	if err := logFlags.Validate(); err != nil {
+		log.Fatalf("Invalid options: %v", err)
+	}
+
+	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
+	log := rawLog.Sugar()
 
 	// Instantiate provider and start plugin.
 	var provider = &centos.Provider{}
 	var p = userdataplugin.New(provider, debug)
 
-	if err := p.Run(); err != nil {
-		klog.Fatalf("error running CentOS plugin: %v", err)
+	if err := p.Run(log); err != nil {
+		log.Fatalw("Failed to run CentOS plugin", zap.Error(err))
 	}
 }

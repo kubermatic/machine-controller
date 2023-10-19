@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/pmezard/go-difflib/difflib"
+	"go.uber.org/zap"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,7 +125,7 @@ func TestKubeconfigProvider_GetKubeconfig(t *testing.T) {
 				kubeClient:   client,
 			}
 
-			resConfig, err := provider.GetKubeconfig(ctx)
+			resConfig, err := provider.GetKubeconfig(ctx, zap.NewNop().Sugar())
 			if diff := deep.Equal(err, test.err); diff != nil {
 				t.Error(diff)
 			}

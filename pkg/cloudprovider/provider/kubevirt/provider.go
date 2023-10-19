@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
 	kubevirtv1 "kubevirt.io/api/core/v1"
 	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
@@ -49,17 +50,16 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/klog"
 	utilpointer "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
 	if err := kubevirtv1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add kubevirtv1 to scheme: %v", err)
+		panic(fmt.Sprintf("failed to add kubevirtv1 to scheme: %v", err))
 	}
 	if err := cdiv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add cdiv1beta1 to scheme: %v", err)
+		panic(fmt.Sprintf("failed to add cdiv1beta1 to scheme: %v", err))
 	}
 }
 
@@ -411,7 +411,7 @@ func getNamespace() string {
 	return ns
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -449,29 +449,17 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ 
 		return nil, cloudprovidererrors.ErrInstanceNotFound
 	}
 
-	if virtualMachineInstance.Status.Phase == kubevirtv1.Failed ||
-		// The VMI enters phase succeeded if someone issues a kubectl
-		// delete pod on the virt-launcher pod it runs in
-		virtualMachineInstance.Status.Phase == kubevirtv1.Succeeded {
-		// The pod got deleted, delete the VMI and return ErrNotFound so the VMI
-		// will get recreated
-		if err := sigClient.Delete(ctx, virtualMachineInstance); err != nil {
-			return nil, fmt.Errorf("failed to delete failed VMI %s: %w", machine.Name, err)
-		}
-		return nil, cloudprovidererrors.ErrInstanceNotFound
-	}
-
 	return &kubeVirtServer{vmi: *virtualMachineInstance}, nil
 }
 
 // We don't use the UID for kubevirt because the name of a VMI must stay stable
 // in order for the node name to stay stable. The operator is responsible for ensuring
 // there are no conflicts, e.G. by using one Namespace per Kubevirt user cluster.
-func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ types.UID) error {
 	return nil
 }
 
-func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -505,7 +493,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	return nil
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
@@ -549,7 +537,7 @@ func machineDeploymentNameAndRevisionForMachineGetter(ctx context.Context, machi
 	}
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -637,6 +625,8 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 		return nil, fmt.Errorf("could not compute a random MAC address")
 	}
 
+	runStrategyOnce := kubevirtv1.RunStrategyOnce
+
 	virtualMachine := &kubevirtv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      machine.Name,
@@ -644,7 +634,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 			Labels:    labels,
 		},
 		Spec: kubevirtv1.VirtualMachineSpec{
-			Running:      utilpointer.Bool(true),
+			RunStrategy:  &runStrategyOnce,
 			Instancetype: c.Instancetype,
 			Preference:   c.Preference,
 			Template: &kubevirtv1.VirtualMachineInstanceTemplateSpec{
@@ -678,7 +668,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 	return virtualMachine, nil
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, cloudprovidererrors.TerminalError{
@@ -696,7 +686,6 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 		if !kerrors.IsNotFound(err) {
 			return false, fmt.Errorf("failed to get VirtualMachineInstance %s: %w", machine.Name, err)
 		}
-		// VMI is gone
 		return true, nil
 	}
 

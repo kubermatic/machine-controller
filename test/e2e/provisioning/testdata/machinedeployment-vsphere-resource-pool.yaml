@@ -34,6 +34,8 @@ spec:
             password: << VSPHERE_PASSWORD >>
             datastore: 'vsan'
             resourcePool: 'e2e-resource-pool'
+            cluster: Kubermatic
+            vmAntiAffinity: true
             cpus: 2
             MemoryMB: 2048
             diskSizeGB: << DISK_SIZE >>

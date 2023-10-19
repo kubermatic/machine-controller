@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -47,7 +49,7 @@ const (
 	contextIdentifier string = "c"
 )
 
-func (r *Reconciler) createBootstrapKubeconfig(ctx context.Context, name string) (*clientcmdapi.Config, error) {
+func (r *Reconciler) createBootstrapKubeconfig(ctx context.Context, log *zap.SugaredLogger, name string) (*clientcmdapi.Config, error) {
 	var token string
 	var err error
 
@@ -63,7 +65,7 @@ func (r *Reconciler) createBootstrapKubeconfig(ctx context.Context, name string)
 		}
 	}
 
-	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig(ctx)
+	infoKubeconfig, err := r.kubeconfigProvider.GetKubeconfig(ctx, log)
 	if err != nil {
 		return nil, err
 	}

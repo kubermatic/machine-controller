@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,18 +34,18 @@ func ApiserverReachable(client kubernetes.Interface) healthz.Checker {
 	return func(req *http.Request) error {
 		_, err := client.CoreV1().Nodes().List(req.Context(), metav1.ListOptions{})
 		if err != nil {
-			return fmt.Errorf("unable to list nodes check: %w", err)
+			return fmt.Errorf("failed to list nodes check: %w", err)
 		}
 
 		return nil
 	}
 }
 
-func KubeconfigAvailable(kubeconfigProvider machinecontroller.KubeconfigProvider) healthz.Checker {
+func KubeconfigAvailable(kubeconfigProvider machinecontroller.KubeconfigProvider, log *zap.SugaredLogger) healthz.Checker {
 	return func(req *http.Request) error {
-		cm, err := kubeconfigProvider.GetKubeconfig(req.Context())
+		cm, err := kubeconfigProvider.GetKubeconfig(req.Context(), log)
 		if err != nil {
-			return fmt.Errorf("unable to get kubeconfig: %w", err)
+			return fmt.Errorf("failed to get kubeconfig: %w", err)
 		}
 
 		if len(cm.Clusters) != 1 {

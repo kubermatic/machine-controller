@@ -33,9 +33,10 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.24.9"),
-		semver.MustParse("v1.25.5"),
-		semver.MustParse("v1.26.0"),
+		semver.MustParse("v1.24.13"),
+		semver.MustParse("v1.25.9"),
+		semver.MustParse("v1.26.4"),
+		semver.MustParse("v1.27.1"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
@@ -52,6 +53,11 @@ var (
 		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
 		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-8-5",
 		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar-stable-2983",
+		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
+	}
+
+	openNebulaImages = map[string]string{
+		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
 	}
 
@@ -156,9 +162,30 @@ func (n *name) Match(tc scenario) bool {
 	return tc.name == n.name
 }
 
+// VersionSelector is used to match against the kubernetes version used for a test case.
+func VersionSelector(v ...string) Selector {
+	return &version{v}
+}
+
+type version struct {
+	versions []string
+}
+
+var _ Selector = &version{}
+
+func (v *version) Match(testCase scenario) bool {
+	for _, version := range v.versions {
+		if testCase.kubernetesVersion == version {
+			return true
+		}
+	}
+	return false
+}
+
 func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
 		if selector != nil && !selector.Match(testCase) {
+			fmt.Printf("Skipping test %s\n", testCase.name)
 			continue
 		}
 
@@ -195,7 +222,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		rhsmOfflineToken := os.Getenv("REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN")
 
 		if rhelSubscriptionManagerUser == "" || rhelSubscriptionManagerPassword == "" || rhsmOfflineToken == "" {
-			t.Fatalf("Unable to run e2e tests, RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD, and " +
+			t.Fatal("Unable to run e2e tests, RHEL_SUBSCRIPTION_MANAGER_USER, RHEL_SUBSCRIPTION_MANAGER_PASSWORD, and " +
 				"REDHAT_SUBSCRIPTIONS_OFFLINE_TOKEN must be set when rhel is used as an os")
 		}
 
@@ -212,7 +239,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DATA_DISK_SIZE >>=%v", 30))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 25))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< CUSTOM-IMAGE >>=%v", ""))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.03"))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.02"))
 	}
 
 	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderEquinixMetal)) {
@@ -238,6 +265,9 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
+
+	// only used by OpenNebula scenarios
+	scenarioParams = append(scenarioParams, fmt.Sprintf("<< ONE_IMAGE >>=%s", openNebulaImages[testCase.osName]))
 
 	// only use by vSphere scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_Image_Template >>=%s", vSphereOSImageTemplates[testCase.osName]))

@@ -290,54 +290,6 @@ func TestValidateCSRObject(t *testing.T) {
 			err:      fmt.Errorf("'%s' and/or '%s' are not in its groups", nodeGroup, authenticatedGroup),
 		},
 		{
-			name: "validate csr with less than 3 usages",
-			csr: &certificatesv1.CertificateSigningRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "csr",
-					Namespace: metav1.NamespaceSystem,
-				},
-				Spec: certificatesv1.CertificateSigningRequestSpec{
-					Request: []byte(testValidCSR),
-					Usages: []certificatesv1.KeyUsage{
-						certificatesv1.UsageDigitalSignature,
-						certificatesv1.UsageKeyEncipherment,
-					},
-					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
-					Groups: []string{
-						"system:nodes",
-						"system:authenticated",
-					},
-				},
-			},
-			nodeName: "",
-			err:      fmt.Errorf("there are no exactly three usages defined"),
-		},
-		{
-			name: "validate csr with more than 3 usages",
-			csr: &certificatesv1.CertificateSigningRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "csr",
-					Namespace: metav1.NamespaceSystem,
-				},
-				Spec: certificatesv1.CertificateSigningRequestSpec{
-					Request: []byte(testValidCSR),
-					Usages: []certificatesv1.KeyUsage{
-						certificatesv1.UsageDigitalSignature,
-						certificatesv1.UsageKeyEncipherment,
-						certificatesv1.UsageServerAuth,
-						certificatesv1.UsageClientAuth,
-					},
-					Username: "system:node:ip-172-31-114-48.eu-west-3.compute.internal",
-					Groups: []string{
-						"system:nodes",
-						"system:authenticated",
-					},
-				},
-			},
-			nodeName: "",
-			err:      fmt.Errorf("there are no exactly three usages defined"),
-		},
-		{
 			name: "validate csr with usages not matching expected usages",
 			csr: &certificatesv1.CertificateSigningRequest{
 				ObjectMeta: metav1.ObjectMeta{

@@ -25,9 +25,10 @@ import (
 	"reflect"
 	"testing"
 
+	kubevirtv1 "kubevirt.io/api/core/v1"
+
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
-	kubevirtv1 "kubevirt.io/api/core/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"

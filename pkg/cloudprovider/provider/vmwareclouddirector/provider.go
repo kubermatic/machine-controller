@@ -24,6 +24,7 @@ import (
 	"net/url"
 
 	"github.com/vmware/go-vcloud-director/v2/govcd"
+	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -61,6 +62,7 @@ type provider struct {
 type Auth struct {
 	Username      string
 	Password      string
+	APIToken      string
 	Organization  string
 	URL           string
 	VDC           string
@@ -120,9 +122,8 @@ func (s Server) ID() string {
 	return s.id
 }
 
-// TODO: Implement once we start supporting vCloud Director CCM.
 func (s Server) ProviderID() string {
-	return ""
+	return fmt.Sprintf("vmware-cloud-director://%s", s.ID())
 }
 
 func (s Server) HostID() string {
@@ -137,7 +138,7 @@ func (s Server) Status() instance.Status {
 	return s.status
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	_, _, rawConfig, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return spec, err
@@ -159,13 +160,13 @@ func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha
 	return spec, err
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return false, fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}
@@ -200,12 +201,12 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	return true, nil
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	vm, err := p.create(ctx, machine, userdata)
 	if err != nil {
-		_, cleanupErr := p.Cleanup(ctx, machine, data)
+		_, cleanupErr := p.Cleanup(ctx, log, machine, data)
 		if cleanupErr != nil {
-			return nil, fmt.Errorf("cleaning up failed with err %v after creation failed with err %w", cleanupErr, err)
+			return nil, fmt.Errorf("cleaning up failed with err %w after creation failed with err %w", cleanupErr, err)
 		}
 		return nil, err
 	}
@@ -218,7 +219,7 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}
@@ -290,13 +291,13 @@ func (p *provider) create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return p.getInstance(vm)
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}
@@ -333,34 +334,40 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	c := Config{}
+
+	c.APIToken, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.APIToken, "VCD_API_TOKEN")
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "apiToken" field, error = %w`, err)
+	}
+
 	c.Username, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Username, "VCD_USER")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"username\" field, error = %w", err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "username" field, error = %w`, err)
 	}
 
 	c.Password, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Password, "VCD_PASSWORD")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"password\" field, error = %w", err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "password" field, error = %w`, err)
 	}
 
 	c.Organization, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.Organization, "VCD_ORG")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"organization\" field, error = %w", err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "organization" field, error = %w`, err)
 	}
 
 	c.URL, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.URL, "VCD_URL")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"url\" field, error = %w", err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "url" field, error = %w`, err)
 	}
 
 	c.VDC, err = p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.VDC, "VCD_VDC")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"vdc\" field, error = %w", err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "vdc" field, error = %w`, err)
 	}
 
 	c.AllowInsecure, err = p.configVarResolver.GetConfigVarBoolValueOrEnv(rawConfig.AllowInsecure, "VCD_ALLOW_UNVERIFIED_SSL")
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get the value of \"allowInsecure\" field, error = %w", err)
+		return nil, nil, nil, fmt.Errorf(`failed to get the value of "allowInsecure" field, error = %w`, err)
 	}
 
 	c.VApp, err = p.configVarResolver.GetConfigVarStringValue(rawConfig.VApp)
@@ -386,36 +393,38 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	c.IPAllocationMode = rawConfig.IPAllocationMode
 
 	if rawConfig.DiskSizeGB != nil && *rawConfig.DiskSizeGB < 0 {
-		return nil, nil, nil, fmt.Errorf("value for \"diskSizeGB\" should either be nil or greater than or equal to 0")
+		return nil, nil, nil, fmt.Errorf(`value for "diskSizeGB" should either be nil or greater than or equal to 0`)
 	}
 	c.DiskSizeGB = rawConfig.DiskSizeGB
 
 	if rawConfig.DiskIOPS != nil && *rawConfig.DiskIOPS < 0 {
-		return nil, nil, nil, fmt.Errorf("value for \"diskIOPS\" should either be nil or greater than or equal to 0")
+		return nil, nil, nil, fmt.Errorf(`value for "diskIOPS" should either be nil or greater than or equal to 0`)
 	}
 	c.DiskIOPS = rawConfig.DiskIOPS
 
 	if rawConfig.CPUs <= 0 {
-		return nil, nil, nil, fmt.Errorf("value for \"cpus\" should be greater than 0")
+		return nil, nil, nil, fmt.Errorf(`value for "cpus" should be greater than 0`)
 	}
 	c.CPUs = rawConfig.CPUs
 
 	if rawConfig.CPUCores <= 0 {
-		return nil, nil, nil, fmt.Errorf("value for \"cpuCores\" should be greater than 0")
+		return nil, nil, nil, fmt.Errorf(`value for "cpuCores" should be greater than 0`)
 	}
 	c.CPUCores = rawConfig.CPUCores
 
 	if rawConfig.MemoryMB <= 4 {
-		return nil, nil, nil, fmt.Errorf("value for \"memoryMB\" should be greater than 0")
+		return nil, nil, nil, fmt.Errorf(`value for "memoryMB" should be greater than 0`)
 	}
 	if rawConfig.MemoryMB%4 != 0 {
-		return nil, nil, nil, fmt.Errorf("value for \"memoryMB\" should be a multiple of 4")
+		return nil, nil, nil, fmt.Errorf(`value for "memoryMB" should be a multiple of 4`)
 	}
 	c.MemoryMB = rawConfig.MemoryMB
 
 	c.DiskBusType = rawConfig.DiskBusType
 	c.StorageProfile = rawConfig.StorageProfile
 	c.Metadata = rawConfig.Metadata
+	c.SizingPolicy = rawConfig.SizingPolicy
+	c.PlacementPolicy = rawConfig.PlacementPolicy
 	return &c, pconfig, rawConfig, err
 }
 
@@ -465,7 +474,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) MigrateUID(_ context.Context, _ *clusterv1alpha1.Machine, _ types.UID) error {
+func (p *provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, _ *clusterv1alpha1.Machine, _ types.UID) error {
 	return nil
 }
 
@@ -473,13 +482,17 @@ func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) e
 	return nil
 }
 
-func (p *provider) Validate(_ context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, _, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	client, err := NewClient(c.Username, c.Password, c.Organization, c.URL, c.VDC, c.AllowInsecure)
+	if c.APIToken != "" && (c.Password != "" || c.Username != "") {
+		return fmt.Errorf(`either "apiToken" or "username" and "password" must be specified`)
+	}
+
+	client, err := NewClient(c.Username, c.Password, c.APIToken, c.Organization, c.URL, c.VDC, c.AllowInsecure)
 	if err != nil {
 		return fmt.Errorf("failed to create VMware Cloud Director client: %w", err)
 	}

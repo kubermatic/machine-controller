@@ -47,7 +47,7 @@ import (
 func init() {
 	klog.InitFlags(nil)
 	if err := clusterv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
-		klog.Fatalf("failed to add clusterv1alpha1 to scheme: %v", err)
+		klog.Fatalf("Failed to add clusterv1alpha1 to scheme: %v", err)
 	}
 }
 
@@ -66,6 +66,7 @@ const (
 	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
 	VMwareCloudDirectorManifest       = "./testdata/machinedeployment-vmware-cloud-director.yaml"
 	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereMultipleNICManifest        = "./testdata/machinedeployment-vsphere-multiple-nic.yaml"
 	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	VSPhereResourcePoolManifest       = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
 	ScalewayManifest                  = "./testdata/machinedeployment-scaleway.yaml"
@@ -78,10 +79,12 @@ const (
 	alibabaManifest                   = "./testdata/machinedeployment-alibaba.yaml"
 	anexiaManifest                    = "./testdata/machinedeployment-anexia.yaml"
 	nutanixManifest                   = "./testdata/machinedeployment-nutanix.yaml"
+	vultrManifest                     = "./testdata/machinedeployment-vultr.yaml"
+	openNebulaManifest                = "./testdata/machinedeployment-opennebula.yaml"
 )
 
 const (
-	defaultKubernetesVersion = "1.24.9"
+	defaultKubernetesVersion = "1.25.9"
 	defaultContainerRuntime  = "containerd"
 )
 
@@ -121,7 +124,7 @@ func TestCustomCAsAreApplied(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("Unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{
@@ -291,7 +294,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 	kubevirtKubeconfig := os.Getenv("KUBEVIRT_E2E_TESTS_KUBECONFIG")
 
 	if kubevirtKubeconfig == "" {
-		t.Fatalf("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
+		t.Fatal("Unable to run kubevirt tests, KUBEVIRT_E2E_TESTS_KUBECONFIG must be set")
 	}
 
 	selector := OsSelector("ubuntu", "centos", "flatcar", "rockylinux")
@@ -326,7 +329,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("Unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{
@@ -339,7 +342,8 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< NETWORK_NAME >>=%s", osNetwork),
 	}
 
-	selector := Not(OsSelector("amzn2"))
+	// In-tree cloud provider is not supported from Kubernetes v1.26.
+	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.26.4", "1.27.1")))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -357,7 +361,7 @@ func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osProject == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("Unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{
@@ -390,7 +394,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 	// test data
 	doToken := os.Getenv("DO_E2E_TESTS_TOKEN")
 	if len(doToken) == 0 {
-		t.Fatal("unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, DO_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
 	selector := OsSelector("ubuntu", "centos", "rockylinux")
@@ -415,10 +419,11 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
 	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
-	selector := Not(OsSelector("sles"))
+	// In-tree cloud provider is not supported from Kubernetes v1.27.
+	selector := Not(VersionSelector("1.27.1"))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -440,7 +445,7 @@ func TestAWSAssumeRoleProvisioningE2E(t *testing.T) {
 	awsAssumeRoleARN := os.Getenv("AWS_ASSUME_ROLE_ARN")
 	awsAssumeRoleExternalID := os.Getenv("AWS_ASSUME_ROLE_EXTERNAL_ID")
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 || len(awsAssumeRoleARN) == 0 || len(awsAssumeRoleExternalID) == 0 {
-		t.Fatal("unable to run the test suite, environment variables AWS_E2E_TESTS_KEY_ID, AWS_E2E_TESTS_SECRET, AWS_E2E_ASSUME_ROLE_ARN and AWS_E2E_ASSUME_ROLE_EXTERNAL_ID cannot be empty")
+		t.Fatal("Unable to run the test suite, environment variables AWS_E2E_TESTS_KEY_ID, AWS_E2E_TESTS_SECRET, AWS_E2E_ASSUME_ROLE_ARN and AWS_E2E_ASSUME_ROLE_EXTERNAL_ID cannot be empty")
 	}
 
 	// act
@@ -468,10 +473,12 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
 	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 	// Since we are only testing the spot instance functionality, testing it against a single OS is sufficient.
-	selector := OsSelector("ubuntu")
+	// In-tree cloud provider is not supported from Kubernetes v1.27.
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.1")))
+
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -489,9 +496,11 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
 	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
-	selector := OsSelector("ubuntu")
+	// In-tree cloud provider is not supported from Kubernetes v1.27.
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.1")))
+
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
@@ -507,7 +516,7 @@ func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
 	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
 	params := []string{
@@ -521,32 +530,6 @@ func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
-func TestAWSFlatcarContainerdProvisioningE2E(t *testing.T) {
-	t.Parallel()
-
-	// test data
-	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
-	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
-	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
-	}
-
-	params := []string{
-		fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
-		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
-		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
-	}
-
-	scenario := scenario{
-		name:              "flatcar with containerd in AWS",
-		osName:            "flatcar",
-		containerRuntime:  defaultContainerRuntime,
-		kubernetesVersion: defaultKubernetesVersion,
-		executor:          verifyCreateAndDelete,
-	}
-	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
-}
-
 func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
@@ -554,7 +537,7 @@ func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
 	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
 	amiID := "ami-032025b3afcbb6b34" // official "CentOS 8.2.2004 x86_64"
@@ -579,7 +562,7 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")
 	awsSecret := os.Getenv("AWS_E2E_TESTS_SECRET")
 	if len(awsKeyID) == 0 || len(awsSecret) == 0 {
-		t.Fatal("unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 
 	// act
@@ -608,7 +591,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 	azureClientID := os.Getenv("AZURE_E2E_TESTS_CLIENT_ID")
 	azureClientSecret := os.Getenv("AZURE_E2E_TESTS_CLIENT_SECRET")
 	if len(azureTenantID) == 0 || len(azureSubscriptionID) == 0 || len(azureClientID) == 0 || len(azureClientSecret) == 0 {
-		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
 	selector := Not(OsSelector("amzn2"))
@@ -636,7 +619,7 @@ func TestAzureCustomImageReferenceProvisioningE2E(t *testing.T) {
 	azureClientID := os.Getenv("AZURE_E2E_TESTS_CLIENT_ID")
 	azureClientSecret := os.Getenv("AZURE_E2E_TESTS_CLIENT_SECRET")
 	if len(azureTenantID) == 0 || len(azureSubscriptionID) == 0 || len(azureClientID) == 0 || len(azureClientSecret) == 0 {
-		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
 	selector := OsSelector("ubuntu")
@@ -664,7 +647,7 @@ func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 	azureClientID := os.Getenv("AZURE_E2E_TESTS_CLIENT_ID")
 	azureClientSecret := os.Getenv("AZURE_E2E_TESTS_CLIENT_SECRET")
 	if len(azureTenantID) == 0 || len(azureSubscriptionID) == 0 || len(azureClientID) == 0 || len(azureClientSecret) == 0 {
-		t.Fatal("unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
+		t.Fatal("Unable to run the test suite, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET environment variables cannot be empty")
 	}
 
 	// act
@@ -697,7 +680,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	// Test data.
 	googleServiceAccount := os.Getenv("GOOGLE_SERVICE_ACCOUNT")
 	if len(googleServiceAccount) == 0 {
-		t.Fatal("unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, GOOGLE_SERVICE_ACCOUNT environment variable cannot be empty")
 	}
 
 	// Act. GCE does not support CentOS.
@@ -717,7 +700,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 	// test data
 	hzToken := os.Getenv("HZ_E2E_TOKEN")
 	if len(hzToken) == 0 {
-		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
 	selector := OsSelector("ubuntu", "centos", "rockylinux")
@@ -735,12 +718,12 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 	// test data
 	token := os.Getenv("METAL_AUTH_TOKEN")
 	if len(token) == 0 {
-		t.Fatal("unable to run the test suite, METAL_AUTH_TOKEN environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, METAL_AUTH_TOKEN environment variable cannot be empty")
 	}
 
 	projectID := os.Getenv("METAL_PROJECT_ID")
 	if len(projectID) == 0 {
-		t.Fatal("unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, METAL_PROJECT_ID environment variable cannot be empty")
 	}
 
 	selector := And(OsSelector("ubuntu", "centos", "rockylinux", "flatcar"), Not(NameSelector("migrateUID")))
@@ -759,12 +742,12 @@ func TestAlibabaProvisioningE2E(t *testing.T) {
 	// test data
 	accessKeyID := os.Getenv("ALIBABA_ACCESS_KEY_ID")
 	if len(accessKeyID) == 0 {
-		t.Fatal("unable to run the test suite, ALIBABA_ACCESS_KEY_ID environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, ALIBABA_ACCESS_KEY_ID environment variable cannot be empty")
 	}
 
 	accessKeySecret := os.Getenv("ALIBABA_ACCESS_KEY_SECRET")
 	if len(accessKeySecret) == 0 {
-		t.Fatal("unable to run the test suite, ALIBABA_ACCESS_KEY_SECRET environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, ALIBABA_ACCESS_KEY_SECRET environment variable cannot be empty")
 	}
 
 	selector := OsSelector("ubuntu")
@@ -787,7 +770,7 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 	// test data
 	linodeToken := os.Getenv("LINODE_E2E_TESTS_TOKEN")
 	if len(linodeToken) == 0 {
-		t.Fatal("unable to run the test suite, LINODE_E2E_TESTS_TOKEN environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, LINODE_E2E_TESTS_TOKEN environment variable cannot be empty")
 	}
 
 	// we're shimming userdata through Linode stackscripts and the stackscript hasn't been verified for use with centos
@@ -807,7 +790,7 @@ func getVMwareCloudDirectorTestParams(t *testing.T) []string {
 	vdc := os.Getenv("VCD_VDC")
 
 	if password == "" || username == "" || organization == "" || url == "" || vdc == "" {
-		t.Fatal("unable to run the test suite, VCD_PASSWORD, VCD_USER, VCD_ORG, " +
+		t.Fatal("Unable to run the test suite, VCD_PASSWORD, VCD_USER, VCD_ORG, " +
 			"VCD_URL, or VCD_VDC environment variables cannot be empty")
 	}
 
@@ -837,7 +820,7 @@ func getVSphereTestParams(t *testing.T) []string {
 	vsAddress := os.Getenv("VSPHERE_E2E_ADDRESS")
 
 	if vsPassword == "" || vsUsername == "" || vsAddress == "" {
-		t.Fatal("unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME" +
+		t.Fatal("Unable to run the test suite, VSPHERE_E2E_PASSWORD, VSPHERE_E2E_USERNAME" +
 			"or VSPHERE_E2E_ADDRESS environment variables cannot be empty")
 	}
 
@@ -858,6 +841,17 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	params := getVSphereTestParams(t)
 
 	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+}
+
+// TestVsphereMultipleNICProvisioning - is the same as the TestVsphereProvisioning suit but has multiple networks attached to the VMs.
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVsphereMultipleNICProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	selector := OsSelector("ubuntu")
+	params := getVSphereTestParams(t)
+
+	runScenarios(t, selector, params, VSPhereMultipleNICManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }
 
 // TestVsphereDatastoreClusterProvisioning - is the same as the TestVsphereProvisioning suite but specifies a DatastoreCluster
@@ -902,17 +896,17 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 	// test data
 	scwAccessKey := os.Getenv("SCW_ACCESS_KEY")
 	if len(scwAccessKey) == 0 {
-		t.Fatal("unable to run the test suite, SCW_E2E_TEST_ACCESS_KEY environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, SCW_E2E_TEST_ACCESS_KEY environment variable cannot be empty")
 	}
 
 	scwSecretKey := os.Getenv("SCW_SECRET_KEY")
 	if len(scwSecretKey) == 0 {
-		t.Fatal("unable to run the test suite, SCW_E2E_TEST_SECRET_KEY environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, SCW_E2E_TEST_SECRET_KEY environment variable cannot be empty")
 	}
 
 	scwProjectID := os.Getenv("SCW_DEFAULT_PROJECT_ID")
 	if len(scwProjectID) == 0 {
-		t.Fatal("unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, SCW_E2E_TEST_PROJECT_ID environment variable cannot be empty")
 	}
 
 	selector := Not(OsSelector("rhel", "flatcar", "rockylinux"))
@@ -936,7 +930,7 @@ func getNutanixTestParams(t *testing.T) []string {
 	endpoint := os.Getenv("NUTANIX_E2E_ENDPOINT")
 
 	if password == "" || username == "" || endpoint == "" || cluster == "" || project == "" || subnet == "" {
-		t.Fatal("unable to run the test suite, NUTANIX_E2E_PASSWORD, NUTANIX_E2E_USERNAME, NUTANIX_E2E_CLUSTER_NAME, " +
+		t.Fatal("Unable to run the test suite, NUTANIX_E2E_PASSWORD, NUTANIX_E2E_USERNAME, NUTANIX_E2E_CLUSTER_NAME, " +
 			"NUTANIX_E2E_ENDPOINT, NUTANIX_E2E_PROJECT_NAME or NUTANIX_E2E_SUBNET_NAME environment variables cannot be empty")
 	}
 
@@ -963,6 +957,43 @@ func TestNutanixProvisioningE2E(t *testing.T) {
 	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
 
+func TestOpenNebulaProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	oneEndpoint := os.Getenv("ONE_ENDPOINT")
+	oneUsername := os.Getenv("ONE_USERNAME")
+	onePassword := os.Getenv("ONE_PASSWORD")
+
+	// required parameters
+	if oneEndpoint == "" || oneUsername == "" || onePassword == "" {
+		t.Fatal("unable to run test suite, all of ONE_ENDPOINT, ONE_USERNAME, and ONE_PASSWORD must be set!")
+	}
+
+	// optional parameters
+	oneDatastore := os.Getenv("ONE_DATASTORE")
+	oneNetwork := os.Getenv("ONE_NETWORK")
+
+	// set defaults for minione deployments
+	if oneDatastore == "" {
+		oneDatastore = "default"
+	}
+
+	if oneNetwork == "" {
+		oneNetwork = "vnet"
+	}
+
+	params := []string{
+		fmt.Sprintf("<< ONE_ENDPOINT >>=%s", oneEndpoint),
+		fmt.Sprintf("<< ONE_USERNAME >>=%s", oneUsername),
+		fmt.Sprintf("<< ONE_PASSWORD >>=%s", onePassword),
+		fmt.Sprintf("<< ONE_DATASTORE_NAME >>=%s", oneDatastore),
+		fmt.Sprintf("<< ONE_NETWORK_NAME >>=%s", oneNetwork),
+	}
+
+	selector := OsSelector("rockylinux", "flatcar")
+	runScenarios(t, selector, params, openNebulaManifest, fmt.Sprintf("one-%s", *testRunIdentifier))
+}
+
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
 // image and upgrade it prior to joining the cluster.
 func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
@@ -977,7 +1008,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 	osNetwork := os.Getenv("OS_NETWORK_NAME")
 
 	if osAuthURL == "" || osUsername == "" || osPassword == "" || osDomain == "" || osRegion == "" || osTenant == "" {
-		t.Fatal("unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
+		t.Fatal("Unable to run test suite, all of OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, OS_REGION, and OS_TENANT OS_DOMAIN must be set!")
 	}
 
 	params := []string{
@@ -1009,7 +1040,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 	// test data
 	hzToken := os.Getenv("HZ_E2E_TOKEN")
 	if len(hzToken) == 0 {
-		t.Fatal("unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
+		t.Fatal("Unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
 	// act
@@ -1034,7 +1065,7 @@ func TestAnexiaProvisioningE2E(t *testing.T) {
 	locationID := os.Getenv("ANEXIA_LOCATION_ID")
 
 	if token == "" || vlanID == "" || templateID == "" || locationID == "" {
-		t.Fatal("unable to run test suite, all of ANEXIA_TOKEN, ANEXIA_VLAN_ID, ANEXIA_TEMPLATE_ID, and ANEXIA_LOCATION_ID must be set!")
+		t.Fatal("Unable to run test suite, all of ANEXIA_TOKEN, ANEXIA_VLAN_ID, ANEXIA_TEMPLATE_ID, and ANEXIA_LOCATION_ID must be set!")
 	}
 
 	selector := OsSelector("flatcar")
@@ -1046,4 +1077,22 @@ func TestAnexiaProvisioningE2E(t *testing.T) {
 	}
 
 	runScenarios(t, selector, params, anexiaManifest, fmt.Sprintf("anexia-%s", *testRunIdentifier))
+}
+
+// TestVultrProvisioning - a test suite that exercises Vultr provider
+// by requesting nodes with different combination of container runtime type, container runtime version and the OS flavour.
+func TestVultrProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	// test data
+	apiKey := os.Getenv("VULTR_API_KEY")
+	if len(apiKey) == 0 {
+		t.Fatal("Unable to run the test suite, VULTR_API_KEY environment variable cannot be empty")
+	}
+
+	selector := OsSelector("ubuntu", "centos", "rockylinux")
+
+	// act
+	params := []string{fmt.Sprintf("<< VULTR_API_KEY >>=%s", apiKey)}
+	runScenarios(t, selector, params, vultrManifest, fmt.Sprintf("vlt-%s", *testRunIdentifier))
 }

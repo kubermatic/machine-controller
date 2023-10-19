@@ -27,8 +27,7 @@ make -C $(dirname $0)/.. build-machine-controller
 $(dirname $0)/../machine-controller \
   -kubeconfig=$MC_KUBECONFIG \
   -worker-count=50 \
-  -logtostderr \
-  -v=6 \
+  -log-debug \
   -cluster-dns=169.254.20.10 \
   -enable-profiling \
   -metrics-address=0.0.0.0:8080 \

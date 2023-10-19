@@ -29,30 +29,28 @@ import (
 )
 
 type NodeManager struct {
-	ctx      context.Context
 	client   ctrlruntimeclient.Client
 	nodeName string
 }
 
-func New(ctx context.Context, client ctrlruntimeclient.Client, nodeName string) *NodeManager {
+func New(client ctrlruntimeclient.Client, nodeName string) *NodeManager {
 	return &NodeManager{
-		ctx:      ctx,
 		client:   client,
 		nodeName: nodeName,
 	}
 }
 
-func (nm *NodeManager) GetNode() (*corev1.Node, error) {
+func (nm *NodeManager) GetNode(ctx context.Context) (*corev1.Node, error) {
 	node := &corev1.Node{}
-	if err := nm.client.Get(nm.ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
+	if err := nm.client.Get(ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
 		return nil, fmt.Errorf("failed to get node from lister: %w", err)
 	}
 	return node, nil
 }
 
-func (nm *NodeManager) CordonNode(node *corev1.Node) error {
+func (nm *NodeManager) CordonNode(ctx context.Context, node *corev1.Node) error {
 	if !node.Spec.Unschedulable {
-		_, err := nm.updateNode(func(n *corev1.Node) {
+		_, err := nm.updateNode(ctx, func(n *corev1.Node) {
 			n.Spec.Unschedulable = true
 		})
 		if err != nil {
@@ -68,7 +66,7 @@ func (nm *NodeManager) CordonNode(node *corev1.Node) error {
 	// not evicted
 	return wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
 		node := &corev1.Node{}
-		if err := nm.client.Get(nm.ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
+		if err := nm.client.Get(ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
 			return false, err
 		}
 		if node.Spec.Unschedulable {
@@ -78,16 +76,16 @@ func (nm *NodeManager) CordonNode(node *corev1.Node) error {
 	})
 }
 
-func (nm *NodeManager) updateNode(modify func(*corev1.Node)) (*corev1.Node, error) {
+func (nm *NodeManager) updateNode(ctx context.Context, modify func(*corev1.Node)) (*corev1.Node, error) {
 	node := &corev1.Node{}
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		if err := nm.client.Get(nm.ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
+		if err := nm.client.Get(ctx, types.NamespacedName{Name: nm.nodeName}, node); err != nil {
 			return err
 		}
 		// Apply modifications
 		modify(node)
 		// Update the node
-		return nm.client.Update(nm.ctx, node)
+		return nm.client.Update(ctx, node)
 	})
 
 	return node, err

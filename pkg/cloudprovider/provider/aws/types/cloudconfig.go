@@ -36,7 +36,9 @@ RoleARN={{ .Global.RoleARN | iniEscape }}
 KubernetesClusterID={{ .Global.KubernetesClusterID | iniEscape }}
 DisableSecurityGroupIngress={{ .Global.DisableSecurityGroupIngress }}
 ElbSecurityGroup={{ .Global.ElbSecurityGroup | iniEscape }}
-DisableStrictZoneCheck={{ .Global.DisableStrictZoneCheck }}
+{{- if .Global.DisableStrictZoneCheck }}
+DisableStrictZoneCheck=true
+{{- end }}
 {{- range .Global.NodeIPFamilies }}
 NodeIPFamilies={{ . | iniEscape}}
 {{- end }}
@@ -57,8 +59,10 @@ type GlobalOpts struct {
 	KubernetesClusterID         string
 	ElbSecurityGroup            string
 	DisableSecurityGroupIngress bool
-	DisableStrictZoneCheck      bool
-	NodeIPFamilies              []string
+	// DisableStrictZoneCheck has been removed in Kubernetes 1.27+.
+	// See https://github.com/kubernetes/cloud-provider-aws/pull/573 for more information.
+	DisableStrictZoneCheck bool
+	NodeIPFamilies         []string
 }
 
 func CloudConfigToString(c *CloudConfig) (string, error) {

@@ -23,25 +23,32 @@ import (
 
 // RawConfig represents vsphere specific configuration.
 type RawConfig struct {
-	TemplateVMName *providerconfigtypes.ConfigVarString `json:"templateVMName"`
-	VMNetName      *providerconfigtypes.ConfigVarString `json:"vmNetName"`
-	Username       *providerconfigtypes.ConfigVarString `json:"username"`
-	Password       *providerconfigtypes.ConfigVarString `json:"password"`
-	VSphereURL     *providerconfigtypes.ConfigVarString `json:"vsphereURL"`
-	Datacenter     *providerconfigtypes.ConfigVarString `json:"datacenter"`
-	Cluster        *providerconfigtypes.ConfigVarString `json:"cluster"`
-	Folder         *providerconfigtypes.ConfigVarString `json:"folder"`
-	ResourcePool   *providerconfigtypes.ConfigVarString `json:"resourcePool"`
+	TemplateVMName providerconfigtypes.ConfigVarString `json:"templateVMName"`
+	// Deprecated: use networks instead.
+	VMNetName  providerconfigtypes.ConfigVarString   `json:"vmNetName"`
+	Networks   []providerconfigtypes.ConfigVarString `json:"networks"`
+	Username   providerconfigtypes.ConfigVarString   `json:"username"`
+	Password   providerconfigtypes.ConfigVarString   `json:"password"`
+	VSphereURL providerconfigtypes.ConfigVarString   `json:"vsphereURL"`
+	Datacenter providerconfigtypes.ConfigVarString   `json:"datacenter"`
+
+	// Cluster defines the cluster to use in vcenter.
+	// Only needed for vm anti affinity.
+	Cluster providerconfigtypes.ConfigVarString `json:"cluster"`
+
+	Folder       providerconfigtypes.ConfigVarString `json:"folder"`
+	ResourcePool providerconfigtypes.ConfigVarString `json:"resourcePool"`
 
 	// Either Datastore or DatastoreCluster have to be provided.
-	DatastoreCluster *providerconfigtypes.ConfigVarString `json:"datastoreCluster"`
-	Datastore        *providerconfigtypes.ConfigVarString `json:"datastore"`
+	DatastoreCluster providerconfigtypes.ConfigVarString `json:"datastoreCluster"`
+	Datastore        providerconfigtypes.ConfigVarString `json:"datastore"`
 
-	CPUs          int32                              `json:"cpus"`
-	MemoryMB      int64                              `json:"memoryMB"`
-	DiskSizeGB    *int64                             `json:"diskSizeGB,omitempty"`
-	Tags          []Tag                              `json:"tags,omitempty"`
-	AllowInsecure *providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
+	CPUs           int32                             `json:"cpus"`
+	MemoryMB       int64                             `json:"memoryMB"`
+	DiskSizeGB     *int64                            `json:"diskSizeGB,omitempty"`
+	Tags           []Tag                             `json:"tags,omitempty"`
+	AllowInsecure  providerconfigtypes.ConfigVarBool `json:"allowInsecure"`
+	VMAntiAffinity providerconfigtypes.ConfigVarBool `json:"vmAntiAffinity"`
 }
 
 // Tag represents vsphere tag.

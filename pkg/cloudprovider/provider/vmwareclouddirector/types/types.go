@@ -33,6 +33,7 @@ type RawConfig struct {
 	// Provider configuration.
 	Username      providerconfigtypes.ConfigVarString `json:"username"`
 	Password      providerconfigtypes.ConfigVarString `json:"password"`
+	APIToken      providerconfigtypes.ConfigVarString `json:"apiToken"`
 	Organization  providerconfigtypes.ConfigVarString `json:"organization"`
 	URL           providerconfigtypes.ConfigVarString `json:"url"`
 	VDC           providerconfigtypes.ConfigVarString `json:"vdc"`

@@ -34,11 +34,12 @@ type Client struct {
 	VCDClient *govcd.VCDClient
 }
 
-func NewClient(username, password, org, url, vdc string, allowInsecure bool) (*Client, error) {
+func NewClient(username, password, apiToken, org, url, vdc string, allowInsecure bool) (*Client, error) {
 	client := Client{
 		Auth: &Auth{
 			Username:      username,
 			Password:      password,
+			APIToken:      apiToken,
 			Organization:  org,
 			URL:           url,
 			VDC:           vdc,
@@ -61,11 +62,15 @@ func (c *Client) GetAuthenticatedClient() (*govcd.VCDClient, error) {
 	if c.Auth == nil {
 		return nil, fmt.Errorf("authentication configuration not provided")
 	}
-	if c.Auth.Username == "" {
-		return nil, fmt.Errorf("username not provided")
-	}
-	if c.Auth.Password == "" {
-		return nil, fmt.Errorf("password not provided")
+
+	// If API token is provided, use it for authentication.
+	if c.Auth.APIToken == "" {
+		if c.Auth.Username == "" {
+			return nil, fmt.Errorf("username not provided")
+		}
+		if c.Auth.Password == "" {
+			return nil, fmt.Errorf("password not provided")
+		}
 	}
 	if c.Auth.URL == "" {
 		return nil, fmt.Errorf("URL not provided")
@@ -77,13 +82,21 @@ func (c *Client) GetAuthenticatedClient() (*govcd.VCDClient, error) {
 	// Ensure that `/api` suffix exists in the cloud director URL.
 	apiEndpoint, err := url.Parse(c.Auth.URL)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse url '%s': %w", c.Auth.URL, err)
+		return nil, fmt.Errorf("failed to parse url '%s': %w", c.Auth.URL, err)
 	}
 	if !strings.HasSuffix(c.Auth.URL, "/api") {
 		apiEndpoint.Path = path.Join(apiEndpoint.Path, "api")
 	}
 
 	vcdClient := govcd.NewVCDClient(*apiEndpoint, c.Auth.AllowInsecure)
+
+	if c.Auth.APIToken != "" {
+		err = vcdClient.SetToken(c.Auth.Organization, govcd.ApiTokenHeader, c.Auth.APIToken)
+		if err != nil {
+			return nil, fmt.Errorf("failed to authenticate with VMware Cloud Director using API Token: %w", err)
+		}
+		return vcdClient, nil
+	}
 
 	err = vcdClient.Authenticate(c.Auth.Username, c.Auth.Password, c.Auth.Organization)
 	if err != nil {

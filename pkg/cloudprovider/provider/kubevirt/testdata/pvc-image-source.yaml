@@ -25,7 +25,7 @@ spec:
           pvc:
             namespace: ns
             name: dvname
-  running: true
+  runStrategy: Once
   template:
     metadata:
       creationTimestamp: null
