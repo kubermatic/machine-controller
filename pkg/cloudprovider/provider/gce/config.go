@@ -146,7 +146,7 @@ func newConfig(resolver *providerconfig.ConfigPointerVarResolver, spec v1alpha1.
 		return nil, fmt.Errorf("cannot retrieve service account: %w", err)
 	}
 
-	cfg.projectID, err = resolver.GetConfigVarStringValue(cpSpec.ProjectID)
+	cfg.projectID, err = resolver.GetConfigVarStringValue(&cpSpec.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve project id: %w", err)
 	}

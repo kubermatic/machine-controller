@@ -59,7 +59,6 @@ import (
 const (
 	floatingIPReleaseFinalizer = "kubermatic.io/release-openstack-floating-ip"
 	floatingIPIDAnnotationKey  = "kubermatic.io/release-openstack-floating-ip"
-	clientTimeout              = 1 * time.Minute
 
 	defaultInstanceReadyCheckPeriod  = 5 * time.Second
 	defaultInstanceReadyCheckTimeout = 120 * time.Second
@@ -74,7 +73,7 @@ type clientGetterFunc func(c *Config) (*gophercloud.ProviderClient, error)
 type portReadinessWaiterFunc func(instanceLog *zap.SugaredLogger, netClient *gophercloud.ServiceClient, serverID string, networkID string, instanceReadyCheckPeriod time.Duration, instanceReadyCheckTimeout time.Duration) error
 
 type provider struct {
-	configVarResolver   *providerconfig.ConfigVarResolver
+	configVarResolver   *providerconfig.ConfigPointerVarResolver
 	clientGetter        clientGetterFunc
 	portReadinessWaiter portReadinessWaiterFunc
 }
@@ -82,7 +81,9 @@ type provider struct {
 // New returns a openstack provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 	return &provider{
-		configVarResolver:   configVarResolver,
+		configVarResolver: &providerconfig.ConfigPointerVarResolver{
+			Cvr: configVarResolver,
+		},
 		clientGetter:        getClient,
 		portReadinessWaiter: waitForPort,
 	}
@@ -260,7 +261,7 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	for _, securityGroup := range rawConfig.SecurityGroups {
-		securityGroupValue, err := p.configVarResolver.GetConfigVarStringValue(securityGroup)
+		securityGroupValue, err := p.configVarResolver.GetConfigVarStringValue(&securityGroup)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -804,7 +805,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		hasFloatingIPReleaseFinalizer = true
 	}
 
-	instance, err := p.Get(ctx, log, machine, data)
+	thisInstance, err := p.Get(ctx, log, machine, data)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			if hasFloatingIPReleaseFinalizer {
@@ -835,7 +836,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, osErrorToTerminalError(log, err, "failed to get compute client")
 	}
 
-	if err := osservers.Delete(computeClient, instance.ID()).ExtractErr(); err != nil && !errors.As(err, &gophercloud.ErrDefault404{}) {
+	if err := osservers.Delete(computeClient, thisInstance.ID()).ExtractErr(); err != nil && !errors.As(err, &gophercloud.ErrDefault404{}) {
 		return false, osErrorToTerminalError(log, err, "failed to delete instance")
 	}
 

@@ -341,6 +341,10 @@ func (v *vultrInstance) ProviderID() string {
 	return "vultr://" + v.instance.ID
 }
 
+func (v *vultrInstance) HostID() string {
+	return v.ID()
+}
+
 func (v *vultrInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 	addresses[v.instance.MainIP] = v1.NodeExternalIP

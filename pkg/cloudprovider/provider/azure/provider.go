@@ -1173,7 +1173,7 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 			return fmt.Errorf("failed to get disks client: %w", err)
 		}
 
-		disks, err := getDisksByMachineUID(ctx, disksClient, config, machine.UID)
+		disks, err := getDisksByMachineUID(ctx, disksClient, machine.UID)
 		if err != nil {
 			return fmt.Errorf("failed to get disks: %w", err)
 		}

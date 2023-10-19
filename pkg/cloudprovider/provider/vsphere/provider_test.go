@@ -31,7 +31,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/utils/pointer"
-	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 type vsphereProviderSpecConf struct {
@@ -174,9 +173,7 @@ func TestValidate(t *testing.T) {
 			password, _ := simulator.DefaultLogin.Password()
 			p := &provider{
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
-				configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.
-					NewClientBuilder().
-					Build())},
+				configVarResolver: &providerconfig.ConfigVarResolver{},
 			}
 			tt.args.User = username
 			tt.args.Password = password

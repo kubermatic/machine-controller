@@ -213,28 +213,30 @@ func TestAnexiaProvider(t *testing.T) {
 			// fail
 			{
 				// Template name does not exist
-				config:        hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = "non-existing-template-name" }),
+				config: hookableConfig(func(c *anxtypes.RawConfig) {
+					c.Template = newConfigVarString("non-existing-template-name")
+				}),
 				expectedError: "failed to retrieve named template",
 			},
 			{
 				// Template build does not exist
 				config: hookableConfig(func(c *anxtypes.RawConfig) {
-					c.Template.Value = testTemplateName
-					c.TemplateBuild.Value = "b42"
+					c.Template = newConfigVarString(testTemplateName)
+					c.TemplateBuild = newConfigVarString("b42")
 				}),
 				expectedError: "failed to retrieve named template",
 			},
 			// pass
 			{
 				// With named template
-				config:             hookableConfig(func(c *anxtypes.RawConfig) { c.Template.Value = testTemplateName; c.TemplateID.Value = "" }),
+				config:             hookableConfig(func(c *anxtypes.RawConfig) { c.Template = newConfigVarString(testTemplateName); c.TemplateID = newConfigVarString("") }),
 				expectedTemplateID: "TEMPLATE-ID",
 			},
 			{
 				// With named template and not latest build
 				config: hookableConfig(func(c *anxtypes.RawConfig) {
-					c.Template.Value = testTemplateName
-					c.TemplateBuild.Value = "b01"
+					c.Template = newConfigVarString(testTemplateName)
+					c.TemplateBuild = newConfigVarString("b01")
 				}),
 				expectedTemplateID: "TEMPLATE-ID-OLD-BUILD",
 			},

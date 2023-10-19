@@ -615,12 +615,12 @@ func hzErrorToTerminalError(err error, msg string) error {
 }
 
 func (p *provider) publicIPsAssignment(rawConfig *hetznertypes.RawConfig) (bool, bool, error) {
-	assignIPv4, ipv4Set, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.AssignPublicIPv4)
+	assignIPv4, ipv4Set, err := p.configVarResolver.GetConfigVarBoolValue(&rawConfig.AssignPublicIPv4)
 	if err != nil {
 		return false, false, err
 	}
 
-	assignIPv6, ipv6Set, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.AssignPublicIPv6)
+	assignIPv6, ipv6Set, err := p.configVarResolver.GetConfigVarBoolValue(&rawConfig.AssignPublicIPv6)
 	if err != nil {
 		return false, false, err
 	}

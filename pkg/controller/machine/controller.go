@@ -947,7 +947,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	// case 3: retrieving the instance from cloudprovider was successful
 	// Emit an event and update .Status.Addresses
 	addresses := providerInstance.Addresses()
-	eventMessage := fmt.Sprintf("Found instance at cloud provider, addresses: %v", addresses)
+	eventMessage := fmt.Sprintf("Found instance at cloud provider, status: %s", providerInstance.Status())
 	r.recorder.Event(machine, corev1.EventTypeNormal, "InstanceFound", eventMessage)
 	// It might happen that we got here, but we still don't have IP addresses
 	// for the instance. In that case it doesn't make sense to proceed because:

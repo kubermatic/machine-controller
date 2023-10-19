@@ -430,6 +430,10 @@ func (i *openNebulaInstance) ProviderID() string {
 	return "opennebula://" + strconv.Itoa(i.vm.ID)
 }
 
+func (i *openNebulaInstance) HostID() string {
+	return i.ID()
+}
+
 func (i *openNebulaInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 

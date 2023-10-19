@@ -92,6 +92,10 @@ type Server struct {
 	addresses map[string]corev1.NodeAddressType
 }
 
+func (vsphereServer Server) HostID() string {
+	return vsphereServer.ID()
+}
+
 func (vsphereServer Server) Name() string {
 	return vsphereServer.name
 }

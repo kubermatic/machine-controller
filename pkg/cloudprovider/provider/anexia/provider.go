@@ -64,7 +64,7 @@ var (
 )
 
 type provider struct {
-	configVarResolver *providerconfig.ConfigVarResolver
+	configVarResolver *providerconfig.ConfigPointerVarResolver
 }
 
 // resolvedDisk contains the resolved values from types.RawDisk.
@@ -291,7 +291,7 @@ func ensureConditions(status *anxtypes.ProviderStatus) {
 	}
 }
 
-func resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig, configVarResolver *providerconfig.ConfigVarResolver, locationID string) (string, error) {
+func resolveTemplateID(ctx context.Context, a api.API, config anxtypes.RawConfig, configVarResolver *providerconfig.ConfigPointerVarResolver, locationID string) (string, error) {
 	templateName, err := configVarResolver.GetConfigVarStringValue(config.Template)
 	if err != nil {
 		return "", fmt.Errorf("failed to get 'template': %w", err)
@@ -408,7 +408,7 @@ func (p *provider) getConfig(ctx context.Context, log *zap.SugaredLogger, provSp
 
 // New returns an Anexia provider.
 func New(configVarResolver *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-	return &provider{configVarResolver: configVarResolver}
+	return &provider{configVarResolver: &providerconfig.ConfigPointerVarResolver{Cvr: configVarResolver}}
 }
 
 // AddDefaults adds omitted optional values to the given MachineSpec.
