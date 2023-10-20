@@ -67,3 +67,4 @@ issues:
     - 'cyclomatic complexity 34 of func `\(\*provider\)\.getConfig` is high'
     - 'cyclomatic complexity 31 of func `\(\*provider\)\.Validate` is high'
     - 'cyclomatic complexity 33 of func `\(\*provider\)\.Create` is high'
+    - 'cyclomatic complexity 31 of func `\(\*Reconciler\)\.ensureInstanceExistsForMachine` is high'
