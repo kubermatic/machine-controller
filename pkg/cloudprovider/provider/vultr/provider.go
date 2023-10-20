@@ -584,9 +584,15 @@ func (v *vultrPhysicalMachine) ID() string {
 }
 
 func (v *vultrVirtualMachine) ProviderID() string {
+	if v.instance == nil || v.instance.ID == "" {
+		return ""
+	}
 	return "vultr://" + v.instance.ID
 }
 func (v *vultrPhysicalMachine) ProviderID() string {
+	if v.instance == nil || v.instance.ID == "" {
+		return ""
+	}
 	return "vultr://" + v.instance.ID
 }
 

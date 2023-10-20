@@ -89,6 +89,9 @@ func (nutanixServer Server) ID() string {
 }
 
 func (nutanixServer Server) ProviderID() string {
+	if nutanixServer.ID() == "" {
+		return ""
+	}
 	return fmt.Sprintf("nutanix://%s", nutanixServer.ID())
 }
 

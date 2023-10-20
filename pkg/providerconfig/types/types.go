@@ -107,6 +107,15 @@ var (
 	}
 )
 
+func IntreeCloudProviderImplementationSupported(cloudProvider CloudProvider) (inTree bool) {
+	switch cloudProvider {
+	case CloudProviderAWS, CloudProviderAzure, CloudProviderVsphere, CloudProviderGoogle:
+		return true
+	default:
+		return false
+	}
+}
+
 // DNSConfig contains a machine's DNS configuration.
 type DNSConfig struct {
 	Servers []string `json:"servers"`

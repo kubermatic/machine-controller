@@ -426,6 +426,9 @@ func (i *openNebulaInstance) ID() string {
 }
 
 func (i *openNebulaInstance) ProviderID() string {
+	if i.vm == nil || i.vm.ID == 0 {
+		return ""
+	}
 	return "opennebula://" + strconv.Itoa(i.vm.ID)
 }
 
