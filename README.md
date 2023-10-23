@@ -151,7 +151,6 @@ Thanks for taking the time to join our community and start contributing!
 
 - Please familiarize yourself with the [Code of Conduct][4] before contributing.
 - See [CONTRIBUTING.md][5] for instructions on the developer certificate of origin that we require.
-- Read how [we're using ZenHub][6] for project and roadmap planning
 
 ### Pull Requests
 
@@ -166,6 +165,5 @@ See [the list of releases][7] to find out about feature changes.
 [3]: http://slack.kubermatic.io/
 [4]: code-of-conduct.md
 [5]: CONTRIBUTING.md
-[6]: Zenhub.md
 [7]: https://github.com/kubermatic/machine-controller/releases
 [8]: https://docs.kubermatic.com/operatingsystemmanager
