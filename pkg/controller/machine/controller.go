@@ -485,7 +485,11 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 	}
 
 	// case 3.3: if the node exists and both external and internal CCM are not available. Then set the provider-id for the node.
-	inTree := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
+	inTree, err := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider, machine.Spec.Versions.Kubelet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if cloud provider %q has in-tree implementation: %w", providerConfig.CloudProvider, err)
+	}
+
 	if !inTree && !r.nodeSettings.ExternalCloudProvider && node.Spec.ProviderID == "" {
 		providerID := fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
 		if err := r.updateNode(ctx, node, func(n *corev1.Node) {
@@ -999,7 +1003,11 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 
 	var providerID string
 	if machine.Spec.ProviderID == nil {
-		inTree := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider)
+		inTree, err := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider, machine.Spec.Versions.Kubelet)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if cloud provider %q has in-tree implementation: %w", providerConfig.CloudProvider, err)
+		}
+
 		// If both external and internal CCM are not available. We set provider-id for the machine explicitly.
 		if !inTree && !r.nodeSettings.ExternalCloudProvider {
 			providerID = fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
