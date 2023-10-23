@@ -338,6 +338,9 @@ func (v *vultrInstance) ID() string {
 }
 
 func (v *vultrInstance) ProviderID() string {
+	if v.instance == nil || v.instance.ID == "" {
+		return ""
+	}
 	return "vultr://" + v.instance.ID
 }
 

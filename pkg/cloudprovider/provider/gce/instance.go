@@ -61,6 +61,9 @@ func (gi *googleInstance) ID() string {
 }
 
 func (gi *googleInstance) ProviderID() string {
+	if gi.ci == nil || gi.ci.Name == "" {
+		return ""
+	}
 	return fmt.Sprintf("gce://%s/%s/%s", gi.projectID, gi.zone, gi.ci.Name)
 }
 

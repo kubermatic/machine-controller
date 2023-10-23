@@ -400,6 +400,9 @@ func (s *metalDevice) ID() string {
 }
 
 func (s *metalDevice) ProviderID() string {
+	if s.device == nil || s.device.ID == "" {
+		return ""
+	}
 	return "equinixmetal://" + s.device.ID
 }
 

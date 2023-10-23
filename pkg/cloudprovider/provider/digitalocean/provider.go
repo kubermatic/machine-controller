@@ -506,6 +506,9 @@ func (d *doInstance) ID() string {
 }
 
 func (d *doInstance) ProviderID() string {
+	if d.droplet == nil || d.droplet.Name == "" {
+		return ""
+	}
 	return fmt.Sprintf("digitalocean://%d", d.droplet.ID)
 }
 

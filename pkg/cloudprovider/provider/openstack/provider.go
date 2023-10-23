@@ -936,6 +936,9 @@ func (d *osInstance) ID() string {
 }
 
 func (d *osInstance) ProviderID() string {
+	if d.server == nil || d.server.ID == "" {
+		return ""
+	}
 	return "openstack:///" + d.server.ID
 }
 

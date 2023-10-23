@@ -51,6 +51,9 @@ func (ai *anexiaInstance) ID() string {
 }
 
 func (ai *anexiaInstance) ProviderID() string {
+	if ai == nil || ai.ID() == "" {
+		return ""
+	}
 	return ai.ID()
 }
 

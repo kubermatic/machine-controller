@@ -100,6 +100,9 @@ const (
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
 	// cluster-api provider to match Nodes to Machines.
 	AnnotationAutoscalerIdentifier = "cluster.k8s.io/machine"
+
+	// ProviderID pattern.
+	ProviderIDPattern = "kubermatic://%s/%s"
 )
 
 // Reconciler is the controller implementation for machine resources.
@@ -478,7 +481,24 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, userdataPlugin, providerConfig)
 	}
 
-	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
+	// case 3.3: if the node exists and both external and internal CCM are not available. Then set the provider-id for the node.
+	inTree, err := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider, machine.Spec.Versions.Kubelet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if cloud provider %q has in-tree implementation: %w", providerConfig.CloudProvider, err)
+	}
+
+	if !inTree && !r.nodeSettings.ExternalCloudProvider && node.Spec.ProviderID == "" {
+		providerID := fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
+		if err := r.updateNode(ctx, node, func(n *corev1.Node) {
+			n.Spec.ProviderID = providerID
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node %s with the ProviderID: %w", node.Name, err)
+		}
+
+		r.recorder.Event(machine, corev1.EventTypeNormal, "ProviderIDUpdated", "Successfully updated providerID on node")
+		nodeLog.Info("Added ProviderID to the node")
+	}
+	// case 3.4: if the node exists make sure if it has labels and taints attached to it.
 	return nil, r.ensureNodeLabelsAnnotationsAndTaints(ctx, nodeLog, node, machine)
 }
 
@@ -978,10 +998,26 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		return a.Type < b.Type
 	})
 
+	var providerID string
+	if machine.Spec.ProviderID == nil {
+		inTree, err := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider, machine.Spec.Versions.Kubelet)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if cloud provider %q has in-tree implementation: %w", providerConfig.CloudProvider, err)
+		}
+
+		// If both external and internal CCM are not available. We set provider-id for the machine explicitly.
+		if !inTree && !r.nodeSettings.ExternalCloudProvider {
+			providerID = fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
+		}
+	}
+
 	if err := r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Addresses = machineAddresses
+		if providerID != "" {
+			m.Spec.ProviderID = &providerID
+		}
 	}); err != nil {
-		return nil, fmt.Errorf("failed to update machine after setting .status.addresses: %w", err)
+		return nil, fmt.Errorf("failed to update machine after setting .status.addresses and providerID: %w", err)
 	}
 
 	return r.ensureNodeOwnerRef(ctx, log, providerInstance, machine, providerConfig)

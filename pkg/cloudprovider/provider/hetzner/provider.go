@@ -553,6 +553,9 @@ func (s *hetznerServer) ID() string {
 }
 
 func (s *hetznerServer) ProviderID() string {
+	if s.server == nil || s.server.ID == 0 {
+		return ""
+	}
 	return fmt.Sprintf("hcloud://%d", s.server.ID)
 }
 

@@ -405,6 +405,9 @@ func (d *linodeInstance) ID() string {
 }
 
 func (d *linodeInstance) ProviderID() string {
+	if d == nil || d.ID() == "" {
+		return ""
+	}
 	return fmt.Sprintf("linode://%s", d.ID())
 }
 
