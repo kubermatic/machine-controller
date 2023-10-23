@@ -11,7 +11,7 @@
 | Digitalocean  | ✓ | ✓ | x | x | x | ✓ |
 | Equinix Metal | ✓ | ✓ | ✓ | x | x | ✓ |
 | Google Cloud Platform | ✓ | x | x | x | x | x |
-| Hetzner | ✓ | ✓ | x | x | x | ✓ |
+| Hetzner | ✓ | x | x | x | x | ✓ |
 | KubeVirt | ✓ | ✓ | ✓ | ✓ | x | ✓ |
 | Nutanix | ✓ | ✓ | x | x | x | x |
 | Openstack | ✓ | ✓ | ✓ | ✓ | x | ✓ |
