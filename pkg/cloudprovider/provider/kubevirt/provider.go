@@ -162,6 +162,9 @@ func (k *kubeVirtServer) ID() string {
 }
 
 func (k *kubeVirtServer) ProviderID() string {
+	if k.vmi.Name == "" {
+		return ""
+	}
 	return "kubevirt://" + k.vmi.Name
 }
 

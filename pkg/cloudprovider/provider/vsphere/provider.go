@@ -101,6 +101,9 @@ func (vsphereServer Server) ID() string {
 }
 
 func (vsphereServer Server) ProviderID() string {
+	if vsphereServer.uuid == "" {
+		return ""
+	}
 	return "vsphere://" + vsphereServer.uuid
 }
 

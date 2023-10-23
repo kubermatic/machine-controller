@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Masterminds/semver/v3"
+
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"github.com/kubermatic/machine-controller/pkg/jsonutil"
@@ -106,6 +108,27 @@ var (
 		CloudProviderOpenNebula,
 	}
 )
+
+func IntreeCloudProviderImplementationSupported(cloudProvider CloudProvider, version string) (inTree bool, err error) {
+	kubeletVer, err := semver.NewVersion(version)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse kubelet version: %w", err)
+	}
+
+	switch cloudProvider {
+	case CloudProviderAzure, CloudProviderVsphere, CloudProviderGoogle:
+		return true, nil
+	case CloudProviderAWS:
+		// In-tree AWS support was removed in Kubernetes 1.27.
+		ltKube127Condition, _ := semver.NewConstraint("< 1.27")
+		if ltKube127Condition.Check(kubeletVer) {
+			return true, nil
+		}
+		return false, nil
+	default:
+		return false, nil
+	}
+}
 
 // DNSConfig contains a machine's DNS configuration.
 type DNSConfig struct {

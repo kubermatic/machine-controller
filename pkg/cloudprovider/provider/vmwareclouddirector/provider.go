@@ -123,6 +123,9 @@ func (s Server) ID() string {
 }
 
 func (s Server) ProviderID() string {
+	if s.ID() == "" {
+		return ""
+	}
 	return fmt.Sprintf("vmware-cloud-director://%s", s.ID())
 }
 
