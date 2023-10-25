@@ -27,6 +27,7 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/controller/util"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -92,7 +93,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	// Watch for changes to MachineDeployment.
 	err = c.Watch(&source.Kind{
 		Type: &v1alpha1.MachineDeployment{}},
-		&handler.EnqueueRequestForObject{},
+		// sys11: handle deleted machinedeployments
+		&util.EnqueueRequestForObjectExceptDelete{},
 	)
 	if err != nil {
 		return err
@@ -140,12 +142,6 @@ func (r *ReconcileMachineDeployment) Reconcile(ctx context.Context, request reco
 		// Error reading the object - requeue the request.
 		log.Errorw("Failed to get MachineDeployment", zap.Error(err))
 		return reconcile.Result{}, err
-	}
-
-	// Ignore deleted MachineDeployments, this can happen when foregroundDeletion
-	// is enabled
-	if deployment.DeletionTimestamp != nil {
-		return reconcile.Result{}, nil
 	}
 
 	result, err := r.reconcile(ctx, log, deployment)

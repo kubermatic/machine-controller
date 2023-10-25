@@ -29,6 +29,7 @@ import (
 	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
+	"github.com/kubermatic/machine-controller/pkg/controller/util"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -94,7 +95,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	// Watch for changes to MachineSet.
 	err = c.Watch(
 		&source.Kind{Type: &clusterv1alpha1.MachineSet{}},
-		&handler.EnqueueRequestForObject{},
+		// sys11: handle deleted machinesets
+		&util.EnqueueRequestForObjectExceptDelete{},
 	)
 	if err != nil {
 		return err
@@ -146,12 +148,6 @@ func (r *ReconcileMachineSet) Reconcile(ctx context.Context, request reconcile.R
 		// Error reading the object - requeue the request.
 		log.Errorw("Failed to get MachineSet", zap.Error(err))
 		return reconcile.Result{}, err
-	}
-
-	// Ignore deleted MachineSets, this can happen when foregroundDeletion
-	// is enabled
-	if machineSet.DeletionTimestamp != nil {
-		return reconcile.Result{}, nil
 	}
 
 	result, err := r.reconcile(ctx, log, machineSet)

@@ -836,7 +836,8 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, osErrorToTerminalError(log, err, "failed to get compute client")
 	}
 
-	if err := osservers.Delete(computeClient, thisInstance.ID()).ExtractErr(); err != nil && !errors.As(err, &gophercloud.ErrDefault404{}) {
+	// sys11: check for all 404 error types for openstack get
+	if err := osservers.Delete(computeClient, thisInstance.ID()).ExtractErr(); err != nil && !isErrNotFound(err) {
 		return false, osErrorToTerminalError(log, err, "failed to delete instance")
 	}
 
@@ -1111,7 +1112,8 @@ func (p *provider) cleanupFloatingIP(log *zap.SugaredLogger, machine *clusterv1a
 	if err != nil {
 		return fmt.Errorf("failed to create the networkv2 client for region %s: %w", c.Region, err)
 	}
-	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && !errors.As(err, &gophercloud.ErrDefault404{}) {
+	// sys11: check for all 404 error types for openstack get
+	if err := osfloatingips.Delete(netClient, floatingIPID).ExtractErr(); err != nil && !isErrNotFound(err) {
 		return fmt.Errorf("failed to delete floating ip %s: %w", floatingIPID, err)
 	}
 	if err := updater(machine, func(m *clusterv1alpha1.Machine) {
