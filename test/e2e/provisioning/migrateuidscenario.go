@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -39,6 +41,8 @@ import (
 )
 
 func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
+	log := zap.NewNop().Sugar()
+
 	// prepare the manifest
 	manifest, err := readAndModifyManifest(manifestPath, parameters)
 	if err != nil {
@@ -81,7 +85,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %w", providerSpec.CloudProvider, err)
 	}
-	defaultedSpec, err := prov.AddDefaults(machine.Spec)
+	defaultedSpec, err := prov.AddDefaults(log, machine.Spec)
 	if err != nil {
 		return fmt.Errorf("failed to add defaults: %w", err)
 	}
@@ -92,7 +96,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	// Step 0: Create instance with old UID
 	maxTries := 15
 	for i := 0; i < maxTries; i++ {
-		_, err := prov.Get(ctx, machine, providerData)
+		_, err := prov.Get(ctx, log, machine, providerData)
 		if err != nil {
 			if !errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 				if i < maxTries-1 {
@@ -102,7 +106,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 				}
 				return fmt.Errorf("failed to get machine %s before creating it: %w", machine.Name, err)
 			}
-			_, err := prov.Create(ctx, machine, providerData, "#cloud-config\n")
+			_, err := prov.Create(ctx, log, machine, providerData, "#cloud-config\n")
 			if err != nil {
 				if i < maxTries-1 {
 					time.Sleep(10 * time.Second)
@@ -117,7 +121,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 1: Verify we can successfully get the instance
 	for i := 0; i < maxTries; i++ {
-		if _, err := prov.Get(ctx, machine, providerData); err != nil {
+		if _, err := prov.Get(ctx, log, machine, providerData); err != nil {
 			if i < maxTries-1 {
 				klog.V(4).Infof("failed to get instance for machine %s before migrating on try %v with err=%v, will retry", machine.Name, i, err)
 				time.Sleep(10 * time.Second)
@@ -130,7 +134,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 2: Migrate UID
 	for i := 0; i < maxTries; i++ {
-		if err := prov.MigrateUID(ctx, machine, newUID); err != nil {
+		if err := prov.MigrateUID(ctx, log, machine, newUID); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
 				klog.V(4).Infof("failed to migrate UID for machine %s  on try %v with err=%v, will retry", machine.Name, i, err)
@@ -144,7 +148,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 
 	// Step 3: Verify we can successfully get the instance with the new UID
 	for i := 0; i < maxTries; i++ {
-		if _, err := prov.Get(ctx, machine, providerData); err != nil {
+		if _, err := prov.Get(ctx, log, machine, providerData); err != nil {
 			if i < maxTries-1 {
 				time.Sleep(10 * time.Second)
 				klog.V(4).Infof("failed to get instance for machine %s after migrating on try %v with err=%v, will retry", machine.Name, i, err)
@@ -158,7 +162,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 	// Step 4: Delete the instance and then verify instance is gone
 	for i := 0; i < maxTries; i++ {
 		// Deletion part 0: Delete and continue on err if there are tries left
-		done, err := prov.Cleanup(ctx, machine, providerData)
+		done, err := prov.Cleanup(ctx, log, machine, providerData)
 		if err != nil {
 			if i < maxTries-1 {
 				klog.V(4).Infof("Failed to delete machine %s on try %v with err=%v, will retry", machine.Name, i, err)
@@ -174,7 +178,7 @@ func verifyMigrateUID(kubeConfig, manifestPath string, parameters []string, time
 		}
 
 		// Deletion part 1: Get and continue if err != cloudprovidererrors.ErrInstanceNotFound if there are tries left
-		_, err = prov.Get(ctx, machine, providerData)
+		_, err = prov.Get(ctx, log, machine, providerData)
 		if err != nil && errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			break
 		}

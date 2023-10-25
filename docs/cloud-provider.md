@@ -80,8 +80,7 @@ ami: ""
 # When not set a 'kubernetes-v1' security group will get created
 securityGroupIDs:
 - ""
-# name of the instance profile to use.
-# When not set a 'kubernetes-v1' instance profile will get created
+# name of the instance profile to use, required.
 instanceProfile : ""
 
 # instance tags ("KubernetesCluster": "my-cluster" is a required tag.
@@ -147,6 +146,46 @@ tags:
   tagKey: tagValue
 ```
 
+## OpenNebula
+
+**Note:** This is a [community provider](../README.md#community-providers).
+
+### machine.spec.providerConfig.cloudProviderSpec
+
+```yaml
+# XML-RPC endpoint of your OpenNebula installation
+endpoint: ""
+# your OpenNebula username
+username: ""
+# your OpenNebula password
+password: ""
+
+# cpu (float64)
+cpu: 1
+# vcpu
+vcpu: 2
+# memory in MB
+memory: 1024
+
+# the name of the image to use, needs to be owned by the current user
+image: "Amazon Linux 2"
+# which datastore to use for the image
+datastore: ""
+# size of the disk in MB
+diskSize: 51200
+
+# network name, needs to be owned by the current user
+network: ""
+
+# whether to enable the VNC console
+enableVNC: true
+
+# optional key/value pairs to add to the VM template
+vmTemplateExtra:
+  # useful for e.g. setting the placement attributes as defined in https://docs.opennebula.io/6.4/management_and_operations/references/template.html#template-placement-section
+  SCHED_REQUIREMENTS: 'RACK="G4"'
+```
+
 ## Google Cloud Platform
 
 ### machine.spec.providerConfig.cloudProviderSpec
@@ -195,6 +234,8 @@ labels:
 ```
 
 ## Linode
+
+**Note:** This is a [community provider](../README.md#community-providers).
 
 ### machine.spec.providerConfig.cloudProviderSpec
 ```yaml
@@ -321,3 +362,14 @@ memory: "2048M"
 ## vSphere
 
 Refer to the [VSphere](./vsphere.md#provider-configuration) specific documentation.
+
+## Vultr
+
+**Note:** This is a [community provider](../README.md#community-providers).
+
+### machine.spec.providerConfig.cloudProviderSpec
+```yaml
+apiKey: "<< VULTR_API_KEY >>"
+plan: "vhf-8c-32gb"
+region: ""
+osId: 127

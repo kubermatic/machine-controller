@@ -16,3 +16,4 @@ examples/*.srl
 .vscode
 .gitpod.yml
 cmd/machine-controller/__debug_bin
+!pkg

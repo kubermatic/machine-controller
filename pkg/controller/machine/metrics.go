@@ -50,6 +50,16 @@ func NewMachineControllerMetrics() *MetricsCollection {
 			Name: metricsPrefix + "errors_total",
 			Help: "The total number or unexpected errors the controller encountered",
 		}),
+		Provisioning: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    metricsPrefix + "provisioning_time_seconds",
+			Help:    "Histogram of times spent from creating a Machine to ready state in the cluster",
+			Buckets: prometheus.ExponentialBuckets(32, 1.5, 10),
+		}),
+		Deprovisioning: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    metricsPrefix + "deprovisioning_time_seconds",
+			Help:    "Histogram of times spent from deleting a Machine to be removed from cluster and cloud provider",
+			Buckets: prometheus.ExponentialBuckets(32, 1.5, 10),
+		}),
 	}
 
 	// Set default values, so that these metrics always show up

@@ -31,6 +31,8 @@ type RawConfig struct {
 	Networks             []providerconfigtypes.ConfigVarString `json:"networks"`
 	Firewalls            []providerconfigtypes.ConfigVarString `json:"firewalls"`
 	Labels               map[string]string                     `json:"labels,omitempty"`
+	AssignPublicIPv4     providerconfigtypes.ConfigVarBool     `json:"assignPublicIPv4,omitempty"`
+	AssignPublicIPv6     providerconfigtypes.ConfigVarBool     `json:"assignPublicIPv6,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {

@@ -50,6 +50,10 @@ spec:
                 key: serviceAccount
             # See https://cloud.google.com/compute/docs/regions-zones/
             zone: "europe-west3-a"
+            # Is the id of the GCP project that can be used to create machines in. Usually this id is taken from the
+            # service account however, it should be possible to create a machine in another project, as long as the
+            # machine controller has the right permissions
+            projectID: ""
             # See https://cloud.google.com/compute/docs/machine-types
             machineType: "n1-standard-2"
             # In GB

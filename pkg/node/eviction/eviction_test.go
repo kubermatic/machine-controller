@@ -17,7 +17,10 @@ limitations under the License.
 package eviction
 
 import (
+	"context"
 	"testing"
+
+	"go.uber.org/zap"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +59,7 @@ func TestEvictPods(t *testing.T) {
 		client := kubefake.NewSimpleClientset(test.Pods...)
 		t.Run(test.Name, func(t *testing.T) {
 			ne := &NodeEviction{kubeClient: client, nodeName: "node1"}
-			if errs := ne.evictPods(literalPods); len(errs) > 0 {
+			if errs := ne.evictPods(context.Background(), zap.NewNop().Sugar(), literalPods); len(errs) > 0 {
 				t.Fatalf("Got unexpected errors=%v when running evictPods", errs)
 			}
 

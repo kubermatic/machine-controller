@@ -23,6 +23,18 @@ fi
 
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
 export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
+OSM_REPO_URL="${OSM_REPO_URL:-https://github.com/kubermatic/operating-system-manager.git}"
+OSM_REPO_TAG="${OSM_REPO_TAG:-main}"
+
+# cert-manager is required by OSM for generating TLS Certificates
+echodate "Installing cert-manager"
+(
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.2/cert-manager.yaml
+  # Wait for cert-manager to be ready
+  kubectl -n cert-manager rollout status deploy/cert-manager
+  kubectl -n cert-manager rollout status deploy/cert-manager-cainjector
+  kubectl -n cert-manager rollout status deploy/cert-manager-webhook
+)
 
 # Build the Docker image for machine-controller
 beforeDockerBuild=$(nowms)
@@ -52,29 +64,40 @@ if [ ! -f machine-controller-deployed ]; then
     sed -i "s;-use-osm=true;-use-osm=false;g" examples/machine-controller.yaml
   fi
 
-  make deploy
+  # e2e tests logs are primarily read by humans, if ever
+  sed -i 's/log-format=json/log-format=console/g' examples/machine-controller.yaml
+
+  kubectl apply -f examples/machine-controller.yaml
   touch machine-controller-deployed
+
+  protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'machine-controller-*' > /dev/null 2>&1 &
 fi
 
 if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
-  # cert-manager is required by OSM for generating TLS Certificates
-  echodate "Installing cert-manager"
+  OSM_TMP_DIR=/tmp/osm
+  echodate "Clone OSM respository"
   (
-    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
-    # Wait for cert-manager to be ready
-    kubectl -n cert-manager rollout status deploy/cert-manager
-    kubectl -n cert-manager rollout status deploy/cert-manager-cainjector
-    kubectl -n cert-manager rollout status deploy/cert-manager-webhook
+    # Clone OSM repo
+    mkdir -p $OSM_TMP_DIR
+    echodate "Cloning cluster exposer"
+    git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
   )
 
-  echodate "Installing operating-system-manager"
   (
+    OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
+    echodate "Installing operating-system-manager with image: $OSM_TAG"
+
+    # In release branches we'll have this pinned to a specific semver instead of latest.
+    sed -i "s;:latest;:$OSM_TAG;g" examples/operating-system-manager.yaml
+
     # This is required for running e2e tests in KIND
     url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
     sed -i "s;-container-runtime=containerd;$url;g" examples/operating-system-manager.yaml
     sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/operating-system-manager.yaml
     kubectl apply -f examples/operating-system-manager.yaml
   )
+
+  protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'operating-system-manager-*' > /dev/null 2>&1 &
 fi
 
 sleep 10

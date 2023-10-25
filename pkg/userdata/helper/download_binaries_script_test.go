@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/test"
 )
 
@@ -27,7 +29,7 @@ func TestDownloadBinariesScript(t *testing.T) {
 	for _, version := range versions {
 		name := fmt.Sprintf("download_binaries_%s", version.Original())
 		t.Run(name, func(t *testing.T) {
-			script, err := DownloadBinariesScript(version.String(), true)
+			script, err := DownloadBinariesScript(zap.NewNop().Sugar(), version.String(), true)
 			if err != nil {
 				t.Error(err)
 			}
@@ -40,7 +42,7 @@ func TestDownloadBinariesScript(t *testing.T) {
 func TestSafeDownloadBinariesScript(t *testing.T) {
 	name := "safe_download_binaries_v1.24.9"
 	t.Run(name, func(t *testing.T) {
-		script, err := SafeDownloadBinariesScript("v1.24.9")
+		script, err := SafeDownloadBinariesScript(zap.NewNop().Sugar(), "v1.24.9")
 		if err != nil {
 			t.Error(err)
 		}

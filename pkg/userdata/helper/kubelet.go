@@ -23,12 +23,13 @@ import (
 	"strings"
 	"text/template"
 
+	"go.uber.org/zap"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 	kubeletv1b1 "k8s.io/kubelet/config/v1beta1"
 	"k8s.io/utils/pointer"
 	kyaml "sigs.k8s.io/yaml"
@@ -158,8 +159,8 @@ func CloudProviderFlags(cpName string, external bool) string {
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet.
-func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
-	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap()).Parse(kubeletSystemdUnitTpl)
+func KubeletSystemdUnit(log *zap.SugaredLogger, containerRuntime, kubeletVersion, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string, disableSwap bool) (string, error) {
+	tmpl, err := template.New("kubelet-systemd-unit").Funcs(TxtFuncMap(log)).Parse(kubeletSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-systemd-unit template: %w", err)
 	}
@@ -199,7 +200,7 @@ func KubeletSystemdUnit(containerRuntime, kubeletVersion, cloudProvider, hostnam
 }
 
 // kubeletConfiguration returns marshaled kubelet.config.k8s.io/v1beta1 KubeletConfiguration.
-func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string, containerRuntime string) (string, error) {
+func kubeletConfiguration(log *zap.SugaredLogger, clusterDomain string, clusterDNS []net.IP, featureGates map[string]bool, kubeletConfigs map[string]string, containerRuntime string) (string, error) {
 	clusterDNSstr := make([]string, 0, len(clusterDNS))
 	for _, ip := range clusterDNS {
 		clusterDNSstr = append(clusterDNSstr, ip.String())
@@ -275,7 +276,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		mp, err := strconv.ParseInt(maxPods, 10, 32)
 		if err != nil {
 			// Instead of breaking the workflow, just print a warning and skip the configuration
-			klog.Warningf("Skipping invalid MaxPods value %v for Kubelet configuration", maxPods)
+			log.Info("Skipping invalid MaxPods value for Kubelet configuration", "value", maxPods)
 		} else {
 			cfg.MaxPods = int32(mp)
 		}
@@ -288,7 +289,7 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 		maxFiles, err := strconv.Atoi(containerLogMaxFiles)
 		if err != nil || maxFiles < 0 {
 			// Instead of breaking the workflow, just print a warning and skip the configuration
-			klog.Warningf("Skipping invalid ContainerLogMaxSize value %v for Kubelet configuration", containerLogMaxFiles)
+			log.Infow("Skipping invalid ContainerLogMaxSize value for Kubelet configuration", "value", containerLogMaxFiles)
 		} else {
 			cfg.ContainerLogMaxFiles = pointer.Int32(int32(maxFiles))
 		}
@@ -308,10 +309,10 @@ func kubeletConfiguration(clusterDomain string, clusterDNS []net.IP, featureGate
 // as the cloud provider is expected to know the correct IPs to return.
 // For details read kubernetes/sig-networking channel discussion
 // https://kubernetes.slack.com/archives/C09QYUH5W/p1654003958331739
-func KubeletFlags(version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
+func KubeletFlags(log *zap.SugaredLogger, version, cloudProvider, hostname string, dnsIPs []net.IP, external bool, ipFamily util.IPFamily, pauseImage string, initialTaints []corev1.Taint, extraKubeletFlags []string) (string, error) {
 	withNodeIPFlag := withNodeIPFlag(ipFamily, cloudProvider, external)
 
-	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap()).
+	tmpl, err := template.New("kubelet-flags").Funcs(TxtFuncMap(log)).
 		Parse(kubeletFlagsTpl(withNodeIPFlag))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse kubelet-flags template: %w", err)
@@ -370,8 +371,8 @@ WantedBy=multi-user.target
 }
 
 // ContainerRuntimeHealthCheckSystemdUnit container-runtime health checking systemd unit.
-func ContainerRuntimeHealthCheckSystemdUnit(containerRuntime string) (string, error) {
-	tmpl, err := template.New("container-runtime-healthcheck-systemd-unit").Funcs(TxtFuncMap()).Parse(containerRuntimeHealthCheckSystemdUnitTpl)
+func ContainerRuntimeHealthCheckSystemdUnit(log *zap.SugaredLogger, containerRuntime string) (string, error) {
+	tmpl, err := template.New("container-runtime-healthcheck-systemd-unit").Funcs(TxtFuncMap(log)).Parse(containerRuntimeHealthCheckSystemdUnitTpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse container-runtime-healthcheck-systemd-unit template: %w", err)
 	}

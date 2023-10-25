@@ -22,14 +22,16 @@ package gce
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
 )
 
 const (
@@ -54,16 +56,21 @@ type service struct {
 
 // connectComputeService establishes a service connection to the Compute Engine.
 func connectComputeService(cfg *config) (*service, error) {
-	client := cfg.jwtConfig.Client(context.Background())
-	svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
+	if cfg.clientConfig != nil &&
+		cfg.clientConfig.TokenSource != nil {
+		client := oauth2.NewClient(context.Background(), cfg.clientConfig.TokenSource)
+		svc, err := compute.NewService(context.Background(), option.WithHTTPClient(client))
+		if err != nil {
+			return nil, fmt.Errorf("cannot connect to Google Cloud: %w", err)
+		}
+		return &service{svc}, nil
 	}
-	return &service{svc}, nil
+
+	return nil, errors.New("gcp token source was not found")
 }
 
 // networkInterfaces returns the configured network interfaces for an instance creation.
-func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface, error) {
+func (svc *service) networkInterfaces(log *zap.SugaredLogger, cfg *config) ([]*compute.NetworkInterface, error) {
 	network := cfg.network
 
 	if cfg.network == "" && cfg.subnetwork == "" {
@@ -75,7 +82,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 		Subnetwork: cfg.subnetwork,
 	}
 
-	klog.Infof("using network:%s subnetwork: %s", cfg.network, cfg.subnetwork)
+	log.Infow("Network configuration", "network", cfg.network, "subnetwork", cfg.subnetwork)
 
 	if cfg.assignPublicIPAddress {
 		ifc.AccessConfigs = []*compute.AccessConfig{
@@ -102,7 +109,7 @@ func (svc *service) networkInterfaces(cfg *config) ([]*compute.NetworkInterface,
 				},
 			}
 		} else {
-			klog.Infof("IP family doesn't specify dual stack: %s", cfg.providerConfig.Network.GetIPFamily())
+			log.Infow("IP family doesn't specify dual stack", "family", cfg.providerConfig.Network.GetIPFamily())
 		}
 	}
 	return []*compute.NetworkInterface{ifc}, nil

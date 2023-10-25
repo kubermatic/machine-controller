@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 var (
@@ -58,7 +60,7 @@ func TestDefaultRedHatSubscriptionManager_UnregisterInstance(t *testing.T) {
 			defer func() {
 				tt.testingServer.Close()
 			}()
-			manager := NewRedHatSubscriptionManager()
+			manager := NewRedHatSubscriptionManager(zap.NewNop().Sugar())
 			manager.(*defaultRedHatSubscriptionManager).apiURL = tt.testingServer.URL + apiPath
 			manager.(*defaultRedHatSubscriptionManager).authURL = tt.testingServer.URL
 			manager.(*defaultRedHatSubscriptionManager).requestsLimiter = tt.requestLimiter

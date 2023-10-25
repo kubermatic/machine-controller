@@ -28,9 +28,9 @@ const (
 	ethCardType = "vmxnet3"
 )
 
-// Based on https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/main/pkg/cloud/vsphere/services/govmomi/vcenter/clone.go#L158
-func GetNetworkSpecs(ctx context.Context, session *Session, devices object.VirtualDeviceList, network string) ([]types.BaseVirtualDeviceConfigSpec, error) {
-	var deviceSpecs []types.BaseVirtualDeviceConfigSpec
+// Based on https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/blob/v1.7.0/pkg/services/govmomi/vcenter/clone.go#L372
+func GetNetworkSpecs(ctx context.Context, session *Session, devices object.VirtualDeviceList, network string, networks []string) ([]types.BaseVirtualDeviceConfigSpec, error) {
+	deviceSpecs := []types.BaseVirtualDeviceConfigSpec{}
 
 	// Remove any existing NICs.
 	for _, dev := range devices.SelectByType((*types.VirtualEthernetCard)(nil)) {
@@ -40,33 +40,42 @@ func GetNetworkSpecs(ctx context.Context, session *Session, devices object.Virtu
 		})
 	}
 
-	// Add new NICs based on the machine config.
-	ref, err := session.Finder.Network(ctx, network)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find network %q: %w", network, err)
-	}
-	backing, err := ref.EthernetCardBackingInfo(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new ethernet card backing info for network %q: %w", network, err)
-	}
-	dev, err := object.EthernetCardTypes().CreateEthernetCard(ethCardType, backing)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new ethernet card %q for network %q: %v", ethCardType, network, ctx)
+	// Add the default network if no networks are specified.
+	if network != "" {
+		networks = append(networks, network)
 	}
 
-	// Get the actual NIC object. This is safe to assert without a check
-	// because "object.EthernetCardTypes().CreateEthernetCard" returns a
-	// "types.BaseVirtualEthernetCard" as a "types.BaseVirtualDevice".
-	nic := dev.(types.BaseVirtualEthernetCard).GetVirtualEthernetCard()
+	// Add NICs for each network.
+	deviceKey := int32(-100)
+	for _, net := range networks {
+		// Add new NICs based on the machine config.
+		ref, err := session.Finder.Network(ctx, net)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find network %q: %w", net, err)
+		}
+		backing, err := ref.EthernetCardBackingInfo(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create new ethernet card backing info for network %q: %w", net, err)
+		}
+		dev, err := object.EthernetCardTypes().CreateEthernetCard(ethCardType, backing)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create new ethernet card %q for network %q: %v", ethCardType, net, ctx)
+		}
 
-	// Assign a temporary device key to ensure that a unique one will be
-	// generated when the device is created.
-	nic.Key = devices.NewKey()
+		// Get the actual NIC object. This is safe to assert without a check
+		// because "object.EthernetCardTypes().CreateEthernetCard" returns a
+		// "types.BaseVirtualEthernetCard" as a "types.BaseVirtualDevice".
+		nic := dev.(types.BaseVirtualEthernetCard).GetVirtualEthernetCard()
 
-	deviceSpecs = append(deviceSpecs, &types.VirtualDeviceConfigSpec{
-		Device:    dev,
-		Operation: types.VirtualDeviceConfigSpecOperationAdd,
-	})
+		// Assign a temporary device key to ensure that a unique one will be
+		// generated when the device is created.
+		nic.Key = deviceKey
 
+		deviceSpecs = append(deviceSpecs, &types.VirtualDeviceConfigSpec{
+			Device:    dev,
+			Operation: types.VirtualDeviceConfigSpecOperationAdd,
+		})
+		deviceKey--
+	}
 	return deviceSpecs, nil
 }

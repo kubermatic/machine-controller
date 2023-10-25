@@ -58,6 +58,7 @@ const (
 	CloudProviderNutanix             CloudProvider = "nutanix"
 	CloudProviderOpenstack           CloudProvider = "openstack"
 	CloudProviderVsphere             CloudProvider = "vsphere"
+	CloudProviderVultr               CloudProvider = "vultr"
 	CloudProviderVMwareCloudDirector CloudProvider = "vmware-cloud-director"
 	CloudProviderFake                CloudProvider = "fake"
 	CloudProviderAlibaba             CloudProvider = "alibaba"
@@ -65,6 +66,7 @@ const (
 	CloudProviderScaleway            CloudProvider = "scaleway"
 	CloudProviderBaremetal           CloudProvider = "baremetal"
 	CloudProviderExternal            CloudProvider = "external"
+	CloudProviderOpenNebula          CloudProvider = "opennebula"
 )
 
 var (
@@ -100,6 +102,8 @@ var (
 		CloudProviderAnexia,
 		CloudProviderScaleway,
 		CloudProviderBaremetal,
+		CloudProviderVultr,
+		CloudProviderOpenNebula,
 	}
 )
 

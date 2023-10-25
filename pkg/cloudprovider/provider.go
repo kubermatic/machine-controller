@@ -33,10 +33,12 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/kubevirt"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/linode"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/nutanix"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/opennebula"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/openstack"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/scaleway"
 	vcd "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vmwareclouddirector"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vsphere"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/vultr"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
@@ -63,9 +65,6 @@ var (
 		},
 		providerconfigtypes.CloudProviderHetzner: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return hetzner.New(cvr)
-		},
-		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
-			return linode.New(cvr)
 		},
 		providerconfigtypes.CloudProviderVsphere: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return vsphere.New(cvr)
@@ -109,11 +108,28 @@ var (
 			return vcd.New(cvr)
 		},
 	}
+
+	// communityProviders holds a map of cloud providers that have been implemented by community members and
+	// contributed to machine-controller. They are not end-to-end tested by the machine-controller development team.
+	communityProviders = map[providerconfigtypes.CloudProvider]func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider{
+		providerconfigtypes.CloudProviderLinode: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return linode.New(cvr)
+		},
+		providerconfigtypes.CloudProviderVultr: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return vultr.New(cvr)
+		},
+		providerconfigtypes.CloudProviderOpenNebula: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return opennebula.New(cvr)
+		},
+	}
 )
 
 // ForProvider returns a CloudProvider actuator for the requested provider.
 func ForProvider(p providerconfigtypes.CloudProvider, cvr *providerconfig.ConfigVarResolver) (cloudprovidertypes.Provider, error) {
 	if p, found := providers[p]; found {
+		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
+	}
+	if p, found := communityProviders[p]; found {
 		return NewValidationCacheWrappingCloudProvider(p(cvr)), nil
 	}
 	return nil, ErrProviderNotFound

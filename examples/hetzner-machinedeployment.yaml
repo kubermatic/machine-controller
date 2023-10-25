@@ -53,6 +53,10 @@ spec:
             # Optional: network IDs or names
             networks:
               - "<< YOUR_NETWORK >>"
+            # Optional: assignPublicIPv4 whether a public ipv4 should be assigned or not
+            assignPublicIPv4: true
+            # Optional: assignPublicIPv4 whether an ipv6 should be assigned or not
+            assignPublicIPv6: true
             # Optional: firewall IDs or names
             firewalls:
               - "<< YOUR_FIREWALL >>"

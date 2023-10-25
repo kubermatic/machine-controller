@@ -29,7 +29,7 @@ spec:
             accessKeyId: << AWS_ACCESS_KEY_ID >>
             secretAccessKey: << AWS_SECRET_ACCESS_KEY >>
             region: "eu-central-1"
-            availabilityZone: "eu-central-1a"
+            availabilityZone: "eu-central-1b"
             vpcId: "vpc-079f7648481a11e77"
             instanceType: "a1.medium"
             instanceProfile: "kubernetes-v1"

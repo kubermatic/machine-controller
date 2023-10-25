@@ -33,10 +33,10 @@ spec:
             organization: "<< VCD_ORG >>"
             vdc: "<< VCD_VDC >>"
             allowInsecure: false
-            vapp: "machine-controller-e2e"
+            vapp: "kubermatic-e2e"
             catalog: "kubermatic"
             template: "machine-controller-<< OS_NAME >>"
-            network: "machine-controller-e2e"
+            network: "kubermatic-e2e-routed-network"
             ipAllocationMode: "DHCP"
             cpus: 2
             cpuCores: 1

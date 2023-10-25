@@ -30,6 +30,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	th "github.com/gophercloud/gophercloud/testhelper"
 	"github.com/gophercloud/gophercloud/testhelper/client"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
@@ -281,7 +282,7 @@ func TestCreateServer(t *testing.T) {
 					return pc.ProviderClient, nil
 				},
 				// mock server readiness checker
-				portReadinessWaiter: func(*gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
+				portReadinessWaiter: func(*zap.SugaredLogger, *gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
 					return nil
 				},
 			}
@@ -295,7 +296,7 @@ func TestCreateServer(t *testing.T) {
 			// It only verifies that the content of the create request matches
 			// the expectation
 			// TODO(irozzo) check the returned instance too
-			_, err := p.Create(context.Background(), m, tt.data, tt.userdata)
+			_, err := p.Create(context.Background(), zap.NewNop().Sugar(), m, tt.data, tt.userdata)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("provider.Create() or = %v, wantErr %v", err, tt.wantErr)
 				return

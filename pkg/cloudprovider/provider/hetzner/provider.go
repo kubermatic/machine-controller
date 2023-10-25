@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/hetznercloud/hcloud-go/hcloud"
+	"go.uber.org/zap"
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
@@ -39,7 +40,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/klog"
 )
 
 const (
@@ -65,6 +65,8 @@ type Config struct {
 	Networks             []string
 	Firewalls            []string
 	Labels               map[string]string
+	AssignIPv4           bool
+	AssignIPv6           bool
 }
 
 func getNameForOS(os providerconfigtypes.OperatingSystem) (string, error) {
@@ -149,6 +151,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		c.Firewalls = append(c.Firewalls, firewallValue)
 	}
 
+	ipv4, ipv6, err := p.publicIPsAssignment(rawConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c.AssignIPv4 = ipv4
+	c.AssignIPv6 = ipv6
+
 	c.Labels = rawConfig.Labels
 
 	return &c, pconfig, err
@@ -184,7 +194,7 @@ func (p *provider) getServerPlacementGroup(ctx context.Context, client *hcloud.C
 	return createdPg.PlacementGroup, nil
 }
 
-func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	c, pc, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -239,6 +249,10 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 		}
 	}
 
+	if !c.AssignIPv4 && !c.AssignIPv6 && len(c.Networks) < 1 {
+		return errors.New("server should have either a public ipv4, ipv6 or dedicated network")
+	}
+
 	if _, _, err = client.ServerType.Get(ctx, c.ServerType); err != nil {
 		return fmt.Errorf("failed to get server type: %w", err)
 	}
@@ -246,7 +260,7 @@ func (p *provider) Validate(ctx context.Context, spec clusterv1alpha1.MachineSpe
 	return nil
 }
 
-func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -273,10 +287,15 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	}
 
 	c.Labels[machineUIDLabelKey] = string(machine.UID)
+
 	serverCreateOpts := hcloud.ServerCreateOpts{
 		Name:     machine.Spec.Name,
 		UserData: userdata,
 		Labels:   c.Labels,
+		PublicNet: &hcloud.ServerCreatePublicNet{
+			EnableIPv4: c.AssignIPv4,
+			EnableIPv6: c.AssignIPv6,
+		},
 	}
 
 	if c.Datacenter != "" {
@@ -370,7 +389,7 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	defer func() {
 		_, err := client.SSHKey.Delete(ctx, hkey)
 		if err != nil {
-			klog.Errorf("Failed to delete temporary ssh key: %v", err)
+			log.Errorw("Failed to delete temporary ssh key", zap.Error(err))
 		}
 	}()
 	serverCreateOpts.SSHKeys = []*hcloud.SSHKey{hkey}
@@ -386,8 +405,8 @@ func (p *provider) Create(ctx context.Context, machine *clusterv1alpha1.Machine,
 	return &hetznerServer{server: serverCreateRes.Server}, nil
 }
 
-func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
-	instance, err := p.Get(ctx, machine, data)
+func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+	instance, err := p.Get(ctx, log, machine, data)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return true, nil
@@ -406,7 +425,7 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	client := getClient(c.Token)
 	hzServer := instance.(*hetznerServer).server
 
-	res, err := client.Server.Delete(ctx, hzServer)
+	_, res, err := client.Server.DeleteWithResult(ctx, hzServer)
 	if err != nil {
 		return false, hzErrorToTerminalError(err, "failed to delete the server")
 	}
@@ -436,11 +455,11 @@ func (p *provider) Cleanup(ctx context.Context, machine *clusterv1alpha1.Machine
 	return false, nil
 }
 
-func (p *provider) AddDefaults(spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
+func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) (clusterv1alpha1.MachineSpec, error) {
 	return spec, nil
 }
 
-func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -467,7 +486,7 @@ func (p *provider) Get(ctx context.Context, machine *clusterv1alpha1.Machine, _ 
 	return nil, cloudprovidererrors.ErrInstanceNotFound
 }
 
-func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	c, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return cloudprovidererrors.TerminalError{
@@ -483,11 +502,11 @@ func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Mach
 		return fmt.Errorf("failed to get server: %w", err)
 	}
 	if server == nil {
-		klog.Infof("No instance exists for machine %s", machine.Name)
+		log.Info("No instance exists for machine")
 		return nil
 	}
 
-	klog.Infof("Setting UID label for machine %s", machine.Name)
+	log.Info("Setting UID label for machine")
 	_, response, err := client.Server.Update(ctx, server, hcloud.ServerUpdateOpts{
 		Labels: map[string]string{machineUIDLabelKey: string(newUID)},
 	})
@@ -499,7 +518,7 @@ func (p *provider) MigrateUID(ctx context.Context, machine *clusterv1alpha1.Mach
 	}
 	// This succeeds, but does not result in a label on the server, seems to be a bug
 	// on Hetzner side
-	klog.Infof("Successfully set UID label for machine %s", machine.Name)
+	log.Info("Successfully set UID label for machine")
 
 	return nil
 }
@@ -552,7 +571,7 @@ func (s *hetznerServer) Addresses() map[string]v1.NodeAddressType {
 	addresses[s.server.PublicNet.IPv4.IP.String()] = v1.NodeExternalIP
 	// For a given IPv6 network of 2001:db8:1234::/64, the instance address is 2001:db8:1234::1
 	// Reference: https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/v1.12.1/hcloud/instances.go#L165-167
-	if !s.server.PublicNet.IPv6.IP.IsUnspecified() {
+	if s.server.PublicNet.IPv6.IP != nil && !s.server.PublicNet.IPv6.IP.IsUnspecified() {
 		s.server.PublicNet.IPv6.IP[len(s.server.PublicNet.IPv6.IP)-1] |= 0x01
 		addresses[s.server.PublicNet.IPv6.IP.String()] = v1.NodeExternalIP
 	}
@@ -593,6 +612,30 @@ func hzErrorToTerminalError(err error, msg string) error {
 	}
 
 	return err
+}
+
+func (p *provider) publicIPsAssignment(rawConfig *hetznertypes.RawConfig) (bool, bool, error) {
+	assignIPv4, ipv4Set, err := p.configVarResolver.GetConfigVarBoolValue(&rawConfig.AssignPublicIPv4)
+	if err != nil {
+		return false, false, err
+	}
+
+	assignIPv6, ipv6Set, err := p.configVarResolver.GetConfigVarBoolValue(&rawConfig.AssignPublicIPv6)
+	if err != nil {
+		return false, false, err
+	}
+
+	// hetzner default behaviour assigns public ips when users don't set them explicitly for the server. In order to
+	// retain this behaviour, if the field AssignPublicIPv4/AssignPublicIPv6 in MachineDeployment is not set, machine controller
+	// default them to true.
+	if !ipv4Set {
+		assignIPv4 = true
+	}
+	if !ipv6Set {
+		assignIPv6 = true
+	}
+
+	return assignIPv4, assignIPv6, nil
 }
 
 func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
