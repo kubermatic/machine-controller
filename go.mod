@@ -50,7 +50,7 @@ require (
 	golang.org/x/oauth2 v0.11.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	google.golang.org/api v0.137.0
-	google.golang.org/grpc v1.57.0
+	google.golang.org/grpc v1.57.1
 	gopkg.in/gcfg.v1 v1.2.3
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.28.0
