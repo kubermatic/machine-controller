@@ -98,7 +98,7 @@ cd -
 {{- /* kubelet */}}
 KUBE_VERSION="${KUBE_VERSION:-{{ .KubeVersion }}}"
 kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
-kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
+kube_base_url="https://dl.k8s.io/$KUBE_VERSION/bin/linux/$arch"
 kube_sum_file="$kube_dir/sha256"
 
 {{- /* create versioned kube dir */}}
@@ -146,7 +146,7 @@ fi
 {{- if .DownloadKubelet }}
 {{- /* kubelet */}}
 if [ ! -f /opt/bin/kubelet ]; then
-    curl -Lfo /opt/bin/kubelet https://storage.googleapis.com/kubernetes-release/release/v{{ .KubeletVersion }}/bin/linux/amd64/kubelet
+    curl -Lfo /opt/bin/kubelet https://dl.k8s.io/v{{ .KubeletVersion }}/bin/linux/amd64/kubelet
     chmod +x /opt/bin/kubelet
 fi
 {{- end }}
