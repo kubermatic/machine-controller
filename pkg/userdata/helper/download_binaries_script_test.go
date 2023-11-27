@@ -25,6 +25,8 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/test"
 )
 
+const goldenExtension = ".golden"
+
 func TestDownloadBinariesScript(t *testing.T) {
 	for _, version := range versions {
 		name := fmt.Sprintf("download_binaries_%s", version.Original())
@@ -33,7 +35,7 @@ func TestDownloadBinariesScript(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			goldenName := name + ".golden"
+			goldenName := name + goldenExtension
 			test.CompareOutput(t, goldenName, script, *update)
 		})
 	}
@@ -46,7 +48,7 @@ func TestSafeDownloadBinariesScript(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		goldenName := name + ".golden"
+		goldenName := name + goldenExtension
 		test.CompareOutput(t, goldenName, script, *update)
 	})
 }

@@ -282,9 +282,8 @@ func resolveDatastoreRef(ctx context.Context, log *zap.SugaredLogger, config *Co
 			return nil, fmt.Errorf("failed to get datastore: %w", err)
 		}
 		return types.NewReference(datastore.Reference()), nil
-	} else {
-		return nil, fmt.Errorf("please provide either a datastore or a datastore cluster")
 	}
+	return nil, fmt.Errorf("please provide either a datastore or a datastore cluster")
 }
 
 func uploadAndAttachISO(ctx context.Context, log *zap.SugaredLogger, session *Session, vmRef *object.VirtualMachine, localIsoFilePath string) error {

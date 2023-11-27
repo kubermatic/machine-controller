@@ -140,10 +140,8 @@ func (ne *NodeEviction) evictPods(ctx context.Context, log *zap.SugaredLogger, p
 				} else if kerrors.IsTooManyRequests(err) {
 					// PDB prevents eviction, return and make the controller retry later
 					return
-				} else {
-					errCh <- fmt.Errorf("error evicting pod %s/%s on node %s: %w", p.Namespace, p.Name, ne.nodeName, err)
-					return
 				}
+				errCh <- fmt.Errorf("error evicting pod %s/%s on node %s: %w", p.Namespace, p.Name, ne.nodeName, err)
 			}
 		}(pod)
 	}
