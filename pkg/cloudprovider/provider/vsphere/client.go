@@ -109,10 +109,12 @@ func (s *RESTSession) Logout(ctx context.Context) {
 }
 
 func createVim25Client(ctx context.Context, config *Config) (*vim25.Client, error) {
-	clientURL, err := url.Parse(fmt.Sprintf("%s/sdk", config.VSphereURL))
+	endpointURL, err := url.Parse(config.VSphereURL)
 	if err != nil {
 		return nil, err
 	}
+
+	clientURL := endpointURL.JoinPath("/sdk")
 
 	// creating the govmoni Client in roundabout way because we need to set the proper CA bundle: reference https://github.com/vmware/govmomi/issues/1200
 	soapClient := soap.NewClient(clientURL, config.AllowInsecure)
