@@ -45,12 +45,14 @@ const (
 
 // imageProjects maps the OS to the Google Cloud image projects.
 var imageProjects = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-os-cloud",
+	providerconfigtypes.OperatingSystemUbuntu:  "ubuntu-os-cloud",
+	providerconfigtypes.OperatingSystemFlatcar: "kinvolk-public",
 }
 
 // imageFamilies maps the OS to the Google Cloud image projects.
 var imageFamilies = map[providerconfigtypes.OperatingSystem]string{
-	providerconfigtypes.OperatingSystemUbuntu: "ubuntu-2204-lts",
+	providerconfigtypes.OperatingSystemUbuntu:  "ubuntu-2204-lts",
+	providerconfigtypes.OperatingSystemFlatcar: "flatcar-stable",
 }
 
 // diskTypes are the disk types of the Google Cloud. Map is used for
