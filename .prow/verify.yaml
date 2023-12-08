@@ -149,7 +149,7 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-12
+        - image: quay.io/kubermatic/build:go-1.19-node-18-kind-0.17-18
           command:
             - ./hack/verify-licenses.sh
           resources:
