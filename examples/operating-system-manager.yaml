@@ -995,8 +995,8 @@ spec:
           name: webhook
           command:
             - /usr/local/bin/webhook
-            - -logtostderr
-            - -v=4
+            - -log-debug=false
+            - -log-format=json
             - -namespace=kube-system
           volumeMounts:
             - name: operating-system-manager-admission-cert
