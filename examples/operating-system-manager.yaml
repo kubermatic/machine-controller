@@ -1323,8 +1323,8 @@ spec:
           name: operating-system-manager
           command:
             - /usr/local/bin/osm-controller
-            - -logtostderr
-            - -v=4
+            - -log-debug=false
+            - -log-format=json
             - -worker-count=5
             - -cluster-dns=10.10.10.10
             - -metrics-address=0.0.0.0:8080
