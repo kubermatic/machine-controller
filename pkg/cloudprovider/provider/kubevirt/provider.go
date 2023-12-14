@@ -99,6 +99,7 @@ type Config struct {
 	Namespace                 string
 	OSImageSource             *cdiv1beta1.DataVolumeSource
 	StorageClassName          string
+	StorageAccessType         corev1.PersistentVolumeAccessMode
 	PVCSize                   resource.Quantity
 	Instancetype              *kubevirtv1.InstancetypeMatcher
 	Preference                *kubevirtv1.PreferenceMatcher
@@ -144,9 +145,10 @@ type NodeAffinityPreset struct {
 }
 
 type SecondaryDisks struct {
-	Name             string
-	Size             resource.Quantity
-	StorageClassName string
+	Name              string
+	Size              resource.Quantity
+	StorageClassName  string
+	StorageAccessType corev1.PersistentVolumeAccessMode
 }
 
 type kubeVirtServer struct {
@@ -302,11 +304,13 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 			return nil, nil, fmt.Errorf(`failed to parse value of "secondaryDisks.storageClass" field: %w`, err)
 		}
 		config.SecondaryDisks = append(config.SecondaryDisks, SecondaryDisks{
-			Name:             fmt.Sprintf("secondarydisk%d", i),
-			Size:             pvc,
-			StorageClassName: scString,
+			Name:              fmt.Sprintf("secondarydisk%d", i),
+			Size:              pvc,
+			StorageClassName:  scString,
+			StorageAccessType: p.getStorageAccessType(sd.StorageAccessType),
 		})
 	}
+	config.StorageAccessType = p.getStorageAccessType(rawConfig.VirtualMachine.Template.PrimaryDisk.StorageAccessType)
 
 	config.NodeAffinityPreset, err = p.parseNodeAffinityPreset(rawConfig.Affinity.NodeAffinityPreset)
 	if err != nil {
@@ -318,6 +322,14 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 	}
 
 	return &config, pconfig, nil
+}
+
+func (p *provider) getStorageAccessType(accessType providerconfigtypes.ConfigVarString) corev1.PersistentVolumeAccessMode {
+	at, _ := p.configVarResolver.GetConfigVarStringValue(accessType)
+	if at == "" {
+		return corev1.ReadWriteOnce
+	}
+	return corev1.PersistentVolumeAccessMode(at)
 }
 
 func (p *provider) parseNodeAffinityPreset(nodeAffinityPreset kubevirttypes.NodeAffinityPreset) (NodeAffinityPreset, error) {
@@ -844,7 +856,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 				PVC: &corev1.PersistentVolumeClaimSpec{
 					StorageClassName: ptr.To(config.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
-						"ReadWriteOnce",
+						config.StorageAccessType,
 					},
 					Resources: corev1.ResourceRequirements{
 						Requests: pvcRequest,
@@ -863,7 +875,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 				PVC: &corev1.PersistentVolumeClaimSpec{
 					StorageClassName: ptr.To(sd.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
-						"ReadWriteOnce",
+						config.StorageAccessType,
 					},
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceStorage: sd.Size},
