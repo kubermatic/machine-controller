@@ -301,6 +301,7 @@ func TestAnexiaProvider(t *testing.T) {
 			expectedIP := "8.8.8.8"
 			providerStatus.ReservedIP = expectedIP
 			providerStatus.IPState = anxtypes.IPStateUnbound
+			providerStatus.IPProvisioningExpires = time.Now().Add(anxtypes.IPProvisioningExpires)
 			reservedIP, err := getIPAddress(ctx, log, client)
 			testhelper.AssertNoErr(t, err)
 			testhelper.AssertEquals(t, expectedIP, reservedIP)
