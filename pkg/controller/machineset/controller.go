@@ -94,7 +94,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 
 	// Watch for changes to MachineSet.
 	err = c.Watch(
-		&source.Kind{Type: &clusterv1alpha1.MachineSet{}},
+		source.Kind(mgr.GetCache(), &clusterv1alpha1.MachineSet{}),
 		// sys11: handle deleted machinesets
 		&util.EnqueueRequestForObjectExceptDelete{},
 	)
@@ -104,8 +104,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 
 	// Watch for changes to Machines and reconcile the owner MachineSet.
 	err = c.Watch(
-		&source.Kind{Type: &clusterv1alpha1.Machine{}},
-		&handler.EnqueueRequestForOwner{IsController: true, OwnerType: &clusterv1alpha1.MachineSet{}},
+		source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}),
+		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &clusterv1alpha1.MachineSet{}, handler.OnlyControllerOwner()),
 	)
 	if err != nil {
 		return err
@@ -115,7 +115,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	// This watcher is required for use cases like adoption. In case a Machine doesn't have
 	// a controller reference, it'll look for potential matching MachineSet to reconcile.
 	return c.Watch(
-		&source.Kind{Type: &clusterv1alpha1.Machine{}},
+		source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}),
 		handler.EnqueueRequestsFromMapFunc(mapFn),
 	)
 }
@@ -419,9 +419,8 @@ func (r *ReconcileMachineSet) waitForMachineDeletion(ctx context.Context, machin
 
 // MachineToMachineSets is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
 // for MachineSets that might adopt an orphaned Machine.
-func (r *ReconcileMachineSet) MachineToMachineSets(o client.Object) []reconcile.Request {
+func (r *ReconcileMachineSet) MachineToMachineSets(ctx context.Context, o client.Object) []reconcile.Request {
 	result := []reconcile.Request{}
-	ctx := context.Background()
 
 	m := &clusterv1alpha1.Machine{}
 	key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
