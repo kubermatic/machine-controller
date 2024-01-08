@@ -245,7 +245,6 @@ spec:
             # are owned by a MachineSet will get deleted so the MachineSet
             # controller re-creates them
             - -join-cluster-timeout=25m
-            - -node-kubelet-feature-gates=RotateKubeletServerCertificate=true,DisableKubeletCloudCredentialProviders=True,DisableCloudProviders=True
           ports:
           - containerPort: 8085
           livenessProbe:

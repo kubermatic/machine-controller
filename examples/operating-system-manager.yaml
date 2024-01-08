@@ -1434,7 +1434,7 @@ spec:
             - -metrics-address=0.0.0.0:8080
             - -health-probe-address=0.0.0.0:8085
             - -namespace=kube-system
-            - -node-kubelet-feature-gates=RotateKubeletServerCertificate=true,DisableKubeletCloudCredentialProviders=True,DisableCloudProviders=True
+            - -container-runtime=containerd
           ports:
             - containerPort: 8085
           livenessProbe:
