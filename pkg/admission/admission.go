@@ -22,9 +22,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"reflect"
-	"time"
+	"strconv"
 
 	"github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
@@ -39,6 +40,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 type admissionData struct {
@@ -64,10 +67,13 @@ type Builder struct {
 	NodeFlags            *node.Flags
 	Namespace            string
 	VersionConstraints   *semver.Constraints
+
+	CertDir  string
+	CertName string
+	KeyName  string
 }
 
-func (build Builder) Build() (*http.Server, error) {
-	mux := http.NewServeMux()
+func (build Builder) Build() (webhook.Server, error) {
 	ad := &admissionData{
 		log:                  build.Log,
 		client:               build.Client,
@@ -82,18 +88,43 @@ func (build Builder) Build() (*http.Server, error) {
 		return nil, fmt.Errorf("error updating nodeSettings, %w", err)
 	}
 
-	mux.HandleFunc("/machinedeployments", handleFuncFactory(build.Log, ad.mutateMachineDeployments))
-	mux.HandleFunc("/machines", handleFuncFactory(build.Log, ad.mutateMachines))
-	mux.HandleFunc("/healthz", healthZHandler)
+	options := webhook.Options{
+		CertDir:  build.CertDir,
+		CertName: build.CertName,
+		KeyName:  build.KeyName,
+	}
 
-	return &http.Server{
-		Addr:    build.ListenAddress,
-		Handler: http.TimeoutHandler(mux, 25*time.Second, "timeout"),
-	}, nil
-}
+	if build.ListenAddress != "" {
+		host, port, err := net.SplitHostPort(build.ListenAddress)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing ListenAddress: %w", err)
+		}
 
-func healthZHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
+		options.Host = host
+
+		if port != "" {
+			port, err := strconv.ParseInt(port, 10, 16)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing port from ListenAddress: %w", err)
+			}
+
+			options.Port = int(port)
+		}
+	}
+
+	server := webhook.NewServer(options)
+
+	server.Register("/machinedeployments", handleFuncFactory(build.Log, ad.mutateMachineDeployments))
+	server.Register("/machines", handleFuncFactory(build.Log, ad.mutateMachines))
+
+	checkers := healthz.Handler{
+		Checks: map[string]healthz.Checker{
+			"ping": healthz.Ping,
+		},
+	}
+	server.Register("/healthz/", http.StripPrefix("/healthz/", &checkers))
+
+	return server, nil
 }
 
 func newJSONPatch(original, current runtime.Object) ([]jsonpatch.JsonPatchOperation, error) {
@@ -136,7 +167,7 @@ func createAdmissionResponse(log *zap.SugaredLogger, original, mutated runtime.O
 
 type mutator func(context.Context, admissionv1.AdmissionRequest) (*admissionv1.AdmissionResponse, error)
 
-func handleFuncFactory(log *zap.SugaredLogger, mutate mutator) func(http.ResponseWriter, *http.Request) {
+func handleFuncFactory(log *zap.SugaredLogger, mutate mutator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		review, err := readReview(r)
 		if err != nil {
