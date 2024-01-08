@@ -50,13 +50,13 @@ spec:
             plan: "vhf-8c-32gb"
             # This takes precedence over enableVPC
             vpcId:
-            - <VPC_IDS>
+              - <VPC_IDS>
             # For more reference, see
             # https://www.vultr.com/api/#tag/instances/operation/create-instance
             enableVPC: false
             enableVPC2: true
             vpc2Id:
-            - <VPC_IDS>
+              - <VPC_IDS>
             # Required: app_id, image_id, os_id, snapshot_id, or iso_id must be provided. Currently only os_id is supported.
             # This takes precedence over operatingSystem
             osId: 215
@@ -70,4 +70,4 @@ spec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: 1.26.6
+        kubelet: 1.28.5
