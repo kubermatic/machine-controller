@@ -91,8 +91,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	}
 
 	// Watch for changes to MachineDeployment.
-	err = c.Watch(&source.Kind{
-		Type: &v1alpha1.MachineDeployment{}},
+	err = c.Watch(source.Kind(
+		mgr.GetCache(),
+		&v1alpha1.MachineDeployment{}),
 		// sys11: handle deleted machinedeployments
 		&util.EnqueueRequestForObjectExceptDelete{},
 	)
@@ -102,8 +103,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 
 	// Watch for changes to MachineSet and reconcile the owner MachineDeployment.
 	err = c.Watch(
-		&source.Kind{Type: &v1alpha1.MachineSet{}},
-		&handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.MachineDeployment{}, IsController: true},
+		source.Kind(mgr.GetCache(), &v1alpha1.MachineSet{}),
+		handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &v1alpha1.MachineDeployment{}, handler.OnlyControllerOwner()),
 	)
 	if err != nil {
 		return err
@@ -113,7 +114,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	// This watcher is required for use cases like adoption. In case a MachineSet doesn't have
 	// a controller reference, it'll look for potential matching MachineDeployments to reconcile.
 	err = c.Watch(
-		&source.Kind{Type: &v1alpha1.MachineSet{}},
+		source.Kind(mgr.GetCache(), &v1alpha1.MachineSet{}),
 		handler.EnqueueRequestsFromMapFunc(mapFn),
 	)
 	if err != nil {
@@ -349,9 +350,8 @@ func (r *ReconcileMachineDeployment) getMachineDeploymentsForMachineSet(ctx cont
 
 // MachineSetTodeployments is a handler.MapFunc to be used to enqeue requests for reconciliation
 // for MachineDeployments that might adopt an orphaned MachineSet.
-func (r *ReconcileMachineDeployment) MachineSetToDeployments(o client.Object) []reconcile.Request {
+func (r *ReconcileMachineDeployment) MachineSetToDeployments(ctx context.Context, o client.Object) []reconcile.Request {
 	result := []reconcile.Request{}
-	ctx := context.Background()
 
 	ms := &v1alpha1.MachineSet{}
 	key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}

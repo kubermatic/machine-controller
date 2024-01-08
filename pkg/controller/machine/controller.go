@@ -237,15 +237,15 @@ func Add(
 	if err != nil {
 		return err
 	}
-	if err := c.Watch(&source.Kind{Type: &clusterv1alpha1.Machine{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}), &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	metrics.Workers.Set(float64(numWorkers))
 
 	return c.Watch(
-		&source.Kind{Type: &corev1.Node{}},
-		handler.EnqueueRequestsFromMapFunc(func(node client.Object) (result []reconcile.Request) {
+		source.Kind(mgr.GetCache(), &corev1.Node{}),
+		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, node client.Object) (result []reconcile.Request) {
 			machinesList := &clusterv1alpha1.MachineList{}
 			if err := mgr.GetClient().List(ctx, machinesList); err != nil {
 				utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %w", err))

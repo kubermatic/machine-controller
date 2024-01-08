@@ -94,7 +94,7 @@ func Add(mgr manager.Manager, log *zap.SugaredLogger) error {
 		return fmt.Errorf("failed to construct controller: %w", err)
 	}
 
-	return cntrl.Watch(&source.Kind{Type: watchType}, &handler.EnqueueRequestForObject{})
+	return cntrl.Watch(source.Kind(mgr.GetCache(), watchType), &handler.EnqueueRequestForObject{})
 }
 
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {

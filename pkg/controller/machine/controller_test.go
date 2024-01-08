@@ -358,6 +358,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &threeHoursAgo,
+					Finalizers:        []string{"machine-node-delete-finalizer"},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
@@ -370,6 +371,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
+					Finalizers:        []string{"machine-node-delete-finalizer"},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: nil,
@@ -382,6 +384,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
+					Finalizers:        []string{"machine-node-delete-finalizer"},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "non-existing-node"},
@@ -398,6 +401,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
+					Finalizers:        []string{"machine-node-delete-finalizer"},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
@@ -418,6 +422,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
+					Finalizers:        []string{"machine-node-delete-finalizer"},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
@@ -438,6 +443,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
+					Finalizers:        []string{"machine-node-delete-finalizer"},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},

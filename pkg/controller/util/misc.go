@@ -1,6 +1,8 @@
 package util
 
 import (
+	"context"
+
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -18,5 +20,5 @@ type EnqueueRequestForObjectExceptDelete struct {
 	handler.EnqueueRequestForObject
 }
 
-func (e *EnqueueRequestForObjectExceptDelete) Delete(_ event.DeleteEvent, _ workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForObjectExceptDelete) Delete(_ context.Context, _ event.DeleteEvent, _ workqueue.RateLimitingInterface) {
 }
