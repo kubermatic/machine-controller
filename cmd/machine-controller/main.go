@@ -52,11 +52,13 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	ctrlruntimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
@@ -337,13 +339,29 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 		namespace = defaultLeaderElectionNamespace
 	}
 
+	metricsOptions := metricsserver.Options{BindAddress: metricsAddress}
+	if profiling {
+		m := http.NewServeMux()
+		m.HandleFunc("/", pprof.Index)
+		m.HandleFunc("/cmdline", pprof.Cmdline)
+		m.HandleFunc("/profile", pprof.Profile)
+		m.HandleFunc("/symbol", pprof.Symbol)
+		m.HandleFunc("/trace", pprof.Trace)
+		metricsOptions.ExtraHandlers = map[string]http.Handler{
+			"/debug/pprof/": m,
+		}
+	}
+
 	mgr, err := manager.New(options.cfg, manager.Options{
-		SyncPeriod:              &syncPeriod,
+		Cache: cache.Options{
+			DefaultNamespaces: map[string]cache.Config{},
+			SyncPeriod:        &syncPeriod,
+		},
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionID:        defaultLeaderElectionID,
 		LeaderElectionNamespace: namespace,
 		HealthProbeBindAddress:  healthProbeAddress,
-		MetricsBindAddress:      metricsAddress,
+		Metrics:                 metricsOptions,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to build ctrlruntime manager: %w", err)
@@ -360,20 +378,6 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 	if err := mgr.AddHealthzCheck("apiserver-connection", health.ApiserverReachable(options.kubeClient)); err != nil {
 		return nil, fmt.Errorf("failed to add health check: %w", err)
 	}
-
-	if profiling {
-		m := http.NewServeMux()
-		m.HandleFunc("/", pprof.Index)
-		m.HandleFunc("/cmdline", pprof.Cmdline)
-		m.HandleFunc("/profile", pprof.Profile)
-		m.HandleFunc("/symbol", pprof.Symbol)
-		m.HandleFunc("/trace", pprof.Trace)
-
-		if err := mgr.AddMetricsExtraHandler("/debug/pprof/", m); err != nil {
-			return nil, fmt.Errorf("failed to add pprof http handlers: %w", err)
-		}
-	}
-
 	if err := mgr.Add(&controllerBootstrap{
 		mgr: mgr,
 		opt: options,

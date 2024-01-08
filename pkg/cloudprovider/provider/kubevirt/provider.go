@@ -858,7 +858,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						config.StorageAccessType,
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: pvcRequest,
 					},
 				},
@@ -877,7 +877,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						config.StorageAccessType,
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceStorage: sd.Size},
 					},
 				},
