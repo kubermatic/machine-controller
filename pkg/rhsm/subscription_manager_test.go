@@ -78,7 +78,7 @@ func createTestingServer(pagination bool) *httptest.Server {
 		result           string
 	)
 
-	const resultPrefix = `"{\"pagination\": {\"offset\": 0, \"limit\": 2,\"count\": 5}, \"body\": ["`
+	const resultPrefix = "{\"pagination\": {\"offset\": 0, \"limit\": 2,\"count\": 5}, \"body\": ["
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
