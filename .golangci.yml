@@ -11,7 +11,6 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
-    - deadcode
     - depguard
     - durationcheck
     - errcheck
@@ -35,14 +34,20 @@ linters:
     - promlinter
     - revive
     - staticcheck
-    - structcheck
     - tenv
     - unconvert
     - unused
-    - varcheck
     - wastedassign
     - whitespace
   disable-all: true
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        deny:
+          - { pkg: io/ioutil, desc: https://go.dev/doc/go1.16#ioutil }
+          - { pkg: github.com/ghodss/yaml, desc: use sigs.k8s.io/yaml instead }
 
 issues:
   exclude:
@@ -59,3 +64,4 @@ issues:
     - 'cyclomatic complexity 34 of func `\(\*provider\)\.getConfig` is high'
     - 'cyclomatic complexity 31 of func `\(\*provider\)\.Validate` is high'
     - 'cyclomatic complexity 33 of func `\(\*provider\)\.Create` is high'
+    - 'cyclomatic complexity 32 of func `\(\*Reconciler\)\.ensureInstanceExistsForMachine` is high'

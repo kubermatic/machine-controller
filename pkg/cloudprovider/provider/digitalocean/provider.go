@@ -276,7 +276,7 @@ func uploadRandomSSHPublicKey(ctx context.Context, service godo.KeysService) (st
 	return newDoKey.Fingerprint, nil
 }
 
-func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	c, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -327,7 +327,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	dropletLog := log.With("droplet", droplet.ID)
 
 	//We need to wait until the droplet really got created as tags will be only applied when the droplet is running
-	err = wait.Poll(createCheckPeriod, createCheckTimeout, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(ctx, createCheckPeriod, createCheckTimeout, false, func(ctx context.Context) (bool, error) {
 		newDroplet, rsp, err := client.Droplets.Get(ctx, droplet.ID)
 		if err != nil {
 			tErr := doStatusAndErrToTerminalError(rsp.StatusCode, err)
@@ -477,7 +477,7 @@ func (p *provider) MigrateUID(ctx context.Context, _ *zap.SugaredLogger, machine
 	return nil
 }
 
-func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *provider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return "", "", nil
 }
 
@@ -506,6 +506,9 @@ func (d *doInstance) ID() string {
 }
 
 func (d *doInstance) ProviderID() string {
+	if d.droplet == nil || d.droplet.Name == "" {
+		return ""
+	}
 	return fmt.Sprintf("digitalocean://%d", d.droplet.ID)
 }
 
@@ -562,6 +565,6 @@ func doStatusAndErrToTerminalError(status int, err error) error {
 	}
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }

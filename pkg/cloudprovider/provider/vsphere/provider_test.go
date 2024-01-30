@@ -30,7 +30,7 @@ import (
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 type vsphereProviderSpecConf struct {
@@ -96,7 +96,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid Datastore",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.String("LocalDS_0"),
+				Datastore: ptr.To("LocalDS_0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -104,8 +104,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid Datastore end empty DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				Datastore:        pointer.String("LocalDS_0"),
-				DatastoreCluster: pointer.String(""),
+				Datastore:        ptr.To("LocalDS_0"),
+				DatastoreCluster: ptr.To(""),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -113,7 +113,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Valid DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				DatastoreCluster: pointer.String("DC0_POD0"),
+				DatastoreCluster: ptr.To("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      false,
@@ -121,7 +121,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Invalid Datastore",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.String("LocalDS_10"),
+				Datastore: ptr.To("LocalDS_10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
@@ -129,7 +129,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Invalid DatastoreCluster",
 			args: vsphereProviderSpecConf{
-				Datastore: pointer.String("DC0_POD10"),
+				Datastore: ptr.To("DC0_POD10"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,
@@ -137,8 +137,8 @@ func TestValidate(t *testing.T) {
 		{
 			name: "Both Datastore and DatastoreCluster specified",
 			args: vsphereProviderSpecConf{
-				Datastore:        pointer.String("DC0_POD10"),
-				DatastoreCluster: pointer.String("DC0_POD0"),
+				Datastore:        ptr.To("DC0_POD10"),
+				DatastoreCluster: ptr.To("DC0_POD0"),
 			},
 			getConfigErr: nil,
 			wantErr:      true,

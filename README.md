@@ -10,10 +10,10 @@
     - [What Works](#what-works)
     - [Supported Kubernetes Versions](#supported-kubernetes-versions)
     - [Community Providers](#community-providers)
-  - [What doesn't Work](#what-doesnt-work)
+  - [What Doesn't Work](#what-doesnt-work)
   - [Quickstart](#quickstart)
-    - [Deploy machine-controller](#deploy-the-machine-controller)
-    - [Creating a MachineDeployment](#creating-a-machinedeployment)
+    - [Deploy machine-controller](#deploy-machine-controller)
+    - [Creating a `MachineDeployment`](#creating-a-machinedeployment)
   - [Advanced Usage](#advanced-usage)
     - [Specifying the Apiserver Endpoint](#specifying-the-apiserver-endpoint)
     - [CA Data](#ca-data)
@@ -43,10 +43,9 @@ machine-controller tries to follow the Kubernetes version
 
 Currently supported K8S versions are:
 
+- 1.28
 - 1.27
 - 1.26
-- 1.25
-- 1.24
 
 ### Community Providers
 
@@ -152,7 +151,6 @@ Thanks for taking the time to join our community and start contributing!
 
 - Please familiarize yourself with the [Code of Conduct][4] before contributing.
 - See [CONTRIBUTING.md][5] for instructions on the developer certificate of origin that we require.
-- Read how [we're using ZenHub][6] for project and roadmap planning
 
 ### Pull Requests
 
@@ -167,6 +165,5 @@ See [the list of releases][7] to find out about feature changes.
 [3]: http://slack.kubermatic.io/
 [4]: code-of-conduct.md
 [5]: CONTRIBUTING.md
-[6]: Zenhub.md
 [7]: https://github.com/kubermatic/machine-controller/releases
 [8]: https://docs.kubermatic.com/operatingsystemmanager

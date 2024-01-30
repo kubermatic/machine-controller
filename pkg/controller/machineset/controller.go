@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
+	ctrlruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -65,7 +66,7 @@ var (
 // The Manager will set fields on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, log *zap.SugaredLogger) error {
 	r := newReconciler(mgr, log)
-	return add(mgr, r, r.MachineToMachineSets)
+	return add(mgr, r, r.MachineToMachineSets())
 }
 
 // newReconciler returns a new reconcile.Reconciler.
@@ -374,7 +375,7 @@ func (r *ReconcileMachineSet) adoptOrphan(ctx context.Context, machineSet *clust
 
 func (r *ReconcileMachineSet) waitForMachineCreation(ctx context.Context, log *zap.SugaredLogger, machineList []*clusterv1alpha1.Machine) error {
 	for _, machine := range machineList {
-		pollErr := wait.PollImmediate(stateConfirmationInterval, stateConfirmationTimeout, func() (bool, error) {
+		pollErr := wait.PollUntilContextTimeout(ctx, stateConfirmationInterval, stateConfirmationTimeout, false, func(ctx context.Context) (bool, error) {
 			key := client.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
 			if err := r.Client.Get(ctx, key, &clusterv1alpha1.Machine{}); err != nil {
@@ -398,7 +399,7 @@ func (r *ReconcileMachineSet) waitForMachineCreation(ctx context.Context, log *z
 
 func (r *ReconcileMachineSet) waitForMachineDeletion(ctx context.Context, machineList []*clusterv1alpha1.Machine) error {
 	for _, machine := range machineList {
-		pollErr := wait.PollImmediate(stateConfirmationInterval, stateConfirmationTimeout, func() (bool, error) {
+		pollErr := wait.PollUntilContextTimeout(ctx, stateConfirmationInterval, stateConfirmationTimeout, false, func(ctx context.Context) (bool, error) {
 			m := &clusterv1alpha1.Machine{}
 			key := client.ObjectKey{Namespace: machine.Namespace, Name: machine.Name}
 
@@ -419,40 +420,42 @@ func (r *ReconcileMachineSet) waitForMachineDeletion(ctx context.Context, machin
 
 // MachineToMachineSets is a handler.ToRequestsFunc to be used to enqeue requests for reconciliation
 // for MachineSets that might adopt an orphaned Machine.
-func (r *ReconcileMachineSet) MachineToMachineSets(ctx context.Context, o client.Object) []reconcile.Request {
-	result := []reconcile.Request{}
+func (r *ReconcileMachineSet) MachineToMachineSets() handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []ctrlruntime.Request {
+		result := []reconcile.Request{}
 
-	m := &clusterv1alpha1.Machine{}
-	key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
-	machineLog := r.log.With("machine", key)
+		m := &clusterv1alpha1.Machine{}
+		key := client.ObjectKey{Namespace: o.GetNamespace(), Name: o.GetName()}
+		machineLog := r.log.With("machine", key)
 
-	if err := r.Client.Get(ctx, key, m); err != nil {
-		if !apierrors.IsNotFound(err) {
-			machineLog.Errorw("Failed to retrieve Machine for possible MachineSet adoption", zap.Error(err))
+		if err := r.Client.Get(ctx, key, m); err != nil {
+			if !apierrors.IsNotFound(err) {
+				machineLog.Errorw("Failed to retrieve Machine for possible MachineSet adoption", zap.Error(err))
+			}
+			return nil
 		}
-		return nil
-	}
 
-	// Check if the controller reference is already set and
-	// return an empty result when one is found.
-	for _, ref := range m.ObjectMeta.OwnerReferences {
-		if ref.Controller != nil && *ref.Controller {
-			return result
+		// Check if the controller reference is already set and
+		// return an empty result when one is found.
+		for _, ref := range m.ObjectMeta.OwnerReferences {
+			if ref.Controller != nil && *ref.Controller {
+				return result
+			}
 		}
-	}
 
-	mss := r.getMachineSetsForMachine(ctx, machineLog, m)
-	if len(mss) == 0 {
-		machineLog.Debug("Found no MachineSet for Machine")
-		return nil
-	}
+		mss := r.getMachineSetsForMachine(ctx, machineLog, m)
+		if len(mss) == 0 {
+			machineLog.Debug("Found no MachineSet for Machine")
+			return nil
+		}
 
-	for _, ms := range mss {
-		name := client.ObjectKey{Namespace: ms.Namespace, Name: ms.Name}
-		result = append(result, reconcile.Request{NamespacedName: name})
-	}
+		for _, ms := range mss {
+			name := client.ObjectKey{Namespace: ms.Namespace, Name: ms.Name}
+			result = append(result, reconcile.Request{NamespacedName: name})
+		}
 
-	return result
+		return result
+	}
 }
 
 func contains(list []string, strToSearch string) bool {

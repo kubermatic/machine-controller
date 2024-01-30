@@ -102,7 +102,7 @@ func getNewComputeV2(client *gophercloud.ProviderClient, c *Config) (*gopherclou
 	return computeClient, nil
 }
 
-func getAvailabilityZones(computeClient *gophercloud.ServiceClient, c *Config) ([]osavailabilityzones.AvailabilityZone, error) {
+func getAvailabilityZones(computeClient *gophercloud.ServiceClient) ([]osavailabilityzones.AvailabilityZone, error) {
 	allPages, err := osavailabilityzones.List(computeClient).AllPages()
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func getServerGroup(client *gophercloud.ProviderClient, id, region string) (*oss
 }
 
 func getAvailabilityZone(computeClient *gophercloud.ServiceClient, c *Config) (*osavailabilityzones.AvailabilityZone, error) {
-	zones, err := getAvailabilityZones(computeClient, c)
+	zones, err := getAvailabilityZones(computeClient)
 	if err != nil {
 		return nil, err
 	}

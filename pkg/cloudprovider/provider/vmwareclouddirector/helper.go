@@ -29,7 +29,7 @@ import (
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var internalDiskBusTypes = map[string]string{
@@ -192,8 +192,8 @@ func recomposeComputeAndDisk(config *Config, vm *govcd.VM) (*govcd.VM, error) {
 	vmSpecSection := vm.VM.VmSpecSection
 	if config.SizingPolicy == nil || *config.SizingPolicy == "" {
 		vmSpecSection.MemoryResourceMb.Configured = config.MemoryMB
-		vmSpecSection.NumCpus = pointer.Int(int(config.CPUs))
-		vmSpecSection.NumCoresPerSocket = pointer.Int(int(config.CPUCores))
+		vmSpecSection.NumCpus = ptr.To(int(config.CPUs))
+		vmSpecSection.NumCoresPerSocket = ptr.To(int(config.CPUCores))
 		needsComputeRecomposition = true
 	}
 
@@ -207,7 +207,7 @@ func recomposeComputeAndDisk(config *Config, vm *govcd.VM) (*govcd.VM, error) {
 					needsDiskRecomposition = true
 				}
 				if config.DiskIOPS != nil && *config.DiskIOPS > 0 {
-					vmSpecSection.DiskSection.DiskSettings[i].Iops = pointer.Int64(*config.DiskIOPS)
+					vmSpecSection.DiskSection.DiskSettings[i].Iops = ptr.To(*config.DiskIOPS)
 					needsDiskRecomposition = true
 				}
 				if config.DiskBusType != nil && *config.DiskBusType != "" {

@@ -146,18 +146,18 @@ func (p *Provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 }
 
 // Get retrieves a node instance that is associated with the given machine.
-func (p *Provider) Get(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
-	return p.get(machine)
+func (p *Provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
+	return p.get(ctx, machine)
 }
 
-func (p *Provider) get(machine *clusterv1alpha1.Machine) (*googleInstance, error) {
+func (p *Provider) get(ctx context.Context, machine *clusterv1alpha1.Machine) (*googleInstance, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Connect to Google compute.
-	svc, err := connectComputeService(cfg)
+	svc, err := connectComputeService(ctx, cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
@@ -220,7 +220,7 @@ func (p *Provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Connect to Google compute.
-	svc, err := connectComputeService(cfg)
+	svc, err := connectComputeService(ctx, cfg)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
@@ -297,7 +297,7 @@ func (p *Provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
-	err = svc.waitZoneOperation(cfg, op.Name)
+	err = svc.waitZoneOperation(ctx, cfg, op.Name)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, errInsertInstance, err)
 	}
@@ -306,14 +306,14 @@ func (p *Provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 }
 
 // Cleanup deletes the instance associated with the machine and all associated resources.
-func (p *Provider) Cleanup(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData) (bool, error) {
+func (p *Provider) Cleanup(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (bool, error) {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Connect to Google compute.
-	svc, err := connectComputeService(cfg)
+	svc, err := connectComputeService(ctx, cfg)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
@@ -328,7 +328,7 @@ func (p *Provider) Cleanup(_ context.Context, _ *zap.SugaredLogger, machine *clu
 		}
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
-	err = svc.waitZoneOperation(cfg, op.Name)
+	err = svc.waitZoneOperation(ctx, cfg, op.Name)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, errDeleteInstance, err)
 	}
@@ -357,19 +357,19 @@ func (p *Provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 
 // MigrateUID updates the UID of an instance after the controller migrates types
 // and the UID of the machine object changed.
-func (p *Provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
+func (p *Provider) MigrateUID(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, newUID types.UID) error {
 	// Read configuration.
 	cfg, err := newConfig(p.resolver, machine.Spec.ProviderSpec)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errMachineSpec, err)
 	}
 	// Connect to Google compute.
-	svc, err := connectComputeService(cfg)
+	svc, err := connectComputeService(ctx, cfg)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errConnect, err)
 	}
 	// Retrieve instance.
-	inst, err := p.get(machine)
+	inst, err := p.get(ctx, machine)
 	if err != nil {
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			return nil
@@ -391,7 +391,7 @@ func (p *Provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, machine *
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
-	err = svc.waitZoneOperation(cfg, op.Name)
+	err = svc.waitZoneOperation(ctx, cfg, op.Name)
 	if err != nil {
 		return newError(common.InvalidConfigurationMachineError, errSetLabels, err)
 	}
@@ -399,7 +399,7 @@ func (p *Provider) MigrateUID(_ context.Context, _ *zap.SugaredLogger, machine *
 }
 
 // SetMetricsForMachines allows providers to provide provider-specific metrics.
-func (p *Provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *Provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 

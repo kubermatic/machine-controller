@@ -50,7 +50,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	utilpointer "k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -73,6 +73,8 @@ const (
 	machineDeploymentLabelKey = "md"
 	// httpSource defines the http source type for VM Disk Image.
 	httpSource imageSource = "http"
+	// registrySource defines the OCI registry source type for VM Disk Image.
+	registrySource imageSource = "registry"
 	// pvcSource defines the pvc source type for VM Disk Image.
 	pvcSource imageSource = "pvc"
 )
@@ -160,6 +162,9 @@ func (k *kubeVirtServer) ID() string {
 }
 
 func (k *kubeVirtServer) ProviderID() string {
+	if k.vmi.Name == "" {
+		return ""
+	}
 	return "kubevirt://" + k.vmi.Name
 }
 
@@ -378,9 +383,15 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.source" field: %w`, err)
 	}
+	pullMethod, err := p.getPullMethod(primaryDisk.PullMethod)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to get value of "primaryDisk.pullMethod" field: %w`, err)
+	}
 	switch imageSource(osImageSource) {
 	case httpSource:
 		return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
+	case registrySource:
+		return registryDataVolume(osImage, pullMethod), nil
 	case pvcSource:
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
 			return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: namespaceAndName[1], Namespace: namespaceAndName[0]}}, nil
@@ -388,7 +399,10 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 		return &cdiv1beta1.DataVolumeSource{PVC: &cdiv1beta1.DataVolumeSourcePVC{Name: osImage, Namespace: namespace}}, nil
 	default:
 		// handle old API for backward compatibility.
-		if _, err = url.ParseRequestURI(osImage); err == nil {
+		if srcURL, err := url.ParseRequestURI(osImage); err == nil {
+			if srcURL.Scheme == cdiv1beta1.RegistrySchemeDocker || srcURL.Scheme == cdiv1beta1.RegistrySchemeOci {
+				return registryDataVolume(osImage, pullMethod), nil
+			}
 			return &cdiv1beta1.DataVolumeSource{HTTP: &cdiv1beta1.DataVolumeSourceHTTP{URL: osImage}}, nil
 		}
 		if namespaceAndName := strings.Split(osImage, "/"); len(namespaceAndName) >= 2 {
@@ -409,6 +423,30 @@ func getNamespace() string {
 		ns = metav1.NamespaceSystem
 	}
 	return ns
+}
+
+func (p *provider) getPullMethod(pullMethod providerconfigtypes.ConfigVarString) (cdiv1beta1.RegistryPullMethod, error) {
+	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(pullMethod)
+	if err != nil {
+		return "", err
+	}
+	switch pm := cdiv1beta1.RegistryPullMethod(resolvedPM); pm {
+	case cdiv1beta1.RegistryPullNode, cdiv1beta1.RegistryPullPod:
+		return pm, nil
+	case "":
+		return cdiv1beta1.RegistryPullNode, nil
+	default:
+		return "", fmt.Errorf("unsupported value: %v", resolvedPM)
+	}
+}
+
+func registryDataVolume(imageURL string, pullMethod cdiv1beta1.RegistryPullMethod) *cdiv1beta1.DataVolumeSource {
+	return &cdiv1beta1.DataVolumeSource{
+		Registry: &cdiv1beta1.DataVolumeSourceRegistry{
+			URL:        &imageURL,
+			PullMethod: &pullMethod,
+		},
+	}
 }
 
 func (p *provider) Get(ctx context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData) (instance.Instance, error) {
@@ -554,7 +592,7 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	userDataSecretName := fmt.Sprintf("userdata-%s-%s", machine.Name, strconv.Itoa(int(time.Now().Unix())))
 
 	virtualMachine, err := p.newVirtualMachine(ctx, c, pc, machine, userDataSecretName, userdata,
-		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client), randomMacAddressGetter, sigClient)
+		machineDeploymentNameAndRevisionForMachineGetter(ctx, machine, data.Client), randomMacAddressGetter)
 	if err != nil {
 		return nil, fmt.Errorf("could not create a VirtualMachine manifest %w", err)
 	}
@@ -577,8 +615,8 @@ func (p *provider) Create(ctx context.Context, _ *zap.SugaredLogger, machine *cl
 	return &kubeVirtServer{}, nil
 }
 
-func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
-	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter, macAddressGetter macAddressGetter, sigClient client.Client) (*kubevirtv1.VirtualMachine, error) {
+func (p *provider) newVirtualMachine(_ context.Context, c *Config, pc *providerconfigtypes.Config, machine *clusterv1alpha1.Machine,
+	userdataSecretName, userdata string, mdNameGetter machineDeploymentNameGetter, macAddressGetter macAddressGetter) (*kubevirtv1.VirtualMachine, error) {
 	// We add the timestamp because the secret name must be different when we recreate the VMI
 	// because its pod got deleted
 	// The secret has an ownerRef on the VMI so garbace collection will take care of cleaning up.
@@ -654,7 +692,7 @@ func (p *provider) newVirtualMachine(ctx context.Context, c *Config, pc *provide
 						},
 						Resources: resourceRequirements,
 					},
-					Affinity:                      getAffinity(c, machineDeploymentLabelKey, labels[machineDeploymentLabelKey]),
+					Affinity:                      getAffinity(c),
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Volumes:                       getVMVolumes(c, dataVolumeName, userdataSecretName),
 					DNSPolicy:                     c.DNSPolicy,
@@ -707,7 +745,7 @@ func parseResources(cpus, memory string) (*corev1.ResourceList, error) {
 	}, nil
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
@@ -808,7 +846,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
-					StorageClassName: utilpointer.String(config.StorageClassName),
+					StorageClassName: ptr.To(config.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
@@ -827,7 +865,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 			},
 			Spec: cdiv1beta1.DataVolumeSpec{
 				PVC: &corev1.PersistentVolumeClaimSpec{
-					StorageClassName: utilpointer.String(sd.StorageClassName),
+					StorageClassName: ptr.To(sd.StorageClassName),
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
@@ -842,7 +880,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 	return dataVolumeTemplates
 }
 
-func getAffinity(config *Config, matchKey, matchValue string) *corev1.Affinity {
+func getAffinity(config *Config) *corev1.Affinity {
 	affinity := &corev1.Affinity{}
 
 	expressions := []corev1.NodeSelectorRequirement{

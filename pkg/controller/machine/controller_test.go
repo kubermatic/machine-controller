@@ -339,6 +339,7 @@ func durationPtr(d time.Duration) *time.Duration {
 func TestControllerShouldEvict(t *testing.T) {
 	threeHoursAgo := metav1.NewTime(time.Now().Add(-3 * time.Hour))
 	now := metav1.Now()
+	finalizer := "test"
 
 	tests := []struct {
 		name               string
@@ -358,7 +359,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &threeHoursAgo,
-					Finalizers:        []string{"machine-node-delete-finalizer"},
+					Finalizers:        []string{finalizer},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
@@ -371,7 +372,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
-					Finalizers:        []string{"machine-node-delete-finalizer"},
+					Finalizers:        []string{finalizer},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: nil,
@@ -384,7 +385,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
-					Finalizers:        []string{"machine-node-delete-finalizer"},
+					Finalizers:        []string{finalizer},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "non-existing-node"},
@@ -401,7 +402,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
-					Finalizers:        []string{"machine-node-delete-finalizer"},
+					Finalizers:        []string{finalizer},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
@@ -422,7 +423,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
-					Finalizers:        []string{"machine-node-delete-finalizer"},
+					Finalizers:        []string{finalizer},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
@@ -443,7 +444,7 @@ func TestControllerShouldEvict(t *testing.T) {
 			machine: &clusterv1alpha1.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: &now,
-					Finalizers:        []string{"machine-node-delete-finalizer"},
+					Finalizers:        []string{finalizer},
 				},
 				Status: clusterv1alpha1.MachineStatus{
 					NodeRef: &corev1.ObjectReference{Name: "existing-node"},
@@ -614,6 +615,7 @@ func TestControllerDeleteNodeForMachine(t *testing.T) {
 
 			client := fakectrlruntimeclient.NewClientBuilder().
 				WithScheme(scheme.Scheme).
+				WithStatusSubresource().
 				WithObjects(objects...).
 				Build()
 

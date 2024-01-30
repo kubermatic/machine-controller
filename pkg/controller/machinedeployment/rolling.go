@@ -26,14 +26,13 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	dutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/integer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // rolloutRolling implements the logic for rolling a new machine set.
-func (r *ReconcileMachineDeployment) rolloutRolling(ctx context.Context, log *zap.SugaredLogger, d *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet, machineMap map[types.UID]*v1alpha1.MachineList) error {
-	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(ctx, log, d, msList, machineMap, true)
+func (r *ReconcileMachineDeployment) rolloutRolling(ctx context.Context, log *zap.SugaredLogger, d *v1alpha1.MachineDeployment, msList []*v1alpha1.MachineSet) error {
+	newMS, oldMSs, err := r.getAllMachineSetsAndSyncRevision(ctx, log, d, msList, true)
 	if err != nil {
 		return err
 	}

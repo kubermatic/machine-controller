@@ -45,7 +45,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	dynamicclient "k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -148,7 +147,6 @@ func MigrateProviderConfigToProviderSpecIfNecessary(ctx context.Context, log *za
 func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	ctx context.Context, log *zap.SugaredLogger,
 	client ctrlruntimeclient.Client,
-	kubeClient kubernetes.Interface,
 	providerData *cloudprovidertypes.ProviderData) error {
 	var (
 		cachePopulatingInterval = 15 * time.Second
@@ -158,8 +156,8 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 
 	crdLog := log.With("crd", machines.CRDName)
 
-	err := wait.Poll(cachePopulatingInterval, cachePopulatingTimeout, func() (done bool, err error) {
-		err = client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1.CustomResourceDefinition{})
+	err := wait.PollUntilContextTimeout(ctx, cachePopulatingInterval, cachePopulatingTimeout, false, func(ctx context.Context) (bool, error) {
+		err := client.Get(ctx, types.NamespacedName{Name: machines.CRDName}, &apiextensionsv1.CustomResourceDefinition{})
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				noMigrationNeed = true
@@ -192,7 +190,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 		return fmt.Errorf("error when checking for existence of 'machines.cluster.k8s.io' crd: %w", err)
 	}
 
-	if err := migrateMachines(ctx, log, client, kubeClient, providerData); err != nil {
+	if err := migrateMachines(ctx, log, client, providerData); err != nil {
 		return fmt.Errorf("failed to migrate machines: %w", err)
 	}
 	crdLog.Info("Attempting to delete CRD")
@@ -203,7 +201,7 @@ func MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(
 	return nil
 }
 
-func migrateMachines(ctx context.Context, log *zap.SugaredLogger, client ctrlruntimeclient.Client, kubeClient kubernetes.Interface, providerData *cloudprovidertypes.ProviderData) error {
+func migrateMachines(ctx context.Context, log *zap.SugaredLogger, client ctrlruntimeclient.Client, providerData *cloudprovidertypes.ProviderData) error {
 	log.Info("Starting migration for machine.machines.k8s.io/v1alpha1 to machine.cluster.k8s.io/v1alpha1")
 
 	// Get machinesv1Alpha1Machines
@@ -390,7 +388,7 @@ func deleteMachinesV1Alpha1Machine(ctx context.Context,
 		return fmt.Errorf("failed to delete machine %s: %w", machine.Name, err)
 	}
 
-	if err := wait.Poll(500*time.Millisecond, 60*time.Second, func() (bool, error) {
+	if err := wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 60*time.Second, false, func(ctx context.Context) (bool, error) {
 		return isMachinesV1Alpha1MachineDeleted(ctx, machine.Name, client)
 	}); err != nil {
 		return fmt.Errorf("failed to wait for machine %s to be deleted: %w", machine.Name, err)

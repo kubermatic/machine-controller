@@ -84,8 +84,9 @@ const (
 )
 
 const (
-	defaultKubernetesVersion = "1.25.9"
-	defaultContainerRuntime  = "containerd"
+	defaultKubernetesVersion    = "1.27.6"
+	awsDefaultKubernetesVersion = "1.26.9"
+	defaultContainerRuntime     = "containerd"
 )
 
 var testRunIdentifier = flag.String("identifier", "local", "The unique identifier for this test run")
@@ -233,7 +234,7 @@ C8QmzsMaZhk+mVFr1sGy
 
 	// wait for deployments to roll out
 	for _, deployment := range deployments {
-		if err := wait.Poll(3*time.Second, 30*time.Second, func() (done bool, err error) {
+		if err := wait.PollUntilContextTimeout(ctx, 3*time.Second, 30*time.Second, false, func(ctx context.Context) (bool, error) {
 			d := &appsv1.Deployment{}
 			key := types.NamespacedName{Namespace: ns, Name: deployment}
 
@@ -343,7 +344,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.26.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.26.4", "1.27.1")))
+	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.26.9", "1.27.6", "1.28.2")))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -423,7 +424,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := Not(VersionSelector("1.27.1"))
+	selector := Not(VersionSelector("1.27.6", "1.28.2"))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -477,7 +478,7 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	}
 	// Since we are only testing the spot instance functionality, testing it against a single OS is sufficient.
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.1")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.6", "1.28.2")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -499,7 +500,7 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.1")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.6", "1.28.2")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -574,7 +575,7 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 		name:              "AWS with ebs encryption enabled",
 		osName:            "ubuntu",
 		containerRuntime:  defaultContainerRuntime,
-		kubernetesVersion: defaultKubernetesVersion,
+		kubernetesVersion: awsDefaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
 	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
@@ -703,7 +704,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, HZ_E2E_TOKEN environment variable cannot be empty")
 	}
 
-	selector := OsSelector("ubuntu", "centos", "rockylinux")
+	selector := OsSelector("ubuntu", "rockylinux")
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}

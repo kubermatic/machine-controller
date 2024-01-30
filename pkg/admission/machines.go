@@ -64,6 +64,16 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 		if oldMachine.Spec.Name != machine.Spec.Name && machine.Spec.Name == machine.Name {
 			oldMachine.Spec.Name = machine.Spec.Name
 		}
+
+		if oldMachine.Spec.ProviderID != nil && machine.Spec.ProviderID != nil && *oldMachine.Spec.ProviderID != *machine.Spec.ProviderID {
+			return nil, fmt.Errorf("providerID is immutable")
+		}
+
+		// Allow mutation of the ProviderID field, as it can only be computed after the machine is created.
+		if oldMachine.Spec.ProviderID == nil && machine.Spec.ProviderID != nil {
+			oldMachine.Spec.ProviderID = machine.Spec.ProviderID
+		}
+
 		// Allow mutation when:
 		// * machine has the `MigrationBypassSpecNoModificationRequirementAnnotation` annotation (used for type migration)
 		bypassValidationForMigration := machine.Annotations[BypassSpecNoModificationRequirementAnnotation] == "true"
