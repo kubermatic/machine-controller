@@ -2,8 +2,6 @@ module github.com/kubermatic/machine-controller
 
 go 1.21
 
-toolchain go1.21.6
-
 require (
 	cloud.google.com/go/logging v1.8.1
 	cloud.google.com/go/monitoring v1.15.1
