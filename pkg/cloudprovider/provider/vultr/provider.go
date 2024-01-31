@@ -596,6 +596,14 @@ func (v *vultrPhysicalMachine) ProviderID() string {
 	return "vultr://" + v.instance.ID
 }
 
+func (v *vultrVirtualMachine) HostID() string {
+	return v.ID()
+}
+
+func (v *vultrPhysicalMachine) HostID() string {
+	return v.ID()
+}
+
 func (v *vultrVirtualMachine) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{}
 	addresses[v.instance.MainIP] = v1.NodeExternalIP
