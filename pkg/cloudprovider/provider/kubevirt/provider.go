@@ -379,7 +379,7 @@ func (p *provider) parseOSImageSource(primaryDisk kubevirttypes.PrimaryDisk, nam
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.osImage" field: %w`, err)
 	}
-	osImageSource, err := p.configVarResolver.GetConfigVarStringValue(primaryDisk.Source)
+	osImageSource, err := p.configVarResolver.GetConfigVarStringValue(&primaryDisk.Source)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to get value of "primaryDisk.source" field: %w`, err)
 	}
@@ -426,7 +426,7 @@ func getNamespace() string {
 }
 
 func (p *provider) getPullMethod(pullMethod providerconfigtypes.ConfigVarString) (cdiv1beta1.RegistryPullMethod, error) {
-	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(pullMethod)
+	resolvedPM, err := p.configVarResolver.GetConfigVarStringValue(&pullMethod)
 	if err != nil {
 		return "", err
 	}
@@ -850,7 +850,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: pvcRequest,
 					},
 				},
@@ -869,7 +869,7 @@ func getDataVolumeTemplates(config *Config, dataVolumeName string) []kubevirtv1.
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceStorage: sd.Size},
 					},
 				},
