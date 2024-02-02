@@ -94,7 +94,7 @@ kPe6XoSbiLm/kxk32T0=
 )
 
 const (
-	defaultVersion = "1.25.5"
+	defaultVersion = "1.27.6"
 )
 
 type fakeCloudConfigProvider struct {
@@ -103,7 +103,7 @@ type fakeCloudConfigProvider struct {
 	err    error
 }
 
-func (p *fakeCloudConfigProvider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config string, name string, err error) {
+func (p *fakeCloudConfigProvider) GetCloudConfig(_ clusterv1alpha1.MachineSpec) (config string, name string, err error) {
 	return p.config, p.name, p.err
 }
 
@@ -129,10 +129,9 @@ type userDataTestCase struct {
 
 func simpleVersionTests() []userDataTestCase {
 	versions := []*semver.Version{
-		semver.MustParse("v1.24.13"),
-		semver.MustParse("v1.25.9"),
-		semver.MustParse("v1.26.4"),
-		semver.MustParse("v1.27.1"),
+		semver.MustParse("v1.26.9"),
+		semver.MustParse("v1.27.6"),
+		semver.MustParse("v1.28.2"),
 	}
 
 	var tests []userDataTestCase
@@ -235,7 +234,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.22.7",
+					Kubelet: "1.27.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -260,7 +259,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.22.7",
+					Kubelet: "1.27.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -423,7 +422,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.22.7",
+					Kubelet: "1.27.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -449,7 +448,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.22.7",
+					Kubelet: "1.27.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -475,7 +474,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.22.7",
+					Kubelet: "1.27.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -505,7 +504,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.22.7",
+					Kubelet: "1.27.0",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
@@ -603,7 +602,7 @@ func TestUserDataGeneration(t *testing.T) {
 					Name: "node1",
 				},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.24.9",
+					Kubelet: "1.26.6",
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{

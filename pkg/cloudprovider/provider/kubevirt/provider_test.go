@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	kubevirtv1 "kubevirt.io/api/core/v1"
+	cdiv1beta1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 
 	cloudprovidertesting "github.com/kubermatic/machine-controller/pkg/cloudprovider/testing"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
@@ -64,6 +65,8 @@ type kubevirtProviderSpecConf struct {
 	AffinityValues           bool
 	SecondaryDisks           bool
 	OsImageSource            imageSource
+	OsImageSourceURL         string
+	PullMethod               cdiv1beta1.RegistryPullMethod
 }
 
 func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
@@ -123,8 +126,11 @@ func (k kubevirtProviderSpecConf) rawProviderSpec(t *testing.T) []byte {
 					{{- if .OsImageDV }}
 					"osImage": "{{ .OsImageDV }}",
 					{{- else }}
-					"osImage": "http://x.y.z.t/ubuntu.img",
+					"osImage": "{{ if .OsImageSourceURL }}{{ .OsImageSourceURL }}{{ else }}http://x.y.z.t/ubuntu.img{{ end }}",
 					{{- end }}
+					{{- if .PullMethod }}
+					"pullMethod": "{{ .PullMethod }}",
+					{{- end}}
 					"size": "10Gi",
 					{{- if .OsImageSource }}
 					"source": "{{ .OsImageSource }}",
@@ -217,6 +223,14 @@ func TestNewVirtualMachine(t *testing.T) {
 			specConf: kubevirtProviderSpecConf{OsImageSource: httpSource},
 		},
 		{
+			name:     "registry-image-source",
+			specConf: kubevirtProviderSpecConf{OsImageSource: registrySource, OsImageSourceURL: "docker://x.y.z.t/ubuntu.img:latest"},
+		},
+		{
+			name:     "registry-image-source-pod",
+			specConf: kubevirtProviderSpecConf{OsImageSource: registrySource, OsImageSourceURL: "docker://x.y.z.t/ubuntu.img:latest", PullMethod: cdiv1beta1.RegistryPullPod},
+		},
+		{
 			name:     "pvc-image-source",
 			specConf: kubevirtProviderSpecConf{OsImageSource: pvcSource, OsImageDV: "ns/dvname"},
 		},
@@ -244,7 +258,7 @@ func TestNewVirtualMachine(t *testing.T) {
 			c.Namespace = testNamespace
 
 			// Check the created VirtualMachine
-			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter(), fixedMacAddressGetter, fakeclient)
+			vm, _ := p.newVirtualMachine(context.TODO(), c, pc, machine, "udsn", userdata, fakeMachineDeploymentNameAndRevisionForMachineGetter(), fixedMacAddressGetter)
 			vm.TypeMeta.APIVersion, vm.TypeMeta.Kind = kubevirtv1.VirtualMachineGroupVersionKind.ToAPIVersionAndKind()
 
 			if !equality.Semantic.DeepEqual(vm, expectedVms[tt.name]) {

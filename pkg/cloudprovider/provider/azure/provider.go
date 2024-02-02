@@ -47,7 +47,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -179,19 +179,19 @@ var imageReferences = map[providerconfigtypes.OperatingSystem]compute.ImageRefer
 
 var osPlans = map[providerconfigtypes.OperatingSystem]*compute.Plan{
 	providerconfigtypes.OperatingSystemFlatcar: {
-		Name:      pointer.String("stable"),
-		Publisher: pointer.String("kinvolk"),
-		Product:   pointer.String("flatcar-container-linux"),
+		Name:      ptr.To("stable"),
+		Publisher: ptr.To("kinvolk"),
+		Product:   ptr.To("flatcar-container-linux"),
 	},
 	providerconfigtypes.OperatingSystemRHEL: {
-		Name:      pointer.String("rhel-lvm85"),
-		Publisher: pointer.String("redhat"),
-		Product:   pointer.String("rhel-byos"),
+		Name:      ptr.To("rhel-lvm85"),
+		Publisher: ptr.To("redhat"),
+		Product:   ptr.To("rhel-byos"),
 	},
 	providerconfigtypes.OperatingSystemRockyLinux: {
-		Name:      pointer.String("rocky-linux-8-5"),
-		Publisher: pointer.String("procomputers"),
-		Product:   pointer.String("rocky-linux-8-5"),
+		Name:      ptr.To("rocky-linux-8-5"),
+		Publisher: ptr.To("procomputers"),
+		Product:   ptr.To("rocky-linux-8-5"),
 	},
 }
 
@@ -365,18 +365,18 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*config, *p
 
 	if rawCfg.ImagePlan != nil && rawCfg.ImagePlan.Name != "" {
 		c.ImagePlan = &compute.Plan{
-			Name:      pointer.String(rawCfg.ImagePlan.Name),
-			Publisher: pointer.String(rawCfg.ImagePlan.Publisher),
-			Product:   pointer.String(rawCfg.ImagePlan.Product),
+			Name:      ptr.To(rawCfg.ImagePlan.Name),
+			Publisher: ptr.To(rawCfg.ImagePlan.Publisher),
+			Product:   ptr.To(rawCfg.ImagePlan.Product),
 		}
 	}
 
 	if rawCfg.ImageReference != nil {
 		c.ImageReference = &compute.ImageReference{
-			Publisher: pointer.String(rawCfg.ImageReference.Publisher),
-			Offer:     pointer.String(rawCfg.ImageReference.Offer),
-			Sku:       pointer.String(rawCfg.ImageReference.Sku),
-			Version:   pointer.String(rawCfg.ImageReference.Version),
+			Publisher: ptr.To(rawCfg.ImageReference.Publisher),
+			Offer:     ptr.To(rawCfg.ImageReference.Offer),
+			Sku:       ptr.To(rawCfg.ImageReference.Sku),
+			Version:   ptr.To(rawCfg.ImageReference.Version),
 		}
 	}
 
@@ -547,7 +547,7 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 	}
 	if config.OSDiskSize != 0 {
 		sp.OsDisk = &compute.OSDisk{
-			DiskSizeGB:   pointer.Int32(config.OSDiskSize),
+			DiskSizeGB:   ptr.To(config.OSDiskSize),
 			CreateOption: compute.DiskCreateOptionTypesFromImage,
 		}
 
@@ -563,7 +563,7 @@ func getStorageProfile(config *config, providerCfg *providerconfigtypes.Config) 
 			{
 				// this should be in range 0-63 and should be unique per datadisk, since we have only one datadisk, this should be fine
 				Lun:          new(int32),
-				DiskSizeGB:   pointer.Int32(config.DataDiskSize),
+				DiskSizeGB:   ptr.To(config.DataDiskSize),
 				CreateOption: compute.DiskCreateOptionTypesEmpty,
 			},
 		}
@@ -710,7 +710,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 	if config.EnableBootDiagnostics {
 		vmSpec.DiagnosticsProfile = &compute.DiagnosticsProfile{
 			BootDiagnostics: &compute.BootDiagnostics{
-				Enabled: pointer.Bool(config.EnableBootDiagnostics),
+				Enabled: ptr.To(config.EnableBootDiagnostics),
 			},
 		}
 	}
@@ -974,7 +974,7 @@ func (p *provider) GetCloudConfig(spec clusterv1alpha1.MachineSpec) (config stri
 	return s, "azure", nil
 }
 
-func validateDiskSKUs(ctx context.Context, c *config, sku compute.ResourceSku) error {
+func validateDiskSKUs(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.OSDiskSKU != nil || c.DataDiskSKU != nil {
 		if c.OSDiskSKU != nil {
 			if _, ok := osDiskSKUs[*c.OSDiskSKU]; !ok {
@@ -1006,7 +1006,7 @@ func validateDiskSKUs(ctx context.Context, c *config, sku compute.ResourceSku) e
 	return nil
 }
 
-func validateSKUCapabilities(ctx context.Context, c *config, sku compute.ResourceSku) error {
+func validateSKUCapabilities(_ context.Context, c *config, sku compute.ResourceSku) error {
 	if c.EnableAcceleratedNetworking != nil && *c.EnableAcceleratedNetworking {
 		if !SKUHasCapability(sku, capabilityAcceleratedNetworking) {
 			return fmt.Errorf("VM size %q does not support accelerated networking", c.VMSize)
@@ -1221,7 +1221,7 @@ func (p *provider) MachineMetricsLabels(machine *clusterv1alpha1.Machine) (map[s
 	return labels, err
 }
 
-func (p *provider) SetMetricsForMachines(machines clusterv1alpha1.MachineList) error {
+func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 

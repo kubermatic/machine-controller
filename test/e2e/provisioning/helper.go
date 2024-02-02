@@ -33,10 +33,9 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.24.13"),
-		semver.MustParse("v1.25.9"),
-		semver.MustParse("v1.26.4"),
-		semver.MustParse("v1.27.1"),
+		semver.MustParse("v1.26.9"),
+		semver.MustParse("v1.27.6"),
+		semver.MustParse("v1.28.2"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
@@ -52,7 +51,7 @@ var (
 		string(providerconfigtypes.OperatingSystemUbuntu):     "kubermatic-ubuntu",
 		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
 		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-8-5",
-		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar-stable-2983",
+		string(providerconfigtypes.OperatingSystemFlatcar):    "kubermatic-e2e-flatcar",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
 	}
 
@@ -279,14 +278,14 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	gopath := os.Getenv("GOPATH")
 	projectDir := filepath.Join(gopath, "src/github.com/kubermatic/machine-controller")
 	kubeConfig := filepath.Join(projectDir, ".kubeconfig")
-
-	if _, err := os.Stat(kubeConfig); err == nil {
-		// it exists at hardcoded path
-	} else if os.IsNotExist(err) {
-		// it doesn't exist, fall back to $KUBECONFIG
-		kubeConfig = os.Getenv("KUBECONFIG")
-	} else {
-		t.Fatal(err)
+	_, err := os.Stat(kubeConfig)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// it doesn't exist, fall back to $KUBECONFIG
+			kubeConfig = os.Getenv("KUBECONFIG")
+		} else {
+			t.Fatal(err)
+		}
 	}
 
 	// the golang test runtime waits for individual subtests to complete before reporting the status.

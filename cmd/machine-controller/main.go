@@ -179,7 +179,7 @@ func main() {
 	flag.StringVar(&nodeRegistryMirrors, "node-registry-mirrors", "", "Comma separated list of Docker image mirrors")
 	flag.StringVar(&nodePauseImage, "node-pause-image", "", "Image for the pause container including tag. If not set, the kubelet default will be used: https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/")
 	flag.String("node-kubelet-repository", "quay.io/kubermatic/kubelet", "[NO-OP] Repository for the kubelet container. Has no effects.")
-	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "docker", "container-runtime to deploy")
+	flag.StringVar(&nodeContainerRuntime, "node-container-runtime", "containerd", "container-runtime to deploy")
 	flag.StringVar(&nodeContainerdVersion, "node-containerd-version", "", "version of containerd to deploy")
 	flag.Var(&nodeContainerdRegistryMirrors, "node-containerd-registry-mirrors", "Configure registry mirrors endpoints. Can be used multiple times to specify multiple mirrors")
 	flag.StringVar(&caBundleFile, "ca-bundle", "", "path to a file containing all PEM-encoded CA certificates (will be used instead of the host's certificates if set)")
@@ -195,6 +195,10 @@ func main() {
 
 	if err := logFlags.Validate(); err != nil {
 		log.Fatalf("Invalid options: %v", err)
+	}
+
+	if nodeContainerRuntime != "containerd" {
+		log.Fatalf("%s not supported; containerd is the only supported container runtime", nodeContainerRuntime)
 	}
 
 	rawLog := machinecontrollerlog.New(logFlags.Debug, logFlags.Format)
@@ -409,7 +413,7 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 	}
 
 	// Migrate MachinesV1Alpha1Machine to ClusterV1Alpha1Machine.
-	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, bs.opt.log, client, bs.opt.kubeClient, providerData); err != nil {
+	if err := migrations.MigrateMachinesv1Alpha1MachineToClusterv1Alpha1MachineIfNecessary(ctx, bs.opt.log, client, providerData); err != nil {
 		return fmt.Errorf("migration to clusterv1alpha1 failed: %w", err)
 	}
 

@@ -53,7 +53,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
@@ -115,12 +115,12 @@ var (
 		},
 		providerconfigtypes.OperatingSystemRockyLinux: {
 			awstypes.CPUArchitectureX86_64: {
-				description: "Rocky-8-ec2-8*.x86_64",
+				description: "*Rocky-8-ec2-8*.x86_64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
 				owner: "792107900819",
 			},
 			awstypes.CPUArchitectureARM64: {
-				description: "Rocky-8-ec2-8*.aarch64",
+				description: "*Rocky-8-ec2-8*.aarch64",
 				// The AWS marketplace ID from Rocky Linux Community Platform Engineering (CPE)
 				owner: "792107900819",
 			},
@@ -452,19 +452,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.SpotMaxPrice = pointer.String(maxPrice)
+		c.SpotMaxPrice = ptr.To(maxPrice)
 
 		persistentRequest, _, err := p.configVarResolver.GetConfigVarBoolValue(rawConfig.SpotInstanceConfig.PersistentRequest)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.SpotPersistentRequest = pointer.Bool(persistentRequest)
+		c.SpotPersistentRequest = ptr.To(persistentRequest)
 
 		interruptionBehavior, err := p.configVarResolver.GetConfigVarStringValue(rawConfig.SpotInstanceConfig.InterruptionBehavior)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		c.SpotInterruptionBehavior = pointer.String(interruptionBehavior)
+		c.SpotInterruptionBehavior = ptr.To(interruptionBehavior)
 	}
 	assumeRoleARN, err := p.configVarResolver.GetConfigVarStringValueOrEnv(rawConfig.AssumeRoleARN, "AWS_ASSUME_ROLE_ARN")
 	if err != nil {
@@ -495,7 +495,7 @@ func getAwsConfig(ctx context.Context, id, secret, token, region, assumeRoleARN,
 		stsSvc := sts.NewFromConfig(cfg)
 		creds := stscreds.NewAssumeRoleProvider(stsSvc, assumeRoleARN,
 			func(o *stscreds.AssumeRoleOptions) {
-				o.ExternalID = pointer.String(assumeRoleExternalID)
+				o.ExternalID = ptr.To(assumeRoleExternalID)
 			},
 		)
 
@@ -535,7 +535,7 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 	return spec, err
 }
 
-func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clusterv1alpha1.MachineSpec) error {
 	config, pc, _, err := p.getConfig(spec.ProviderSpec)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
@@ -582,7 +582,7 @@ func (p *provider) Validate(ctx context.Context, log *zap.SugaredLogger, spec cl
 		// noop
 	case util.IPFamilyIPv6, util.IPFamilyIPv4IPv6, util.IPFamilyIPv6IPv4:
 		if len(vpc.Ipv6CidrBlockAssociationSet) == 0 {
-			return fmt.Errorf("vpc %s does not have IPv6 CIDR block", pointer.StringDeref(vpc.VpcId, ""))
+			return fmt.Errorf("vpc %s does not have IPv6 CIDR block", ptr.Deref(vpc.VpcId, ""))
 		}
 	default:
 		return fmt.Errorf(util.ErrUnknownNetworkFamily, f)
@@ -665,7 +665,7 @@ func areVpcDNSHostnamesEnabled(ctx context.Context, client *ec2.Client, id strin
 	return *out.EnableDnsHostnames.Value, nil
 }
 
-func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, data *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
+func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
 	config, pc, _, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
@@ -770,7 +770,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 					DeleteOnTermination: aws.Bool(true),
 					VolumeType:          config.DiskType,
 					Iops:                config.DiskIops,
-					Encrypted:           pointer.Bool(config.EBSVolumeEncrypted),
+					Encrypted:           ptr.To(config.EBSVolumeEncrypted),
 				},
 			},
 		},
@@ -994,7 +994,7 @@ func (d *awsInstance) Name() string {
 }
 
 func (d *awsInstance) ID() string {
-	return pointer.StringDeref(d.instance.InstanceId, "")
+	return ptr.Deref(d.instance.InstanceId, "")
 }
 
 func (d *awsInstance) ProviderID() string {
@@ -1014,15 +1014,15 @@ func (d *awsInstance) HostID() string {
 
 func (d *awsInstance) Addresses() map[string]v1.NodeAddressType {
 	addresses := map[string]v1.NodeAddressType{
-		pointer.StringDeref(d.instance.PublicIpAddress, ""):  v1.NodeExternalIP,
-		pointer.StringDeref(d.instance.PublicDnsName, ""):    v1.NodeExternalDNS,
-		pointer.StringDeref(d.instance.PrivateIpAddress, ""): v1.NodeInternalIP,
-		pointer.StringDeref(d.instance.PrivateDnsName, ""):   v1.NodeInternalDNS,
+		ptr.Deref(d.instance.PublicIpAddress, ""):  v1.NodeExternalIP,
+		ptr.Deref(d.instance.PublicDnsName, ""):    v1.NodeExternalDNS,
+		ptr.Deref(d.instance.PrivateIpAddress, ""): v1.NodeInternalIP,
+		ptr.Deref(d.instance.PrivateDnsName, ""):   v1.NodeInternalDNS,
 	}
 
 	for _, netInterface := range d.instance.NetworkInterfaces {
 		for _, addr := range netInterface.Ipv6Addresses {
-			ipAddr := pointer.StringDeref(addr.Ipv6Address, "")
+			ipAddr := ptr.Deref(addr.Ipv6Address, "")
 
 			// link-local addresses not very useful in machine status
 			// filter them out
@@ -1235,7 +1235,7 @@ func filterSupportedRHELImages(images []ec2types.Image) ([]ec2types.Image, error
 // This happens more often in some AWS regions because some regions have
 // slower instance creation (e.g. us-east-1 and us-west-2).
 func (p *provider) waitForInstance(ctx context.Context, machine *clusterv1alpha1.Machine) error {
-	return wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, pollInterval, pollTimeout, false, func(ctx context.Context) (bool, error) {
 		_, err := p.get(ctx, machine)
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			// Retry if instance is not found

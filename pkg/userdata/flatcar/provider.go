@@ -83,7 +83,7 @@ func (p Provider) UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (
 		flatcarConfig.DisableUpdateEngine = true
 	}
 
-	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crEngine := req.ContainerRuntime.Engine()
 	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemFlatcar)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)
@@ -341,7 +341,7 @@ storage:
       mode: 0644
       contents:
         inline: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 10 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 10 }}
 
     - path: /opt/load-kernel-modules.sh
       filesystem: root
@@ -544,16 +544,6 @@ storage:
         inline: |
 {{ .ContainerRuntimeConfig | indent 10 }}
 
-{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
-
-    - path: {{ .ContainerRuntimeAuthConfigFileName }}
-      filesystem: root
-      permissions: 0600
-      content:
-        inline: |
-{{ .ContainerRuntimeAuthConfig | indent 10 }}
-{{- end }}
-
     - path: /etc/crictl.yaml
       filesystem: root
       mode: 0644
@@ -725,7 +715,7 @@ write_files:
 - path: "/etc/kubernetes/kubelet.conf"
   permissions: "0644"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
 
 - path: /opt/load-kernel-modules.sh
   permissions: "0755"
@@ -837,14 +827,6 @@ write_files:
   user: root
   content: |
 {{ .ContainerRuntimeConfig | indent 4 }}
-
-{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
-
-- path: {{ .ContainerRuntimeAuthConfigFileName }}
-  permissions: "0600"
-  content: |
-{{ .ContainerRuntimeAuthConfig | indent 4 }}
-{{- end }}
 
 - path: /etc/crictl.yaml
   permissions: "0644"

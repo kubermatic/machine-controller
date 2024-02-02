@@ -22,9 +22,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ghodss/yaml"
-
 	testhelper "github.com/kubermatic/machine-controller/pkg/test"
+
+	"sigs.k8s.io/yaml"
 )
 
 func Test_Convert_MachineDeployment_ProviderConfig_To_ProviderSpec(t *testing.T) {

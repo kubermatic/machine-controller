@@ -78,7 +78,9 @@ type PrimaryDisk struct {
 	Disk
 	OsImage *providerconfigtypes.ConfigVarString `json:"osImage,omitempty"`
 	// Source describes the VM Disk Image source.
-	Source *providerconfigtypes.ConfigVarString `json:"source,omitempty"`
+	Source providerconfigtypes.ConfigVarString `json:"source,omitempty"`
+	// PullMethod describes the VM Disk Image source optional pull method for registry source. Defaults to 'node'.
+	PullMethod providerconfigtypes.ConfigVarString `json:"pullMethod,omitempty"`
 }
 
 // SecondaryDisks.

@@ -22,11 +22,17 @@ import (
 )
 
 type RawConfig struct {
-	APIKey providerconfigtypes.ConfigVarString `json:"apiKey,omitempty"`
-	Region providerconfigtypes.ConfigVarString `json:"region"`
-	Plan   providerconfigtypes.ConfigVarString `json:"plan"`
-	OsID   providerconfigtypes.ConfigVarString `json:"osId"`
-	Tags   []string                            `json:"tags,omitempty"`
+	PhysicalMachine bool                                `json:"physicalMachine,omitempty"`
+	APIKey          providerconfigtypes.ConfigVarString `json:"apiKey,omitempty"`
+	Region          providerconfigtypes.ConfigVarString `json:"region"`
+	Plan            providerconfigtypes.ConfigVarString `json:"plan"`
+	OsID            providerconfigtypes.ConfigVarString `json:"osId"`
+	Tags            []string                            `json:"tags,omitempty"`
+	VpcID           []string                            `json:"vpcId,omitempty"`
+	Vpc2ID          []string                            `json:"vpc2Id,omitempty"`
+	EnableVPC       bool                                `json:"enableVPC,omitempty"`
+	EnableVPC2      bool                                `json:"enableVPC2,omitempty"`
+	EnableIPv6      bool                                `json:"enableIPv6,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {

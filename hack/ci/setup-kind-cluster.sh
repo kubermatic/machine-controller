@@ -131,7 +131,7 @@ EOF
 
   # unwrap the socket inside the kind cluster and make it available on a TCP port,
   # because containerd/Docker doesn't support sockets for mirrors.
-  docker exec $KIND_CLUSTER_NAME-control-plane bash -c 'socat TCP4-LISTEN:5001,fork,reuseaddr UNIX:/mirror/mirror.sock &'
+  docker exec $KIND_CLUSTER_NAME-control-plane bash -c 'apt update --quiet; apt install --quiet socat; socat TCP4-LISTEN:5001,fork,reuseaddr UNIX:/mirror/mirror.sock &'
 else
   kind create cluster --config kind-config.yaml
 fi
@@ -199,12 +199,15 @@ if [ -z "${DISABLE_CLUSTER_EXPOSER:-}" ]; then
 
   echodate "Successfully set up iptables rules for nodeports"
 
+  # Wait for 10 seconds before checking if the apiserver is reachable.
+  sleep 10
+
   # Compute external kube-apiserver address
   # If svc is not found then we need to check cluster-exposer logs
   PORT=$(kubectl --kubeconfig /etc/kubeconfig/kubeconfig get svc -l prow.k8s.io/id=$PROW_JOB_ID -o jsonpath="{.items..spec.ports[0].nodePort}")
 
-  if [ -z "$PORT" ] || [ -z "$NODE_NAME" ] || [ -z "$NODE_IP" ]; then
-    echodate "This script was unable to determine the external IP for kube-apiserver."
+  if [ -z "$PORT" ]; then
+    echodate "This script was unable to determine the nodeport for kube-apiserver."
     exit 1
   fi
 

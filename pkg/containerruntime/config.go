@@ -39,6 +39,10 @@ type Opts struct {
 	ContainerdRegistryMirrors RegistryMirrorsFlags
 }
 
+type DockerCfgJSON struct {
+	Auths map[string]AuthConfig `json:"auths,omitempty"`
+}
+
 func BuildConfig(opts Opts) (Config, error) {
 	var insecureRegistries []string
 	for _, registry := range strings.Split(opts.InsecureRegistries, ",") {

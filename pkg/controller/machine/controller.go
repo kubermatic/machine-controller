@@ -67,9 +67,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
-
 	ccmapi "k8s.io/cloud-provider/api"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -104,6 +102,9 @@ const (
 	// AnnotationAutoscalerIdentifier is used by the cluster-autoscaler
 	// cluster-api provider to match Nodes to Machines.
 	AnnotationAutoscalerIdentifier = "cluster.k8s.io/machine"
+
+	// ProviderID pattern.
+	ProviderIDPattern = "kubermatic://%s/%s"
 )
 
 // Reconciler is the controller implementation for machine resources.
@@ -237,7 +238,8 @@ func Add(
 	if err != nil {
 		return err
 	}
-	if err := c.Watch(source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}), &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}),
+		&handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
@@ -245,43 +247,7 @@ func Add(
 
 	return c.Watch(
 		source.Kind(mgr.GetCache(), &corev1.Node{}),
-		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, node client.Object) (result []reconcile.Request) {
-			machinesList := &clusterv1alpha1.MachineList{}
-			if err := mgr.GetClient().List(ctx, machinesList); err != nil {
-				utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %w", err))
-				return
-			}
-
-			var ownerUIDString string
-			var exists bool
-			if nodeLabels := node.GetLabels(); nodeLabels != nil {
-				ownerUIDString, exists = nodeLabels[NodeOwnerLabelName]
-			}
-			if !exists {
-				// We get triggered by node{Add,Update}, so enqeue machines if they
-				// have no nodeRef yet to make matching happen ASAP
-				for _, machine := range machinesList.Items {
-					if machine.Status.NodeRef == nil {
-						result = append(result, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Namespace: machine.Namespace,
-								Name:      machine.Name}})
-					}
-				}
-				return
-			}
-
-			for _, machine := range machinesList.Items {
-				if string(machine.UID) == ownerUIDString {
-					log.Debugw("Processing node", "node", node.GetName(), "machine", ctrlruntimeclient.ObjectKeyFromObject(&machine))
-					return []reconcile.Request{{NamespacedName: types.NamespacedName{
-						Namespace: machine.Namespace,
-						Name:      machine.Name,
-					}}}
-				}
-			}
-			return
-		}),
+		enqueueRequestsForNodes(ctx, log, mgr),
 		predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
 			oldNode := e.ObjectOld.(*corev1.Node)
 			newNode := e.ObjectNew.(*corev1.Node)
@@ -305,6 +271,46 @@ func Add(
 			return true
 		}},
 	)
+}
+
+func enqueueRequestsForNodes(ctx context.Context, log *zap.SugaredLogger, mgr manager.Manager) handler.EventHandler {
+	return handler.EnqueueRequestsFromMapFunc(func(_ context.Context, node ctrlruntimeclient.Object) []reconcile.Request {
+		var result []reconcile.Request
+		machinesList := &clusterv1alpha1.MachineList{}
+		if err := mgr.GetClient().List(ctx, machinesList); err != nil {
+			utilruntime.HandleError(fmt.Errorf("failed to list machines in lister: %w", err))
+		}
+
+		var ownerUIDString string
+		var exists bool
+		if nodeLabels := node.GetLabels(); nodeLabels != nil {
+			ownerUIDString, exists = nodeLabels[NodeOwnerLabelName]
+		}
+		if !exists {
+			// We get triggered by node{Add,Update}, so enqeue machines if they
+			// have no nodeRef yet to make matching happen ASAP
+			for _, machine := range machinesList.Items {
+				if machine.Status.NodeRef == nil {
+					result = append(result, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: machine.Namespace,
+							Name:      machine.Name}})
+				}
+			}
+			return result
+		}
+
+		for _, machine := range machinesList.Items {
+			if string(machine.UID) == ownerUIDString {
+				log.Debugw("Processing node", "node", node.GetName(), "machine", ctrlruntimeclient.ObjectKeyFromObject(&machine))
+				return []reconcile.Request{{NamespacedName: types.NamespacedName{
+					Namespace: machine.Namespace,
+					Name:      machine.Name,
+				}}}
+			}
+		}
+		return result
+	})
 }
 
 // clearMachineError is a convenience function to remove a error on the machine if its set.
@@ -367,7 +373,7 @@ func (r *Reconciler) updateMachineErrorIfTerminalError(machine *clusterv1alpha1.
 
 func (r *Reconciler) createProviderInstance(ctx context.Context, log *zap.SugaredLogger, prov cloudprovidertypes.Provider, machine *clusterv1alpha1.Machine, userdata string) (instance.Instance, error) {
 	// Ensure finalizer is there.
-	_, err := r.ensureDeleteFinalizerExists(log, machine)
+	_, err := r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %w", FinalizerDeleteInstance, err)
 	}
@@ -482,7 +488,24 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, userdataPlugin, providerConfig)
 	}
 
-	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
+	// case 3.3: if the node exists and both external and internal CCM are not available. Then set the provider-id for the node.
+	inTree, err := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider, machine.Spec.Versions.Kubelet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if cloud provider %q has in-tree implementation: %w", providerConfig.CloudProvider, err)
+	}
+
+	if !inTree && !r.nodeSettings.ExternalCloudProvider && node.Spec.ProviderID == "" {
+		providerID := fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
+		if err := r.updateNode(ctx, node, func(n *corev1.Node) {
+			n.Spec.ProviderID = providerID
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update node %s with the ProviderID: %w", node.Name, err)
+		}
+
+		r.recorder.Event(machine, corev1.EventTypeNormal, "ProviderIDUpdated", "Successfully updated providerID on node")
+		nodeLog.Info("Added ProviderID to the node")
+	}
+	// case 3.4: if the node exists make sure if it has labels and taints attached to it.
 	return nil, r.ensureNodeLabelsAnnotationsAndTaints(ctx, nodeLog, node, machine)
 }
 
@@ -939,7 +962,7 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		return nil, fmt.Errorf("failed to get instance from provider: %w", err)
 	}
 	// Instance exists, so ensure finalizer does as well
-	machine, err = r.ensureDeleteFinalizerExists(log, machine)
+	machine, err = r.ensureDeleteFinalizerExists(machine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add %q finalizer: %w", FinalizerDeleteInstance, err)
 	}
@@ -983,10 +1006,26 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		return a.Type < b.Type
 	})
 
+	var providerID string
+	if machine.Spec.ProviderID == nil {
+		inTree, err := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider, machine.Spec.Versions.Kubelet)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if cloud provider %q has in-tree implementation: %w", providerConfig.CloudProvider, err)
+		}
+
+		// If both external and internal CCM are not available. We set provider-id for the machine explicitly.
+		if !inTree && !r.nodeSettings.ExternalCloudProvider {
+			providerID = fmt.Sprintf(ProviderIDPattern, providerConfig.CloudProvider, machine.UID)
+		}
+	}
+
 	if err := r.updateMachine(machine, func(m *clusterv1alpha1.Machine) {
 		m.Status.Addresses = machineAddresses
+		if providerID != "" {
+			m.Spec.ProviderID = &providerID
+		}
 	}); err != nil {
-		return nil, fmt.Errorf("failed to update machine after setting .status.addresses: %w", err)
+		return nil, fmt.Errorf("failed to update machine after setting .status.addresses and providerID: %w", err)
 	}
 
 	return r.ensureNodeOwnerRef(ctx, log, providerInstance, machine, providerConfig)
@@ -1257,7 +1296,7 @@ func (r *Reconciler) ReadinessChecks(ctx context.Context) map[string]healthcheck
 	}
 }
 
-func (r *Reconciler) ensureDeleteFinalizerExists(log *zap.SugaredLogger, machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
+func (r *Reconciler) ensureDeleteFinalizerExists(machine *clusterv1alpha1.Machine) (*clusterv1alpha1.Machine, error) {
 	finalizers := sets.NewString(machine.Finalizers...)
 	length := finalizers.Len()
 

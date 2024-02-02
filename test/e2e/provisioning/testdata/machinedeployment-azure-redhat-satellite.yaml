@@ -55,4 +55,4 @@ spec:
             rhelOrganizationName: ""
             rhelActivationKey: ""
       versions:
-        kubelet: 1.24.9
+        kubelet: 1.26.6

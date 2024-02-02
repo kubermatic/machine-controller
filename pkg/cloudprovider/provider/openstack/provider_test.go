@@ -38,7 +38,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -241,13 +241,13 @@ func TestCreateServer(t *testing.T) {
 		},
 		{
 			name:          "Custom disk size",
-			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32(10)},
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: ptr.To(int32(10))},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootRequest,
 		},
 		{
 			name:          "Custom disk type",
-			specConf:      openstackProviderSpecConf{RootDiskSizeGB: pointer.Int32(10), RootDiskVolumeType: "ssd"},
+			specConf:      openstackProviderSpecConf{RootDiskSizeGB: ptr.To(int32(10)), RootDiskVolumeType: "ssd"},
 			userdata:      "fake-userdata",
 			wantServerReq: expectedBlockDeviceBootVolumeTypeRequest,
 		},
@@ -282,7 +282,7 @@ func TestCreateServer(t *testing.T) {
 					return pc.ProviderClient, nil
 				},
 				// mock server readiness checker
-				portReadinessWaiter: func(*zap.SugaredLogger, *gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
+				portReadinessWaiter: func(context.Context, *zap.SugaredLogger, *gophercloud.ServiceClient, string, string, time.Duration, time.Duration) error {
 					return nil
 				},
 			}

@@ -77,7 +77,7 @@ func (p Provider) UserData(log *zap.SugaredLogger, req plugin.UserDataRequest) (
 		return "", fmt.Errorf("error extracting cacert: %w", err)
 	}
 
-	crEngine := req.ContainerRuntime.Engine(kubeletVersion)
+	crEngine := req.ContainerRuntime.Engine()
 	crScript, err := crEngine.ScriptFor(providerconfigtypes.OperatingSystemRockyLinux)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate container runtime install script: %w", err)
@@ -298,7 +298,7 @@ write_files:
 
 - path: "/etc/kubernetes/kubelet.conf"
   content: |
-{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs .ContainerRuntimeName | indent 4 }}
+{{ kubeletConfiguration "cluster.local" .DNSIPs .KubeletFeatureGates .KubeletConfigs | indent 4 }}
 
 - path: "/etc/kubernetes/pki/ca.crt"
   content: |
@@ -329,14 +329,6 @@ write_files:
   permissions: "0644"
   content: |
 {{ .ContainerRuntimeConfig | indent 4 }}
-
-{{- if and (eq .ContainerRuntimeName "docker") .ContainerRuntimeAuthConfig }}
-
-- path: {{ .ContainerRuntimeAuthConfigFileName }}
-  permissions: "0600"
-  content: |
-{{ .ContainerRuntimeAuthConfig | indent 4 }}
-{{- end }}
 
 - path: /etc/systemd/system/kubelet-healthcheck.service
   permissions: "0644"
