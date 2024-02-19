@@ -65,7 +65,7 @@ func (p *provider) AddDefaults(_ *zap.SugaredLogger, spec clusterv1alpha1.Machin
 }
 
 // Validate returns success or failure based according to its EdgeCloudProviderSpec.
-func (p *provider) Validate(_ context.Context, log *zap.SugaredLogger, machinespec clusterv1alpha1.MachineSpec) error {
+func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, _ clusterv1alpha1.MachineSpec) error {
 	return nil
 }
 
