@@ -96,7 +96,7 @@ cat <<EOF | tee /etc/systemd/system/containerd.service.d/10-machine-controller.c
 Restart=always
 Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
 ExecStart=
-ExecStart=/usr/bin/env PATH=\${TORCX_BINDIR}:\${PATH} \${TORCX_BINDIR}/containerd --config \${CONTAINERD_CONFIG}
+ExecStart=/usr/bin/env PATH=\${TORCX_BINDIR}:\${PATH} containerd --config \${CONTAINERD_CONFIG}
 EOF
 
 systemctl daemon-reload
