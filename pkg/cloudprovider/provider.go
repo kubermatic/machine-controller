@@ -26,6 +26,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/azure"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/digitalocean"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/edge"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/equinixmetal"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/fake"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/gce"
@@ -84,6 +85,9 @@ var (
 		},
 		providerconfigtypes.CloudProviderFake: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return fake.New(cvr)
+		},
+		providerconfigtypes.CloudProviderEdge: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
+			return edge.New(cvr)
 		},
 		providerconfigtypes.CloudProviderKubeVirt: func(cvr *providerconfig.ConfigVarResolver) cloudprovidertypes.Provider {
 			return kubevirt.New(cvr)

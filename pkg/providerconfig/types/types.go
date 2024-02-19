@@ -63,6 +63,7 @@ const (
 	CloudProviderVultr               CloudProvider = "vultr"
 	CloudProviderVMwareCloudDirector CloudProvider = "vmware-cloud-director"
 	CloudProviderFake                CloudProvider = "fake"
+	CloudProviderEdge                CloudProvider = "edge"
 	CloudProviderAlibaba             CloudProvider = "alibaba"
 	CloudProviderAnexia              CloudProvider = "anexia"
 	CloudProviderScaleway            CloudProvider = "scaleway"
@@ -100,6 +101,7 @@ var (
 		CloudProviderVsphere,
 		CloudProviderVMwareCloudDirector,
 		CloudProviderFake,
+		CloudProviderEdge,
 		CloudProviderAlibaba,
 		CloudProviderAnexia,
 		CloudProviderScaleway,
