@@ -1318,7 +1318,7 @@ spec:
     spec:
       serviceAccountName: operating-system-manager
       containers:
-        - image: quay.io/kubermatic/operating-system-manager:v1.3.3
+        - image: quay.io/kubermatic/operating-system-manager:v1.3.4
           imagePullPolicy: Always
           name: operating-system-manager
           command:
