@@ -83,11 +83,12 @@ presubmits:
       preset-goproxy: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/yamllint:0.1
+        - image: quay.io/kubermatic/build:go-1.19-node-18-18
           command:
-            - "sh"
-            - "-c"
-            - "yamllint -c .yamllint.conf ."
+            - yamllint
+            - -c
+            - .yamllint.conf
+            - .
           resources:
             requests:
               memory: 32Mi
