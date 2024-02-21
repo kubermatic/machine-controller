@@ -24,7 +24,7 @@ fi
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
 export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
 OSM_REPO_URL="${OSM_REPO_URL:-https://github.com/kubermatic/operating-system-manager.git}"
-OSM_REPO_TAG="${OSM_REPO_TAG:-main}"
+OSM_REPO_TAG="${OSM_REPO_TAG:-release/v1.4}"
 
 # cert-manager is required by OSM for generating TLS Certificates
 echodate "Installing cert-manager"

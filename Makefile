@@ -67,6 +67,9 @@ clean:
 lint:
 	golangci-lint run -v
 
+yamllint:
+	yamllint -c .yamllint.conf .
+
 .PHONY: docker-image
 docker-image:
 	docker build --build-arg GO_VERSION=$(GO_VERSION) -t $(IMAGE_NAME) .
