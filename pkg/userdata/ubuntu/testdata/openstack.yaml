@@ -152,7 +152,7 @@ write_files:
     cd -
     KUBE_VERSION="${KUBE_VERSION:-v1.27.6}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
-    kube_base_url="https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/$arch"
+    kube_base_url="https://dl.k8s.io/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
     mkdir -p "$kube_dir"
     : >"$kube_sum_file"
@@ -406,6 +406,7 @@ write_files:
       RotateKubeletServerCertificate: true
     fileCheckFrequency: 0s
     httpCheckFrequency: 0s
+    imageMaximumGCAge: 0s
     imageMinimumGCAge: 0s
     kind: KubeletConfiguration
     kubeReserved:

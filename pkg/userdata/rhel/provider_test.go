@@ -106,7 +106,16 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.28.0",
+					Kubelet: "1.28.5",
+				},
+			},
+		},
+		{
+			name: "kubelet-v1.29-aws",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.29.0",
 				},
 			},
 		},
@@ -191,7 +200,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.28.0",
+					Kubelet: "1.28.5",
 				},
 			},
 			cloudProviderName: stringPtr("nutanix"),
@@ -201,10 +210,20 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.28.0",
+					Kubelet: "1.29.0",
 				},
 			},
 			cloudProviderName: stringPtr("azure"),
+		},
+		{
+			name: "kubelet-v1.29-nutanix",
+			spec: clusterv1alpha1.MachineSpec{
+				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
+				Versions: clusterv1alpha1.MachineVersionInfo{
+					Kubelet: "1.29.0",
+				},
+			},
+			cloudProviderName: stringPtr("nutanix"),
 		},
 	}
 

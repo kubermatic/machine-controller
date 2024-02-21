@@ -46,7 +46,7 @@ else
   echo " * Using version $K8S_RELEASE"
 fi
 
-wget --quiet https://storage.googleapis.com/kubernetes-release/release/$K8S_RELEASE/bin/linux/amd64/{kubeadm,kubelet,kubectl}.sha1 -P "$TEMPDIR"
+wget --quiet https://dl.k8s.io/$K8S_RELEASE/bin/linux/amd64/{kubeadm,kubelet,kubectl}.sha1 -P "$TEMPDIR"
 
 for util in kubeadm kubelet kubectl; do
   echo "   * $util"
@@ -59,7 +59,7 @@ for util in kubeadm kubelet kubectl; do
       exit 1
     fi
   else
-    wget "https://storage.googleapis.com/kubernetes-release/release/$K8S_RELEASE/bin/linux/amd64/$util" -P "$TEMPDIR"
+    wget "https://dl.k8s.io/$K8S_RELEASE/bin/linux/amd64/$util" -P "$TEMPDIR"
 
     CALCULATED_SHA1="$(sha1sum "$TEMPDIR/$util" | cut -f1 -d ' ')"
     EXPECTED_SHA1="$(<"$TEMPDIR/$util.sha1")"

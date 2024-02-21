@@ -58,7 +58,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
@@ -339,7 +339,7 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 		namespace = defaultLeaderElectionNamespace
 	}
 
-	extraHandlers := make(map[string]http.Handler)
+	metricsOptions := metricsserver.Options{BindAddress: metricsAddress}
 	if profiling {
 		m := http.NewServeMux()
 		m.HandleFunc("/", pprof.Index)
@@ -347,22 +347,21 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 		m.HandleFunc("/profile", pprof.Profile)
 		m.HandleFunc("/symbol", pprof.Symbol)
 		m.HandleFunc("/trace", pprof.Trace)
-
-		extraHandlers["/debug/pprof/"] = m
+		metricsOptions.ExtraHandlers = map[string]http.Handler{
+			"/debug/pprof/": m,
+		}
 	}
 
 	mgr, err := manager.New(options.cfg, manager.Options{
 		Cache: cache.Options{
-			SyncPeriod: &syncPeriod,
+			DefaultNamespaces: map[string]cache.Config{},
+			SyncPeriod:        &syncPeriod,
 		},
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionID:        defaultLeaderElectionID,
 		LeaderElectionNamespace: namespace,
 		HealthProbeBindAddress:  healthProbeAddress,
-		Metrics: server.Options{
-			BindAddress:   metricsAddress,
-			ExtraHandlers: extraHandlers,
-		},
+		Metrics:                 metricsOptions,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to build ctrlruntime manager: %w", err)
@@ -379,7 +378,6 @@ func createManager(syncPeriod time.Duration, options controllerRunOptions) (mana
 	if err := mgr.AddHealthzCheck("apiserver-connection", health.ApiserverReachable(options.kubeClient)); err != nil {
 		return nil, fmt.Errorf("failed to add health check: %w", err)
 	}
-
 	if err := mgr.Add(&controllerBootstrap{
 		mgr: mgr,
 		opt: options,

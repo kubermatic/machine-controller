@@ -189,10 +189,8 @@ func (vc *NodeVolumeAttachmentsCleanup) deletePods(ctx context.Context, log *zap
 				} else if kerrors.IsTooManyRequests(err) {
 					// PDB prevents pod deletion, return and make the controller retry later.
 					return
-				} else {
-					errCh <- fmt.Errorf("error deleting pod %s/%s on node %s: %w", p.Namespace, p.Name, vc.nodeName, err)
-					return
 				}
+				errCh <- fmt.Errorf("error deleting pod %s/%s on node %s: %w", p.Namespace, p.Name, vc.nodeName, err)
 			}
 		}(pod)
 	}

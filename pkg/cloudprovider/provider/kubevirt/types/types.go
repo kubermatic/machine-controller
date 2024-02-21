@@ -90,8 +90,9 @@ type SecondaryDisks struct {
 
 // Disk.
 type Disk struct {
-	Size             *providerconfigtypes.ConfigVarString `json:"size,omitempty"`
-	StorageClassName *providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
+	Size              providerconfigtypes.ConfigVarString `json:"size,omitempty"`
+	StorageClassName  providerconfigtypes.ConfigVarString `json:"storageClassName,omitempty"`
+	StorageAccessType providerconfigtypes.ConfigVarString `json:"storageAccessType,omitempty"`
 }
 
 // Affinity.

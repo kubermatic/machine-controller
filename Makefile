@@ -14,7 +14,7 @@
 
 SHELL = /bin/bash -eu -o pipefail
 
-GO_VERSION ?= 1.21.5
+GO_VERSION ?= 1.22.0
 
 GOOS ?= $(shell go env GOOS)
 
@@ -66,6 +66,9 @@ clean:
 .PHONY: lint
 lint:
 	golangci-lint run -v
+
+yamllint:
+	yamllint -c .yamllint.conf .
 
 .PHONY: docker-image
 docker-image:

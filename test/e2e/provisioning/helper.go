@@ -33,9 +33,10 @@ var (
 	scenarios = buildScenarios()
 
 	versions = []*semver.Version{
-		semver.MustParse("v1.26.9"),
-		semver.MustParse("v1.27.6"),
-		semver.MustParse("v1.28.2"),
+		semver.MustParse("v1.26.12"),
+		semver.MustParse("v1.27.9"),
+		semver.MustParse("v1.28.5"),
+		semver.MustParse("v1.29.0"),
 	}
 
 	operatingSystems = []providerconfigtypes.OperatingSystem{
@@ -238,7 +239,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DATA_DISK_SIZE >>=%v", 30))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< DISK_SIZE >>=%v", 25))
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< CUSTOM-IMAGE >>=%v", ""))
-		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.02"))
+		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.023"))
 	}
 
 	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderEquinixMetal)) {

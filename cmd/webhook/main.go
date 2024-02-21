@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlruntimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 type options struct {
@@ -143,6 +144,13 @@ func main() {
 		NodeFlags:            nodeFlags,
 		Namespace:            opt.namespace,
 		VersionConstraints:   constraint,
+
+		// we could change this to get the CertDir from the configured CertName
+		// and KeyName, but doing so does not bring us any benefits but would
+		// technically break compatibility.
+		CertDir:  "/",
+		CertName: opt.admissionTLSCertPath,
+		KeyName:  opt.admissionTLSKeyPath,
 	}.Build()
 	if err != nil {
 		log.Fatalw("Failed to create admission hook", zap.Error(err))
@@ -150,12 +158,8 @@ func main() {
 
 	log.Infow("Listening", "address", opt.admissionListenAddress)
 
-	if err := srv.ListenAndServeTLS(opt.admissionTLSCertPath, opt.admissionTLSKeyPath); err != nil {
+	serverContext := signals.SetupSignalHandler()
+	if err := srv.Start(serverContext); err != nil {
 		log.Fatalw("Failed to start server", zap.Error(err))
 	}
-	defer func() {
-		if err := srv.Close(); err != nil {
-			log.Fatalw("Failed to shutdown server", zap.Error(err))
-		}
-	}()
 }
