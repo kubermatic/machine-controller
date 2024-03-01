@@ -135,12 +135,14 @@ const (
 )
 
 const (
-	SystemReservedKubeletConfig       = "SystemReserved"
-	KubeReservedKubeletConfig         = "KubeReserved"
-	EvictionHardKubeletConfig         = "EvictionHard"
-	ContainerLogMaxSizeKubeletConfig  = "ContainerLogMaxSize"
-	ContainerLogMaxFilesKubeletConfig = "ContainerLogMaxFiles"
-	MaxPodsKubeletConfig              = "MaxPods"
+	SystemReservedKubeletConfig              = "SystemReserved"
+	KubeReservedKubeletConfig                = "KubeReserved"
+	EvictionHardKubeletConfig                = "EvictionHard"
+	ContainerLogMaxSizeKubeletConfig         = "ContainerLogMaxSize"
+	ContainerLogMaxFilesKubeletConfig        = "ContainerLogMaxFiles"
+	MaxPodsKubeletConfig                     = "MaxPods"
+	ImageGCLowThresholdPercentKubeletConfig  = "ImageGCLowThresholdPercent"
+	ImageGCHighThresholdPercentKubeletConfig = "ImageGCHighThresholdPercent"
 )
 
 const (
