@@ -344,7 +344,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.26.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.26.12", "1.27.9", "1.28.5", "1.29.0")))
+	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.27.9", "1.28.5", "1.29.0")))
 	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
