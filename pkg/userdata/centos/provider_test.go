@@ -102,50 +102,50 @@ func TestUserDataGeneration(t *testing.T) {
 
 	tests := []userDataTestCase{
 		{
-			name: "kubelet-v1.26.6-aws",
+			name: "kubelet-v1.29.2-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.26.6",
+					Kubelet: "1.29.2",
 				},
 			},
 		},
 		{
-			name: "kubelet-v1.26.6-nutanix",
+			name: "kubelet-v1.29.2-nutanix",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.26.6",
+					Kubelet: "1.29.2",
 				},
 			},
 			cloudProviderName: stringPtr("nutanix"),
 		},
 		{
-			name: "kubelet-v1.26.6-aws-external",
+			name: "kubelet-v1.29.2-aws-external",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.26.6",
+					Kubelet: "1.29.2",
 				},
 			},
 			externalCloudProvider: true,
 		},
 		{
-			name: "kubelet-v1.26.6-vsphere",
+			name: "kubelet-v1.29.2-vsphere",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.26.6",
+					Kubelet: "1.29.2",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),
 		},
 		{
-			name: "kubelet-v1.26.6-vsphere-proxy",
+			name: "kubelet-v1.29.2-vsphere-proxy",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.26.6",
+					Kubelet: "1.29.2",
 				},
 			},
 			cloudProviderName:  stringPtr("vsphere"),
@@ -155,11 +155,11 @@ func TestUserDataGeneration(t *testing.T) {
 			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
-			name: "kubelet-v1.26.6-vsphere-mirrors",
+			name: "kubelet-v1.29.2-vsphere-mirrors",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.26.6",
+					Kubelet: "1.29.2",
 				},
 			},
 			cloudProviderName: stringPtr("vsphere"),

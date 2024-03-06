@@ -4,10 +4,25 @@ users:
 - name: core
   ssh_authorized_keys:
   - ssh-rsa AAABBB
+  - ssh-rsa CCCDDD
 
 
 coreos:
   units:
+  - name: static-nic.network
+    content: |
+      [Match]
+      # Because of difficulty predicting specific NIC names on different cloud providers,
+      # we only support static addressing on VSphere. There should be a single NIC attached
+      # that we will match by name prefix 'en' which denotes ethernet devices.
+      Name=en*
+
+      [Network]
+      DHCP=no
+      Address=192.168.81.4/24
+      Gateway=192.168.81.1
+      DNS=8.8.8.8
+
   - name: update-engine.service
     command: stop
     mask: true
@@ -82,6 +97,10 @@ coreos:
         [Unit]
         Requires=download-script.service
         After=download-script.service
+    - name: 50-rpc-statd.conf
+      content: |
+        [Unit]
+        Wants=rpc-statd.service
     content: |
       [Unit]
       After=containerd.service
@@ -109,6 +128,8 @@ coreos:
         --kubeconfig=/var/lib/kubelet/kubeconfig \
         --config=/etc/kubernetes/kubelet.conf \
         --cert-dir=/etc/kubernetes/pki \
+        --cloud-provider=anexia \
+        --cloud-config=/etc/kubernetes/cloud-config \
         --hostname-override=node1 \
         --exit-on-lock-contention \
         --lock-file=/tmp/kubelet.lock \
@@ -313,7 +334,7 @@ write_files:
 - path: /etc/kubernetes/cloud-config
   permissions: "0400"
   content: |
-
+    {anexia-config:true}
 
 - path: /etc/kubernetes/pki/ca.crt
   permissions: "0644"
