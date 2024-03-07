@@ -295,6 +295,28 @@ func kubeletConfiguration(log *zap.SugaredLogger, clusterDomain string, clusterD
 		}
 	}
 
+	if imgGcLowThreshold, ok := kubeletConfigs[common.ImageGCLowThresholdPercentKubeletConfig]; ok {
+		val, err := strconv.ParseInt(imgGcLowThreshold, 10, 32)
+		if err != nil || val < 0 || val > 100 {
+			// Instead of breaking the workflow, just print a warning and skip the configuration
+			log.Info("Skipping invalid ImageGCLowThresholdPercent value for Kubelet configuration", "value", imgGcLowThreshold)
+		} else {
+			i32val := int32(val)
+			cfg.ImageGCLowThresholdPercent = &i32val
+		}
+	}
+
+	if imgGcHighThreshold, ok := kubeletConfigs[common.ImageGCHighThresholdPercentKubeletConfig]; ok {
+		val, err := strconv.ParseInt(imgGcHighThreshold, 10, 32)
+		if err != nil || val < 0 || val > 100 {
+			// Instead of breaking the workflow, just print a warning and skip the configuration
+			log.Info("Skipping invalid ImageGCHighThresholdPercent value for Kubelet configuration", "value", imgGcHighThreshold)
+		} else {
+			i32val := int32(val)
+			cfg.ImageGCHighThresholdPercent = &i32val
+		}
+	}
+
 	if enabled, ok := featureGates["SeccompDefault"]; ok && enabled {
 		cfg.SeccompDefault = ptr.To(true)
 	}
