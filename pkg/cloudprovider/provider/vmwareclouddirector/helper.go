@@ -89,11 +89,10 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			if sizingPolicy == nil {
 				return fmt.Errorf("sizing policy '%s' doesn't exist", *c.SizingPolicy)
 			}
-			if computePolicy == nil {
-				computePolicy = &types.ComputePolicy{}
-			}
-			computePolicy.VmSizingPolicy = &vcdapitypes.Reference{
-				HREF: sizingPolicy.VdcComputePolicy.ID,
+			computePolicy = &types.ComputePolicy{
+				VmSizingPolicy: &vcdapitypes.Reference{
+					HREF: sizingPolicy.VdcComputePolicy.ID,
+				},
 			}
 		}
 
@@ -121,9 +120,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			}
 		}
 		if storageProfile == nil {
-			if err != nil {
-				return fmt.Errorf("failed to get storage profile '%s': %w", *c.StorageProfile, err)
-			}
+			return fmt.Errorf("failed to get storage profile '%s'", *c.StorageProfile)
 		}
 	}
 
