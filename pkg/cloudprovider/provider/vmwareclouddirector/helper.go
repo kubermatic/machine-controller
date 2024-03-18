@@ -207,7 +207,9 @@ func recomposeComputeAndDisk(config *Config, vm *govcd.VM) (*govcd.VM, error) {
 					needsDiskRecomposition = true
 				}
 				if config.DiskIOPS != nil && *config.DiskIOPS > 0 {
-					vmSpecSection.DiskSection.DiskSettings[i].Iops = ptr.To(*config.DiskIOPS)
+					vmSpecSection.DiskSection.DiskSettings[i].IopsAllocation = &vcdapitypes.IopsResource{
+						Reservation: *config.DiskIOPS,
+					}
 					needsDiskRecomposition = true
 				}
 				if config.DiskBusType != nil && *config.DiskBusType != "" {
