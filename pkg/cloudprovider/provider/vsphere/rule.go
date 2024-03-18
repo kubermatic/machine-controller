@@ -100,7 +100,7 @@ func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, session
 		return err
 	}
 
-	err = task.Wait(ctx)
+	err = task.WaitEx(ctx)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func removeVMAntiAffinityRule(ctx context.Context, session *Session, clusterPath
 	if err != nil {
 		return err
 	}
-	return task.Wait(ctx)
+	return task.WaitEx(ctx)
 }
 
 func findClusterAntiAffinityRuleByName(ctx context.Context, cluster *object.ClusterComputeResource, name string) (*types.ClusterAntiAffinityRuleSpec, error) {
