@@ -83,7 +83,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler, mapFn handler.MapFunc) err
 	// Create a new controller.
 	c, err := controller.New(controllerName, mgr, controller.Options{
 		Reconciler: r,
-		LogConstructor: func(request *reconcile.Request) logr.Logger {
+		LogConstructor: func(*reconcile.Request) logr.Logger {
 			// we log ourselves
 			return zapr.NewLogger(zap.NewNop())
 		},

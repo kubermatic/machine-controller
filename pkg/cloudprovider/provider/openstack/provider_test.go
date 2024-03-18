@@ -273,7 +273,7 @@ func TestCreateServer(t *testing.T) {
 				// Note that configVarResolver is not used in this test as the getConfigFunc is mocked.
 				configVarResolver: providerconfig.NewConfigVarResolver(context.Background(), fakectrlruntimeclient.NewClientBuilder().Build()),
 				// mock client config getter
-				clientGetter: func(c *Config) (*gophercloud.ProviderClient, error) {
+				clientGetter: func(*Config) (*gophercloud.ProviderClient, error) {
 					pc := client.ServiceClient()
 					// endpoint locator used to redirect to local test endpoint
 					pc.ProviderClient.EndpointLocator = func(_ gophercloud.EndpointOpts) (string, error) {

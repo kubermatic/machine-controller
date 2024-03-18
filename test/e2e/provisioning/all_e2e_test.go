@@ -99,8 +99,11 @@ func TestInvalidObjectsGetRejected(t *testing.T) {
 		{osName: "flatcar", executor: verifyCreateMachineFails},
 	}
 
+	ctx := context.Background()
+
 	for i, test := range tests {
-		testScenario(t,
+		testScenario(ctx,
+			t,
 			test,
 			fmt.Sprintf("invalid-machine-%v", i),
 			nil,
@@ -139,6 +142,7 @@ func TestCustomCAsAreApplied(t *testing.T) {
 	}
 
 	testScenario(
+		context.Background(),
 		t,
 		scenario{
 			name:              "ca-test",
@@ -146,12 +150,12 @@ func TestCustomCAsAreApplied(t *testing.T) {
 			kubernetesVersion: versions[0].String(),
 			osName:            string(providerconfigtypes.OperatingSystemUbuntu),
 
-			executor: func(kubeConfig, manifestPath string, parameters []string, d time.Duration) error {
-				if err := updateMachineControllerForCustomCA(kubeConfig); err != nil {
+			executor: func(ctx context.Context, kubeConfig, manifestPath string, parameters []string, d time.Duration) error {
+				if err := updateMachineControllerForCustomCA(ctx, kubeConfig); err != nil {
 					return fmt.Errorf("failed to add CA: %w", err)
 				}
 
-				return verifyCreateMachineFails(kubeConfig, manifestPath, parameters, d)
+				return verifyCreateMachineFails(ctx, kubeConfig, manifestPath, parameters, d)
 			},
 		},
 		"dummy-machine",
@@ -161,7 +165,7 @@ func TestCustomCAsAreApplied(t *testing.T) {
 	)
 }
 
-func updateMachineControllerForCustomCA(kubeconfig string) error {
+func updateMachineControllerForCustomCA(ctx context.Context, kubeconfig string) error {
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return fmt.Errorf("Error building kubeconfig: %w", err)
@@ -172,7 +176,6 @@ func updateMachineControllerForCustomCA(kubeconfig string) error {
 		return fmt.Errorf("failed to create Client: %w", err)
 	}
 
-	ctx := context.Background()
 	ns := metav1.NamespaceSystem
 
 	// create intentionally valid but useless CA bundle
@@ -304,7 +307,7 @@ func TestKubevirtProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< KUBECONFIG_BASE64 >>=%s", safeBase64Encoding(kubevirtKubeconfig)),
 	}
 
-	runScenarios(t, selector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, kubevirtManifest, fmt.Sprintf("kubevirt-%s", *testRunIdentifier))
 }
 
 // safeBase64Encoding takes a value and encodes it with base64
@@ -345,7 +348,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 
 	// In-tree cloud provider is not supported from Kubernetes v1.26.
 	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.27.11", "1.28.7", "1.29.2")))
-	runScenarios(t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
 func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
@@ -382,7 +385,7 @@ func TestOpenstackProjectAuthProvisioningE2E(t *testing.T) {
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
-	testScenario(t, scenario, *testRunIdentifier, params, OSManifestProjectAuth, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, OSManifestProjectAuth, false)
 }
 
 // TestDigitalOceanProvisioning - a test suite that exercises digital ocean provider
@@ -402,7 +405,7 @@ func TestDigitalOceanProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< DIGITALOCEAN_TOKEN >>=%s", doToken)}
-	runScenarios(t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, DOManifest, fmt.Sprintf("do-%s", *testRunIdentifier))
 }
 
 // TestAWSProvisioning - a test suite that exercises AWS provider
@@ -432,7 +435,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", provisioningUtility),
 	}
 
-	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestAWSAssumeRoleProvisioning - a test suite that exercises AWS provider
@@ -462,7 +465,7 @@ func TestAWSAssumeRoleProvisioningE2E(t *testing.T) {
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
-	testScenario(t, scenario, *testRunIdentifier, params, AWSManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, AWSManifest, false)
 }
 
 // TestAWSSpotInstanceProvisioning - a test suite that exercises AWS provider
@@ -485,7 +488,7 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
 		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
 	}
-	runScenarios(t, selector, params, AWSSpotInstanceManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, AWSSpotInstanceManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestAWSARMProvisioningE2E - a test suite that exercises AWS provider for arm machines
@@ -507,7 +510,7 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AWS_SECRET_ACCESS_KEY >>=%s", awsSecret),
 		fmt.Sprintf("<< PROVISIONING_UTILITY >>=%s", flatcar.Ignition),
 	}
-	runScenarios(t, selector, params, AWSManifestARM, fmt.Sprintf("aws-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, AWSManifestARM, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
@@ -528,7 +531,7 @@ func TestAWSFlatcarCoreOSCloudInit8ProvisioningE2E(t *testing.T) {
 
 	// We would like to test flatcar with CoreOS-cloud-init
 	selector := OsSelector("flatcar")
-	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
@@ -551,7 +554,7 @@ func TestAWSCentOS8ProvisioningE2E(t *testing.T) {
 
 	// We would like to test CentOS8 image only in this test as the other images are tested in TestAWSProvisioningE2E
 	selector := OsSelector("centos")
-	runScenarios(t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, AWSManifest, fmt.Sprintf("aws-%s", *testRunIdentifier))
 }
 
 // TestAWSEbsEncryptionEnabledProvisioningE2E - a test suite that exercises AWS provider with ebs encryption enabled
@@ -578,7 +581,7 @@ func TestAWSEbsEncryptionEnabledProvisioningE2E(t *testing.T) {
 		kubernetesVersion: awsDefaultKubernetesVersion,
 		executor:          verifyCreateAndDelete,
 	}
-	testScenario(t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
+	testScenario(context.Background(), t, scenario, fmt.Sprintf("aws-%s", *testRunIdentifier), params, AWSEBSEncryptedManifest, false)
 }
 
 // TestAzureProvisioningE2E - a test suite that exercises Azure provider
@@ -606,7 +609,7 @@ func TestAzureProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_OS_DISK_SKU >>=%s", "Standard_LRS"),
 		fmt.Sprintf("<< AZURE_DATA_DISK_SKU >>=%s", "Standard_LRS"),
 	}
-	runScenarios(t, selector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, AzureManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
 // TestAzureCustomImageReferenceProvisioningE2E - a test suite that exercises Azure provider
@@ -633,7 +636,7 @@ func TestAzureCustomImageReferenceProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< AZURE_OS_DISK_SKU >>=%s", "Standard_LRS"),
 		fmt.Sprintf("<< AZURE_DATA_DISK_SKU >>=%s", "Standard_LRS"),
 	}
-	runScenarios(t, selector, params, AzureCustomImageReferenceManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, AzureCustomImageReferenceManifest, fmt.Sprintf("azure-%s", *testRunIdentifier))
 }
 
 // TestAzureRedhatSatelliteProvisioningE2E - a test suite that exercises Azure provider
@@ -669,7 +672,7 @@ func TestAzureRedhatSatelliteProvisioningE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, *testRunIdentifier, params, AzureRedhatSatelliteManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, AzureRedhatSatelliteManifest, false)
 }
 
 // TestGCEProvisioningE2E - a test suite that exercises Google Cloud provider
@@ -690,7 +693,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>=%s", safeBase64Encoding(googleServiceAccount)),
 	}
 
-	runScenarios(t, selector, params, GCEManifest, fmt.Sprintf("gce-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, GCEManifest, fmt.Sprintf("gce-%s", *testRunIdentifier))
 }
 
 // TestHetznerProvisioning - a test suite that exercises Hetzner provider
@@ -708,7 +711,7 @@ func TestHetznerProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< HETZNER_TOKEN >>=%s", hzToken)}
-	runScenarios(t, selector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, HZManifest, fmt.Sprintf("hz-%s", *testRunIdentifier))
 }
 
 // TestEquinixMetalProvisioningE2E - a test suite that exercises Equinix Metal provider
@@ -734,7 +737,7 @@ func TestEquinixMetalProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< METAL_AUTH_TOKEN >>=%s", token),
 		fmt.Sprintf("<< METAL_PROJECT_ID >>=%s", projectID),
 	}
-	runScenarios(t, selector, params, EquinixMetalManifest, fmt.Sprintf("equinixmetal-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, EquinixMetalManifest, fmt.Sprintf("equinixmetal-%s", *testRunIdentifier))
 }
 
 func TestAlibabaProvisioningE2E(t *testing.T) {
@@ -758,7 +761,7 @@ func TestAlibabaProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< ALIBABA_ACCESS_KEY_ID >>=%s", accessKeyID),
 		fmt.Sprintf("<< ALIBABA_ACCESS_KEY_SECRET >>=%s", accessKeySecret),
 	}
-	runScenarios(t, selector, params, alibabaManifest, fmt.Sprintf("alibaba-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, alibabaManifest, fmt.Sprintf("alibaba-%s", *testRunIdentifier))
 }
 
 // TestLinodeProvisioning - a test suite that exercises Linode provider
@@ -779,7 +782,7 @@ func TestLinodeProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< LINODE_TOKEN >>=%s", linodeToken)}
-	runScenarios(t, selector, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, LinodeManifest, fmt.Sprintf("linode-%s", *testRunIdentifier))
 }
 
 func getVMwareCloudDirectorTestParams(t *testing.T) []string {
@@ -811,7 +814,7 @@ func TestVMwareCloudDirectorProvisioningE2E(t *testing.T) {
 	selector := OsSelector("ubuntu")
 	params := getVMwareCloudDirectorTestParams(t)
 
-	runScenarios(t, selector, params, VMwareCloudDirectorManifest, fmt.Sprintf("vcd-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, VMwareCloudDirectorManifest, fmt.Sprintf("vcd-%s", *testRunIdentifier))
 }
 
 func getVSphereTestParams(t *testing.T) []string {
@@ -841,7 +844,7 @@ func TestVsphereProvisioningE2E(t *testing.T) {
 	selector := Not(OsSelector("amzn2", "centos"))
 	params := getVSphereTestParams(t)
 
-	runScenarios(t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, VSPhereManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }
 
 // TestVsphereMultipleNICProvisioning - is the same as the TestVsphereProvisioning suit but has multiple networks attached to the VMs.
@@ -852,7 +855,7 @@ func TestVsphereMultipleNICProvisioningE2E(t *testing.T) {
 	selector := OsSelector("ubuntu")
 	params := getVSphereTestParams(t)
 
-	runScenarios(t, selector, params, VSPhereMultipleNICManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, VSPhereMultipleNICManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
 }
 
 // TestVsphereDatastoreClusterProvisioning - is the same as the TestVsphereProvisioning suite but specifies a DatastoreCluster
@@ -863,7 +866,7 @@ func TestVsphereDatastoreClusterProvisioningE2E(t *testing.T) {
 	selector := OsSelector("ubuntu", "centos", "rhel", "flatcar")
 
 	params := getVSphereTestParams(t)
-	runScenarios(t, selector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, VSPhereDSCManifest, fmt.Sprintf("vs-dsc-%s", *testRunIdentifier))
 }
 
 // TestVsphereResourcePoolProvisioning - creates a machine deployment using a
@@ -881,7 +884,7 @@ func TestVsphereResourcePoolProvisioningE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, *testRunIdentifier, params, VSPhereResourcePoolManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, VSPhereResourcePoolManifest, false)
 }
 
 // TestScalewayProvisioning - a test suite that exercises scaleway provider
@@ -917,7 +920,7 @@ func TestScalewayProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< SCW_SECRET_KEY >>=%s", scwSecretKey),
 		fmt.Sprintf("<< SCW_DEFAULT_PROJECT_ID >>=%s", scwProjectID),
 	}
-	runScenarios(t, selector, params, ScalewayManifest, fmt.Sprintf("scw-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, ScalewayManifest, fmt.Sprintf("scw-%s", *testRunIdentifier))
 }
 
 func getNutanixTestParams(t *testing.T) []string {
@@ -955,7 +958,7 @@ func TestNutanixProvisioningE2E(t *testing.T) {
 	// location, thus possibly blocking access a HTTP proxy if it is configured.
 	selector := And(OsSelector("ubuntu", "centos"), Not(NameSelector("migrateUID")))
 	params := getNutanixTestParams(t)
-	runScenarios(t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, nutanixManifest, fmt.Sprintf("nx-%s", *testRunIdentifier))
 }
 
 func TestOpenNebulaProvisioningE2E(t *testing.T) {
@@ -992,7 +995,7 @@ func TestOpenNebulaProvisioningE2E(t *testing.T) {
 	}
 
 	selector := OsSelector("rockylinux", "flatcar")
-	runScenarios(t, selector, params, openNebulaManifest, fmt.Sprintf("one-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, openNebulaManifest, fmt.Sprintf("one-%s", *testRunIdentifier))
 }
 
 // TestUbuntuProvisioningWithUpgradeE2E will create an instance from an old Ubuntu 1604
@@ -1030,7 +1033,7 @@ func TestUbuntuProvisioningWithUpgradeE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(t, scenario, *testRunIdentifier, params, OSUpgradeManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, OSUpgradeManifest, false)
 }
 
 // TestDeploymentControllerUpgradesMachineE2E verifies the machineDeployment controller correctly
@@ -1054,7 +1057,7 @@ func TestDeploymentControllerUpgradesMachineE2E(t *testing.T) {
 		kubernetesVersion: defaultKubernetesVersion,
 		executor:          verifyCreateUpdateAndDelete,
 	}
-	testScenario(t, scenario, *testRunIdentifier, params, HZManifest, false)
+	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, HZManifest, false)
 }
 
 func TestAnexiaProvisioningE2E(t *testing.T) {
@@ -1077,7 +1080,7 @@ func TestAnexiaProvisioningE2E(t *testing.T) {
 		fmt.Sprintf("<< ANEXIA_LOCATION_ID >>=%s", locationID),
 	}
 
-	runScenarios(t, selector, params, anexiaManifest, fmt.Sprintf("anexia-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, anexiaManifest, fmt.Sprintf("anexia-%s", *testRunIdentifier))
 }
 
 // TestVultrProvisioning - a test suite that exercises Vultr provider
@@ -1095,5 +1098,5 @@ func TestVultrProvisioningE2E(t *testing.T) {
 
 	// act
 	params := []string{fmt.Sprintf("<< VULTR_API_KEY >>=%s", apiKey)}
-	runScenarios(t, selector, params, vultrManifest, fmt.Sprintf("vlt-%s", *testRunIdentifier))
+	runScenarios(context.Background(), t, selector, params, vultrManifest, fmt.Sprintf("vlt-%s", *testRunIdentifier))
 }

@@ -85,7 +85,7 @@ func Add(mgr manager.Manager, log *zap.SugaredLogger) error {
 
 	cntrl, err := controller.New(ControllerName, mgr, controller.Options{
 		Reconciler: rec,
-		LogConstructor: func(request *reconcile.Request) logr.Logger {
+		LogConstructor: func(*reconcile.Request) logr.Logger {
 			// we log ourselves
 			return zapr.NewLogger(zap.NewNop())
 		},
