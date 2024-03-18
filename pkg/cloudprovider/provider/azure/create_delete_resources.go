@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"go.uber.org/zap"
@@ -343,7 +343,7 @@ func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger,
 		Name: to.StringPtr("ip-config-1"),
 		InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 			Subnet:                    &subnet,
-			PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
+			PrivateIPAllocationMethod: network.Dynamic,
 			PublicIPAddress:           publicIP,
 			Primary:                   to.BoolPtr(true),
 		},
@@ -353,11 +353,11 @@ func createOrUpdateNetworkInterface(ctx context.Context, log *zap.SugaredLogger,
 		*ifSpec.InterfacePropertiesFormat.IPConfigurations = append(*ifSpec.InterfacePropertiesFormat.IPConfigurations, network.InterfaceIPConfiguration{
 			Name: to.StringPtr("ip-config-2"),
 			InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
-				PrivateIPAllocationMethod: network.IPAllocationMethodDynamic,
+				PrivateIPAllocationMethod: network.Dynamic,
 				Subnet:                    &subnet,
 				PublicIPAddress:           publicIPv6,
 				Primary:                   to.BoolPtr(false),
-				PrivateIPAddressVersion:   network.IPVersionIPv6,
+				PrivateIPAddressVersion:   network.IPv6,
 			},
 		})
 	}
