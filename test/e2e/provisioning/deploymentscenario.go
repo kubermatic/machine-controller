@@ -29,12 +29,11 @@ import (
 	"k8s.io/klog"
 )
 
-func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
+func verifyCreateUpdateAndDelete(ctx context.Context, kubeConfig, manifestPath string, parameters []string, timeout time.Duration) error {
 	client, machineDeployment, err := prepareMachineDeployment(kubeConfig, manifestPath, parameters)
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
 
 	// This test inherently relies on replicas being one so we enforce that
 	machineDeployment.Spec.Replicas = getInt32Ptr(1)
@@ -44,7 +43,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 		return fmt.Errorf("failed to verify creation of node for MachineDeployment: %w", err)
 	}
 
-	if err := updateMachineDeployment(machineDeployment, client, func(md *clusterv1alpha1.MachineDeployment) {
+	if err := updateMachineDeployment(ctx, machineDeployment, client, func(md *clusterv1alpha1.MachineDeployment) {
 		md.Spec.Template.Labels["testUpdate"] = "true"
 	}); err != nil {
 		return fmt.Errorf("failed to update MachineDeployment %s after modifying it: %w", machineDeployment.Name, err)
@@ -53,7 +52,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	klog.Infof("Waiting for second MachineSet to appear after updating MachineDeployment %s", machineDeployment.Name)
 	var machineSets []clusterv1alpha1.MachineSet
 	if err := wait.PollUntilContextTimeout(ctx, 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
-		machineSets, err = getMatchingMachineSets(machineDeployment, client)
+		machineSets, err = getMatchingMachineSets(ctx, machineDeployment, client)
 		if err != nil {
 			return false, err
 		}
@@ -82,7 +81,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	}
 	var machines []clusterv1alpha1.Machine
 	if err := wait.PollUntilContextTimeout(ctx, 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
-		machines, err = getMatchingMachinesForMachineset(&newestMachineSet, client)
+		machines, err = getMatchingMachinesForMachineset(ctx, &newestMachineSet, client)
 		if err != nil {
 			return false, err
 		}
@@ -113,7 +112,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 		if *machineSet.Spec.Replicas != int32(0) {
 			return false, nil
 		}
-		machines, err := getMatchingMachinesForMachineset(machineSet, client)
+		machines, err := getMatchingMachinesForMachineset(ctx, machineSet, client)
 		if err != nil {
 			return false, err
 		}
@@ -124,7 +123,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 	klog.Infof("Old MachineSet %s got scaled down and has no associated machines anymore", oldMachineSet.Name)
 
 	klog.Infof("Setting replicas of MachineDeployment %s to 0 and waiting until it has no associated machines", machineDeployment.Name)
-	if err := updateMachineDeployment(machineDeployment, client, func(md *clusterv1alpha1.MachineDeployment) {
+	if err := updateMachineDeployment(ctx, machineDeployment, client, func(md *clusterv1alpha1.MachineDeployment) {
 		md.Spec.Replicas = getInt32Ptr(0)
 	}); err != nil {
 		return fmt.Errorf("failed to update replicas of MachineDeployment %s: %w", machineDeployment.Name, err)
@@ -133,7 +132,7 @@ func verifyCreateUpdateAndDelete(kubeConfig, manifestPath string, parameters []s
 
 	klog.Infof("Waiting for MachineDeployment %s to not have any associated machines", machineDeployment.Name)
 	if err := wait.PollUntilContextTimeout(ctx, 5*time.Second, timeout, false, func(ctx context.Context) (bool, error) {
-		machines, err := getMatchingMachines(machineDeployment, client)
+		machines, err := getMatchingMachines(ctx, machineDeployment, client)
 		return len(machines) == 0, err
 	}); err != nil {
 		return err

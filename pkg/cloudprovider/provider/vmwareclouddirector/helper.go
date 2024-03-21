@@ -89,11 +89,10 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			if sizingPolicy == nil {
 				return fmt.Errorf("sizing policy '%s' doesn't exist", *c.SizingPolicy)
 			}
-			if computePolicy == nil {
-				computePolicy = &types.ComputePolicy{}
-			}
-			computePolicy.VmSizingPolicy = &vcdapitypes.Reference{
-				HREF: sizingPolicy.VdcComputePolicy.ID,
+			computePolicy = &types.ComputePolicy{
+				VmSizingPolicy: &vcdapitypes.Reference{
+					HREF: sizingPolicy.VdcComputePolicy.ID,
+				},
 			}
 		}
 
@@ -121,9 +120,7 @@ func createVM(client *Client, machine *clusterv1alpha1.Machine, c *Config, org *
 			}
 		}
 		if storageProfile == nil {
-			if err != nil {
-				return fmt.Errorf("failed to get storage profile '%s': %w", *c.StorageProfile, err)
-			}
+			return fmt.Errorf("failed to get storage profile '%s'", *c.StorageProfile)
 		}
 	}
 
@@ -207,7 +204,9 @@ func recomposeComputeAndDisk(config *Config, vm *govcd.VM) (*govcd.VM, error) {
 					needsDiskRecomposition = true
 				}
 				if config.DiskIOPS != nil && *config.DiskIOPS > 0 {
-					vmSpecSection.DiskSection.DiskSettings[i].Iops = ptr.To(*config.DiskIOPS)
+					vmSpecSection.DiskSection.DiskSettings[i].IopsAllocation = &vcdapitypes.IopsResource{
+						Reservation: *config.DiskIOPS,
+					}
 					needsDiskRecomposition = true
 				}
 				if config.DiskBusType != nil && *config.DiskBusType != "" {

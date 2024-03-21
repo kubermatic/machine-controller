@@ -128,7 +128,7 @@ func hookableReconcileContext(locationID string, templateID string, hook func(*r
 			},
 		},
 		ProviderData: &cloudprovidertypes.ProviderData{
-			Update: func(m *clusterv1alpha1.Machine, mods ...cloudprovidertypes.MachineModifier) error {
+			Update: func(*clusterv1alpha1.Machine, ...cloudprovidertypes.MachineModifier) error {
 				return nil
 			},
 		},

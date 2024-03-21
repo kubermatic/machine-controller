@@ -226,7 +226,7 @@ func Add(
 	c, err := controller.New(ControllerName, mgr, controller.Options{
 		Reconciler:              reconciler,
 		MaxConcurrentReconciles: numWorkers,
-		LogConstructor: func(request *reconcile.Request) logr.Logger {
+		LogConstructor: func(*reconcile.Request) logr.Logger {
 			// we log ourselves
 			return zapr.NewLogger(zap.NewNop())
 		},

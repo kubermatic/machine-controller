@@ -27,8 +27,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-11-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2021-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/compute/mgmt/compute"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	gocache "github.com/patrickmn/go-cache"
 	"go.uber.org/zap"
@@ -618,13 +618,13 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		}); err != nil {
 			return nil, err
 		}
-		publicIP, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, machine.UID, config)
+		publicIP, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPv4, sku, network.Static, machine.UID, config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create public IP: %w", err)
 		}
 
 		if ipFamily.IsDualstack() {
-			publicIPv6, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodStatic, machine.UID, config)
+			publicIPv6, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPv6, sku, network.Static, machine.UID, config)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create public IP: %w", err)
 			}
@@ -1143,14 +1143,14 @@ func (p *provider) MigrateUID(ctx context.Context, log *zap.SugaredLogger, machi
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIPv6) {
 		sku = network.PublicIPAddressSkuNameStandard
-		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPVersionIPv6, sku, network.IPAllocationMethodDynamic, newUID, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPv6Name(ifaceName(machine)), network.IPv6, sku, network.Dynamic, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}
 	}
 
 	if kuberneteshelper.HasFinalizer(machine, finalizerPublicIP) {
-		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPVersionIPv4, sku, network.IPAllocationMethodStatic, newUID, config)
+		_, err = createOrUpdatePublicIPAddress(ctx, log, publicIPName(ifaceName(machine)), network.IPv4, sku, network.Static, newUID, config)
 		if err != nil {
 			return fmt.Errorf("failed to update UID on public IP: %w", err)
 		}

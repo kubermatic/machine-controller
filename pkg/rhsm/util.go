@@ -30,7 +30,7 @@ const (
 func AddRHELSubscriptionFinalizer(machine *v1alpha1.Machine, update types.MachineUpdater) error {
 	if !kuberneteshelper.HasFinalizer(machine, RedhatSubscriptionFinalizer) {
 		if err := update(machine, func(m *v1alpha1.Machine) {
-			machine.Finalizers = append(m.Finalizers, RedhatSubscriptionFinalizer)
+			m.Finalizers = append(m.Finalizers, RedhatSubscriptionFinalizer)
 		}); err != nil {
 			return err
 		}
@@ -43,7 +43,7 @@ func AddRHELSubscriptionFinalizer(machine *v1alpha1.Machine, update types.Machin
 func RemoveRHELSubscriptionFinalizer(machine *v1alpha1.Machine, update types.MachineUpdater) error {
 	if kuberneteshelper.HasFinalizer(machine, RedhatSubscriptionFinalizer) {
 		if err := update(machine, func(m *v1alpha1.Machine) {
-			machine.Finalizers = kuberneteshelper.RemoveFinalizer(machine.Finalizers, RedhatSubscriptionFinalizer)
+			m.Finalizers = kuberneteshelper.RemoveFinalizer(m.Finalizers, RedhatSubscriptionFinalizer)
 		}); err != nil {
 			return err
 		}

@@ -50,9 +50,6 @@ func NewSession(ctx context.Context, config *Config) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
 
 	client := &govmomi.Client{
 		Client:         vim25Client,

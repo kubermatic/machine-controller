@@ -146,7 +146,7 @@ func TestAnexiaProvider(t *testing.T) {
 			},
 		}
 
-		testhelper.Mux.HandleFunc("/api/ipam/v1/address/reserve/ip/count.json", func(writer http.ResponseWriter, request *http.Request) {
+		testhelper.Mux.HandleFunc("/api/ipam/v1/address/reserve/ip/count.json", func(writer http.ResponseWriter, _ *http.Request) {
 			err := json.NewEncoder(writer).Encode(address.ReserveRandomSummary{
 				Data: []address.ReservedIP{
 					{
@@ -242,7 +242,7 @@ func TestAnexiaProvider(t *testing.T) {
 
 		provider := New(nil).(*provider)
 		for _, testCase := range testCases {
-			templateID, err := resolveTemplateID(context.TODO(), a, testCase.config, provider.configVarResolver, "foo")
+			templateID, err := resolveTemplateID(context.Background(), a, testCase.config, provider.configVarResolver, "foo")
 			if testCase.expectedError != "" {
 				if err != nil {
 					testhelper.AssertErr(t, err)
@@ -410,7 +410,7 @@ func TestUpdateStatus(t *testing.T) {
 	machine.Status.ProviderStatus = &runtime.RawExtension{Raw: providerStatusJSON}
 
 	called := false
-	err = updateMachineStatus(machine, providerStatus, func(paramMachine *v1alpha1.Machine, modifier ...cloudprovidertypes.MachineModifier) error {
+	err = updateMachineStatus(machine, providerStatus, func(paramMachine *v1alpha1.Machine, _ ...cloudprovidertypes.MachineModifier) error {
 		called = true
 		testhelper.AssertEquals(t, machine, paramMachine)
 		status := getProviderStatus(zap.NewNop().Sugar(), machine)
@@ -423,13 +423,13 @@ func TestUpdateStatus(t *testing.T) {
 }
 
 func Test_anexiaErrorToTerminalError(t *testing.T) {
-	forbiddenMockHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	forbiddenMockHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, err := w.Write([]byte(`{"error": {"code": 403}}`))
 		testhelper.AssertNoErr(t, err)
 	})
 
-	unauthorizedMockHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	unauthorizedMockHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err := w.Write([]byte(`{"error": {"code": 401}}`))
 		testhelper.AssertNoErr(t, err)
@@ -438,7 +438,7 @@ func Test_anexiaErrorToTerminalError(t *testing.T) {
 	legacyClientRun := func(url string) error {
 		client, err := client.New(client.BaseURL(url), client.IgnoreMissingToken(), client.ParseEngineErrors(true))
 		testhelper.AssertNoErr(t, err)
-		_, err = core.NewAPI(client).Location().List(context.TODO(), 1, 1, "", "")
+		_, err = core.NewAPI(client).Location().List(context.Background(), 1, 1, "", "")
 		return err
 	}
 
@@ -448,7 +448,7 @@ func Test_anexiaErrorToTerminalError(t *testing.T) {
 			client.IgnoreMissingToken(),
 		))
 		testhelper.AssertNoErr(t, err)
-		return client.Get(context.TODO(), &corev1.Location{Identifier: "foo"})
+		return client.Get(context.Background(), &corev1.Location{Identifier: "foo"})
 	}
 
 	testCases := []struct {

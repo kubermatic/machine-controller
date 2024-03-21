@@ -690,7 +690,7 @@ func waitForPort(ctx context.Context, instanceLog *zap.SugaredLogger, netClient 
 	started := time.Now()
 	instanceLog.Info("Waiting for the port to become active...")
 
-	portIsReady := func(c context.Context) (bool, error) {
+	portIsReady := func(context.Context) (bool, error) {
 		port, err := getInstancePort(netClient, serverID, networkID)
 		if err != nil {
 			tErr := osErrorToTerminalError(instanceLog, err, fmt.Sprintf("failed to get current instance port %s", serverID))

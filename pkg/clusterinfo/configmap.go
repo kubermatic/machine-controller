@@ -97,15 +97,6 @@ func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*
 		return nil, errors.New("could not parse ip from ")
 	}
 
-	getSecurePort := func(endpointSubset corev1.EndpointSubset) *corev1.EndpointPort {
-		for _, p := range subset.Ports {
-			if p.Name == securePortName {
-				return &p
-			}
-		}
-		return nil
-	}
-
 	port := getSecurePort(subset)
 	if port == nil {
 		return nil, errors.New("no secure port in the subset")
@@ -127,6 +118,15 @@ func (p *KubeconfigProvider) buildKubeconfigFromEndpoint(ctx context.Context) (*
 			},
 		},
 	}, nil
+}
+
+func getSecurePort(endpointSubset corev1.EndpointSubset) *corev1.EndpointPort {
+	for _, p := range endpointSubset.Ports {
+		if p.Name == securePortName {
+			return &p
+		}
+	}
+	return nil
 }
 
 func getCAData(config *rest.Config) ([]byte, error) {

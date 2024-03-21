@@ -115,8 +115,8 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, log *
 		}
 
 		// Apply revision annotation from existingNewMS if it is missing from the deployment.
-		err := r.updateMachineDeployment(ctx, d, func(innerDeployment *clusterv1alpha1.MachineDeployment) {
-			dutil.SetDeploymentRevision(d, msCopy.Annotations[dutil.RevisionAnnotation])
+		err := r.updateMachineDeployment(ctx, d, func(md *clusterv1alpha1.MachineDeployment) {
+			dutil.SetDeploymentRevision(md, msCopy.Annotations[dutil.RevisionAnnotation])
 		})
 		return msCopy, err
 	}
@@ -209,8 +209,8 @@ func (r *ReconcileMachineDeployment) getNewMachineSet(ctx context.Context, log *
 		log.Debugw("Created new MachineSet", "machineset", client.ObjectKeyFromObject(createdMS))
 	}
 
-	err = r.updateMachineDeployment(ctx, d, func(innerDeployment *clusterv1alpha1.MachineDeployment) {
-		dutil.SetDeploymentRevision(d, newRevision)
+	err = r.updateMachineDeployment(ctx, d, func(md *clusterv1alpha1.MachineDeployment) {
+		dutil.SetDeploymentRevision(md, newRevision)
 	})
 
 	return createdMS, err

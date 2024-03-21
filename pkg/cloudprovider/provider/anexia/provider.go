@@ -474,9 +474,6 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 	vsphereAPI := vsphere.NewAPI(cli)
 
 	status := getProviderStatus(log, machine)
-	if err != nil {
-		return nil, newError(common.InvalidConfigurationMachineError, "failed to get machine status: %v", err)
-	}
 
 	if status.InstanceID == "" && status.ProvisioningID == "" {
 		return nil, cloudprovidererrors.ErrInstanceNotFound

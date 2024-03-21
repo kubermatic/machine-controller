@@ -150,7 +150,7 @@ func (svc *service) waitOperation(ctx context.Context, refreshOperation func() (
 	var op *compute.Operation
 	var err error
 
-	return wait.PollUntilContextTimeout(ctx, pollInterval, pollTimeout, false, func(ctx context.Context) (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, pollInterval, pollTimeout, false, func(_ context.Context) (bool, error) {
 		op, err = refreshOperation()
 		if err != nil {
 			return false, err

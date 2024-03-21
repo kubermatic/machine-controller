@@ -409,7 +409,7 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 			if vmErr != nil {
 				return nil, fmt.Errorf("failed to destroy vm %s after failing upload and attach userdata iso: %w / %w", virtualMachine.Name(), err, vmErr)
 			}
-			if vmErr := destroyTask.Wait(ctx); vmErr != nil {
+			if vmErr := destroyTask.WaitEx(ctx); vmErr != nil {
 				return nil, fmt.Errorf("failed to destroy vm %s after failing upload and attach userdata iso: %w / %w", virtualMachine.Name(), err, vmErr)
 			}
 			return nil, machineInvalidConfigurationTerminalError(fmt.Errorf("failed to upload and attach userdata iso: %w", err))
@@ -421,7 +421,7 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 		return nil, fmt.Errorf("failed to power on machine: %w", err)
 	}
 
-	if err := powerOnTask.Wait(ctx); err != nil {
+	if err := powerOnTask.WaitEx(ctx); err != nil {
 		return nil, fmt.Errorf("error when waiting for vm powerOn task: %w", err)
 	}
 
@@ -464,7 +464,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		if err != nil {
 			return false, fmt.Errorf("failed to poweroff vm %s: %w", virtualMachine.Name(), err)
 		}
-		if err = powerOffTask.Wait(ctx); err != nil {
+		if err = powerOffTask.WaitEx(ctx); err != nil {
 			return false, fmt.Errorf("failed to poweroff vm %s: %w", virtualMachine.Name(), err)
 		}
 	}
@@ -503,7 +503,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	if err != nil {
 		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
 	}
-	if err := destroyTask.Wait(ctx); err != nil {
+	if err := destroyTask.WaitEx(ctx); err != nil {
 		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
 	}
 
@@ -557,7 +557,7 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 		if err != nil {
 			return nil, fmt.Errorf("failed to power on instance that was in state %q: %w", powerState, err)
 		}
-		if err := powerOnTask.Wait(ctx); err != nil {
+		if err := powerOnTask.WaitEx(ctx); err != nil {
 			return nil, fmt.Errorf("failed waiting for instance to be powered on: %w", err)
 		}
 		// We must return here because the vendored code for determining if the guest

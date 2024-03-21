@@ -100,7 +100,7 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 		return nil, fmt.Errorf("failed to clone template vm: %w", err)
 	}
 
-	if err := clonedVMTask.Wait(ctx); err != nil {
+	if err := clonedVMTask.WaitEx(ctx); err != nil {
 		return nil, fmt.Errorf("error when waiting for result of clone task: %w", err)
 	}
 
@@ -211,7 +211,7 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconfigure the VM: %w", err)
 	}
-	if err := reconfigureTask.Wait(ctx); err != nil {
+	if err := reconfigureTask.WaitEx(ctx); err != nil {
 		return nil, fmt.Errorf("error when waiting for result of the reconfigure task: %w", err)
 	}
 

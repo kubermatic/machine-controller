@@ -17,6 +17,7 @@ limitations under the License.
 package provisioning
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -181,7 +182,7 @@ func (v *version) Match(testCase scenario) bool {
 	return false
 }
 
-func runScenarios(st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
+func runScenarios(ctx context.Context, st *testing.T, selector Selector, testParams []string, manifestPath string, cloudProvider string) {
 	for _, testCase := range scenarios {
 		if selector != nil && !selector.Match(testCase) {
 			fmt.Printf("Skipping test %s\n", testCase.name)
@@ -189,16 +190,16 @@ func runScenarios(st *testing.T, selector Selector, testParams []string, manifes
 		}
 
 		st.Run(testCase.name, func(it *testing.T) {
-			testScenario(it, testCase, cloudProvider, testParams, manifestPath, true)
+			testScenario(ctx, it, testCase, cloudProvider, testParams, manifestPath, true)
 		})
 	}
 }
 
 // scenarioExecutor represents an executor for a given scenario
 // args: kubeConfig, maifestPath, scenarioParams, timeout
-type scenarioExecutor func(string, string, []string, time.Duration) error
+type scenarioExecutor func(context.Context, string, string, []string, time.Duration) error
 
-func testScenario(t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string, parallelize bool) {
+func testScenario(ctx context.Context, t *testing.T, testCase scenario, cloudProvider string, testParams []string, manifestPath string, parallelize bool) {
 	if parallelize {
 		t.Parallel()
 	}
@@ -294,7 +295,7 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 	// we decided to keep this time lower that the global timeout to prevent the following:
 	// the global timeout is set to 20 minutes and the verify tool waits up to 60 hours for a machine to show up.
 	// thus one faulty scenario prevents from showing the results for the whole group, which is confusing because it looks like all tests are broken.
-	if err := testCase.executor(kubeConfig, manifestPath, scenarioParams, 35*time.Minute); err != nil {
+	if err := testCase.executor(ctx, kubeConfig, manifestPath, scenarioParams, 35*time.Minute); err != nil {
 		t.Errorf("verify failed due to error=%v", err)
 	}
 }

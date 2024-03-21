@@ -228,6 +228,7 @@ func (p *provider) Validate(ctx context.Context, _ *zap.SugaredLogger, spec clus
 	}
 
 	if c.Image != "" {
+		//nolint:staticcheck // We do not have the architecture available here.
 		if _, _, err = client.Image.Get(ctx, c.Image); err != nil {
 			return fmt.Errorf("failed to get image: %w", err)
 		}
@@ -350,6 +351,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		serverCreateOpts.Firewalls = append(serverCreateOpts.Firewalls, &hcloud.ServerCreateFirewall{Firewall: *n})
 	}
 
+	//nolint:staticcheck // We do not have the architecture available here.
 	image, _, err := client.Image.Get(ctx, c.Image)
 	if err != nil {
 		return nil, hzErrorToTerminalError(err, "failed to get image")

@@ -40,7 +40,7 @@ import (
 	fakectrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func verifyMigrateUID(_, manifestPath string, parameters []string, _ time.Duration) error {
+func verifyMigrateUID(ctx context.Context, _, manifestPath string, parameters []string, _ time.Duration) error {
 	log := zap.NewNop().Sugar()
 
 	// prepare the manifest
@@ -72,7 +72,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, _ time.Durati
 		Build()
 
 	providerData := &cloudprovidertypes.ProviderData{
-		Update: cloudprovidertypes.GetMachineUpdater(context.Background(), fakeClient),
+		Update: cloudprovidertypes.GetMachineUpdater(ctx, fakeClient),
 		Client: fakeClient,
 	}
 
@@ -80,7 +80,7 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, _ time.Durati
 	if err != nil {
 		return fmt.Errorf("failed to get provideSpec: %w", err)
 	}
-	skg := providerconfig.NewConfigVarResolver(context.Background(), fakeClient)
+	skg := providerconfig.NewConfigVarResolver(ctx, fakeClient)
 	prov, err := cloudprovider.ForProvider(providerSpec.CloudProvider, skg)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud provider %q: %w", providerSpec.CloudProvider, err)
@@ -90,8 +90,6 @@ func verifyMigrateUID(_, manifestPath string, parameters []string, _ time.Durati
 		return fmt.Errorf("failed to add defaults: %w", err)
 	}
 	machine.Spec = defaultedSpec
-
-	ctx := context.Background()
 
 	// Step 0: Create instance with old UID
 	maxTries := 15
