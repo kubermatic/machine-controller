@@ -209,9 +209,9 @@ func (m *MachineSet) Default() {
 	}
 
 	if m.Spec.DeletePolicy == "" {
-		randomPolicy := string(RandomMachineSetDeletePolicy)
-		log.Printf("Defaulting to %s\n", randomPolicy)
-		m.Spec.DeletePolicy = randomPolicy
+		customPolicy := string(CustomMachineSetDeletePolicy)
+		log.Printf("Defaulting to %s\n", customPolicy)
+		m.Spec.DeletePolicy = customPolicy
 	}
 }
 
