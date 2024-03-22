@@ -61,7 +61,7 @@ type MachineSetSpec struct {
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 
 	// DeletePolicy defines the policy used to identify nodes to delete when downscaling.
-	// Defaults to "Random".  Valid values are "Random, "Newest", "Oldest"
+	// Defaults to "Custom".  Valid values are "Random, "Newest", "Oldest"
 	// +kubebuilder:validation:Enum=Random,Newest,Oldest
 	DeletePolicy string `json:"deletePolicy,omitempty"`
 
@@ -78,7 +78,7 @@ type MachineSetSpec struct {
 }
 
 // MachineSetDeletePolicy defines how priority is assigned to nodes to delete when
-// downscaling a MachineSet. Defaults to "Random".
+// downscaling a MachineSet. Defaults to "Custom".
 type MachineSetDeletePolicy string
 
 const (
