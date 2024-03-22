@@ -162,7 +162,7 @@ func (p *provider) getMetalDevice(machine *clusterv1alpha1.Machine) (*packngo.De
 	}
 
 	client := getClient(c.Token)
-	device, err := getDeviceByTag(client, c.ProjectID, generateTag(string(machine.UID)))
+	device, err := getDeviceByTag(client, c.ProjectID, generateMachineTag(string(machine.UID)))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -241,7 +241,7 @@ func (p *provider) Validate(_ context.Context, _ *zap.SugaredLogger, spec cluste
 }
 
 func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clusterv1alpha1.Machine, _ *cloudprovidertypes.ProviderData, userdata string) (instance.Instance, error) {
-	c, _, pc, err := p.getConfig(machine.Spec.ProviderSpec)
+	c, rc, pc, err := p.getConfig(machine.Spec.ProviderSpec)
 	if err != nil {
 		return nil, cloudprovidererrors.TerminalError{
 			Reason:  common.InvalidConfigurationMachineError,
@@ -259,6 +259,11 @@ func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clus
 		}
 	}
 
+	tags := append(c.Tags, generateMachineTag(string(machine.UID)))
+	for k, v := range rc.Labels {
+		tags = append(tags, generateTag(k, v))
+	}
+
 	serverCreateOpts := &packngo.DeviceCreateRequest{
 		Hostname:     machine.Spec.Name,
 		UserData:     userdata,
@@ -268,9 +273,7 @@ func (p *provider) Create(_ context.Context, _ *zap.SugaredLogger, machine *clus
 		BillingCycle: c.BillingCycle,
 		Plan:         c.InstanceType,
 		OS:           imageName,
-		Tags: []string{
-			generateTag(string(machine.UID)),
-		},
+		Tags:         tags,
 	}
 
 	device, res, err := client.Devices.Create(serverCreateOpts)
@@ -352,7 +355,7 @@ func (p *provider) MigrateUID(_ context.Context, log *zap.SugaredLogger, machine
 	}
 
 	// create a new UID label
-	tags = append(tags, generateTag(string(newID)))
+	tags = append(tags, generateMachineTag(string(newID)))
 
 	log.Info("Setting UID label for machine")
 	dur := &packngo.DeviceUpdateRequest{
@@ -489,8 +492,12 @@ func getClient(apiKey string) *packngo.Client {
 	return packngo.NewClientWithAuth("kubermatic", apiKey, nil)
 }
 
-func generateTag(ID string) string {
-	return fmt.Sprintf("%s:%s", machineUIDTag, ID)
+func generateMachineTag(ID string) string {
+	return generateTag(machineUIDTag, ID)
+}
+
+func generateTag(key string, value string) string {
+	return fmt.Sprintf("%s:%s", key, value)
 }
 
 func getTagUID(tag string) (string, error) {

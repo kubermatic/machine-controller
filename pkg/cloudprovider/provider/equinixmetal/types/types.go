@@ -29,6 +29,7 @@ type RawConfig struct {
 	Metro        providerconfigtypes.ConfigVarString   `json:"metro,omitempty"`
 	Facilities   []providerconfigtypes.ConfigVarString `json:"facilities,omitempty"`
 	Tags         []providerconfigtypes.ConfigVarString `json:"tags,omitempty"`
+	Labels       map[string]string                     `json:"labels,omitempty"`
 }
 
 func GetConfig(pconfig providerconfigtypes.Config) (*RawConfig, error) {
