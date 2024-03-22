@@ -22,6 +22,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,15 +50,22 @@ const (
 
 // maps the creation timestamp onto the 0-100 priority range.
 func oldestDeletePriority(machine *v1alpha1.Machine) deletePriority {
+	// DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This
+	// field is set by the server when a graceful deletion is requested by the user, and is not
+	// directly settable by a client.
+	// If machine deletion was already set, machine OK to delete
 	if machine.DeletionTimestamp != nil && !machine.DeletionTimestamp.IsZero() {
 		return mustDelete
 	}
+	// If machine annotations is not empty and DeleteNodeAnnotation is set, machine OK to delete
 	if machine.ObjectMeta.Annotations != nil && machine.ObjectMeta.Annotations[DeleteNodeAnnotation] != "" {
 		return mustDelete
 	}
+	// If there are machine errors, delete the machine
 	if machine.Status.ErrorReason != nil || machine.Status.ErrorMessage != nil {
 		return mustDelete
 	}
+	// If machine is new, don't delete it "CreationTimestamp is a timestamp representing the server time when this object was created"
 	if machine.ObjectMeta.CreationTimestamp.Time.IsZero() {
 		return mustNotDelete
 	}
@@ -65,6 +74,34 @@ func oldestDeletePriority(machine *v1alpha1.Machine) deletePriority {
 		return mustNotDelete
 	}
 	return deletePriority(float64(mustDelete) * (1.0 - math.Exp(-d.Seconds()/secondsPerTenDays)))
+}
+
+
+func customDeletePolicy(machine *v1alpha1.Machine) deletePriority {
+	// Iterate through conditions to get if machine is not "Ready"
+	// Check types.go
+	for _, c := range machine.Status.Conditions {
+		if c.Type != corev1.NodeReady {
+			return mustDelete
+		}
+	}
+	// Rest of conditions are extracted from the "Newest" policy, that is the one that
+	// matches the idea of deleting the newest machines (more possibilities to be WIP in the attachment to cluster)
+	// than the old ones.
+	if machine.DeletionTimestamp != nil && !machine.DeletionTimestamp.IsZero() {
+		return mustDelete
+	}
+	// If annotations are set + DeleteAnnotation is present
+	if machine.ObjectMeta.Annotations != nil && machine.ObjectMeta.Annotations[DeleteNodeAnnotation] != "" {
+		return mustDelete
+	}
+	// If there are errors on machine, delete it
+	if machine.Status.ErrorReason != nil || machine.Status.ErrorMessage != nil {
+		return mustDelete
+	}
+	// Thinking about this, maybe it's a good idea to delegate in oldestDeletePriority, like
+	// newestDeletePriority is doing if no match is done, or just return couldDelete
+	return mustDelete - oldestDeletePriority(machine)
 }
 
 func newestDeletePriority(machine *v1alpha1.Machine) deletePriority {
@@ -124,6 +161,7 @@ func getMachinesToDeletePrioritized(filteredMachines []*v1alpha1.Machine, diff i
 
 func getDeletePriorityFunc(ms *v1alpha1.MachineSet) (deletePriorityFunc, error) {
 	// Map the Spec.DeletePolicy value to the appropriate delete priority function
+	// Defaults to customDeletePolicy if not specified
 	switch msdp := v1alpha1.MachineSetDeletePolicy(ms.Spec.DeletePolicy); msdp {
 	case v1alpha1.RandomMachineSetDeletePolicy:
 		return randomDeletePolicy, nil
@@ -131,8 +169,10 @@ func getDeletePriorityFunc(ms *v1alpha1.MachineSet) (deletePriorityFunc, error) 
 		return newestDeletePriority, nil
 	case v1alpha1.OldestMachineSetDeletePolicy:
 		return oldestDeletePriority, nil
+	case v1alpha1.CustomMachineSetDeletePolicy:
+		return customDeletePolicy, nil
 	case "":
-		return randomDeletePolicy, nil
+		return customDeletePolicy, nil
 	default:
 		return nil, errors.Errorf("Unsupported delete policy %q. Must be one of 'Random', 'Newest', or 'Oldest'", msdp)
 	}

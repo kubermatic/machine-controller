@@ -99,6 +99,12 @@ const (
 	// (Status.ErrorReason or Status.ErrorMessage are set to a non-empty value).
 	// It then prioritizes the oldest Machines for deletion based on the Machine's CreationTimestamp.
 	OldestMachineSetDeletePolicy MachineSetDeletePolicy = "Oldest"
+
+	// CustomMachineSetDeletePolicy prioritizes both Machines that have the annotation
+	// "cluster.k8s.io/delete-machine=yes" and Machines that are unhealthy
+	// (Status.ErrorReason or Status.ErrorMessage are set to a non-empty value).
+	// If then prioritizes the machine with Status different from Ready.
+	CustomMachineSetDeletePolicy MachineSetDeletePolicy = "Custom"
 )
 
 /// [MachineSetSpec] // doxygen marker
