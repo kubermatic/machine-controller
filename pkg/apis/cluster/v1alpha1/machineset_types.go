@@ -100,10 +100,9 @@ const (
 	// It then prioritizes the oldest Machines for deletion based on the Machine's CreationTimestamp.
 	OldestMachineSetDeletePolicy MachineSetDeletePolicy = "Oldest"
 
-	// CustomMachineSetDeletePolicy prioritizes both Machines that have the annotation
-	// "cluster.k8s.io/delete-machine=yes" and Machines that are unhealthy
-	// (Status.ErrorReason or Status.ErrorMessage are set to a non-empty value).
-	// If then prioritizes the machine with Status different from Ready.
+	// CustomMachineSetDeletePolicy prioritizes deletion of newer machines or the ones
+	// that are with a different status than "Ready". If then prioritizes the deletion
+	// of machines that have errors or deletion annotations added.
 	CustomMachineSetDeletePolicy MachineSetDeletePolicy = "Custom"
 )
 
