@@ -22,8 +22,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,39 +74,32 @@ func oldestDeletePriority(machine *v1alpha1.Machine) deletePriority {
 	return deletePriority(float64(mustDelete) * (1.0 - math.Exp(-d.Seconds()/secondsPerTenDays)))
 }
 
+// Default policies try to delete the machines that has no reference to a K8s node.
+// If a reference exists, then continue with same conditions from "Newest" in different order.
+func defaultDeletePolicy(machine *v1alpha1.Machine) deletePriority {
+	if !machine.DeletionTimestamp.IsZero() {
+		return mustDelete
+	}
 
-func customDeletePolicy(machine *v1alpha1.Machine) deletePriority {
-	// Iterate through conditions to get if machine is not "Ready"
-	// Check types.go
-	for _, c := range machine.Status.Conditions {
-		if c.Type != corev1.NodeReady {
-			return mustDelete
-		}
-	}
-	// Rest of conditions are extracted from the "Newest" policy, that is the one that
-	// matches the idea of deleting the newest machines (more possibilities to be WIP in the attachment to cluster)
-	// than the old ones.
-	if machine.DeletionTimestamp != nil && !machine.DeletionTimestamp.IsZero() {
+	if machine.Status.NodeRef == nil{
 		return mustDelete
 	}
-	// If annotations are set + DeleteAnnotation is present
-	if machine.ObjectMeta.Annotations != nil && machine.ObjectMeta.Annotations[DeleteNodeAnnotation] != "" {
+
+	if v, ok := machine.ObjectMeta.Annotations[DeleteNodeAnnotation]; ok && v != "" {
 		return mustDelete
 	}
-	// If there are errors on machine, delete it
 	if machine.Status.ErrorReason != nil || machine.Status.ErrorMessage != nil {
 		return mustDelete
 	}
-	// Thinking about this, maybe it's a good idea to delegate in oldestDeletePriority, like
-	// newestDeletePriority is doing if no match is done, or just return couldDelete
+	// If not condition is matched from above, retrieve points from Newer to Older machines.
 	return mustDelete - oldestDeletePriority(machine)
 }
 
 func newestDeletePriority(machine *v1alpha1.Machine) deletePriority {
-	if machine.DeletionTimestamp != nil && !machine.DeletionTimestamp.IsZero() {
+	if !machine.DeletionTimestamp.IsZero() {
 		return mustDelete
 	}
-	if machine.ObjectMeta.Annotations != nil && machine.ObjectMeta.Annotations[DeleteNodeAnnotation] != "" {
+	if v, ok := machine.ObjectMeta.Annotations[DeleteNodeAnnotation]; ok && v != "" {
 		return mustDelete
 	}
 	if machine.Status.ErrorReason != nil || machine.Status.ErrorMessage != nil {
@@ -118,10 +109,10 @@ func newestDeletePriority(machine *v1alpha1.Machine) deletePriority {
 }
 
 func randomDeletePolicy(machine *v1alpha1.Machine) deletePriority {
-	if machine.DeletionTimestamp != nil && !machine.DeletionTimestamp.IsZero() {
+	if !machine.DeletionTimestamp.IsZero() {
 		return mustDelete
 	}
-	if machine.ObjectMeta.Annotations != nil && machine.ObjectMeta.Annotations[DeleteNodeAnnotation] != "" {
+	if v, ok := machine.ObjectMeta.Annotations[DeleteNodeAnnotation]; ok && v != "" {
 		return betterDelete
 	}
 	if machine.Status.ErrorReason != nil || machine.Status.ErrorMessage != nil {
@@ -161,7 +152,7 @@ func getMachinesToDeletePrioritized(filteredMachines []*v1alpha1.Machine, diff i
 
 func getDeletePriorityFunc(ms *v1alpha1.MachineSet) (deletePriorityFunc, error) {
 	// Map the Spec.DeletePolicy value to the appropriate delete priority function
-	// Defaults to customDeletePolicy if not specified
+	// Defaults to defaultDeletePolicy if not specified
 	switch msdp := v1alpha1.MachineSetDeletePolicy(ms.Spec.DeletePolicy); msdp {
 	case v1alpha1.RandomMachineSetDeletePolicy:
 		return randomDeletePolicy, nil
@@ -169,10 +160,10 @@ func getDeletePriorityFunc(ms *v1alpha1.MachineSet) (deletePriorityFunc, error) 
 		return newestDeletePriority, nil
 	case v1alpha1.OldestMachineSetDeletePolicy:
 		return oldestDeletePriority, nil
-	case v1alpha1.CustomMachineSetDeletePolicy:
-		return customDeletePolicy, nil
+	case v1alpha1.DefaultDeletePolicy:
+		return defaultDeletePolicy, nil
 	case "":
-		return customDeletePolicy, nil
+		return defaultDeletePolicy, nil
 	default:
 		return nil, errors.Errorf("Unsupported delete policy %q. Must be one of 'Random', 'Newest', or 'Oldest'", msdp)
 	}

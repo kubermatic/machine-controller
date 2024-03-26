@@ -100,10 +100,10 @@ const (
 	// It then prioritizes the oldest Machines for deletion based on the Machine's CreationTimestamp.
 	OldestMachineSetDeletePolicy MachineSetDeletePolicy = "Oldest"
 
-	// CustomMachineSetDeletePolicy prioritizes deletion of newer machines or the ones
-	// that are with a different status than "Ready". If then prioritizes the deletion
-	// of machines that have errors or deletion annotations added.
-	CustomMachineSetDeletePolicy MachineSetDeletePolicy = "Custom"
+	// DefaultDeletePolicy prioritizes deletion of newer machines or the ones
+	// referenced to a K8s node (relation between machine (OpenStack) - node (Kubernetes)). 
+	// If then prioritizes the deletion of machines that have errors or deletion annotations added.
+	DefaultDeletePolicy MachineSetDeletePolicy = "Default"
 )
 
 /// [MachineSetSpec] // doxygen marker
@@ -208,9 +208,9 @@ func (m *MachineSet) Default() {
 	}
 
 	if m.Spec.DeletePolicy == "" {
-		customPolicy := string(CustomMachineSetDeletePolicy)
-		log.Printf("Defaulting to %s\n", customPolicy)
-		m.Spec.DeletePolicy = customPolicy
+		defaultPolicy := string(DefaultDeletePolicy)
+		log.Printf("Defaulting to %s\n", defaultPolicy)
+		m.Spec.DeletePolicy = defaultPolicy
 	}
 }
 
