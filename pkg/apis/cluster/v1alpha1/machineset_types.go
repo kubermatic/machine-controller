@@ -61,8 +61,8 @@ type MachineSetSpec struct {
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 
 	// DeletePolicy defines the policy used to identify nodes to delete when downscaling.
-	// Defaults to "Custom".  Valid values are "Random, "Newest", "Oldest"
-	// +kubebuilder:validation:Enum=Random,Newest,Oldest
+	// Defaults to "Default".  Valid values are "Default", "Random, "Newest", "Oldest"
+	// +kubebuilder:validation:Enum=Default,Random,Newest,Oldest
 	DeletePolicy string `json:"deletePolicy,omitempty"`
 
 	// Selector is a label query over machines that should match the replica count.
