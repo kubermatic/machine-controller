@@ -81,7 +81,7 @@ func defaultDeletePolicy(machine *v1alpha1.Machine) deletePriority {
 		return mustDelete
 	}
 
-	if machine.Status.NodeRef == nil{
+	if machine.Status.NodeRef == nil {
 		return mustDelete
 	}
 
