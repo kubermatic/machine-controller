@@ -61,8 +61,8 @@ type MachineSetSpec struct {
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 
 	// DeletePolicy defines the policy used to identify nodes to delete when downscaling.
-	// Defaults to "Random".  Valid values are "Random, "Newest", "Oldest"
-	// +kubebuilder:validation:Enum=Random,Newest,Oldest
+	// Defaults to "Default".  Valid values are "Default", "Random, "Newest", "Oldest"
+	// +kubebuilder:validation:Enum=Default,Random,Newest,Oldest
 	DeletePolicy string `json:"deletePolicy,omitempty"`
 
 	// Selector is a label query over machines that should match the replica count.
@@ -78,7 +78,7 @@ type MachineSetSpec struct {
 }
 
 // MachineSetDeletePolicy defines how priority is assigned to nodes to delete when
-// downscaling a MachineSet. Defaults to "Random".
+// downscaling a MachineSet. Defaults to "Default".
 type MachineSetDeletePolicy string
 
 const (
@@ -99,6 +99,11 @@ const (
 	// (Status.ErrorReason or Status.ErrorMessage are set to a non-empty value).
 	// It then prioritizes the oldest Machines for deletion based on the Machine's CreationTimestamp.
 	OldestMachineSetDeletePolicy MachineSetDeletePolicy = "Oldest"
+
+	// DefaultDeletePolicy prioritizes deletion of newer machines or the ones
+	// referenced to a K8s node (relation between machine (OpenStack) - node (Kubernetes)). 
+	// If then prioritizes the deletion of machines that have errors or deletion annotations added.
+	DefaultDeletePolicy MachineSetDeletePolicy = "Default"
 )
 
 /// [MachineSetSpec] // doxygen marker
@@ -203,9 +208,9 @@ func (m *MachineSet) Default() {
 	}
 
 	if m.Spec.DeletePolicy == "" {
-		randomPolicy := string(RandomMachineSetDeletePolicy)
-		log.Printf("Defaulting to %s\n", randomPolicy)
-		m.Spec.DeletePolicy = randomPolicy
+		defaultPolicy := string(DefaultDeletePolicy)
+		log.Printf("Defaulting to %s\n", defaultPolicy)
+		m.Spec.DeletePolicy = defaultPolicy
 	}
 }
 
