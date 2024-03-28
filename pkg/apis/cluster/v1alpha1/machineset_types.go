@@ -78,7 +78,7 @@ type MachineSetSpec struct {
 }
 
 // MachineSetDeletePolicy defines how priority is assigned to nodes to delete when
-// downscaling a MachineSet. Defaults to "Custom".
+// downscaling a MachineSet. Defaults to "Default".
 type MachineSetDeletePolicy string
 
 const (
