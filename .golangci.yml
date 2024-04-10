@@ -1,11 +1,7 @@
 run:
-  deadline: 20m
+  timeout: 20m
   build-tags:
     - e2e
-  skip-dirs:
-    - pkg/client
-    - pkg/machines
-
 linters:
   enable:
     - asciicheck
@@ -69,3 +65,6 @@ issues:
     - 'cyclomatic complexity 31 of func `\(\*provider\)\.Validate` is high'
     - 'cyclomatic complexity 33 of func `\(\*provider\)\.Create` is high'
     - 'cyclomatic complexity 32 of func `\(\*Reconciler\)\.ensureInstanceExistsForMachine` is high'
+  exclude-dirs:
+    - pkg/client
+    - pkg/machines
