@@ -35,7 +35,7 @@ var (
 
 	versions = []*semver.Version{
 		semver.MustParse("v1.27.13"),
-		semver.MustParse("v1.28.7"),
+		semver.MustParse("v1.28.9"),
 		semver.MustParse("v1.29.4"),
 		semver.MustParse("v1.30.0"),
 	}
