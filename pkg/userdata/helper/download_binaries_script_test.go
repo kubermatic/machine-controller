@@ -42,9 +42,9 @@ func TestDownloadBinariesScript(t *testing.T) {
 }
 
 func TestSafeDownloadBinariesScript(t *testing.T) {
-	name := "safe_download_binaries_v1.29.2"
+	name := "safe_download_binaries_v1.30.0"
 	t.Run(name, func(t *testing.T) {
-		script, err := SafeDownloadBinariesScript(zap.NewNop().Sugar(), "v1.29.2")
+		script, err := SafeDownloadBinariesScript(zap.NewNop().Sugar(), "v1.30.0")
 		if err != nil {
 			t.Error(err)
 		}

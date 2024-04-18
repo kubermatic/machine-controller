@@ -84,7 +84,7 @@ const (
 )
 
 const (
-	defaultKubernetesVersion    = "1.28.7"
+	defaultKubernetesVersion    = "1.29.4"
 	awsDefaultKubernetesVersion = "1.26.12"
 	defaultContainerRuntime     = "containerd"
 )
@@ -347,7 +347,7 @@ func TestOpenstackProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.26.
-	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.27.11", "1.28.7", "1.29.2", "1.30.0")))
+	selector := And(Not(OsSelector("amzn2")), Not(VersionSelector("1.27.13", "1.28.7", "1.29.4", "1.30.0")))
 	runScenarios(context.Background(), t, selector, params, OSManifest, fmt.Sprintf("os-%s", *testRunIdentifier))
 }
 
@@ -427,7 +427,7 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	}
 
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := Not(VersionSelector("1.27.11", "1.28.7", "1.29.2", "1.30.0"))
+	selector := Not(VersionSelector("1.27.13", "1.28.7", "1.29.4", "1.30.0"))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -481,7 +481,7 @@ func TestAWSSpotInstanceProvisioningE2E(t *testing.T) {
 	}
 	// Since we are only testing the spot instance functionality, testing it against a single OS is sufficient.
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.11", "1.28.7", "1.29.2", "1.30.0")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.13", "1.28.7", "1.29.4", "1.30.0")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -503,7 +503,7 @@ func TestAWSARMProvisioningE2E(t *testing.T) {
 		t.Fatal("Unable to run the test suite, AWS_E2E_TESTS_KEY_ID or AWS_E2E_TESTS_SECRET environment variables cannot be empty")
 	}
 	// In-tree cloud provider is not supported from Kubernetes v1.27.
-	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.11", "1.28.7", "1.29.2", "1.30.0")))
+	selector := And(OsSelector("ubuntu"), Not(VersionSelector("1.27.13", "1.28.7", "1.29.4", "1.30.0")))
 
 	// act
 	params := []string{fmt.Sprintf("<< AWS_ACCESS_KEY_ID >>=%s", awsKeyID),
@@ -690,7 +690,7 @@ func TestGCEProvisioningE2E(t *testing.T) {
 	}
 
 	// Act. GCE does not support CentOS.
-	selector := And(OsSelector("ubuntu", "flatcar"), Not(VersionSelector("1.29.2", "1.30.0")))
+	selector := And(OsSelector("ubuntu", "flatcar"), Not(VersionSelector("1.29.4", "1.30.0")))
 	params := []string{
 		fmt.Sprintf("<< GOOGLE_SERVICE_ACCOUNT_BASE64 >>=%s", safeBase64Encoding(googleServiceAccount)),
 	}

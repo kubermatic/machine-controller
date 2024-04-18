@@ -173,7 +173,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.28.5",
+					Kubelet: "1.28.0",
 				},
 			},
 		},
@@ -182,7 +182,7 @@ func TestUserDataGeneration(t *testing.T) {
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
 				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.29.5",
+					Kubelet: "1.29.0",
 				},
 			},
 		},
