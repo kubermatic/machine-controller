@@ -82,7 +82,8 @@ presubmits:
               memory: 7Gi
 
   - name: pull-machine-controller-e2e-aws-arm
-    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
+    # In-tree CCM is not supported for AWS starting from k8s 1.27. Please see https://github.com/kubermatic/machine-controller/issues/1626 for updates.
+    # run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -113,7 +114,8 @@ presubmits:
               memory: 7Gi
 
   - name: pull-machine-controller-e2e-aws-ebs-encryption-enabled
-    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
+    # In-tree CCM is not supported for AWS starting from k8s 1.27. Please see https://github.com/kubermatic/machine-controller/issues/1626 for updates.
+    # run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:

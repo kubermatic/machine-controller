@@ -229,8 +229,6 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=nutanix \
-      --cloud-config=/etc/kubernetes/cloud-config \
       --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
@@ -420,6 +418,8 @@ write_files:
       flushFrequency: 0
       options:
         json:
+          infoBufferSize: "0"
+        text:
           infoBufferSize: "0"
       verbosity: 0
     memorySwap: {}

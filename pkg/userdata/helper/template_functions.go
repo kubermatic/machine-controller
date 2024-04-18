@@ -59,7 +59,6 @@ func TxtFuncMap(log *zap.SugaredLogger) template.FuncMap {
 		return ContainerRuntimeHealthCheckSystemdUnit(log, containerRuntime)
 	}
 
-	funcMap["cloudProviderFlags"] = CloudProviderFlags
 	funcMap["kernelModulesScript"] = LoadKernelModulesScript
 	funcMap["kernelSettings"] = KernelSettings
 	funcMap["journalDConfig"] = JournalDConfig
