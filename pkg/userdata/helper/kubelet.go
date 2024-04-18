@@ -46,8 +46,12 @@ func kubeletFlagsTpl(withNodeIP bool) string {
 --cert-dir=/etc/kubernetes/pki \`
 
 	flagsTemplate += `
-{{- if or (.CloudProvider) (.IsExternal) }}
-{{ cloudProviderFlags .CloudProvider .IsExternal }} \
+{{- if .IsExternal }}
+--cloud-provider=external \
+{{- /* In-tree cloud providers have been disabled starting from k8s 1.29. For more information: https://github.com/kubernetes/kubernetes/pull/117503 */}}
+{{- else if and (.CloudProvider) (semverCompare "<1.29" .KubeletVersion) }}
+--cloud-provider={{- .CloudProvider }} \
+--cloud-config=/etc/kubernetes/cloud-config \
 {{- end }}`
 
 	flagsTemplate += `{{- if and (.Hostname) (ne .CloudProvider "aws") }}
@@ -116,9 +120,6 @@ ExecStart=/opt/bin/health-monitor.sh container-runtime
 WantedBy=multi-user.target`
 )
 
-const cpFlags = `--cloud-provider=%s \
---cloud-config=/etc/kubernetes/cloud-config`
-
 // List of allowed TLS cipher suites for kubelet.
 var kubeletTLSCipherSuites = []string{
 	// TLS 1.3 cipher suites
@@ -143,19 +144,6 @@ func withNodeIPFlag(ipFamily util.IPFamily, cloudProvider string, external bool)
 		}
 	}
 	return true
-}
-
-// CloudProviderFlags returns --cloud-provider and --cloud-config flags.
-func CloudProviderFlags(cpName string, external bool) string {
-	if cpName == "" && !external {
-		return ""
-	}
-
-	if external {
-		return `--cloud-provider=external`
-	}
-
-	return fmt.Sprintf(cpFlags, cpName)
 }
 
 // KubeletSystemdUnit returns the systemd unit for the kubelet.

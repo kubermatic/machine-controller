@@ -236,8 +236,6 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=aws \
-      --cloud-config=/etc/kubernetes/cloud-config \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
       --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
