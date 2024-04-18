@@ -1,5 +1,7 @@
 #cloud-config
 
+hostname: node1
+
 
 ssh_pwauth: false
 
@@ -66,6 +68,14 @@ write_files:
     sysctl --system
 
 
+    hostnamectl set-hostname node1
+
+    source /etc/os-release
+    if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
+      sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+      sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    fi
+
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
@@ -77,25 +87,28 @@ write_files:
       socat \
       wget \
       curl \
+      iscsi-initiator-utils \
       ipvsadm
+    systemctl enable --now iscsid
 
+
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
+
+    cat <<EOF | tee /etc/crictl.yaml
+    runtime-endpoint: unix:///run/containerd/containerd.sock
+    EOF
 
     mkdir -p /etc/systemd/system/containerd.service.d
-
     cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
     [Service]
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
 
-    cat <<EOF | tee /etc/crictl.yaml
-    runtime-endpoint: unix:///run/containerd/containerd.sock
-    EOF
-
-    yum install -y \
-    	containerd-1.6* \
-    	yum-plugin-versionlock
-    yum versionlock add containerd
+    yum install -y containerd.io-1.6* yum-plugin-versionlock
+    yum versionlock add containerd.io
 
     systemctl daemon-reload
     systemctl enable --now containerd
@@ -143,7 +156,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.29.2}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.30.0}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://dl.k8s.io/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -223,8 +236,9 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=aws \
+      --cloud-provider=nutanix \
       --cloud-config=/etc/kubernetes/cloud-config \
+      --hostname-override=node1 \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
       --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
@@ -235,7 +249,7 @@ write_files:
 - path: "/etc/kubernetes/cloud-config"
   permissions: "0600"
   content: |
-    {aws-config:true}
+    {config:true}
 
 - path: "/opt/bin/setup_net_env.sh"
   permissions: "0755"
@@ -332,6 +346,8 @@ write_files:
       flushFrequency: 0
       options:
         json:
+          infoBufferSize: "0"
+        text:
           infoBufferSize: "0"
       verbosity: 0
     memorySwap: {}

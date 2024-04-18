@@ -78,7 +78,6 @@ write_files:
       socat \
       wget \
       curl \
-      tar \
       ipvsadm
 
     yum install -y yum-utils
@@ -144,7 +143,7 @@ write_files:
     rm -f "$cri_tools_filename"
     ln -sf "$opt_bin/crictl" "$usr_local_bin"/crictl || echo "symbolic link is skipped"
     cd -
-    KUBE_VERSION="${KUBE_VERSION:-v1.29.0}"
+    KUBE_VERSION="${KUBE_VERSION:-v1.30.0}"
     kube_dir="$opt_bin/kubernetes-$KUBE_VERSION"
     kube_base_url="https://dl.k8s.io/$KUBE_VERSION/bin/linux/$arch"
     kube_sum_file="$kube_dir/sha256"
@@ -188,6 +187,7 @@ write_files:
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl disable setup.service
+    systemctl disable disable-nm-cloud-setup.service
 
 - path: "/opt/bin/supervise.sh"
   permissions: "0755"
@@ -236,8 +236,8 @@ write_files:
       --kubeconfig=/var/lib/kubelet/kubeconfig \
       --config=/etc/kubernetes/kubelet.conf \
       --cert-dir=/etc/kubernetes/pki \
-      --cloud-provider=aws \
-      --cloud-config=/etc/kubernetes/cloud-config \
+      --cloud-provider=external \
+      --hostname-override=${KUBELET_HOSTNAME} \
       --exit-on-lock-contention \
       --lock-file=/tmp/kubelet.lock \
       --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
@@ -345,6 +345,8 @@ write_files:
       flushFrequency: 0
       options:
         json:
+          infoBufferSize: "0"
+        text:
           infoBufferSize: "0"
       verbosity: 0
     memorySwap: {}
@@ -463,5 +465,39 @@ write_files:
     WantedBy=multi-user.target
 
 
+- path: "/opt/bin/disable-nm-cloud-setup"
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    set -xeuo pipefail
+    if systemctl status 'nm-cloud-setup.timer' 2> /dev/null | grep -Fq "Active:"; then
+            systemctl stop nm-cloud-setup.timer
+            systemctl disable nm-cloud-setup.service
+            systemctl disable nm-cloud-setup.timer
+            reboot
+    fi
+
+- path: "/etc/systemd/system/disable-nm-cloud-setup.service"
+  permissions: "0644"
+  content: |
+    [Install]
+    WantedBy=multi-user.target
+
+    [Unit]
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    EnvironmentFile=-/etc/environment
+    ExecStart=/opt/bin/supervise.sh /opt/bin/disable-nm-cloud-setup
+
+rh_subscription:
+    username: ""
+    password: ""
+    auto-attach: false
+
 runcmd:
 - systemctl enable --now setup.service
+- systemctl enable --now disable-nm-cloud-setup.service
