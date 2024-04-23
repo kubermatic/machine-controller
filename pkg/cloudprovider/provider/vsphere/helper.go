@@ -103,12 +103,10 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 	if err := clonedVMTask.WaitEx(ctx); err != nil {
 		return nil, fmt.Errorf("error when waiting for result of clone task: %w", err)
 	}
-
 	virtualMachine, err := session.Finder.VirtualMachine(ctx, vmName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual machine object after cloning: %w", err)
 	}
-
 	vmDevices, err := virtualMachine.Device(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list devices of template VM: %w", err)
@@ -138,7 +136,6 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 
 		guestInfoUserData = "guestinfo.ignition.config.data"
 		guestInfoUserDataEncoding = "guestinfo.ignition.config.data.encoding"
-
 		for _, item := range mvm.Config.VAppConfig.GetVmConfigInfo().Property {
 			switch item.Id {
 			case guestInfoUserData:
@@ -170,7 +167,6 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 	}
 
 	diskUUIDEnabled := true
-
 	var deviceSpecs []types.BaseVirtualDeviceConfigSpec
 	if config.DiskSizeGB != nil {
 		disks, err := getDisksFromVM(ctx, virtualMachine)
@@ -221,7 +217,6 @@ func createClonedVM(ctx context.Context, log *zap.SugaredLogger, vmName string, 
 	if err := removeFloppyDevice(ctx, virtualMachine); err != nil {
 		return nil, fmt.Errorf("failed to remove floppy device: %w", err)
 	}
-
 	return virtualMachine, nil
 }
 
