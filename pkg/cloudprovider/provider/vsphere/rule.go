@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/mo"
@@ -30,8 +31,6 @@ import (
 	"go.uber.org/zap"
 
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-
-	"k8s.io/utils/ptr"
 )
 
 var lock sync.Mutex
@@ -85,10 +84,10 @@ func (p *provider) createOrUpdateVMAntiAffinityRule(ctx context.Context, log *za
 	if info == nil {
 		info = &types.ClusterAntiAffinityRuleSpec{
 			ClusterRuleInfo: types.ClusterRuleInfo{
-				Enabled:     ptr.To(true),
-				Mandatory:   ptr.To(false),
+				Enabled:     ptr.Bool(true),
+				Mandatory:   ptr.Bool(false),
 				Name:        machineSetName,
-				UserCreated: ptr.To(true),
+				UserCreated: ptr.Bool(true),
 			},
 		}
 		operation = types.ArrayUpdateOperationAdd

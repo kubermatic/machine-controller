@@ -869,7 +869,7 @@ func TestVsphereAntiAffinityProvisioningE2E(t *testing.T) {
 		executor:          verifyCreateAndDelete,
 	}
 
-	testScenario(context.Background(), t, scenario, *testRunIdentifier, params, VSPhereAntiAffinityManifest, false)
+	testScenario(t, scenario, *testRunIdentifier, params, VSPhereAntiAffinityManifest, false)
 }
 
 // TestVsphereDatastoreClusterProvisioning - is the same as the TestVsphereProvisioning suite but specifies a DatastoreCluster
