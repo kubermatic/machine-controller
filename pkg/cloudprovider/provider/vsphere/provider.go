@@ -23,7 +23,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
@@ -49,7 +48,6 @@ import (
 
 type provider struct {
 	configVarResolver *providerconfig.ConfigVarResolver
-	mutex             sync.Mutex
 }
 
 // New returns a VSphere provider.
@@ -384,8 +382,7 @@ func (p *provider) create(ctx context.Context, log *zap.SugaredLogger, machine *
 	}
 
 	if config.VMAntiAffinity {
-		machineSetName := machine.Name[:strings.LastIndex(machine.Name, "-")]
-		if err := p.createOrUpdateVMAntiAffinityRule(ctx, session, machineSetName, config); err != nil {
+		if err := p.createOrUpdateVMAntiAffinityRule(ctx, log, session, machine, config); err != nil {
 			return nil, fmt.Errorf("failed to add VM to anti affinity rule: %w", err)
 		}
 	}
@@ -452,6 +449,12 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, fmt.Errorf("failed to delete tags: %w", err)
 	}
 
+	if config.VMAntiAffinity {
+		if err := p.createOrUpdateVMAntiAffinityRule(ctx, log, session, machine, config); err != nil {
+			return false, fmt.Errorf("failed to update VMs in anti-affinity rule: %w", err)
+		}
+	}
+
 	powerState, err := virtualMachine.PowerState(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get virtual machine power state: %w", err)
@@ -505,13 +508,6 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 	}
 	if err := destroyTask.Wait(ctx); err != nil {
 		return false, fmt.Errorf("failed to destroy vm %s: %w", virtualMachine.Name(), err)
-	}
-
-	if config.VMAntiAffinity {
-		machineSetName := machine.Name[:strings.LastIndex(machine.Name, "-")]
-		if err := p.createOrUpdateVMAntiAffinityRule(ctx, session, machineSetName, config); err != nil {
-			return false, fmt.Errorf("failed to add VM to anti affinity rule: %w", err)
-		}
 	}
 
 	if pc.OperatingSystem != providerconfigtypes.OperatingSystemFlatcar {
