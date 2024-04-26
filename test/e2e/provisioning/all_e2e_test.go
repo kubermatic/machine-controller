@@ -66,6 +66,7 @@ const (
 	LinodeManifest                    = "./testdata/machinedeployment-linode.yaml"
 	VMwareCloudDirectorManifest       = "./testdata/machinedeployment-vmware-cloud-director.yaml"
 	VSPhereManifest                   = "./testdata/machinedeployment-vsphere.yaml"
+	VSPhereAntiAffinityManifest       = "./testdata/machinedeployment-vsphere-anti-affinity.yaml"
 	VSPhereMultipleNICManifest        = "./testdata/machinedeployment-vsphere-multiple-nic.yaml"
 	VSPhereDSCManifest                = "./testdata/machinedeployment-vsphere-datastore-cluster.yaml"
 	VSPhereResourcePoolManifest       = "./testdata/machinedeployment-vsphere-resource-pool.yaml"
@@ -853,6 +854,23 @@ func TestVsphereMultipleNICProvisioningE2E(t *testing.T) {
 	params := getVSphereTestParams(t)
 
 	runScenarios(t, selector, params, VSPhereMultipleNICManifest, fmt.Sprintf("vs-%s", *testRunIdentifier))
+}
+
+// TestVsphereAntiAffinityProvisioningE2E - is the same as the TestVsphereProvisioning suit but has anti-affinity rules applied to the VMs.
+func TestVsphereAntiAffinityProvisioningE2E(t *testing.T) {
+	t.Parallel()
+
+	params := getVSphereTestParams(t)
+
+	scenario := scenario{
+		name:              "VSphere Anti-Affinity provisioning",
+		osName:            "ubuntu",
+		containerRuntime:  defaultContainerRuntime,
+		kubernetesVersion: defaultKubernetesVersion,
+		executor:          verifyCreateAndDelete,
+	}
+
+	testScenario(t, scenario, *testRunIdentifier, params, VSPhereAntiAffinityManifest, false)
 }
 
 // TestVsphereDatastoreClusterProvisioning - is the same as the TestVsphereProvisioning suite but specifies a DatastoreCluster
