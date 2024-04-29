@@ -64,6 +64,7 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	ccmapi "k8s.io/cloud-provider/api"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -71,7 +72,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -209,50 +209,45 @@ func Add(
 		reconciler.metrics.Errors.Add(1)
 	})
 
-	c, err := controller.New(ControllerName, mgr, controller.Options{
-		Reconciler:              reconciler,
-		MaxConcurrentReconciles: numWorkers,
-		LogConstructor: func(*reconcile.Request) logr.Logger {
-			// we log ourselves
-			return zapr.NewLogger(zap.NewNop())
-		},
-	})
-	if err != nil {
-		return err
-	}
-	if err := c.Watch(source.Kind(mgr.GetCache(), &clusterv1alpha1.Machine{}),
-		&handler.EnqueueRequestForObject{}); err != nil {
-		return err
-	}
-
 	metrics.Workers.Set(float64(numWorkers))
 
-	return c.Watch(
-		source.Kind(mgr.GetCache(), &corev1.Node{}),
-		enqueueRequestsForNodes(ctx, log, mgr),
-		predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
-			oldNode := e.ObjectOld.(*corev1.Node)
-			newNode := e.ObjectNew.(*corev1.Node)
-			if newNode.ResourceVersion == oldNode.ResourceVersion {
-				return false
+	nodePredicate := predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
+		oldNode := e.ObjectOld.(*corev1.Node)
+		newNode := e.ObjectNew.(*corev1.Node)
+		if newNode.ResourceVersion == oldNode.ResourceVersion {
+			return false
+		}
+		// Don't do anything if the ready condition hasn't changed
+		for _, newCondition := range newNode.Status.Conditions {
+			if newCondition.Type != corev1.NodeReady {
+				continue
 			}
-			// Don't do anything if the ready condition hasn't changed
-			for _, newCondition := range newNode.Status.Conditions {
-				if newCondition.Type != corev1.NodeReady {
+			for _, oldCondition := range oldNode.Status.Conditions {
+				if oldCondition.Type != corev1.NodeReady {
 					continue
 				}
-				for _, oldCondition := range oldNode.Status.Conditions {
-					if oldCondition.Type != corev1.NodeReady {
-						continue
-					}
-					if newCondition.Status == oldCondition.Status {
-						return false
-					}
+				if newCondition.Status == oldCondition.Status {
+					return false
 				}
 			}
-			return true
-		}},
-	)
+		}
+		return true
+	}}
+
+	_, err := builder.ControllerManagedBy(mgr).
+		Named(ControllerName).
+		WithOptions(controller.Options{
+			MaxConcurrentReconciles: numWorkers,
+			LogConstructor: func(*reconcile.Request) logr.Logger {
+				// we log ourselves
+				return zapr.NewLogger(zap.NewNop())
+			},
+		}).
+		For(&clusterv1alpha1.Machine{}).
+		Watches(&corev1.Node{}, enqueueRequestsForNodes(ctx, log, mgr), builder.WithPredicates(nodePredicate)).
+		Build(reconciler)
+
+	return err
 }
 
 func enqueueRequestsForNodes(ctx context.Context, log *zap.SugaredLogger, mgr manager.Manager) handler.EventHandler {
