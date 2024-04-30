@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -34,7 +33,6 @@ import (
 
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
-	"github.com/kubermatic/machine-controller/pkg/apis/plugin"
 	"github.com/kubermatic/machine-controller/pkg/bootstrap"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
@@ -49,8 +47,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/rhsm"
-	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
-	userdataplugin "github.com/kubermatic/machine-controller/pkg/userdata/plugin"
 	"github.com/kubermatic/machine-controller/pkg/userdata/rhel"
 
 	corev1 "k8s.io/api/core/v1"
@@ -114,7 +110,6 @@ type Reconciler struct {
 	metrics                          *MetricsCollection
 	kubeconfigProvider               KubeconfigProvider
 	providerData                     *cloudprovidertypes.ProviderData
-	userDataManager                  *userdatamanager.Manager
 	joinClusterTimeout               *time.Duration
 	name                             string
 	bootstrapTokenServiceAccountName *types.NamespacedName
@@ -213,12 +208,6 @@ func Add(
 		nodePortRange:                     nodePortRange,
 		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}
-	m, err := userdatamanager.New(log)
-	if err != nil {
-		return fmt.Errorf("failed to create userdatamanager: %w", err)
-	}
-	reconciler.userDataManager = m
-
 	utilruntime.ErrorHandlers = append(utilruntime.ErrorHandlers, func(error) {
 		reconciler.metrics.Errors.Add(1)
 	})
@@ -446,15 +435,9 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		return r.deleteMachine(ctx, log, prov, providerConfig.CloudProvider, machine, skipEviction)
 	}
 
-	// Step 3: Essentially creates an instance for the given machine.
-	userdataPlugin, err := r.userDataManager.ForOS(providerConfig.OperatingSystem)
-	if err != nil {
-		return nil, fmt.Errorf("failed to userdata provider for '%s': %w", providerConfig.OperatingSystem, err)
-	}
-
-	// case 3.2: creates an instance if there is no node associated with the given machine
+	// case 3.1: creates an instance if there is no node associated with the given machine
 	if machine.Status.NodeRef == nil {
-		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, userdataPlugin, providerConfig)
+		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, providerConfig)
 	}
 
 	node, err := r.getNodeByNodeRef(ctx, machine.Status.NodeRef)
@@ -481,10 +464,10 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		if r.nodeSettings.ExternalCloudProvider {
 			return r.handleNodeFailuresWithExternalCCM(ctx, log, prov, providerConfig, node, machine)
 		}
-		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, userdataPlugin, providerConfig)
+		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, providerConfig)
 	}
 
-	// case 3.3: if the node exists and both external and internal CCM are not available. Then set the provider-id for the node.
+	// case 3.2: if the node exists and both external and internal CCM are not available. Then set the provider-id for the node.
 	inTree, err := providerconfigtypes.IntreeCloudProviderImplementationSupported(providerConfig.CloudProvider, machine.Spec.Versions.Kubelet)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if cloud provider %q has in-tree implementation: %w", providerConfig.CloudProvider, err)
@@ -501,7 +484,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		r.recorder.Event(machine, corev1.EventTypeNormal, "ProviderIDUpdated", "Successfully updated providerID on node")
 		nodeLog.Info("Added ProviderID to the node")
 	}
-	// case 3.4: if the node exists make sure if it has labels and taints attached to it.
+	// case 3.3: if the node exists make sure if it has labels and taints attached to it.
 	return nil, r.ensureNodeLabelsAnnotationsAndTaints(ctx, nodeLog, node, machine)
 }
 
@@ -814,7 +797,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 	log *zap.SugaredLogger,
 	prov cloudprovidertypes.Provider,
 	machine *clusterv1alpha1.Machine,
-	userdataPlugin userdataplugin.Provider,
 	providerConfig *providerconfigtypes.Config,
 ) (*reconcile.Result, error) {
 	log.Debug("Requesting instance for machine from cloudprovider because no associated node with status ready found...")
@@ -827,16 +809,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			log.Debug("Validated machine spec")
 
-			var kubeconfig *clientcmdapi.Config
-
-			// an external provider will take care of the bootstrap kubeconfig and token by itself.
-			if !r.useExternalBootstrap {
-				kubeconfig, err = r.createBootstrapKubeconfig(ctx, log, machine.Name)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create bootstrap kubeconfig: %w", err)
-				}
-			}
-
 			// grab kubelet featureGates from the annotations
 			kubeletFeatureGates := common.GetKubeletFeatureGates(machine.GetAnnotations())
 			if len(kubeletFeatureGates) == 0 {
@@ -844,92 +816,32 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 				kubeletFeatureGates = r.nodeSettings.KubeletFeatureGates
 			}
 
-			// grab kubelet general options from the annotations
-			kubeletFlags := common.GetKubeletFlags(machine.GetAnnotations())
-			kubeletConfigs := common.GetKubeletConfigs(machine.GetAnnotations())
-
-			// look up for ExternalCloudProvider feature, with fallback to command-line input
-			externalCloudProvider := r.nodeSettings.ExternalCloudProvider
-			if val, ok := kubeletFlags[common.ExternalCloudProviderKubeletFlag]; ok {
-				externalCloudProvider, _ = strconv.ParseBool(val)
-			}
-
-			cloudConfig, kubeletCloudProviderName, err := prov.GetCloudConfig(machine.Spec)
-			if err != nil {
-				return nil, fmt.Errorf("failed to render cloud config: %w", err)
-			}
-
-			if providerConfig.CloudProvider == providerconfigtypes.CloudProviderVsphere && externalCloudProvider {
-				cloudConfig = ""
-			}
-
-			registryCredentials, err := containerruntime.GetContainerdAuthConfig(ctx, r.client, r.nodeSettings.RegistryCredentialsSecretRef)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get containerd auth config: %w", err)
-			}
-
-			crRuntime := r.nodeSettings.ContainerRuntime
-			crRuntime.RegistryCredentials = registryCredentials
-
-			if val, ok := kubeletConfigs[common.ContainerLogMaxSizeKubeletConfig]; ok {
-				crRuntime.ContainerLogMaxSize = val
-			}
-
-			if val, ok := kubeletConfigs[common.ContainerLogMaxFilesKubeletConfig]; ok {
-				crRuntime.ContainerLogMaxFiles = val
-			}
-
 			// Here we do stuff!
 			var userdata string
-
-			if r.useExternalBootstrap {
-				referencedMachineDeployment, machineDeploymentRevision, err := controllerutil.GetMachineDeploymentNameAndRevisionForMachine(ctx, machine, r.client)
-				if err != nil {
-					return nil, fmt.Errorf("failed to find machine's MachineDployment: %w", err)
-				}
-
-				bootstrapSecretName := fmt.Sprintf(bootstrap.CloudConfigSecretNamePattern,
-					referencedMachineDeployment,
-					machine.Namespace,
-					bootstrap.BootstrapCloudConfig)
-
-				bootstrapSecret := &corev1.Secret{}
-				if err := r.client.Get(ctx,
-					types.NamespacedName{Name: bootstrapSecretName, Namespace: util.CloudInitNamespace},
-					bootstrapSecret); err != nil {
-					log.Errorw("cloud-init configuration: cloud config is not ready yet", "secret", bootstrap.BootstrapCloudConfig)
-					return &reconcile.Result{RequeueAfter: 3 * time.Second}, nil
-				}
-
-				bootstrapSecretRevision := bootstrapSecret.Annotations[bootstrap.MachineDeploymentRevision]
-				if bootstrapSecretRevision != machineDeploymentRevision {
-					return nil, fmt.Errorf("cloud-init configuration: cloud config %q is not ready yet", bootstrap.BootstrapCloudConfig)
-				}
-
-				userdata = getOSMBootstrapUserdata(machine.Spec.Name, *bootstrapSecret)
-			} else {
-				req := plugin.UserDataRequest{
-					MachineSpec:              machine.Spec,
-					Kubeconfig:               kubeconfig,
-					CloudConfig:              cloudConfig,
-					CloudProviderName:        string(providerConfig.CloudProvider),
-					ExternalCloudProvider:    externalCloudProvider,
-					DNSIPs:                   r.nodeSettings.ClusterDNSIPs,
-					PauseImage:               r.nodeSettings.PauseImage,
-					KubeletCloudProviderName: kubeletCloudProviderName,
-					KubeletFeatureGates:      kubeletFeatureGates,
-					KubeletConfigs:           kubeletConfigs,
-					NoProxy:                  r.nodeSettings.NoProxy,
-					HTTPProxy:                r.nodeSettings.HTTPProxy,
-					ContainerRuntime:         crRuntime,
-					NodePortRange:            r.nodePortRange,
-				}
-
-				userdata, err = userdataPlugin.UserData(log, req)
-				if err != nil {
-					return nil, fmt.Errorf("failed get userdata: %w", err)
-				}
+			referencedMachineDeployment, machineDeploymentRevision, err := controllerutil.GetMachineDeploymentNameAndRevisionForMachine(ctx, machine, r.client)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find machine's MachineDployment: %w", err)
 			}
+
+			bootstrapSecretName := fmt.Sprintf(bootstrap.CloudConfigSecretNamePattern,
+				referencedMachineDeployment,
+				machine.Namespace,
+				bootstrap.BootstrapCloudConfig)
+
+			bootstrapSecret := &corev1.Secret{}
+			if err := r.client.Get(ctx,
+				types.NamespacedName{Name: bootstrapSecretName, Namespace: util.CloudInitNamespace},
+				bootstrapSecret); err != nil {
+				log.Errorw("cloud-init configuration: cloud config is not ready yet", "secret", bootstrap.BootstrapCloudConfig)
+				return &reconcile.Result{RequeueAfter: 3 * time.Second}, nil
+			}
+
+			bootstrapSecretRevision := bootstrapSecret.Annotations[bootstrap.MachineDeploymentRevision]
+			if bootstrapSecretRevision != machineDeploymentRevision {
+				return nil, fmt.Errorf("cloud-init configuration: cloud config %q is not ready yet", bootstrap.BootstrapCloudConfig)
+			}
+
+			userdata = getOSMBootstrapUserdata(machine.Spec.Name, *bootstrapSecret)
 
 			// Create the instance
 			if _, err = r.createProviderInstance(ctx, log, prov, machine, userdata); err != nil {

@@ -28,7 +28,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	machinecontrollerlog "github.com/kubermatic/machine-controller/pkg/log"
 	"github.com/kubermatic/machine-controller/pkg/node"
-	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 
 	"k8s.io/client-go/tools/clientcmd"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -129,17 +128,11 @@ func main() {
 		}
 	}
 
-	um, err := userdatamanager.New(log)
-	if err != nil {
-		log.Fatalw("Failed to initialise userdata plugins", zap.Error(err))
-	}
-
 	srv, err := admission.Builder{
 		ListenAddress:        opt.admissionListenAddress,
 		Log:                  log,
 		Client:               client,
 		WorkerClient:         workerClient,
-		UserdataManager:      um,
 		UseExternalBootstrap: opt.useExternalBootstrap || opt.useOSM,
 		NodeFlags:            nodeFlags,
 		Namespace:            opt.namespace,

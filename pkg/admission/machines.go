@@ -113,13 +113,6 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 		machine.Labels = make(map[string]string)
 	}
 
-	// Set LegacyMachineControllerUserDataLabel to false if external bootstrapping is expected for managing the machine configuration.
-	if ad.useExternalBootstrap {
-		machine.Labels[controllerutil.LegacyMachineControllerUserDataLabel] = "false"
-	} else {
-		machine.Labels[controllerutil.LegacyMachineControllerUserDataLabel] = "true"
-	}
-
 	return createAdmissionResponse(log, machineOriginal, &machine)
 }
 
@@ -144,7 +137,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 	}
 
 	// Verify operating system.
-	if _, err := ad.userDataManager.ForOS(providerConfig.OperatingSystem); err != nil {
+	if err := providerConfig.OperatingSystem.Validate(); err != nil {
 		return fmt.Errorf("failed to get OS '%s': %w", providerConfig.OperatingSystem, err)
 	}
 

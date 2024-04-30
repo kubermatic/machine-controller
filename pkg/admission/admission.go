@@ -33,7 +33,6 @@ import (
 
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"github.com/kubermatic/machine-controller/pkg/node"
-	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -48,7 +47,6 @@ type admissionData struct {
 	log                  *zap.SugaredLogger
 	client               ctrlruntimeclient.Client
 	workerClient         ctrlruntimeclient.Client
-	userDataManager      *userdatamanager.Manager
 	nodeSettings         machinecontroller.NodeSettings
 	useExternalBootstrap bool
 	namespace            string
@@ -62,7 +60,6 @@ type Builder struct {
 	Log                  *zap.SugaredLogger
 	Client               ctrlruntimeclient.Client
 	WorkerClient         ctrlruntimeclient.Client
-	UserdataManager      *userdatamanager.Manager
 	UseExternalBootstrap bool
 	NodeFlags            *node.Flags
 	Namespace            string
@@ -78,7 +75,6 @@ func (build Builder) Build() (webhook.Server, error) {
 		log:                  build.Log,
 		client:               build.Client,
 		workerClient:         build.WorkerClient,
-		userDataManager:      build.UserdataManager,
 		useExternalBootstrap: build.UseExternalBootstrap,
 		namespace:            build.Namespace,
 		constraints:          build.VersionConstraints,

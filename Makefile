@@ -34,7 +34,6 @@ IMAGE_TAG = \
 IMAGE_NAME ?= $(REGISTRY)/$(REGISTRY_NAMESPACE)/machine-controller:$(IMAGE_TAG)
 
 OS = amzn2 centos ubuntu rhel flatcar rockylinux
-USERDATA_BIN = $(patsubst %, machine-controller-userdata-%, $(OS))
 
 BASE64_ENC = \
 		$(shell if base64 -w0 <(echo "") &> /dev/null; then echo "base64 -w0"; else echo "base64 -b0"; fi)
@@ -43,13 +42,7 @@ BASE64_ENC = \
 all: build-machine-controller webhook
 
 .PHONY: build-machine-controller
-build-machine-controller: machine-controller $(USERDATA_BIN)
-
-machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -name '*.go')
-	GOOS=$(GOOS) go build -v \
-		$(LDFLAGS) \
-		-o $@ \
-		github.com/kubermatic/machine-controller/cmd/userdata/$*
+build-machine-controller: machine-controller
 
 %: cmd/% $(shell find cmd/$* pkg -name '*.go')
 	GOOS=$(GOOS) go build -v \
@@ -60,8 +53,7 @@ machine-controller-userdata-%: cmd/userdata/% $(shell find cmd/userdata/$* pkg -
 .PHONY: clean
 clean:
 	rm -f machine-controller \
-		webhook \
-		$(USERDATA_BIN)
+		webhook
 
 .PHONY: lint
 lint:
