@@ -415,10 +415,6 @@ func TestAWSProvisioningE2E(t *testing.T) {
 	t.Parallel()
 
 	provisioningUtility := flatcar.Ignition
-	// `OPERATING_SYSTEM_MANAGER` will be false when legacy machine-controller userdata should be used for E2E tests.
-	if v := os.Getenv("OPERATING_SYSTEM_MANAGER"); v == "false" {
-		provisioningUtility = flatcar.CloudInit
-	}
 
 	// test data
 	awsKeyID := os.Getenv("AWS_E2E_TESTS_KEY_ID")

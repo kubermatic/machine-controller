@@ -29,5 +29,4 @@ $(dirname $0)/../machine-controller \
   -cluster-dns=169.254.20.10 \
   -enable-profiling \
   -metrics-address=0.0.0.0:8080 \
-  -health-probe-address=0.0.0.0:8085 \
-  -use-external-bootstrap=true
+  -health-probe-address=0.0.0.0:8085 
