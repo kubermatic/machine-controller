@@ -72,9 +72,13 @@ func main() {
 
 	// OSM specific flags
 	flag.BoolVar(&opt.useOSM, "use-osm", false, "DEPRECATED: osm controller is enabled for node bootstrap [use use-external-bootstrap instead]")
-	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", false, "user-data is provided by external bootstrap mechanism (e.g. operating-system-manager, also known as OSM)")
+	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", true, "DEPRECATED: machine-controller only supports external bootstrap mechanism. This flag is only kept for backwards compatibility and will be removed in the future")
 
 	flag.Parse()
+
+	if !opt.useExternalBootstrap {
+		log.Fatal("machine-controller only supports external bootstrap mechanism. Please set use-external-bootstrap to true")
+	}
 
 	if err := logFlags.Validate(); err != nil {
 		log.Fatalf("Invalid options: %v", err)

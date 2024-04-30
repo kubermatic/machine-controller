@@ -188,13 +188,17 @@ func main() {
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that contains auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/main/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "DEPRECATED: use osm controller for node bootstrap [use use-external-bootstrap instead]")
-	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", false, "use an external bootstrap provider for instance user-data (e.g. operating-system-manager, also known as OSM)")
+	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", true, "DEPRECATED: machine-controller only supports external bootstrap mechanism. This flag is only kept for backwards compatibility and will be removed in the future")
 	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
 
 	flag.Parse()
 
 	if err := logFlags.Validate(); err != nil {
 		log.Fatalf("Invalid options: %v", err)
+	}
+
+	if !useExternalBootstrap {
+		log.Fatal("machine-controller only supports external bootstrap mechanism. Please set use-external-bootstrap to true")
 	}
 
 	if nodeContainerRuntime != "containerd" {
