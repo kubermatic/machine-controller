@@ -140,7 +140,7 @@ retry() {
   actual_retry $@
   rc=$?
   set -e
-  elapsed_time=$(($(date +%s) - $start_time))
+  elapsed_time=$(($(date +%s) - start_time))
   write_junit "$rc" "$elapsed_time"
   return $rc
 }

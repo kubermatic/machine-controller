@@ -51,7 +51,7 @@ make all
 pushElapsed binary_build_duration_milliseconds $beforeBuild
 
 # Install genisoimage, this is required for generating user-data for vSphere
-if [[ "${JOB_NAME:-}" = *"pull-machine-controller-e2e-vsphere"* ]]; then
+if [[ ${JOB_NAME:-} == *"pull-machine-controller-e2e-vsphere"* ]]; then
   echo "Installing genisoimage..."
   apt install -y genisoimage
 fi
