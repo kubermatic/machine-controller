@@ -809,13 +809,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 		if errors.Is(err, cloudprovidererrors.ErrInstanceNotFound) {
 			log.Debug("Validated machine spec")
 
-			// grab kubelet featureGates from the annotations
-			kubeletFeatureGates := common.GetKubeletFeatureGates(machine.GetAnnotations())
-			if len(kubeletFeatureGates) == 0 {
-				// fallback to command-line input
-				kubeletFeatureGates = r.nodeSettings.KubeletFeatureGates
-			}
-
 			// Here we do stuff!
 			var userdata string
 			referencedMachineDeployment, machineDeploymentRevision, err := controllerutil.GetMachineDeploymentNameAndRevisionForMachine(ctx, machine, r.client)
