@@ -181,7 +181,6 @@ func NewConfigVarResolver(ctx context.Context, client ctrlruntimeclient.Client) 
 
 func DefaultOperatingSystemSpec(
 	osys providerconfigtypes.OperatingSystem,
-	cloudProvider providerconfigtypes.CloudProvider,
 	operatingSystemSpec runtime.RawExtension,
 ) (runtime.RawExtension, error) {
 	switch osys {
@@ -190,7 +189,7 @@ func DefaultOperatingSystemSpec(
 	case providerconfigtypes.OperatingSystemCentOS:
 		return centos.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return flatcar.DefaultConfigForCloud(operatingSystemSpec, cloudProvider), nil
+		return flatcar.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rhel.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemUbuntu:

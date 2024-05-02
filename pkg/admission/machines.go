@@ -166,7 +166,6 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 
 	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(
 		providerConfig.OperatingSystem,
-		providerConfig.CloudProvider,
 		providerConfig.OperatingSystemSpec,
 	)
 	if err != nil {
