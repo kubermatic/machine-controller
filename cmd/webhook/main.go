@@ -72,13 +72,9 @@ func main() {
 
 	// OSM specific flags
 	flag.BoolVar(&opt.useOSM, "use-osm", false, "DEPRECATED: osm controller is enabled for node bootstrap [use use-external-bootstrap instead]")
-	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", true, "DEPRECATED: machine-controller only supports external bootstrap mechanism. This flag is only kept for backwards compatibility and will be removed in the future")
+	flag.BoolVar(&opt.useExternalBootstrap, "use-external-bootstrap", true, "DEPRECATED: This flag is no-op and will have no effect since machine-controller only supports external bootstrap mechanism. This flag is only kept for backwards compatibility and will be removed in the future")
 
 	flag.Parse()
-
-	if !opt.useExternalBootstrap {
-		log.Fatal("machine-controller only supports external bootstrap mechanism. Please set use-external-bootstrap to true")
-	}
 
 	if err := logFlags.Validate(); err != nil {
 		log.Fatalf("Invalid options: %v", err)
@@ -133,14 +129,13 @@ func main() {
 	}
 
 	srv, err := admission.Builder{
-		ListenAddress:        opt.admissionListenAddress,
-		Log:                  log,
-		Client:               client,
-		WorkerClient:         workerClient,
-		UseExternalBootstrap: opt.useExternalBootstrap || opt.useOSM,
-		NodeFlags:            nodeFlags,
-		Namespace:            opt.namespace,
-		VersionConstraints:   constraint,
+		ListenAddress:      opt.admissionListenAddress,
+		Log:                log,
+		Client:             client,
+		WorkerClient:       workerClient,
+		NodeFlags:          nodeFlags,
+		Namespace:          opt.namespace,
+		VersionConstraints: constraint,
 
 		// we could change this to get the CertDir from the configured CertName
 		// and KeyName, but doing so does not bring us any benefits but would

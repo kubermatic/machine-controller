@@ -44,26 +44,24 @@ import (
 )
 
 type admissionData struct {
-	log                  *zap.SugaredLogger
-	client               ctrlruntimeclient.Client
-	workerClient         ctrlruntimeclient.Client
-	nodeSettings         machinecontroller.NodeSettings
-	useExternalBootstrap bool
-	namespace            string
-	constraints          *semver.Constraints
+	log          *zap.SugaredLogger
+	client       ctrlruntimeclient.Client
+	workerClient ctrlruntimeclient.Client
+	nodeSettings machinecontroller.NodeSettings
+	namespace    string
+	constraints  *semver.Constraints
 }
 
 var jsonPatch = admissionv1.PatchTypeJSONPatch
 
 type Builder struct {
-	ListenAddress        string
-	Log                  *zap.SugaredLogger
-	Client               ctrlruntimeclient.Client
-	WorkerClient         ctrlruntimeclient.Client
-	UseExternalBootstrap bool
-	NodeFlags            *node.Flags
-	Namespace            string
-	VersionConstraints   *semver.Constraints
+	ListenAddress      string
+	Log                *zap.SugaredLogger
+	Client             ctrlruntimeclient.Client
+	WorkerClient       ctrlruntimeclient.Client
+	NodeFlags          *node.Flags
+	Namespace          string
+	VersionConstraints *semver.Constraints
 
 	CertDir  string
 	CertName string
@@ -72,12 +70,11 @@ type Builder struct {
 
 func (build Builder) Build() (webhook.Server, error) {
 	ad := &admissionData{
-		log:                  build.Log,
-		client:               build.Client,
-		workerClient:         build.WorkerClient,
-		useExternalBootstrap: build.UseExternalBootstrap,
-		namespace:            build.Namespace,
-		constraints:          build.VersionConstraints,
+		log:          build.Log,
+		client:       build.Client,
+		workerClient: build.WorkerClient,
+		namespace:    build.Namespace,
+		constraints:  build.VersionConstraints,
 	}
 
 	if err := build.NodeFlags.UpdateNodeSettings(&ad.nodeSettings); err != nil {

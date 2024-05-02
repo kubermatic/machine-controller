@@ -118,7 +118,6 @@ type Reconciler struct {
 	redhatSubscriptionManager        rhsm.RedHatSubscriptionManager
 	satelliteSubscriptionManager     rhsm.SatelliteSubscriptionManager
 
-	useExternalBootstrap              bool
 	nodePortRange                     string
 	overrideBootstrapKubeletAPIServer string
 }
@@ -184,7 +183,6 @@ func Add(
 	bootstrapTokenServiceAccountName *types.NamespacedName,
 	skipEvictionAfter time.Duration,
 	nodeSettings NodeSettings,
-	useExternalBootstrap bool,
 	nodePortRange string,
 	overrideBootstrapKubeletAPIServer string,
 ) error {
@@ -204,7 +202,6 @@ func Add(
 		redhatSubscriptionManager:        rhsm.NewRedHatSubscriptionManager(log),
 		satelliteSubscriptionManager:     rhsm.NewSatelliteSubscriptionManager(log),
 
-		useExternalBootstrap:              useExternalBootstrap,
 		nodePortRange:                     nodePortRange,
 		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}

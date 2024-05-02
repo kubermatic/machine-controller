@@ -183,7 +183,6 @@ func DefaultOperatingSystemSpec(
 	osys providerconfigtypes.OperatingSystem,
 	cloudProvider providerconfigtypes.CloudProvider,
 	operatingSystemSpec runtime.RawExtension,
-	externalBootstrapEnabled bool,
 ) (runtime.RawExtension, error) {
 	switch osys {
 	case providerconfigtypes.OperatingSystemAmazonLinux2:
@@ -191,7 +190,7 @@ func DefaultOperatingSystemSpec(
 	case providerconfigtypes.OperatingSystemCentOS:
 		return centos.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemFlatcar:
-		return flatcar.DefaultConfigForCloud(operatingSystemSpec, cloudProvider, externalBootstrapEnabled), nil
+		return flatcar.DefaultConfigForCloud(operatingSystemSpec, cloudProvider), nil
 	case providerconfigtypes.OperatingSystemRHEL:
 		return rhel.DefaultConfig(operatingSystemSpec), nil
 	case providerconfigtypes.OperatingSystemUbuntu:

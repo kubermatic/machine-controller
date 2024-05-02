@@ -168,7 +168,6 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		providerConfig.OperatingSystem,
 		providerConfig.CloudProvider,
 		providerConfig.OperatingSystemSpec,
-		ad.useExternalBootstrap,
 	)
 	if err != nil {
 		return err
