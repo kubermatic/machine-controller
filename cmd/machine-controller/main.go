@@ -136,9 +136,6 @@ type controllerRunOptions struct {
 
 	node machinecontroller.NodeSettings
 
-	// Enable external bootstrap management by consuming secrets that are used to configure an instance's user-data.
-	useExternalBootstrap bool
-
 	// A port range to reserve for services with NodePort visibility.
 	nodePortRange string
 
@@ -188,7 +185,7 @@ func main() {
 	flag.StringVar(&nodePortRange, "node-port-range", "30000-32767", "A port range to reserve for services with NodePort visibility")
 	flag.StringVar(&nodeRegistryCredentialsSecret, "node-registry-credentials-secret", "", "A Secret object reference, that contains auth info for image registry in namespace/secret-name form, example: kube-system/registry-credentials. See doc at https://github.com/kubermaric/machine-controller/blob/main/docs/registry-authentication.md")
 	flag.BoolVar(&useOSM, "use-osm", false, "DEPRECATED: use osm controller for node bootstrap [use use-external-bootstrap instead]")
-	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", false, "use an external bootstrap provider for instance user-data (e.g. operating-system-manager, also known as OSM)")
+	flag.BoolVar(&useExternalBootstrap, "use-external-bootstrap", true, "DEPRECATED: This flag is no-op and will have no effect since machine-controller only supports external bootstrap mechanism. This flag is only kept for backwards compatibility and will be removed in the future")
 	flag.StringVar(&overrideBootstrapKubeletAPIServer, "override-bootstrap-kubelet-apiserver", "", "Override for the API server address used in worker nodes bootstrap-kubelet.conf")
 
 	flag.Parse()
@@ -296,7 +293,6 @@ func main() {
 			RegistryCredentialsSecretRef: nodeRegistryCredentialsSecret,
 			ContainerRuntime:             containerRuntimeConfig,
 		},
-		useExternalBootstrap:              useExternalBootstrap || useOSM,
 		nodePortRange:                     nodePortRange,
 		overrideBootstrapKubeletAPIServer: overrideBootstrapKubeletAPIServer,
 	}
@@ -437,7 +433,6 @@ func (bs *controllerBootstrap) Start(ctx context.Context) error {
 		bs.opt.bootstrapTokenServiceAccountName,
 		bs.opt.skipEvictionAfter,
 		bs.opt.node,
-		bs.opt.useExternalBootstrap,
 		bs.opt.nodePortRange,
 		bs.opt.overrideBootstrapKubeletAPIServer,
 	); err != nil {

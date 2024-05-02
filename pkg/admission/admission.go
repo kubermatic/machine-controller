@@ -33,7 +33,6 @@ import (
 
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	"github.com/kubermatic/machine-controller/pkg/node"
-	userdatamanager "github.com/kubermatic/machine-controller/pkg/userdata/manager"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -45,28 +44,24 @@ import (
 )
 
 type admissionData struct {
-	log                  *zap.SugaredLogger
-	client               ctrlruntimeclient.Client
-	workerClient         ctrlruntimeclient.Client
-	userDataManager      *userdatamanager.Manager
-	nodeSettings         machinecontroller.NodeSettings
-	useExternalBootstrap bool
-	namespace            string
-	constraints          *semver.Constraints
+	log          *zap.SugaredLogger
+	client       ctrlruntimeclient.Client
+	workerClient ctrlruntimeclient.Client
+	nodeSettings machinecontroller.NodeSettings
+	namespace    string
+	constraints  *semver.Constraints
 }
 
 var jsonPatch = admissionv1.PatchTypeJSONPatch
 
 type Builder struct {
-	ListenAddress        string
-	Log                  *zap.SugaredLogger
-	Client               ctrlruntimeclient.Client
-	WorkerClient         ctrlruntimeclient.Client
-	UserdataManager      *userdatamanager.Manager
-	UseExternalBootstrap bool
-	NodeFlags            *node.Flags
-	Namespace            string
-	VersionConstraints   *semver.Constraints
+	ListenAddress      string
+	Log                *zap.SugaredLogger
+	Client             ctrlruntimeclient.Client
+	WorkerClient       ctrlruntimeclient.Client
+	NodeFlags          *node.Flags
+	Namespace          string
+	VersionConstraints *semver.Constraints
 
 	CertDir  string
 	CertName string
@@ -75,13 +70,11 @@ type Builder struct {
 
 func (build Builder) Build() (webhook.Server, error) {
 	ad := &admissionData{
-		log:                  build.Log,
-		client:               build.Client,
-		workerClient:         build.WorkerClient,
-		userDataManager:      build.UserdataManager,
-		useExternalBootstrap: build.UseExternalBootstrap,
-		namespace:            build.Namespace,
-		constraints:          build.VersionConstraints,
+		log:          build.Log,
+		client:       build.Client,
+		workerClient: build.WorkerClient,
+		namespace:    build.Namespace,
+		constraints:  build.VersionConstraints,
 	}
 
 	if err := build.NodeFlags.UpdateNodeSettings(&ad.nodeSettings); err != nil {

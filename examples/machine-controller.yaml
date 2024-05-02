@@ -240,7 +240,6 @@ spec:
             - -cluster-dns=10.10.10.10
             - -metrics-address=0.0.0.0:8080
             - -health-probe-address=0.0.0.0:8085
-            - -use-external-bootstrap=true
             # Machines that fail to join the cluster within this timeout and
             # are owned by a MachineSet will get deleted so the MachineSet
             # controller re-creates them
@@ -284,7 +283,6 @@ spec:
             # on debug level, full Machine objects with inline credentials might be logged, beware!
             - -log-debug=false
             - -log-format=json # json or console
-            - -use-external-bootstrap=true
             - -namespace=kube-system
             - -listen-address=0.0.0.0:9876
           volumeMounts:

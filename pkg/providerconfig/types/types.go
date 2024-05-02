@@ -45,6 +45,15 @@ const (
 	OperatingSystemRockyLinux   OperatingSystem = "rockylinux"
 )
 
+func (os OperatingSystem) Validate() error {
+	for _, supportedOS := range AllOperatingSystems {
+		if os == supportedOS {
+			return nil
+		}
+	}
+	return ErrOSNotSupported
+}
+
 type CloudProvider string
 
 const (

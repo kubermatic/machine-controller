@@ -50,7 +50,7 @@ GIT_BRANCH="${PULL_BASE_REF:-}"
 CACHE_VERSION="${PULL_BASE_SHA:-}"
 
 # Periodics just use their head ref
-if [[ -z "${CACHE_VERSION}" ]]; then
+if [[ -z ${CACHE_VERSION} ]]; then
   CACHE_VERSION="$(git rev-parse HEAD)"
   GIT_BRANCH="main"
 fi

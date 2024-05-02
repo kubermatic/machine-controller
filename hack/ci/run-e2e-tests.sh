@@ -37,7 +37,6 @@ trap cleanup EXIT
 
 export GIT_HEAD_HASH="$(git rev-parse HEAD)"
 export MC_VERSION="${GIT_HEAD_HASH}"
-export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
 
 TEST_NAME="Pre-warm Go build cache"
 echodate "Attempting to pre-warm Go build cache"
@@ -51,13 +50,8 @@ echodate "Building machine-controller and webhook..."
 make all
 pushElapsed binary_build_duration_milliseconds $beforeBuild
 
-# Copy userdata plugins.
-echodate "Copying machine-controller plugins..."
-cp machine-controller-userdata-* /usr/local/bin
-ls -l /usr/local/bin
-
 # Install genisoimage, this is required for generating user-data for vSphere
-if [[ "${JOB_NAME:-}" = *"pull-machine-controller-e2e-vsphere"* ]]; then
+if [[ ${JOB_NAME:-} == *"pull-machine-controller-e2e-vsphere"* ]]; then
   echo "Installing genisoimage..."
   apt install -y genisoimage
 fi

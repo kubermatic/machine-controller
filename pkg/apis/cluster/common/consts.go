@@ -18,8 +18,6 @@ package common
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -173,49 +171,6 @@ func SetKubeletFlags(metaobj metav1.Object, flags map[KubeletFlags]string) {
 		annts[fmt.Sprintf("%s/%s", KubeletFlagsGroupAnnotationPrefixV1, k)] = v
 	}
 	metaobj.SetAnnotations(annts)
-}
-
-func GetKubeletConfigs(annotations map[string]string) map[string]string {
-	configs := map[string]string{}
-	for name, value := range annotations {
-		if strings.HasPrefix(name, KubeletConfigAnnotationPrefixV1) {
-			nameConfigValue := strings.SplitN(name, "/", 2)
-			if len(nameConfigValue) != 2 {
-				continue
-			}
-			configs[nameConfigValue[1]] = value
-		}
-	}
-	return configs
-}
-
-func GetKubeletFeatureGates(annotations map[string]string) map[string]bool {
-	result := map[string]bool{}
-	for name, value := range annotations {
-		if strings.HasPrefix(name, KubeletFeatureGatesAnnotationPrefixV1) {
-			nameGateValue := strings.SplitN(name, "/", 2)
-			if len(nameGateValue) != 2 {
-				continue
-			}
-			realBool, _ := strconv.ParseBool(value)
-			result[nameGateValue[1]] = realBool
-		}
-	}
-	return result
-}
-
-func GetKubeletFlags(annotations map[string]string) map[KubeletFlags]string {
-	result := map[KubeletFlags]string{}
-	for name, value := range annotations {
-		if strings.HasPrefix(name, KubeletFlagsGroupAnnotationPrefixV1) {
-			nameFlagValue := strings.SplitN(name, "/", 2)
-			if len(nameFlagValue) != 2 {
-				continue
-			}
-			result[KubeletFlags(nameFlagValue[1])] = value
-		}
-	}
-	return result
 }
 
 const OperatingSystemLabelV1 = "v1.machine-controller.kubermatic.io/operating-system"

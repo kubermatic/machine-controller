@@ -22,7 +22,6 @@ if [ -z "${KIND_CLUSTER_NAME:-}" ]; then
 fi
 
 export MC_VERSION="${MC_VERSION:-$(git rev-parse HEAD)}"
-export OPERATING_SYSTEM_MANAGER="${OPERATING_SYSTEM_MANAGER:-true}"
 OSM_REPO_URL="${OSM_REPO_URL:-https://github.com/kubermatic/operating-system-manager.git}"
 OSM_REPO_TAG="${OSM_REPO_TAG:-main}"
 
@@ -51,18 +50,13 @@ echodate "Successfully built and loaded machine-controller image"
 if [ ! -f machine-controller-deployed ]; then
   # The 10 minute window given by default for the node to appear is too short
   # when we upgrade the instance during the upgrade test
-  if [[ ${LC_JOB_NAME:-} = "pull-machine-controller-e2e-ubuntu-upgrade" ]]; then
+  if [[ ${LC_JOB_NAME:-} == "pull-machine-controller-e2e-ubuntu-upgrade" ]]; then
     sed -i '/.*join-cluster-timeout=.*/d' examples/machine-controller.yaml
   fi
   sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/machine-controller.yaml
   # This is required for running e2e tests in KIND
   url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
   sed -i "s;-node-csr-approver=true;$url;g" examples/machine-controller.yaml
-
-  # Ensure that we update `use-external-bootstrap` flag if OSM is disabled
-  if [[ "$OPERATING_SYSTEM_MANAGER" == "false" ]]; then
-    sed -i "s;-use-external-bootstrap=true;-use-external-bootstrap=false;g" examples/machine-controller.yaml
-  fi
 
   # e2e tests logs are primarily read by humans, if ever
   sed -i 's/log-format=json/log-format=console/g' examples/machine-controller.yaml
@@ -73,32 +67,30 @@ if [ ! -f machine-controller-deployed ]; then
   protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'machine-controller-*' > /dev/null 2>&1 &
 fi
 
-if [[ "$OPERATING_SYSTEM_MANAGER" == "true" ]]; then
-  OSM_TMP_DIR=/tmp/osm
-  echodate "Clone OSM respository"
-  (
-    # Clone OSM repo
-    mkdir -p $OSM_TMP_DIR
-    echodate "Cloning cluster exposer"
-    git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
-  )
+OSM_TMP_DIR=/tmp/osm
+echodate "Clone OSM respository"
+(
+  # Clone OSM repo
+  mkdir -p $OSM_TMP_DIR
+  echodate "Cloning cluster exposer"
+  git clone --depth 1 --branch "${OSM_REPO_TAG}" "${OSM_REPO_URL}" $OSM_TMP_DIR
+)
 
-  (
-    OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
-    echodate "Installing operating-system-manager with image: $OSM_TAG"
+(
+  OSM_TAG="$(git -C $OSM_TMP_DIR rev-parse HEAD)"
+  echodate "Installing operating-system-manager with image: $OSM_TAG"
 
-    # In release branches we'll have this pinned to a specific semver instead of latest.
-    sed -i "s;:latest;:$OSM_TAG;g" examples/operating-system-manager.yaml
+  # In release branches we'll have this pinned to a specific semver instead of latest.
+  sed -i "s;:latest;:$OSM_TAG;g" examples/operating-system-manager.yaml
 
-    # This is required for running e2e tests in KIND
-    url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
-    sed -i "s;-container-runtime=containerd;$url;g" examples/operating-system-manager.yaml
-    sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/operating-system-manager.yaml
-    kubectl apply -f examples/operating-system-manager.yaml
-  )
+  # This is required for running e2e tests in KIND
+  url="-override-bootstrap-kubelet-apiserver=$MASTER_URL"
+  sed -i "s;-container-runtime=containerd;$url;g" examples/operating-system-manager.yaml
+  sed -i -e 's/-worker-count=5/-worker-count=50/g' examples/operating-system-manager.yaml
+  kubectl apply -f examples/operating-system-manager.yaml
+)
 
-  protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'operating-system-manager-*' > /dev/null 2>&1 &
-fi
+protokol --kubeconfig "$KUBECONFIG" --flat --output "$ARTIFACTS/logs" --namespace kube-system 'operating-system-manager-*' > /dev/null 2>&1 &
 
 sleep 10
 retry 10 check_all_deployments_ready kube-system

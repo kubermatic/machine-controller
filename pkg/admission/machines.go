@@ -27,7 +27,6 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/apis/cluster/common"
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider"
-	controllerutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
@@ -113,13 +112,6 @@ func (ad *admissionData) mutateMachines(ctx context.Context, ar admissionv1.Admi
 		machine.Labels = make(map[string]string)
 	}
 
-	// Set LegacyMachineControllerUserDataLabel to false if external bootstrapping is expected for managing the machine configuration.
-	if ad.useExternalBootstrap {
-		machine.Labels[controllerutil.LegacyMachineControllerUserDataLabel] = "false"
-	} else {
-		machine.Labels[controllerutil.LegacyMachineControllerUserDataLabel] = "true"
-	}
-
 	return createAdmissionResponse(log, machineOriginal, &machine)
 }
 
@@ -144,7 +136,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 	}
 
 	// Verify operating system.
-	if _, err := ad.userDataManager.ForOS(providerConfig.OperatingSystem); err != nil {
+	if err := providerConfig.OperatingSystem.Validate(); err != nil {
 		return fmt.Errorf("failed to get OS '%s': %w", providerConfig.OperatingSystem, err)
 	}
 
@@ -174,9 +166,7 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 
 	defaultedOperatingSystemSpec, err := providerconfig.DefaultOperatingSystemSpec(
 		providerConfig.OperatingSystem,
-		providerConfig.CloudProvider,
 		providerConfig.OperatingSystemSpec,
-		ad.useExternalBootstrap,
 	)
 	if err != nil {
 		return err

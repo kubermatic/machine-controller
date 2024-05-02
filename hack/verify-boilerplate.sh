@@ -21,5 +21,4 @@ cd $(dirname $0)/..
 boilerplate \
   -boilerplates hack/boilerplate \
   -exclude pkg/machines/v1alpha1 \
-  -exclude pkg/signals \
-  -exclude pkg/userdata/scripts
+  -exclude pkg/signals
