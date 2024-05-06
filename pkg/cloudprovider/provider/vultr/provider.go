@@ -99,10 +99,6 @@ func getClient(ctx context.Context, apiKey string) *govultr.Client {
 }
 
 func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *providerconfigtypes.Config, error) {
-	if provSpec.Value == nil {
-		return nil, nil, fmt.Errorf("machine.spec.providerconfig.value is nil")
-	}
-
 	pconfig, err := providerconfigtypes.GetConfig(provSpec)
 	if err != nil {
 		return nil, nil, err
