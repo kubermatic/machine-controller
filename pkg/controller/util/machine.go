@@ -42,7 +42,7 @@ func GetMachineDeploymentNameAndRevisionForMachine(ctx context.Context, machine 
 
 	if machineSetName != "" {
 		machineSet := &clusterv1alpha1.MachineSet{}
-		if err := c.Get(ctx, types.NamespacedName{Name: machineSetName, Namespace: "kube-system"}, machineSet); err != nil {
+		if err := c.Get(ctx, types.NamespacedName{Name: machineSetName, Namespace: machine.Namespace}, machineSet); err != nil {
 			return "", "", err
 		}
 
