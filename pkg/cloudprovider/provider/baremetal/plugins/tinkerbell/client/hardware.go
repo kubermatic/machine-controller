@@ -18,94 +18,90 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/google/uuid"
-	"github.com/tinkerbell/tink/protos/hardware"
-	"google.golang.org/grpc"
+	"github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
+	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Hardware client for Tinkerbell.
-type Hardware struct {
-	client hardware.HardwareServiceClient
+// HardwareClient manages Tinkerbell hardware resources across two clusters.
+type HardwareClient struct {
+	KubeClient       client.Client // Client for the Machine Controller Cluster
+	TinkerbellClient client.Client // Client for the Tinkerbell Cluster
 }
 
-// NewHardwareClient returns a Hardware client.
-func NewHardwareClient(client hardware.HardwareServiceClient) *Hardware {
-	return &Hardware{client: client}
+// NewHardwareClient creates a new instance of HardwareClient.
+func NewHardwareClient(kubeClient, tinkerbellClient client.Client) *HardwareClient {
+	return &HardwareClient{
+		KubeClient:       kubeClient,
+		TinkerbellClient: tinkerbellClient,
+	}
 }
 
-// Create Tinkerbell Hardware.
-func (t *Hardware) Create(ctx context.Context, h *hardware.Hardware) error {
-	if h == nil {
-		return errors.New("hardware should not be nil")
-	}
-
-	if h.GetId() == "" {
-		h.Id = uuid.New().String()
-	}
-
-	if _, err := t.client.Push(ctx, &hardware.PushRequest{Data: h}); err != nil {
-		return fmt.Errorf("creating hardware in Tinkerbell: %w", err)
-	}
-
-	return nil
-}
-
-// Update Tinkerbell Hardware.
-func (t *Hardware) Update(ctx context.Context, h *hardware.Hardware) error {
-	if _, err := t.client.Push(ctx, &hardware.PushRequest{Data: h}); err != nil {
-		return fmt.Errorf("updating template in Tinkerbell: %w", err)
-	}
-
-	return nil
-}
-
-// Get returns a Tinkerbell Hardware.
-func (t *Hardware) Get(ctx context.Context, id, ip, mac string) (*hardware.Hardware, error) {
-	var method func(context.Context, *hardware.GetRequest, ...grpc.CallOption) (*hardware.Hardware, error)
-
-	req := &hardware.GetRequest{}
-
-	switch {
-	case id != "":
-		req.Id = id
-		method = t.client.ByID
-	case mac != "":
-		req.Mac = mac
-		method = t.client.ByMAC
-	case ip != "":
-		req.Ip = ip
-		method = t.client.ByIP
-	default:
-		return nil, errors.New("need to specify either id, ip, or mac")
-	}
-
-	tinkHardware, err := method(ctx, req)
-	if err != nil {
-		if err.Error() == sqlErrorString || err.Error() == sqlErrorStringAlt {
-			return nil, fmt.Errorf("hardware %w", ErrNotFound)
+// SelectAvailableHardware selects an available hardware from the given list of hardware references
+// that has an empty ID.
+func (h *HardwareClient) SelectAvailableHardware(ctx context.Context, hardwareRefs []types.NamespacedName) (*tinkv1alpha1.Hardware, error) {
+	for _, ref := range hardwareRefs {
+		var hardware tinkv1alpha1.Hardware
+		if err := h.KubeClient.Get(ctx, client.ObjectKey{Namespace: ref.Namespace, Name: ref.Name}, &hardware); err != nil {
+			return nil, fmt.Errorf("failed to get hardware '%s' in namespace '%s': %w", ref.Name, ref.Namespace, err)
 		}
 
-		return nil, fmt.Errorf("getting hardware from Tinkerbell: %w", err)
+		// Check if the ID is empty and return the hardware if it is
+		if hardware.Spec.Metadata.Instance.ID == "" {
+			return &hardware, nil // Found an unclaimed hardware
+		}
 	}
 
-	return tinkHardware, nil
+	return nil, fmt.Errorf("failed to get available hardware to provision")
 }
 
-// Delete a Tinkerbell Hardware.
-func (t *Hardware) Delete(ctx context.Context, id string) error {
-	if _, err := t.client.Delete(ctx, &hardware.DeleteRequest{Id: id}); err != nil {
-		if err.Error() == sqlErrorString ||
-			err.Error() == sqlErrorStringAlt ||
-			strings.Contains(err.Error(), sqlErrorNotFound) {
-			return fmt.Errorf("hardware %w", ErrNotFound)
-		}
+// SetHardwareID sets the ID of a specified Hardware object.
+func (h *HardwareClient) SetHardwareID(ctx context.Context, hardware *tinkv1alpha1.Hardware, newID string) error {
+	// Set the new ID
+	hardware.Spec.Metadata.Instance.ID = newID
 
-		return fmt.Errorf("deleting hardware from Tinkerbell: %w", err)
+	// Update the hardware object in the cluster
+	if err := h.KubeClient.Update(ctx, hardware); err != nil {
+		return fmt.Errorf("failed to update hardware ID for '%s': %w", hardware.Name, err)
 	}
 
 	return nil
+}
+
+// CreateHardwareOnTinkCluster creates a hardware object on the Tinkerbell cluster.
+func (h *HardwareClient) CreateHardwareOnTinkCluster(ctx context.Context, hardware *tinkv1alpha1.Hardware) error {
+	// Set the namespace if it is not already specified
+	if hardware.Namespace == "" {
+		hardware.Namespace = "default"
+	}
+
+	hardware.ResourceVersion = ""
+	// Create the hardware object on the Tinkerbell cluster
+	if err := h.TinkerbellClient.Create(ctx, hardware); err != nil {
+		return fmt.Errorf("failed to create hardware in Tinkerbell cluster: %w", err)
+	}
+
+	return nil
+}
+
+func (h *HardwareClient) GetHardwareWithID(ctx context.Context, uid string) (*tinkv1alpha1.Hardware, error) {
+	// Step 1: List all hardware in the cluster
+	var hardwares tinkv1alpha1.HardwareList
+	if err := h.KubeClient.List(ctx, &hardwares); err != nil {
+		return nil, fmt.Errorf("failed to list hardware: %w", err)
+	}
+
+	// Step 2: Find the Hardware with the given ID
+	var targetHardware tinkv1alpha1.Hardware
+	for _, hw := range hardwares.Items {
+		if hw.Spec.Metadata.Instance.ID == uid {
+			targetHardware = hw
+			return &targetHardware, nil
+		}
+	}
+
+	return nil, errors.ErrInstanceNotFound
 }

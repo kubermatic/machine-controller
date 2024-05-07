@@ -20,73 +20,62 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tinkerbell/tink/protos/template"
+	tinkv1alpha1 "github.com/tinkerbell/tink/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Template client for Tinkerbell.
-type Template struct {
-	client template.TemplateServiceClient
+// WorkflowClient handles interactions with the Tinkerbell Workflows.
+type TemplateClient struct {
+	tinkclient client.Client
 }
 
-// NewTemplateClient returns a Template client.
-func NewTemplateClient(client template.TemplateServiceClient) *Template {
-	return &Template{client: client}
+// NewTemplateClient creates a new client for managing Tinkerbell Templates.
+func NewTemplateClient(k8sClient client.Client) *TemplateClient {
+	return &TemplateClient{
+		tinkclient: k8sClient,
+	}
 }
 
-// Get returns a Tinkerbell Template.
-func (t *Template) Get(ctx context.Context, id, name string) (*template.WorkflowTemplate, error) {
-	req := &template.GetRequest{}
-	if id != "" {
-		req.GetBy = &template.GetRequest_Id{Id: id}
-	} else {
-		req.GetBy = &template.GetRequest_Name{Name: name}
+// CreateTemplate creates a Tinkerbell Template in the Kubernetes cluster.
+func (t *TemplateClient) CreateTemplate(ctx context.Context) (*tinkv1alpha1.Template, error) {
+	template := &tinkv1alpha1.Template{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ubuntu",
+			Namespace: "default", // Adjust the namespace according to your setup
+		},
+		Spec: tinkv1alpha1.TemplateSpec{
+			Data: &templateData, // templateData is a string containing the YAML definition.
+		},
 	}
 
-	tinkTemplate, err := t.client.GetTemplate(ctx, req)
-	if err != nil {
-		if err.Error() == sqlErrorString || err.Error() == sqlErrorStringAlt {
-			return nil, fmt.Errorf("template %w", ErrNotFound)
-		}
-
-		return nil, fmt.Errorf("getting template from Tinkerbell: %w", err)
+	// Create the Template object in the Tinkerbell cluster
+	if err := t.tinkclient.Create(ctx, template); err != nil {
+		return nil, fmt.Errorf("failed to create Template in Tinkerbell cluster: %w", err)
 	}
 
-	return tinkTemplate, nil
+	fmt.Printf("Template %s created successfully\n", template.Name)
+	return template, nil
 }
 
-// Update a Tinkerbell Template.
-func (t *Template) Update(ctx context.Context, template *template.WorkflowTemplate) error {
-	if _, err := t.client.UpdateTemplate(ctx, template); err != nil {
-		return fmt.Errorf("updating template in Tinkerbefll: %w", err)
-	}
-
-	return nil
-}
-
-// Create a Tinkerbell Template.
-func (t *Template) Create(ctx context.Context, template *template.WorkflowTemplate) error {
-	resp, err := t.client.CreateTemplate(ctx, template)
-	if err != nil {
-		return fmt.Errorf("creating template in Tinkerbell: %w", err)
-	}
-
-	template.Id = resp.GetId()
-
-	return nil
-}
-
-// Delete a Tinkerbell Template.
-func (t *Template) Delete(ctx context.Context, id string) error {
-	req := &template.GetRequest{
-		GetBy: &template.GetRequest_Id{Id: id},
-	}
-	if _, err := t.client.DeleteTemplate(ctx, req); err != nil {
-		if err.Error() == sqlErrorString || err.Error() == sqlErrorStringAlt {
-			return fmt.Errorf("template %w", ErrNotFound)
-		}
-
-		return fmt.Errorf("deleting template from Tinkerbell: %w", err)
-	}
-
-	return nil
-}
+var templateData = `
+version: "0.1"
+name: ubuntu
+global_timeout: 1800
+tasks:
+  - name: "os installation"
+    worker: "{{.device_1}}"
+    volumes:
+      - /dev:/dev
+      - /dev/console:/dev/console
+      - /lib/firmware:/lib/firmware:ro
+    actions:
+      - name: "stream ubuntu image"
+        image: quay.io/tinkerbell/actions/image2disk:latest
+        timeout: 600
+        environment:
+          DEST_DISK: {{ index .Hardware.Disks 0 }}
+          IMG_URL: "http://$TINKERBELL_HOST_IP:8080/jammy-server-cloudimg-amd64.raw.gz"
+          COMPRESSED: true
+      # Add other actions here following the same pattern as above
+`

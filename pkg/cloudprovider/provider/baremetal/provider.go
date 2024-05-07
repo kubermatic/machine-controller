@@ -29,8 +29,9 @@ import (
 	cloudprovidererrors "github.com/kubermatic/machine-controller/pkg/cloudprovider/errors"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/instance"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell"
-	"github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/metadata"
+	tink "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell"
+	metadata "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/metadata"
+	tinktypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/plugins/tinkerbell/types"
 	baremetaltypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/provider/baremetal/types"
 	cloudprovidertypes "github.com/kubermatic/machine-controller/pkg/cloudprovider/types"
 	"github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
@@ -148,16 +149,19 @@ func (p *provider) getConfig(provSpec clusterv1alpha1.ProviderSpec) (*Config, *p
 
 	switch c.driverName {
 	case plugins.Tinkerbell:
-		driverConfig := struct {
-			ProvisionerIPAddress string `json:"provisionerIPAddress"`
-			MirrorHost           string `json:"mirrorHost"`
-		}{}
+		driverConfig := &tinktypes.TinkerbellPluginSpec{}
 
 		if err := json.Unmarshal(c.driverSpec.Raw, &driverConfig); err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal tinkerbell driver spec: %w", err)
 		}
 
-		c.driver, err = tinkerbell.NewTinkerbellDriver(mdCfg, nil, driverConfig.ProvisionerIPAddress, driverConfig.MirrorHost)
+		tinkConfig, err := tink.GetConfig(*driverConfig, p.configVarResolver.GetConfigVarStringValueOrEnv)
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		c.driver, err = tink.NewTinkerbellDriver(mdCfg, *tinkConfig, driverConfig)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create a tinkerbell driver: %w", err)
 		}
