@@ -4,7 +4,7 @@ metadata:
   name: << MACHINE_NAME >>
   namespace: kube-system
 spec:
-  replicas: 1
+  replicas: 2
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -52,64 +52,18 @@ spec:
                   name: machine-controller-baremetal-tb
                   key: token
             driverSpec:
-              provisionerIPAddress: << PROVISIONER_IP_ADDRESS >>
-              mirrorHost: << MIRROR_HOST >>
-              hardware:
-                id: << MACHINE_NAME >>
-                metadata:
-                  facility:
-                    facilitycode: << FACILITY_CODE >>
-                    planslug: << PLAN_SLUG >>
-                  state: ""
-                  instance:
-                    operatingsystemversion:
-                      distro: << OS_NAME >>
-                      imagetag: << IMAGE_TAG >>
-                      osslug: << OS_NAME >>
-                      slug: << OS_NAME >>
-                      version: << OS_VERSION >>
-                    storage:
-                      disks:
-                        - device: /dev/sda
-                          wipetable: true
-                          partitions:
-                            - size: 4096
-                              label: BIOS
-                              number: 1
-                            - size: 3993600
-                              label: SWAP
-                              number: 2
-                            - size: 0
-                              label: ROOT
-                              number: 3
-                      filesystems:
-                        - mount:
-                            point: /
-                            create:
-                              options:
-                                - -L
-                                - ROOT
-                            device: /dev/sda3
-                            format: ext4
-                        - mount:
-                            point: none
-                            create:
-                              options:
-                                - -L
-                                - SWAP
-                            device: /dev/sda2
-                            format: swap
-                network:
-                  interfaces:
-                    - dhcp:
-                        arch: x86_64
-                        uefi: false
-                      netboot:
-                        allowpxe: false
-                        allowworkflow: false
-          operatingSystem: "<< OS_NAME >>"
+              clusterName: "<< CLUSTER_NAME >>"
+              auth:
+                kubeconfig:
+                  value: "<< KUBECONFIG_BASE64 >>"
+              hardwareRefs:
+                - name: hardware-1
+                  namespace: "default"
+                - name: hardware-2
+                  namespace: "default"
+          operatingSystem: "ubuntu"
           operatingSystemSpec:
             distUpgradeOnBoot: false
             disableAutoUpdate: true
       versions:
-        kubelet: "<< KUBERNETES_VERSION >>"
+        kubelet: "1.28"
