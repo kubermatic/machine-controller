@@ -48,6 +48,7 @@ import (
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
+	cloudproviderutil "github.com/kubermatic/machine-controller/pkg/cloudprovider/util"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -107,7 +108,7 @@ func (p *provider) Create(ctx context.Context, log *zap.SugaredLogger, machine *
 		Machine:        machine,
 	})
 
-	_, client, err := getClient(config.Token)
+	_, client, err := getClient(config.Token, &machine.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +335,7 @@ func (p *provider) resolveConfig(ctx context.Context, log *zap.SugaredLogger, co
 
 	// when "templateID" is not set, we expect "template" to be
 	if ret.TemplateID == "" {
-		a, _, err := getClient(ret.Token)
+		a, _, err := getClient(ret.Token, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing API clients: %w", err)
 		}
@@ -467,7 +468,7 @@ func (p *provider) Get(ctx context.Context, log *zap.SugaredLogger, machine *clu
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to retrieve config: %v", err)
 	}
 
-	_, cli, err := getClient(config.Token)
+	_, cli, err := getClient(config.Token, &machine.Name)
 	if err != nil {
 		return nil, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
@@ -553,7 +554,7 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		return false, newError(common.InvalidConfigurationMachineError, "failed to parse MachineSpec: %v", err)
 	}
 
-	_, cli, err := getClient(config.Token)
+	_, cli, err := getClient(config.Token, &machine.Name)
 	if err != nil {
 		return false, newError(common.InvalidConfigurationMachineError, "failed to create Anexia client: %v", err)
 	}
@@ -619,16 +620,29 @@ func (p *provider) SetMetricsForMachines(_ clusterv1alpha1.MachineList) error {
 	return nil
 }
 
-func getClient(token string) (api.API, anxclient.Client, error) {
-	tokenOpt := anxclient.TokenFromString(token)
-	client := anxclient.HTTPClient(&http.Client{Timeout: 120 * time.Second})
+func getClient(token string, machineName *string) (api.API, anxclient.Client, error) {
+	logPrefix := "[Anexia API]"
 
-	a, err := api.NewAPI(api.WithClientOptions(client, tokenOpt))
+	if machineName != nil {
+		logPrefix = fmt.Sprintf("[Anexia API for Machine %q]", *machineName)
+	}
+
+	httpClient := cloudproviderutil.HTTPClientConfig{
+		Timeout:   120 * time.Second,
+		LogPrefix: logPrefix,
+	}.New()
+
+	legacyClientOptions := []anxclient.Option{
+		anxclient.TokenFromString(token),
+		anxclient.HTTPClient(&httpClient),
+	}
+
+	a, err := api.NewAPI(api.WithClientOptions(legacyClientOptions...))
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating generic API client: %w", err)
 	}
 
-	legacyClient, err := anxclient.New(tokenOpt, client)
+	legacyClient, err := anxclient.New(legacyClientOptions...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating legacy client: %w", err)
 	}
