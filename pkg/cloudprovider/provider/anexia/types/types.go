@@ -63,8 +63,9 @@ type RawConfig struct {
 	Template      providerconfigtypes.ConfigVarString `json:"template"`
 	TemplateBuild providerconfigtypes.ConfigVarString `json:"templateBuild"`
 
-	CPUs   int `json:"cpus"`
-	Memory int `json:"memory"`
+	CPUs               int    `json:"cpus"`
+	CPUPerformanceType string `json:"cpuPerformanceType"`
+	Memory             int    `json:"memory"`
 
 	// Deprecated, use Disks instead.
 	DiskSize int `json:"diskSize"`
