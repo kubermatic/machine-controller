@@ -162,6 +162,10 @@ func provisionVM(ctx context.Context, log *zap.SugaredLogger, client anxclient.C
 
 		vm.DiskType = config.Disks[0].PerformanceType
 
+		if config.CPUPerformanceType != "" {
+			vm.CPUPerformanceType = config.CPUPerformanceType
+		}
+
 		for _, disk := range config.Disks[1:] {
 			vm.AdditionalDisks = append(vm.AdditionalDisks, anxvm.AdditionalDisk{
 				SizeGBs: disk.Size,

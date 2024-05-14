@@ -39,6 +39,11 @@ spec:
             cpus: 2
             memory: 2048
 
+            # this defaults to "performance", but you can set anything
+            # supported by the Anexia Engine here - or not set this attribute
+            # at all
+            cpuPerformanceType: standard
+
             disks:
               - size: 60
                 performanceType: ENT6
