@@ -14,7 +14,8 @@
 
 presubmits:
   - name: pull-machine-controller-e2e-aws
-    run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
+    # In-tree CCM is not supported for AWS starting from k8s 1.27. Please see https://github.com/kubermatic/machine-controller/issues/1626 for updates.
+    # run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -28,7 +29,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -46,7 +47,8 @@ presubmits:
               memory: 7Gi
 
   - name: pull-machine-controller-e2e-aws-spot-instance-legacy-userdata
-    always_run: true
+    # In-tree CCM is not supported for AWS starting from k8s 1.27. Please see https://github.com/kubermatic/machine-controller/issues/1626 for updates.
+    # run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -60,7 +62,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           env:
             - name: OPERATING_SYSTEM_MANAGER
               value: "false"
@@ -93,7 +95,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -124,7 +126,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -142,7 +144,8 @@ presubmits:
               memory: 7Gi
 
   - name: pull-machine-controller-e2e-aws-spot-instance
-    always_run: true
+    # In-tree CCM is not supported for AWS starting from k8s 1.27. Please see https://github.com/kubermatic/machine-controller/issues/1626 for updates.
+    # run_if_changed: "(pkg/cloudprovider/provider/aws/|pkg/userdata)"
     decorate: true
     clone_uri: "ssh://git@github.com/kubermatic/machine-controller.git"
     labels:
@@ -156,7 +159,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -187,7 +190,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -218,7 +221,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
@@ -249,7 +252,7 @@ presubmits:
       preset-kubeconfig-ci: "true"
     spec:
       containers:
-        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.21-3
+        - image: quay.io/kubermatic/build:go-1.22-node-18-kind-0.22-5
           command:
             - "./hack/ci/run-e2e-tests.sh"
           args:
