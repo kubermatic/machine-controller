@@ -66,6 +66,12 @@ write_files:
     sysctl --system
 
 
+    source /etc/os-release
+    if [ "$ID" == "centos" ] && [ "$VERSION_ID" == "8" ]; then
+      sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+      sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    fi
+
     yum install -y \
       device-mapper-persistent-data \
       lvm2 \
@@ -79,23 +85,23 @@ write_files:
       curl \
       ipvsadm
 
+    yum install -y yum-utils
+    yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    yum-config-manager --save --setopt=docker-ce-stable.module_hotfixes=true
+
+    cat <<EOF | tee /etc/crictl.yaml
+    runtime-endpoint: unix:///run/containerd/containerd.sock
+    EOF
 
     mkdir -p /etc/systemd/system/containerd.service.d
-
     cat <<EOF | tee /etc/systemd/system/containerd.service.d/environment.conf
     [Service]
     Restart=always
     EnvironmentFile=-/etc/environment
     EOF
 
-    cat <<EOF | tee /etc/crictl.yaml
-    runtime-endpoint: unix:///run/containerd/containerd.sock
-    EOF
-
-    yum install -y \
-    	containerd-1.6* \
-    	yum-plugin-versionlock
-    yum versionlock add containerd
+    yum install -y containerd.io-1.6* yum-plugin-versionlock
+    yum versionlock add containerd.io
 
     systemctl daemon-reload
     systemctl enable --now containerd
@@ -327,7 +333,7 @@ write_files:
     kubeReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 300Mi
     logging:
       flushFrequency: 0
       options:
@@ -349,7 +355,7 @@ write_files:
     systemReserved:
       cpu: 200m
       ephemeral-storage: 1Gi
-      memory: 200Mi
+      memory: 500Mi
     tlsCipherSuites:
     - TLS_AES_128_GCM_SHA256
     - TLS_AES_256_GCM_SHA384
