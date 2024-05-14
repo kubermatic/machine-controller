@@ -568,9 +568,19 @@ func (p *provider) Cleanup(ctx context.Context, log *zap.SugaredLogger, machine 
 		response, err := vsphereAPI.Provisioning().VM().Deprovision(deleteCtx, status.InstanceID, false)
 		if err != nil {
 			var respErr *anxclient.ResponseError
+
 			// Only error if the error was not "not found"
 			if !(errors.As(err, &respErr) && respErr.ErrorData.Code == http.StatusNotFound) {
 				return false, newError(common.DeleteMachineError, "failed to delete machine: %v", err)
+			}
+
+			// good thinking checking for a "not found" error, but go-anxcloud does only
+			// return >= 500 && < 600 errors (:
+			// since that's the legacy client in go-anxcloud and the new one is not yet available,
+			// this will not be fixed there but we have a nice workaround here:
+
+			if response.Identifier == "" {
+				return true, nil
 			}
 		}
 		status.DeprovisioningID = response.Identifier
