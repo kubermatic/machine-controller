@@ -7,11 +7,7 @@ if [ ! -f /opt/cni/bin/loopback ]; then
     curl -L https://github.com/containernetworking/plugins/releases/download/v0.8.7/cni-plugins-linux-amd64-v0.8.7.tgz | tar -xvzC /opt/cni/bin -f -
 fi
 if [ ! -f /opt/bin/kubelet ]; then
-<<<<<<<< HEAD:pkg/userdata/helper/testdata/download_binaries_v1.26.12.golden
-    curl -Lfo /opt/bin/kubelet https://dl.k8s.io/v1.26.12/bin/linux/amd64/kubelet
-========
     curl -Lfo /opt/bin/kubelet https://dl.k8s.io/v1.27.11/bin/linux/amd64/kubelet
->>>>>>>> upstream/release/v1.59:pkg/userdata/helper/testdata/download_binaries_v1.27.11.golden
     chmod +x /opt/bin/kubelet
 fi
 
