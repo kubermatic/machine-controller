@@ -43,4 +43,4 @@ Machine controller may work with other OS versions that are not listed in the ta
 | CentOS | 7.4.x, 7.6.x, 7.7.x |
 | RHEL | 8.x |
 | Rocky Linux | 8.5 |
-| Ubuntu | 20.04 LTS, 22.04 LTS |
+| Ubuntu | 20.04 LTS, 22.04 LTS, 24.04 LTS |

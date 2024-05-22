@@ -50,7 +50,7 @@ var (
 	}
 
 	openStackImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemUbuntu):     "kubermatic-ubuntu",
+		string(providerconfigtypes.OperatingSystemUbuntu):     "ubuntu-24.04",
 		string(providerconfigtypes.OperatingSystemCentOS):     "machine-controller-e2e-centos",
 		string(providerconfigtypes.OperatingSystemRHEL):       "machine-controller-e2e-rhel-8-5",
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kubermatic-e2e-flatcar",
@@ -75,7 +75,7 @@ var (
 		string(providerconfigtypes.OperatingSystemFlatcar):    "flatcar",
 		string(providerconfigtypes.OperatingSystemRHEL):       "rhel",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "rockylinux",
-		string(providerconfigtypes.OperatingSystemUbuntu):     "ubuntu-22.04",
+		string(providerconfigtypes.OperatingSystemUbuntu):     "ubuntu-24.04",
 	}
 )
 
