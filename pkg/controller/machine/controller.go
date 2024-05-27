@@ -45,7 +45,6 @@ import (
 	controllerutil "github.com/kubermatic/machine-controller/pkg/controller/util"
 	kuberneteshelper "github.com/kubermatic/machine-controller/pkg/kubernetes"
 	"github.com/kubermatic/machine-controller/pkg/node/eviction"
-	"github.com/kubermatic/machine-controller/pkg/node/poddeletion"
 	"github.com/kubermatic/machine-controller/pkg/providerconfig"
 	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"github.com/kubermatic/machine-controller/pkg/rhsm"
@@ -67,7 +66,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
-	ccmapi "k8s.io/cloud-provider/api"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -483,7 +481,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, mach
 		}
 	} else {
 		if r.nodeSettings.ExternalCloudProvider {
-			return r.handleNodeFailuresWithExternalCCM(ctx, log, prov, providerConfig, node, machine)
+			return r.handleNodeFailuresWithExternalCCM(ctx, log, prov, machine)
 		}
 		return r.ensureInstanceExistsForMachine(ctx, log, prov, machine, userdataPlugin, providerConfig)
 	}
@@ -540,24 +538,6 @@ func (r *Reconciler) machineHasValidNode(ctx context.Context, machine *clusterv1
 	}
 
 	return true, nil
-}
-
-func (r *Reconciler) shouldCleanupVolumes(ctx context.Context, log *zap.SugaredLogger, machine *clusterv1alpha1.Machine, providerName providerconfigtypes.CloudProvider) (bool, error) {
-	// we need to wait for volumeAttachments clean up only for vSphere
-	if providerName != providerconfigtypes.CloudProviderVsphere {
-		return false, nil
-	}
-
-	hasMachine, err := r.machineHasValidNode(ctx, machine)
-	if err != nil {
-		return false, err
-	}
-
-	if !hasMachine {
-		log.Debug("Skipping eviction since it does not have a node")
-	}
-
-	return hasMachine, nil
 }
 
 // evictIfNecessary checks if the machine has a node and evicts it if necessary.
@@ -632,10 +612,6 @@ func (r *Reconciler) deleteMachine(
 			return nil, err
 		}
 	}
-	shouldCleanUpVolumes, err := r.shouldCleanupVolumes(ctx, log, machine, providerName)
-	if err != nil {
-		return nil, err
-	}
 
 	var evictedSomething, deletedSomething bool
 	var volumesFree = true
@@ -645,13 +621,6 @@ func (r *Reconciler) deleteMachine(
 			return nil, fmt.Errorf("failed to evict node %s: %w", machine.Status.NodeRef.Name, err)
 		}
 	}
-	if shouldCleanUpVolumes {
-		deletedSomething, volumesFree, err = poddeletion.New(machine.Status.NodeRef.Name, r.client, r.kubeClient).Run(ctx, log)
-		if err != nil {
-			return nil, fmt.Errorf("failed to delete pods bound to volumes running on node %s: %w", machine.Status.NodeRef.Name, err)
-		}
-	}
-
 	if evictedSomething || deletedSomething || !volumesFree {
 		return &reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
@@ -862,10 +831,6 @@ func (r *Reconciler) ensureInstanceExistsForMachine(
 			cloudConfig, kubeletCloudProviderName, err := prov.GetCloudConfig(machine.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to render cloud config: %w", err)
-			}
-
-			if providerConfig.CloudProvider == providerconfigtypes.CloudProviderVsphere && externalCloudProvider {
-				cloudConfig = ""
 			}
 
 			registryCredentials, err := containerruntime.GetContainerdAuthConfig(ctx, r.client, r.nodeSettings.RegistryCredentialsSecretRef)
@@ -1210,16 +1175,6 @@ func (r *Reconciler) getNode(ctx context.Context, log *zap.SugaredLogger, instan
 		// then cause cluster stability issues in some cases.
 		for _, nodeAddress := range node.Status.Addresses {
 			for instanceAddress := range instance.Addresses() {
-				// We observed that the issue described above happens often on Hetzner.
-				// As we know that the Node and the instance name will always be same
-				// on Hetzner, we can use it as an additional check to prevent this
-				// issue.
-				// TODO: We should do this for other providers, but there are providers where
-				// the node and the instance names will not match, so it requires further
-				// investigation (e.g. AWS).
-				if provider == providerconfigtypes.CloudProviderHetzner && node.Name != instance.Name() {
-					continue
-				}
 				if nodeAddress.Address == instanceAddress {
 					log.Debugw("Found node by IP address", "node", node.Name)
 					return node.DeepCopy(), true, nil
@@ -1341,15 +1296,8 @@ func (r *Reconciler) handleNodeFailuresWithExternalCCM(
 	ctx context.Context,
 	log *zap.SugaredLogger,
 	prov cloudprovidertypes.Provider,
-	provConfig *providerconfigtypes.Config,
-	node *corev1.Node,
 	machine *clusterv1alpha1.Machine,
 ) (*reconcile.Result, error) {
-	taintShutdown := corev1.Taint{
-		Key:    ccmapi.TaintNodeShutdown,
-		Effect: corev1.TaintEffectNoSchedule,
-	}
-
 	_, err := prov.Get(ctx, log, machine, r.providerData)
 	if err != nil {
 		if cloudprovidererrors.IsNotFound(err) {
@@ -1357,13 +1305,6 @@ func (r *Reconciler) handleNodeFailuresWithExternalCCM(
 			return &reconcile.Result{RequeueAfter: deletionRetryWaitPeriod}, nil
 		}
 		return nil, err
-	} else if taintExists(node, taintShutdown) {
-		switch provConfig.CloudProvider {
-		case providerconfigtypes.CloudProviderKubeVirt:
-			log.Infof("Deleting a shut-down machine %q that cannot recover", machine.Name)
-			skipEviction := true
-			return r.deleteMachine(ctx, log, prov, providerconfigtypes.CloudProviderKubeVirt, machine, skipEviction)
-		}
 	}
 
 	log.Debug("Waiting for a node to become %q", corev1.NodeReady)

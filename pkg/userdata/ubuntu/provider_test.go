@@ -328,33 +328,6 @@ func TestUserDataGeneration(t *testing.T) {
 			externalCloudProvider: true,
 		},
 		{
-			name: "digitalocean-dualstack",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "digitalocean",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
-				Network: &providerconfigtypes.NetworkConfig{
-					IPFamily: util.IPFamilyIPv4IPv6,
-				},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: defaultVersion,
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				config: "{digitalocean-config:true}",
-				err:    nil,
-			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
-			kubernetesCACert: "CACert",
-			osConfig: &Config{
-				DistUpgradeOnBoot: false,
-			},
-		},
-		{
 			name: "openstack-dualstack-IPv6+IPv4",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider: "openstack",
@@ -384,33 +357,6 @@ func TestUserDataGeneration(t *testing.T) {
 			externalCloudProvider: true,
 		},
 		{
-			name: "digitalocean-dualstack-IPv6+IPv4",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "digitalocean",
-				SSHPublicKeys: []string{"ssh-rsa AAABBB"},
-				Network: &providerconfigtypes.NetworkConfig{
-					IPFamily: util.IPFamilyIPv6IPv4,
-				},
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: defaultVersion,
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				config: "{digitalocean-config:true}",
-				err:    nil,
-			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10"), net.ParseIP("10.10.10.11"), net.ParseIP("10.10.10.12")},
-			kubernetesCACert: "CACert",
-			osConfig: &Config{
-				DistUpgradeOnBoot: false,
-			},
-		},
-		{
 			name: "openstack-overwrite-cloud-config",
 			providerSpec: &providerconfigtypes.Config{
 				CloudProvider:        "openstack",
@@ -435,92 +381,6 @@ func TestUserDataGeneration(t *testing.T) {
 			osConfig: &Config{
 				DistUpgradeOnBoot: false,
 			},
-		},
-		{
-			name: "vsphere",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider:        "vsphere",
-				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.27.0",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
-				err:    nil,
-			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig: &Config{
-				DistUpgradeOnBoot: false,
-			},
-		},
-		{
-			name: "vsphere-proxy",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider:        "vsphere",
-				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.27.0",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
-				err:    nil,
-			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig: &Config{
-				DistUpgradeOnBoot: false,
-			},
-			httpProxy:          "http://192.168.100.100:3128",
-			noProxy:            "192.168.1.0",
-			insecureRegistries: "192.168.100.100:5000, 10.0.0.1:5000",
-			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
-		},
-		{
-			name: "vsphere-mirrors",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider:        "vsphere",
-				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.27.0",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
-				err:    nil,
-			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig: &Config{
-				DistUpgradeOnBoot: false,
-			},
-			httpProxy:       "http://192.168.100.100:3128",
-			noProxy:         "192.168.1.0",
-			registryMirrors: "https://registry.docker-cn.com",
-			pauseImage:      "192.168.100.100:5000/kubernetes/pause:v3.1",
 		},
 		{
 			name:             "containerd",
@@ -588,32 +448,6 @@ func TestUserDataGeneration(t *testing.T) {
 			kubernetesCACert: "CACert",
 			osConfig: &Config{
 				DistUpgradeOnBoot: true,
-			},
-		},
-		{
-			name: "nutanix",
-			providerSpec: &providerconfigtypes.Config{
-				CloudProvider:        "nutanix",
-				SSHPublicKeys:        []string{"ssh-rsa AAABBB"},
-				OverwriteCloudConfig: stringPtr("custom\ncloud\nconfig"),
-			},
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "node1",
-				},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.29.0",
-				},
-			},
-			ccProvider: &fakeCloudConfigProvider{
-				name:   "nutanix",
-				config: "{nutanix-config:true}",
-				err:    nil,
-			},
-			DNSIPs:           []net.IP{net.ParseIP("10.10.10.10")},
-			kubernetesCACert: "CACert",
-			osConfig: &Config{
-				DistUpgradeOnBoot: false,
 			},
 		},
 	}...)

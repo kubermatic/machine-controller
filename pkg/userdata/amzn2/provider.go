@@ -216,9 +216,6 @@ write_files:
       socat \
       wget \
       curl \
-      {{- if or (eq .CloudProviderName "vsphere") (eq .CloudProviderName "vmware-cloud-director") }}
-      open-vm-tools \
-      {{- end }}
       ipvsadm
 
 {{ .ContainerRuntimeScript | indent 4 }}
@@ -229,9 +226,6 @@ write_files:
     /opt/bin/setup_net_env.sh
 
     systemctl disable --now firewalld || true
-    {{ if eq .CloudProviderName "vsphere" }}
-    systemctl enable --now vmtoolsd.service
-    {{ end -}}
     systemctl enable --now kubelet
     systemctl enable --now --no-block kubelet-healthcheck.service
     systemctl disable setup.service

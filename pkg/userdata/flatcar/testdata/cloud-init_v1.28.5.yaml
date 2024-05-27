@@ -97,10 +97,6 @@ coreos:
         [Unit]
         Requires=download-script.service
         After=download-script.service
-    - name: 50-rpc-statd.conf
-      content: |
-        [Unit]
-        Wants=rpc-statd.service
     content: |
       [Unit]
       After=containerd.service
@@ -128,9 +124,8 @@ coreos:
         --kubeconfig=/var/lib/kubelet/kubeconfig \
         --config=/etc/kubernetes/kubelet.conf \
         --cert-dir=/etc/kubernetes/pki \
-        --cloud-provider=anexia \
+        --cloud-provider=aws \
         --cloud-config=/etc/kubernetes/cloud-config \
-        --hostname-override=node1 \
         --exit-on-lock-contention \
         --lock-file=/tmp/kubelet.lock \
         --container-runtime-endpoint=unix:///run/containerd/containerd.sock \
@@ -334,7 +329,7 @@ write_files:
 - path: /etc/kubernetes/cloud-config
   permissions: "0400"
   content: |
-    {anexia-config:true}
+    {aws-config:true}
 
 - path: /etc/kubernetes/pki/ca.crt
   permissions: "0644"
@@ -367,9 +362,6 @@ write_files:
     -----END CERTIFICATE-----
 
 
-- path: /etc/hostname
-  permissions: "0600"
-  content: 'node1'
 
 - path: /etc/ssh/sshd_config
   permissions: "0600"

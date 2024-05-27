@@ -157,38 +157,6 @@ func TestController_GetNode(t *testing.T) {
 			err:      nil,
 			instance: &fakeInstance{id: "3", addresses: map[string]corev1.NodeAddressType{"172.16.1.3": corev1.NodeInternalIP}},
 		},
-		{
-			name:     "hetzner node found by internal ip",
-			provider: "hetzner",
-			resNode:  &node3,
-			exists:   true,
-			err:      nil,
-			instance: &fakeInstance{id: "3", name: "node3", addresses: map[string]corev1.NodeAddressType{"192.168.1.3": corev1.NodeInternalIP}},
-		},
-		{
-			name:     "hetzner node found by external ip",
-			provider: "hetzner",
-			resNode:  &node3,
-			exists:   true,
-			err:      nil,
-			instance: &fakeInstance{id: "3", name: "node3", addresses: map[string]corev1.NodeAddressType{"172.16.1.3": corev1.NodeExternalIP}},
-		},
-		{
-			name:     "hetzner node not found - node and instance names mismatch",
-			provider: "hetzner",
-			resNode:  nil,
-			exists:   false,
-			err:      nil,
-			instance: &fakeInstance{id: "3", name: "instance3", addresses: map[string]corev1.NodeAddressType{"192.168.1.3": corev1.NodeInternalIP}},
-		},
-		{
-			name:     "hetzner node found by provider id",
-			provider: "hetzner",
-			resNode:  &node4,
-			exists:   true,
-			err:      nil,
-			instance: &fakeInstance{id: "4", addresses: map[string]corev1.NodeAddressType{"": ""}, providerID: "hcloud://123"},
-		},
 	}
 
 	for _, test := range tests {
@@ -688,16 +656,6 @@ func TestControllerFindNodeByProviderID(t *testing.T) {
 			nodes: []corev1.Node{
 				getTestNode("1", "aws:///i-99"),
 				getTestNode("2", "random"),
-			},
-			expectedNode: true,
-		},
-		{
-			name:     "azure providerID",
-			instance: &fakeInstance{id: "99", providerID: "azure:///test/test"},
-			provider: providerconfigtypes.CloudProviderAWS,
-			nodes: []corev1.Node{
-				getTestNode("1", "random"),
-				getTestNode("2", "azure:///test/test"),
 			},
 			expectedNode: true,
 		},

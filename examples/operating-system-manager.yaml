@@ -199,25 +199,10 @@ spec:
                       description: Name represents the name of the supported cloud provider
                       enum:
                         - aws
-                        - azure
-                        - digitalocean
-                        - edge
-                        - gce
-                        - hetzner
-                        - kubevirt
-                        - linode
-                        - nutanix
                         - openstack
-                        - equinixmetal
-                        - vsphere
                         - fake
-                        - alibaba
-                        - anexia
-                        - scaleway
                         - baremetal
                         - external
-                        - vmware-cloud-director
-                        - opennebula
                       type: string
                     spec:
                       description:
@@ -940,25 +925,10 @@ spec:
                           provider
                         enum:
                           - aws
-                          - azure
-                          - digitalocean
-                          - edge
-                          - gce
-                          - hetzner
-                          - kubevirt
-                          - linode
-                          - nutanix
                           - openstack
-                          - equinixmetal
-                          - vsphere
                           - fake
-                          - alibaba
-                          - anexia
-                          - scaleway
                           - baremetal
                           - external
-                          - vmware-cloud-director
-                          - opennebula
                         type: string
                       spec:
                         description:
