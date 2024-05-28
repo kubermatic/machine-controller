@@ -54,27 +54,6 @@ var (
 		string(providerconfigtypes.OperatingSystemFlatcar):    "kubermatic-e2e-flatcar",
 		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
 	}
-
-	openNebulaImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemFlatcar):    "machine-controller-e2e-flatcar",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "machine-controller-e2e-rockylinux",
-	}
-
-	vSphereOSImageTemplates = map[string]string{
-		string(providerconfigtypes.OperatingSystemCentOS):     "kkp-centos-7",
-		string(providerconfigtypes.OperatingSystemFlatcar):    "kkp-flatcar-3139.2.0",
-		string(providerconfigtypes.OperatingSystemRHEL):       "kkp-rhel-8.6",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "kkp-rockylinux-8",
-		string(providerconfigtypes.OperatingSystemUbuntu):     "kkp-ubuntu-22.04",
-	}
-
-	kubevirtImages = map[string]string{
-		string(providerconfigtypes.OperatingSystemCentOS):     "centos",
-		string(providerconfigtypes.OperatingSystemFlatcar):    "flatcar",
-		string(providerconfigtypes.OperatingSystemRHEL):       "rhel",
-		string(providerconfigtypes.OperatingSystemRockyLinux): "rockylinux",
-		string(providerconfigtypes.OperatingSystemUbuntu):     "ubuntu-22.04",
-	}
 )
 
 type scenario struct {
@@ -241,38 +220,12 @@ func testScenario(t *testing.T, testCase scenario, cloudProvider string, testPar
 		scenarioParams = append(scenarioParams, fmt.Sprintf("<< MAX_PRICE >>=%s", "0.023"))
 	}
 
-	if strings.Contains(cloudProvider, string(providerconfigtypes.CloudProviderEquinixMetal)) {
-		switch testCase.osName {
-		case string(providerconfigtypes.OperatingSystemCentOS):
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "AM"))
-		case string(providerconfigtypes.OperatingSystemFlatcar):
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "c3.small.x86"))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "NY"))
-		case string(providerconfigtypes.OperatingSystemRockyLinux):
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "AM"))
-		case string(providerconfigtypes.OperatingSystemUbuntu):
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< INSTANCE_TYPE >>=%s", "m3.small.x86"))
-			scenarioParams = append(scenarioParams, fmt.Sprintf("<< METRO_CODE >>=%s", "TY"))
-		}
-	}
-
 	// only used by assume role scenario, otherwise empty (disabled)
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< AWS_ASSUME_ROLE_ARN >>=%s", os.Getenv("AWS_ASSUME_ROLE_ARN")))
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< AWS_ASSUME_ROLE_EXTERNAL_ID >>=%s", os.Getenv("AWS_ASSUME_ROLE_EXTERNAL_ID")))
 
 	// only used by OpenStack scenarios
 	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_IMAGE >>=%s", openStackImages[testCase.osName]))
-
-	// only used by OpenNebula scenarios
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< ONE_IMAGE >>=%s", openNebulaImages[testCase.osName]))
-
-	// only use by vSphere scenarios
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< OS_Image_Template >>=%s", vSphereOSImageTemplates[testCase.osName]))
-
-	// only use by KubeVirt scenarios
-	scenarioParams = append(scenarioParams, fmt.Sprintf("<< KUBEVIRT_OS_IMAGE >>=%s", kubevirtImages[testCase.osName]))
 
 	// default kubeconfig to the hardcoded path at which `make e2e-cluster` creates its new kubeconfig
 	gopath := os.Getenv("GOPATH")

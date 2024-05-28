@@ -128,7 +128,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "ignition_v1.29.0",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
+				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -146,8 +146,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
+				name:   "openstack",
+				config: "{openstack-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -159,7 +159,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "ignition_v1.28.5",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
+				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -177,8 +177,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
+				name:   "openstack",
+				config: "{openstack-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -190,7 +190,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "ignition_v1.28.5",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
+				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -208,8 +208,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
+				name:   "openstack",
+				config: "{openstack-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -221,7 +221,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "ignition_v1.29.2",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
+				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -239,8 +239,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
+				name:   "openstack",
+				config: "{openstack-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -252,7 +252,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "ignition_v1.29.2",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "vsphere",
+				CloudProvider: "openstack",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -270,8 +270,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "vsphere",
-				config: "{vsphere-config:true}",
+				name:   "openstack",
+				config: "{openstack-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -283,7 +283,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "cloud-init_v1.29.0",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "anexia",
+				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -301,8 +301,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "anexia",
-				config: "{anexia-config:true}",
+				name:   "aws",
+				config: "{aws-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -314,7 +314,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "cloud-init_v1.28.5",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "anexia",
+				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -332,8 +332,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "anexia",
-				config: "{anexia-config:true}",
+				name:   "aws",
+				config: "{aws-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -345,7 +345,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "cloud-init_v1.28.5",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "anexia",
+				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -363,8 +363,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "anexia",
-				config: "{anexia-config:true}",
+				name:   "aws",
+				config: "{aws-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -376,7 +376,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "cloud-init_v1.29.2",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "anexia",
+				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -394,8 +394,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "anexia",
-				config: "{anexia-config:true}",
+				name:   "aws",
+				config: "{aws-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},
@@ -407,7 +407,7 @@ func TestUserDataGeneration(t *testing.T) {
 		{
 			name: "cloud-init_v1.29.2",
 			providerSpec: &providerconfigtypes.Config{
-				CloudProvider: "anexia",
+				CloudProvider: "aws",
 				SSHPublicKeys: []string{"ssh-rsa AAABBB", "ssh-rsa CCCDDD"},
 				CAPublicKey:   pointer.String("ssh-rsa AAABBB"),
 				Network: &providerconfigtypes.NetworkConfig{
@@ -425,8 +425,8 @@ func TestUserDataGeneration(t *testing.T) {
 				},
 			},
 			ccProvider: &fakeCloudConfigProvider{
-				name:   "anexia",
-				config: "{anexia-config:true}",
+				name:   "aws",
+				config: "{aws-config:true}",
 				err:    nil,
 			},
 			DNSIPs: []net.IP{net.ParseIP("10.10.10.10")},

@@ -129,14 +129,6 @@ func (ad *admissionData) defaultAndValidateMachineSpec(ctx context.Context, spec
 		return fmt.Errorf("failed to read machine.spec.providerSpec: %w", err)
 	}
 
-	// Packet has been renamed to Equinix Metal
-	if providerConfig.CloudProvider == cloudProviderPacket {
-		err = migrateToEquinixMetal(providerConfig)
-		if err != nil {
-			return fmt.Errorf("failed to migrate packet to equinix metal: %w", err)
-		}
-	}
-
 	skg := providerconfig.NewConfigVarResolver(ctx, ad.workerClient)
 	prov, err := cloudprovider.ForProvider(providerConfig.CloudProvider, skg)
 	if err != nil {

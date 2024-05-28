@@ -121,44 +121,6 @@ func TestUserDataGeneration(t *testing.T) {
 			externalCloudProvider: true,
 		},
 		{
-			name: "kubelet-v1.29.2-vsphere",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.29.2",
-				},
-			},
-			cloudProviderName: stringPtr("vsphere"),
-		},
-		{
-			name: "kubelet-v1.29.2-vsphere-proxy",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.29.2",
-				},
-			},
-			cloudProviderName:  stringPtr("vsphere"),
-			httpProxy:          "http://192.168.100.100:3128",
-			noProxy:            "192.168.1.0",
-			insecureRegistries: "192.168.100.100:5000, 10.0.0.1:5000",
-			pauseImage:         "192.168.100.100:5000/kubernetes/pause:v3.1",
-		},
-		{
-			name: "kubelet-v1.29.2-vsphere-mirrors",
-			spec: clusterv1alpha1.MachineSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: "node1"},
-				Versions: clusterv1alpha1.MachineVersionInfo{
-					Kubelet: "1.29.2",
-				},
-			},
-			cloudProviderName: stringPtr("vsphere"),
-			httpProxy:         "http://192.168.100.100:3128",
-			noProxy:           "192.168.1.0",
-			registryMirrors:   "https://registry.docker-cn.com",
-			pauseImage:        "192.168.100.100:5000/kubernetes/pause:v3.1",
-		},
-		{
 			name: "kubelet-v1.28-aws",
 			spec: clusterv1alpha1.MachineSpec{
 				ObjectMeta: metav1.ObjectMeta{Name: "node1"},

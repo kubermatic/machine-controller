@@ -48,28 +48,11 @@ const (
 type CloudProvider string
 
 const (
-	CloudProviderAWS                 CloudProvider = "aws"
-	CloudProviderAzure               CloudProvider = "azure"
-	CloudProviderDigitalocean        CloudProvider = "digitalocean"
-	CloudProviderGoogle              CloudProvider = "gce"
-	CloudProviderEquinixMetal        CloudProvider = "equinixmetal"
-	CloudProviderPacket              CloudProvider = "packet"
-	CloudProviderHetzner             CloudProvider = "hetzner"
-	CloudProviderKubeVirt            CloudProvider = "kubevirt"
-	CloudProviderLinode              CloudProvider = "linode"
-	CloudProviderNutanix             CloudProvider = "nutanix"
-	CloudProviderOpenstack           CloudProvider = "openstack"
-	CloudProviderVsphere             CloudProvider = "vsphere"
-	CloudProviderVultr               CloudProvider = "vultr"
-	CloudProviderVMwareCloudDirector CloudProvider = "vmware-cloud-director"
-	CloudProviderFake                CloudProvider = "fake"
-	CloudProviderEdge                CloudProvider = "edge"
-	CloudProviderAlibaba             CloudProvider = "alibaba"
-	CloudProviderAnexia              CloudProvider = "anexia"
-	CloudProviderScaleway            CloudProvider = "scaleway"
-	CloudProviderBaremetal           CloudProvider = "baremetal"
-	CloudProviderExternal            CloudProvider = "external"
-	CloudProviderOpenNebula          CloudProvider = "opennebula"
+	CloudProviderAWS       CloudProvider = "aws"
+	CloudProviderOpenstack CloudProvider = "openstack"
+	CloudProviderFake      CloudProvider = "fake"
+	CloudProviderBaremetal CloudProvider = "baremetal"
+	CloudProviderExternal  CloudProvider = "external"
 )
 
 var (
@@ -88,26 +71,9 @@ var (
 	// AllCloudProviders is a slice containing all supported cloud providers.
 	AllCloudProviders = []CloudProvider{
 		CloudProviderAWS,
-		CloudProviderAzure,
-		CloudProviderDigitalocean,
-		CloudProviderEquinixMetal,
-		CloudProviderPacket,
-		CloudProviderGoogle,
-		CloudProviderHetzner,
-		CloudProviderKubeVirt,
-		CloudProviderLinode,
-		CloudProviderNutanix,
 		CloudProviderOpenstack,
-		CloudProviderVsphere,
-		CloudProviderVMwareCloudDirector,
 		CloudProviderFake,
-		CloudProviderEdge,
-		CloudProviderAlibaba,
-		CloudProviderAnexia,
-		CloudProviderScaleway,
 		CloudProviderBaremetal,
-		CloudProviderVultr,
-		CloudProviderOpenNebula,
 	}
 )
 
@@ -118,8 +84,6 @@ func IntreeCloudProviderImplementationSupported(cloudProvider CloudProvider, ver
 	}
 
 	switch cloudProvider {
-	case CloudProviderAzure, CloudProviderVsphere, CloudProviderGoogle:
-		return true, nil
 	case CloudProviderAWS:
 		// In-tree AWS support was removed in Kubernetes 1.27.
 		ltKube127Condition, _ := semver.NewConstraint("< 1.27")

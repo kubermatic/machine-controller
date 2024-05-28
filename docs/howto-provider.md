@@ -66,7 +66,7 @@ SetMetricsForMachines(machines v1alpha1.MachineList) error
 
 ### Implementation hints
 
-Provider implementations are located in individual packages in `github.com/kubermatic/machine-controller/pkg/cloudprovider/provider`. Here see e.g. `hetzner` as a straight and good understandable implementation. Other implementations are there too, helping to understand the needed tasks inside and around the `Provider` interface implementation.
+Provider implementations are located in individual packages in `github.com/kubermatic/machine-controller/pkg/cloudprovider/provider`. Here see e.g. `openstack` as a straight and good understandable implementation. Other implementations are there too, helping to understand the needed tasks inside and around the `Provider` interface implementation.
 
 When retrieving the individual configuration from the provider specification a type for unmarshalling is needed. Here first the provider configuration is read and based on it the individual values of the configuration are retrieved. Typically the access data (token, ID/key combination, document with all information) alternatively can be passed via an environment variable. According
 methods of the used `providerconfig.ConfigVarResolver` do support this.
@@ -90,6 +90,6 @@ Now the provider is ready to be added into the project for CI tests.
 ## References
 
 - [Cloud Provider Interface](https://github.com/kubermatic/machine-controller/blob/main/pkg/cloudprovider/cloud/provider.go)
-- [Implementation for Hetzner](https://github.com/kubermatic/machine-controller/blob/main/pkg/cloudprovider/provider/hetzner/provider.go)
+- [Implementation for Openstack](https://github.com/kubermatic/machine-controller/blob/main/pkg/cloudprovider/provider/openstack/provider.go)
 - [Cloud Provider Type Definition](https://github.com/kubermatic/machine-controller/blob/main/pkg/providerconfig/types.go)
 - [Registration of supported Cloud Providers](https://github.com/kubermatic/machine-controller/blob/main/pkg/cloudprovider/provider.go)

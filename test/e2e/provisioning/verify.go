@@ -26,7 +26,6 @@ import (
 	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	machinecontroller "github.com/kubermatic/machine-controller/pkg/controller/machine"
 	evictiontypes "github.com/kubermatic/machine-controller/pkg/node/eviction/types"
-	providerconfigtypes "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -149,7 +148,7 @@ func createAndAssure(ctx context.Context, machineDeployment *clusterv1alpha1.Mac
 
 	klog.Infof("Creating a new %q MachineDeployment", machineDeployment.Name)
 
-	// Some cloud provider API's are slow (e.g. hetzner), and it can happen that our webhook
+	// Some cloud provider API's are slow (e.g. openstack), and it can happen that our webhook
 	// needs longer to validate a MachineDeployment than the kube-apiserver is willing to wait.
 	// In real world scenarios this is not that critical, but for tests we need to pay closer
 	// attention and retry the creation a few times.
@@ -283,15 +282,6 @@ func assureNodeForMachineDeployment(machineDeployment *clusterv1alpha1.MachineDe
 		}
 
 		for _, machine := range machines {
-			// Azure doesn't seem to easily expose the private IP address, there is only a PublicIPAddressClient in the sdk
-			providerConfig, err := providerconfigtypes.GetConfig(machine.Spec.ProviderSpec)
-			if err != nil {
-				return fmt.Errorf("failed to get provider config: %w", err)
-			}
-			if providerConfig.CloudProvider == providerconfigtypes.CloudProviderAzure {
-				continue
-			}
-
 			if len(machine.Status.Addresses) == 0 {
 				return fmt.Errorf("expected to find a node for MachineDeployment %q but Machine %q has no address yet, indicating instance creation at the provider failed", machineDeployment.Name, machine.Name)
 			}

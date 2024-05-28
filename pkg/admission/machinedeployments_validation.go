@@ -120,14 +120,6 @@ func mutationsForMachineDeployment(md *v1alpha1.MachineDeployment) error {
 		return fmt.Errorf("failed to read MachineDeployment.Spec.Template.Spec.ProviderSpec: %w", err)
 	}
 
-	// Packet has been renamed to Equinix Metal
-	if providerConfig.CloudProvider == cloudProviderPacket {
-		err = migrateToEquinixMetal(providerConfig)
-		if err != nil {
-			return fmt.Errorf("failed to migrate packet to equinix metal: %w", err)
-		}
-	}
-
 	// Update value in original object
 	md.Spec.Template.Spec.ProviderSpec.Value.Raw, err = json.Marshal(providerConfig)
 	if err != nil {

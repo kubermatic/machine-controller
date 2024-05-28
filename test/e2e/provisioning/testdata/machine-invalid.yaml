@@ -9,9 +9,9 @@ spec:
       value:
         sshPublicKeys:
           - "<< YOUR_PUBLIC_KEY >>"
-        cloudProvider: "hetzner"
+        cloudProvider: "openstack"
         cloudProviderSpec:
-          token: << HETZNER_TOKEN >>
+          token: << OS_TOKEN >>
           serverType: "cx11"
           datacenter: ""
           location: "fsn1"
